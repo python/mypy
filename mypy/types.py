@@ -3,7 +3,9 @@
 import sys
 from abc import abstractmethod
 from typing import (
+    TYPE_CHECKING,
     Any,
+    ClassVar,
     Dict,
     Iterable,
     List,
@@ -16,11 +18,9 @@ from typing import (
     Union,
     cast,
 )
-
-from typing_extensions import TYPE_CHECKING, ClassVar, Final, TypeAlias as _TypeAlias, overload
+from typing_extensions import Final, TypeAlias as _TypeAlias, overload
 
 import mypy.nodes
-from mypy.backports import OrderedDict
 from mypy.bogus_type import Bogus
 from mypy.nodes import (
     ARG_POS,
@@ -235,8 +235,6 @@ class Type(mypy.nodes.Context):
 
 class TypeAliasType(Type):
     """A type alias to another type.
-
-    NOTE: this is not being used yet, and the implementation is still incomplete.
 
     To support recursive type aliases we don't immediately expand a type alias
     during semantic analysis, but create an instance of this type that records the target alias
@@ -902,6 +900,14 @@ class TypeList(ProperType):
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
 
+    def __hash__(self) -> int:
+        return hash(tuple(self.items))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeList):
+            return False
+        return self.items == other.items
+
 
 class UnpackType(ProperType):
     """Type operator Unpack from PEP646. Can be either with Unpack[]
@@ -1301,7 +1307,7 @@ class Instance(ProperType):
         args: Bogus[List[Type]] = _dummy,
         last_known_value: Bogus[Optional["LiteralType"]] = _dummy,
     ) -> "Instance":
-        return Instance(
+        new = Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
@@ -1310,6 +1316,9 @@ class Instance(ProperType):
             if last_known_value is not _dummy
             else self.last_known_value,
         )
+        new.can_be_true = self.can_be_true
+        new.can_be_false = self.can_be_false
+        return new
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
@@ -2155,13 +2164,13 @@ class TypedDictType(ProperType):
 
     __slots__ = ("items", "required_keys", "fallback")
 
-    items: "OrderedDict[str, Type]"  # item_name -> item_type
+    items: Dict[str, Type]  # item_name -> item_type
     required_keys: Set[str]
     fallback: Instance
 
     def __init__(
         self,
-        items: "OrderedDict[str, Type]",
+        items: Dict[str, Type],
         required_keys: Set[str],
         fallback: Instance,
         line: int = -1,
@@ -2203,7 +2212,7 @@ class TypedDictType(ProperType):
     def deserialize(cls, data: JsonDict) -> "TypedDictType":
         assert data[".class"] == "TypedDictType"
         return TypedDictType(
-            OrderedDict([(n, deserialize_type(t)) for (n, t) in data["items"]]),
+            {n: deserialize_type(t) for (n, t) in data["items"]},
             set(data["required_keys"]),
             Instance.deserialize(data["fallback"]),
         )
@@ -2229,7 +2238,7 @@ class TypedDictType(ProperType):
         if item_types is None:
             items = self.items
         else:
-            items = OrderedDict(zip(self.items, item_types))
+            items = dict(zip(self.items, item_types))
         if required_keys is None:
             required_keys = self.required_keys
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
@@ -2410,10 +2419,6 @@ class LiteralType(ProperType):
             # Note: 'builtins.bytes' only appears in Python 3, so we want to
             # explicitly prefix with a "b"
             return "b" + raw
-        elif fallback_name == "builtins.unicode":
-            # Similarly, 'builtins.unicode' only appears in Python 2, where we also
-            # want to explicitly prefix
-            return "u" + raw
         else:
             # 'builtins.str' could mean either depending on context, but either way
             # we don't prefix: it's the "native" string. And of course, if value is
@@ -2472,7 +2477,9 @@ class UnionType(ProperType):
         uses_pep604_syntax: bool = False,
     ) -> None:
         super().__init__(line, column)
-        self.items = flatten_nested_unions(items)
+        # We must keep this false to avoid crashes during semantic analysis.
+        # TODO: maybe switch this to True during type-checking pass?
+        self.items = flatten_nested_unions(items, handle_type_alias_type=False)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
         # is_evaluated should be set to false for type comments and string literals
@@ -2530,7 +2537,7 @@ class UnionType(ProperType):
         if state.strict_optional:
             return self.items
         else:
-            return [i for i in get_proper_types(self.items) if not isinstance(i, NoneType)]
+            return [i for i in self.items if not isinstance(get_proper_type(i), NoneType)]
 
     def serialize(self) -> JsonDict:
         return {".class": "UnionType", "items": [t.serialize() for t in self.items]}
@@ -2759,12 +2766,13 @@ def get_proper_types(
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa
+from mypy.type_visitor import (  # noqa: F811
     SyntheticTypeVisitor as SyntheticTypeVisitor,
     TypeQuery as TypeQuery,
     TypeTranslator as TypeTranslator,
     TypeVisitor as TypeVisitor,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -3043,7 +3051,29 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return ", ".join(res)
 
 
-class UnrollAliasVisitor(TypeTranslator):
+class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type]):
+    """A base class for type translators that need to be run during semantic analysis."""
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> Type:
+        return t
+
+    def visit_callable_argument(self, t: CallableArgument) -> Type:
+        return t
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+        return t
+
+    def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
+        return t
+
+    def visit_star_type(self, t: StarType) -> Type:
+        return t
+
+    def visit_type_list(self, t: TypeList) -> Type:
+        return t
+
+
+class UnrollAliasVisitor(TrivialSyntheticTypeTranslator):
     def __init__(self, initial_aliases: Set[TypeAliasType]) -> None:
         self.recursed = False
         self.initial_aliases = initial_aliases
@@ -3063,15 +3093,16 @@ class UnrollAliasVisitor(TypeTranslator):
         return result
 
 
-def strip_type(typ: Type) -> ProperType:
+def strip_type(typ: Type) -> Type:
     """Make a copy of type without 'debugging info' (function name)."""
+    orig_typ = typ
     typ = get_proper_type(typ)
     if isinstance(typ, CallableType):
         return typ.copy_modified(name=None)
     elif isinstance(typ, Overloaded):
         return Overloaded([cast(CallableType, strip_type(item)) for item in typ.items])
     else:
-        return typ
+        return orig_typ
 
 
 def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:
@@ -3082,7 +3113,7 @@ def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:
     return isinstance(t, Instance) and t.type.fullname in fullnames
 
 
-class InstantiateAliasVisitor(TypeTranslator):
+class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
     def __init__(self, vars: List[str], subs: List[Type]) -> None:
         self.replacements = {v: s for (v, s) in zip(vars, subs)}
 
@@ -3104,6 +3135,18 @@ class InstantiateAliasVisitor(TypeTranslator):
         return typ
 
 
+class LocationSetter(TypeTraverserVisitor):
+    # TODO: Should we update locations of other Type subclasses?
+    def __init__(self, line: int, column: int) -> None:
+        self.line = line
+        self.column = column
+
+    def visit_instance(self, typ: Instance) -> None:
+        typ.line = self.line
+        typ.column = self.column
+        super().visit_instance(typ)
+
+
 def replace_alias_tvars(
     tp: Type, vars: List[str], subs: List[Type], newline: int, newcolumn: int
 ) -> Type:
@@ -3112,6 +3155,7 @@ def replace_alias_tvars(
     """
     replacer = InstantiateAliasVisitor(vars, subs)
     new_tp = tp.accept(replacer)
+    new_tp.accept(LocationSetter(newline, newcolumn))
     new_tp.line = newline
     new_tp.column = newcolumn
     return new_tp
@@ -3130,40 +3174,68 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
+class HasRecursiveType(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> bool:
+        return t.is_recursive
+
+
+def has_recursive_types(typ: Type) -> bool:
+    """Check if a type contains any recursive aliases (recursively)."""
+    return typ.accept(HasRecursiveType())
+
+
 def flatten_nested_unions(
-    types: Iterable[Type], handle_type_alias_type: bool = False
+    types: Iterable[Type], handle_type_alias_type: bool = True
 ) -> List[Type]:
     """Flatten nested unions in a type list."""
-    # This and similar functions on unions can cause infinite recursion
-    # if passed a "pathological" alias like A = Union[int, A] or similar.
-    # TODO: ban such aliases in semantic analyzer.
     flat_items: List[Type] = []
-    if handle_type_alias_type:
-        types = get_proper_types(types)
     # TODO: avoid duplicate types in unions (e.g. using hash)
-    for tp in types:
+    for t in types:
+        tp = get_proper_type(t) if handle_type_alias_type else t
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(
                 flatten_nested_unions(tp.items, handle_type_alias_type=handle_type_alias_type)
             )
         else:
-            flat_items.append(tp)
+            # Must preserve original aliases when possible.
+            flat_items.append(t)
     return flat_items
 
 
-def union_items(typ: Type) -> List[ProperType]:
-    """Return the flattened items of a union type.
+def invalid_recursive_alias(seen_nodes: Set[mypy.nodes.TypeAlias], target: Type) -> bool:
+    """Flag aliases like A = Union[int, A] (and similar mutual aliases).
 
-    For non-union types, return a list containing just the argument.
+    Such aliases don't make much sense, and cause problems in later phases.
     """
-    typ = get_proper_type(typ)
-    if isinstance(typ, UnionType):
-        items = []
-        for item in typ.items:
-            items.extend(union_items(item))
-        return items
-    else:
-        return [typ]
+    if isinstance(target, TypeAliasType):
+        if target.alias in seen_nodes:
+            return True
+        assert target.alias, f"Unfixed type alias {target.type_ref}"
+        return invalid_recursive_alias(seen_nodes | {target.alias}, get_proper_type(target))
+    assert isinstance(target, ProperType)
+    if not isinstance(target, UnionType):
+        return False
+    return any(invalid_recursive_alias(seen_nodes, item) for item in target.items)
+
+
+def bad_type_type_item(item: Type) -> bool:
+    """Prohibit types like Type[Type[...]].
+
+    Such types are explicitly prohibited by PEP 484. Also they cause problems
+    with recursive types like T = Type[T], because internal representation of
+    TypeType item is normalized (i.e. always a proper type).
+    """
+    item = get_proper_type(item)
+    if isinstance(item, TypeType):
+        return True
+    if isinstance(item, UnionType):
+        return any(
+            isinstance(get_proper_type(i), TypeType) for i in flatten_nested_unions(item.items)
+        )
+    return False
 
 
 def is_union_with_any(tp: Type) -> bool:

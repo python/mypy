@@ -1147,3 +1147,18 @@ reveal_type(o.__match_args__)  # E: "One" has no attribute "__match_args__" \
                                # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleNoBytes]
+from collections import namedtuple
+from typing import NamedTuple
+
+NT1 = namedtuple('NT1', b'x y z')  # E: List or tuple literal expected as the second argument to "namedtuple()"
+NT2 = namedtuple(b'NT2', 'x y z')  # E: "namedtuple()" expects a string literal as the first argument \
+                                   # E: Argument 1 to "namedtuple" has incompatible type "bytes"; expected "str"
+NT3 = namedtuple('NT3', [b'x', 'y'])  # E: String literal expected as "namedtuple()" item
+
+NT4 = NamedTuple('NT4', [('x', int), (b'y', int)])  # E: Invalid "NamedTuple()" field name
+NT5 = NamedTuple(b'NT5', [('x', int), ('y', int)])  # E: "NamedTuple()" expects a string literal as the first argument
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

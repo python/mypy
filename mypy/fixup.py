@@ -1,7 +1,6 @@
 """Fix up various things after deserialization."""
 
 from typing import Any, Dict, Optional
-
 from typing_extensions import Final
 
 from mypy.lookup import lookup_fully_qualified
@@ -76,6 +75,7 @@ class NodeFixer(NodeVisitor[None]):
                     p.accept(self.type_fixer)
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
+                info.update_tuple_type(info.tuple_type)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
             if info.declared_metaclass:
@@ -325,7 +325,7 @@ def lookup_fully_qualified_typeinfo(
         # Looks like a missing TypeInfo during an initial daemon load, put something there
         assert (
             allow_missing
-        ), "Should never get here in normal mode," " got {}:{} instead of TypeInfo".format(
+        ), "Should never get here in normal mode, got {}:{} instead of TypeInfo".format(
             type(node).__name__, node.fullname if node else ""
         )
         return missing_info(modules)
@@ -338,11 +338,24 @@ def lookup_fully_qualified_alias(
     node = stnode.node if stnode else None
     if isinstance(node, TypeAlias):
         return node
+    elif isinstance(node, TypeInfo):
+        if node.special_alias:
+            # Already fixed up.
+            return node.special_alias
+        if node.tuple_type:
+            alias = TypeAlias.from_tuple_type(node)
+        elif node.typeddict_type:
+            alias = TypeAlias.from_typeddict_type(node)
+        else:
+            assert allow_missing
+            return missing_alias()
+        node.special_alias = alias
+        return alias
     else:
         # Looks like a missing TypeAlias during an initial daemon load, put something there
         assert (
             allow_missing
-        ), "Should never get here in normal mode," " got {}:{} instead of TypeAlias".format(
+        ), "Should never get here in normal mode, got {}:{} instead of TypeAlias".format(
             type(node).__name__, node.fullname if node else ""
         )
         return missing_alias()

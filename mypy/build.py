@@ -22,15 +22,18 @@ import sys
 import time
 import types
 from typing import (
+    TYPE_CHECKING,
     AbstractSet,
     Any,
     Callable,
+    ClassVar,
     Dict,
     Iterable,
     Iterator,
     List,
     Mapping,
     NamedTuple,
+    NoReturn,
     Optional,
     Sequence,
     Set,
@@ -39,9 +42,9 @@ from typing import (
     TypeVar,
     Union,
 )
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy_extensions import TypedDict
-from typing_extensions import TYPE_CHECKING, ClassVar, Final, NoReturn, TypeAlias as _TypeAlias
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
@@ -75,8 +78,8 @@ from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.modulefinder import (
-    BuildSource,
-    BuildSourceSet,
+    BuildSource as BuildSource,
+    BuildSourceSet as BuildSourceSet,
     FindModuleCache,
     ModuleNotFoundReason,
     ModuleSearchResult,
@@ -221,7 +224,7 @@ def _build(
     reports = None
     if options.report_dirs:
         # Import lazily to avoid slowing down startup.
-        from mypy.report import Reports  # noqa
+        from mypy.report import Reports
 
         reports = Reports(data_dir, options.report_dirs)
 
@@ -233,7 +236,7 @@ def _build(
         options.show_error_codes,
         options.pretty,
         options.show_error_end,
-        lambda path: read_py_file(path, cached_read, options.python_version),
+        lambda path: read_py_file(path, cached_read),
         options.show_absolute_path,
         options.enabled_error_codes,
         options.disabled_error_codes,
@@ -657,6 +660,34 @@ class BuildManager:
         self.find_module_cache = FindModuleCache(
             self.search_paths, self.fscache, self.options, source_set=self.source_set
         )
+        for module in CORE_BUILTIN_MODULES:
+            if options.use_builtins_fixtures:
+                continue
+            if module == "_importlib_modulespec":
+                continue
+            path = self.find_module_cache.find_module(module)
+            if not isinstance(path, str):
+                raise CompileError(
+                    [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
+                )
+            if is_typeshed_file(path):
+                continue
+            if is_stub_package_file(path):
+                continue
+            if options.custom_typeshed_dir is not None:
+                # Check if module lives under custom_typeshed_dir subtree
+                custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
+                path = os.path.abspath(path)
+                if os.path.commonpath((path, custom_typeshed_dir)) == custom_typeshed_dir:
+                    continue
+
+            raise CompileError(
+                [
+                    f'mypy: "{os.path.relpath(path)}" shadows library module "{module}"',
+                    f'note: A user-defined top-level module with name "{module}" is not supported',
+                ]
+            )
+
         self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
@@ -1040,9 +1071,7 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     if snapshot is None:
         return None
     if not isinstance(snapshot, dict):
-        manager.log(
-            "Could not load plugins snapshot: cache is not a dict: {}".format(type(snapshot))
-        )
+        manager.log(f"Could not load plugins snapshot: cache is not a dict: {type(snapshot)}")
         return None
     return snapshot
 
@@ -1256,9 +1285,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     if meta is None:
         return None
     if not isinstance(meta, dict):
-        manager.log(
-            "Could not load cache for {}: meta cache is not a dict: {}".format(id, repr(meta))
-        )
+        manager.log(f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}")
         return None
     m = cache_meta_from_dict(meta, data_json)
     t2 = time.time()
@@ -1431,9 +1458,7 @@ def validate_meta(
                 manager.log(f"Using stale metadata for {id}: file {path}")
                 return meta
             else:
-                manager.log(
-                    "Metadata abandoned for {}: file {} has different hash".format(id, path)
-                )
+                manager.log(f"Metadata abandoned for {id}: file {path} has different hash")
                 return None
         else:
             t0 = time.time()
@@ -2060,9 +2085,9 @@ class State:
         return self.manager.load_fine_grained_deps(self.id)
 
     def load_tree(self, temporary: bool = False) -> None:
-        assert self.meta is not None, (
-            "Internal error: this method must be called only" " for cached modules"
-        )
+        assert (
+            self.meta is not None
+        ), "Internal error: this method must be called only for cached modules"
 
         data = _load_json_file(
             self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
@@ -2115,9 +2140,7 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = decode_python_encoding(
-                        manager.fscache.read(path), manager.options.python_version
-                    )
+                    source = decode_python_encoding(manager.fscache.read(path))
                     self.source_hash = manager.fscache.hash_digest(path)
                 except OSError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
@@ -2310,8 +2333,9 @@ class State:
             return False
         t0 = time_ref()
         with self.wrap_context():
-            return self.type_checker().check_second_pass()
+            result = self.type_checker().check_second_pass()
         self.time_spent_us += time_spent_us(t0)
+        return result
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -2547,18 +2571,7 @@ def find_module_and_diagnose(
 
     Returns a tuple containing (file path, target's effective follow_imports setting)
     """
-    file_id = id
-    if id == "builtins" and options.python_version[0] == 2:
-        # The __builtin__ module is called internally by mypy
-        # 'builtins' in Python 2 mode (similar to Python 3),
-        # but the stub file is __builtin__.pyi.  The reason is
-        # that a lot of code hard-codes 'builtins.x' and it's
-        # easier to work it around like this.  It also means
-        # that the implementation can mostly ignore the
-        # difference and just assume 'builtins' everywhere,
-        # which simplifies code.
-        file_id = "__builtin__"
-    result = find_module_with_reason(file_id, manager)
+    result = find_module_with_reason(id, manager)
     if isinstance(result, str):
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
@@ -2594,19 +2607,6 @@ def find_module_and_diagnose(
                 if is_sub_path(result, dir):
                     # Silence errors in site-package dirs and typeshed
                     follow_imports = "silent"
-        if (
-            id in CORE_BUILTIN_MODULES
-            and not is_typeshed_file(result)
-            and not is_stub_package_file(result)
-            and not options.use_builtins_fixtures
-            and not options.custom_typeshed_dir
-        ):
-            raise CompileError(
-                [
-                    f'mypy: "{os.path.relpath(result)}" shadows library module "{id}"',
-                    f'note: A user-defined top-level module with name "{id}" is not supported',
-                ]
-            )
         return (result, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
@@ -2614,18 +2614,14 @@ def find_module_and_diagnose(
         # search path or the module has not been installed.
 
         ignore_missing_imports = options.ignore_missing_imports
-        top_level, second_level = get_top_two_prefixes(file_id)
+        top_level, second_level = get_top_two_prefixes(id)
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
-        py_ver = options.python_version[0]
         if (
-            (
-                is_legacy_bundled_package(top_level, py_ver)
-                or is_legacy_bundled_package(second_level, py_ver)
-            )
+            (is_legacy_bundled_package(top_level) or is_legacy_bundled_package(second_level))
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
@@ -2743,10 +2739,10 @@ def module_not_found(
             top_level = second_level
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=legacy_bundled_packages[top_level].name)
+                note = note.format(stub_dist=legacy_bundled_packages[top_level])
             errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(legacy_bundled_packages[top_level].name)
+            manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
     errors.set_import_context(save_import_context)
 
 

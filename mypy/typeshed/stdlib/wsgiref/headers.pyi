@@ -1,4 +1,5 @@
-from typing import Pattern, overload
+from re import Pattern
+from typing import overload
 from typing_extensions import TypeAlias
 
 _HeaderList: TypeAlias = list[tuple[str, str]]

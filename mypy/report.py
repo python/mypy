@@ -12,9 +12,8 @@ import typing
 from abc import ABCMeta, abstractmethod
 from operator import attrgetter
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, cast
-from urllib.request import pathname2url
-
 from typing_extensions import Final, TypeAlias as _TypeAlias
+from urllib.request import pathname2url
 
 from mypy import stats
 from mypy.defaults import REPORTER_NAMES

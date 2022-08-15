@@ -1,5 +1,7 @@
 """Test cases for graph processing code in build.py."""
 
+from __future__ import annotations
+
 import sys
 from typing import AbstractSet, Dict, List, Set
 
@@ -41,6 +43,7 @@ class GraphSuite(Suite):
     def _make_manager(self) -> BuildManager:
         errors = Errors()
         options = Options()
+        options.use_builtins_fixtures = True
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(

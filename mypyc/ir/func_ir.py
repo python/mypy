@@ -1,7 +1,8 @@
 """Intermediate representation of functions."""
 
-from typing import List, Optional, Sequence
+from __future__ import annotations
 
+from typing import List, Optional, Sequence
 from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
@@ -52,7 +53,7 @@ class RuntimeArg:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "RuntimeArg":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RuntimeArg:
         return RuntimeArg(
             data["name"],
             deserialize_type(data["type"], ctx),
@@ -77,7 +78,7 @@ class FuncSignature:
         return {"args": [t.serialize() for t in self.args], "ret_type": self.ret_type.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "FuncSignature":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncSignature:
         return FuncSignature(
             [RuntimeArg.deserialize(arg, ctx) for arg in data["args"]],
             deserialize_type(data["ret_type"], ctx),
@@ -176,7 +177,7 @@ class FuncDecl:
         return get_id_from_name(decl["name"], fullname, func_ir["line"])
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "FuncDecl":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncDecl:
         return FuncDecl(
             data["name"],
             data["class_name"],
@@ -264,7 +265,7 @@ class FuncIR:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "FuncIR":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncIR:
         return FuncIR(
             FuncDecl.deserialize(data["decl"], ctx), [], [], data["line"], data["traceback_name"]
         )

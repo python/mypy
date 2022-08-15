@@ -1,5 +1,7 @@
 """Exception-related primitive ops."""
 
+from __future__ import annotations
+
 from mypyc.ir.ops import ERR_ALWAYS, ERR_FALSE, ERR_NEVER
 from mypyc.ir.rtypes import bit_rprimitive, exc_rtuple, object_rprimitive, void_rtype
 from mypyc.primitives.registry import custom_op

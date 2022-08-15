@@ -1,6 +1,7 @@
 """Plugin for supporting the functools standard library module."""
-from typing import Dict, NamedTuple, Optional
+from __future__ import annotations
 
+from typing import Dict, NamedTuple, Optional
 from typing_extensions import Final
 
 import mypy.plugin
@@ -22,10 +23,6 @@ def functools_total_ordering_maker_callback(
     ctx: mypy.plugin.ClassDefContext, auto_attribs_default: bool = False
 ) -> bool:
     """Add dunder methods to classes decorated with functools.total_ordering."""
-    if ctx.api.options.python_version < (3,):
-        # This plugin is not supported in Python 2 mode (it's a no-op).
-        return True
-
     comparison_methods = _analyze_class(ctx)
     if not comparison_methods:
         ctx.api.fail(

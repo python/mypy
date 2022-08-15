@@ -17,7 +17,6 @@ from typing import (
     Sequence,
     Tuple,
 )
-
 from typing_extensions import Final
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').

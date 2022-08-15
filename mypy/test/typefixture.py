@@ -3,6 +3,8 @@
 It contains class TypeInfos and Type objects.
 """
 
+from __future__ import annotations
+
 from typing import List, Optional, Tuple
 
 from mypy.nodes import (
@@ -133,6 +135,9 @@ class TypeFixture:
         )
 
         self.gvi = self.make_type_info("GV", mro=[self.oi], typevars=["Ts"], typevar_tuple_index=0)
+        self.gv2i = self.make_type_info(
+            "GV2", mro=[self.oi], typevars=["T", "Ts", "S"], typevar_tuple_index=1
+        )
         # list[T]
         self.std_listi = self.make_type_info(
             "builtins.list", mro=[self.oi], typevars=["T"], variances=[variance]

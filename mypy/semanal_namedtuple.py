@@ -4,8 +4,7 @@ This is conceptually part of mypy.semanal.
 """
 
 from contextlib import contextmanager
-from typing import Dict, Iterator, List, Mapping, Optional, Tuple, Union, cast
-
+from typing import Dict, Iterator, List, Mapping, Optional, Tuple, cast
 from typing_extensions import Final
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -17,7 +16,6 @@ from mypy.nodes import (
     Argument,
     AssignmentStmt,
     Block,
-    BytesExpr,
     CallExpr,
     ClassDef,
     Context,
@@ -39,7 +37,6 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     TypeVarExpr,
-    UnicodeExpr,
     Var,
 )
 from mypy.options import Options
@@ -47,6 +44,7 @@ from mypy.semanal_shared import (
     PRIORITY_FALLBACKS,
     SemanticAnalyzerInterface,
     calculate_tuple_fallback,
+    has_placeholder,
     set_callable_name,
 )
 from mypy.types import (
@@ -112,8 +110,11 @@ class NamedTupleAnalyzer:
                     items, types, default_items = result
                     if is_func_scope and "@" not in defn.name:
                         defn.name += "@" + str(defn.line)
+                    existing_info = None
+                    if isinstance(defn.analyzed, NamedTupleExpr):
+                        existing_info = defn.analyzed.info
                     info = self.build_namedtuple_typeinfo(
-                        defn.name, items, types, default_items, defn.line
+                        defn.name, items, types, default_items, defn.line, existing_info
                     )
                     defn.info = info
                     defn.analyzed = NamedTupleExpr(info, is_typed=True)
@@ -167,7 +168,14 @@ class NamedTupleAnalyzer:
                 if stmt.type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
-                    analyzed = self.api.anal_type(stmt.type)
+                    # We never allow recursive types at function scope. Although it is
+                    # possible to support this for named tuples, it is still tricky, and
+                    # it would be inconsistent with type aliases.
+                    analyzed = self.api.anal_type(
+                        stmt.type,
+                        allow_placeholder=self.options.enable_recursive_aliases
+                        and not self.api.is_func_scope(),
+                    )
                     if analyzed is None:
                         # Something is incomplete. We need to defer this named tuple.
                         return None
@@ -175,8 +183,7 @@ class NamedTupleAnalyzer:
                 # ...despite possible minor failures that allow further analyzis.
                 if name.startswith("_"):
                     self.fail(
-                        "NamedTuple field name cannot start with an underscore: {}".format(name),
-                        stmt,
+                        f"NamedTuple field name cannot start with an underscore: {name}", stmt
                     )
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
@@ -230,7 +237,7 @@ class NamedTupleAnalyzer:
                     name += "@" + str(call.line)
             else:
                 name = var_name = "namedtuple@" + str(call.line)
-            info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
+            info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line, None)
             self.store_namedtuple_info(info, var_name, call, is_typed)
             if name != var_name or is_func_scope:
                 # NOTE: we skip local namespaces since they are not serialized.
@@ -266,12 +273,22 @@ class NamedTupleAnalyzer:
             }
         else:
             default_items = {}
-        info = self.build_namedtuple_typeinfo(name, items, types, default_items, node.line)
+
+        existing_info = None
+        if isinstance(node.analyzed, NamedTupleExpr):
+            existing_info = node.analyzed.info
+        info = self.build_namedtuple_typeinfo(
+            name, items, types, default_items, node.line, existing_info
+        )
+
         # If var_name is not None (i.e. this is not a base class expression), we always
         # store the generated TypeInfo under var_name in the current scope, so that
         # other definitions can use it.
         if var_name:
             self.store_namedtuple_info(info, var_name, call, is_typed)
+        else:
+            call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
+            call.analyzed.set_line(call)
         # There are three cases where we need to store the generated TypeInfo
         # second time (for the purpose of serialization):
         #   * If there is a name mismatch like One = NamedTuple('Other', [...])
@@ -294,7 +311,7 @@ class NamedTupleAnalyzer:
     ) -> None:
         self.api.add_symbol(name, info, call)
         call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
-        call.analyzed.set_line(call.line, call.column)
+        call.analyzed.set_line(call)
 
     def parse_namedtuple_args(
         self, call: CallExpr, fullname: str
@@ -339,15 +356,13 @@ class NamedTupleAnalyzer:
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
             self.fail(f'Unexpected arguments to "{type_name}()"', call)
             return None
-        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+        if not isinstance(args[0], StrExpr):
             self.fail(f'"{type_name}()" expects a string literal as the first argument', call)
             return None
-        typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
+        typename = cast(StrExpr, call.args[0]).value
         types: List[Type] = []
         if not isinstance(args[1], (ListExpr, TupleExpr)):
-            if fullname == "collections.namedtuple" and isinstance(
-                args[1], (StrExpr, BytesExpr, UnicodeExpr)
-            ):
+            if fullname == "collections.namedtuple" and isinstance(args[1], StrExpr):
                 str_expr = args[1]
                 items = str_expr.value.replace(",", " ").split()
             else:
@@ -362,16 +377,10 @@ class NamedTupleAnalyzer:
             listexpr = args[1]
             if fullname == "collections.namedtuple":
                 # The fields argument contains just names, with implicit Any types.
-                if any(
-                    not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
-                    for item in listexpr.items
-                ):
+                if any(not isinstance(item, StrExpr) for item in listexpr.items):
                     self.fail('String literal expected as "namedtuple()" item', call)
                     return None
-                items = [
-                    cast(Union[StrExpr, BytesExpr, UnicodeExpr], item).value
-                    for item in listexpr.items
-                ]
+                items = [cast(StrExpr, item).value for item in listexpr.items]
             else:
                 # The fields argument contains (name, type) tuples.
                 result = self.parse_namedtuple_fields_with_types(listexpr.items, call)
@@ -410,7 +419,7 @@ class NamedTupleAnalyzer:
                     self.fail('Invalid "NamedTuple()" field definition', item)
                     return None
                 name, type_node = item.items
-                if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
+                if isinstance(name, StrExpr):
                     items.append(name.value)
                 else:
                     self.fail('Invalid "NamedTuple()" field name', item)
@@ -420,7 +429,12 @@ class NamedTupleAnalyzer:
                 except TypeTranslationError:
                     self.fail("Invalid field type", type_node)
                     return None
-                analyzed = self.api.anal_type(type)
+                # We never allow recursive types at function scope.
+                analyzed = self.api.anal_type(
+                    type,
+                    allow_placeholder=self.options.enable_recursive_aliases
+                    and not self.api.is_func_scope(),
+                )
                 # Workaround #4987 and avoid introducing a bogus UnboundType
                 if isinstance(analyzed, UnboundType):
                     analyzed = AnyType(TypeOfAny.from_error)
@@ -440,6 +454,7 @@ class NamedTupleAnalyzer:
         types: List[Type],
         default_items: Mapping[str, Expression],
         line: int,
+        existing_info: Optional[TypeInfo],
     ) -> TypeInfo:
         strtype = self.api.named_type("builtins.str")
         implicit_any = AnyType(TypeOfAny.special_form)
@@ -460,10 +475,12 @@ class NamedTupleAnalyzer:
         literals: List[Type] = [LiteralType(item, strtype) for item in items]
         match_args_type = TupleType(literals, basetuple_type)
 
-        info = self.api.basic_new_typeinfo(name, fallback, line)
+        info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
-        info.tuple_type = tuple_base
+        if info.special_alias and has_placeholder(info.special_alias.target):
+            self.api.defer(force_progress=True)
+        info.update_tuple_type(tuple_base)
         info.line = line
         # For use by mypyc.
         info.metadata["namedtuple"] = {"fields": items.copy()}
@@ -471,7 +488,10 @@ class NamedTupleAnalyzer:
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise base classes might be incomplete. Postpone a
         # callback function that patches the fallback.
-        self.api.schedule_patch(PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(tuple_base))
+        if not has_placeholder(tuple_base):
+            self.api.schedule_patch(
+                PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(tuple_base)
+            )
 
         def add_field(
             var: Var, is_initialized_in_class: bool = False, is_property: bool = False
@@ -501,6 +521,7 @@ class NamedTupleAnalyzer:
         if self.options.python_version >= (3, 10):
             add_field(Var("__match_args__", match_args_type), is_initialized_in_class=True)
 
+        assert info.tuple_type is not None  # Set by update_tuple_type() above.
         tvd = TypeVarType(
             SELF_TVAR_NAME, info.fullname + "." + SELF_TVAR_NAME, -1, [], info.tuple_type
         )

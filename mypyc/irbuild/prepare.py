@@ -11,6 +11,8 @@ the missing bits, such as function bodies (basic blocks).
 Also build a mapping from mypy TypeInfos to ClassIR objects.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import DefaultDict, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
@@ -109,7 +111,7 @@ def is_from_module(node: SymbolNode, module: MypyFile) -> bool:
     return node.fullname == module.fullname + "." + node.name
 
 
-def load_type_map(mapper: "Mapper", modules: List[MypyFile], deser_ctx: DeserMaps) -> None:
+def load_type_map(mapper: Mapper, modules: List[MypyFile], deser_ctx: DeserMaps) -> None:
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
         for name, node in module.names.items():

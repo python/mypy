@@ -16,7 +16,6 @@ import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
-
 from typing_extensions import Final
 
 import mypy.build
@@ -26,6 +25,7 @@ from mypy.dmypy_util import receive
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileData, FileSystemWatcher
+from mypy.inspections import InspectionEngine
 from mypy.ipc import IPCServer
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, compute_search_paths
 from mypy.options import Options
@@ -297,7 +297,12 @@ class Server:
         return {}
 
     def cmd_run(
-        self, version: str, args: Sequence[str], is_tty: bool, terminal_width: int
+        self,
+        version: str,
+        args: Sequence[str],
+        export_types: bool,
+        is_tty: bool,
+        terminal_width: int,
     ) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         stderr = io.StringIO()
@@ -332,22 +337,23 @@ class Server:
             return {"out": "", "err": str(err), "status": 2}
         except SystemExit as e:
             return {"out": stdout.getvalue(), "err": stderr.getvalue(), "status": e.code}
-        return self.check(sources, is_tty, terminal_width)
+        return self.check(sources, export_types, is_tty, terminal_width)
 
     def cmd_check(
-        self, files: Sequence[str], is_tty: bool, terminal_width: int
+        self, files: Sequence[str], export_types: bool, is_tty: bool, terminal_width: int
     ) -> Dict[str, object]:
         """Check a list of files."""
         try:
             sources = create_source_list(files, self.options, self.fscache)
         except InvalidSourceList as err:
             return {"out": "", "err": str(err), "status": 2}
-        return self.check(sources, is_tty, terminal_width)
+        return self.check(sources, export_types, is_tty, terminal_width)
 
     def cmd_recheck(
         self,
         is_tty: bool,
         terminal_width: int,
+        export_types: bool,
         remove: Optional[List[str]] = None,
         update: Optional[List[str]] = None,
     ) -> Dict[str, object]:
@@ -374,6 +380,7 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log(f"fine-grained increment: cmd_recheck: {t1 - t0:.3f}s")
+        self.options.export_types = export_types
         if not self.following_imports():
             messages = self.fine_grained_increment(sources, remove, update)
         else:
@@ -385,13 +392,14 @@ class Server:
         return res
 
     def check(
-        self, sources: List[BuildSource], is_tty: bool, terminal_width: int
+        self, sources: List[BuildSource], export_types: bool, is_tty: bool, terminal_width: int
     ) -> Dict[str, Any]:
         """Check using fine-grained incremental mode.
 
         If is_tty is True format the output nicely with colors and summary line
         (unless disabled in self.options). Also pass the terminal_width to formatter.
         """
+        self.options.export_types = export_types
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
@@ -851,6 +859,54 @@ class Server:
 
         return changed, removed
 
+    def cmd_inspect(
+        self,
+        show: str,
+        location: str,
+        verbosity: int = 0,
+        limit: int = 0,
+        include_span: bool = False,
+        include_kind: bool = False,
+        include_object_attrs: bool = False,
+        union_attrs: bool = False,
+        force_reload: bool = False,
+    ) -> Dict[str, object]:
+        """Locate and inspect expression(s)."""
+        if sys.version_info < (3, 8):
+            return {"error": 'Python 3.8 required for "inspect" command'}
+        if not self.fine_grained_manager:
+            return {
+                "error": 'Command "inspect" is only valid after a "check" command'
+                " (that produces no parse errors)"
+            }
+        engine = InspectionEngine(
+            self.fine_grained_manager,
+            verbosity=verbosity,
+            limit=limit,
+            include_span=include_span,
+            include_kind=include_kind,
+            include_object_attrs=include_object_attrs,
+            union_attrs=union_attrs,
+            force_reload=force_reload,
+        )
+        old_inspections = self.options.inspections
+        self.options.inspections = True
+        try:
+            if show == "type":
+                result = engine.get_type(location)
+            elif show == "attrs":
+                result = engine.get_attrs(location)
+            elif show == "definition":
+                result = engine.get_definition(location)
+            else:
+                assert False, "Unknown inspection kind"
+        finally:
+            self.options.inspections = old_inspections
+        if "out" in result:
+            assert isinstance(result["out"], str)
+            result["out"] += "\n"
+        return result
+
     def cmd_suggest(self, function: str, callsites: bool, **kwargs: Any) -> Dict[str, object]:
         """Suggest a signature for a function."""
         if not self.fine_grained_manager:
@@ -965,7 +1021,6 @@ def filter_out_missing_top_level_packages(
         + search_paths.package_path
         + search_paths.typeshed_path
     )
-    paths += tuple(os.path.join(p, "@python2") for p in search_paths.typeshed_path)
     for p in paths:
         try:
             entries = fscache.listdir(p)
@@ -981,8 +1036,6 @@ def filter_out_missing_top_level_packages(
             elif entry.endswith("-stubs"):
                 # Possible PEP 561 stub package
                 entry = entry[:-6]
-                if entry.endswith("-python2"):
-                    entry = entry[:-8]
             if entry in packages:
                 found.add(entry)
     return found

@@ -1243,6 +1243,13 @@ d = {'x': int, 'y': int}
 Point = TypedDict('Point', {**d})  # E: Invalid TypedDict() field name
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictTypeWithBytes]
+from mypy_extensions import TypedDict
+Point = TypedDict(b'Point', {'x': int, 'y': int})  # E: TypedDict() expects a string literal as the first argument
+# This technically works at runtime but doesn't make sense.
+Point2 = TypedDict('Point2', {b'x': int})  # E: Invalid TypedDict() field name
+[builtins fixtures/dict.pyi]
+
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
 --       Keyword arguments may potentially be supported in the future.
 [case testCannotCreateTypedDictTypeWithNonpositionalArgs]
@@ -2015,6 +2022,23 @@ class DummyTypedDict(TypedDict):
     float_val: float
     str_val: str
 
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictTypeNarrowingWithFinalKey]
+from typing import Final, Optional, TypedDict
+
+KEY_NAME: Final = "bar"
+class Foo(TypedDict):
+    bar: Optional[str]
+
+foo = Foo(bar="hello")
+if foo["bar"] is not None:
+    reveal_type(foo["bar"])     # N: Revealed type is "builtins.str"
+    reveal_type(foo[KEY_NAME])  # N: Revealed type is "builtins.str"
+if foo[KEY_NAME] is not None:
+    reveal_type(foo["bar"])     # N: Revealed type is "builtins.str"
+    reveal_type(foo[KEY_NAME])  # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

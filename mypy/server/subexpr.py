@@ -1,12 +1,13 @@
 """Find all subexpressions of an AST node."""
 
+from __future__ import annotations
+
 from typing import List
 
 from mypy.nodes import (
     AssertTypeExpr,
     AssignmentExpr,
     AwaitExpr,
-    BackquoteExpr,
     CallExpr,
     CastExpr,
     ComparisonExpr,
@@ -190,10 +191,6 @@ class SubexpressionFinder(TraverserVisitor):
     def visit_star_expr(self, e: StarExpr) -> None:
         self.add(e)
         super().visit_star_expr(e)
-
-    def visit_backquote_expr(self, e: BackquoteExpr) -> None:
-        self.add(e)
-        super().visit_backquote_expr(e)
 
     def visit_await_expr(self, e: AwaitExpr) -> None:
         self.add(e)

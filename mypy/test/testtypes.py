@@ -1,5 +1,7 @@
 """Test cases for mypy types and type operations."""
 
+from __future__ import annotations
+
 from typing import List, Tuple
 
 from mypy.erasetype import erase_type, remove_instance_last_known_values
@@ -8,9 +10,8 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.join import join_simple, join_types
 from mypy.meet import meet_types, narrow_declared_type
 from mypy.nodes import ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, CONTRAVARIANT, COVARIANT, INVARIANT
-from mypy.sametypes import is_same_type
 from mypy.state import state
-from mypy.subtypes import is_more_precise, is_proper_subtype, is_subtype
+from mypy.subtypes import is_more_precise, is_proper_subtype, is_same_type, is_subtype
 from mypy.test.helpers import Suite, assert_equal, assert_type, skip
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
 from mypy.typeops import false_only, make_simplified_union, true_only
@@ -535,7 +536,7 @@ class TypeOpsSuite(Suite):
             [fx.lit1_inst, fx.lit3_inst], UnionType([fx.lit1_inst, fx.lit3_inst])
         )
         self.assert_simplified_union([fx.lit1_inst, fx.uninhabited], fx.lit1_inst)
-        self.assert_simplified_union([fx.lit1, fx.lit1_inst], UnionType([fx.lit1, fx.lit1_inst]))
+        self.assert_simplified_union([fx.lit1, fx.lit1_inst], fx.lit1)
         self.assert_simplified_union([fx.lit1, fx.lit2_inst], UnionType([fx.lit1, fx.lit2_inst]))
         self.assert_simplified_union([fx.lit1, fx.lit3_inst], UnionType([fx.lit1, fx.lit3_inst]))
 

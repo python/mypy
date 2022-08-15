@@ -2198,11 +2198,11 @@ import waitress
 [file a.py.3]
 import requests
 [out]
-a.py:1: error: Library stubs not installed for "waitress" (or incompatible with Python 3.6)
+a.py:1: error: Library stubs not installed for "waitress" (or incompatible with Python 3.7)
 a.py:1: note: Hint: "python3 -m pip install types-waitress"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 ==
-a.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.6)
+a.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.7)
 a.py:1: note: Hint: "python3 -m pip install types-requests"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

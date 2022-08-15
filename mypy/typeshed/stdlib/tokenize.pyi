@@ -1,9 +1,9 @@
 import sys
 from _typeshed import StrOrBytesPath
-from builtins import open as _builtin_open
 from collections.abc import Callable, Generator, Iterable, Sequence
+from re import Pattern
 from token import *
-from typing import Any, NamedTuple, Pattern, TextIO
+from typing import Any, NamedTuple, TextIO
 from typing_extensions import TypeAlias
 
 __all__ = [
@@ -77,11 +77,8 @@ __all__ = [
     "untokenize",
 ]
 
-if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
-    __all__ += ["ASYNC", "AWAIT"]
-
 if sys.version_info >= (3, 8):
-    __all__ += ["COLONEQUAL", "generate_tokens", "TYPE_COMMENT", "TYPE_IGNORE"]
+    __all__ += ["ASYNC", "AWAIT", "COLONEQUAL", "generate_tokens", "TYPE_COMMENT", "TYPE_IGNORE"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
@@ -90,11 +87,6 @@ if sys.version_info >= (3, 8):
     from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
 else:
     EXACT_TOKEN_TYPES: dict[str, int]
-
-if sys.version_info < (3, 7):
-    COMMENT: int
-    NL: int
-    ENCODING: int
 
 cookie_re: Pattern[str]
 blank_re: Pattern[bytes]
@@ -166,10 +158,6 @@ Single3: str  # undocumented
 Double3: str  # undocumented
 Triple: str  # undocumented
 String: str  # undocumented
-
-if sys.version_info < (3, 7):
-    Operator: str  # undocumented
-    Bracket: str  # undocumented
 
 Special: str  # undocumented
 Funny: str  # undocumented

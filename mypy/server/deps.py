@@ -79,11 +79,10 @@ dependency map significantly without significant benefit.
 Test cases for this module live in 'test-data/unit/deps*.test'.
 """
 
-from typing import Dict, List, Optional, Set, Tuple
+from __future__ import annotations
 
-from typing_extensions import DefaultDict
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
-from mypy.checkmember import bind_self
 from mypy.nodes import (
     GDEF,
     LDEF,
@@ -118,7 +117,6 @@ from mypy.nodes import (
     OperatorAssignmentStmt,
     OpExpr,
     OverloadedFuncDef,
-    PrintStmt,
     RefExpr,
     StarExpr,
     SuperExpr,
@@ -143,6 +141,7 @@ from mypy.options import Options
 from mypy.scope import Scope
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.traverser import TraverserVisitor
+from mypy.typeops import bind_self
 from mypy.types import (
     AnyType,
     CallableType,
@@ -221,12 +220,11 @@ class DependencyVisitor(TraverserVisitor):
         self,
         type_map: Dict[Expression, Type],
         python_version: Tuple[int, int],
-        alias_deps: "DefaultDict[str, Set[str]]",
+        alias_deps: DefaultDict[str, Set[str]],
         options: Optional[Options] = None,
     ) -> None:
         self.scope = Scope()
         self.type_map = type_map
-        self.python2 = python_version[0] == 2
         # This attribute holds a mapping from target to names of type aliases
         # it depends on. These need to be processed specially, since they are
         # only present in expanded form in symbol tables. For example, after:
@@ -529,9 +527,7 @@ class DependencyVisitor(TraverserVisitor):
                 # global variable.
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = self.get_type_triggers(lvalue_type)
-                attr_trigger = make_trigger(
-                    "{}.{}".format(self.scope.current_full_target(), lvalue.name)
-                )
+                attr_trigger = make_trigger(f"{self.scope.current_full_target()}.{lvalue.name}")
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
         elif isinstance(lvalue, MemberExpr):
@@ -604,11 +600,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_attribute_dependency_for_expr(o.expr, "__iter__")
             self.add_attribute_dependency_for_expr(o.expr, "__getitem__")
             if o.inferred_iterator_type:
-                if self.python2:
-                    method = "next"
-                else:
-                    method = "__next__"
-                self.add_attribute_dependency(o.inferred_iterator_type, method)
+                self.add_attribute_dependency(o.inferred_iterator_type, "__next__")
         else:
             self.add_attribute_dependency_for_expr(o.expr, "__aiter__")
             if o.inferred_iterator_type:
@@ -636,11 +628,6 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_attribute_dependency_for_expr(e, "__aexit__")
         for typ in o.analyzed_types:
             self.add_type_dependencies(typ)
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        super().visit_print_stmt(o)
-        if o.target:
-            self.add_attribute_dependency_for_expr(o.target, "write")
 
     def visit_del_stmt(self, o: DelStmt) -> None:
         super().visit_del_stmt(o)
@@ -809,9 +796,6 @@ class DependencyVisitor(TraverserVisitor):
             left = e.operands[i]
             right = e.operands[i + 1]
             self.process_binary_op(op, left, right)
-            if self.python2 and op in ("==", "!=", "<", "<=", ">", ">="):
-                self.add_operator_method_dependency(left, "__cmp__")
-                self.add_operator_method_dependency(right, "__cmp__")
 
     def process_binary_op(self, op: str, left: Expression, right: Expression) -> None:
         method = op_methods.get(op)
@@ -936,7 +920,7 @@ class DependencyVisitor(TraverserVisitor):
             triggers = self.attribute_triggers(typ.item, name)
             if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
                 triggers.append(
-                    make_trigger("%s.%s" % (typ.item.type.metaclass_type.type.fullname, name))
+                    make_trigger(f"{typ.item.type.metaclass_type.type.fullname}.{name}")
                 )
             return triggers
         else:
@@ -959,18 +943,23 @@ class DependencyVisitor(TraverserVisitor):
         return get_type_triggers(typ, self.use_logical_deps())
 
 
-def get_type_triggers(typ: Type, use_logical_deps: bool) -> List[str]:
+def get_type_triggers(
+    typ: Type, use_logical_deps: bool, seen_aliases: Optional[Set[TypeAliasType]] = None
+) -> List[str]:
     """Return all triggers that correspond to a type becoming stale."""
-    return typ.accept(TypeTriggersVisitor(use_logical_deps))
+    return typ.accept(TypeTriggersVisitor(use_logical_deps, seen_aliases))
 
 
 class TypeTriggersVisitor(TypeVisitor[List[str]]):
-    def __init__(self, use_logical_deps: bool) -> None:
+    def __init__(
+        self, use_logical_deps: bool, seen_aliases: Optional[Set[TypeAliasType]] = None
+    ) -> None:
         self.deps: List[str] = []
+        self.seen_aliases: Set[TypeAliasType] = seen_aliases or set()
         self.use_logical_deps = use_logical_deps
 
     def get_type_triggers(self, typ: Type) -> List[str]:
-        return get_type_triggers(typ, self.use_logical_deps)
+        return get_type_triggers(typ, self.use_logical_deps, self.seen_aliases)
 
     def visit_instance(self, typ: Instance) -> List[str]:
         trigger = make_trigger(typ.type.fullname)
@@ -982,14 +971,16 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> List[str]:
+        if typ in self.seen_aliases:
+            return []
+        self.seen_aliases.add(typ)
         assert typ.alias is not None
         trigger = make_trigger(typ.alias.fullname)
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(self.get_type_triggers(arg))
-        # TODO: Add guard for infinite recursion here. Moreover, now that type aliases
-        # are its own kind of types we can simplify the logic to rely on intermediate
-        # dependencies (like for instance types).
+        # TODO: Now that type aliases are its own kind of types we can simplify
+        # the logic to rely on intermediate dependencies (like for instance types).
         triggers.extend(self.get_type_triggers(typ.alias.target))
         return triggers
 

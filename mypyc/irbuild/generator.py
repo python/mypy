@@ -8,6 +8,8 @@ The top-level logic for dealing with generator functions is in
 mypyc.irbuild.function.
 """
 
+from __future__ import annotations
+
 from typing import List
 
 from mypy.nodes import ARG_OPT, Var

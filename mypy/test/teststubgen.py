@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import os.path
 import re
@@ -709,9 +711,7 @@ class StubgenPythonSuite(DataSuite):
             except CompileError as e:
                 a = e.messages
             assert_string_arrays_equal(
-                testcase.output,
-                a,
-                "Invalid output ({}, line {})".format(testcase.file, testcase.line),
+                testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
             )
         finally:
             for mod in mods:

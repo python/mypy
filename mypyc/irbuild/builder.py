@@ -10,12 +10,12 @@ AST node type to code that actually does the bulk of the work. For
 example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
-
 from typing_extensions import Final, overload
 
-from mypy.backports import OrderedDict
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
@@ -148,7 +148,7 @@ class IRBuilder:
     ) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper, options)
         self.builders = [self.builder]
-        self.symtables: List[OrderedDict[SymbolNode, SymbolTarget]] = [OrderedDict()]
+        self.symtables: List[Dict[SymbolNode, SymbolTarget]] = [{}]
         self.runtime_args: List[List[RuntimeArg]] = [[]]
         self.function_name_stack: List[str] = []
         self.class_ir_stack: List[ClassIR] = []
@@ -196,7 +196,7 @@ class IRBuilder:
         # Notionally a list of all of the modules imported by the
         # module being compiled, but stored as an OrderedDict so we
         # can also do quick lookups.
-        self.imports: OrderedDict[str, None] = OrderedDict()
+        self.imports: Dict[str, None] = {}
 
         self.can_borrow = False
 
@@ -1037,7 +1037,7 @@ class IRBuilder:
             fn_info = FuncInfo(name=fn_info)
         self.builder = LowLevelIRBuilder(self.current_module, self.mapper, self.options)
         self.builders.append(self.builder)
-        self.symtables.append(OrderedDict())
+        self.symtables.append({})
         self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
@@ -1115,7 +1115,7 @@ class IRBuilder:
     def lookup(self, symbol: SymbolNode) -> SymbolTarget:
         return self.symtables[-1][symbol]
 
-    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> "Register":
+    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> Register:
         """Add register that represents a symbol to the symbol table.
 
         Args:

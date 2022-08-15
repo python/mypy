@@ -5,8 +5,10 @@ from abc import abstractmethod
 from collections import defaultdict
 from enum import Enum, unique
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
+    DefaultDict,
     Dict,
     Iterator,
     List,
@@ -18,12 +20,11 @@ from typing import (
     Union,
     cast,
 )
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy_extensions import trait
-from typing_extensions import TYPE_CHECKING, DefaultDict, Final, TypeAlias as _TypeAlias
 
 import mypy.strconv
-from mypy.backports import OrderedDict
 from mypy.bogus_type import Bogus
 from mypy.util import short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
@@ -338,6 +339,7 @@ class MypyFile(SymbolNode):
         super().__init__()
         self.defs = defs
         self.line = 1  # Dummy line number
+        self.column = 0  # Dummy column
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
@@ -599,6 +601,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         if len(items) > 0:
+            # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
         self.is_final = False
 
@@ -749,13 +752,21 @@ class FuncItem(FuncBase):
     ) -> None:
         super().set_line(target, column, end_line, end_column)
         for arg in self.arguments:
+            # TODO: set arguments line/column to their precise locations.
             arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
         return self.type is None
 
 
-FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional", "is_abstract"]
+FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional"]
+
+# Abstract status of a function
+NOT_ABSTRACT: Final = 0
+# Explicitly abstract (with @abstractmethod or overload without implementation)
+IS_ABSTRACT: Final = 1
+# Implicitly abstract: used for functions with trivial bodies defined in Protocols
+IMPLICITLY_ABSTRACT: Final = 2
 
 
 class FuncDef(FuncItem, SymbolNode, Statement):
@@ -764,7 +775,14 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     This is a non-lambda function defined using 'def'.
     """
 
-    __slots__ = ("_name", "is_decorated", "is_conditional", "is_abstract", "original_def")
+    __slots__ = (
+        "_name",
+        "is_decorated",
+        "is_conditional",
+        "abstract_status",
+        "original_def",
+        "deco_line",
+    )
 
     # Note that all __init__ args must have default values
     def __init__(
@@ -778,10 +796,12 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self._name = name
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
-        self.is_abstract = False
+        self.abstract_status = NOT_ABSTRACT
         self.is_final = False
         # Original conditional definition
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
+        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        self.deco_line: Optional[int] = None
 
     @property
     def name(self) -> str:
@@ -805,6 +825,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             "arg_kinds": [int(x.value) for x in self.arg_kinds],
             "type": None if self.type is None else self.type.serialize(),
             "flags": get_flags(self, FUNCDEF_FLAGS),
+            "abstract_status": self.abstract_status,
             # TODO: Do we need expanded, original_def?
         }
 
@@ -827,6 +848,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
         ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
+        ret.abstract_status = data["abstract_status"]
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -917,6 +939,7 @@ VAR_FLAGS: Final = [
     "final_set_in_init",
     "explicit_self_type",
     "is_ready",
+    "is_inferred",
     "from_module_getattr",
     "has_explicit_value",
     "allow_incompatible_override",
@@ -1057,6 +1080,7 @@ class ClassDef(Statement):
         "keywords",
         "analyzed",
         "has_incompatible_baseclass",
+        "deco_line",
     )
 
     name: str  # Name of the class without module prefix
@@ -1070,7 +1094,7 @@ class ClassDef(Statement):
     info: "TypeInfo"  # Related TypeInfo
     metaclass: Optional[Expression]
     decorators: List[Expression]
-    keywords: "OrderedDict[str, Expression]"
+    keywords: Dict[str, Expression]
     analyzed: Optional[Expression]
     has_incompatible_baseclass: bool
 
@@ -1093,9 +1117,11 @@ class ClassDef(Statement):
         self.info = CLASSDEF_NO_INFO
         self.metaclass = metaclass
         self.decorators = []
-        self.keywords = OrderedDict(keywords or [])
+        self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
+        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        self.deco_line: Optional[int] = None
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
@@ -1213,6 +1239,7 @@ class AssignmentStmt(Statement):
         "new_syntax",
         "is_alias_def",
         "is_final_def",
+        "invalid_recursive_alias",
     )
 
     lvalues: List[Lvalue]
@@ -1233,6 +1260,9 @@ class AssignmentStmt(Statement):
     # a final declaration overrides another final declaration (this is checked
     # during type checking when MROs are known).
     is_final_def: bool
+    # Stop further processing of this assignment, to prevent flipping back and forth
+    # during semantic analysis passes.
+    invalid_recursive_alias: bool
 
     def __init__(
         self,
@@ -1249,6 +1279,7 @@ class AssignmentStmt(Statement):
         self.new_syntax = new_syntax
         self.is_alias_def = False
         self.is_final_def = False
+        self.invalid_recursive_alias = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
@@ -1526,49 +1557,6 @@ class MatchStmt(Statement):
         return visitor.visit_match_stmt(self)
 
 
-class PrintStmt(Statement):
-    """Python 2 print statement"""
-
-    __slots__ = ("args", "newline", "target")
-
-    args: List[Expression]
-    newline: bool
-    # The file-like target object (given using >>).
-    target: Optional[Expression]
-
-    def __init__(
-        self, args: List[Expression], newline: bool, target: Optional[Expression] = None
-    ) -> None:
-        super().__init__()
-        self.args = args
-        self.newline = newline
-        self.target = target
-
-    def accept(self, visitor: StatementVisitor[T]) -> T:
-        return visitor.visit_print_stmt(self)
-
-
-class ExecStmt(Statement):
-    """Python 2 exec statement"""
-
-    __slots__ = ("expr", "globals", "locals")
-
-    expr: Expression
-    globals: Optional[Expression]
-    locals: Optional[Expression]
-
-    def __init__(
-        self, expr: Expression, globals: Optional[Expression], locals: Optional[Expression]
-    ) -> None:
-        super().__init__()
-        self.expr = expr
-        self.globals = globals
-        self.locals = locals
-
-    def accept(self, visitor: StatementVisitor[T]) -> T:
-        return visitor.visit_exec_stmt(self)
-
-
 # Expressions
 
 
@@ -1587,43 +1575,22 @@ class IntExpr(Expression):
         return visitor.visit_int_expr(self)
 
 
-# How mypy uses StrExpr, BytesExpr, and UnicodeExpr:
-# In Python 2 mode:
-# b'x', 'x' -> StrExpr
-# u'x' -> UnicodeExpr
-# BytesExpr is unused
+# How mypy uses StrExpr and BytesExpr:
 #
-# In Python 3 mode:
 # b'x' -> BytesExpr
 # 'x', u'x' -> StrExpr
-# UnicodeExpr is unused
 
 
 class StrExpr(Expression):
     """String literal"""
 
-    __slots__ = ("value", "from_python_3")
+    __slots__ = ("value",)
 
     value: str  # '' by default
 
-    # Keeps track of whether this string originated from Python 2 source code vs
-    # Python 3 source code. We need to keep track of this information so we can
-    # correctly handle types that have "nested strings". For example, consider this
-    # type alias, where we have a forward reference to a literal type:
-    #
-    #     Alias = List["Literal['foo']"]
-    #
-    # When parsing this, we need to know whether the outer string and alias came from
-    # Python 2 code vs Python 3 code so we can determine whether the inner `Literal['foo']`
-    # is meant to be `Literal[u'foo']` or `Literal[b'foo']`.
-    #
-    # This field keeps track of that information.
-    from_python_3: bool
-
-    def __init__(self, value: str, from_python_3: bool = False) -> None:
+    def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
-        self.from_python_3 = from_python_3
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1651,21 +1618,6 @@ class BytesExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
-
-
-class UnicodeExpr(Expression):
-    """Unicode literal (Python 2.x)"""
-
-    __slots__ = ("value",)
-
-    value: str
-
-    def __init__(self, value: str) -> None:
-        super().__init__()
-        self.value = value
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_unicode_expr(self)
 
 
 class FloatExpr(Expression):
@@ -2314,21 +2266,6 @@ class ConditionalExpr(Expression):
         return visitor.visit_conditional_expr(self)
 
 
-class BackquoteExpr(Expression):
-    """Python 2 expression `...`."""
-
-    __slots__ = ("expr",)
-
-    expr: Expression
-
-    def __init__(self, expr: Expression) -> None:
-        super().__init__()
-        self.expr = expr
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_backquote_expr(self)
-
-
 class TypeApplication(Expression):
     """Type application expr[type, ...]"""
 
@@ -2720,6 +2657,7 @@ class TypeInfo(SymbolNode):
         "bases",
         "_promote",
         "tuple_type",
+        "special_alias",
         "is_named_tuple",
         "typeddict_type",
         "is_newtype",
@@ -2753,7 +2691,9 @@ class TypeInfo(SymbolNode):
     is_abstract: bool  # Does the class have any abstract attributes?
     is_protocol: bool  # Is this a protocol class?
     runtime_protocol: bool  # Does this protocol support isinstance checks?
-    abstract_attributes: List[str]
+    # List of names of abstract attributes together with their abstract status.
+    # The abstract status must be one of `NOT_ABSTRACT`, `IS_ABSTRACT`, `IMPLICITLY_ABSTRACT`.
+    abstract_attributes: List[Tuple[str, int]]
     deletable_attributes: List[str]  # Used by mypyc only
     # Does this type have concrete `__slots__` defined?
     # If class does not have `__slots__` defined then it is `None`,
@@ -2772,7 +2712,7 @@ class TypeInfo(SymbolNode):
     # in corresponding column. This matrix typically starts filled with all 1's and
     # a typechecker tries to "disprove" every subtyping relation using atomic (or nominal) types.
     # However, we don't want to keep this huge global state. Instead, we keep the subtype
-    # information in the form of list of pairs (subtype, supertype) shared by all 'Instance's
+    # information in the form of list of pairs (subtype, supertype) shared by all Instances
     # with given supertype's TypeInfo. When we enter a subtype check we push a pair in this list
     # thus assuming that we started with 1 in corresponding matrix element. Such algorithm allows
     # to treat recursive and mutually recursive protocols and other kinds of complex situations.
@@ -2783,7 +2723,7 @@ class TypeInfo(SymbolNode):
     assuming: List[Tuple["mypy.types.Instance", "mypy.types.Instance"]]
     assuming_proper: List[Tuple["mypy.types.Instance", "mypy.types.Instance"]]
     # Ditto for temporary 'inferring' stack of recursive constraint inference.
-    # It contains Instance's of protocol types that appeared as an argument to
+    # It contains Instances of protocol types that appeared as an argument to
     # constraints.infer_constraints(). We need 'inferring' to avoid infinite recursion for
     # recursive and mutually recursive protocols.
     #
@@ -2856,6 +2796,17 @@ class TypeInfo(SymbolNode):
     # It is useful for plugins to add their data to save in the cache.
     metadata: Dict[str, JsonDict]
 
+    # Store type alias representing this type (for named tuples and TypedDicts).
+    # Although definitions of these types are stored in symbol tables as TypeInfo,
+    # when a type analyzer will find them, it should construct a TupleType, or
+    # a TypedDict type. However, we can't use the plain types, since if the definition
+    # is recursive, this will create an actual recursive structure of types (i.e. as
+    # internal Python objects) causing infinite recursions everywhere during type checking.
+    # To overcome this, we create a TypeAlias node, that will point to these types.
+    # We store this node in the `special_alias` attribute, because it must be the same node
+    # in case we are doing multiple semantic analysis passes.
+    special_alias: Optional["TypeAlias"]
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -2902,6 +2853,7 @@ class TypeInfo(SymbolNode):
         self._promote = []
         self.alt_promote = None
         self.tuple_type = None
+        self.special_alias = None
         self.is_named_tuple = False
         self.typeddict_type = None
         self.is_newtype = False
@@ -3032,6 +2984,24 @@ class TypeInfo(SymbolNode):
         """
         return [base.type for base in self.bases]
 
+    def update_tuple_type(self, typ: "mypy.types.TupleType") -> None:
+        """Update tuple_type and special_alias as needed."""
+        self.tuple_type = typ
+        alias = TypeAlias.from_tuple_type(self)
+        if not self.special_alias:
+            self.special_alias = alias
+        else:
+            self.special_alias.target = alias.target
+
+    def update_typeddict_type(self, typ: "mypy.types.TypedDictType") -> None:
+        """Update typeddict_type and special_alias as needed."""
+        self.typeddict_type = typ
+        alias = TypeAlias.from_typeddict_type(self)
+        if not self.special_alias:
+            self.special_alias = alias
+        else:
+            self.special_alias.target = alias.target
+
     def __str__(self) -> str:
         """Return a string representation of the type.
 
@@ -3113,7 +3083,7 @@ class TypeInfo(SymbolNode):
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data["fullname"]
         # TODO: Is there a reason to reconstruct ti.subtypes?
-        ti.abstract_attributes = data["abstract_attributes"]
+        ti.abstract_attributes = [(attr[0], attr[1]) for attr in data["abstract_attributes"]]
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data["bases"]]
@@ -3265,7 +3235,7 @@ class TypeAlias(SymbolNode):
 
     Note: the fact that we support aliases like `A = List` means that the target
     type will be initially an instance type with wrong number of type arguments.
-    Such instances are all fixed in the third pass of semantic analyzis.
+    Such instances are all fixed either during or after main semantic analysis passes.
     We therefore store the difference between `List` and `List[Any]` rvalues (targets)
     using the `no_args` flag. See also TypeAliasExpr.no_args.
 
@@ -3280,7 +3250,7 @@ class TypeAlias(SymbolNode):
         are internally stored using `builtins.list` (because `typing.List` is
         itself an alias), while the second cannot be subscripted because of
         Python runtime limitation.
-    line and column: Line an column on the original alias definition.
+    line and column: Line and column on the original alias definition.
     eager: If True, immediately expand alias when referred to (useful for aliases
         within functions that can't be looked up from the symbol table)
     """
@@ -3319,6 +3289,28 @@ class TypeAlias(SymbolNode):
         self._is_recursive: Optional[bool] = None
         self.eager = eager
         super().__init__(line, column)
+
+    @classmethod
+    def from_tuple_type(cls, info: TypeInfo) -> "TypeAlias":
+        """Generate an alias to the tuple type described by a given TypeInfo."""
+        assert info.tuple_type
+        return TypeAlias(
+            info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, [])),
+            info.fullname,
+            info.line,
+            info.column,
+        )
+
+    @classmethod
+    def from_typeddict_type(cls, info: TypeInfo) -> "TypeAlias":
+        """Generate an alias to the TypedDict type described by a given TypeInfo."""
+        assert info.typeddict_type
+        return TypeAlias(
+            info.typeddict_type.copy_modified(fallback=mypy.types.Instance(info, [])),
+            info.fullname,
+            info.line,
+            info.column,
+        )
 
     @property
     def name(self) -> str:
@@ -3401,7 +3393,7 @@ class PlaceholderNode(SymbolNode):
 
     Attributes:
 
-      fullname: Full name of of the PlaceholderNode.
+      fullname: Full name of the PlaceholderNode.
       node: AST node that contains the definition that caused this to
           be created. This is useful for tracking order of incomplete definitions
           and for debugging.

@@ -1,7 +1,8 @@
 """Code generation for native function bodies."""
 
-from typing import List, Optional, Union
+from __future__ import annotations
 
+from typing import List, Optional, Union
 from typing_extensions import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
@@ -175,7 +176,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if op2.class_type.class_ir.is_always_defined(op2.attr):
                 # Getting an always defined attribute never fails, so the branch can be omitted.
                 if false is not self.next_block:
-                    self.emit_line("goto {};".format(self.label(false)))
+                    self.emit_line(f"goto {self.label(false)};")
                 return
         negated = op.negated
         negated_rare = False
@@ -199,7 +200,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     typ, self.reg(op.value), self.c_error_value, compare
                 )
             else:
-                cond = "{} {} {}".format(self.reg(op.value), compare, self.c_error_value(typ))
+                cond = f"{self.reg(op.value)} {compare} {self.c_error_value(typ)}"
         else:
             assert False, "Invalid branch"
 
@@ -274,7 +275,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             self.emit_line("{} {} = {{ {} }};".format(self.ctype(op.type), tmp, ", ".join(values)))
             self.emit_line(f"{self.reg(op)} = {tmp};")
         else:
-            self.emit_line("{} = {};".format(self.reg(op), self.c_error_value(op.type)))
+            self.emit_line(f"{self.reg(op)} = {self.c_error_value(op.type)};")
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         index = self.literals.literal_index(op.value)
@@ -322,7 +323,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if op.class_type.class_ir.is_trait:
                 assert not decl_cl.is_trait
                 cast = f"({decl_cl.struct_name(self.emitter.names)} *)"
-            return "({}{})->{}".format(cast, obj, self.emitter.attr(op.attr))
+            return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op)
@@ -519,9 +520,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if is_direct:
             # Directly call method, without going through the vtable.
             lib = self.emitter.get_group_prefix(method.decl)
-            self.emit_line(
-                "{}{}{}{}({});".format(dest, lib, NATIVE_PREFIX, method.cname(self.names), args)
-            )
+            self.emit_line(f"{dest}{lib}{NATIVE_PREFIX}{method.cname(self.names)}({args});")
         else:
             # Call using vtable.
             method_idx = rtype.method_index(name)
@@ -620,7 +619,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             src_cast = self.emit_signed_int_cast(op.src.type)
         else:
             src_cast = self.emit_unsigned_int_cast(op.src.type)
-        self.emit_line("{} = {}{};".format(dest, src_cast, value))
+        self.emit_line(f"{dest} = {src_cast}{value};")
 
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.reg(op)
@@ -661,9 +660,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         elif isinstance(op.rhs, Integer) and op.rhs.value < 0:
             # Force signed ==/!= with negative operand
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
-        self.emit_line(
-            "{} = {}{} {} {}{};".format(dest, lhs_cast, lhs, op.op_str[op.op], rhs_cast, rhs)
-        )
+        self.emit_line(f"{dest} = {lhs_cast}{lhs} {op.op_str[op.op]} {rhs_cast}{rhs};")
 
     def visit_load_mem(self, op: LoadMem) -> None:
         dest = self.reg(op)

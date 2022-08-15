@@ -604,16 +604,7 @@ pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4
 \[mypy]
 python_version = 1.0
 [out]
-mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
-== Return code: 0
-
-[case testPythonVersionTooOld26]
-# cmd: mypy -c pass
-[file mypy.ini]
-\[mypy]
-python_version = 2.6
-[out]
-mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
+mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 3)
 == Return code: 0
 
 [case testPythonVersionTooOld33]
@@ -625,25 +616,16 @@ python_version = 3.3
 mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
 == Return code: 0
 
-[case testPythonVersionTooNew28]
-# cmd: mypy -c pass
-[file mypy.ini]
-\[mypy]
-python_version = 2.8
-[out]
-mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
-== Return code: 0
-
 [case testPythonVersionTooNew40]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
 python_version = 4.0
 [out]
-mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
+mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 3)
 == Return code: 0
 
-[case testPythonVersionAccepted27]
+[case testPythonVersionTooDead27]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
@@ -1457,3 +1439,42 @@ b\.c \d+
 # cmd: mypy --enable-incomplete-features a.py
 [file a.py]
 pass
+
+[case testShadowTypingModuleEarlyLoad]
+# cmd: mypy dir
+[file dir/__init__.py]
+from typing import Union
+
+def foo(a: Union[int, str]) -> str:
+    return str
+[file typing.py]
+# Since this file will be picked by mypy itself, we need it to be a fully-working typing
+# A bare minimum would be NamedTuple and TypedDict, which are used in runtime,
+# everything else technically can be just mocked.
+import sys
+import os
+del sys.modules["typing"]
+path = sys.path
+try:
+    sys.path.remove(os.getcwd())
+except ValueError:
+    sys.path.remove("")  # python 3.6
+from typing import *
+sys.path = path
+[out]
+mypy: "typing.py" shadows library module "typing"
+note: A user-defined top-level module with name "typing" is not supported
+== Return code: 2
+
+[case testCustomTypeshedDirWithRelativePathDoesNotCrash]
+# cmd: mypy --custom-typeshed-dir dir dir/typing.pyi
+[file dir/stdlib/abc.pyi]
+[file dir/stdlib/builtins.pyi]
+[file dir/stdlib/sys.pyi]
+[file dir/stdlib/types.pyi]
+[file dir/stdlib/typing.pyi]
+[file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/VERSIONS]
+[out]
+Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
+== Return code: 2

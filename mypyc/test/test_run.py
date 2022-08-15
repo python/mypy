@@ -1,5 +1,7 @@
 """Test cases for building an C extension and running it."""
 
+from __future__ import annotations
+
 import ast
 import contextlib
 import glob
@@ -58,8 +60,7 @@ files = [
     "run-attrs.test",
 ]
 
-if sys.version_info >= (3, 7):
-    files.append("run-python37.test")
+files.append("run-python37.test")
 if sys.version_info >= (3, 8):
     files.append("run-python38.test")
 

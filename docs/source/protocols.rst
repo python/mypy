@@ -318,7 +318,7 @@ similarly compatible with the protocol, as they support ``close()``.
 .. note::
 
    The ``Protocol`` base class is provided in the ``typing_extensions``
-   package for Python 2.7 and 3.4-3.7. Starting with Python 3.8, ``Protocol``
+   package for Python 3.4-3.7. Starting with Python 3.8, ``Protocol``
    is included in the ``typing`` module.
 
 Defining subprotocols and subclassing protocols
@@ -374,12 +374,6 @@ these default implementations. Explicitly including a protocol as a
 base class is also a way of documenting that your class implements a
 particular protocol, and it forces mypy to verify that your class
 implementation is actually compatible with the protocol.
-
-.. note::
-
-   You can use Python 3.6 variable annotations (:pep:`526`)
-   to declare protocol attributes.  On Python 2.7 and earlier Python 3
-   versions you can use type comments and properties.
 
 Recursive protocols
 *******************

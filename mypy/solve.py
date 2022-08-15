@@ -7,7 +7,17 @@ from mypy.constraints import SUPERTYPE_OF, Constraint
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
-from mypy.types import AnyType, Type, TypeOfAny, TypeVarId, UninhabitedType, get_proper_type
+from mypy.types import (
+    AnyType,
+    ProperType,
+    Type,
+    TypeOfAny,
+    TypeVarId,
+    UninhabitedType,
+    UnionType,
+    get_proper_type,
+)
+from mypy.typestate import TypeState
 
 
 def solve_constraints(
@@ -43,18 +53,23 @@ def solve_constraints(
                 if bottom is None:
                     bottom = c.target
                 else:
-                    bottom = join_types(bottom, c.target)
+                    if TypeState.infer_unions:
+                        # This deviates from the general mypy semantics because
+                        # recursive types are union-heavy in 95% of cases.
+                        bottom = UnionType.make_union([bottom, c.target])
+                    else:
+                        bottom = join_types(bottom, c.target)
             else:
                 if top is None:
                     top = c.target
                 else:
                     top = meet_types(top, c.target)
 
-        top = get_proper_type(top)
-        bottom = get_proper_type(bottom)
-        if isinstance(top, AnyType) or isinstance(bottom, AnyType):
-            source_any = top if isinstance(top, AnyType) else bottom
-            assert isinstance(source_any, AnyType)
+        p_top = get_proper_type(top)
+        p_bottom = get_proper_type(bottom)
+        if isinstance(p_top, AnyType) or isinstance(p_bottom, AnyType):
+            source_any = top if isinstance(p_top, AnyType) else bottom
+            assert isinstance(source_any, ProperType) and isinstance(source_any, AnyType)
             res.append(AnyType(TypeOfAny.from_another_any, source_any=source_any))
             continue
         elif bottom is None:

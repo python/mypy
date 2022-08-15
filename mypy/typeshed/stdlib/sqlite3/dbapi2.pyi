@@ -48,13 +48,11 @@ SQLITE_CREATE_TEMP_TRIGGER: int
 SQLITE_CREATE_TEMP_VIEW: int
 SQLITE_CREATE_TRIGGER: int
 SQLITE_CREATE_VIEW: int
-if sys.version_info >= (3, 7):
-    SQLITE_CREATE_VTABLE: int
+SQLITE_CREATE_VTABLE: int
 SQLITE_DELETE: int
 SQLITE_DENY: int
 SQLITE_DETACH: int
-if sys.version_info >= (3, 7):
-    SQLITE_DONE: int
+SQLITE_DONE: int
 SQLITE_DROP_INDEX: int
 SQLITE_DROP_TABLE: int
 SQLITE_DROP_TEMP_INDEX: int
@@ -63,9 +61,8 @@ SQLITE_DROP_TEMP_TRIGGER: int
 SQLITE_DROP_TEMP_VIEW: int
 SQLITE_DROP_TRIGGER: int
 SQLITE_DROP_VIEW: int
-if sys.version_info >= (3, 7):
-    SQLITE_DROP_VTABLE: int
-    SQLITE_FUNCTION: int
+SQLITE_DROP_VTABLE: int
+SQLITE_FUNCTION: int
 SQLITE_IGNORE: int
 SQLITE_INSERT: int
 SQLITE_OK: int
@@ -85,9 +82,8 @@ if sys.version_info >= (3, 11):
 SQLITE_PRAGMA: int
 SQLITE_READ: int
 SQLITE_REINDEX: int
-if sys.version_info >= (3, 7):
-    SQLITE_RECURSIVE: int
-    SQLITE_SAVEPOINT: int
+SQLITE_RECURSIVE: int
+SQLITE_SAVEPOINT: int
 SQLITE_SELECT: int
 SQLITE_TRANSACTION: int
 SQLITE_UPDATE: int
@@ -207,14 +203,8 @@ def adapt(__obj: Any, __proto: Any) -> Any: ...
 @overload
 def adapt(__obj: Any, __proto: Any, __alt: _T) -> Any | _T: ...
 def complete_statement(statement: str) -> bool: ...
-
-if sys.version_info >= (3, 7):
-    _DatabaseArg: TypeAlias = StrOrBytesPath
-else:
-    _DatabaseArg: TypeAlias = bytes | str
-
 def connect(
-    database: _DatabaseArg,
+    database: StrOrBytesPath,
     timeout: float = ...,
     detect_types: int = ...,
     isolation_level: str | None = ...,
@@ -227,8 +217,14 @@ def enable_callback_tracebacks(__enable: bool) -> None: ...
 
 # takes a pos-or-keyword argument because there is a C wrapper
 def enable_shared_cache(enable: int) -> None: ...
-def register_adapter(__type: type[_T], __caster: _Adapter[_T]) -> None: ...
-def register_converter(__name: str, __converter: _Converter) -> None: ...
+
+if sys.version_info >= (3, 11):
+    def register_adapter(__type: type[_T], __adapter: _Adapter[_T]) -> None: ...
+    def register_converter(__typename: str, __converter: _Converter) -> None: ...
+
+else:
+    def register_adapter(__type: type[_T], __caster: _Adapter[_T]) -> None: ...
+    def register_converter(__name: str, __converter: _Converter) -> None: ...
 
 if sys.version_info < (3, 8):
     class Cache:
@@ -288,7 +284,7 @@ class Connection:
     text_factory: Any
     def __init__(
         self,
-        database: _DatabaseArg,
+        database: StrOrBytesPath,
         timeout: float = ...,
         detect_types: int = ...,
         isolation_level: str | None = ...,
@@ -347,16 +343,15 @@ class Connection:
     # without sqlite3 loadable extension support. see footnotes https://docs.python.org/3/library/sqlite3.html#f1
     def enable_load_extension(self, __enabled: bool) -> None: ...
     def load_extension(self, __name: str) -> None: ...
-    if sys.version_info >= (3, 7):
-        def backup(
-            self,
-            target: Connection,
-            *,
-            pages: int = ...,
-            progress: Callable[[int, int, int], object] | None = ...,
-            name: str = ...,
-            sleep: float = ...,
-        ) -> None: ...
+    def backup(
+        self,
+        target: Connection,
+        *,
+        pages: int = ...,
+        progress: Callable[[int, int, int], object] | None = ...,
+        name: str = ...,
+        sleep: float = ...,
+    ) -> None: ...
     if sys.version_info >= (3, 11):
         def setlimit(self, __category: int, __limit: int) -> int: ...
         def getlimit(self, __category: int) -> int: ...

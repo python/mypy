@@ -1,5 +1,7 @@
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
+from __future__ import annotations
+
 from typing import Any, Dict, Optional, Union
 
 from mypy.nodes import (

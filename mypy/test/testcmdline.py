@@ -4,6 +4,8 @@ To begin we test that "mypy <directory>[/]" always recurses down the
 whole tree.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import subprocess

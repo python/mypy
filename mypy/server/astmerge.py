@@ -45,7 +45,9 @@ Discussion of some notable special cases:
 See the main entry point merge_asts for more details.
 """
 
-from typing import Dict, List, Optional, TypeVar, cast
+from __future__ import annotations
+
+from typing import Dict, List, Optional, Tuple, TypeVar, cast
 
 from mypy.nodes import (
     MDEF,
@@ -160,7 +162,7 @@ def replacement_map_from_symbol_table(
         ):
             new_node = new[name]
             if (
-                type(new_node.node) == type(node.node)  # noqa
+                type(new_node.node) == type(node.node)  # noqa: E721
                 and new_node.node
                 and node.node
                 and new_node.node.fullname == node.node.fullname
@@ -172,6 +174,8 @@ def replacement_map_from_symbol_table(
                         node.node.names, new_node.node.names, prefix
                     )
                     replacements.update(type_repl)
+                    if node.node.special_alias and new_node.node.special_alias:
+                        replacements[new_node.node.special_alias] = node.node.special_alias
     return replacements
 
 
@@ -334,7 +338,13 @@ class NodeReplaceVisitor(TraverserVisitor):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
-            replace_object_state(new, node)
+            skip_slots: Tuple[str, ...] = ()
+            if isinstance(node, TypeInfo) and isinstance(new, TypeInfo):
+                # Special case: special_alias is not exposed in symbol tables, but may appear
+                # in external types (e.g. named tuples), so we need to update it manually.
+                skip_slots = ("special_alias",)
+                replace_object_state(new.special_alias, node.special_alias)
+            replace_object_state(new, node, skip_slots=skip_slots)
             return cast(SN, new)
         return node
 
@@ -364,6 +374,8 @@ class NodeReplaceVisitor(TraverserVisitor):
             self.fixup_type(target)
         self.fixup_type(info.tuple_type)
         self.fixup_type(info.typeddict_type)
+        if info.special_alias:
+            self.fixup_type(info.special_alias.target)
         info.defn.info = self.fixup(info)
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
@@ -536,7 +548,8 @@ def replace_nodes_in_symbol_table(
             if node.node in replacements:
                 new = replacements[node.node]
                 old = node.node
-                replace_object_state(new, old)
+                # Needed for TypeInfo, see comment in fixup() above.
+                replace_object_state(new, old, skip_slots=("special_alias",))
                 node.node = new
             if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.

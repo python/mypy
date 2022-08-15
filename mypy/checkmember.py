@@ -1,8 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import Callable, Optional, Sequence, Union, cast
-
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional, Sequence, Union, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
@@ -224,6 +222,10 @@ def _analyze_member_access(
     elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
     elif isinstance(typ, TypeVarLikeType):
+        if isinstance(typ, TypeVarType) and typ.values:
+            return _analyze_member_access(
+                name, make_simplified_union(typ.values), mx, override_info
+            )
         return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
@@ -410,10 +412,7 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
 
 
 def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> Type:
-    is_python_3 = mx.chk.options.python_version[0] >= 3
-    # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
-    # extra attribute, "__bool__".
-    if is_python_3 and name == "__bool__":
+    if name == "__bool__":
         literal_false = LiteralType(False, fallback=mx.named_type("builtins.bool"))
         return CallableType(
             arg_types=[],
@@ -564,6 +563,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         The return type of the appropriate ``__get__`` overload for the descriptor.
     """
     instance_type = get_proper_type(mx.original_type)
+    orig_descriptor_type = descriptor_type
     descriptor_type = get_proper_type(descriptor_type)
 
     if isinstance(descriptor_type, UnionType):
@@ -572,10 +572,10 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
         )
     elif not isinstance(descriptor_type, Instance):
-        return descriptor_type
+        return orig_descriptor_type
 
     if not descriptor_type.type.has_readable_member("__get__"):
-        return descriptor_type
+        return orig_descriptor_type
 
     dunder_get = descriptor_type.type.get_method("__get__")
     if dunder_get is None:
@@ -659,6 +659,18 @@ def instance_alias_type(alias: TypeAlias, named_type: Callable[[str], Instance])
     return expand_type_by_instance(tp, target)
 
 
+def is_instance_var(var: Var, info: TypeInfo) -> bool:
+    """Return if var is an instance variable according to PEP 526."""
+    return (
+        # check the type_info node is the var (not a decorated function, etc.)
+        var.name in info.names
+        and info.names[var.name].node is var
+        and not var.is_classvar
+        # variables without annotations are treated as classvar
+        and not var.is_inferred
+    )
+
+
 def analyze_var(
     name: str,
     var: Var,
@@ -690,7 +702,12 @@ def analyze_var(
         t = get_proper_type(expand_type_by_instance(typ, itype))
         result: Type = t
         typ = get_proper_type(typ)
-        if var.is_initialized_in_class and isinstance(typ, FunctionLike) and not typ.is_type_obj():
+        if (
+            var.is_initialized_in_class
+            and (not is_instance_var(var, info) or mx.is_operator)
+            and isinstance(typ, FunctionLike)
+            and not typ.is_type_obj()
+        ):
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
@@ -835,7 +852,7 @@ def analyze_class_attribute_access(
     if override_info:
         info = override_info
 
-    fullname = "{}.{}".format(info.fullname, name)
+    fullname = f"{info.fullname}.{name}"
     hook = mx.chk.plugin.get_class_attribute_hook(fullname)
 
     node = info.get(name)

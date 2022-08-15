@@ -1,7 +1,8 @@
 """Plugin that provides support for dataclasses."""
 
-from typing import Dict, List, Optional, Set, Tuple
+from __future__ import annotations
 
+from typing import Dict, List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -114,7 +115,7 @@ class DataclassAttribute:
     @classmethod
     def deserialize(
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
-    ) -> "DataclassAttribute":
+    ) -> DataclassAttribute:
         data = data.copy()
         if data.get("kw_only") is None:
             data["kw_only"] = False

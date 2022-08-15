@@ -1,5 +1,7 @@
 """AST triggers that are used for fine-grained dependency handling."""
 
+from __future__ import annotations
+
 from typing_extensions import Final
 
 # Used as a suffix for triggers to handle "from m import *" dependencies (see also

@@ -1,5 +1,6 @@
-from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
+from __future__ import annotations
 
+from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
 from typing_extensions import Final
 
 from mypy.messages import format_type

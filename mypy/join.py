@@ -3,7 +3,6 @@
 from typing import List, Optional, Tuple
 
 import mypy.typeops
-from mypy.backports import OrderedDict
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.state import state
@@ -447,16 +446,14 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
-            items = OrderedDict(
-                [
-                    (item_name, s_item_type)
-                    for (item_name, s_item_type, t_item_type) in self.s.zip(t)
-                    if (
-                        is_equivalent(s_item_type, t_item_type)
-                        and (item_name in t.required_keys) == (item_name in self.s.required_keys)
-                    )
-                ]
-            )
+            items = {
+                item_name: s_item_type
+                for (item_name, s_item_type, t_item_type) in self.s.zip(t)
+                if (
+                    is_equivalent(s_item_type, t_item_type)
+                    and (item_name in t.required_keys) == (item_name in self.s.required_keys)
+                )
+            }
             fallback = self.s.create_anonymous_fallback()
             # We need to filter by items.keys() since some required keys present in both t and
             # self.s might be missing from the join if the types are incompatible.

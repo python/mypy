@@ -1,5 +1,7 @@
 """Test cases for AST diff (used for fine-grained incremental checking)"""
 
+from __future__ import annotations
+
 import os
 from typing import Dict, List, Optional, Tuple
 
@@ -34,9 +36,9 @@ class ASTDiffSuite(DataSuite):
             a.append("== next ==")
             a.extend(messages2)
 
-        assert files1 is not None and files2 is not None, (
-            "cases where CompileError" " occurred should not be run"
-        )
+        assert (
+            files1 is not None and files2 is not None
+        ), "cases where CompileError occurred should not be run"
         prefix = "__main__"
         snapshot1 = snapshot_symbol_table(prefix, files1["__main__"].names)
         snapshot2 = snapshot_symbol_table(prefix, files2["__main__"].names)

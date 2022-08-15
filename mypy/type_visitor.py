@@ -16,10 +16,6 @@ from typing import Any, Callable, Generic, Iterable, List, Optional, Sequence, S
 
 from mypy_extensions import mypyc_attr, trait
 
-from mypy.backports import OrderedDict
-
-T = TypeVar("T")
-
 from mypy.types import (
     AnyType,
     CallableArgument,
@@ -52,6 +48,8 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
 )
+
+T = TypeVar("T")
 
 
 @trait
@@ -254,9 +252,7 @@ class TypeTranslator(TypeVisitor[Type]):
         )
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = OrderedDict(
-            [(item_name, item_type.accept(self)) for (item_name, item_type) in t.items.items()]
-        )
+        items = {item_name: item_type.accept(self) for (item_name, item_type) in t.items.items()}
         return TypedDictType(
             items,
             t.required_keys,
@@ -321,6 +317,10 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
         self.seen_aliases: Set[TypeAliasType] = set()
+        # By default, we eagerly expand type aliases, and query also types in the
+        # alias target. In most cases this is a desired behavior, but we may want
+        # to skip targets in some cases (e.g. when collecting type variables).
+        self.skip_alias_target = False
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -402,6 +402,8 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        if self.skip_alias_target:
+            return self.query_types(t.args)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:

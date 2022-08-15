@@ -4,6 +4,8 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
+from __future__ import annotations
+
 from typing import Callable, List, Optional, Union, cast
 
 from mypy.nodes import (

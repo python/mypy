@@ -11,9 +11,20 @@ implementation simple.
 """
 
 import re
-from typing import Callable, Dict, List, Match, Optional, Pattern, Set, Tuple, Union, cast
-
-from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    List,
+    Match,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
 from mypy.errors import Errors
@@ -38,7 +49,6 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TupleExpr,
-    UnicodeExpr,
 )
 from mypy.types import (
     AnyType,
@@ -65,7 +75,7 @@ from mypy.parse import parse
 from mypy.subtypes import is_subtype
 from mypy.typeops import custom_special_method
 
-FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr, UnicodeExpr]
+FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr]
 Checkers: _TypeAlias = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
 MatchMap: _TypeAlias = Dict[Tuple[int, int], Match[str]]  # span -> match
 
@@ -122,25 +132,6 @@ FORMAT_RE: Final = compile_format_re()
 FORMAT_RE_NEW: Final = compile_new_format_re(False)
 FORMAT_RE_NEW_CUSTOM: Final = compile_new_format_re(True)
 DUMMY_FIELD_NAME: Final = "__dummy_name__"
-
-# Format types supported by str.format() for builtin classes.
-SUPPORTED_TYPES_NEW: Final = {
-    "b",
-    "c",
-    "d",
-    "e",
-    "E",
-    "f",
-    "F",
-    "g",
-    "G",
-    "n",
-    "o",
-    "s",
-    "x",
-    "X",
-    "%",
-}
 
 # Types that require either int or float.
 NUMERIC_TYPES_OLD: Final = {"d", "i", "o", "u", "x", "X", "e", "E", "f", "F", "g", "G"}
@@ -281,7 +272,7 @@ def find_non_escaped_targets(
                     pos += 1
                 else:
                     msg.fail(
-                        "Invalid conversion specifier in format string:" " unexpected }",
+                        "Invalid conversion specifier in format string: unexpected }",
                         ctx,
                         code=codes.STRING_FORMATTING,
                     )
@@ -300,7 +291,7 @@ def find_non_escaped_targets(
         pos += 1
     if nesting:
         msg.fail(
-            "Invalid conversion specifier in format string:" " unmatched {",
+            "Invalid conversion specifier in format string: unmatched {",
             ctx,
             code=codes.STRING_FORMATTING,
         )
@@ -331,9 +322,6 @@ class StringFormatterChecker:
         self.chk = chk
         self.exprchk = exprchk
         self.msg = msg
-        # This flag is used to track Python 2 corner case where for example
-        # '%s, %d' % (u'abc', 42) returns u'abc, 42' (i.e. unicode, not a string).
-        self.unicode_upcast = False
 
     def check_str_format_call(self, call: CallExpr, format_value: str) -> None:
         """Perform more precise checks for str.format() calls when possible.
@@ -402,7 +390,7 @@ class StringFormatterChecker:
                 expected_type: Optional[Type] = AnyType(TypeOfAny.special_form)
             else:
                 assert isinstance(call.callee, MemberExpr)
-                if isinstance(call.callee.expr, (StrExpr, UnicodeExpr)):
+                if isinstance(call.callee.expr, StrExpr):
                     format_str = call.callee.expr
                 else:
                     format_str = StrExpr(format_value)
@@ -453,17 +441,16 @@ class StringFormatterChecker:
                 if len(c_typ.value) != 1:
                     self.msg.requires_int_or_char(call, format_call=True)
         if (not spec.conv_type or spec.conv_type == "s") and not spec.conversion:
-            if self.chk.options.python_version >= (3, 0):
-                if has_type_component(actual_type, "builtins.bytes") and not custom_special_method(
-                    actual_type, "__str__"
-                ):
-                    self.msg.fail(
-                        'On Python 3 formatting "b\'abc\'" with "{}" '
-                        'produces "b\'abc\'", not "abc"; '
-                        'use "{!r}" if this is desired behavior',
-                        call,
-                        code=codes.STR_BYTES_PY3,
-                    )
+            if has_type_component(actual_type, "builtins.bytes") and not custom_special_method(
+                actual_type, "__str__"
+            ):
+                self.msg.fail(
+                    'On Python 3 formatting "b\'abc\'" with "{}" '
+                    'produces "b\'abc\'", not "abc"; '
+                    'use "{!r}" if this is desired behavior',
+                    call,
+                    code=codes.STR_BYTES_PY3,
+                )
         if spec.flags:
             numeric_types = UnionType(
                 [self.named_type("builtins.int"), self.named_type("builtins.float")]
@@ -580,7 +567,7 @@ class StringFormatterChecker:
         all_defined = all(bool(s.key) for s in all_specs)
         if some_defined and not all_defined:
             self.msg.fail(
-                "Cannot combine automatic field numbering and" " manual field specification",
+                "Cannot combine automatic field numbering and manual field specification",
                 ctx,
                 code=codes.STRING_FORMATTING,
             )
@@ -706,7 +693,7 @@ class StringFormatterChecker:
         self.exprchk.accept(expr)
         specifiers = parse_conversion_specifiers(expr.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
-        if isinstance(expr, BytesExpr) and (3, 0) <= self.chk.options.python_version < (3, 5):
+        if isinstance(expr, BytesExpr) and self.chk.options.python_version < (3, 5):
             self.msg.fail(
                 "Bytes formatting is only supported in Python 3.5 and later",
                 replacements,
@@ -714,7 +701,6 @@ class StringFormatterChecker:
             )
             return AnyType(TypeOfAny.from_error)
 
-        self.unicode_upcast = False
         if has_mapping_keys is None:
             pass  # Error was reported
         elif has_mapping_keys:
@@ -724,11 +710,7 @@ class StringFormatterChecker:
 
         if isinstance(expr, BytesExpr):
             return self.named_type("builtins.bytes")
-        elif isinstance(expr, UnicodeExpr):
-            return self.named_type("builtins.unicode")
         elif isinstance(expr, StrExpr):
-            if self.unicode_upcast:
-                return self.named_type("builtins.unicode")
             return self.named_type("builtins.str")
         else:
             assert False
@@ -815,15 +797,15 @@ class StringFormatterChecker:
     ) -> None:
         """Check % string interpolation with names specifiers '%(name)s' % {'name': 'John'}."""
         if isinstance(replacements, DictExpr) and all(
-            isinstance(k, (StrExpr, BytesExpr, UnicodeExpr)) for k, v in replacements.items
+            isinstance(k, (StrExpr, BytesExpr)) for k, v in replacements.items
         ):
             mapping: Dict[str, Type] = {}
             for k, v in replacements.items:
-                if self.chk.options.python_version >= (3, 0) and isinstance(expr, BytesExpr):
+                if isinstance(expr, BytesExpr):
                     # Special case: for bytes formatting keys must be bytes.
                     if not isinstance(k, BytesExpr):
                         self.msg.fail(
-                            "Dictionary keys in bytes formatting must be bytes," " not strings",
+                            "Dictionary keys in bytes formatting must be bytes, not strings",
                             expr,
                             code=codes.STRING_FORMATTING,
                         )
@@ -870,21 +852,14 @@ class StringFormatterChecker:
     def build_dict_type(self, expr: FormatStringExpr) -> Type:
         """Build expected mapping type for right operand in % formatting."""
         any_type = AnyType(TypeOfAny.special_form)
-        if self.chk.options.python_version >= (3, 0):
-            if isinstance(expr, BytesExpr):
-                bytes_type = self.chk.named_generic_type("builtins.bytes", [])
-                return self.chk.named_generic_type("typing.Mapping", [bytes_type, any_type])
-            elif isinstance(expr, StrExpr):
-                str_type = self.chk.named_generic_type("builtins.str", [])
-                return self.chk.named_generic_type("typing.Mapping", [str_type, any_type])
-            else:
-                assert False, "There should not be UnicodeExpr on Python 3"
-        else:
+        if isinstance(expr, BytesExpr):
+            bytes_type = self.chk.named_generic_type("builtins.bytes", [])
+            return self.chk.named_generic_type("typing.Mapping", [bytes_type, any_type])
+        elif isinstance(expr, StrExpr):
             str_type = self.chk.named_generic_type("builtins.str", [])
-            unicode_type = self.chk.named_generic_type("builtins.unicode", [])
-            str_map = self.chk.named_generic_type("typing.Mapping", [str_type, any_type])
-            unicode_map = self.chk.named_generic_type("typing.Mapping", [unicode_type, any_type])
-            return UnionType.make_union([str_map, unicode_map])
+            return self.chk.named_generic_type("typing.Mapping", [str_type, any_type])
+        else:
+            assert False, "Unreachable"
 
     def build_replacement_checkers(
         self, specifiers: List[ConversionSpecifier], context: Context, expr: FormatStringExpr
@@ -979,29 +954,24 @@ class StringFormatterChecker:
         """Additional special cases for %s in bytes vs string context."""
         if isinstance(expr, StrExpr):
             # Couple special cases for string formatting.
-            if self.chk.options.python_version >= (3, 0):
-                if has_type_component(typ, "builtins.bytes"):
-                    self.msg.fail(
-                        'On Python 3 formatting "b\'abc\'" with "%s" '
-                        'produces "b\'abc\'", not "abc"; '
-                        'use "%r" if this is desired behavior',
-                        context,
-                        code=codes.STR_BYTES_PY3,
-                    )
-                    return False
-            if self.chk.options.python_version < (3, 0):
-                if has_type_component(typ, "builtins.unicode"):
-                    self.unicode_upcast = True
+            if has_type_component(typ, "builtins.bytes"):
+                self.msg.fail(
+                    'On Python 3 formatting "b\'abc\'" with "%s" '
+                    'produces "b\'abc\'", not "abc"; '
+                    'use "%r" if this is desired behavior',
+                    context,
+                    code=codes.STR_BYTES_PY3,
+                )
+                return False
         if isinstance(expr, BytesExpr):
             # A special case for bytes formatting: b'%s' actually requires bytes on Python 3.
-            if self.chk.options.python_version >= (3, 0):
-                if has_type_component(typ, "builtins.str"):
-                    self.msg.fail(
-                        "On Python 3 b'%s' requires bytes, not string",
-                        context,
-                        code=codes.STRING_FORMATTING,
-                    )
-                    return False
+            if has_type_component(typ, "builtins.str"):
+                self.msg.fail(
+                    "On Python 3 b'%s' requires bytes, not string",
+                    context,
+                    code=codes.STRING_FORMATTING,
+                )
+                return False
         return True
 
     def checkers_for_c_type(
@@ -1016,7 +986,7 @@ class StringFormatterChecker:
 
         def check_type(type: Type) -> bool:
             assert expected_type is not None
-            if self.chk.options.python_version >= (3, 0) and isinstance(format_expr, BytesExpr):
+            if isinstance(format_expr, BytesExpr):
                 err_msg = '"%c" requires an integer in range(256) or a single byte'
             else:
                 err_msg = '"%c" requires int or char'
@@ -1037,13 +1007,11 @@ class StringFormatterChecker:
             if check_type(type):
                 # Python 3 doesn't support b'%c' % str
                 if (
-                    self.chk.options.python_version >= (3, 0)
-                    and isinstance(format_expr, BytesExpr)
+                    isinstance(format_expr, BytesExpr)
                     and isinstance(expr, BytesExpr)
                     and len(expr.value) != 1
                 ):
                     self.msg.requires_int_or_single_byte(context)
-                # In Python 2, b'%c' is the same as '%c'
                 elif isinstance(expr, (StrExpr, BytesExpr)) and len(expr.value) != 1:
                     self.msg.requires_int_or_char(context)
 
@@ -1079,13 +1047,6 @@ class StringFormatterChecker:
                 return None
             return self.named_type("builtins.bytes")
         elif p == "a":
-            if self.chk.options.python_version < (3, 0):
-                self.msg.fail(
-                    'Format character "a" is only supported in Python 3',
-                    context,
-                    code=codes.STRING_FORMATTING,
-                )
-                return None
             # TODO: return type object?
             return AnyType(TypeOfAny.special_form)
         elif p in ["s", "r"]:

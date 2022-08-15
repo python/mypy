@@ -55,7 +55,6 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
     """
 
     def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: Options) -> None:
-        self.pyversion = options.python_version
         self.platform = options.platform
         self.cur_mod_id = mod_id
         self.cur_mod_node = file

@@ -9,7 +9,7 @@ from mypy.util import FancyFormatter
 
 def console_entry() -> None:
     try:
-        main(None, sys.stdout, sys.stderr)
+        main()
         sys.stdout.flush()
         sys.stderr.flush()
     except BrokenPipeError:

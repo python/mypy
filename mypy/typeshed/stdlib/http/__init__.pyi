@@ -72,8 +72,7 @@ class HTTPStatus(IntEnum):
     LOOP_DETECTED: int
     NOT_EXTENDED: int
     NETWORK_AUTHENTICATION_REQUIRED: int
-    if sys.version_info >= (3, 7):
-        MISDIRECTED_REQUEST: int
+    MISDIRECTED_REQUEST: int
     if sys.version_info >= (3, 8):
         UNAVAILABLE_FOR_LEGAL_REASONS: int
     if sys.version_info >= (3, 9):

@@ -23,9 +23,20 @@ import os.path
 import re
 import sys
 import time
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
-
-from typing_extensions import TYPE_CHECKING, NoReturn, Type
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -41,11 +52,11 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
 if TYPE_CHECKING:
-    from distutils.core import Extension  # noqa
+    from distutils.core import Extension
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools  # type: ignore  # noqa
+    import setuptools  # noqa: F401
 except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
@@ -61,7 +72,7 @@ def get_extension() -> Type["Extension"]:
     if not use_setuptools:
         from distutils.core import Extension
     else:
-        from setuptools import Extension  # type: ignore  # noqa
+        from setuptools import Extension
 
     return Extension
 
@@ -223,7 +234,7 @@ def generate_c(
 
     # ... you know, just in case.
     if options.junit_xml:
-        py_version = "{}_{}".format(options.python_version[0], options.python_version[1])
+        py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         write_junit_xml(
             t2 - t0, serious, messages, options.junit_xml, py_version, options.platform
         )

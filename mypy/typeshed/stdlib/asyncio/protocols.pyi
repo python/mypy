@@ -1,12 +1,8 @@
-import sys
 from _typeshed import ReadableBuffer
 from asyncio import transports
 from typing import Any
 
-if sys.version_info >= (3, 7):
-    __all__ = ("BaseProtocol", "Protocol", "DatagramProtocol", "SubprocessProtocol", "BufferedProtocol")
-else:
-    __all__ = ["BaseProtocol", "Protocol", "DatagramProtocol", "SubprocessProtocol"]
+__all__ = ("BaseProtocol", "Protocol", "DatagramProtocol", "SubprocessProtocol", "BufferedProtocol")
 
 class BaseProtocol:
     def connection_made(self, transport: transports.BaseTransport) -> None: ...
@@ -18,11 +14,10 @@ class Protocol(BaseProtocol):
     def data_received(self, data: bytes) -> None: ...
     def eof_received(self) -> bool | None: ...
 
-if sys.version_info >= (3, 7):
-    class BufferedProtocol(BaseProtocol):
-        def get_buffer(self, sizehint: int) -> ReadableBuffer: ...
-        def buffer_updated(self, nbytes: int) -> None: ...
-        def eof_received(self) -> bool | None: ...
+class BufferedProtocol(BaseProtocol):
+    def get_buffer(self, sizehint: int) -> ReadableBuffer: ...
+    def buffer_updated(self, nbytes: int) -> None: ...
+    def eof_received(self) -> bool | None: ...
 
 class DatagramProtocol(BaseProtocol):
     def connection_made(self, transport: transports.DatagramTransport) -> None: ...  # type: ignore[override]

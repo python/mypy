@@ -1,5 +1,7 @@
 """Type checker test cases"""
 
+from __future__ import annotations
+
 import os
 import re
 import sys
@@ -162,7 +164,7 @@ class TypeCheckSuite(DataSuite):
             output = testcase.output
         elif incremental_step > 1:
             msg = (
-                "Unexpected type checker output in incremental, run {}".format(incremental_step)
+                f"Unexpected type checker output in incremental, run {incremental_step}"
                 + " ({}, line {})"
             )
             output = testcase.output2.get(incremental_step, [])
@@ -227,7 +229,7 @@ class TypeCheckSuite(DataSuite):
         # just notes attached to other errors.
         assert error_paths or not busted_paths, "Some modules reported error despite no errors"
         if not missing_paths == busted_paths:
-            raise AssertionError("cache data discrepancy %s != %s" % (missing_paths, busted_paths))
+            raise AssertionError(f"cache data discrepancy {missing_paths} != {busted_paths}")
         assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
         cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
         assert os.path.isfile(cachedir_tag)

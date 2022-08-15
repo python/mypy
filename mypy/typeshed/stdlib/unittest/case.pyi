@@ -4,6 +4,7 @@ import unittest.result
 from _typeshed import Self, SupportsDunderGE, SupportsDunderGT, SupportsDunderLE, SupportsDunderLT, SupportsRSub, SupportsSub
 from collections.abc import Callable, Container, Iterable, Mapping, Sequence, Set as AbstractSet
 from contextlib import AbstractContextManager
+from re import Pattern
 from types import TracebackType
 from typing import (
     Any,
@@ -12,7 +13,6 @@ from typing import (
     Generic,
     NamedTuple,
     NoReturn,
-    Pattern,
     Protocol,
     SupportsAbs,
     SupportsRound,
@@ -145,7 +145,7 @@ class TestCase:
     def assertRaises(  # type: ignore[misc]
         self,
         expected_exception: type[BaseException] | tuple[type[BaseException], ...],
-        callable: Callable[..., object],
+        callable: Callable[..., Any],
         *args: Any,
         **kwargs: Any,
     ) -> None: ...

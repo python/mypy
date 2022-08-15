@@ -4,11 +4,9 @@ import itertools
 from contextlib import contextmanager
 from itertools import chain
 from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, TypeVar
-
 from typing_extensions import Final, Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
-from mypy.backports import OrderedDict
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder, format_type_bare, quote_type_string
@@ -67,6 +65,7 @@ from mypy.types import (
     RequiredType,
     StarType,
     SyntheticTypeVisitor,
+    TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
     TypeAliasType,
@@ -82,9 +81,10 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    bad_type_type_item,
     callable_with_ellipsis,
+    flatten_nested_unions,
     get_proper_type,
-    union_items,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 
@@ -374,7 +374,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         unexpanded_type=t,
                     )
                 if node.eager:
-                    # TODO: Generate error if recursive (once we have recursive types)
                     res = get_proper_type(res)
                 return res
             elif isinstance(node, TypeInfo):
@@ -395,6 +394,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         #       need access to MessageBuilder here. Also move the similar
         #       message generation logic in semanal.py.
         self.api.fail(f'Cannot resolve name "{t.name}" (possible cyclic definition)', t)
+        if self.options.enable_recursive_aliases and self.api.is_func_scope():
+            self.note("Recursive types are not allowed at function scope", t)
 
     def apply_concatenate_operator(self, t: UnboundType) -> Type:
         if len(t.args) == 0:
@@ -434,7 +435,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return AnyType(TypeOfAny.explicit)
         elif fullname in FINAL_TYPE_NAMES:
             self.fail(
-                "Final can be only used as an outermost qualifier" " in a variable annotation", t
+                "Final can be only used as an outermost qualifier in a variable annotation", t
             )
             return AnyType(TypeOfAny.from_error)
         elif fullname == "typing.Tuple" or (
@@ -487,7 +488,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 type_str = "Type[...]" if fullname == "typing.Type" else "type[...]"
                 self.fail(type_str + " must have exactly one type argument", t)
             item = self.anal_type(t.args[0])
-            return TypeType.make_normalized(item, line=t.line)
+            if bad_type_type_item(item):
+                self.fail("Type[...] can't contain another Type[...]", t)
+                item = AnyType(TypeOfAny.from_error)
+            return TypeType.make_normalized(item, line=t.line, column=t.column)
         elif fullname == "typing.ClassVar":
             if self.nesting_level > 0:
                 self.fail("Invalid type: ClassVar nested inside other type", t)
@@ -609,6 +613,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if args:
                 self.fail("Generic tuple types not supported", ctx)
                 return AnyType(TypeOfAny.from_error)
+            if info.special_alias:
+                # We don't support generic tuple types yet.
+                return TypeAliasType(info.special_alias, [])
             return tup.copy_modified(items=self.anal_array(tup.items), fallback=instance)
         td = info.typeddict_type
         if td is not None:
@@ -617,6 +624,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if args:
                 self.fail("Generic TypedDict types not supported", ctx)
                 return AnyType(TypeOfAny.from_error)
+            if info.special_alias:
+                # We don't support generic TypedDict types yet.
+                return TypeAliasType(info.special_alias, [])
             # Create a named TypedDictType
             return td.copy_modified(
                 item_types=self.anal_array(list(td.items.values())), fallback=instance
@@ -907,9 +917,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = OrderedDict(
-            [(item_name, self.anal_type(item_type)) for (item_name, item_type) in t.items.items()]
-        )
+        items = {
+            item_name: self.anal_type(item_type) for (item_name, item_type) in t.items.items()
+        }
         return TypedDictType(items, set(t.required_keys), t.fallback)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
@@ -1128,9 +1138,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
                     if arg.name is not None and kind.is_star():
-                        self.fail(
-                            "{} arguments should not have names".format(arg.constructor), arg
-                        )
+                        self.fail(f"{arg.constructor} arguments should not have names", arg)
                         return None
             else:
                 args.append(arg)
@@ -1162,7 +1170,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return [
                 LiteralType(
                     value=arg.original_str_expr,
-                    fallback=self.named_type_with_normalized_str(arg.original_str_fallback),
+                    fallback=self.named_type(arg.original_str_fallback),
                     line=arg.line,
                     column=arg.column,
                 )
@@ -1210,7 +1218,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return None
 
             # Remap bytes and unicode into the appropriate type for the correct Python version
-            fallback = self.named_type_with_normalized_str(arg.base_type_name)
+            fallback = self.named_type(arg.base_type_name)
             assert isinstance(fallback, Instance)
             return [LiteralType(arg.literal_value, fallback, line=arg.line, column=arg.column)]
         elif isinstance(arg, (NoneType, LiteralType)):
@@ -1356,17 +1364,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def anal_var_defs(self, var_defs: Sequence[TypeVarLikeType]) -> List[TypeVarLikeType]:
         return [self.anal_var_def(vd) for vd in var_defs]
-
-    def named_type_with_normalized_str(self, fully_qualified_name: str) -> Instance:
-        """Does almost the same thing as `named_type`, except that we immediately
-        unalias `builtins.bytes` and `builtins.unicode` to `builtins.str` as appropriate.
-        """
-        python_version = self.options.python_version
-        if python_version[0] == 2 and fully_qualified_name == "builtins.bytes":
-            fully_qualified_name = "builtins.str"
-        if python_version[0] >= 3 and fully_qualified_name == "builtins.unicode":
-            fully_qualified_name = "builtins.str"
-        return self.named_type(fully_qualified_name)
 
     def named_type(
         self,
@@ -1549,10 +1546,7 @@ def expand_type_alias(
         tp.column = ctx.column
         return tp
     if act_len != exp_len:
-        fail(
-            "Bad number of arguments for type alias, expected: %s, given: %s" % (exp_len, act_len),
-            ctx,
-        )
+        fail(f"Bad number of arguments for type alias, expected: {exp_len}, given: {act_len}", ctx)
         return set_any_tvars(node, ctx.line, ctx.column, from_error=True)
     typ = TypeAliasType(node, args, ctx.line, ctx.column)
     assert typ.alias is not None
@@ -1626,6 +1620,10 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         self.scope = scope
         self.include_bound_tvars = include_bound_tvars
         super().__init__(flatten_tvars)
+        # Only include type variables in type aliases args. This would be anyway
+        # that case if we expand (as target variables would be overridden with args)
+        # and it may cause infinite recursion on invalid (diverging) recursive aliases.
+        self.skip_alias_target = True
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
@@ -1669,6 +1667,75 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             return super().visit_callable_type(t)
         else:
             return []
+
+
+class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
+    """See docstring of detect_diverging_alias() for details."""
+
+    # TODO: this doesn't really need to be a translator, but we don't have a trivial visitor.
+    def __init__(
+        self,
+        seen_nodes: Set[TypeAlias],
+        lookup: Callable[[str, Context], Optional[SymbolTableNode]],
+        scope: "TypeVarLikeScope",
+    ) -> None:
+        self.seen_nodes = seen_nodes
+        self.lookup = lookup
+        self.scope = scope
+        self.diverging = False
+
+    def is_alias_tvar(self, t: Type) -> bool:
+        # Generic type aliases use unbound type variables.
+        if not isinstance(t, UnboundType) or t.args:
+            return False
+        node = self.lookup(t.name, t)
+        if (
+            node
+            and isinstance(node.node, TypeVarLikeExpr)
+            and self.scope.get_binding(node) is None
+        ):
+            return True
+        return False
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
+        if t.alias in self.seen_nodes:
+            for arg in t.args:
+                if not self.is_alias_tvar(arg) and bool(
+                    arg.accept(TypeVarLikeQuery(self.lookup, self.scope))
+                ):
+                    self.diverging = True
+                    return t
+            # All clear for this expansion chain.
+            return t
+        new_nodes = self.seen_nodes | {t.alias}
+        visitor = DivergingAliasDetector(new_nodes, self.lookup, self.scope)
+        _ = get_proper_type(t).accept(visitor)
+        if visitor.diverging:
+            self.diverging = True
+        return t
+
+
+def detect_diverging_alias(
+    node: TypeAlias,
+    target: Type,
+    lookup: Callable[[str, Context], Optional[SymbolTableNode]],
+    scope: "TypeVarLikeScope",
+) -> bool:
+    """This detects type aliases that will diverge during type checking.
+
+    For example F = Something[..., F[List[T]]]. At each expansion step this will produce
+    *new* type aliases: e.g. F[List[int]], F[List[List[int]]], etc. So we can't detect
+    recursion. It is a known problem in the literature, recursive aliases and generic types
+    don't always go well together. It looks like there is no known systematic solution yet.
+
+    # TODO: should we handle such aliases using type_recursion counter and some large limit?
+    They may be handy in rare cases, e.g. to express a union of non-mixed nested lists:
+    Nested = Union[T, Nested[List[T]]] ~> Union[T, List[T], List[List[T]], ...]
+    """
+    visitor = DivergingAliasDetector({node}, lookup, scope)
+    _ = target.accept(visitor)
+    return visitor.diverging
 
 
 def check_for_explicit_any(
@@ -1748,11 +1815,16 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
-    t = get_proper_type(t)
-    if isinstance(t, NoneType):
+    p_t = get_proper_type(t)
+    if isinstance(p_t, NoneType):
         return t
-    elif isinstance(t, UnionType):
-        items = [item for item in union_items(t) if not isinstance(item, NoneType)]
+    elif isinstance(p_t, UnionType):
+        # Eagerly expanding aliases is not safe during semantic analysis.
+        items = [
+            item
+            for item in flatten_nested_unions(p_t.items, handle_type_alias_type=False)
+            if not isinstance(get_proper_type(item), NoneType)
+        ]
         return UnionType(items + [NoneType()], t.line, t.column)
     else:
         return UnionType([t, NoneType()], t.line, t.column)

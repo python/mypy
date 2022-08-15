@@ -7,7 +7,6 @@ add a method to MessageBuilder and call this instead.
 """
 
 from typing import NamedTuple, Optional
-
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
@@ -45,10 +44,6 @@ INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
     'The return type of an async generator function should be "AsyncGenerator" or one of its '
     "supertypes"
 )
-INVALID_GENERATOR_RETURN_ITEM_TYPE: Final = ErrorMessage(
-    "The return type of a generator function must be None in"
-    " its third type parameter in Python 2"
-)
 YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
 INCOMPATIBLE_TYPES: Final = "Incompatible types"
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
@@ -71,7 +66,6 @@ INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "y
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
 INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage("Incompatible types in capture pattern")
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
-INVALID_TUPLE_INDEX_TYPE: Final = ErrorMessage("Invalid tuple index type")
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
 INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
@@ -145,9 +139,6 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     "Function {} could always be true in boolean context", code=codes.TRUTHY_BOOL
 )
 NOT_CALLABLE: Final = "{} not callable"
-PYTHON2_PRINT_FILE_TYPE: Final = (
-    'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
-)
 TYPE_MUST_BE_USED: Final = "Value of type {} must be used"
 
 # Generic
@@ -177,7 +168,6 @@ UNBOUND_TYPEVAR: Final = (
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')
-TOO_FEW_ARGS_FOR_SUPER: Final = ErrorMessage('Too few arguments for "super"', codes.CALL_ARG)
 SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = ErrorMessage(
     '"super" with a single argument not supported'
 )
@@ -202,9 +192,6 @@ MISSING_OR_INVALID_SELF_TYPE: Final = ErrorMessage(
 )
 ERASED_SELF_TYPE_NOT_SUPERTYPE: Final = ErrorMessage(
     'The erased type of self "{}" is not a supertype of its class "{}"'
-)
-INVALID_SELF_TYPE_OR_EXTRA_ARG: Final = ErrorMessage(
-    "Invalid type for self, or extra argument type in function annotation"
 )
 
 # Final

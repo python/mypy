@@ -6,10 +6,20 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 """
 
 import itertools
-import sys
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple, TypeVar, Union, cast
-
-from typing_extensions import Type as TypingType
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type as TypingType,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -55,6 +65,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_unions,
     get_proper_type,
     get_proper_types,
 )
@@ -62,13 +73,25 @@ from mypy.typevars import fill_typevars
 
 
 def is_recursive_pair(s: Type, t: Type) -> bool:
-    """Is this a pair of recursive type aliases?"""
-    return (
-        isinstance(s, TypeAliasType)
-        and isinstance(t, TypeAliasType)
-        and s.is_recursive
-        and t.is_recursive
-    )
+    """Is this a pair of recursive types?
+
+    There may be more cases, and we may be forced to use e.g. has_recursive_types()
+    here, but this function is called in very hot code, so we try to keep it simple
+    and return True only in cases we know may have problems.
+    """
+    if isinstance(s, TypeAliasType) and s.is_recursive:
+        return (
+            isinstance(get_proper_type(t), Instance)
+            or isinstance(t, TypeAliasType)
+            and t.is_recursive
+        )
+    if isinstance(t, TypeAliasType) and t.is_recursive:
+        return (
+            isinstance(get_proper_type(s), Instance)
+            or isinstance(s, TypeAliasType)
+            and s.is_recursive
+        )
+    return False
 
 
 def tuple_fallback(typ: TupleType) -> Instance:
@@ -80,9 +103,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
         return typ.partial_fallback
     items = []
     for item in typ.items:
-        proper_type = get_proper_type(item)
-        if isinstance(proper_type, UnpackType):
-            unpacked_type = get_proper_type(proper_type.type)
+        if isinstance(item, UnpackType):
+            unpacked_type = get_proper_type(item.type)
             if isinstance(unpacked_type, TypeVarTupleType):
                 items.append(unpacked_type.upper_bound)
             elif isinstance(unpacked_type, TupleType):
@@ -436,29 +458,23 @@ def make_simplified_union(
     back into a sum type. Set it to False when called by try_expanding_sum_type_
     to_union().
     """
-    items = get_proper_types(items)
-
     # Step 1: expand all nested unions
-    while any(isinstance(typ, UnionType) for typ in items):
-        all_items: List[ProperType] = []
-        for typ in items:
-            if isinstance(typ, UnionType):
-                all_items.extend(get_proper_types(typ.items))
-            else:
-                all_items.append(typ)
-        items = all_items
+    items = flatten_nested_unions(items)
 
     # Step 2: remove redundant unions
-    simplified_set = _remove_redundant_union_items(items, keep_erased)
+    simplified_set: Sequence[Type] = _remove_redundant_union_items(items, keep_erased)
 
     # Step 3: If more than one literal exists in the union, try to simplify
-    if contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1:
+    if (
+        contract_literals
+        and sum(isinstance(get_proper_type(item), LiteralType) for item in simplified_set) > 1
+    ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return UnionType.make_union(simplified_set, line, column)
+    return get_proper_type(UnionType.make_union(simplified_set, line, column))
 
 
-def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) -> List[ProperType]:
+def _remove_redundant_union_items(items: List[Type], keep_erased: bool) -> List[Type]:
     from mypy.subtypes import is_proper_subtype
 
     removed: Set[int] = set()
@@ -469,10 +485,11 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
     # different enum types as try_expanding_sum_type_to_union works recursively and will
     # trigger intermediate simplifications that would render the fast path useless
     for i, item in enumerate(items):
+        proper_item = get_proper_type(item)
         if i in removed:
             continue
         # Avoid slow nested for loop for Union of Literal of strings/enums (issue #9169)
-        k = simple_literal_value_key(item)
+        k = simple_literal_value_key(proper_item)
         if k is not None:
             if k in seen:
                 removed.add(i)
@@ -493,6 +510,7 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
         # Keep track of the truthiness info for deleted subtypes which can be relevant
         cbt = cbf = False
         for j, tj in enumerate(items):
+            proper_tj = get_proper_type(tj)
             if (
                 i == j
                 # avoid further checks if this item was already marked redundant.
@@ -503,11 +521,11 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
                 # However, if the current item is not a literal, it might plausibly be a
                 # supertype of other literals in the union, so we must check them again.
                 # This is an important optimization as is_proper_subtype is pretty expensive.
-                or (k is not None and is_simple_literal(tj))
+                or (k is not None and is_simple_literal(proper_tj))
             ):
                 continue
-            # actual redundancy checks
-            if is_redundant_literal_instance(item, tj) and is_proper_subtype(  # XXX?
+            # actual redundancy checks (XXX?)
+            if is_redundant_literal_instance(proper_item, proper_tj) and is_proper_subtype(
                 tj, item, keep_erased_types=keep_erased
             ):
                 # We found a redundant item in the union.
@@ -838,14 +856,6 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
                 if name in ENUM_REMOVED_PROPS:
                     continue
                 new_items.append(LiteralType(name, typ))
-            # SymbolTables are really just dicts, and dicts are guaranteed to preserve
-            # insertion order only starting with Python 3.7. So, we sort these for older
-            # versions of Python to help make tests deterministic.
-            #
-            # We could probably skip the sort for Python 3.6 since people probably run mypy
-            # only using CPython, but we might as well for the sake of full correctness.
-            if sys.version_info < (3, 7):
-                new_items.sort(key=lambda lit: lit.value)
             return make_simplified_union(new_items, contract_literals=False)
         elif typ.type.fullname == "builtins.bool":
             return make_simplified_union(

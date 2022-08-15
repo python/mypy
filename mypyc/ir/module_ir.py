@@ -1,5 +1,7 @@
 """Intermediate representation of modules."""
 
+from __future__ import annotations
+
 from typing import Dict, List, Tuple
 
 from mypyc.common import JsonDict
@@ -36,7 +38,7 @@ class ModuleIR:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "ModuleIR":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> ModuleIR:
         return ModuleIR(
             data["fullname"],
             data["imports"],

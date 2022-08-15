@@ -1,5 +1,7 @@
 """Primitive dict ops."""
 
+from __future__ import annotations
+
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
