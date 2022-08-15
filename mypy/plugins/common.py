@@ -29,10 +29,10 @@ from mypy.types import (
     CallableType,
     Overloaded,
     Type,
+    TypeType,
     TypeVarType,
     deserialize_type,
     get_proper_type,
-    TypeType,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
