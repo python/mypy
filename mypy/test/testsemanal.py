@@ -132,7 +132,6 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
             alt_lib_path=test_temp_dir,
         )
         a = res.errors
-        assert a, f"No errors reported in {testcase.file}, line {testcase.line}"
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
