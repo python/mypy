@@ -162,6 +162,12 @@ print(bool(''))
 True
 False
 
+[case testCannotExtendBoolUnlessIgnored]
+class A(bool): pass
+class B(bool): pass  # type: ignore
+[out]
+_program.py:1: error: Cannot inherit from final class "bool"
+
 [case testCallBuiltinTypeObjectsWithoutArguments]
 import typing
 print(int())
