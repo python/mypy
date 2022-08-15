@@ -200,7 +200,7 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
-            tv = signature.variables[0]
+            tv = signature.variables[1]
             assert isinstance(tv, TypeVarType)
             return signature.copy_modified(
                 arg_types=[signature.arg_types[0], make_simplified_union([value_type, tv])],
@@ -262,7 +262,7 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
         and len(ctx.args[0]) == 1
         and isinstance(ctx.args[0][0], StrExpr)
         and len(signature.arg_types) == 2
-        and len(signature.variables) == 1
+        and len(signature.variables) == 2
         and len(ctx.args[1]) == 1
     ):
         key = ctx.args[0][0].value
@@ -271,7 +271,7 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
-            tv = signature.variables[0]
+            tv = signature.variables[1]
             assert isinstance(tv, TypeVarType)
             typ = make_simplified_union([value_type, tv])
             return signature.copy_modified(arg_types=[str_type, typ], ret_type=typ)
