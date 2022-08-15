@@ -205,10 +205,15 @@ def test_module(module_name: str) -> Iterator[Error]:
     """
     stub = get_stub(module_name)
     if stub is None:
-        runtime_desc = repr(sys.modules[module_name]) if module_name in sys.modules else "N/A"
-        yield Error(
-            [module_name], "failed to find stubs", MISSING, None, runtime_desc=runtime_desc
-        )
+        if "." in module_name:
+            last_part_of_module_name = module_name.split(".")[-1]
+        else:
+            last_part_of_module_name = module_name
+        if not is_probably_private(last_part_of_module_name):
+            runtime_desc = repr(sys.modules[module_name]) if module_name in sys.modules else "N/A"
+            yield Error(
+                [module_name], "failed to find stubs", MISSING, None, runtime_desc=runtime_desc
+            )
         return
 
     try:
@@ -1441,7 +1446,7 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
                 all_modules.extend(
                     m.name
                     for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
-                    if m.name not in all_modules and not is_probably_private(m.name.split(".")[-1])
+                    if m.name not in all_modules
                 )
             except Exception:
                 pass
