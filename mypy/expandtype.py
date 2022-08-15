@@ -298,7 +298,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         items = self.expand_types_with_unpack(t.items)
         if isinstance(items, list):
-            return t.copy_modified(items=items)
+            fallback = t.partial_fallback.accept(self)
+            fallback = get_proper_type(fallback)
+            if not isinstance(fallback, Instance):
+                fallback = t.partial_fallback
+            return t.copy_modified(items=items, fallback=fallback)
         else:
             return items
 

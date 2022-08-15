@@ -612,12 +612,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if tup is not None:
             # The class has a Tuple[...] base class so it will be
             # represented as a tuple type.
-            if args:
-                self.fail("Generic tuple types not supported", ctx)
-                return AnyType(TypeOfAny.from_error)
             if info.special_alias:
-                # We don't support generic tuple types yet.
-                return TypeAliasType(info.special_alias, [])
+                return TypeAliasType(info.special_alias, self.anal_array(args))
             return tup.copy_modified(items=self.anal_array(tup.items), fallback=instance)
         td = info.typeddict_type
         if td is not None:

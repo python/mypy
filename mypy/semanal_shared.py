@@ -127,6 +127,8 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     * Less need to pass around callback functions
     """
 
+    tvar_scope: TypeVarLikeScope
+
     @abstractmethod
     def lookup(
         self, name: str, ctx: Context, suppress_errors: bool = False

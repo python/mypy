@@ -882,6 +882,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     ]
 
         if isinstance(actual, TupleType) and len(actual.items) == len(template.items):
+            if (
+                actual.partial_fallback.type.is_named_tuple
+                and template.partial_fallback.type.is_named_tuple
+            ):
+                # For named tuples using just the fallbacks usually gives better results.
+                return infer_constraints(
+                    template.partial_fallback, actual.partial_fallback, self.direction
+                )
             res: List[Constraint] = []
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i], actual.items[i], self.direction))
