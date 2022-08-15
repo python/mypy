@@ -835,10 +835,8 @@ def verify_funcitem(
             return
 
     if isinstance(stub, nodes.FuncDef):
-        stub_abstract = stub.abstract_status == nodes.IS_ABSTRACT
-        runtime_abstract = getattr(runtime, "__isabstractmethod__", False)
         # The opposite can exist: some implementations omit `@abstractmethod` decorators
-        if runtime_abstract and not stub_abstract:
+        if runtime_is_abstract(runtime) and not stub_is_abstract(stub):
             yield Error(
                 object_path,
                 "is inconsistent, runtime method is abstract but stub is not",
@@ -864,8 +862,8 @@ def verify_funcitem(
     # That results in false positives.
     # See https://github.com/python/typeshed/issues/7344
     if runtime_is_coroutine and not stub.is_coroutine:
-        if getattr(runtime, "__isabstractmethod__", False) or (
-            isinstance(stub, nodes.FuncDef) and stub.is_abstract
+        if runtime_is_abstract(runtime) or (
+            isinstance(stub, nodes.FuncDef) and stub_is_abstract(stub)
         ):
             error_msg = (
                 'is an "async def" function at runtime, '
@@ -1278,6 +1276,14 @@ def is_probably_a_function(runtime: Any) -> bool:
 
 def is_read_only_property(runtime: object) -> bool:
     return isinstance(runtime, property) and runtime.fset is None
+
+
+def stub_is_abstract(stub: nodes.FuncDef) -> bool:
+    return stub.abstract_status == nodes.IS_ABSTRACT
+
+
+def runtime_is_abstract(runtime: object) -> bool:
+    return getattr(runtime, "__isabstractmethod__", False)
 
 
 def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
