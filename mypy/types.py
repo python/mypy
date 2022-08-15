@@ -581,15 +581,7 @@ class SelfType(TypeVarType):
     def __init__(
         self, fullname: str, upper_bound: "Instance", line: int = -1, column: int = -1
     ) -> None:
-        super().__init__(
-            "Self",
-            fullname,
-            SELF_ID,
-            [],
-            upper_bound,
-            line=line,
-            column=column,
-        )
+        super().__init__("Self", fullname, SELF_ID, [], upper_bound, line=line, column=column)
 
     def __hash__(self) -> int:
         return hash(self.upper_bound)
