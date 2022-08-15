@@ -1,4 +1,6 @@
 """Tests for mypy incremental error output."""
+from __future__ import annotations
+
 from typing import List
 
 from mypy import build
@@ -40,7 +42,5 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
         assert e.messages == []
 
     assert_string_arrays_equal(
-        testcase.output,
-        logged_messages,
-        "Invalid output ({}, line {})".format(testcase.file, testcase.line),
+        testcase.output, logged_messages, f"Invalid output ({testcase.file}, line {testcase.line})"
     )

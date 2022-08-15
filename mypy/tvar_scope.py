@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, Optional, Union
 
 from mypy.nodes import (
@@ -25,9 +27,9 @@ class TypeVarLikeScope:
 
     def __init__(
         self,
-        parent: "Optional[TypeVarLikeScope]" = None,
+        parent: Optional[TypeVarLikeScope] = None,
         is_class_scope: bool = False,
-        prohibited: "Optional[TypeVarLikeScope]" = None,
+        prohibited: Optional[TypeVarLikeScope] = None,
         namespace: str = "",
     ) -> None:
         """Initializer for TypeVarLikeScope
@@ -49,7 +51,7 @@ class TypeVarLikeScope:
             self.func_id = parent.func_id
             self.class_id = parent.class_id
 
-    def get_function_scope(self) -> "Optional[TypeVarLikeScope]":
+    def get_function_scope(self) -> Optional[TypeVarLikeScope]:
         """Get the nearest parent that's a function scope, not a class scope"""
         it: Optional[TypeVarLikeScope] = self
         while it is not None and it.is_class_scope:
@@ -65,13 +67,18 @@ class TypeVarLikeScope:
             return False
         return True
 
-    def method_frame(self) -> "TypeVarLikeScope":
+    def method_frame(self) -> TypeVarLikeScope:
         """A new scope frame for binding a method"""
         return TypeVarLikeScope(self, False, None)
 
-    def class_frame(self, namespace: str) -> "TypeVarLikeScope":
+    def class_frame(self, namespace: str) -> TypeVarLikeScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
         return TypeVarLikeScope(self.get_function_scope(), True, self, namespace=namespace)
+
+    def new_unique_func_id(self) -> int:
+        """Used by plugin-like code that needs to make synthetic generic functions."""
+        self.func_id -= 1
+        return self.func_id
 
     def bind_new(self, name: str, tvar_expr: TypeVarLikeExpr) -> TypeVarLikeType:
         if self.is_class_scope:

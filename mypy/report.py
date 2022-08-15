@@ -1,5 +1,7 @@
 """Classes for producing HTML reports about imprecision."""
 
+from __future__ import annotations
+
 import collections
 import itertools
 import json
@@ -12,9 +14,8 @@ import typing
 from abc import ABCMeta, abstractmethod
 from operator import attrgetter
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, cast
-from urllib.request import pathname2url
-
 from typing_extensions import Final, TypeAlias as _TypeAlias
+from urllib.request import pathname2url
 
 from mypy import stats
 from mypy.defaults import REPORTER_NAMES
@@ -31,7 +32,7 @@ try:
 except ImportError:
     LXML_INSTALLED = False
 
-type_of_any_name_map: Final["collections.OrderedDict[int, str]"] = collections.OrderedDict(
+type_of_any_name_map: Final[collections.OrderedDict[int, str]] = collections.OrderedDict(
     [
         (TypeOfAny.unannotated, "Unannotated"),
         (TypeOfAny.explicit, "Explicit"),
@@ -59,7 +60,7 @@ class Reports:
         for report_type, report_dir in sorted(report_dirs.items()):
             self.add_report(report_type, report_dir)
 
-    def add_report(self, report_type: str, report_dir: str) -> "AbstractReporter":
+    def add_report(self, report_type: str, report_dir: str) -> AbstractReporter:
         try:
             return self.named_reporters[report_type]
         except KeyError:

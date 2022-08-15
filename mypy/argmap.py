@@ -1,5 +1,7 @@
 """Utilities for mapping between actual and formal arguments (and their types)."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Set
 
 from mypy import nodes
@@ -158,7 +160,7 @@ class ArgTypeExpander:
     needs a separate instance since instances have per-call state.
     """
 
-    def __init__(self, context: "ArgumentInferContext") -> None:
+    def __init__(self, context: ArgumentInferContext) -> None:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
@@ -184,6 +186,7 @@ class ArgTypeExpander:
         This is supposed to be called for each formal, in order. Call multiple times per
         formal if multiple actuals map to a formal.
         """
+        original_actual = actual_type
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
             if isinstance(actual_type, Instance) and actual_type.args:
@@ -241,4 +244,4 @@ class ArgTypeExpander:
                 return AnyType(TypeOfAny.from_error)
         else:
             # No translation for other kinds -- 1:1 mapping.
-            return actual_type
+            return original_actual

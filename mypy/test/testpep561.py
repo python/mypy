@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import os
 import re
 import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
-from subprocess import PIPE
 from typing import Iterator, List, Tuple
 
 import filelock
@@ -34,7 +35,7 @@ def virtualenv(python_executable: str = sys.executable) -> Iterator[Tuple[str, s
     """
     with tempfile.TemporaryDirectory() as venv_dir:
         proc = subprocess.run(
-            [python_executable, "-m", "venv", venv_dir], cwd=os.getcwd(), stdout=PIPE, stderr=PIPE
+            [python_executable, "-m", "venv", venv_dir], cwd=os.getcwd(), capture_output=True
         )
         if proc.returncode != 0:
             err = proc.stdout.decode("utf-8") + proc.stderr.decode("utf-8")
@@ -69,11 +70,9 @@ def install_package(
         env.update(os.environ)
         try:
             with filelock.FileLock(pip_lock, timeout=pip_timeout):
-                proc = subprocess.run(
-                    install_cmd, cwd=working_dir, stdout=PIPE, stderr=PIPE, env=env
-                )
+                proc = subprocess.run(install_cmd, cwd=working_dir, capture_output=True, env=env)
         except filelock.Timeout as err:
-            raise Exception("Failed to acquire {}".format(pip_lock)) from err
+            raise Exception(f"Failed to acquire {pip_lock}") from err
     if proc.returncode != 0:
         raise Exception(proc.stdout.decode("utf-8") + proc.stderr.decode("utf-8"))
 
@@ -114,7 +113,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
 
         steps = testcase.find_steps()
         if steps != [[]]:
-            steps = [[]] + steps  # type: ignore[operator,assignment]
+            steps = [[]] + steps  # type: ignore[assignment]
 
         for i, operations in enumerate(steps):
             perform_file_operations(operations)
@@ -137,7 +136,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
             assert_string_arrays_equal(
                 expected,
                 output,
-                "Invalid output ({}, line {}){}".format(testcase.file, testcase.line, iter_count),
+                f"Invalid output ({testcase.file}, line {testcase.line}){iter_count}",
             )
 
         if has_program:

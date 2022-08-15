@@ -1,5 +1,3 @@
-import sys
-
 # This is a slight lie, the implementations aren't exactly identical
 # However, in all likelihood, the differences are inconsequential
 from _decimal import *
@@ -41,7 +39,5 @@ __all__ = [
     "MIN_EMIN",
     "MIN_ETINY",
     "HAVE_THREADS",
+    "HAVE_CONTEXTVAR",
 ]
-
-if sys.version_info >= (3, 7):
-    __all__ += ["HAVE_CONTEXTVAR"]

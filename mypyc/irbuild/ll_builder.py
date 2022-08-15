@@ -8,11 +8,12 @@ of its facilities operate solely on the IR level and not the AST
 level---it has *no knowledge* of mypy types or expressions.
 """
 
-from typing import Callable, List, Optional, Sequence, Tuple
+from __future__ import annotations
 
+from typing import Callable, List, Optional, Sequence, Tuple
 from typing_extensions import Final
 
-from mypy.checkexpr import map_actuals_to_formals
+from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny

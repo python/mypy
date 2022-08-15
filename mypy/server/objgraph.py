@@ -1,10 +1,11 @@
 """Find all objects reachable from a root object."""
 
+from __future__ import annotations
+
 import types
 import weakref
 from collections.abc import Iterable
 from typing import Dict, Iterator, List, Mapping, Tuple
-
 from typing_extensions import Final
 
 method_descriptor_type: Final = type(object.__dir__)
@@ -38,7 +39,7 @@ def isproperty(o: object, attr: str) -> bool:
 
 def get_edge_candidates(o: object) -> Iterator[Tuple[object, object]]:
     # use getattr because mypyc expects dict, not mappingproxy
-    if "__getattribute__" in getattr(type(o), "__dict__"):  # noqa
+    if "__getattribute__" in getattr(type(o), "__dict__"):  # noqa: B009
         return
     if type(o) not in COLLECTION_TYPE_BLACKLIST:
         for attr in dir(o):

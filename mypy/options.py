@@ -1,16 +1,16 @@
+from __future__ import annotations
+
 import pprint
 import re
 import sys
-from typing import Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, Tuple
-
-from typing_extensions import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, Tuple
+from typing_extensions import Final
 
 from mypy import defaults
-from mypy.backports import OrderedDict
 from mypy.util import get_class_descriptors, replace_object_state
 
 if TYPE_CHECKING:
-    from mypy.errors import ErrorCode
+    from mypy.errorcodes import ErrorCode
 
 
 class BuildType:
@@ -240,6 +240,11 @@ class Options:
         # in modules being compiled. Not in the config file or command line.
         self.mypyc = False
 
+        # An internal flag to modify some type-checking logic while
+        # running inspections (e.g. don't expand function definitions).
+        # Not in the config file or command line.
+        self.inspections = False
+
         # Disable the memory optimization of freeing ASTs when
         # possible. This isn't exposed as a command line option
         # because it is intended for software integrating with
@@ -250,7 +255,7 @@ class Options:
         self.plugins: List[str] = []
 
         # Per-module options (raw)
-        self.per_module_options: OrderedDict[str, Dict[str, object]] = OrderedDict()
+        self.per_module_options: Dict[str, Dict[str, object]] = {}
         self._glob_options: List[Tuple[str, Pattern[str]]] = []
         self.unused_configs: Set[str] = set()
 
@@ -310,6 +315,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
+        # Enable recursive type aliases (currently experimental)
+        self.enable_recursive_aliases = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
@@ -330,7 +337,7 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
-    def apply_changes(self, changes: Dict[str, object]) -> "Options":
+    def apply_changes(self, changes: Dict[str, object]) -> Options:
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         replace_object_state(new_options, self, copy_dict=True)
@@ -385,7 +392,7 @@ class Options:
         # they only count as used if actually used by a real module.
         self.unused_configs.update(structured_keys)
 
-    def clone_for_module(self, module: str) -> "Options":
+    def clone_for_module(self, module: str) -> Options:
         """Create an Options object that incorporates per-module options.
 
         NOTE: Once this method is called all Options objects should be

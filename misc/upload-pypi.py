@@ -5,6 +5,8 @@ You must first tag the release, use `git push --tags` and wait for the wheel bui
 
 """
 
+from __future__ import annotations
+
 import argparse
 import contextlib
 import json

@@ -7,6 +7,8 @@ example, we can make IR fast to compile instead of fast to execute for rare
 code.
 """
 
+from __future__ import annotations
+
 from typing import Set
 
 from mypyc.ir.ops import BasicBlock, Branch, Goto

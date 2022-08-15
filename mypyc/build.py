@@ -18,14 +18,27 @@ to know at import-time whether it is using distutils or setuputils. We
 hackily decide based on whether setuptools has been imported already.
 """
 
+from __future__ import annotations
+
 import hashlib
 import os.path
 import re
 import sys
 import time
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
-
-from typing_extensions import TYPE_CHECKING, NoReturn, Type
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -41,11 +54,11 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
 if TYPE_CHECKING:
-    from distutils.core import Extension  # noqa
+    from distutils.core import Extension
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools  # type: ignore  # noqa
+    import setuptools  # noqa: F401
 except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
@@ -53,7 +66,7 @@ except ImportError:
 from distutils import ccompiler, sysconfig
 
 
-def get_extension() -> Type["Extension"]:
+def get_extension() -> Type[Extension]:
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
@@ -61,7 +74,7 @@ def get_extension() -> Type["Extension"]:
     if not use_setuptools:
         from distutils.core import Extension
     else:
-        from setuptools import Extension  # type: ignore  # noqa
+        from setuptools import Extension
 
     return Extension
 
@@ -223,7 +236,7 @@ def generate_c(
 
     # ... you know, just in case.
     if options.junit_xml:
-        py_version = "{}_{}".format(options.python_version[0], options.python_version[1])
+        py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         write_junit_xml(
             t2 - t0, serious, messages, options.junit_xml, py_version, options.platform
         )
@@ -242,7 +255,7 @@ def build_using_shared_lib(
     deps: List[str],
     build_dir: str,
     extra_compile_args: List[str],
-) -> List["Extension"]:
+) -> List[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
     This creates one shared library extension module that all of the
@@ -285,7 +298,7 @@ def build_using_shared_lib(
 
 def build_single_module(
     sources: List[BuildSource], cfiles: List[str], extra_compile_args: List[str]
-) -> List["Extension"]:
+) -> List[Extension]:
     """Produce the list of extension modules for a standalone extension.
 
     This contains just one module, since there is no need for a shared module.
@@ -450,7 +463,7 @@ def mypycify(
     skip_cgen_input: Optional[Any] = None,
     target_dir: Optional[str] = None,
     include_runtime_files: Optional[bool] = None,
-) -> List["Extension"]:
+) -> List[Extension]:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the

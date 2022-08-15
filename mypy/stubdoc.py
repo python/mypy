@@ -3,6 +3,9 @@
 This module provides several functions to generate better stubs using
 docstrings and Sphinx docs (.rst files).
 """
+
+from __future__ import annotations
+
 import contextlib
 import io
 import re
@@ -17,7 +20,6 @@ from typing import (
     Sequence,
     Tuple,
 )
-
 from typing_extensions import Final
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').

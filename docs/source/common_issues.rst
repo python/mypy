@@ -441,10 +441,8 @@ More specifically, mypy will understand the use of :py:data:`sys.version_info` a
    # Distinguishing between different versions of Python:
    if sys.version_info >= (3, 8):
        # Python 3.8+ specific definitions and imports
-   elif sys.version_info[0] >= 3:
-       # Python 3 specific definitions and imports
    else:
-       # Python 2 specific definitions and imports
+       # Other definitions and imports
 
    # Distinguishing between different operating systems:
    if sys.platform.startswith("linux"):
@@ -484,9 +482,9 @@ operating system as default values for :py:data:`sys.version_info` and
 :py:data:`sys.platform`.
 
 To target a different Python version, use the :option:`--python-version X.Y <mypy --python-version>` flag.
-For example, to verify your code typechecks if were run using Python 2, pass
-in :option:`--python-version 2.7 <mypy --python-version>` from the command line. Note that you do not need
-to have Python 2.7 installed to perform this check.
+For example, to verify your code typechecks if were run using Python 3.8, pass
+in :option:`--python-version 3.8 <mypy --python-version>` from the command line. Note that you do not need
+to have Python 3.8 installed to perform this check.
 
 To target a different operating system, use the :option:`--platform PLATFORM <mypy --platform>` flag.
 For example, to verify your code typechecks if it were run in Windows, pass

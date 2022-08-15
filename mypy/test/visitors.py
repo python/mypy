@@ -6,6 +6,8 @@ even if the test was compiled.
 
 """
 
+from __future__ import annotations
+
 from typing import Set
 
 from mypy.nodes import (

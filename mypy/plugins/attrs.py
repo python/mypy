@@ -1,11 +1,11 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from __future__ import annotations
 
+from typing import Dict, Iterable, List, Optional, Tuple, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.backports import OrderedDict
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -65,8 +65,6 @@ from mypy.types import (
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 
-KW_ONLY_PYTHON_2_UNSUPPORTED: Final = "kw_only is not supported in Python 2"
-
 # The names of the different functions that create classes or arguments.
 attr_class_makers: Final = {"attr.s", "attr.attrs", "attr.attributes"}
 attr_dataclass_makers: Final = {"attr.dataclass"}
@@ -110,7 +108,7 @@ class Attribute:
         self.context = context
         self.init_type = init_type
 
-    def argument(self, ctx: "mypy.plugin.ClassDefContext") -> Argument:
+    def argument(self, ctx: mypy.plugin.ClassDefContext) -> Argument:
         """Return this attribute as an argument to __init__."""
         assert self.init
 
@@ -171,7 +169,7 @@ class Attribute:
     @classmethod
     def deserialize(
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
-    ) -> "Attribute":
+    ) -> Attribute:
         """Return the Attribute that was serialized."""
         raw_init_type = data["init_type"]
         init_type = deserialize_and_fixup_type(raw_init_type, api) if raw_init_type else None
@@ -202,7 +200,7 @@ class Attribute:
             self.init_type = None
 
 
-def _determine_eq_order(ctx: "mypy.plugin.ClassDefContext") -> bool:
+def _determine_eq_order(ctx: mypy.plugin.ClassDefContext) -> bool:
     """
     Validate the combination of *cmp*, *eq*, and *order*. Derive the effective
     value of order.
@@ -232,7 +230,7 @@ def _determine_eq_order(ctx: "mypy.plugin.ClassDefContext") -> bool:
 
 
 def _get_decorator_optional_bool_argument(
-    ctx: "mypy.plugin.ClassDefContext", name: str, default: Optional[bool] = None
+    ctx: mypy.plugin.ClassDefContext, name: str, default: Optional[bool] = None
 ) -> Optional[bool]:
     """Return the Optional[bool] argument for the decorator.
 
@@ -255,7 +253,7 @@ def _get_decorator_optional_bool_argument(
         return default
 
 
-def attr_tag_callback(ctx: "mypy.plugin.ClassDefContext") -> None:
+def attr_tag_callback(ctx: mypy.plugin.ClassDefContext) -> None:
     """Record that we have an attrs class in the main semantic analysis pass.
 
     The later pass implemented by attr_class_maker_callback will use this
@@ -266,7 +264,7 @@ def attr_tag_callback(ctx: "mypy.plugin.ClassDefContext") -> None:
 
 
 def attr_class_maker_callback(
-    ctx: "mypy.plugin.ClassDefContext",
+    ctx: mypy.plugin.ClassDefContext,
     auto_attribs_default: Optional[bool] = False,
     frozen_default: bool = False,
 ) -> bool:
@@ -276,8 +274,8 @@ def attr_class_maker_callback(
 
     At a quick glance, the decorator searches the class body for assignments of `attr.ib`s (or
     annotated variables if auto_attribs=True), then depending on how the decorator is called,
-    it will add an __init__ or all the __cmp__ methods.  For frozen=True it will turn the attrs
-    into properties.
+    it will add an __init__ or all the compare methods.
+    For frozen=True it will turn the attrs into properties.
 
     See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
@@ -294,22 +292,6 @@ def attr_class_maker_callback(
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
     match_args = _get_decorator_bool_argument(ctx, "match_args", True)
-
-    early_fail = False
-    if ctx.api.options.python_version[0] < 3:
-        if auto_attribs:
-            ctx.api.fail("auto_attribs is not supported in Python 2", ctx.reason)
-            early_fail = True
-        if not info.defn.base_type_exprs:
-            # Note: This will not catch subclassing old-style classes.
-            ctx.api.fail("attrs only works with new-style classes", info.defn)
-            early_fail = True
-        if kw_only:
-            ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
-            early_fail = True
-    if early_fail:
-        _add_empty_metadata(info)
-        return True
 
     for super_info in ctx.cls.info.mro[1:-1]:
         if "attrs_tag" in super_info.metadata and "attrs" not in super_info.metadata:
@@ -352,7 +334,7 @@ def attr_class_maker_callback(
     return True
 
 
-def _get_frozen(ctx: "mypy.plugin.ClassDefContext", frozen_default: bool) -> bool:
+def _get_frozen(ctx: mypy.plugin.ClassDefContext, frozen_default: bool) -> bool:
     """Return whether this class is frozen."""
     if _get_decorator_bool_argument(ctx, "frozen", frozen_default):
         return True
@@ -364,7 +346,7 @@ def _get_frozen(ctx: "mypy.plugin.ClassDefContext", frozen_default: bool) -> boo
 
 
 def _analyze_class(
-    ctx: "mypy.plugin.ClassDefContext", auto_attribs: Optional[bool], kw_only: bool
+    ctx: mypy.plugin.ClassDefContext, auto_attribs: Optional[bool], kw_only: bool
 ) -> List[Attribute]:
     """Analyze the class body of an attr maker, its parents, and return the Attributes found.
 
@@ -372,7 +354,7 @@ def _analyze_class(
     auto_attribs=None means we'll detect which mode to use.
     kw_only=True means that all attributes created here will be keyword only args in __init__.
     """
-    own_attrs: OrderedDict[str, Attribute] = OrderedDict()
+    own_attrs: Dict[str, Attribute] = {}
     if auto_attribs is None:
         auto_attribs = _detect_auto_attribs(ctx)
 
@@ -447,7 +429,7 @@ def _add_empty_metadata(info: TypeInfo) -> None:
     info.metadata["attrs"] = {"attributes": [], "frozen": False}
 
 
-def _detect_auto_attribs(ctx: "mypy.plugin.ClassDefContext") -> bool:
+def _detect_auto_attribs(ctx: mypy.plugin.ClassDefContext) -> bool:
     """Return whether auto_attribs should be enabled or disabled.
 
     It's disabled if there are any unannotated attribs()
@@ -477,7 +459,7 @@ def _detect_auto_attribs(ctx: "mypy.plugin.ClassDefContext") -> bool:
 
 
 def _attributes_from_assignment(
-    ctx: "mypy.plugin.ClassDefContext", stmt: AssignmentStmt, auto_attribs: bool, kw_only: bool
+    ctx: mypy.plugin.ClassDefContext, stmt: AssignmentStmt, auto_attribs: bool, kw_only: bool
 ) -> Iterable[Attribute]:
     """Return Attribute objects that are created by this assignment.
 
@@ -543,7 +525,7 @@ def _cleanup_decorator(stmt: Decorator, attr_map: Dict[str, Attribute]) -> None:
 
 
 def _attribute_from_auto_attrib(
-    ctx: "mypy.plugin.ClassDefContext",
+    ctx: mypy.plugin.ClassDefContext,
     kw_only: bool,
     lhs: NameExpr,
     rvalue: Expression,
@@ -559,7 +541,7 @@ def _attribute_from_auto_attrib(
 
 
 def _attribute_from_attrib_maker(
-    ctx: "mypy.plugin.ClassDefContext",
+    ctx: mypy.plugin.ClassDefContext,
     auto_attribs: bool,
     kw_only: bool,
     lhs: NameExpr,
@@ -585,9 +567,6 @@ def _attribute_from_attrib_maker(
     # Note: If the class decorator says kw_only=True the attribute is ignored.
     # See https://github.com/python-attrs/attrs/issues/481 for explanation.
     kw_only |= _get_bool_argument(ctx, rvalue, "kw_only", False)
-    if kw_only and ctx.api.options.python_version[0] < 3:
-        ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, stmt)
-        return None
 
     # TODO: Check for attr.NOTHING
     attr_has_default = bool(_get_argument(rvalue, "default"))
@@ -629,7 +608,7 @@ def _attribute_from_attrib_maker(
 
 
 def _parse_converter(
-    ctx: "mypy.plugin.ClassDefContext", converter_expr: Optional[Expression]
+    ctx: mypy.plugin.ClassDefContext, converter_expr: Optional[Expression]
 ) -> Optional[Converter]:
     """Return the Converter object from an Expression."""
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
@@ -730,7 +709,7 @@ def _parse_assignments(
     return lvalues, rvalues
 
 
-def _add_order(ctx: "mypy.plugin.ClassDefContext", adder: "MethodAdder") -> None:
+def _add_order(ctx: mypy.plugin.ClassDefContext, adder: MethodAdder) -> None:
     """Generate all the ordering methods for this class."""
     bool_type = ctx.api.named_type("builtins.bool")
     object_type = ctx.api.named_type("builtins.object")
@@ -751,7 +730,7 @@ def _add_order(ctx: "mypy.plugin.ClassDefContext", adder: "MethodAdder") -> None
         adder.add_method(method, args, bool_type, self_type=tvd, tvd=tvd)
 
 
-def _make_frozen(ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute]) -> None:
+def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: List[Attribute]) -> None:
     """Turn all the attributes into properties to simulate frozen classes."""
     for attribute in attributes:
         if attribute.name in ctx.cls.info.names:
@@ -770,7 +749,7 @@ def _make_frozen(ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute]
 
 
 def _add_init(
-    ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute], adder: "MethodAdder"
+    ctx: mypy.plugin.ClassDefContext, attributes: List[Attribute], adder: MethodAdder
 ) -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
     # Convert attributes to arguments with kw_only arguments at the  end of
@@ -802,10 +781,10 @@ def _add_init(
 
 
 def _add_attrs_magic_attribute(
-    ctx: "mypy.plugin.ClassDefContext", attrs: "List[Tuple[str, Optional[Type]]]"
+    ctx: mypy.plugin.ClassDefContext, attrs: List[Tuple[str, Optional[Type]]]
 ) -> None:
     any_type = AnyType(TypeOfAny.explicit)
-    attributes_types: "List[Type]" = [
+    attributes_types: List[Type] = [
         ctx.api.named_type_or_none("attr.Attribute", [attr_type or any_type]) or any_type
         for _, attr_type in attrs
     ]
@@ -835,12 +814,12 @@ def _add_attrs_magic_attribute(
     )
 
 
-def _add_slots(ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute]) -> None:
+def _add_slots(ctx: mypy.plugin.ClassDefContext, attributes: List[Attribute]) -> None:
     # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
     ctx.cls.info.slots = {attr.name for attr in attributes}
 
 
-def _add_match_args(ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute]) -> None:
+def _add_match_args(ctx: mypy.plugin.ClassDefContext, attributes: List[Attribute]) -> None:
     if (
         "__match_args__" not in ctx.cls.info.names
         or ctx.cls.info.names["__match_args__"].plugin_generated
@@ -865,7 +844,7 @@ class MethodAdder:
 
     # TODO: Combine this with the code build_namedtuple_typeinfo to support both.
 
-    def __init__(self, ctx: "mypy.plugin.ClassDefContext") -> None:
+    def __init__(self, ctx: mypy.plugin.ClassDefContext) -> None:
         self.ctx = ctx
         self.self_type = fill_typevars(ctx.cls.info)
 

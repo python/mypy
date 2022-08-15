@@ -1,5 +1,7 @@
 """Test cases for the type checker: exporting inferred types"""
 
+from __future__ import annotations
+
 import re
 
 from mypy import build

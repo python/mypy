@@ -3,7 +3,9 @@
 mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 """
 
-from typing_extensions import NoReturn
+from __future__ import annotations
+
+from typing import NoReturn
 
 from mypy.nodes import (
     AssertStmt,
@@ -11,7 +13,6 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     AwaitExpr,
-    BackquoteExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -28,7 +29,6 @@ from mypy.nodes import (
     DictionaryComprehension,
     EllipsisExpr,
     EnumCallExpr,
-    ExecStmt,
     ExpressionStmt,
     FloatExpr,
     ForStmt,
@@ -56,7 +56,6 @@ from mypy.nodes import (
     OverloadedFuncDef,
     ParamSpecExpr,
     PassStmt,
-    PrintStmt,
     PromoteExpr,
     RaiseStmt,
     ReturnStmt,
@@ -76,7 +75,6 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -334,20 +332,6 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_assignment_expr(self, o: AssignmentExpr) -> Value:
         return transform_assignment_expr(self.builder, o)
-
-    # Unimplemented constructs that shouldn't come up because they are py2 only
-
-    def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_unicode_expr(self, o: UnicodeExpr) -> Value:
-        self.bail("Python 2 features are unsupported", o.line)
 
     # Constructs that shouldn't ever show up
 

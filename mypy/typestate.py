@@ -3,13 +3,14 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Dict, List, Optional, Set, Tuple
+from __future__ import annotations
 
-from typing_extensions import ClassVar, Final, TypeAlias as _TypeAlias
+from typing import ClassVar, Dict, List, Optional, Set, Tuple
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo
 from mypy.server.trigger import make_trigger
-from mypy.types import Instance, Type, TypeAliasType, get_proper_type
+from mypy.types import Instance, Type, get_proper_type
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]
@@ -80,10 +81,12 @@ class TypeState:
     # recursive type aliases. Normally, one would pass type assumptions as an additional
     # arguments to is_subtype(), but this would mean updating dozens of related functions
     # threading this through all callsites (see also comment for TypeInfo.assuming).
-    _assuming: Final[List[Tuple[TypeAliasType, TypeAliasType]]] = []
-    _assuming_proper: Final[List[Tuple[TypeAliasType, TypeAliasType]]] = []
+    _assuming: Final[List[Tuple[Type, Type]]] = []
+    _assuming_proper: Final[List[Tuple[Type, Type]]] = []
     # Ditto for inference of generic constraints against recursive type aliases.
-    _inferring: Final[List[TypeAliasType]] = []
+    inferring: Final[List[Tuple[Type, Type]]] = []
+    # Whether to use joins or unions when solving constraints, see checkexpr.py for details.
+    infer_unions: ClassVar = False
 
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
@@ -107,6 +110,12 @@ class TypeState:
             ) == get_proper_type(right):
                 return True
         return False
+
+    @staticmethod
+    def get_assumptions(is_proper: bool) -> List[Tuple[Type, Type]]:
+        if is_proper:
+            return TypeState._assuming_proper
+        return TypeState._assuming
 
     @staticmethod
     def reset_all_subtype_caches() -> None:

@@ -163,3 +163,10 @@ v: Variadic[float, str, bool, object]
 reveal_type(v.foo(0))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
 
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleIsNotValidAliasTarget]
+from typing_extensions import TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+B = Ts  # E: Type variable "__main__.Ts" is invalid as target for type alias
+[builtins fixtures/tuple.pyi]

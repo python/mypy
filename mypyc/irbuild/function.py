@@ -10,6 +10,8 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 
@@ -129,7 +131,6 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     if func_reg:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
         builder.assign(get_func_target(builder, dec.func), decorated_func, dec.func.line)
-        func_reg = decorated_func
     # If the prebuild pass didn't put this function in the function to decorators map (for example
     # if this is a registered singledispatch implementation with no other decorators), we should
     # treat this function as a regular function, not a decorated function

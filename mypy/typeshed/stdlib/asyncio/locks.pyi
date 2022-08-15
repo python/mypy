@@ -15,10 +15,8 @@ if sys.version_info >= (3, 11):
 
 if sys.version_info >= (3, 11):
     __all__ = ("Lock", "Event", "Condition", "Semaphore", "BoundedSemaphore", "Barrier")
-elif sys.version_info >= (3, 7):
-    __all__ = ("Lock", "Event", "Condition", "Semaphore", "BoundedSemaphore")
 else:
-    __all__ = ["Lock", "Event", "Condition", "Semaphore", "BoundedSemaphore"]
+    __all__ = ("Lock", "Event", "Condition", "Semaphore", "BoundedSemaphore")
 
 _T = TypeVar("_T")
 

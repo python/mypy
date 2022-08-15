@@ -192,7 +192,7 @@ class _SimpleCData(Generic[_T], _CData):
     value: _T
     # The TypeVar can be unsolved here,
     # but we can't use overloads without creating many, many mypy false-positive errors
-    def __init__(self, value: _T = ...) -> None: ...  # type: ignore
+    def __init__(self, value: _T = ...) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]
 
 class c_byte(_SimpleCData[int]): ...
 

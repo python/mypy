@@ -1,10 +1,12 @@
 """Shared definitions used by different parts of semantic analysis."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Callable, List, Optional, Union
+from typing_extensions import Final, Protocol
 
 from mypy_extensions import trait
-from typing_extensions import Final, Protocol
 
 from mypy import join
 from mypy.errorcodes import ErrorCode
@@ -19,6 +21,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.tvar_scope import TypeVarLikeScope
+from mypy.type_visitor import TypeQuery
 from mypy.types import (
     TPDICT_FB_NAMES,
     FunctionLike,
@@ -26,10 +29,12 @@ from mypy.types import (
     Parameters,
     ParamSpecFlavor,
     ParamSpecType,
+    PlaceholderType,
     ProperType,
     TupleType,
     Type,
     TypeVarId,
+    TypeVarLikeType,
     get_proper_type,
 )
 
@@ -82,7 +87,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def defer(self) -> None:
+    def defer(self, debug_context: Optional[Context] = None, force_progress: bool = False) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -106,6 +111,10 @@ class SemanticAnalyzerCoreInterface:
     def is_stub_file(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_func_scope(self) -> bool:
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
@@ -117,6 +126,8 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     * Cleaner import graph
     * Less need to pass around callback functions
     """
+
+    tvar_scope: TypeVarLikeScope
 
     @abstractmethod
     def lookup(
@@ -147,8 +158,13 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         allow_required: bool = False,
+        allow_placeholder: bool = False,
         report_invalid_types: bool = True,
     ) -> Optional[Type]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_and_bind_all_tvars(self, type_exprs: List[Expression]) -> List[TypeVarLikeType]:
         raise NotImplementedError
 
     @abstractmethod
@@ -206,10 +222,6 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @property
     @abstractmethod
     def is_typeshed_stub_file(self) -> bool:
-        raise NotImplementedError
-
-    @abstractmethod
-    def is_func_scope(self) -> bool:
         raise NotImplementedError
 
 
@@ -297,3 +309,16 @@ def paramspec_kwargs(
         column=column,
         prefix=prefix,
     )
+
+
+class HasPlaceholders(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> bool:
+        return True
+
+
+def has_placeholder(typ: Type) -> bool:
+    """Check if a type contains any placeholder types (recursively)."""
+    return typ.accept(HasPlaceholders())

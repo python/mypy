@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import Iterator, Optional, Tuple
-
 from typing_extensions import Final
 
 # These are global mutable state. Don't add anything here unless there's a very

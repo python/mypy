@@ -1,5 +1,6 @@
-from typing import Any, Iterable, Optional, Tuple, Union
+from __future__ import annotations
 
+from typing import Any, Iterable, Optional, Tuple, Union
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -9,7 +10,6 @@ from mypy.nodes import (
     AssertTypeExpr,
     AssignmentExpr,
     AwaitExpr,
-    BackquoteExpr,
     BytesExpr,
     CallExpr,
     CastExpr,
@@ -50,7 +50,7 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
+    Var,
     YieldExpr,
     YieldFromExpr,
 )
@@ -115,9 +115,11 @@ def literal(e: Expression) -> int:
             return LITERAL_NO
 
     elif isinstance(e, NameExpr):
+        if isinstance(e.node, Var) and e.node.is_final and e.node.final_value is not None:
+            return LITERAL_YES
         return LITERAL_TYPE
 
-    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr, UnicodeExpr)):
+    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr)):
         return LITERAL_YES
 
     if literal_hash(e):
@@ -142,12 +144,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ("Literal", e.value)
 
     def visit_str_expr(self, e: StrExpr) -> Key:
-        return ("Literal", e.value, e.from_python_3)
-
-    def visit_bytes_expr(self, e: BytesExpr) -> Key:
         return ("Literal", e.value)
 
-    def visit_unicode_expr(self, e: UnicodeExpr) -> Key:
+    def visit_bytes_expr(self, e: BytesExpr) -> Key:
         return ("Literal", e.value)
 
     def visit_float_expr(self, e: FloatExpr) -> Key:
@@ -160,6 +159,8 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ("Star", literal_hash(e.expr))
 
     def visit_name_expr(self, e: NameExpr) -> Key:
+        if isinstance(e.node, Var) and e.node.is_final and e.node.final_value is not None:
+            return ("Literal", e.node.final_value)
         # N.B: We use the node itself as the key, and not the name,
         # because using the name causes issues when there is shadowing
         # (for example, in list comprehensions).
@@ -256,9 +257,6 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_generator_expr(self, e: GeneratorExpr) -> None:
-        return None
-
-    def visit_backquote_expr(self, e: BackquoteExpr) -> None:
         return None
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> None:

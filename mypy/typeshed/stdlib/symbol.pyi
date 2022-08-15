@@ -86,8 +86,7 @@ comp_if: int
 encoding_decl: int
 yield_expr: int
 yield_arg: int
-if sys.version_info >= (3, 7):
-    sync_comp_for: int
+sync_comp_for: int
 if sys.version_info >= (3, 8):
     func_body_suite: int
     func_type: int

@@ -8,13 +8,13 @@ We provide two implementations.
    on OS X.
 """
 
+from __future__ import annotations
+
 import binascii
 import os
 import time
 from abc import abstractmethod
-from typing import Any, Iterable, List, Optional
-
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional
 
 if TYPE_CHECKING:
     # We avoid importing sqlite3 unless we are using it so we can mostly work
@@ -151,7 +151,7 @@ CREATE INDEX IF NOT EXISTS path_idx on files(path);
 MIGRATIONS: List[str] = []
 
 
-def connect_db(db_file: str) -> "sqlite3.Connection":
+def connect_db(db_file: str) -> sqlite3.Connection:
     import sqlite3.dbapi2
 
     db = sqlite3.dbapi2.connect(db_file)

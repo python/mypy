@@ -1,5 +1,7 @@
 """Helpers that store information about functions and the related classes."""
 
+from __future__ import annotations
+
 from typing import List, Optional, Tuple
 
 from mypy.nodes import FuncItem
@@ -62,12 +64,12 @@ class FuncInfo:
         return self.fitem.is_coroutine
 
     @property
-    def callable_class(self) -> "ImplicitClass":
+    def callable_class(self) -> ImplicitClass:
         assert self._callable_class is not None
         return self._callable_class
 
     @callable_class.setter
-    def callable_class(self, cls: "ImplicitClass") -> None:
+    def callable_class(self, cls: ImplicitClass) -> None:
         self._callable_class = cls
 
     @property
@@ -80,12 +82,12 @@ class FuncInfo:
         self._env_class = ir
 
     @property
-    def generator_class(self) -> "GeneratorClass":
+    def generator_class(self) -> GeneratorClass:
         assert self._generator_class is not None
         return self._generator_class
 
     @generator_class.setter
-    def generator_class(self, cls: "GeneratorClass") -> None:
+    def generator_class(self, cls: GeneratorClass) -> None:
         self._generator_class = cls
 
     @property

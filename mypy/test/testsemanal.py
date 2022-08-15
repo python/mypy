@@ -1,5 +1,7 @@
 """Semantic analyzer test cases"""
 
+from __future__ import annotations
+
 import os.path
 import sys
 from typing import Dict, List

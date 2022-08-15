@@ -5,9 +5,9 @@ for better efficiency.  Each for loop generator class below deals one
 such special case.
 """
 
-from typing import Callable, List, Optional, Tuple, Union
+from __future__ import annotations
 
-from typing_extensions import ClassVar, Type
+from typing import Callable, ClassVar, List, Optional, Tuple, Type, Union
 
 from mypy.nodes import (
     ARG_POS,
@@ -320,7 +320,7 @@ def make_for_loop_generator(
     loop_exit: BasicBlock,
     line: int,
     nested: bool = False,
-) -> "ForGenerator":
+) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
 
     If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".

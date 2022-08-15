@@ -1,6 +1,6 @@
-from typing import Callable, Optional
+from __future__ import annotations
 
-from typing_extensions import Type as typing_Type
+from typing import Callable, Optional, Type as typing_Type
 
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin
@@ -84,7 +84,10 @@ def is_special_target(right: ProperType) -> bool:
             return True
         if right.type_object().fullname in (
             "mypy.types.UnboundType",
+            "mypy.types.TypeVarLikeType",
             "mypy.types.TypeVarType",
+            "mypy.types.UnpackType",
+            "mypy.types.TypeVarTupleType",
             "mypy.types.ParamSpecType",
             "mypy.types.RawExpressionType",
             "mypy.types.EllipsisType",
@@ -93,6 +96,7 @@ def is_special_target(right: ProperType) -> bool:
             "mypy.types.CallableArgument",
             "mypy.types.PartialType",
             "mypy.types.ErasedType",
+            "mypy.types.DeletedType",
         ):
             # Special case: these are not valid targets for a type alias and thus safe.
             # TODO: introduce a SyntheticType base to simplify this?

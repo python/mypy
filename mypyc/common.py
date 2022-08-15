@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import sys
 from typing import Any, Dict, Optional, Tuple
-
 from typing_extensions import Final
 
 from mypy.util import unnamed_function

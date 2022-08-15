@@ -4,15 +4,16 @@ On Unix, this uses AF_UNIX sockets.
 On Windows, this uses NamedPipes.
 """
 
+from __future__ import annotations
+
 import base64
 import os
 import shutil
 import sys
 import tempfile
 from types import TracebackType
-from typing import Callable, Optional
-
-from typing_extensions import Final, Type
+from typing import Callable, Optional, Type
+from typing_extensions import Final
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -160,12 +161,12 @@ class IPCClient(IPCBase):
             self.connection.settimeout(timeout)
             self.connection.connect(name)
 
-    def __enter__(self) -> "IPCClient":
+    def __enter__(self) -> IPCClient:
         return self
 
     def __exit__(
         self,
-        exc_ty: "Optional[Type[BaseException]]" = None,
+        exc_ty: Optional[Type[BaseException]] = None,
         exc_val: Optional[BaseException] = None,
         exc_tb: Optional[TracebackType] = None,
     ) -> None:
@@ -212,7 +213,7 @@ class IPCServer(IPCBase):
             if timeout is not None:
                 self.sock.settimeout(timeout)
 
-    def __enter__(self) -> "IPCServer":
+    def __enter__(self) -> IPCServer:
         if sys.platform == "win32":
             # NOTE: It is theoretically possible that this will hang forever if the
             # client never connects, though this can be "solved" by killing the server
@@ -244,7 +245,7 @@ class IPCServer(IPCBase):
 
     def __exit__(
         self,
-        exc_ty: "Optional[Type[BaseException]]" = None,
+        exc_ty: Optional[Type[BaseException]] = None,
         exc_val: Optional[BaseException] = None,
         exc_tb: Optional[TracebackType] = None,
     ) -> None:

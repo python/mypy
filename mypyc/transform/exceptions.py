@@ -9,6 +9,8 @@ We need to split basic blocks on each error check since branches can
 only be placed at the end of a basic block.
 """
 
+from __future__ import annotations
+
 from typing import List, Optional
 
 from mypyc.ir.func_ir import FuncIR

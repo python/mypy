@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+from __future__ import annotations
+
 import subprocess
 from subprocess import Popen
 from sys import argv, executable, exit

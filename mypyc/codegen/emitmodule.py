@@ -3,11 +3,12 @@
 # FIXME: Basically nothing in this file operates on the level of a
 # single module and it should be renamed.
 
+from __future__ import annotations
+
 import json
 import os
 from typing import Dict, Iterable, List, Optional, Set, Tuple, TypeVar
 
-from mypy.backports import OrderedDict
 from mypy.build import (
     BuildResult,
     BuildSource,
@@ -912,7 +913,7 @@ class GroupGenerator:
             "    goto fail;",
         )
         emitter.emit_line(
-            'modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(module_static)
+            f'modname = PyObject_GetAttrString((PyObject *){module_static}, "__name__");'
         )
 
         module_globals = emitter.static_name("globals", module_name)
@@ -976,7 +977,7 @@ class GroupGenerator:
         This runs in O(V + E).
         """
         result = []
-        marked_declarations: Dict[str, MarkedDeclaration] = OrderedDict()
+        marked_declarations: Dict[str, MarkedDeclaration] = {}
         for k, v in self.context.declarations.items():
             marked_declarations[k] = MarkedDeclaration(v, False)
 
@@ -1063,7 +1064,7 @@ class GroupGenerator:
 def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]]:
     mod_name = {ir: name for name, ir in classes}
     irs = [ir for _, ir in classes]
-    deps: Dict[ClassIR, Set[ClassIR]] = OrderedDict()
+    deps: Dict[ClassIR, Set[ClassIR]] = {}
     for ir in irs:
         if ir not in deps:
             deps[ir] = set()

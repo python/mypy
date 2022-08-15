@@ -18,8 +18,9 @@ suffer from the same issue as they are defined to parse at most three
 octal digits.
 """
 
-import string
+from __future__ import annotations
 
+import string
 from typing_extensions import Final
 
 CHAR_MAP: Final = [f"\\{i:03o}" for i in range(256)]

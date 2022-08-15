@@ -1,8 +1,9 @@
 """Intermediate representation of classes."""
 
+from __future__ import annotations
+
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
-from mypy.backports import OrderedDict
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
 from mypyc.ir.ops import DeserMaps, Value
@@ -67,6 +68,7 @@ from mypyc.namegen import NameGenerator, exported_name
 # The 'shadow_method', if present, contains the method that should be
 # placed in the class's shadow vtable (if it has one).
 
+
 VTableMethod = NamedTuple(
     "VTableMethod",
     [("cls", "ClassIR"), ("name", str), ("method", FuncIR), ("shadow_method", Optional[FuncIR])],
@@ -129,32 +131,32 @@ class ClassIR:
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
 
-        self.attributes: OrderedDict[str, RType] = OrderedDict()
+        self.attributes: Dict[str, RType] = {}
         # Deletable attributes
         self.deletable: List[str] = []
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
-        self.method_decls: OrderedDict[str, FuncDecl] = OrderedDict()
+        self.method_decls: Dict[str, FuncDecl] = {}
         # Map of methods that are actually present in an extension class
-        self.methods: OrderedDict[str, FuncIR] = OrderedDict()
+        self.methods: Dict[str, FuncIR] = {}
         # Glue methods for boxing/unboxing when a class changes the type
         # while overriding a method. Maps from (parent class overridden, method)
         # to IR of glue method.
-        self.glue_methods: Dict[Tuple[ClassIR, str], FuncIR] = OrderedDict()
+        self.glue_methods: Dict[Tuple[ClassIR, str], FuncIR] = {}
 
         # Properties are accessed like attributes, but have behavior like method calls.
         # They don't belong in the methods dictionary, since we don't want to expose them to
         # Python's method API. But we want to put them into our own vtable as methods, so that
         # they are properly handled and overridden. The property dictionary values are a tuple
         # containing a property getter and an optional property setter.
-        self.properties: OrderedDict[str, Tuple[FuncIR, Optional[FuncIR]]] = OrderedDict()
+        self.properties: Dict[str, Tuple[FuncIR, Optional[FuncIR]]] = {}
         # We generate these in prepare_class_def so that we have access to them when generating
         # other methods and properties that rely on these types.
-        self.property_types: OrderedDict[str, RType] = OrderedDict()
+        self.property_types: Dict[str, RType] = {}
 
         self.vtable: Optional[Dict[str, int]] = None
         self.vtable_entries: VTableEntries = []
-        self.trait_vtables: OrderedDict[ClassIR, VTableEntries] = OrderedDict()
+        self.trait_vtables: Dict[ClassIR, VTableEntries] = {}
         # N.B: base might not actually quite be the direct base.
         # It is the nearest concrete base, but we allow a trait in between.
         self.base: Optional[ClassIR] = None
@@ -195,7 +197,7 @@ class ClassIR:
     def fullname(self) -> str:
         return f"{self.module_name}.{self.name}"
 
-    def real_base(self) -> Optional["ClassIR"]:
+    def real_base(self) -> Optional[ClassIR]:
         """Return the actual concrete base class, if there is one."""
         if len(self.mro) > 1 and not self.mro[1].is_trait:
             return self.mro[1]
@@ -206,7 +208,7 @@ class ClassIR:
         assert name in self.vtable, f"{self.name!r} has no attribute {name!r}"
         return self.vtable[name]
 
-    def attr_details(self, name: str) -> Tuple[RType, "ClassIR"]:
+    def attr_details(self, name: str) -> Tuple[RType, ClassIR]:
         for ir in self.mro:
             if name in ir.attributes:
                 return ir.attributes[name], ir
@@ -272,7 +274,7 @@ class ClassIR:
     def struct_name(self, names: NameGenerator) -> str:
         return f"{exported_name(self.fullname)}Object"
 
-    def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, "ClassIR"]]:
+    def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, ClassIR]]:
         for ir in self.mro:
             if name in ir.methods:
                 return ir.methods[name], ir
@@ -283,7 +285,7 @@ class ClassIR:
         res = self.get_method_and_class(name)
         return res[0] if res else None
 
-    def subclasses(self) -> Optional[Set["ClassIR"]]:
+    def subclasses(self) -> Optional[Set[ClassIR]]:
         """Return all subclasses of this class, both direct and indirect.
 
         Return None if it is impossible to identify all subclasses, for example
@@ -300,7 +302,7 @@ class ClassIR:
                 result.update(child_subs)
         return result
 
-    def concrete_subclasses(self) -> Optional[List["ClassIR"]]:
+    def concrete_subclasses(self) -> Optional[List[ClassIR]]:
         """Return all concrete (i.e. non-trait and non-abstract) subclasses.
 
         Include both direct and indirect subclasses. Place classes with no children first.
@@ -371,7 +373,7 @@ class ClassIR:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "ClassIR":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> ClassIR:
         fullname = data["module_name"] + "." + data["name"]
         assert fullname in ctx.classes, "Class %s not in deser class map" % fullname
         ir = ctx.classes[fullname]
@@ -388,27 +390,25 @@ class ClassIR:
         ir._serializable = data["_serializable"]
         ir.builtin_base = data["builtin_base"]
         ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
-        ir.attributes = OrderedDict((k, deserialize_type(t, ctx)) for k, t in data["attributes"])
-        ir.method_decls = OrderedDict(
-            (k, ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx))
+        ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
+        ir.method_decls = {
+            k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)
             for k, v in data["method_decls"]
-        )
-        ir.methods = OrderedDict((k, ctx.functions[v]) for k, v in data["methods"])
-        ir.glue_methods = OrderedDict(
-            ((ctx.classes[c], k), ctx.functions[v]) for (c, k), v in data["glue_methods"]
-        )
-        ir.property_types = OrderedDict(
-            (k, deserialize_type(t, ctx)) for k, t in data["property_types"]
-        )
-        ir.properties = OrderedDict(
-            (k, (ir.methods[k], ir.methods.get(PROPSET_PREFIX + k))) for k in data["properties"]
-        )
+        }
+        ir.methods = {k: ctx.functions[v] for k, v in data["methods"]}
+        ir.glue_methods = {
+            (ctx.classes[c], k): ctx.functions[v] for (c, k), v in data["glue_methods"]
+        }
+        ir.property_types = {k: deserialize_type(t, ctx) for k, t in data["property_types"]}
+        ir.properties = {
+            k: (ir.methods[k], ir.methods.get(PROPSET_PREFIX + k)) for k in data["properties"]
+        }
 
         ir.vtable = data["vtable"]
         ir.vtable_entries = deserialize_vtable(data["vtable_entries"], ctx)
-        ir.trait_vtables = OrderedDict(
-            (ctx.classes[k], deserialize_vtable(v, ctx)) for k, v in data["trait_vtables"]
-        )
+        ir.trait_vtables = {
+            ctx.classes[k]: deserialize_vtable(v, ctx) for k, v in data["trait_vtables"]
+        }
 
         base = data["base"]
         ir.base = ctx.classes[base] if base else None
@@ -453,7 +453,7 @@ def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
     return [serialize_vtable_entry(v) for v in vtable]
 
 
-def deserialize_vtable_entry(data: JsonDict, ctx: "DeserMaps") -> VTableMethod:
+def deserialize_vtable_entry(data: JsonDict, ctx: DeserMaps) -> VTableMethod:
     if data[".class"] == "VTableMethod":
         return VTableMethod(
             ctx.classes[data["cls"]],
@@ -464,7 +464,7 @@ def deserialize_vtable_entry(data: JsonDict, ctx: "DeserMaps") -> VTableMethod:
     assert False, "Bogus vtable .class: %s" % data[".class"]
 
 
-def deserialize_vtable(data: List[JsonDict], ctx: "DeserMaps") -> VTableEntries:
+def deserialize_vtable(data: List[JsonDict], ctx: DeserMaps) -> VTableEntries:
     return [deserialize_vtable_entry(x, ctx) for x in data]
 
 

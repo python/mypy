@@ -565,15 +565,15 @@ def fn(x: F) -> None:
 fn(b)
 [out]
 
-[case testFunctionalEnum_python2-skip]
+[case testFunctionalEnum]
 # TODO: Needs to have enum34 stubs somehow
 from enum import Enum
 Eu = Enum(u'Eu', u'a b')
-Eb = Enum(b'Eb', b'a b')
+Eb = Enum(b'Eb', b'a b')  # E: Enum() expects a string literal as the first argument
 Gu = Enum(u'Gu', {u'a': 1})
-Gb = Enum(b'Gb', {b'a': 1})
+Gb = Enum(b'Gb', {b'a': 1})  # E: Enum() expects a string literal as the first argument
 Hu = Enum(u'Hu', [u'a'])
-Hb = Enum(b'Hb', [b'a'])
+Hb = Enum(b'Hb', [b'a'])  # E: Enum() expects a string literal as the first argument
 Eu.a
 Eb.a
 Gu.a

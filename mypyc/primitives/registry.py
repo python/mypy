@@ -35,8 +35,9 @@ to rely on them for infrequently used ops. It's impractical to have
 optimized implementations of all ops.
 """
 
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from __future__ import annotations
 
+from typing import Dict, List, NamedTuple, Optional, Tuple
 from typing_extensions import Final
 
 from mypyc.ir.ops import StealsDescription
@@ -45,7 +46,6 @@ from mypyc.ir.rtypes import RType
 # Error kind for functions that return negative integer on exception. This
 # is only used for primitives. We translate it away during IR building.
 ERR_NEG_INT: Final = 10
-
 
 CFunctionDescription = NamedTuple(
     "CFunctionDescription",
@@ -304,13 +304,13 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     return LoadAddressDescription(name, type, src)
 
 
-import mypyc.primitives.bytes_ops  # noqa
-import mypyc.primitives.dict_ops  # noqa
-import mypyc.primitives.float_ops  # noqa
+import mypyc.primitives.bytes_ops
+import mypyc.primitives.dict_ops
+import mypyc.primitives.float_ops
 
 # Import various modules that set up global state.
-import mypyc.primitives.int_ops  # noqa
-import mypyc.primitives.list_ops  # noqa
-import mypyc.primitives.misc_ops  # noqa
-import mypyc.primitives.str_ops  # noqa
-import mypyc.primitives.tuple_ops  # noqa
+import mypyc.primitives.int_ops
+import mypyc.primitives.list_ops
+import mypyc.primitives.misc_ops
+import mypyc.primitives.str_ops
+import mypyc.primitives.tuple_ops  # noqa: F401

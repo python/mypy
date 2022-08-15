@@ -1,5 +1,7 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
+from __future__ import annotations
+
 from typing import Dict, Optional
 
 from mypy.nodes import ARG_STAR, ARG_STAR2, GDEF, ArgKind, FuncDef, RefExpr, SymbolNode, TypeInfo
@@ -154,7 +156,7 @@ class Mapper:
             ret = self.type_to_rtype(fdef.type.ret_type)
         else:
             # Handle unannotated functions
-            arg_types = [object_rprimitive for arg in fdef.arguments]
+            arg_types = [object_rprimitive for _ in fdef.arguments]
             arg_pos_onlys = [arg.pos_only for arg in fdef.arguments]
             # We at least know the return type for __init__ methods will be None.
             is_init_method = fdef.name == "__init__" and bool(fdef.info)

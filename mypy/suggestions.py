@@ -22,6 +22,8 @@ Other things:
  * No understanding of type variables at *all*
 """
 
+from __future__ import annotations
+
 import itertools
 import json
 import os
@@ -38,11 +40,11 @@ from typing import (
     Union,
     cast,
 )
-
 from typing_extensions import TypedDict
 
+from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
-from mypy.checkexpr import has_any_type, map_actuals_to_formals
+from mypy.checkexpr import has_any_type
 from mypy.find_sources import InvalidSourceList, SourceFinder
 from mypy.join import join_type_list
 from mypy.meet import meet_type_list
@@ -64,7 +66,6 @@ from mypy.nodes import (
     reverse_builtin_aliases,
 )
 from mypy.plugin import FunctionContext, MethodContext, Plugin
-from mypy.sametypes import is_same_type
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.traverser import TraverserVisitor
@@ -249,7 +250,6 @@ class SuggestionEngine:
         json: bool,
         no_errors: bool = False,
         no_any: bool = False,
-        try_text: bool = False,
         flex_any: Optional[float] = None,
         use_fixme: Optional[str] = None,
         max_guesses: Optional[int] = None,
@@ -262,7 +262,6 @@ class SuggestionEngine:
 
         self.give_json = json
         self.no_errors = no_errors
-        self.try_text = try_text
         self.flex_any = flex_any
         if no_any:
             self.flex_any = 1.0
@@ -328,7 +327,7 @@ class SuggestionEngine:
         # since they need some special treatment (specifically,
         # constraint generation ignores them.)
         return CallableType(
-            [AnyType(TypeOfAny.suggestion_engine) for a in fdef.arg_kinds],
+            [AnyType(TypeOfAny.suggestion_engine) for _ in fdef.arg_kinds],
             fdef.arg_kinds,
             fdef.arg_names,
             AnyType(TypeOfAny.suggestion_engine),
@@ -401,12 +400,6 @@ class SuggestionEngine:
             for arg in fdef.arguments
         ]
 
-    def add_adjustments(self, typs: List[Type]) -> List[Type]:
-        if not self.try_text or self.manager.options.python_version[0] != 2:
-            return typs
-        translator = StrToText(self.named_type)
-        return dedup(typs + [tp.accept(translator) for tp in typs])
-
     def get_guesses(
         self,
         is_method: bool,
@@ -420,7 +413,6 @@ class SuggestionEngine:
         This focuses just on the argument types, and doesn't change the provided return type.
         """
         options = self.get_args(is_method, base, defaults, callsites, uses)
-        options = [self.add_adjustments(tps) for tps in options]
 
         # Take the first `max_guesses` guesses.
         product = itertools.islice(itertools.product(*options), 0, self.max_guesses)
@@ -601,12 +593,12 @@ class SuggestionEngine:
         for i, component in enumerate(components[:-1]):
             if component not in names:
                 raise SuggestionFailure(
-                    "Unknown class %s.%s" % (modname, ".".join(components[: i + 1]))
+                    "Unknown class {}.{}".format(modname, ".".join(components[: i + 1]))
                 )
             node: Optional[SymbolNode] = names[component].node
             if not isinstance(node, TypeInfo):
                 raise SuggestionFailure(
-                    "Object %s.%s is not a class" % (modname, ".".join(components[: i + 1]))
+                    "Object {}.{} is not a class".format(modname, ".".join(components[: i + 1]))
                 )
             names = node.names
 
@@ -615,7 +607,7 @@ class SuggestionEngine:
         if funcname not in names:
             key = modname + "." + tail
             raise SuggestionFailure(
-                "Unknown %s %s" % ("method" if len(components) > 1 else "function", key)
+                "Unknown {} {}".format("method" if len(components) > 1 else "function", key)
             )
         return names[funcname].node
 
@@ -775,8 +767,6 @@ class SuggestionEngine:
                 return 10
         if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
             return 10
-        if self.try_text and isinstance(t, Instance) and t.type.fullname == "builtins.str":
-            return 1
         return 0
 
     def score_callable(self, t: CallableType) -> int:
@@ -909,23 +899,6 @@ class TypeFormatter(TypeStrVisitor):
         return f"Callable[{arg_str}, {t.ret_type.accept(self)}]"
 
 
-class StrToText(TypeTranslator):
-    def __init__(self, named_type: Callable[[str], Instance]) -> None:
-        self.text_type = named_type("builtins.unicode")
-
-    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        exp_t = get_proper_type(t)
-        if isinstance(exp_t, Instance) and exp_t.type.fullname == "builtins.str":
-            return self.text_type
-        return t.copy_modified(args=[a.accept(self) for a in t.args])
-
-    def visit_instance(self, t: Instance) -> Type:
-        if t.type.fullname == "builtins.str":
-            return self.text_type
-        else:
-            return super().visit_instance(t)
-
-
 TType = TypeVar("TType", bound=Type)
 
 
@@ -957,7 +930,7 @@ def generate_type_combinations(types: List[Type]) -> List[Type]:
     """
     joined_type = join_type_list(types)
     union_type = make_simplified_union(types)
-    if is_same_type(joined_type, union_type):
+    if joined_type == union_type:
         return [joined_type]
     else:
         return [joined_type, union_type]
