@@ -3192,8 +3192,8 @@ class TypeAlias(SymbolNode):
     following:
 
         1. An alias targeting a generic class without explicit variables act as
-        the given class (this doesn't apply to Tuple and Callable, which are not proper
-        classes but special type constructors):
+        the given class (this doesn't apply to TypedDict, Tuple and Callable, which
+        are not proper classes but special type constructors):
 
             A = List
             AA = List[Any]
@@ -3305,7 +3305,9 @@ class TypeAlias(SymbolNode):
         """Generate an alias to the TypedDict type described by a given TypeInfo."""
         assert info.typeddict_type
         return TypeAlias(
-            info.typeddict_type.copy_modified(fallback=mypy.types.Instance(info, [])),
+            info.typeddict_type.copy_modified(
+                fallback=mypy.types.Instance(info, info.defn.type_vars)
+            ),
             info.fullname,
             info.line,
             info.column,

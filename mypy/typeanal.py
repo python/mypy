@@ -619,12 +619,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if td is not None:
             # The class has a TypedDict[...] base class so it will be
             # represented as a typeddict type.
-            if args:
-                self.fail("Generic TypedDict types not supported", ctx)
-                return AnyType(TypeOfAny.from_error)
             if info.special_alias:
-                # We don't support generic TypedDict types yet.
-                return TypeAliasType(info.special_alias, [])
+                return TypeAliasType(info.special_alias, self.anal_array(args))
             # Create a named TypedDictType
             return td.copy_modified(
                 item_types=self.anal_array(list(td.items.values())), fallback=instance
@@ -1573,10 +1569,16 @@ def set_any_tvars(
         type_of_any = TypeOfAny.from_error
     else:
         type_of_any = TypeOfAny.from_omitted_generics
-    if disallow_any:
+    if disallow_any and node.alias_tvars:
         assert fail is not None
-        otype = unexpanded_type or node.target
-        type_str = otype.name if isinstance(otype, UnboundType) else format_type_bare(otype)
+        if unexpanded_type:
+            type_str = (
+                unexpanded_type.name
+                if isinstance(unexpanded_type, UnboundType)
+                else format_type_bare(unexpanded_type)
+            )
+        else:
+            type_str = node.name
 
         fail(
             message_registry.BARE_GENERIC.format(quote_type_string(type_str)),

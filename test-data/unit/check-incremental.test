@@ -5933,3 +5933,27 @@ s: str = nt.value
 [out]
 [out2]
 tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testGenericTypedDictSerialization]
+import b
+[file a.py]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar("T")
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+[file b.py]
+from a import TD
+td = TD(key=0, value="yes")
+s: str = td["value"]
+[file b.py.2]
+from a import TD
+td = TD(key=0, value=42)
+s: str = td["value"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+[out2]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")

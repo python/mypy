@@ -776,3 +776,37 @@ reveal_type(f(tda1, tda2))  # N: Revealed type is "TypedDict({'x': builtins.int,
 reveal_type(f(tda1, tdb))  # N: Revealed type is "TypedDict({})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testBasicRecursiveGenericTypedDict]
+# flags: --enable-recursive-aliases
+from typing import TypedDict, TypeVar, Generic, Optional, List
+
+T = TypeVar("T")
+class Tree(TypedDict, Generic[T], total=False):
+    value: T
+    left: Tree[T]
+    right: Tree[T]
+
+def collect(arg: Tree[T]) -> List[T]: ...
+
+reveal_type(collect({"left": {"right": {"value": 0}}}))  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRecursiveGenericTypedDictExtending]
+# flags: --enable-recursive-aliases
+from typing import TypedDict, Generic, TypeVar, List
+
+T = TypeVar("T")
+
+class TD(TypedDict, Generic[T]):
+    val: T
+    other: STD[T]
+class STD(TD[T]):
+    sval: T
+    one: TD[T]
+
+std: STD[str]
+reveal_type(std)  # N: Revealed type is "TypedDict('__main__.STD', {'val': builtins.str, 'other': ..., 'sval': builtins.str, 'one': TypedDict('__main__.TD', {'val': builtins.str, 'other': ...})})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

@@ -307,7 +307,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return items
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        return t.copy_modified(item_types=self.expand_types(t.items.values()))
+        fallback = t.fallback.accept(self)
+        fallback = get_proper_type(fallback)
+        if not isinstance(fallback, Instance):
+            fallback = t.fallback
+        return t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         # TODO: Verify this implementation is correct

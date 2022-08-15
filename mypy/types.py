@@ -1740,6 +1740,8 @@ class CallableType(FunctionLike):
             ret = get_proper_type(ret.upper_bound)
         if isinstance(ret, TupleType):
             ret = ret.partial_fallback
+        if isinstance(ret, TypedDictType):
+            ret = ret.fallback
         assert isinstance(ret, Instance)
         return ret.type
 

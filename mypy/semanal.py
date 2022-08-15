@@ -270,6 +270,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeType,
     TypeVarLikeType,
@@ -1390,6 +1391,9 @@ class SemanticAnalyzer(
             return
 
         if self.analyze_typeddict_classdef(defn):
+            if defn.info:
+                self.setup_type_vars(defn, tvar_defs)
+                self.setup_alias_type_vars(defn)
             return
 
         if self.analyze_namedtuple_classdef(defn, tvar_defs):
@@ -1420,8 +1424,13 @@ class SemanticAnalyzer(
         assert defn.info.special_alias is not None
         defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
         target = defn.info.special_alias.target
-        assert isinstance(target, ProperType) and isinstance(target, TupleType)
-        target.partial_fallback.args = tuple(defn.type_vars)
+        assert isinstance(target, ProperType)
+        if isinstance(target, TypedDictType):
+            target.fallback.args = tuple(defn.type_vars)
+        elif isinstance(target, TupleType):
+            target.partial_fallback.args = tuple(defn.type_vars)
+        else:
+            assert False, f"Unexpected special alias type: {type(target)}"
 
     def is_core_builtin_class(self, defn: ClassDef) -> bool:
         return self.cur_mod_id == "builtins" and defn.name in CORE_BUILTIN_CLASSES
@@ -1705,6 +1714,7 @@ class SemanticAnalyzer(
 
     def get_and_bind_all_tvars(self, type_exprs: List[Expression]) -> List[TypeVarLikeType]:
         """Return all type variable references in item type expressions.
+
         This is a helper for generic TypedDicts and NamedTuples. Essentially it is
         a simplified version of the logic we use for ClassDef bases. We duplicate
         some amount of code, because it is hard to refactor common pieces.
@@ -1866,6 +1876,8 @@ class SemanticAnalyzer(
                         msg = 'Class cannot subclass value of type "Any"'
                     self.fail(msg, base_expr)
                 info.fallback_to_any = True
+            elif isinstance(base, TypedDictType):
+                base_types.append(base.fallback)
             else:
                 msg = "Invalid base class"
                 name = self.get_name_repr_of_expr(base_expr)
@@ -2736,7 +2748,7 @@ class SemanticAnalyzer(
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        is_typed_dict, info = self.typed_dict_analyzer.check_typeddict(
+        is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
             s.rvalue, name, self.is_func_scope()
         )
         if not is_typed_dict:
@@ -2747,6 +2759,10 @@ class SemanticAnalyzer(
         # Yes, it's a valid typed dict, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            defn = info.defn
+            self.setup_type_vars(defn, tvar_defs)
+            self.setup_alias_type_vars(defn)
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
