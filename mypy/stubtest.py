@@ -1441,7 +1441,7 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
                 all_modules.extend(
                     m.name
                     for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
-                    if m.name not in all_modules
+                    if m.name not in all_modules and not is_probably_private(m.name.split('.')[-1])
                 )
             except Exception:
                 pass
