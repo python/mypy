@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Callable, Optional, Type as typing_Type
 
 from mypy.nodes import TypeInfo
@@ -95,6 +97,7 @@ def is_special_target(right: ProperType) -> bool:
             "mypy.types.PartialType",
             "mypy.types.ErasedType",
             "mypy.types.DeletedType",
+            "mypy.types.RequiredType",
         ):
             # Special case: these are not valid targets for a type alias and thus safe.
             # TODO: introduce a SyntheticType base to simplify this?

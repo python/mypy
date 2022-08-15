@@ -5659,6 +5659,23 @@ class D(C):
 [out2]
 tmp/a.py:9: error: Trying to assign name "z" that is not in "__slots__" of type "a.D"
 
+[case testMethodAliasIncremental]
+import b
+[file a.py]
+class A:
+    def f(self) -> None: pass
+    g = f
+
+[file b.py]
+from a import A
+A().g()
+[file b.py.2]
+# trivial change
+from a import A
+A().g()
+[out]
+[out2]
+
 [case testIncrementalWithDifferentKindsOfNestedTypesWithinMethod]
 # flags: --python-version 3.7
 
@@ -5926,3 +5943,50 @@ tmp/b.py:4: note: Revealed type is "None"
 tmp/b.py:5: note: Revealed type is "None"
 tmp/b.py:6: note: Revealed type is "builtins.str"
 tmp/b.py:7: note: Revealed type is "builtins.str"
+
+[case testGenericNamedTupleSerialization]
+import b
+[file a.py]
+from typing import NamedTuple, Generic, TypeVar
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+[file b.py]
+from a import NT
+nt = NT(key=0, value="yes")
+s: str = nt.value
+[file b.py.2]
+from a import NT
+nt = NT(key=0, value=42)
+s: str = nt.value
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testGenericTypedDictSerialization]
+import b
+[file a.py]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar("T")
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+[file b.py]
+from a import TD
+td = TD(key=0, value="yes")
+s: str = td["value"]
+[file b.py.2]
+from a import TD
+td = TD(key=0, value=42)
+s: str = td["value"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+[out2]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")

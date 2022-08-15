@@ -1,5 +1,7 @@
 """Fix up various things after deserialization."""
 
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
 from typing_extensions import Final
 
@@ -78,6 +80,7 @@ class NodeFixer(NodeVisitor[None]):
                 info.update_tuple_type(info.tuple_type)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
+                info.update_typeddict_type(info.typeddict_type)
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:

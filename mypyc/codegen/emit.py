@@ -209,7 +209,7 @@ class Emitter:
         # Extra semicolon prevents an error when the next line declares a tempvar
         self.fragments.append(f"{text}: ;\n")
 
-    def emit_from_emitter(self, emitter: "Emitter") -> None:
+    def emit_from_emitter(self, emitter: Emitter) -> None:
         self.fragments.extend(emitter.fragments)
 
     def emit_printf(self, fmt: str, *args: str) -> None:

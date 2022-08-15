@@ -22,6 +22,8 @@ Other things:
  * No understanding of type variables at *all*
 """
 
+from __future__ import annotations
+
 import itertools
 import json
 import os

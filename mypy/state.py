@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import Iterator, Optional, Tuple
 from typing_extensions import Final

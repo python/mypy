@@ -41,7 +41,7 @@ class DeleteFile(NamedTuple):
 FileOperation = Union[UpdateFile, DeleteFile]
 
 
-def parse_test_case(case: "DataDrivenTestCase") -> None:
+def parse_test_case(case: DataDrivenTestCase) -> None:
     """Parse and prepare a single case from suite with test case descriptions.
 
     This method is part of the setup phase, just before the test case is run.
@@ -216,7 +216,7 @@ class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
     # Override parent member type
-    parent: "DataSuiteCollector"
+    parent: DataSuiteCollector
 
     input: List[str]
     output: List[str]  # Output for the first pass
@@ -244,8 +244,8 @@ class DataDrivenTestCase(pytest.Item):
 
     def __init__(
         self,
-        parent: "DataSuiteCollector",
-        suite: "DataSuite",
+        parent: DataSuiteCollector,
+        suite: DataSuite,
         file: str,
         name: str,
         writescache: bool,
@@ -583,7 +583,7 @@ def pytest_addoption(parser: Any) -> None:
 
 # This function name is special to pytest.  See
 # http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
-def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> "Optional[Any]":
+def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Optional[Any]:
     """Called by pytest on each object in modules configured in conftest.py files.
 
     collector is pytest.Collector, returns Optional[pytest.Class]
@@ -601,8 +601,8 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> "Option
 
 
 def split_test_cases(
-    parent: "DataFileCollector", suite: "DataSuite", file: str
-) -> Iterator["DataDrivenTestCase"]:
+    parent: DataFileCollector, suite: DataSuite, file: str
+) -> Iterator[DataDrivenTestCase]:
     """Iterate over raw test cases in file, at collection time, ignoring sub items.
 
     The collection phase is slow, so any heavy processing should be deferred to after
@@ -654,7 +654,7 @@ def split_test_cases(
 
 
 class DataSuiteCollector(pytest.Class):
-    def collect(self) -> Iterator["DataFileCollector"]:
+    def collect(self) -> Iterator[DataFileCollector]:
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
@@ -679,10 +679,10 @@ class DataFileCollector(pytest.Collector):
     @classmethod  # We have to fight with pytest here:
     def from_parent(  # type: ignore[override]
         cls, parent: DataSuiteCollector, *, name: str
-    ) -> "DataFileCollector":
+    ) -> DataFileCollector:
         return super().from_parent(parent, name=name)
 
-    def collect(self) -> Iterator["DataDrivenTestCase"]:
+    def collect(self) -> Iterator[DataDrivenTestCase]:
         yield from split_test_cases(
             parent=self,
             suite=self.parent.obj,

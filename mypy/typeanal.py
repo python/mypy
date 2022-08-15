@@ -1,5 +1,7 @@
 """Semantic analysis of types"""
 
+from __future__ import annotations
+
 import itertools
 from contextlib import contextmanager
 from itertools import chain
@@ -610,23 +612,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if tup is not None:
             # The class has a Tuple[...] base class so it will be
             # represented as a tuple type.
-            if args:
-                self.fail("Generic tuple types not supported", ctx)
-                return AnyType(TypeOfAny.from_error)
             if info.special_alias:
-                # We don't support generic tuple types yet.
-                return TypeAliasType(info.special_alias, [])
+                return TypeAliasType(info.special_alias, self.anal_array(args))
             return tup.copy_modified(items=self.anal_array(tup.items), fallback=instance)
         td = info.typeddict_type
         if td is not None:
             # The class has a TypedDict[...] base class so it will be
             # represented as a typeddict type.
-            if args:
-                self.fail("Generic TypedDict types not supported", ctx)
-                return AnyType(TypeOfAny.from_error)
             if info.special_alias:
-                # We don't support generic TypedDict types yet.
-                return TypeAliasType(info.special_alias, [])
+                return TypeAliasType(info.special_alias, self.anal_array(args))
             # Create a named TypedDictType
             return td.copy_modified(
                 item_types=self.anal_array(list(td.items.values())), fallback=instance
@@ -1575,10 +1569,16 @@ def set_any_tvars(
         type_of_any = TypeOfAny.from_error
     else:
         type_of_any = TypeOfAny.from_omitted_generics
-    if disallow_any:
+    if disallow_any and node.alias_tvars:
         assert fail is not None
-        otype = unexpanded_type or node.target
-        type_str = otype.name if isinstance(otype, UnboundType) else format_type_bare(otype)
+        if unexpanded_type:
+            type_str = (
+                unexpanded_type.name
+                if isinstance(unexpanded_type, UnboundType)
+                else format_type_bare(unexpanded_type)
+            )
+        else:
+            type_str = node.name
 
         fail(
             message_registry.BARE_GENERIC.format(quote_type_string(type_str)),
@@ -1610,7 +1610,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
     def __init__(
         self,
         lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-        scope: "TypeVarLikeScope",
+        scope: TypeVarLikeScope,
         *,
         include_callables: bool = True,
         include_bound_tvars: bool = False,
@@ -1677,7 +1677,7 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
         self,
         seen_nodes: Set[TypeAlias],
         lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-        scope: "TypeVarLikeScope",
+        scope: TypeVarLikeScope,
     ) -> None:
         self.seen_nodes = seen_nodes
         self.lookup = lookup
@@ -1720,7 +1720,7 @@ def detect_diverging_alias(
     node: TypeAlias,
     target: Type,
     lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-    scope: "TypeVarLikeScope",
+    scope: TypeVarLikeScope,
 ) -> bool:
     """This detects type aliases that will diverge during type checking.
 

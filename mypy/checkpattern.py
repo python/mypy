@@ -1,5 +1,7 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final
@@ -83,7 +85,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: "mypy.checker.TypeChecker"
+    chk: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Currently unused
@@ -101,9 +103,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     # non_sequence_match_type_names
     non_sequence_match_types: List[Type]
 
-    def __init__(
-        self, chk: "mypy.checker.TypeChecker", msg: MessageBuilder, plugin: Plugin
-    ) -> None:
+    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
@@ -690,7 +690,7 @@ def get_var(expr: Expression) -> Var:
     return node
 
 
-def get_type_range(typ: Type) -> "mypy.checker.TypeRange":
+def get_type_range(typ: Type) -> mypy.checker.TypeRange:
     typ = get_proper_type(typ)
     if (
         isinstance(typ, Instance)

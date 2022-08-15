@@ -1,5 +1,7 @@
 """Type inference constraints."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
 from typing_extensions import Final
 
@@ -96,7 +98,7 @@ def infer_constraints_for_callable(
     arg_types: Sequence[Optional[Type]],
     arg_kinds: List[ArgKind],
     formal_to_actual: List[List[int]],
-    context: "ArgumentInferContext",
+    context: ArgumentInferContext,
 ) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 
@@ -880,6 +882,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     ]
 
         if isinstance(actual, TupleType) and len(actual.items) == len(template.items):
+            if (
+                actual.partial_fallback.type.is_named_tuple
+                and template.partial_fallback.type.is_named_tuple
+            ):
+                # For named tuples using just the fallbacks usually gives better results.
+                return infer_constraints(
+                    template.partial_fallback, actual.partial_fallback, self.direction
+                )
             res: List[Constraint] = []
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i], actual.items[i], self.direction))

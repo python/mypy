@@ -5,6 +5,8 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
+from __future__ import annotations
+
 import itertools
 from typing import (
     Any,

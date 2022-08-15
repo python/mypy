@@ -1,5 +1,7 @@
 """Simple type inference for decorated functions during semantic analysis."""
 
+from __future__ import annotations
+
 from typing import Optional
 
 from mypy.nodes import ARG_POS, CallExpr, Decorator, Expression, FuncDef, RefExpr, Var

@@ -30,7 +30,7 @@ ENUM_VALUE_ACCESS: Final = {f"{prefix}.value" for prefix in ENUM_BASES} | {
 }
 
 
-def enum_name_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
+def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """This plugin refines the 'name' attribute in enums to act as if
     they were declared to be final.
 
@@ -68,7 +68,7 @@ def _first(it: Iterable[_T]) -> Optional[_T]:
 
 
 def _infer_value_type_with_auto_fallback(
-    ctx: "mypy.plugin.AttributeContext", proper_type: Optional[ProperType]
+    ctx: mypy.plugin.AttributeContext, proper_type: Optional[ProperType]
 ) -> Optional[Type]:
     """Figure out the type of an enum value accounting for `auto()`.
 
@@ -117,7 +117,7 @@ def _implements_new(info: TypeInfo) -> bool:
     return type_with_new.fullname not in ("enum.Enum", "enum.IntEnum", "enum.StrEnum")
 
 
-def enum_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
+def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """This plugin refines the 'value' attribute in enums to refer to
     the original underlying value. For example, suppose we have the
     following:

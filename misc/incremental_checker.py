@@ -31,6 +31,8 @@ To run this script starting from the commit id 2a432b:
     python3 misc/incremental_checker.py commit 2a432b
 """
 
+from __future__ import annotations
+
 import base64
 import json
 import os

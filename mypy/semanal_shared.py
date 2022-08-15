@@ -1,5 +1,7 @@
 """Shared definitions used by different parts of semantic analysis."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Callable, List, Optional, Union
 from typing_extensions import Final, Protocol
@@ -32,6 +34,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeVarId,
+    TypeVarLikeType,
     get_proper_type,
 )
 
@@ -124,6 +127,8 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     * Less need to pass around callback functions
     """
 
+    tvar_scope: TypeVarLikeScope
+
     @abstractmethod
     def lookup(
         self, name: str, ctx: Context, suppress_errors: bool = False
@@ -156,6 +161,10 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
     ) -> Optional[Type]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_and_bind_all_tvars(self, type_exprs: List[Expression]) -> List[TypeVarLikeType]:
         raise NotImplementedError
 
     @abstractmethod

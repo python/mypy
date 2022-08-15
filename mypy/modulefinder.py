@@ -3,6 +3,8 @@
 This builds on fscache.py; find_sources.py builds on top of this.
 """
 
+from __future__ import annotations
+
 import ast
 import collections
 import functools

@@ -1612,3 +1612,21 @@ class Foo(Enum):
 _testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
 _testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
 _testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined
+
+[case testTypeshedRecursiveTypesExample]
+# flags: --enable-recursive-aliases
+from typing import List, Union
+
+Recursive = Union[str, List["Recursive"]]
+
+def foo(r: Recursive) -> None:
+    if not isinstance(r, str):
+        if r:
+            foo(r[0])
+    if not isinstance(r, list):
+        r.casefold()
+
+foo("")
+foo(list(""))
+foo(list((list(""), "")))
+[out]

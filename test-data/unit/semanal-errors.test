@@ -1205,23 +1205,13 @@ def f() -> int: pass
 [builtins fixtures/property.pyi]
 [out]
 
-[case testInvalidArgCountForProperty]
-import typing
-class A:
-    @property
-    def f(self, x) -> int: pass  # E: Too many arguments
-    @property
-    def g() -> int: pass   # E: Method must have at least one argument
-[builtins fixtures/property.pyi]
-[out]
-
 [case testOverloadedProperty]
 from typing import overload
 class A:
-    @overload  # E: Decorated property not supported
+    @overload  # E: Decorators on top of @property are not supported
     @property
     def f(self) -> int: pass
-    @property  # E: Decorated property not supported
+    @property  # E: Only supported top decorator is @f.setter
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
@@ -1232,7 +1222,7 @@ from typing import overload
 class A:
     @overload  # E: An overloaded function outside a stub file must have an implementation
     def f(self) -> int: pass
-    @property  # E: Decorated property not supported
+    @property  # E: An overload can not be a property
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
@@ -1242,10 +1232,10 @@ class A:
 import typing
 def dec(f): pass
 class A:
-    @dec  # E: Decorated property not supported
+    @dec  # E: Decorators on top of @property are not supported
     @property
     def f(self) -> int: pass
-    @property  # E: Decorated property not supported
+    @property  # OK
     @dec
     def g(self) -> int: pass
 [builtins fixtures/property.pyi]

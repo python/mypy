@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os.path
 import sys
 import traceback
@@ -137,7 +139,7 @@ class ErrorWatcher:
 
     def __init__(
         self,
-        errors: "Errors",
+        errors: Errors,
         *,
         filter_errors: Union[bool, Callable[[str, ErrorInfo], bool]] = False,
         save_filtered_errors: bool = False,
@@ -147,7 +149,7 @@ class ErrorWatcher:
         self._filter = filter_errors
         self._filtered: Optional[List[ErrorInfo]] = [] if save_filtered_errors else None
 
-    def __enter__(self) -> "ErrorWatcher":
+    def __enter__(self) -> ErrorWatcher:
         self.errors._watchers.append(self)
         return self
 

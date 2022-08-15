@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, TypeVar, Union, cast
 
 from mypy.types import (
@@ -296,12 +298,20 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         items = self.expand_types_with_unpack(t.items)
         if isinstance(items, list):
-            return t.copy_modified(items=items)
+            fallback = t.partial_fallback.accept(self)
+            fallback = get_proper_type(fallback)
+            if not isinstance(fallback, Instance):
+                fallback = t.partial_fallback
+            return t.copy_modified(items=items, fallback=fallback)
         else:
             return items
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        return t.copy_modified(item_types=self.expand_types(t.items.values()))
+        fallback = t.fallback.accept(self)
+        fallback = get_proper_type(fallback)
+        if not isinstance(fallback, Instance):
+            fallback = t.fallback
+        return t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         # TODO: Verify this implementation is correct

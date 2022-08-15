@@ -1,5 +1,7 @@
 """Type checking of attribute access"""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Callable, Optional, Sequence, Union, cast
 
 from mypy import meet, message_registry, subtypes
@@ -85,7 +87,7 @@ class MemberContext:
         original_type: Type,
         context: Context,
         msg: MessageBuilder,
-        chk: "mypy.checker.TypeChecker",
+        chk: mypy.checker.TypeChecker,
         self_type: Optional[Type],
         module_symbol_table: Optional[SymbolTable] = None,
     ) -> None:
@@ -111,7 +113,7 @@ class MemberContext:
         messages: Optional[MessageBuilder] = None,
         self_type: Optional[Type] = None,
         is_lvalue: Optional[bool] = None,
-    ) -> "MemberContext":
+    ) -> MemberContext:
         mx = MemberContext(
             self.is_lvalue,
             self.is_super,
@@ -142,7 +144,7 @@ def analyze_member_access(
     msg: MessageBuilder,
     *,
     original_type: Type,
-    chk: "mypy.checker.TypeChecker",
+    chk: mypy.checker.TypeChecker,
     override_info: Optional[TypeInfo] = None,
     in_literal_context: bool = False,
     self_type: Optional[Type] = None,
@@ -329,6 +331,8 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
     assert isinstance(ret_type, ProperType)
     if isinstance(ret_type, TupleType):
         ret_type = tuple_fallback(ret_type)
+    if isinstance(ret_type, TypedDictType):
+        ret_type = ret_type.fallback
     if isinstance(ret_type, Instance):
         if not mx.is_operator:
             # When Python sees an operator (eg `3 == 4`), it automatically translates that
@@ -659,6 +663,18 @@ def instance_alias_type(alias: TypeAlias, named_type: Callable[[str], Instance])
     return expand_type_by_instance(tp, target)
 
 
+def is_instance_var(var: Var, info: TypeInfo) -> bool:
+    """Return if var is an instance variable according to PEP 526."""
+    return (
+        # check the type_info node is the var (not a decorated function, etc.)
+        var.name in info.names
+        and info.names[var.name].node is var
+        and not var.is_classvar
+        # variables without annotations are treated as classvar
+        and not var.is_inferred
+    )
+
+
 def analyze_var(
     name: str,
     var: Var,
@@ -690,7 +706,12 @@ def analyze_var(
         t = get_proper_type(expand_type_by_instance(typ, itype))
         result: Type = t
         typ = get_proper_type(typ)
-        if var.is_initialized_in_class and isinstance(typ, FunctionLike) and not typ.is_type_obj():
+        if (
+            var.is_initialized_in_class
+            and (not is_instance_var(var, info) or mx.is_operator)
+            and isinstance(typ, FunctionLike)
+            and not typ.is_type_obj()
+        ):
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:

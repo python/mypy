@@ -39,7 +39,7 @@ def isproperty(o: object, attr: str) -> bool:
 
 def get_edge_candidates(o: object) -> Iterator[Tuple[object, object]]:
     # use getattr because mypyc expects dict, not mappingproxy
-    if "__getattribute__" in getattr(type(o), "__dict__"):  # noqa
+    if "__getattribute__" in getattr(type(o), "__dict__"):  # noqa: B009
         return
     if type(o) not in COLLECTION_TYPE_BLACKLIST:
         for attr in dir(o):

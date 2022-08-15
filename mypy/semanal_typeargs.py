@@ -5,6 +5,8 @@ types until the end of semantic analysis, and these break various type
 operations, including subtype checks.
 """
 
+from __future__ import annotations
+
 from typing import List, Optional, Set
 
 from mypy import errorcodes as codes, message_registry

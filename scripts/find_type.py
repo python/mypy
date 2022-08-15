@@ -23,6 +23,8 @@
 #
 # For an Emacs example, see misc/macs.el.
 
+from __future__ import annotations
+
 import os.path
 import re
 import subprocess

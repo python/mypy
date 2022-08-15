@@ -3,6 +3,9 @@
 This module provides several functions to generate better stubs using
 docstrings and Sphinx docs (.rst files).
 """
+
+from __future__ import annotations
+
 import contextlib
 import io
 import re
