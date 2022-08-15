@@ -182,7 +182,7 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
         and len(ctx.args[0]) == 1
         and isinstance(ctx.args[0][0], StrExpr)
         and len(signature.arg_types) == 2
-        and len(signature.variables) == 1
+        and len(signature.variables) == 2
         and len(ctx.args[1]) == 1
     ):
         key = ctx.args[0][0].value

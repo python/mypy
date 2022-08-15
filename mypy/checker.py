@@ -1329,7 +1329,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 "but must return a subtype of",
             )
         elif not isinstance(
-            get_proper_type(bound_type.ret_type), (AnyType, Instance, TupleType, SelfType)
+            get_proper_type(bound_type.ret_type), (AnyType, Instance, TupleType)
         ):
             self.fail(
                 message_registry.NON_INSTANCE_NEW_TYPE.format(format_type(bound_type.ret_type)),
@@ -5761,7 +5761,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             n = self.modules[parts[0]]
             for i in range(1, len(parts) - 1):
                 sym = n.names.get(parts[i])
-                assert sym is not None, f"Internal error: attempted lookup of unknown name"
+                assert sym is not None, "Internal error: attempted lookup of unknown name"
                 n = cast(MypyFile, sym.node)
             last = parts[-1]
             if last in n.names:

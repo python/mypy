@@ -1299,10 +1299,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             for var in fun_type.variables:
                 if not isinstance(var, SelfType):
                     var_node = self.lookup_qualified(var.name, defn)
+
                     assert var_node, "Binding for function type variable not found within function"
+
                     var_expr = var_node.node
-                    # if isinstance(var_expr, Var) and var_expr.fullname in SELF_TYPE_NAMES:
-                    #     var_expr = TypeVarExpr("Self", var_expr.fullname, [], var.upper_bound)
+
                     assert isinstance(var_expr, TypeVarLikeExpr)
                     self.tvar_scope.bind_new(var.name, var_expr)
                 else:
