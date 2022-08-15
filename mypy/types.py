@@ -1,5 +1,7 @@
 """Classes for representing mypy types."""
 
+from __future__ import annotations
+
 import sys
 from abc import abstractmethod
 from typing import (
@@ -181,7 +183,7 @@ class TypeOfAny:
     suggestion_engine: Final = 9
 
 
-def deserialize_type(data: Union[JsonDict, str]) -> "Type":
+def deserialize_type(data: Union[JsonDict, str]) -> Type:
     if isinstance(data, str):
         return Instance.deserialize(data)
     classname = data[".class"]
@@ -216,7 +218,7 @@ class Type(mypy.nodes.Context):
     def can_be_false_default(self) -> bool:
         return True
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         raise RuntimeError("Not implemented")
 
     def __repr__(self) -> str:
@@ -226,7 +228,7 @@ class Type(mypy.nodes.Context):
         raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "Type":
+    def deserialize(cls, data: JsonDict) -> Type:
         raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
 
     def is_singleton_type(self) -> bool:
@@ -279,14 +281,14 @@ class TypeAliasType(Type):
             self.alias.target, self.alias.alias_tvars, self.args, self.line, self.column
         )
 
-    def _partial_expansion(self) -> Tuple["ProperType", bool]:
+    def _partial_expansion(self) -> Tuple[ProperType, bool]:
         # Private method mostly for debugging and testing.
         unroller = UnrollAliasVisitor(set())
         unrolled = self.accept(unroller)
         assert isinstance(unrolled, ProperType)
         return unrolled, unroller.recursed
 
-    def expand_all_if_possible(self) -> Optional["ProperType"]:
+    def expand_all_if_possible(self) -> Optional[ProperType]:
         """Attempt a full expansion of the type alias (including nested aliases).
 
         If the expansion is not possible, i.e. the alias is (mutually-)recursive,
@@ -318,7 +320,7 @@ class TypeAliasType(Type):
             return self.alias.target.can_be_false
         return super().can_be_false_default()
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_alias_type(self)
 
     def __hash__(self) -> int:
@@ -340,7 +342,7 @@ class TypeAliasType(Type):
         return data
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "TypeAliasType":
+    def deserialize(cls, data: JsonDict) -> TypeAliasType:
         assert data[".class"] == "TypeAliasType"
         args: List[Type] = []
         if "args" in data:
@@ -351,7 +353,7 @@ class TypeAliasType(Type):
         alias.type_ref = data["type_ref"]
         return alias
 
-    def copy_modified(self, *, args: Optional[List[Type]] = None) -> "TypeAliasType":
+    def copy_modified(self, *, args: Optional[List[Type]] = None) -> TypeAliasType:
         return TypeAliasType(
             self.alias, args if args is not None else self.args.copy(), self.line, self.column
         )
@@ -384,7 +386,7 @@ class RequiredType(Type):
         else:
             return f"NotRequired[{self.item}]"
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return self.item.accept(visitor)
 
 
@@ -429,7 +431,7 @@ class TypeVarId:
         self.namespace = namespace
 
     @staticmethod
-    def new(meta_level: int) -> "TypeVarId":
+    def new(meta_level: int) -> TypeVarId:
         raw_id = TypeVarId.next_raw_id
         TypeVarId.next_raw_id += 1
         return TypeVarId(raw_id, meta_level)
@@ -487,7 +489,7 @@ class TypeVarLikeType(ProperType):
         raise NotImplementedError
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "TypeVarLikeType":
+    def deserialize(cls, data: JsonDict) -> TypeVarLikeType:
         raise NotImplementedError
 
 
@@ -516,7 +518,7 @@ class TypeVarType(TypeVarLikeType):
         self.variance = variance
 
     @staticmethod
-    def new_unification_variable(old: "TypeVarType") -> "TypeVarType":
+    def new_unification_variable(old: TypeVarType) -> TypeVarType:
         new_id = TypeVarId.new(meta_level=1)
         return TypeVarType(
             old.name,
@@ -529,7 +531,7 @@ class TypeVarType(TypeVarLikeType):
             old.column,
         )
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var(self)
 
     def __hash__(self) -> int:
@@ -554,7 +556,7 @@ class TypeVarType(TypeVarLikeType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "TypeVarType":
+    def deserialize(cls, data: JsonDict) -> TypeVarType:
         assert data[".class"] == "TypeVarType"
         return TypeVarType(
             data["name"],
@@ -596,7 +598,7 @@ class ParamSpecType(TypeVarLikeType):
     __slots__ = ("flavor", "prefix")
 
     flavor: int
-    prefix: "Parameters"
+    prefix: Parameters
 
     def __init__(
         self,
@@ -608,14 +610,14 @@ class ParamSpecType(TypeVarLikeType):
         *,
         line: int = -1,
         column: int = -1,
-        prefix: Optional["Parameters"] = None,
+        prefix: Optional[Parameters] = None,
     ) -> None:
         super().__init__(name, fullname, id, upper_bound, line=line, column=column)
         self.flavor = flavor
         self.prefix = prefix or Parameters([], [], [])
 
     @staticmethod
-    def new_unification_variable(old: "ParamSpecType") -> "ParamSpecType":
+    def new_unification_variable(old: ParamSpecType) -> ParamSpecType:
         new_id = TypeVarId.new(meta_level=1)
         return ParamSpecType(
             old.name,
@@ -628,7 +630,7 @@ class ParamSpecType(TypeVarLikeType):
             prefix=old.prefix,
         )
 
-    def with_flavor(self, flavor: int) -> "ParamSpecType":
+    def with_flavor(self, flavor: int) -> ParamSpecType:
         return ParamSpecType(
             self.name,
             self.fullname,
@@ -643,8 +645,8 @@ class ParamSpecType(TypeVarLikeType):
         *,
         id: Bogus[Union[TypeVarId, int]] = _dummy,
         flavor: Bogus[int] = _dummy,
-        prefix: Bogus["Parameters"] = _dummy,
-    ) -> "ParamSpecType":
+        prefix: Bogus[Parameters] = _dummy,
+    ) -> ParamSpecType:
         return ParamSpecType(
             self.name,
             self.fullname,
@@ -656,7 +658,7 @@ class ParamSpecType(TypeVarLikeType):
             prefix=prefix if prefix is not _dummy else self.prefix,
         )
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_param_spec(self)
 
     def name_with_suffix(self) -> str:
@@ -689,7 +691,7 @@ class ParamSpecType(TypeVarLikeType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "ParamSpecType":
+    def deserialize(cls, data: JsonDict) -> ParamSpecType:
         assert data[".class"] == "ParamSpecType"
         return ParamSpecType(
             data["name"],
@@ -718,13 +720,13 @@ class TypeVarTupleType(TypeVarLikeType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "TypeVarTupleType":
+    def deserialize(cls, data: JsonDict) -> TypeVarTupleType:
         assert data[".class"] == "TypeVarTupleType"
         return TypeVarTupleType(
             data["name"], data["fullname"], data["id"], deserialize_type(data["upper_bound"])
         )
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var_tuple(self)
 
     def __hash__(self) -> int:
@@ -736,7 +738,7 @@ class TypeVarTupleType(TypeVarLikeType):
         return self.id == other.id
 
     @staticmethod
-    def new_unification_variable(old: "TypeVarTupleType") -> "TypeVarTupleType":
+    def new_unification_variable(old: TypeVarTupleType) -> TypeVarTupleType:
         new_id = TypeVarId.new(meta_level=1)
         return TypeVarTupleType(
             old.name, old.fullname, new_id, old.upper_bound, line=old.line, column=old.column
@@ -792,7 +794,7 @@ class UnboundType(ProperType):
         self.original_str_expr = original_str_expr
         self.original_str_fallback = original_str_fallback
 
-    def copy_modified(self, args: Bogus[Optional[Sequence[Type]]] = _dummy) -> "UnboundType":
+    def copy_modified(self, args: Bogus[Optional[Sequence[Type]]] = _dummy) -> UnboundType:
         if args is _dummy:
             args = self.args
         return UnboundType(
@@ -806,7 +808,7 @@ class UnboundType(ProperType):
             original_str_fallback=self.original_str_fallback,
         )
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_unbound_type(self)
 
     def __hash__(self) -> int:
@@ -833,7 +835,7 @@ class UnboundType(ProperType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "UnboundType":
+    def deserialize(cls, data: JsonDict) -> UnboundType:
         assert data[".class"] == "UnboundType"
         return UnboundType(
             data["name"],
@@ -868,7 +870,7 @@ class CallableArgument(ProperType):
         self.name = name
         self.constructor = constructor
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_callable_argument(self)
 
@@ -893,7 +895,7 @@ class TypeList(ProperType):
         super().__init__(line, column)
         self.items = items
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
 
@@ -923,14 +925,14 @@ class UnpackType(ProperType):
         super().__init__(line, column)
         self.type = typ
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_unpack_type(self)
 
     def serialize(self) -> JsonDict:
         return {".class": "UnpackType", "type": self.type.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "UnpackType":
+    def deserialize(cls, data: JsonDict) -> UnpackType:
         assert data[".class"] == "UnpackType"
         typ = data["type"]
         return UnpackType(deserialize_type(typ))
@@ -944,7 +946,7 @@ class AnyType(ProperType):
     def __init__(
         self,
         type_of_any: int,
-        source_any: Optional["AnyType"] = None,
+        source_any: Optional[AnyType] = None,
         missing_import_name: Optional[str] = None,
         line: int = -1,
         column: int = -1,
@@ -976,15 +978,15 @@ class AnyType(ProperType):
     def is_from_error(self) -> bool:
         return self.type_of_any == TypeOfAny.from_error
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_any(self)
 
     def copy_modified(
         self,
         # Mark with Bogus because _dummy is just an object (with type Any)
         type_of_any: Bogus[int] = _dummy,
-        original_any: Bogus[Optional["AnyType"]] = _dummy,
-    ) -> "AnyType":
+        original_any: Bogus[Optional[AnyType]] = _dummy,
+    ) -> AnyType:
         if type_of_any is _dummy:
             type_of_any = self.type_of_any
         if original_any is _dummy:
@@ -1012,7 +1014,7 @@ class AnyType(ProperType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "AnyType":
+    def deserialize(cls, data: JsonDict) -> AnyType:
         assert data[".class"] == "AnyType"
         source = data["source_any"]
         return AnyType(
@@ -1055,7 +1057,7 @@ class UninhabitedType(ProperType):
     def can_be_false_default(self) -> bool:
         return False
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_uninhabited_type(self)
 
     def __hash__(self) -> int:
@@ -1068,7 +1070,7 @@ class UninhabitedType(ProperType):
         return {".class": "UninhabitedType", "is_noreturn": self.is_noreturn}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "UninhabitedType":
+    def deserialize(cls, data: JsonDict) -> UninhabitedType:
         assert data[".class"] == "UninhabitedType"
         return UninhabitedType(is_noreturn=data["is_noreturn"])
 
@@ -1093,14 +1095,14 @@ class NoneType(ProperType):
     def __eq__(self, other: object) -> bool:
         return isinstance(other, NoneType)
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_none_type(self)
 
     def serialize(self) -> JsonDict:
         return {".class": "NoneType"}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "NoneType":
+    def deserialize(cls, data: JsonDict) -> NoneType:
         assert data[".class"] == "NoneType"
         return NoneType()
 
@@ -1122,7 +1124,7 @@ class ErasedType(ProperType):
 
     __slots__ = ()
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_erased_type(self)
 
 
@@ -1140,14 +1142,14 @@ class DeletedType(ProperType):
         super().__init__(line, column)
         self.source = source
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_deleted_type(self)
 
     def serialize(self) -> JsonDict:
         return {".class": "DeletedType", "source": self.source}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "DeletedType":
+    def deserialize(cls, data: JsonDict) -> DeletedType:
         assert data[".class"] == "DeletedType"
         return DeletedType(data["source"])
 
@@ -1196,7 +1198,7 @@ class Instance(ProperType):
         line: int = -1,
         column: int = -1,
         *,
-        last_known_value: Optional["LiteralType"] = None,
+        last_known_value: Optional[LiteralType] = None,
     ) -> None:
         super().__init__(line, column)
         self.type = typ
@@ -1254,7 +1256,7 @@ class Instance(ProperType):
         # Cached hash value
         self._hash = -1
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
@@ -1284,7 +1286,7 @@ class Instance(ProperType):
         return data
 
     @classmethod
-    def deserialize(cls, data: Union[JsonDict, str]) -> "Instance":
+    def deserialize(cls, data: Union[JsonDict, str]) -> Instance:
         if isinstance(data, str):
             inst = Instance(NOT_READY, [])
             inst.type_ref = data
@@ -1305,8 +1307,8 @@ class Instance(ProperType):
         self,
         *,
         args: Bogus[List[Type]] = _dummy,
-        last_known_value: Bogus[Optional["LiteralType"]] = _dummy,
-    ) -> "Instance":
+        last_known_value: Bogus[Optional[LiteralType]] = _dummy,
+    ) -> Instance:
         new = Instance(
             self.type,
             args if args is not _dummy else self.args,
@@ -1360,11 +1362,11 @@ class FunctionLike(ProperType):
 
     @property
     @abstractmethod
-    def items(self) -> List["CallableType"]:
+    def items(self) -> List[CallableType]:
         pass
 
     @abstractmethod
-    def with_name(self, name: str) -> "FunctionLike":
+    def with_name(self, name: str) -> FunctionLike:
         pass
 
     @abstractmethod
@@ -1424,7 +1426,7 @@ class Parameters(ProperType):
         *,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
         is_ellipsis_args: Bogus[bool] = _dummy,
-    ) -> "Parameters":
+    ) -> Parameters:
         return Parameters(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -1521,7 +1523,7 @@ class Parameters(ProperType):
         else:
             return None
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_parameters(self)
 
     def serialize(self) -> JsonDict:
@@ -1534,7 +1536,7 @@ class Parameters(ProperType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "Parameters":
+    def deserialize(cls, data: JsonDict) -> Parameters:
         assert data[".class"] == "Parameters"
         return Parameters(
             [deserialize_type(t) for t in data["arg_types"]],
@@ -1678,7 +1680,7 @@ class CallableType(FunctionLike):
         def_extras: Bogus[Dict[str, Any]] = _dummy,
         type_guard: Bogus[Optional[Type]] = _dummy,
         from_concatenate: Bogus[bool] = _dummy,
-    ) -> "CallableType":
+    ) -> CallableType:
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -1741,10 +1743,10 @@ class CallableType(FunctionLike):
         assert isinstance(ret, Instance)
         return ret.type
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_callable_type(self)
 
-    def with_name(self, name: str) -> "CallableType":
+    def with_name(self, name: str) -> CallableType:
         """Return a copy of this type with the specified name."""
         return self.copy_modified(ret_type=self.ret_type, name=name)
 
@@ -1831,7 +1833,7 @@ class CallableType(FunctionLike):
             return None
 
     @property
-    def items(self) -> List["CallableType"]:
+    def items(self) -> List[CallableType]:
         return [self]
 
     def is_generic(self) -> bool:
@@ -1872,8 +1874,8 @@ class CallableType(FunctionLike):
         )
 
     def expand_param_spec(
-        self, c: Union["CallableType", Parameters], no_prefix: bool = False
-    ) -> "CallableType":
+        self, c: Union[CallableType, Parameters], no_prefix: bool = False
+    ) -> CallableType:
         variables = c.variables
 
         if no_prefix:
@@ -1947,7 +1949,7 @@ class CallableType(FunctionLike):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "CallableType":
+    def deserialize(cls, data: JsonDict) -> CallableType:
         assert data[".class"] == "CallableType"
         # TODO: Set definition to the containing SymbolNode?
         return CallableType(
@@ -2004,7 +2006,7 @@ class Overloaded(FunctionLike):
         # query only (any) one of them.
         return self._items[0].type_object()
 
-    def with_name(self, name: str) -> "Overloaded":
+    def with_name(self, name: str) -> Overloaded:
         ni: List[CallableType] = []
         for it in self._items:
             ni.append(it.with_name(name))
@@ -2013,7 +2015,7 @@ class Overloaded(FunctionLike):
     def get_name(self) -> Optional[str]:
         return self._items[0].name
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_overloaded(self)
 
     def __hash__(self) -> int:
@@ -2028,7 +2030,7 @@ class Overloaded(FunctionLike):
         return {".class": "Overloaded", "items": [t.serialize() for t in self.items]}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "Overloaded":
+    def deserialize(cls, data: JsonDict) -> Overloaded:
         assert data[".class"] == "Overloaded"
         return Overloaded([CallableType.deserialize(t) for t in data["items"]])
 
@@ -2089,7 +2091,7 @@ class TupleType(ProperType):
     def length(self) -> int:
         return len(self.items)
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_tuple_type(self)
 
     def __hash__(self) -> int:
@@ -2109,7 +2111,7 @@ class TupleType(ProperType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "TupleType":
+    def deserialize(cls, data: JsonDict) -> TupleType:
         assert data[".class"] == "TupleType"
         return TupleType(
             [deserialize_type(t) for t in data["items"]],
@@ -2119,16 +2121,14 @@ class TupleType(ProperType):
 
     def copy_modified(
         self, *, fallback: Optional[Instance] = None, items: Optional[List[Type]] = None
-    ) -> "TupleType":
+    ) -> TupleType:
         if fallback is None:
             fallback = self.partial_fallback
         if items is None:
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(
-        self, begin: Optional[int], end: Optional[int], stride: Optional[int]
-    ) -> "TupleType":
+    def slice(self, begin: Optional[int], end: Optional[int], stride: Optional[int]) -> TupleType:
         return TupleType(
             self.items[begin:end:stride],
             self.partial_fallback,
@@ -2179,7 +2179,7 @@ class TypedDictType(ProperType):
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)
 
     def __hash__(self) -> int:
@@ -2205,7 +2205,7 @@ class TypedDictType(ProperType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "TypedDictType":
+    def deserialize(cls, data: JsonDict) -> TypedDictType:
         assert data[".class"] == "TypedDictType"
         return TypedDictType(
             {n: deserialize_type(t) for (n, t) in data["items"]},
@@ -2216,7 +2216,7 @@ class TypedDictType(ProperType):
     def is_anonymous(self) -> bool:
         return self.fallback.type.fullname in TPDICT_FB_NAMES
 
-    def as_anonymous(self) -> "TypedDictType":
+    def as_anonymous(self) -> TypedDictType:
         if self.is_anonymous():
             return self
         assert self.fallback.type.typeddict_type is not None
@@ -2228,7 +2228,7 @@ class TypedDictType(ProperType):
         fallback: Optional[Instance] = None,
         item_types: Optional[List[Type]] = None,
         required_keys: Optional[Set[str]] = None,
-    ) -> "TypedDictType":
+    ) -> TypedDictType:
         if fallback is None:
             fallback = self.fallback
         if item_types is None:
@@ -2243,19 +2243,17 @@ class TypedDictType(ProperType):
         anonymous = self.as_anonymous()
         return anonymous.fallback
 
-    def names_are_wider_than(self, other: "TypedDictType") -> bool:
+    def names_are_wider_than(self, other: TypedDictType) -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
 
-    def zip(self, right: "TypedDictType") -> Iterable[Tuple[str, Type, Type]]:
+    def zip(self, right: TypedDictType) -> Iterable[Tuple[str, Type, Type]]:
         left = self
         for (item_name, left_item_type) in left.items.items():
             right_item_type = right.items.get(item_name)
             if right_item_type is not None:
                 yield (item_name, left_item_type, right_item_type)
 
-    def zipall(
-        self, right: "TypedDictType"
-    ) -> Iterable[Tuple[str, Optional[Type], Optional[Type]]]:
+    def zipall(self, right: TypedDictType) -> Iterable[Tuple[str, Optional[Type], Optional[Type]]]:
         left = self
         for (item_name, left_item_type) in left.items.items():
             right_item_type = right.items.get(item_name)
@@ -2328,7 +2326,7 @@ class RawExpressionType(ProperType):
     def simple_name(self) -> str:
         return self.base_type_name.replace("builtins.", "")
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_raw_expression_type(self)
 
@@ -2380,7 +2378,7 @@ class LiteralType(ProperType):
     def can_be_true_default(self) -> bool:
         return bool(self.value)
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_literal_type(self)
 
     def __hash__(self) -> int:
@@ -2429,7 +2427,7 @@ class LiteralType(ProperType):
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "LiteralType":
+    def deserialize(cls, data: JsonDict) -> LiteralType:
         assert data[".class"] == "LiteralType"
         return LiteralType(value=data["value"], fallback=Instance.deserialize(data["fallback"]))
 
@@ -2451,7 +2449,7 @@ class StarType(ProperType):
         super().__init__(line, column)
         self.type = type
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_star_type(self)
 
@@ -2513,7 +2511,7 @@ class UnionType(ProperType):
     def length(self) -> int:
         return len(self.items)
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_union_type(self)
 
     def has_readable_member(self, name: str) -> bool:
@@ -2539,7 +2537,7 @@ class UnionType(ProperType):
         return {".class": "UnionType", "items": [t.serialize() for t in self.items]}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "UnionType":
+    def deserialize(cls, data: JsonDict) -> UnionType:
         assert data[".class"] == "UnionType"
         return UnionType([deserialize_type(t) for t in data["items"]])
 
@@ -2570,16 +2568,16 @@ class PartialType(ProperType):
 
     def __init__(
         self,
-        type: "Optional[mypy.nodes.TypeInfo]",
-        var: "mypy.nodes.Var",
-        value_type: "Optional[Instance]" = None,
+        type: Optional[mypy.nodes.TypeInfo],
+        var: mypy.nodes.Var,
+        value_type: Optional[Instance] = None,
     ) -> None:
         super().__init__()
         self.type = type
         self.var = var
         self.value_type = value_type
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_partial_type(self)
 
 
@@ -2593,7 +2591,7 @@ class EllipsisType(ProperType):
 
     __slots__ = ()
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_ellipsis_type(self)
 
@@ -2659,7 +2657,7 @@ class TypeType(ProperType):
             )
         return TypeType(item, line=line, column=column)  # type: ignore[arg-type]
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_type(self)
 
     def __hash__(self) -> int:
@@ -2702,7 +2700,7 @@ class PlaceholderType(ProperType):
         self.fullname = fullname  # Must be a valid full name of an actual node (or None).
         self.args = args
 
-    def accept(self, visitor: "TypeVisitor[T]") -> T:
+    def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_placeholder_type(self)
 

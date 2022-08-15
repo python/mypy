@@ -28,6 +28,8 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
+from __future__ import annotations
+
 import os
 import stat
 from typing import Dict, List, Set

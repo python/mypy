@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import DefaultDict, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
@@ -234,7 +236,7 @@ class ConditionalTypeBinder:
         return result
 
     @contextmanager
-    def accumulate_type_assignments(self) -> "Iterator[Assigns]":
+    def accumulate_type_assignments(self) -> Iterator[Assigns]:
         """Push a new map to collect assigned types in multiassign from union.
 
         If this map is not None, actual binding is deferred until all items in

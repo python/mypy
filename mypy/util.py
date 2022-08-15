@@ -1,5 +1,7 @@
 """Utility functions with no non-trivial dependencies."""
 
+from __future__ import annotations
+
 import hashlib
 import io
 import os
@@ -346,7 +348,7 @@ def correct_relative_import(
 fields_cache: Final[Dict[Type[object], List[str]]] = {}
 
 
-def get_class_descriptors(cls: "Type[object]") -> Sequence[str]:
+def get_class_descriptors(cls: Type[object]) -> Sequence[str]:
     import inspect  # Lazy import for minor startup speed win
 
     # Maintain a cache of type -> attributes defined by descriptors in the class

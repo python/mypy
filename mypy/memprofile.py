@@ -4,6 +4,8 @@ This is tailored to mypy and knows (a little) about which list objects are
 owned by particular AST nodes, etc.
 """
 
+from __future__ import annotations
+
 import gc
 import sys
 from collections import defaultdict

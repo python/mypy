@@ -1,5 +1,7 @@
 """Mypy type checker."""
 
+from __future__ import annotations
+
 import fnmatch
 import itertools
 from collections import defaultdict
@@ -301,7 +303,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     pattern_checker: PatternChecker
 
     tscope: Scope
-    scope: "CheckerScope"
+    scope: CheckerScope
     # Stack of function return types
     return_types: List[Type]
     # Flags; true for dynamically typed functions
@@ -5966,7 +5968,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type("builtins.function"))
 
-    def push_type_map(self, type_map: "TypeMap") -> None:
+    def push_type_map(self, type_map: TypeMap) -> None:
         if type_map is None:
             self.binder.unreachable()
         else:

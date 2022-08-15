@@ -4,6 +4,8 @@
 The public interface is via the mypy.stubgen module.
 """
 
+from __future__ import annotations
+
 import importlib
 import inspect
 import os.path

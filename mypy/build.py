@@ -10,6 +10,8 @@ The function build() is the main interface to this module.
 """
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
+from __future__ import annotations
+
 import contextlib
 import errno
 import gc
@@ -132,7 +134,7 @@ class BuildResult:
       errors:  List of error messages.
     """
 
-    def __init__(self, manager: "BuildManager", graph: Graph) -> None:
+    def __init__(self, manager: BuildManager, graph: Graph) -> None:
         self.manager = manager
         self.graph = graph
         self.files = manager.modules
@@ -600,7 +602,7 @@ class BuildManager:
         search_paths: SearchPaths,
         ignore_prefix: str,
         source_set: BuildSourceSet,
-        reports: "Optional[Reports]",
+        reports: Optional[Reports],
         options: Options,
         version_id: str,
         plugin: Plugin,
@@ -1857,7 +1859,7 @@ class State:
     import_context: List[Tuple[str, int]]
 
     # The State from which this module was imported, if any
-    caller_state: Optional["State"] = None
+    caller_state: Optional[State] = None
 
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
@@ -1896,9 +1898,9 @@ class State:
         path: Optional[str],
         source: Optional[str],
         manager: BuildManager,
-        caller_state: "Optional[State]" = None,
+        caller_state: Optional[State] = None,
         caller_line: int = 0,
-        ancestor_for: "Optional[State]" = None,
+        ancestor_for: Optional[State] = None,
         root_source: bool = False,
         # If `temporary` is True, this State is being created to just
         # quickly parse/load the tree, without an intention to further
@@ -2545,9 +2547,9 @@ def find_module_and_diagnose(
     manager: BuildManager,
     id: str,
     options: Options,
-    caller_state: "Optional[State]" = None,
+    caller_state: Optional[State] = None,
     caller_line: int = 0,
-    ancestor_for: "Optional[State]" = None,
+    ancestor_for: Optional[State] = None,
     root_source: bool = False,
     skip_diagnose: bool = False,
 ) -> Tuple[str, str]:
@@ -2765,7 +2767,7 @@ def skipping_module(
     manager.errors.set_import_context(save_import_context)
 
 
-def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: "State") -> None:
+def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: State) -> None:
     """Produce an error for an ancestor ignored due to --follow_imports=error"""
     # TODO: Read the path (the __init__.py file) and return
     # immediately if it's empty or only contains comments.

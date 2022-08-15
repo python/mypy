@@ -43,6 +43,8 @@ print('\nExit status:', result[2])
 
 """
 
+from __future__ import annotations
+
 import sys
 from io import StringIO
 from typing import Callable, List, TextIO, Tuple

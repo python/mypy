@@ -1,5 +1,7 @@
 """Semantic analysis of TypedDict definitions."""
 
+from __future__ import annotations
+
 from typing import List, Optional, Set, Tuple
 from typing_extensions import Final
 

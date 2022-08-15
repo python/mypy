@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Iterable, Optional, Tuple, Union
 from typing_extensions import Final
 

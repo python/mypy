@@ -3,6 +3,8 @@
 This is conceptually part of mypy.semanal.
 """
 
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple, cast
 from typing_extensions import Final

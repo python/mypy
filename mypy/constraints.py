@@ -1,5 +1,7 @@
 """Type inference constraints."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
 from typing_extensions import Final
 
@@ -96,7 +98,7 @@ def infer_constraints_for_callable(
     arg_types: Sequence[Optional[Type]],
     arg_kinds: List[ArgKind],
     formal_to_actual: List[List[int]],
-    context: "ArgumentInferContext",
+    context: ArgumentInferContext,
 ) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 

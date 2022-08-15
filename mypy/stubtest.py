@@ -4,6 +4,8 @@ Verify that various things in stubs are consistent with how things behave at run
 
 """
 
+from __future__ import annotations
+
 import argparse
 import collections.abc
 import copy
@@ -604,7 +606,7 @@ class Signature(Generic[T]):
         return ret
 
     @staticmethod
-    def from_funcitem(stub: nodes.FuncItem) -> "Signature[nodes.Argument]":
+    def from_funcitem(stub: nodes.FuncItem) -> Signature[nodes.Argument]:
         stub_sig: Signature[nodes.Argument] = Signature()
         stub_args = maybe_strip_cls(stub.name, stub.arguments)
         for stub_arg in stub_args:
@@ -621,7 +623,7 @@ class Signature(Generic[T]):
         return stub_sig
 
     @staticmethod
-    def from_inspect_signature(signature: inspect.Signature) -> "Signature[inspect.Parameter]":
+    def from_inspect_signature(signature: inspect.Signature) -> Signature[inspect.Parameter]:
         runtime_sig: Signature[inspect.Parameter] = Signature()
         for runtime_arg in signature.parameters.values():
             if runtime_arg.kind in (
@@ -640,7 +642,7 @@ class Signature(Generic[T]):
         return runtime_sig
 
     @staticmethod
-    def from_overloadedfuncdef(stub: nodes.OverloadedFuncDef) -> "Signature[nodes.Argument]":
+    def from_overloadedfuncdef(stub: nodes.OverloadedFuncDef) -> Signature[nodes.Argument]:
         """Returns a Signature from an OverloadedFuncDef.
 
         If life were simple, to verify_overloadedfuncdef, we'd just verify_funcitem for each of its
