@@ -1255,14 +1255,13 @@ def process_options(
     disabled_codes = set(options.disable_error_code)
     enabled_codes = set(options.enable_error_code)
 
-    valid_error_codes = set(error_codes.keys())
-
-    invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
-    if invalid_codes:
-        parser.error(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
-
-    options.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
-    options.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+    # Plugins might define own error codes later, only load those we already know about here
+    options.disabled_error_codes |= {
+        error_codes[code] for code in disabled_codes if code in error_codes
+    }
+    options.enabled_error_codes |= {
+        error_codes[code] for code in enabled_codes if code in error_codes
+    }
 
     # Enabling an error code always overrides disabling
     options.disabled_error_codes -= options.enabled_error_codes
