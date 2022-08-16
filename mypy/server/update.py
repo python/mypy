@@ -118,7 +118,7 @@ import os
 import sys
 import time
 from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.build import (
     DEBUG_FINE_GRAINED,
@@ -540,7 +540,7 @@ class BlockedUpdate(NamedTuple):
     messages: List[str]
 
 
-UpdateResult = Union[NormalUpdate, BlockedUpdate]
+UpdateResult: _TypeAlias = Union[NormalUpdate, BlockedUpdate]
 
 
 def update_module_isolated(

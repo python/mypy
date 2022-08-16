@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.messages import format_type
 from mypy.nodes import ARG_POS, Argument, Block, ClassDef, Context, SymbolTable, TypeInfo, Var
@@ -76,7 +76,7 @@ def make_fake_register_class_instance(
     return Instance(info, type_args)
 
 
-PluginContext = Union[FunctionContext, MethodContext]
+PluginContext: _TypeAlias = Union[FunctionContext, MethodContext]
 
 
 def fail(ctx: PluginContext, msg: str, context: Optional[Context]) -> None:
