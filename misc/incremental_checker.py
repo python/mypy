@@ -45,13 +45,14 @@ import textwrap
 import time
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from typing import Any, Dict, List, Optional, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 
-CACHE_PATH = ".incremental_checker_cache.json"
-MYPY_REPO_URL = "https://github.com/python/mypy.git"
-MYPY_TARGET_FILE = "mypy"
-DAEMON_CMD = ["python3", "-m", "mypy.dmypy"]
+CACHE_PATH: Final = ".incremental_checker_cache.json"
+MYPY_REPO_URL: Final = "https://github.com/python/mypy.git"
+MYPY_TARGET_FILE: Final = "mypy"
+DAEMON_CMD: Final = ["python3", "-m", "mypy.dmypy"]
 
-JsonDict = Dict[str, Any]
+JsonDict: _TypeAlias = Dict[str, Any]
 
 
 def print_offset(text: str, indent_length: int = 4) -> None:

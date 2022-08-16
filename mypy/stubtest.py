@@ -1176,7 +1176,7 @@ def verify_typealias(
 # ====================
 
 
-IGNORED_MODULE_DUNDERS = frozenset(
+IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
     {
         "__file__",
         "__doc__",
@@ -1196,7 +1196,7 @@ IGNORED_MODULE_DUNDERS = frozenset(
     }
 )
 
-IGNORABLE_CLASS_DUNDERS = frozenset(
+IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
     {
         # Special attributes
         "__dict__",

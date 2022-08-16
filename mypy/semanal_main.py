@@ -293,7 +293,9 @@ def process_top_level_function(
     analyzer.saved_locals.clear()
 
 
-TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
+TargetInfo: _TypeAlias = Tuple[
+    str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+]
 
 
 def get_all_leaf_targets(file: MypyFile) -> List[TargetInfo]:

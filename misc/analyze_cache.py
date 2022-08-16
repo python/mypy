@@ -7,10 +7,11 @@ import os
 import os.path
 from collections import Counter
 from typing import Any, Dict, Iterable, List, Optional
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
-ROOT = ".mypy_cache/3.5"
+ROOT: Final = ".mypy_cache/3.5"
 
-JsonDict = Dict[str, Any]
+JsonDict: _TypeAlias = Dict[str, Any]
 
 
 class CacheData:

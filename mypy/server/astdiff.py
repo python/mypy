@@ -53,6 +53,7 @@ Summary of how this works for certain kinds of differences:
 from __future__ import annotations
 
 from typing import Dict, Optional, Sequence, Set, Tuple, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     UNBOUND_IMPORTED,
@@ -103,7 +104,7 @@ from mypy.util import get_prefix
 # snapshots are immutable).
 #
 # For example, the snapshot of the 'int' type is ('Instance', 'builtins.int', ()).
-SnapshotItem = Tuple[object, ...]
+SnapshotItem: _TypeAlias = Tuple[object, ...]
 
 
 def compare_symbol_table_snapshots(

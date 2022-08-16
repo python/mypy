@@ -20,10 +20,10 @@ from typing import (
     Sequence,
     Tuple,
 )
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').
-Sig = Tuple[str, str]
+Sig: _TypeAlias = Tuple[str, str]
 
 
 _TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$")

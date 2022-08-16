@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Iterable, Optional, Tuple, Union
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     LITERAL_NO,
@@ -128,7 +128,7 @@ def literal(e: Expression) -> int:
     return LITERAL_NO
 
 
-Key = Tuple[Any, ...]
+Key: _TypeAlias = Tuple[Any, ...]
 
 
 def subkeys(key: Key) -> Iterable[Key]:

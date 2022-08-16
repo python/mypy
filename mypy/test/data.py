@@ -11,7 +11,7 @@ import sys
 import tempfile
 from abc import abstractmethod
 from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Pattern, Set, Tuple, Union
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import pytest
 
@@ -38,7 +38,7 @@ class DeleteFile(NamedTuple):
     path: str
 
 
-FileOperation = Union[UpdateFile, DeleteFile]
+FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
 
 
 def parse_test_case(case: DataDrivenTestCase) -> None:
