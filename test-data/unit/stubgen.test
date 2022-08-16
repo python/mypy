@@ -909,13 +909,13 @@ alias = Dict[str, List[str]]
 alias = Dict[str, List[str]]
 
 [case testDeepGenericTypeAliasPreserved]
-from typing import TypeVar
+from typing import List, TypeVar, Union
 
 T = TypeVar('T')
 alias = Union[T, List[T]]
 
 [out]
-from typing import TypeVar
+from typing import List, TypeVar, Union
 
 T = TypeVar('T')
 alias = Union[T, List[T]]
