@@ -5932,10 +5932,8 @@ import a
 import a
 
 my_class = a.MyClass()
-reveal_type(a.MyClass.foo_classmethod())
-reveal_type(my_class.foo_classmethod())
-reveal_type(a.MyClass.foo_staticmethod(1))
-reveal_type(my_class.foo_staticmethod(2))
+reveal_type(MyClass.foo_classmethod)
+reveal_type(MyClass.foo_staticmethod)
 
 [rechecked b]
 [out2]
