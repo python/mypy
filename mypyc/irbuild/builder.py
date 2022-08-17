@@ -786,11 +786,16 @@ class IRBuilder:
     def pop_loop_stack(self) -> None:
         self.nonlocal_control.pop()
 
-    def spill(self, value: Value) -> AssignmentTarget:
+    def make_spill_target(self, type: RType) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
         name = f"{TEMP_ATTR_NAME}{self.temp_counter}"
         self.temp_counter += 1
-        target = self.add_var_to_env_class(Var(name), value.type, self.fn_info.generator_class)
+        target = self.add_var_to_env_class(Var(name), type, self.fn_info.generator_class)
+        return target
+
+    def spill(self, value: Value) -> AssignmentTarget:
+        """Moves a given Value instance into the generator class' environment class."""
+        target = self.make_spill_target(value.type)
         # Shouldn't be able to fail, so -1 for line
         self.assign(target, value, -1)
         return target

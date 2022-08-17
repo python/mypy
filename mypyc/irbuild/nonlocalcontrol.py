@@ -151,9 +151,11 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         if self.ret_reg is None:
-            self.ret_reg = builder.maybe_spill_assignable(value)
-        else:
-            builder.assign(self.ret_reg, value, line)
+            if builder.fn_info.is_generator:
+                self.ret_reg = builder.make_spill_target(builder.ret_types[-1])
+            else:
+                self.ret_reg = Register(builder.ret_types[-1])
+        builder.assign(self.ret_reg, value, line)
 
         builder.add(Goto(self.target))
 
