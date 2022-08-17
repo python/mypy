@@ -14,6 +14,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 from mypy.nodes import (
     AssertStmt,
     AssignmentStmt,
+    AwaitExpr,
     Block,
     BreakStmt,
     ContinueStmt,
@@ -37,23 +38,35 @@ from mypy.nodes import (
     TupleExpr,
     WhileStmt,
     WithStmt,
+    YieldExpr,
+    YieldFromExpr,
 )
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
     BasicBlock,
     Branch,
+    Integer,
+    LoadAddress,
     LoadErrorValue,
     RaiseStandardError,
     Register,
+    Return,
     TupleGet,
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import RInstance, exc_rtuple, is_tagged
+from mypyc.ir.rtypes import (
+    RInstance,
+    exc_rtuple,
+    is_tagged,
+    object_pointer_rprimitive,
+    object_rprimitive,
+)
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.for_helpers import for_loop_helper
+from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl,
     FinallyNonlocalControl,
@@ -76,8 +89,15 @@ from mypyc.primitives.exc_ops import (
     reraise_exception_op,
     restore_exc_info_op,
 )
-from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import import_from_op, type_op
+from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
+from mypyc.primitives.misc_ops import (
+    check_stop_op,
+    coro_op,
+    import_from_op,
+    send_op,
+    type_op,
+    yield_from_except_op,
+)
 
 GenFunc = Callable[[], None]
 
@@ -731,3 +751,129 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
     elif isinstance(target, AssignmentTargetTuple):
         for subtarget in target.items:
             transform_del_item(builder, subtarget, line)
+
+
+# yield/yield from/await
+
+# These are really expressions, not statements... but they depend on try/except/finally
+
+
+def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
+    retval = builder.coerce(val, builder.ret_types[-1], line)
+
+    cls = builder.fn_info.generator_class
+    # Create a new block for the instructions immediately following the yield expression, and
+    # set the next label so that the next time '__next__' is called on the generator object,
+    # the function continues at the new block.
+    next_block = BasicBlock()
+    next_label = len(cls.continuation_blocks)
+    cls.continuation_blocks.append(next_block)
+    builder.assign(cls.next_label_target, Integer(next_label), line)
+    builder.add(Return(retval))
+    builder.activate_block(next_block)
+
+    add_raise_exception_blocks_to_generator_class(builder, line)
+
+    assert cls.send_arg_reg is not None
+    return cls.send_arg_reg
+
+
+def emit_yield_from_or_await(
+    builder: IRBuilder, expr: Expression, line: int, *, is_await: bool
+) -> Value:
+    # This is basically an implementation of the code in PEP 380.
+
+    # TODO: do we want to use the right types here?
+    result = Register(object_rprimitive)
+    to_yield_reg = Register(object_rprimitive)
+    received_reg = Register(object_rprimitive)
+
+    get_op = coro_op if is_await else iter_op
+    iter_val = builder.call_c(get_op, [builder.accept(expr)], line)
+
+    iter_reg = builder.maybe_spill_assignable(iter_val)
+
+    stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
+    _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+    builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
+
+    # Try extracting a return value from a StopIteration and return it.
+    # If it wasn't, this reraises the exception.
+    builder.activate_block(stop_block)
+    builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+    builder.goto(done_block)
+
+    builder.activate_block(main_block)
+    builder.assign(to_yield_reg, _y_init, line)
+
+    # OK Now the main loop!
+    loop_block = BasicBlock()
+    builder.goto_and_activate(loop_block)
+
+    def try_body() -> None:
+        builder.assign(received_reg, emit_yield(builder, builder.read(to_yield_reg), line), line)
+
+    def except_body() -> None:
+        # The body of the except is all implemented in a C function to
+        # reduce how much code we need to generate. It returns a value
+        # indicating whether to break or yield (or raise an exception).
+        val = Register(object_rprimitive)
+        val_address = builder.add(LoadAddress(object_pointer_rprimitive, val))
+        to_stop = builder.call_c(yield_from_except_op, [builder.read(iter_reg), val_address], line)
+
+        ok, stop = BasicBlock(), BasicBlock()
+        builder.add(Branch(to_stop, stop, ok, Branch.BOOL))
+
+        # The exception got swallowed. Continue, yielding the returned value
+        builder.activate_block(ok)
+        builder.assign(to_yield_reg, val, line)
+        builder.nonlocal_control[-1].gen_continue(builder, line)
+
+        # The exception was a StopIteration. Stop iterating.
+        builder.activate_block(stop)
+        builder.assign(result, val, line)
+        builder.nonlocal_control[-1].gen_break(builder, line)
+
+    def else_body() -> None:
+        # Do a next() or a .send(). It will return NULL on exception
+        # but it won't automatically propagate.
+        _y = builder.call_c(send_op, [builder.read(iter_reg), builder.read(received_reg)], line)
+        ok, stop = BasicBlock(), BasicBlock()
+        builder.add(Branch(_y, stop, ok, Branch.IS_ERROR))
+
+        # Everything's fine. Yield it.
+        builder.activate_block(ok)
+        builder.assign(to_yield_reg, _y, line)
+        builder.nonlocal_control[-1].gen_continue(builder, line)
+
+        # Try extracting a return value from a StopIteration and return it.
+        # If it wasn't, this rereaises the exception.
+        builder.activate_block(stop)
+        builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+        builder.nonlocal_control[-1].gen_break(builder, line)
+
+    builder.push_loop_stack(loop_block, done_block)
+    transform_try_except(builder, try_body, [(None, None, except_body)], else_body, line)
+    builder.pop_loop_stack()
+
+    builder.goto_and_activate(done_block)
+    return builder.read(result)
+
+
+def transform_yield_expr(builder: IRBuilder, expr: YieldExpr) -> Value:
+    if builder.fn_info.is_coroutine:
+        builder.error("async generators are unimplemented", expr.line)
+
+    if expr.expr:
+        retval = builder.accept(expr.expr)
+    else:
+        retval = builder.builder.none()
+    return emit_yield(builder, retval, expr.line)
+
+
+def transform_yield_from_expr(builder: IRBuilder, o: YieldFromExpr) -> Value:
+    return emit_yield_from_or_await(builder, o.expr, o.line, is_await=False)
+
+
+def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
+    return emit_yield_from_or_await(builder, o.expr, o.line, is_await=True)
