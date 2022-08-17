@@ -9,7 +9,7 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Callable, List, Optional, Sequence, Tuple, Union
 
 from mypy.nodes import (
     AssertStmt,
@@ -464,7 +464,7 @@ def try_finally_try(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     try_body: GenFunc,
-) -> Optional[Register]:
+) -> Union[Register, AssignmentTarget, None]:
     # Compile the try block with an error handler
     control = TryFinallyNonlocalControl(return_entry)
     builder.builder.push_error_handler(err_handler)
@@ -485,14 +485,14 @@ def try_finally_entry_blocks(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     finally_block: BasicBlock,
-    ret_reg: Optional[Register],
+    ret_reg: Union[Register, AssignmentTarget, None],
 ) -> Value:
     old_exc = Register(exc_rtuple)
 
     # Entry block for non-exceptional flow
     builder.activate_block(main_entry)
     if ret_reg:
-        builder.add(Assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1]))))
+        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1])), -1)
     builder.goto(return_entry)
 
     builder.activate_block(return_entry)
@@ -502,7 +502,7 @@ def try_finally_entry_blocks(
     # Entry block for errors
     builder.activate_block(err_handler)
     if ret_reg:
-        builder.add(Assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1]))))
+        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1])), -1)
     builder.add(Assign(old_exc, builder.call_c(error_catch_op, [], -1)))
     builder.goto(finally_block)
 
@@ -510,16 +510,12 @@ def try_finally_entry_blocks(
 
 
 def try_finally_body(
-    builder: IRBuilder,
-    finally_block: BasicBlock,
-    finally_body: GenFunc,
-    ret_reg: Optional[Value],
-    old_exc: Value,
+    builder: IRBuilder, finally_block: BasicBlock, finally_body: GenFunc, old_exc: Value
 ) -> Tuple[BasicBlock, FinallyNonlocalControl]:
     cleanup_block = BasicBlock()
     # Compile the finally block with the nonlocal control flow overridden to restore exc_info
     builder.builder.push_error_handler(cleanup_block)
-    finally_control = FinallyNonlocalControl(builder.nonlocal_control[-1], ret_reg, old_exc)
+    finally_control = FinallyNonlocalControl(builder.nonlocal_control[-1], old_exc)
     builder.nonlocal_control.append(finally_control)
     builder.activate_block(finally_block)
     finally_body()
@@ -533,7 +529,7 @@ def try_finally_resolve_control(
     cleanup_block: BasicBlock,
     finally_control: FinallyNonlocalControl,
     old_exc: Value,
-    ret_reg: Optional[Value],
+    ret_reg: Union[Register, AssignmentTarget, None],
 ) -> BasicBlock:
     """Resolve the control flow out of a finally block.
 
@@ -553,10 +549,10 @@ def try_finally_resolve_control(
     if ret_reg:
         builder.activate_block(rest)
         return_block, rest = BasicBlock(), BasicBlock()
-        builder.add(Branch(ret_reg, rest, return_block, Branch.IS_ERROR))
+        builder.add(Branch(builder.read(ret_reg), rest, return_block, Branch.IS_ERROR))
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, ret_reg, -1)
+        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)
 
     # TODO: handle break/continue
     builder.activate_block(rest)
@@ -598,7 +594,7 @@ def transform_try_finally_stmt(
 
     # Compile the body of the finally
     cleanup_block, finally_control = try_finally_body(
-        builder, finally_block, finally_body, ret_reg, old_exc
+        builder, finally_block, finally_body, old_exc
     )
 
     # Resolve the control flow out of the finally block
@@ -636,18 +632,28 @@ def get_sys_exc_info(builder: IRBuilder) -> List[Value]:
 
 
 def transform_with(
-    builder: IRBuilder, expr: Expression, target: Optional[Lvalue], body: GenFunc, line: int
+    builder: IRBuilder,
+    expr: Expression,
+    target: Optional[Lvalue],
+    body: GenFunc,
+    is_async: bool,
+    line: int,
 ) -> None:
     # This is basically a straight transcription of the Python code in PEP 343.
     # I don't actually understand why a bunch of it is the way it is.
     # We could probably optimize the case where the manager is compiled by us,
     # but that is not our common case at all, so.
+
+    al = "a" if is_async else ""
+
     mgr_v = builder.accept(expr)
     typ = builder.call_c(type_op, [mgr_v], line)
-    exit_ = builder.maybe_spill(builder.py_get_attr(typ, "__exit__", line))
-    value = builder.py_call(builder.py_get_attr(typ, "__enter__", line), [mgr_v], line)
+    exit_ = builder.maybe_spill(builder.py_get_attr(typ, f"__{al}exit__", line))
+    value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
     mgr = builder.maybe_spill(mgr_v)
     exc = builder.maybe_spill_assignable(builder.true())
+    if is_async:
+        value = emit_await(builder, value, line)
 
     def try_body() -> None:
         if target:
@@ -657,13 +663,13 @@ def transform_with(
     def except_body() -> None:
         builder.assign(exc, builder.false(), line)
         out_block, reraise_block = BasicBlock(), BasicBlock()
-        builder.add_bool_branch(
-            builder.py_call(
-                builder.read(exit_), [builder.read(mgr)] + get_sys_exc_info(builder), line
-            ),
-            out_block,
-            reraise_block,
+        exit_val = builder.py_call(
+            builder.read(exit_), [builder.read(mgr)] + get_sys_exc_info(builder), line
         )
+        if is_async:
+            exit_val = emit_await(builder, exit_val, line)
+
+        builder.add_bool_branch(exit_val, out_block, reraise_block)
         builder.activate_block(reraise_block)
         builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
@@ -674,7 +680,12 @@ def transform_with(
         builder.add(Branch(builder.read(exc), exit_block, out_block, Branch.BOOL))
         builder.activate_block(exit_block)
         none = builder.none_object()
-        builder.py_call(builder.read(exit_), [builder.read(mgr), none, none, none], line)
+        exit_val = builder.py_call(
+            builder.read(exit_), [builder.read(mgr), none, none, none], line
+        )
+        if is_async:
+            emit_await(builder, exit_val, line)
+
         builder.goto_and_activate(out_block)
 
     transform_try_finally_stmt(
@@ -685,15 +696,14 @@ def transform_with(
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
-    if o.is_async:
-        builder.error("async with is unimplemented", o.line)
-
     # Generate separate logic for each expr in it, left to right
     def generate(i: int) -> None:
         if i >= len(o.expr):
             builder.accept(o.body)
         else:
-            transform_with(builder, o.expr[i], o.target[i], lambda: generate(i + 1), o.line)
+            transform_with(
+                builder, o.expr[i], o.target[i], lambda: generate(i + 1), o.is_async, o.line
+            )
 
     generate(0)
 
@@ -779,7 +789,7 @@ def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
 
 
 def emit_yield_from_or_await(
-    builder: IRBuilder, expr: Expression, line: int, *, is_await: bool
+    builder: IRBuilder, val: Value, line: int, *, is_await: bool
 ) -> Value:
     # This is basically an implementation of the code in PEP 380.
 
@@ -789,7 +799,7 @@ def emit_yield_from_or_await(
     received_reg = Register(object_rprimitive)
 
     get_op = coro_op if is_await else iter_op
-    iter_val = builder.call_c(get_op, [builder.accept(expr)], line)
+    iter_val = builder.call_c(get_op, [val], line)
 
     iter_reg = builder.maybe_spill_assignable(iter_val)
 
@@ -860,6 +870,10 @@ def emit_yield_from_or_await(
     return builder.read(result)
 
 
+def emit_await(builder: IRBuilder, val: Value, line: int) -> Value:
+    return emit_yield_from_or_await(builder, val, line, is_await=True)
+
+
 def transform_yield_expr(builder: IRBuilder, expr: YieldExpr) -> Value:
     if builder.fn_info.is_coroutine:
         builder.error("async generators are unimplemented", expr.line)
@@ -872,8 +886,8 @@ def transform_yield_expr(builder: IRBuilder, expr: YieldExpr) -> Value:
 
 
 def transform_yield_from_expr(builder: IRBuilder, o: YieldFromExpr) -> Value:
-    return emit_yield_from_or_await(builder, o.expr, o.line, is_await=False)
+    return emit_yield_from_or_await(builder, builder.accept(o.expr), o.line, is_await=False)
 
 
 def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
-    return emit_yield_from_or_await(builder, o.expr, o.line, is_await=True)
+    return emit_yield_from_or_await(builder, builder.accept(o.expr), o.line, is_await=True)

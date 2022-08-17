@@ -210,14 +210,6 @@ async def async_for(xs: AsyncIterable[int]) -> None:
     {x async for x in xs}  # E: async comprehensions are unimplemented
     {x: x async for x in xs}  # E: async comprehensions are unimplemented
 
-class async_ctx:
-    async def __aenter__(self) -> int: pass
-    async def __aexit__(self, x, y, z) -> None: pass
-
-async def async_with() -> None:
-    async with async_ctx() as x:  # E: async with is unimplemented
-        print(x)
-
 async def async_generators() -> AsyncIterable[int]:
     yield 1  # E: async generators are unimplemented
 

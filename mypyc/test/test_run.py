@@ -34,6 +34,7 @@ from mypyc.test.testutil import (
 )
 
 files = [
+    "run-async.test",
     "run-misc.test",
     "run-functions.test",
     "run-integers.test",
