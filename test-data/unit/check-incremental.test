@@ -5940,9 +5940,9 @@ reveal_type(my_class.foo_staticmethod)
 [rechecked b]
 [out2]
 tmp/b.py:4: note: Revealed type is "def ()"
-tmp/b.py:5: note:  Revealed type is "def (builtins.int) -> builtins.str"
+tmp/b.py:5: note: Revealed type is "def (builtins.int) -> builtins.str"
 tmp/b.py:6: note: Revealed type is "def ()"
-tmp/b.py:7: note:  Revealed type is "def (builtins.int) -> builtins.str"
+tmp/b.py:7: note: Revealed type is "def (builtins.int) -> builtins.str"
 [case testGenericNamedTupleSerialization]
 import b
 [file a.py]
