@@ -1000,11 +1000,12 @@ class MyClass(BaseAddMethod):
     pass
 
 my_class = MyClass()
+reveal_type(MyClass.foo_classmethod)  # N: Revealed type is "def ()"
+reveal_type(MyClass.foo_staticmethod)  # N: Revealed type is "def (builtins.int) -> builtins.str"
 reveal_type(MyClass.foo_classmethod())  # N: Revealed type is "None"
 reveal_type(my_class.foo_classmethod())  # N: Revealed type is "None"
 reveal_type(MyClass.foo_staticmethod(1))  # N: Revealed type is "builtins.str"
 reveal_type(my_class.foo_staticmethod(2))  # N: Revealed type is "builtins.str"
-my_class.foo_staticmethod("asdf")  # E: Argument 1 to "foo_staticmethod" of "MyClass" has incompatible type "str"; expected "int"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py

@@ -1,17 +1,19 @@
-from mypy.plugin import Plugin
+from typing import Callable, Optional
+
 from mypy.nodes import ARG_POS, Argument, Var
+from mypy.plugin import ClassDefContext, Plugin
 from mypy.plugins.common import add_method
 from mypy.types import NoneType
 
 
 class ClassMethodPlugin(Plugin):
-    def get_base_class_hook(self, fullname: str):
+    def get_base_class_hook(self, fullname: str) -> Optional[Callable[[ClassDefContext], None]]:
         if "BaseAddMethod" in fullname:
             return add_extra_methods_hook
         return None
 
 
-def add_extra_methods_hook(ctx):
+def add_extra_methods_hook(ctx: ClassDefContext) -> None:
     add_method(ctx, "foo_classmethod", [], NoneType(), is_classmethod=True)
     add_method(
         ctx,
