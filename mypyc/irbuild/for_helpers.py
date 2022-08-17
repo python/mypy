@@ -20,10 +20,22 @@ from mypy.nodes import (
     TupleExpr,
     TypeAlias,
 )
-from mypyc.ir.ops import BasicBlock, Branch, Integer, IntOp, Register, TupleGet, TupleSet, Value
+from mypyc.ir.ops import (
+    BasicBlock,
+    Branch,
+    Integer,
+    IntOp,
+    LoadAddress,
+    LoadMem,
+    Register,
+    TupleGet,
+    TupleSet,
+    Value,
+)
 from mypyc.ir.rtypes import (
     RTuple,
     RType,
+    bool_rprimitive,
     int_rprimitive,
     is_dict_rprimitive,
     is_list_rprimitive,
@@ -31,6 +43,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tuple_rprimitive,
+    pointer_rprimitive,
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
@@ -45,8 +58,9 @@ from mypyc.primitives.dict_ops import (
     dict_value_iter_op,
 )
 from mypyc.primitives.exc_ops import no_err_occurred_op
-from mypyc.primitives.generic_ops import iter_op, next_op
+from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
 from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
+from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
 
@@ -59,6 +73,7 @@ def for_loop_helper(
     expr: Expression,
     body_insts: GenFunc,
     else_insts: GenFunc | None,
+    is_async: bool,
     line: int,
 ) -> None:
     """Generate IR for a loop.
@@ -81,7 +96,9 @@ def for_loop_helper(
     # Determine where we want to exit, if our condition check fails.
     normal_loop_exit = else_block if else_insts is not None else exit_block
 
-    for_gen = make_for_loop_generator(builder, index, expr, body_block, normal_loop_exit, line)
+    for_gen = make_for_loop_generator(
+        builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async
+    )
 
     builder.push_loop_stack(step_block, exit_block)
     condition_block = BasicBlock()
@@ -220,32 +237,33 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
     if val is not None:
         return val
 
-    list_ops = builder.new_list_op([], gen.line)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+    list_ops = builder.maybe_spill(builder.new_list_op([], gen.line))
+
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(list_append_op, [list_ops, e], gen.line)
+        builder.call_c(list_append_op, [builder.read(list_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
-    return list_ops
+    return builder.read(list_ops)
 
 
 def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
-    set_ops = builder.new_set_op([], gen.line)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+    set_ops = builder.maybe_spill(builder.new_set_op([], gen.line))
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(set_add_op, [set_ops, e], gen.line)
+        builder.call_c(set_add_op, [builder.read(set_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
-    return set_ops
+    return builder.read(set_ops)
 
 
 def comprehension_helper(
     builder: IRBuilder,
-    loop_params: list[tuple[Lvalue, Expression, list[Expression]]],
+    loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]],
     gen_inner_stmts: Callable[[], None],
     line: int,
 ) -> None:
@@ -260,20 +278,26 @@ def comprehension_helper(
         gen_inner_stmts: function to generate the IR for the body of the innermost loop
     """
 
-    def handle_loop(loop_params: list[tuple[Lvalue, Expression, list[Expression]]]) -> None:
+    def handle_loop(loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]]) -> None:
         """Generate IR for a loop.
 
         Given a list of (index, expression, [conditions]) tuples, generate IR
         for the nested loops the list defines.
         """
-        index, expr, conds = loop_params[0]
+        index, expr, conds, is_async = loop_params[0]
         for_loop_helper(
-            builder, index, expr, lambda: loop_contents(conds, loop_params[1:]), None, line
+            builder,
+            index,
+            expr,
+            lambda: loop_contents(conds, loop_params[1:]),
+            None,
+            is_async=is_async,
+            line=line,
         )
 
     def loop_contents(
         conds: list[Expression],
-        remaining_loop_params: list[tuple[Lvalue, Expression, list[Expression]]],
+        remaining_loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]],
     ) -> None:
         """Generate the body of the loop.
 
@@ -319,12 +343,22 @@ def make_for_loop_generator(
     body_block: BasicBlock,
     loop_exit: BasicBlock,
     line: int,
+    is_async: bool = False,
     nested: bool = False,
 ) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
 
     If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".
     """
+
+    # Do an async loop if needed. async is always generic
+    if is_async:
+        expr_reg = builder.accept(expr)
+        async_obj = ForAsyncIterable(builder, index, body_block, loop_exit, line, nested)
+        item_type = builder._analyze_iterable_item_type(expr)
+        item_rtype = builder.type_to_rtype(item_type)
+        async_obj.init(expr_reg, item_rtype)
+        return async_obj
 
     rtyp = builder.node_type(expr)
     if is_sequence_rprimitive(rtyp):
@@ -500,7 +534,7 @@ class ForGenerator:
 
 
 class ForIterable(ForGenerator):
-    """Generate IR for a for loop over an arbitrary iterable (the normal case)."""
+    """Generate IR for a for loop over an arbitrary iterable (the general case)."""
 
     def need_cleanup(self) -> bool:
         # Create a new cleanup block for when the loop is finished.
@@ -546,6 +580,70 @@ class ForIterable(ForGenerator):
         # True. If no_err_occurred_op returns False, then the exception will be
         # propagated using the ERR_FALSE flag.
         self.builder.call_c(no_err_occurred_op, [], self.line)
+
+
+class ForAsyncIterable(ForGenerator):
+    """Generate IR for an async for loop."""
+
+    def init(self, expr_reg: Value, target_type: RType) -> None:
+        # Define targets to contain the expression, along with the
+        # iterator that will be used for the for-loop. We are inside
+        # of a generator function, so we will spill these into
+        # environment class.
+        builder = self.builder
+        iter_reg = builder.call_c(aiter_op, [expr_reg], self.line)
+        builder.maybe_spill(expr_reg)
+        self.iter_target = builder.maybe_spill(iter_reg)
+        self.target_type = target_type
+        self.stop_reg = Register(bool_rprimitive)
+
+    def gen_condition(self) -> None:
+        # This does the test and fetches the next value
+        # try:
+        #     TARGET = await type(iter).__anext__(iter)
+        #     stop = False
+        # except StopAsyncIteration:
+        #     stop = True
+        #
+        # What a pain.
+        # There are optimizations available here if we punch through some abstractions.
+
+        from mypyc.irbuild.statement import emit_await, transform_try_except
+
+        builder = self.builder
+        line = self.line
+
+        def except_match() -> Value:
+            addr = builder.add(LoadAddress(pointer_rprimitive, stop_async_iteration_op.src, line))
+            return builder.add(LoadMem(stop_async_iteration_op.type, addr))
+
+        def try_body() -> None:
+            awaitable = builder.call_c(anext_op, [builder.read(self.iter_target)], line)
+            self.next_reg = emit_await(builder, awaitable, line)
+            builder.assign(self.stop_reg, builder.false(), -1)
+
+        def except_body() -> None:
+            builder.assign(self.stop_reg, builder.true(), line)
+
+        transform_try_except(
+            builder, try_body, [((except_match, line), None, except_body)], None, line
+        )
+
+        builder.add(Branch(self.stop_reg, self.loop_exit, self.body_block, Branch.BOOL))
+
+    def begin_body(self) -> None:
+        # Assign the value obtained from await __anext__ to the
+        # lvalue so that it can be referenced by code in the body of the loop.
+        builder = self.builder
+        line = self.line
+        # We unbox here so that iterating with tuple unpacking generates a tuple based
+        # unpack instead of an iterator based one.
+        next_reg = builder.coerce(self.next_reg, self.target_type, line)
+        builder.assign(builder.get_assignment_target(self.index), next_reg, line)
+
+    def gen_step(self) -> None:
+        # Nothing to do here, since we get the next item as part of gen_condition().
+        pass
 
 
 def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> Value:

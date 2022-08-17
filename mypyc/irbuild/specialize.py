@@ -369,7 +369,7 @@ def any_all_helper(
 ) -> Value:
     retval = Register(bool_rprimitive)
     builder.assign(retval, initial_value(), -1)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
 
     def gen_inner_stmts() -> None:
@@ -417,7 +417,9 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
         call_expr = builder.accept(gen_expr.left_expr)
         builder.assign(retval, builder.binary_op(retval, call_expr, "+", -1), -1)
 
-    loop_params = list(zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists))
+    loop_params = list(
+        zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists, gen_expr.is_async)
+    )
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen_expr.line)
 
     return retval
@@ -467,7 +469,7 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
         builder.assign(retval, builder.accept(gen.left_expr), gen.left_expr.line)
         builder.goto(exit_block)
 
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
 
     # Now we need the case for when nothing got hit. If there was
