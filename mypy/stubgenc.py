@@ -11,7 +11,7 @@ import inspect
 import os.path
 import re
 from types import ModuleType
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Mapping
 from typing_extensions import Final
 
 from mypy.moduleinspect import is_c_module

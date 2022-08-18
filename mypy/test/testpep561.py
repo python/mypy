@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
-from typing import Iterator, List, Tuple
+from typing import Iterator
 
 import filelock
 

@@ -10,7 +10,6 @@ import os
 import re
 import subprocess
 import sys
-from typing import List, Optional
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite

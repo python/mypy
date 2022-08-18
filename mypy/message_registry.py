@@ -8,7 +8,7 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 from typing_extensions import Final
 
 from mypy import errorcodes as codes

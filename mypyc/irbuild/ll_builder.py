@@ -10,7 +10,7 @@ level---it has *no knowledge* of mypy types or expressions.
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Callable, Optional, Sequence, Tuple
 from typing_extensions import Final
 
 from mypy.argmap import map_actuals_to_formals

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import shutil
-from typing import Dict, List, Optional, Tuple
 
 from mypy import build
 from mypy.build import BuildResult

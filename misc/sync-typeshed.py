@@ -16,7 +16,6 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-from typing import Optional
 
 
 def check_state() -> None:

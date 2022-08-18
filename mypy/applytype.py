@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional, Sequence
+from typing import Callable, Sequence
 
 import mypy.subtypes
 from mypy.expandtype import expand_type

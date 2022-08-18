@@ -9,7 +9,7 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from typing import Callable, List, Optional, Sequence, Tuple, Union
+from typing import Callable, Sequence
 
 from mypy.nodes import (
     AssertStmt,

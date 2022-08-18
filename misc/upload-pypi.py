@@ -18,7 +18,7 @@ import tempfile
 import venv
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, Iterator, List
+from typing import Any, Iterator
 from urllib.request import urlopen
 
 BASE = "https://api.github.com/repos"

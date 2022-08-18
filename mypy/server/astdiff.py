@@ -52,7 +52,7 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Sequence, Set, Tuple, Union
+from typing import Sequence, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (

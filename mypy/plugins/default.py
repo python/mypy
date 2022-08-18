@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, List, Optional
+from typing import Callable
 
 from mypy import message_registry
 from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr

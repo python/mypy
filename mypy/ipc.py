@@ -12,7 +12,7 @@ import shutil
 import sys
 import tempfile
 from types import TracebackType
-from typing import Callable, Optional, Type
+from typing import Callable
 from typing_extensions import Final
 
 if sys.platform == "win32":
@@ -35,7 +35,6 @@ else:
 class IPCException(Exception):
     """Exception for IPC issues."""
 
-    pass
 
 
 class IPCBase:

@@ -11,7 +11,6 @@ only be placed at the end of a basic block.
 
 from __future__ import annotations
 
-from typing import List, Optional
 
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import (

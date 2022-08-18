@@ -23,7 +23,7 @@ RTypes.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Dict, Generic, List, Optional, Tuple, TypeVar, Union
+from typing import ClassVar, Generic, TYPE_CHECKING, TypeVar
 from typing_extensions import Final
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name

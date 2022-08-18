@@ -7,7 +7,6 @@ import shutil
 import sys
 import tempfile
 import unittest
-from typing import Optional
 
 from mypy.fscache import FileSystemCache
 

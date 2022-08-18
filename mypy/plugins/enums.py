@@ -12,7 +12,7 @@ semanal_enum.py).
 """
 from __future__ import annotations
 
-from typing import Iterable, Optional, Sequence, TypeVar, cast
+from typing import Iterable, Sequence, TypeVar, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.

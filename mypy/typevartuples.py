@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple, TypeVar
+from typing import Sequence, TypeVar
 
 from mypy.types import Instance, ProperType, Type, UnpackType, get_proper_type
 

@@ -14,7 +14,7 @@ Also build a mapping from mypy TypeInfos to ClassIR objects.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
+from typing import DefaultDict, Iterable, NamedTuple, Tuple
 
 from mypy.build import Graph
 from mypy.nodes import (

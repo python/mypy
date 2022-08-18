@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import List, NamedTuple, Optional
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature

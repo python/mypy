@@ -10,7 +10,7 @@ import subprocess
 import sys
 import textwrap
 import time
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Tuple
 
 
 def print_offset(text: str, indent_length: int = 4) -> None:

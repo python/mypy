@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import functools
 import os
-from typing import List, Optional, Sequence, Set, Tuple
+from typing import Sequence
 from typing_extensions import Final
 
 from mypy.fscache import FileSystemCache

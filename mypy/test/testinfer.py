@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Tuple
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.checker import DisjointDict, group_comparison_operands

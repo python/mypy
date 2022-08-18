@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
-from typing import Any, Iterator, List, cast
+from typing import Any, Iterator, cast
 
 from mypy import build
 from mypy.errors import CompileError

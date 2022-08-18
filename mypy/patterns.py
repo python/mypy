@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, TypeVar, Union
+from typing import TypeVar
 
 from mypy_extensions import trait
 

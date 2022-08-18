@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature

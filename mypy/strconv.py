@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Tuple, Union
+from typing import Any, Sequence, TYPE_CHECKING
 
 import mypy.nodes
 from mypy.util import IdMapper, short_type

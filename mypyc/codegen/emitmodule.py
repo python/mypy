@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Dict, Iterable, List, Optional, Set, Tuple, TypeVar
+from typing import Iterable, List, Optional, Tuple, TypeVar
 
 from mypy.build import (
     BuildResult,

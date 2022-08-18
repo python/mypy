@@ -3,9 +3,8 @@ from __future__ import annotations
 import copy
 import re
 import sys
-import typing  # for typing.Type, which conflicts with types.Type
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, List, Optional, Sequence, TypeVar, Union, cast
 from typing_extensions import Final, Literal, overload
 
 from mypy import defaults, errorcodes as codes, message_registry

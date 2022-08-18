@@ -21,7 +21,6 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
-    Optional,
     Sequence,
     TextIO,
     Tuple,

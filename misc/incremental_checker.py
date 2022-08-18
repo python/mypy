@@ -44,7 +44,7 @@ import sys
 import textwrap
 import time
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 CACHE_PATH: Final = ".incremental_checker_cache.json"

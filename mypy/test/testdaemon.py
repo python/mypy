@@ -12,7 +12,6 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from typing import List, Tuple
 
 import pytest
 

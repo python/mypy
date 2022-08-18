@@ -18,7 +18,6 @@ import re
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from typing import List
 
 from mypy import api
 from mypy.defaults import PYTHON3_VERSION

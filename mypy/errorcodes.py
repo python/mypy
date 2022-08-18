@@ -5,7 +5,6 @@ These can be used for filtering specific errors.
 
 from __future__ import annotations
 
-from typing import Dict
 from typing_extensions import Final
 
 error_codes: dict[str, ErrorCode] = {}

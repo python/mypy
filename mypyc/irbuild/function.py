@@ -13,7 +13,7 @@ instance of the callable class.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import DefaultDict, NamedTuple, Sequence
 
 from mypy.nodes import (
     ArgKind,

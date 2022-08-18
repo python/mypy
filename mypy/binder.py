@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import DefaultDict, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
+from typing import DefaultDict, Iterator, List, Optional, Tuple, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values

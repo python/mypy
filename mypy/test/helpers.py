@@ -7,7 +7,7 @@ import re
 import shutil
 import sys
 import time
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Pattern, Tuple, Union
+from typing import Any, Callable, Iterable, Iterator, Pattern
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly

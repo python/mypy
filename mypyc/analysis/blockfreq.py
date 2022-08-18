@@ -9,7 +9,6 @@ code.
 
 from __future__ import annotations
 
-from typing import Set
 
 from mypyc.ir.ops import BasicBlock, Branch, Goto
 

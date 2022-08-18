@@ -14,7 +14,7 @@ import pickle
 import sys
 import time
 import traceback
-from typing import Any, Callable, Dict, List, Mapping, NoReturn, Optional, Tuple
+from typing import Any, Callable, Mapping, NoReturn
 
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
@@ -262,7 +262,6 @@ class BadStatus(Exception):
     - Process whose pid is in the status file does not exist
     """
 
-    pass
 
 
 def main(argv: list[str]) -> None:

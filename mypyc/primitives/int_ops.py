@@ -10,7 +10,7 @@ Use mypyc.ir.ops.IntOp for operations on fixed-width/C integers.
 
 from __future__ import annotations
 
-from typing import Dict, NamedTuple
+from typing import NamedTuple
 
 from mypyc.ir.ops import ERR_ALWAYS, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER, ComparisonOp
 from mypyc.ir.rtypes import (

@@ -10,7 +10,6 @@ import queue
 import sys
 from multiprocessing import Process, Queue
 from types import ModuleType
-from typing import List, Optional, Union
 
 
 class ModuleProperties:

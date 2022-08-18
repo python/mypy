@@ -6,7 +6,6 @@ non-local variables defined in outer scopes.
 
 from __future__ import annotations
 
-from typing import List
 
 from mypyc.common import ENV_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR

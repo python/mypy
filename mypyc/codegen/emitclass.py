@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Callable, Mapping, Tuple
 
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header

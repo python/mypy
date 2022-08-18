@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Type as typing_Type
+from typing import Callable, Type as typing_Type
 
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin

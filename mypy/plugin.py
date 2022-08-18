@@ -122,7 +122,7 @@ semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, NamedTuple, TypeVar
 
 from mypy_extensions import mypyc_attr, trait
 

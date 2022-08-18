@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Set
+from typing import Callable, Sequence, TYPE_CHECKING
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype

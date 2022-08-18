@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import List
 
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext, ReturnHandler

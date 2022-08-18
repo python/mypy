@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional, Union
 
 from mypy.errors import Errors
 from mypy.nodes import MypyFile

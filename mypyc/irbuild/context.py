@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
 
 from mypy.nodes import FuncItem
 from mypyc.ir.class_ir import ClassIR

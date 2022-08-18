@@ -13,7 +13,7 @@ functions are transformed in mypyc.irbuild.function.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Callable, Iterator, Sequence, Union
 from typing_extensions import Final, overload
 
 from mypy.build import Graph

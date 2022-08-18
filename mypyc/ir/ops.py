@@ -18,9 +18,7 @@ from typing import (
     Generic,
     List,
     NamedTuple,
-    Optional,
     Sequence,
-    Tuple,
     TypeVar,
     Union,
 )
@@ -225,7 +223,6 @@ class Op(Value):
     @abstractmethod
     def sources(self) -> list[Value]:
         """All the values the op may read."""
-        pass
 
     def stolen(self) -> list[Value]:
         """Return arguments that have a reference count stolen by this op"""

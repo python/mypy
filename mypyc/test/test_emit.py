@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import Dict
 
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.ir.ops import BasicBlock, Register, Value

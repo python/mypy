@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from typing import Sequence
 from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
 
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (

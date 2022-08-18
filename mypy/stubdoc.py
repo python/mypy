@@ -12,11 +12,9 @@ import re
 import tokenize
 from typing import (
     Any,
-    List,
     MutableMapping,
     MutableSequence,
     NamedTuple,
-    Optional,
     Sequence,
     Tuple,
 )

@@ -81,7 +81,7 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 
 from __future__ import annotations
 
-from typing import DefaultDict, Dict, List, Optional, Set, Tuple
+from typing import DefaultDict, List
 
 from mypy.nodes import (
     GDEF,

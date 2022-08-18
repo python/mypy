@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from mypy.nodes import (
     ARG_NAMED,

@@ -15,16 +15,10 @@ from typing import (
     IO,
     Callable,
     Container,
-    Dict,
     Iterable,
-    List,
-    Optional,
     Sequence,
     Sized,
-    Tuple,
-    Type,
     TypeVar,
-    Union,
 )
 from typing_extensions import Final, Literal
 

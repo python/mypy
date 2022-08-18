@@ -14,7 +14,7 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Optional
 
 from mypy.nodes import (
     ARG_NAMED,

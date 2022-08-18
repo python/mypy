@@ -5,7 +5,7 @@ and potentially other mutable TypeInfo state. This module contains mutable globa
 
 from __future__ import annotations
 
-from typing import ClassVar, Dict, List, Optional, Set, Tuple
+from typing import ClassVar, Dict, Set, Tuple
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo

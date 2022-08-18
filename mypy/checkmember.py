@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Optional, Sequence, Union, cast
+from typing import Callable, Sequence, TYPE_CHECKING, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars

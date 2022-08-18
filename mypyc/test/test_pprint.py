@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import List
 
 from mypyc.ir.ops import Assign, BasicBlock, Integer, IntOp, Op, Register, Unreachable
 from mypyc.ir.pprint import generate_names_for_ir

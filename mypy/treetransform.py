@@ -5,7 +5,7 @@ Subclass TransformVisitor to perform non-trivial transformations.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, cast
+from typing import Iterable, Optional, cast
 
 from mypy.nodes import (
     GDEF,

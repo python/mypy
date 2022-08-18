@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, NamedTuple, Optional, Sequence
+from typing import NamedTuple, Sequence
 
 from mypy.constraints import (
     SUBTYPE_OF,

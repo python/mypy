@@ -26,14 +26,8 @@ from functools import singledispatch
 from pathlib import Path
 from typing import (
     Any,
-    Dict,
     Generic,
     Iterator,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     cast,

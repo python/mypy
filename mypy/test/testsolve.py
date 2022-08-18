@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, Union
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint
 from mypy.solve import solve_constraints

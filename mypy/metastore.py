@@ -14,7 +14,7 @@ import binascii
 import os
 import time
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional
+from typing import Any, Iterable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     # We avoid importing sqlite3 unless we are using it so we can mostly work
@@ -31,7 +31,6 @@ class MetadataStore:
 
         Raises FileNotFound if the entry does not exist.
         """
-        pass
 
     @abstractmethod
     def read(self, name: str) -> str:
@@ -39,7 +38,6 @@ class MetadataStore:
 
         Raises FileNotFound if the entry does not exist.
         """
-        pass
 
     @abstractmethod
     def write(self, name: str, data: str, mtime: float | None = None) -> bool:
@@ -54,7 +52,6 @@ class MetadataStore:
     @abstractmethod
     def remove(self, name: str) -> None:
         """Delete a metadata entry"""
-        pass
 
     @abstractmethod
     def commit(self) -> None:
@@ -64,7 +61,6 @@ class MetadataStore:
         there is no guarantee that changes are not made until it is
         called.
         """
-        pass
 
     @abstractmethod
     def list_all(self) -> Iterable[str]:

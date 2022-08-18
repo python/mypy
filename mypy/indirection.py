@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, Set, Union
+from typing import Iterable, Set
 
 import mypy.types as types
 from mypy.types import TypeVisitor

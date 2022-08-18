@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, List, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.applytype

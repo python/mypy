@@ -63,7 +63,7 @@ run this on __init__ methods, this analysis pass will be fairly quick.
 
 from __future__ import annotations
 
-from typing import List, Set, Tuple
+from typing import Set, Tuple
 from typing_extensions import Final
 
 from mypyc.analysis.dataflow import (

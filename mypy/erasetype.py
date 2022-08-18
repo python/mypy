@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Container, Dict, List, Optional, cast
+from typing import Callable, Container, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (

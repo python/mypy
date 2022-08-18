@@ -47,7 +47,7 @@ from __future__ import annotations
 
 import sys
 from io import StringIO
-from typing import Callable, List, TextIO, Tuple
+from typing import Callable, TextIO
 
 
 def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> tuple[str, str, int]:

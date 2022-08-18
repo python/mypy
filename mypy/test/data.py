@@ -10,7 +10,7 @@ import shutil
 import sys
 import tempfile
 from abc import abstractmethod
-from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Pattern, Set, Tuple, Union
+from typing import Any, Iterator, NamedTuple, Pattern, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import pytest
@@ -735,7 +735,6 @@ class DataSuite:
 
     def setup(self) -> None:
         """Setup fixtures (ad-hoc)"""
-        pass
 
     @abstractmethod
     def run_case(self, testcase: DataDrivenTestCase) -> None:

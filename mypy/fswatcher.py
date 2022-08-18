@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
+from typing import AbstractSet, Iterable, NamedTuple
 
 from mypy.fscache import FileSystemCache
 

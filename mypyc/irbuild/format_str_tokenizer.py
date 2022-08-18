@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from enum import Enum, unique
-from typing import List, Optional, Tuple
 from typing_extensions import Final
 
 from mypy.checkstrformat import (

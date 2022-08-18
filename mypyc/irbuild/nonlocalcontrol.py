@@ -6,7 +6,7 @@ Model how these behave differently in different contexts.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,

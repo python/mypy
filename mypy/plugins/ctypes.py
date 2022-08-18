@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
 
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.
 import mypy.plugin

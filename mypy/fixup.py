@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 from typing_extensions import Final
 
 from mypy.lookup import lookup_fully_qualified

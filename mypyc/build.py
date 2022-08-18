@@ -30,13 +30,7 @@ from typing import (
     Any,
     Dict,
     Iterable,
-    List,
     NoReturn,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
     cast,
 )
 

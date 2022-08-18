@@ -4,7 +4,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Callable, Dict, List, NoReturn, Optional, Set, TextIO, Tuple, TypeVar, Union
+from typing import Callable, NoReturn, Optional, TextIO, Tuple, TypeVar
 from typing_extensions import Final, Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes

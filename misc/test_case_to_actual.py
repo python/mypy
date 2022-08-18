@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import os.path
 import sys
-from typing import Iterator, List
+from typing import Iterator
 
 
 class Chunk:

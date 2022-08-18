@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
-from typing import Any, Tuple
+from typing import Any
 
 try:
     import click

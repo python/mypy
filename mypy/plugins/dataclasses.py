@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy.nodes import (

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
 
 from mypy_extensions import mypyc_attr
 

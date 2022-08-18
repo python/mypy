@@ -10,7 +10,7 @@ regular namespace.
 from __future__ import annotations
 
 import argparse
-from typing import Any, Tuple
+from typing import Any
 
 
 class SplitNamespace(argparse.Namespace):

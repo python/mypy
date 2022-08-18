@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import NamedTuple
 from typing_extensions import Final
 
 import mypy.checker

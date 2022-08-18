@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 from gettext import gettext
-from typing import IO, Any, Dict, List, NoReturn, Optional, Sequence, TextIO, Tuple, Union
+from typing import Any, IO, NoReturn, Sequence, TextIO
 from typing_extensions import Final
 
 from mypy import build, defaults, state, util

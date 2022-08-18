@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from typing import Iterable, List, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.

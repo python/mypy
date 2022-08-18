@@ -32,17 +32,13 @@ from typing import (
     Dict,
     Iterable,
     Iterator,
-    List,
     Mapping,
     NamedTuple,
     NoReturn,
     Optional,
     Sequence,
-    Set,
     TextIO,
-    Tuple,
     TypeVar,
-    Union,
 )
 from typing_extensions import Final, TypeAlias as _TypeAlias
 

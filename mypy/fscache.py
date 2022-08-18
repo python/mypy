@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import os
 import stat
-from typing import Dict, List, Set
 
 from mypy_extensions import mypyc_attr
 

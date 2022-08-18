@@ -30,7 +30,6 @@ import re
 import subprocess
 import sys
 import tempfile
-from typing import List, Optional, Tuple
 
 REVEAL_TYPE_START = "reveal_type("
 REVEAL_TYPE_END = ")"

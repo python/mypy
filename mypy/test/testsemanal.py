@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os.path
 import sys
-from typing import Dict, List
+from typing import Dict
 
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION

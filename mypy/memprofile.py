@@ -9,7 +9,7 @@ from __future__ import annotations
 import gc
 import sys
 from collections import defaultdict
-from typing import Dict, Iterable, List, Tuple, cast
+from typing import Dict, Iterable, cast
 
 from mypy.nodes import FakeInfo, Node
 from mypy.types import Type

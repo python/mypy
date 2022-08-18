@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 from types import ModuleType
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 from mypy.errors import CompileError
 from mypy.moduleinspect import InspectError, ModuleInspect
@@ -868,7 +868,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 test(self: TestClass, arg0: int)
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -885,7 +884,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 test(arg0: int)
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -917,7 +915,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 test(self: TestClass, arg0: str = "")
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -936,7 +933,6 @@ class StubgencSuite(unittest.TestCase):
             """
             test(arg0: argparse.Action)
             """
-            pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -955,7 +951,6 @@ class StubgencSuite(unittest.TestCase):
             """
             test(arg0: argparse.Action)
             """
-            pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -971,7 +966,6 @@ class StubgencSuite(unittest.TestCase):
             """
             test(arg0: str) -> argparse.Action
             """
-            pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -989,7 +983,6 @@ class StubgencSuite(unittest.TestCase):
             """
             test(arg0: str) -> argparse.Action
             """
-            pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -1006,7 +999,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 (self: TestClass) -> str
                 """
-                pass
 
             attribute = property(get_attribute, doc="")
 
@@ -1055,7 +1047,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 test(self: TestClass, arg0: List[int])
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -1072,7 +1063,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 test(self: TestClass, arg0: Dict[str, int])
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -1089,7 +1079,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 test(self: TestClass, arg0: Dict[str, List[int]])
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -1106,7 +1095,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 test(self: TestClass, arg0: Dict[argparse.Action, int])
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -1123,7 +1111,6 @@ class StubgencSuite(unittest.TestCase):
                 """
                 test(self: TestClass, arg0: Dict[str, argparse.Action])
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []
@@ -1145,7 +1132,6 @@ class StubgencSuite(unittest.TestCase):
 
                 2. __init__(self: TestClass, arg0: str, arg1: str) -> None
                 """
-                pass
 
         output: list[str] = []
         imports: list[str] = []

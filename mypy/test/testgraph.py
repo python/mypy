@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import AbstractSet, Dict, List, Set
+from typing import AbstractSet
 
 from mypy.build import (
     BuildManager,

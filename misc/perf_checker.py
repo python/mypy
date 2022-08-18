@@ -8,7 +8,7 @@ import statistics
 import subprocess
 import textwrap
 import time
-from typing import Callable, List, Tuple
+from typing import Callable, Tuple
 
 
 class Command:

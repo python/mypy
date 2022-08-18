@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Union
 from typing_extensions import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks

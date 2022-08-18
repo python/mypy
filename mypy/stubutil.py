@@ -6,7 +6,7 @@ import os.path
 import re
 import sys
 from contextlib import contextmanager
-from typing import Iterator, List, Optional, Tuple, Union
+from typing import Iterator
 from typing_extensions import overload
 
 from mypy.modulefinder import ModuleNotFoundReason

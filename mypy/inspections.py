@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from collections import defaultdict
 from functools import cmp_to_key
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Callable
 
 from mypy.build import State
 from mypy.find_sources import InvalidSourceList, SourceFinder

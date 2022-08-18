@@ -5,7 +5,6 @@ These happen after semantic analysis and before type checking.
 
 from __future__ import annotations
 
-from typing import List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy.errors import Errors

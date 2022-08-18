@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import List, Optional
 
 from mypyc.analysis.ircheck import FnError, can_coerce_to, check_func_ir
 from mypyc.ir.class_ir import ClassIR

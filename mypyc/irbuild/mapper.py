@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
 
 from mypy.nodes import ARG_STAR, ARG_STAR2, GDEF, ArgKind, FuncDef, RefExpr, SymbolNode, TypeInfo
 from mypy.types import (

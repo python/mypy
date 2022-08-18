@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Callable
 from typing_extensions import Final
 
 from mypyc.codegen.literals import Literals

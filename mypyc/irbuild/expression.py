@@ -6,7 +6,7 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Union, cast
+from typing import Callable, cast
 
 from mypy.nodes import (
     ARG_POS,

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Tuple
 
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
