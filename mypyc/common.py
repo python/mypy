@@ -35,7 +35,9 @@ FAST_ISINSTANCE_MAX_SUBCLASSES: Final = 2
 # Size of size_t, if configured.
 SIZEOF_SIZE_T: Final = sysconfig.get_config_var("SIZEOF_SIZE_T") or math.log2(sys.maxsize)
 
-IS_32_BIT_PLATFORM: Final = sys.maxsize < (1 << 31) if SIZEOF_SIZE_T is None else int(SIZEOF_SIZE_T) == 4
+IS_32_BIT_PLATFORM: Final = (
+    sys.maxsize < (1 << 31) if SIZEOF_SIZE_T is None else int(SIZEOF_SIZE_T) == 4
+)
 
 PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 
@@ -47,7 +49,7 @@ PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_info < (3, 6)
 
 # Maximum value for a short tagged integer.
-MAX_SHORT_INT: Final = sys.maxsize >> 1 if SIZEOF_SIZE_T is None else 2**int(SIZEOF_SIZE_T)
+MAX_SHORT_INT: Final = sys.maxsize >> 1 if SIZEOF_SIZE_T is None else 2 ** int(SIZEOF_SIZE_T)
 
 # Maximum value for a short tagged integer represented as a C integer literal.
 #
