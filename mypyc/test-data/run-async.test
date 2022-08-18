@@ -1,0 +1,66 @@
+# async test cases (compile and run)
+
+[case testAsync]
+import asyncio
+
+async def h() -> int:
+    return 1
+
+async def g() -> int:
+    await asyncio.sleep(0)
+    return await h()
+
+async def f() -> int:
+    return await g()
+
+[typing fixtures/typing-full.pyi]
+
+[file driver.py]
+from native import f
+import asyncio
+
+result = asyncio.run(f())
+assert result == 1
+
+[case testAsyncWith]
+from testutil import async_val
+
+class async_ctx:
+    async def __aenter__(self) -> str:
+        await async_val("enter")
+        return "test"
+
+    async def __aexit__(self, x, y, z) -> None:
+        await async_val("exit")
+
+
+async def async_with() -> str:
+    async with async_ctx() as x:
+        return await async_val("body")
+
+
+[file driver.py]
+from native import async_with
+from testutil import run_generator
+
+yields, val = run_generator(async_with(), [None, 'x', None])
+assert yields == ('enter', 'body', 'exit'), yields
+assert val == 'x', val
+
+
+[case testAsyncReturn]
+from testutil import async_val
+
+async def async_return() -> str:
+    try:
+        return 'test'
+    finally:
+        await async_val('foo')
+
+[file driver.py]
+from native import async_return
+from testutil import run_generator
+
+yields, val = run_generator(async_return())
+assert yields == ('foo',)
+assert val == 'test', val

@@ -6,11 +6,10 @@ Model how these behave differently in different contexts.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
-    Assign,
     BasicBlock,
     Branch,
     Goto,
@@ -142,7 +141,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def __init__(self, target: BasicBlock) -> None:
         self.target = target
-        self.ret_reg: Optional[Register] = None
+        self.ret_reg: Union[None, Register, AssignmentTarget] = None
 
     def gen_break(self, builder: IRBuilder, line: int) -> None:
         builder.error("break inside try/finally block is unimplemented", line)
@@ -152,9 +151,15 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         if self.ret_reg is None:
-            self.ret_reg = Register(builder.ret_types[-1])
+            if builder.fn_info.is_generator:
+                self.ret_reg = builder.make_spill_target(builder.ret_types[-1])
+            else:
+                self.ret_reg = Register(builder.ret_types[-1])
+        # assert needed because of apparent mypy bug... it loses track of the union
+        # and infers the type as object
+        assert isinstance(self.ret_reg, (Register, AssignmentTarget))
+        builder.assign(self.ret_reg, value, line)
 
-        builder.add(Assign(self.ret_reg, value))
         builder.add(Goto(self.target))
 
 
@@ -180,9 +185,8 @@ class FinallyNonlocalControl(CleanupNonlocalControl):
     leave and the return register is decrefed if it isn't null.
     """
 
-    def __init__(self, outer: NonlocalControl, ret_reg: Optional[Value], saved: Value) -> None:
+    def __init__(self, outer: NonlocalControl, saved: Value) -> None:
         super().__init__(outer)
-        self.ret_reg = ret_reg
         self.saved = saved
 
     def gen_cleanup(self, builder: IRBuilder, line: int) -> None:
