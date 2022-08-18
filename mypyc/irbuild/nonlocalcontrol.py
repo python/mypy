@@ -155,6 +155,9 @@ class TryFinallyNonlocalControl(NonlocalControl):
                 self.ret_reg = builder.make_spill_target(builder.ret_types[-1])
             else:
                 self.ret_reg = Register(builder.ret_types[-1])
+        # assert needed because of apparent mypy bug... it loses track of the union
+        # and infers the type as object
+        assert isinstance(self.ret_reg, (Register, AssignmentTarget))
         builder.assign(self.ret_reg, value, line)
 
         builder.add(Goto(self.target))
