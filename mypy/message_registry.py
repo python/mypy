@@ -16,7 +16,7 @@ from mypy import errorcodes as codes
 
 class ErrorMessage(NamedTuple):
     value: str
-    code: Optional[codes.ErrorCode] = None
+    code: codes.ErrorCode | None = None
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)

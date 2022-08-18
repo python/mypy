@@ -37,7 +37,7 @@ from mypy.nodes import (
 from mypy.traverser import TraverserVisitor
 
 
-def get_subexpressions(node: Node) -> List[Expression]:
+def get_subexpressions(node: Node) -> list[Expression]:
     visitor = SubexpressionFinder()
     node.accept(visitor)
     return visitor.expressions
@@ -45,7 +45,7 @@ def get_subexpressions(node: Node) -> List[Expression]:
 
 class SubexpressionFinder(TraverserVisitor):
     def __init__(self) -> None:
-        self.expressions: List[Expression] = []
+        self.expressions: list[Expression] = []
 
     def visit_int_expr(self, o: Expression) -> None:
         self.add(o)

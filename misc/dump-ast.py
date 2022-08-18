@@ -15,7 +15,7 @@ from mypy.options import Options
 from mypy.parse import parse
 
 
-def dump(fname: str, python_version: Tuple[int, int], quiet: bool = False) -> None:
+def dump(fname: str, python_version: tuple[int, int], quiet: bool = False) -> None:
     options = Options()
     options.python_version = python_version
     with open(fname, "rb") as f:

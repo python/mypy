@@ -76,7 +76,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     """Test generation of fragments of C from individual IR ops."""
 
     def setUp(self) -> None:
-        self.registers: List[Register] = []
+        self.registers: list[Register] = []
 
         def add_local(name: str, rtype: RType) -> Register:
             reg = Register(rtype, name)
@@ -736,10 +736,10 @@ else {
         self,
         op: Op,
         expected: str,
-        next_block: Optional[BasicBlock] = None,
+        next_block: BasicBlock | None = None,
         *,
         rare: bool = False,
-        next_branch: Optional[Branch] = None,
+        next_branch: Branch | None = None,
         skip_next: bool = False,
     ) -> None:
         block = BasicBlock(0)

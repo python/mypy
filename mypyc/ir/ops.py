@@ -89,8 +89,8 @@ class BasicBlock:
 
     def __init__(self, label: int = -1) -> None:
         self.label = label
-        self.ops: List[Op] = []
-        self.error_handler: Optional[BasicBlock] = None
+        self.ops: list[Op] = []
+        self.error_handler: BasicBlock | None = None
 
     @property
     def terminated(self) -> bool:
@@ -223,16 +223,16 @@ class Op(Value):
         return False
 
     @abstractmethod
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         """All the values the op may read."""
         pass
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         """Return arguments that have a reference count stolen by this op"""
         return []
 
-    def unique_sources(self) -> List[Value]:
-        result: List[Value] = []
+    def unique_sources(self) -> list[Value]:
+        result: list[Value] = []
         for reg in self.sources():
             if reg not in result:
                 result.append(reg)
@@ -260,10 +260,10 @@ class Assign(BaseAssign):
         super().__init__(dest, line)
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -283,17 +283,17 @@ class AssignMulti(BaseAssign):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, src: List[Value], line: int = -1) -> None:
+    def __init__(self, dest: Register, src: list[Value], line: int = -1) -> None:
         super().__init__(dest, line)
         assert src
         assert isinstance(dest.type, RArray)
         assert dest.type.length == len(src)
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.src[:]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -331,7 +331,7 @@ class Goto(ControlOp):
     def __repr__(self) -> str:
         return "<Goto %s>" % self.label.label
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -376,7 +376,7 @@ class Branch(ControlOp):
         # If True, the condition is negated
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
-        self.traceback_entry: Optional[Tuple[str, int]] = None
+        self.traceback_entry: tuple[str, int] | None = None
         # If True, we expect to usually take the false branch (for optimization purposes);
         # this is implicitly treated as true if there is a traceback entry
         self.rare = rare
@@ -391,7 +391,7 @@ class Branch(ControlOp):
         else:
             self.false = new
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.value]
 
     def invert(self) -> None:
@@ -410,10 +410,10 @@ class Return(ControlOp):
         super().__init__(line)
         self.value = value
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.value]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.value]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -441,7 +441,7 @@ class Unreachable(ControlOp):
     def __init__(self, line: int = -1) -> None:
         super().__init__(line)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -463,7 +463,7 @@ class RegisterOp(Op):
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
 
-    _type: Optional[RType] = None
+    _type: RType | None = None
 
     def __init__(self, line: int) -> None:
         super().__init__(line)
@@ -483,7 +483,7 @@ class IncRef(RegisterOp):
         super().__init__(line)
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -508,7 +508,7 @@ class DecRef(RegisterOp):
     def __repr__(self) -> str:
         return "<{}DecRef {!r}>".format("X" if self.is_xdec else "", self.src)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -533,7 +533,7 @@ class Call(RegisterOp):
             self.error_kind = ERR_MAGIC_OVERLAPPING
         super().__init__(line)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return list(self.args[:])
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -543,7 +543,7 @@ class Call(RegisterOp):
 class MethodCall(RegisterOp):
     """Native method call obj.method(arg, ...)"""
 
-    def __init__(self, obj: Value, method: str, args: List[Value], line: int = -1) -> None:
+    def __init__(self, obj: Value, method: str, args: list[Value], line: int = -1) -> None:
         self.obj = obj
         self.method = method
         self.args = args
@@ -561,7 +561,7 @@ class MethodCall(RegisterOp):
             self.error_kind = ERR_MAGIC_OVERLAPPING
         super().__init__(line)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.args[:] + [self.obj]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -588,7 +588,7 @@ class LoadErrorValue(RegisterOp):
         # undefined (and thus checks should be added on uses).
         self.undefines = undefines
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -618,13 +618,13 @@ class LoadLiteral(RegisterOp):
 
     def __init__(
         self,
-        value: Union[None, str, bytes, bool, int, float, complex, Tuple[object, ...]],
+        value: None | str | bytes | bool | int | float | complex | tuple[object, ...],
         rtype: RType,
     ) -> None:
         self.value = value
         self.type = rtype
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -648,7 +648,7 @@ class GetAttr(RegisterOp):
             self.error_kind = ERR_NEVER
         self.is_borrowed = borrow and attr_type.is_refcounted
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.obj]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -680,10 +680,10 @@ class SetAttr(RegisterOp):
         self.error_kind = ERR_NEVER
         self.type = void_rtype
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.obj, self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -718,7 +718,7 @@ class LoadStatic(RegisterOp):
         self,
         type: RType,
         identifier: str,
-        module_name: Optional[str] = None,
+        module_name: str | None = None,
         namespace: str = NAMESPACE_STATIC,
         line: int = -1,
         ann: object = None,
@@ -730,7 +730,7 @@ class LoadStatic(RegisterOp):
         self.type = type
         self.ann = ann  # An object to pretty print with the load
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -749,7 +749,7 @@ class InitStatic(RegisterOp):
         self,
         value: Value,
         identifier: str,
-        module_name: Optional[str] = None,
+        module_name: str | None = None,
         namespace: str = NAMESPACE_STATIC,
         line: int = -1,
     ) -> None:
@@ -759,7 +759,7 @@ class InitStatic(RegisterOp):
         self.namespace = namespace
         self.value = value
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.value]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -771,7 +771,7 @@ class TupleSet(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, items: List[Value], line: int) -> None:
+    def __init__(self, items: list[Value], line: int) -> None:
         super().__init__(line)
         self.items = items
         # Don't keep track of the fact that an int is short after it
@@ -785,7 +785,7 @@ class TupleSet(RegisterOp):
         )
         self.type = self.tuple_type
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.items[:]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -805,7 +805,7 @@ class TupleGet(RegisterOp):
         assert index >= 0
         self.type = src.type.types[index]
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -828,10 +828,10 @@ class Cast(RegisterOp):
         self.type = typ
         self.is_borrowed = borrow
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         if self.is_borrowed:
             return []
         return [self.src]
@@ -861,10 +861,10 @@ class Box(RegisterOp):
         ):
             self.is_borrowed = True
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -887,7 +887,7 @@ class Unbox(RegisterOp):
             self.error_kind = ERR_MAGIC_OVERLAPPING
         super().__init__(line)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -912,13 +912,13 @@ class RaiseStandardError(RegisterOp):
     RUNTIME_ERROR: Final = "RuntimeError"
     NAME_ERROR: Final = "NameError"
 
-    def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
+    def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
         self.class_name = class_name
         self.value = value
         self.type = bool_rprimitive
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -940,7 +940,7 @@ class CallC(RegisterOp):
     def __init__(
         self,
         function_name: str,
-        args: List[Value],
+        args: list[Value],
         ret_type: RType,
         steals: StealsDescription,
         is_borrowed: bool,
@@ -958,10 +958,10 @@ class CallC(RegisterOp):
         # The position of the first variable argument in args (if >= 0)
         self.var_arg_idx = var_arg_idx
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.args
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         if isinstance(self.steals, list):
             assert len(self.steals) == len(self.args)
             return [arg for arg, steal in zip(self.args, self.steals) if steal]
@@ -989,10 +989,10 @@ class Truncate(RegisterOp):
         self.type = dst_type
         self.src_type = src.type
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -1020,10 +1020,10 @@ class Extend(RegisterOp):
         self.src_type = src.type
         self.signed = signed
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -1047,7 +1047,7 @@ class LoadGlobal(RegisterOp):
         self.type = type
         self.ann = ann  # An object to pretty print with the load
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -1103,7 +1103,7 @@ class IntOp(RegisterOp):
         self.rhs = rhs
         self.op = op
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -1165,7 +1165,7 @@ class ComparisonOp(RegisterOp):
         self.rhs = rhs
         self.op = op
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -1191,7 +1191,7 @@ class LoadMem(RegisterOp):
         self.src = src
         self.is_borrowed = True
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -1216,10 +1216,10 @@ class SetMem(Op):
         self.src = src
         self.dest = dest
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src, self.dest]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -1242,7 +1242,7 @@ class GetElementPtr(RegisterOp):
         self.src_type = src_type
         self.field = field
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
@@ -1261,12 +1261,12 @@ class LoadAddress(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, src: Union[str, Register], line: int = -1) -> None:
+    def __init__(self, type: RType, src: str | Register, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         if isinstance(self.src, Register):
             return [self.src]
         else:
@@ -1296,11 +1296,11 @@ class KeepAlive(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: List[Value]) -> None:
+    def __init__(self, src: list[Value]) -> None:
         assert src
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.src[:]
 
     def accept(self, visitor: OpVisitor[T]) -> T:

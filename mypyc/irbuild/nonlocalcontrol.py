@@ -141,7 +141,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def __init__(self, target: BasicBlock) -> None:
         self.target = target
-        self.ret_reg: Union[None, Register, AssignmentTarget] = None
+        self.ret_reg: None | Register | AssignmentTarget = None
 
     def gen_break(self, builder: IRBuilder, line: int) -> None:
         builder.error("break inside try/finally block is unimplemented", line)
@@ -170,7 +170,7 @@ class ExceptNonlocalControl(CleanupNonlocalControl):
     This is super annoying.
     """
 
-    def __init__(self, outer: NonlocalControl, saved: Union[Value, AssignmentTarget]) -> None:
+    def __init__(self, outer: NonlocalControl, saved: Value | AssignmentTarget) -> None:
         super().__init__(outer)
         self.saved = saved
 

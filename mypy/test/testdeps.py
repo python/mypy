@@ -40,7 +40,7 @@ class GetDependenciesSuite(DataSuite):
             if not a:
                 a = ["Unknown compile error (likely syntax error in test case or fixture)"]
         else:
-            deps: DefaultDict[str, Set[str]] = defaultdict(set)
+            deps: DefaultDict[str, set[str]] = defaultdict(set)
             for module in files:
                 if (
                     module in dumped_modules
@@ -71,7 +71,7 @@ class GetDependenciesSuite(DataSuite):
 
     def build(
         self, source: str, options: Options
-    ) -> Tuple[List[str], Optional[Dict[str, MypyFile]], Optional[Dict[Expression, Type]]]:
+    ) -> tuple[list[str], dict[str, MypyFile] | None, dict[Expression, Type] | None]:
         try:
             result = build.build(
                 sources=[BuildSource("main", None, source)],

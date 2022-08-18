@@ -179,7 +179,7 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
 
 
 def analyze_self_leaks(
-    blocks: List[BasicBlock], self_reg: Register, cfg: CFG
+    blocks: list[BasicBlock], self_reg: Register, cfg: CFG
 ) -> AnalysisResult[None]:
     return run_analysis(
         blocks=blocks,

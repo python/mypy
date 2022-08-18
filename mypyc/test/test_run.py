@@ -78,7 +78,7 @@ setup(name='test_run_output',
 WORKDIR = "build"
 
 
-def run_setup(script_name: str, script_args: List[str]) -> bool:
+def run_setup(script_name: str, script_args: list[str]) -> bool:
     """Run a setup script in a somewhat controlled environment.
 
     This is adapted from code in distutils and our goal here is that is

@@ -114,7 +114,7 @@ def load_env_registers(builder: IRBuilder) -> None:
 
 
 def load_outer_env(
-    builder: IRBuilder, base: Value, outer_env: Dict[SymbolNode, SymbolTarget]
+    builder: IRBuilder, base: Value, outer_env: dict[SymbolNode, SymbolTarget]
 ) -> Value:
     """Load the environment class for a given base into a register.
 
@@ -164,7 +164,7 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
 def add_args_to_env(
     builder: IRBuilder,
     local: bool = True,
-    base: Optional[Union[FuncInfo, ImplicitClass]] = None,
+    base: FuncInfo | ImplicitClass | None = None,
     reassign: bool = True,
 ) -> None:
     fn_info = builder.fn_info

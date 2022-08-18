@@ -66,7 +66,7 @@ def delete_folder(folder_path: str) -> None:
         shutil.rmtree(folder_path)
 
 
-def execute(command: List[str], fail_on_error: bool = True) -> Tuple[str, str, int]:
+def execute(command: list[str], fail_on_error: bool = True) -> tuple[str, str, int]:
     proc = subprocess.Popen(
         " ".join(command), stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
     )
@@ -98,7 +98,7 @@ def initialize_repo(repo_url: str, temp_repo_path: str, branch: str) -> None:
         execute(["git", "-C", temp_repo_path, "checkout", branch])
 
 
-def get_commits(repo_folder_path: str, commit_range: str) -> List[Tuple[str, str]]:
+def get_commits(repo_folder_path: str, commit_range: str) -> list[tuple[str, str]]:
     raw_data, _stderr, _errcode = execute(
         ["git", "-C", repo_folder_path, "log", "--reverse", "--oneline", commit_range]
     )
@@ -109,25 +109,25 @@ def get_commits(repo_folder_path: str, commit_range: str) -> List[Tuple[str, str
     return output
 
 
-def get_commits_starting_at(repo_folder_path: str, start_commit: str) -> List[Tuple[str, str]]:
+def get_commits_starting_at(repo_folder_path: str, start_commit: str) -> list[tuple[str, str]]:
     print(f"Fetching commits starting at {start_commit}")
     return get_commits(repo_folder_path, f"{start_commit}^..HEAD")
 
 
-def get_nth_commit(repo_folder_path: str, n: int) -> Tuple[str, str]:
+def get_nth_commit(repo_folder_path: str, n: int) -> tuple[str, str]:
     print(f"Fetching last {n} commits (or all, if there are fewer commits than n)")
     return get_commits(repo_folder_path, f"-{n}")[0]
 
 
 def run_mypy(
-    target_file_path: Optional[str],
+    target_file_path: str | None,
     mypy_cache_path: str,
-    mypy_script: Optional[str],
+    mypy_script: str | None,
     *,
     incremental: bool = False,
     daemon: bool = False,
     verbose: bool = False,
-) -> Tuple[float, str, Dict[str, Any]]:
+) -> tuple[float, str, dict[str, Any]]:
     """Runs mypy against `target_file_path` and returns what mypy prints to stdout as a string.
 
     If `incremental` is set to True, this function will use store and retrieve all caching data
@@ -136,7 +136,7 @@ def run_mypy(
 
     If `daemon` is True, we use daemon mode; the daemon must be started and stopped by the caller.
     """
-    stats: Dict[str, Any] = {}
+    stats: dict[str, Any] = {}
     if daemon:
         command = DAEMON_CMD + ["check", "-v"]
     else:
@@ -162,8 +162,8 @@ def run_mypy(
     return runtime, output, stats
 
 
-def filter_daemon_stats(output: str) -> Tuple[str, Dict[str, Any]]:
-    stats: Dict[str, Any] = {}
+def filter_daemon_stats(output: str) -> tuple[str, dict[str, Any]]:
+    stats: dict[str, Any] = {}
     lines = output.splitlines()
     output_lines = []
     for line in lines:
@@ -208,12 +208,12 @@ def save_cache(cache: JsonDict, incremental_cache_path: str = CACHE_PATH) -> Non
 
 
 def set_expected(
-    commits: List[Tuple[str, str]],
+    commits: list[tuple[str, str]],
     cache: JsonDict,
     temp_repo_path: str,
-    target_file_path: Optional[str],
+    target_file_path: str | None,
     mypy_cache_path: str,
-    mypy_script: Optional[str],
+    mypy_script: str | None,
 ) -> None:
     """Populates the given `cache` with the expected results for all of the given `commits`.
 
@@ -241,13 +241,13 @@ def set_expected(
 
 
 def test_incremental(
-    commits: List[Tuple[str, str]],
+    commits: list[tuple[str, str]],
     cache: JsonDict,
     temp_repo_path: str,
-    target_file_path: Optional[str],
+    target_file_path: str | None,
     mypy_cache_path: str,
     *,
-    mypy_script: Optional[str] = None,
+    mypy_script: str | None = None,
     daemon: bool = False,
     exit_on_error: bool = False,
 ) -> None:
@@ -258,7 +258,7 @@ def test_incremental(
     """
     print("Note: first commit is evaluated twice to warm up cache")
     commits = [commits[0]] + commits
-    overall_stats: Dict[str, float] = {}
+    overall_stats: dict[str, float] = {}
     for commit_id, message in commits:
         print(f'Now testing commit {commit_id}: "{message}"')
         execute(["git", "-C", temp_repo_path, "checkout", commit_id])
@@ -286,10 +286,10 @@ def test_incremental(
         print("Overall stats:", overall_stats)
 
 
-def combine_stats(overall_stats: Dict[str, float], new_stats: Dict[str, Any]) -> Dict[str, float]:
+def combine_stats(overall_stats: dict[str, float], new_stats: dict[str, Any]) -> dict[str, float]:
     INTERESTING_KEYS = ["build_time", "gc_time"]
     # For now, we only support float keys
-    relevant_stats: Dict[str, float] = {}
+    relevant_stats: dict[str, float] = {}
     for key in INTERESTING_KEYS:
         if key in new_stats:
             value = float(new_stats[key])
@@ -306,7 +306,7 @@ def cleanup(temp_repo_path: str, mypy_cache_path: str) -> None:
 def test_repo(
     target_repo_url: str,
     temp_repo_path: str,
-    target_file_path: Optional[str],
+    target_file_path: str | None,
     mypy_path: str,
     incremental_cache_path: str,
     mypy_cache_path: str,

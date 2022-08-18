@@ -28,7 +28,7 @@ def check_state() -> None:
         sys.exit('error: Output of "git status -s mypy/typeshed" must be empty')
 
 
-def update_typeshed(typeshed_dir: str, commit: Optional[str]) -> str:
+def update_typeshed(typeshed_dir: str, commit: str | None) -> str:
     """Update contents of local typeshed copy.
 
     Return the normalized typeshed commit hash.

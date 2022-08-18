@@ -171,7 +171,7 @@ def infer_pattern_value(pattern: Pattern) -> int:
         return TRUTH_VALUE_UNKNOWN
 
 
-def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> int:
+def consider_sys_version_info(expr: Expression, pyversion: tuple[int, ...]) -> int:
     """Consider whether expr is a comparison involving sys.version_info.
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
@@ -276,7 +276,7 @@ def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
 
 def contains_int_or_tuple_of_ints(
     expr: Expression,
-) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
+) -> None | int | tuple[int] | tuple[int, ...]:
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, TupleExpr):
@@ -292,7 +292,7 @@ def contains_int_or_tuple_of_ints(
 
 def contains_sys_version_info(
     expr: Expression,
-) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
+) -> None | int | tuple[int | None, int | None]:
     if is_sys_attr(expr, "version_info"):
         return (None, None)  # Same as sys.version_info[:]
     if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, "version_info"):

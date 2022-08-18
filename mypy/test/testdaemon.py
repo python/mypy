@@ -60,7 +60,7 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
         )
 
 
-def parse_script(input: List[str]) -> List[List[str]]:
+def parse_script(input: list[str]) -> list[list[str]]:
     """Parse testcase.input into steps.
 
     Each command starts with a line starting with '$'.
@@ -68,7 +68,7 @@ def parse_script(input: List[str]) -> List[List[str]]:
     The remaining lines are expected output.
     """
     steps = []
-    step: List[str] = []
+    step: list[str] = []
     for line in input:
         if line.startswith("$"):
             if step:
@@ -81,7 +81,7 @@ def parse_script(input: List[str]) -> List[List[str]]:
     return steps
 
 
-def run_cmd(input: str) -> Tuple[int, str]:
+def run_cmd(input: str) -> tuple[int, str]:
     if input.startswith("dmypy "):
         input = sys.executable + " -m mypy." + input
     if input.startswith("mypy "):

@@ -38,7 +38,7 @@ SINGLEDISPATCH_REGISTER_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.register"
 SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.__call__"
 
 
-def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
+def get_singledispatch_info(typ: Instance) -> SingledispatchTypeVars | None:
     if len(typ.args) == 2:
         return SingledispatchTypeVars(*typ.args)  # type: ignore
     return None
@@ -47,7 +47,7 @@ def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
 T = TypeVar("T")
 
 
-def get_first_arg(args: List[List[T]]) -> Optional[T]:
+def get_first_arg(args: list[list[T]]) -> T | None:
     """Get the element that corresponds to the first argument passed to the function"""
     if args and args[0]:
         return args[0][0]
@@ -79,7 +79,7 @@ def make_fake_register_class_instance(
 PluginContext: _TypeAlias = Union[FunctionContext, MethodContext]
 
 
-def fail(ctx: PluginContext, msg: str, context: Optional[Context]) -> None:
+def fail(ctx: PluginContext, msg: str, context: Context | None) -> None:
     """Emit an error message.
 
     This tries to emit an error message at the location specified by `context`, falling back to the
@@ -158,7 +158,7 @@ def register_function(
     ctx: PluginContext,
     singledispatch_obj: Instance,
     func: Type,
-    register_arg: Optional[Type] = None,
+    register_arg: Type | None = None,
 ) -> None:
     """Register a function"""
 
@@ -191,7 +191,7 @@ def register_function(
     return
 
 
-def get_dispatch_type(func: CallableType, register_arg: Optional[Type]) -> Optional[Type]:
+def get_dispatch_type(func: CallableType, register_arg: Type | None) -> Type | None:
     if register_arg is not None:
         return register_arg
     if func.arg_types:

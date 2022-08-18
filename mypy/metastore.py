@@ -42,7 +42,7 @@ class MetadataStore:
         pass
 
     @abstractmethod
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
         """Write a metadata entry.
 
         If mtime is specified, set it as the mtime of the entry. Otherwise,
@@ -100,7 +100,7 @@ class FilesystemMetadataStore(MetadataStore):
         with open(os.path.join(self.cache_dir_prefix, name)) as f:
             return f.read()
 
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
 
         if not self.cache_dir_prefix:
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE INDEX IF NOT EXISTS path_idx on files(path);
 """
 # No migrations yet
-MIGRATIONS: List[str] = []
+MIGRATIONS: list[str] = []
 
 
 def connect_db(db_file: str) -> sqlite3.Connection:
@@ -194,7 +194,7 @@ class SqliteMetadataStore(MetadataStore):
     def read(self, name: str) -> str:
         return self._query(name, "data")
 
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
         import sqlite3
 
         if not self.db:

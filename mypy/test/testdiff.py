@@ -52,7 +52,7 @@ class ASTDiffSuite(DataSuite):
 
     def build(
         self, source: str, options: Options
-    ) -> Tuple[List[str], Optional[Dict[str, MypyFile]]]:
+    ) -> tuple[list[str], dict[str, MypyFile] | None]:
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull

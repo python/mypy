@@ -27,7 +27,7 @@ from mypy.types import (
 
 def _find_simplecdata_base_arg(
     tp: Instance, api: mypy.plugin.CheckerPluginInterface
-) -> Optional[ProperType]:
+) -> ProperType | None:
     """Try to find a parametrized _SimpleCData in tp's bases and return its single type argument.
 
     None is returned if _SimpleCData appears nowhere in tp's (direct or indirect) bases.
@@ -100,7 +100,7 @@ def _autounboxed_cdata(tp: Type) -> ProperType:
     return tp
 
 
-def _get_array_element_type(tp: Type) -> Optional[ProperType]:
+def _get_array_element_type(tp: Type) -> ProperType | None:
     """Get the element type of the Array type tp, or None if not specified."""
     tp = get_proper_type(tp)
     if isinstance(tp, Instance):
@@ -199,7 +199,7 @@ def array_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """Callback to provide an accurate type for ctypes.Array.value."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
-        types: List[Type] = []
+        types: list[Type] = []
         for tp in flatten_nested_unions([et]):
             tp = get_proper_type(tp)
             if isinstance(tp, AnyType):
@@ -222,7 +222,7 @@ def array_raw_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """Callback to provide an accurate type for ctypes.Array.raw."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
-        types: List[Type] = []
+        types: list[Type] = []
         for tp in flatten_nested_unions([et]):
             tp = get_proper_type(tp)
             if (

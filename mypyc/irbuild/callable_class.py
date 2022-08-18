@@ -82,8 +82,8 @@ def setup_callable_class(builder: IRBuilder) -> None:
 
 def add_call_to_callable_class(
     builder: IRBuilder,
-    args: List[Register],
-    blocks: List[BasicBlock],
+    args: list[Register],
+    blocks: list[BasicBlock],
     sig: FuncSignature,
     fn_info: FuncInfo,
 ) -> FuncIR:

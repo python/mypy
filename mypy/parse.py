@@ -8,10 +8,10 @@ from mypy.options import Options
 
 
 def parse(
-    source: Union[str, bytes],
+    source: str | bytes,
     fnam: str,
-    module: Optional[str],
-    errors: Optional[Errors],
+    module: str | None,
+    errors: Errors | None,
     options: Options,
 ) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.

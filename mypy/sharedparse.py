@@ -109,5 +109,5 @@ def special_function_elide_names(name: str) -> bool:
     return name in MAGIC_METHODS_POS_ARGS_ONLY
 
 
-def argument_elide_name(name: Optional[str]) -> bool:
+def argument_elide_name(name: str | None) -> bool:
     return name is not None and name.startswith("__") and not name.endswith("__")

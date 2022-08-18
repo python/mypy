@@ -50,9 +50,9 @@ strict_optional_dec = cast(Callable[[F], F], state.strict_optional_set(True))
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do
 def build_ir(
-    modules: List[MypyFile],
+    modules: list[MypyFile],
     graph: Graph,
-    types: Dict[Expression, Type],
+    types: dict[Expression, Type],
     mapper: Mapper,
     options: CompilerOptions,
     errors: Errors,

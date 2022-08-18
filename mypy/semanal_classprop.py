@@ -49,10 +49,10 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     """
     if typ.typeddict_type:
         return  # TypedDict can't be abstract
-    concrete: Set[str] = set()
+    concrete: set[str] = set()
     # List of abstract attributes together with their abstract status
-    abstract: List[Tuple[str, int]] = []
-    abstract_in_this_class: List[str] = []
+    abstract: list[tuple[str, int]] = []
+    abstract_in_this_class: list[str] = []
     if typ.is_newtype:
         # Special case: NewTypes are considered as always non-abstract, so they can be used as:
         #     Config = NewType('Config', Mapping[str, str])
@@ -68,7 +68,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                 # different items have a different abstract status, there
                 # should be an error reported elsewhere.
                 if node.items:  # can be empty for invalid overloads
-                    func: Optional[Node] = node.items[0]
+                    func: Node | None = node.items[0]
                 else:
                     func = None
             else:
@@ -156,7 +156,7 @@ def add_type_promotion(
     This includes things like 'int' being compatible with 'float'.
     """
     defn = info.defn
-    promote_targets: List[Type] = []
+    promote_targets: list[Type] = []
     for decorator in defn.decorators:
         if isinstance(decorator, CallExpr):
             analyzed = decorator.analyzed

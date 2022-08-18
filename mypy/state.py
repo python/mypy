@@ -26,4 +26,4 @@ class StrictOptionalState:
 
 
 state: Final = StrictOptionalState(strict_optional=False)
-find_occurrences: Optional[Tuple[str, str]] = None
+find_occurrences: tuple[str, str] | None = None

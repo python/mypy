@@ -21,7 +21,7 @@ def check_consistency(o: object) -> None:
     reachable = list(seen.values())
     syms = [x for x in reachable if isinstance(x, SymbolNode)]
 
-    m: Dict[str, SymbolNode] = {}
+    m: dict[str, SymbolNode] = {}
     for sym in syms:
         if isinstance(sym, FakeInfo):
             continue
@@ -66,7 +66,7 @@ def check_consistency(o: object) -> None:
         assert sym.fullname not in m
 
 
-def path_to_str(path: List[Tuple[object, object]]) -> str:
+def path_to_str(path: list[tuple[object, object]]) -> str:
     result = "<root>"
     for attr, obj in path:
         t = type(obj).__name__

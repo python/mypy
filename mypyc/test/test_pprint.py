@@ -12,7 +12,7 @@ def register(name: str) -> Register:
     return Register(int_rprimitive, "foo", is_arg=True)
 
 
-def make_block(ops: List[Op]) -> BasicBlock:
+def make_block(ops: list[Op]) -> BasicBlock:
     block = BasicBlock()
     block.ops.extend(ops)
     return block

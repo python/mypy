@@ -10,7 +10,7 @@ class Chunk:
     def __init__(self, header_type: str, args: str) -> None:
         self.header_type = header_type
         self.args = args
-        self.lines: List[str] = []
+        self.lines: list[str] = []
 
 
 def is_header(line: str) -> bool:
@@ -36,7 +36,7 @@ def produce_chunks(lines: Iterator[str]) -> Iterator[Chunk]:
         yield current_chunk
 
 
-def write_out(filename: str, lines: List[str]) -> None:
+def write_out(filename: str, lines: list[str]) -> None:
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, "w") as stream:
         stream.write("\n".join(lines))

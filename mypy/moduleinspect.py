@@ -18,11 +18,11 @@ class ModuleProperties:
     def __init__(
         self,
         name: str = "",
-        file: Optional[str] = None,
-        path: Optional[List[str]] = None,
-        all: Optional[List[str]] = None,
+        file: str | None = None,
+        path: list[str] | None = None,
+        all: list[str] | None = None,
         is_c_module: bool = False,
-        subpackages: Optional[List[str]] = None,
+        subpackages: list[str] | None = None,
     ) -> None:
         self.name = name  # __name__ attribute
         self.file = file  # __file__ attribute
@@ -52,7 +52,7 @@ def get_package_properties(package_id: str) -> ModuleProperties:
         raise InspectError(str(e)) from e
     name = getattr(package, "__name__", package_id)
     file = getattr(package, "__file__", None)
-    path: Optional[List[str]] = getattr(package, "__path__", None)
+    path: list[str] | None = getattr(package, "__path__", None)
     if not isinstance(path, list):
         path = None
     pkg_all = getattr(package, "__all__", None)
@@ -88,7 +88,7 @@ def get_package_properties(package_id: str) -> ModuleProperties:
 
 
 def worker(
-    tasks: Queue[str], results: Queue[Union[str, ModuleProperties]], sys_path: List[str]
+    tasks: Queue[str], results: Queue[str | ModuleProperties], sys_path: list[str]
 ) -> None:
     """The main loop of a worker introspection process."""
     sys.path = sys_path
@@ -123,7 +123,7 @@ class ModuleInspect:
 
     def _start(self) -> None:
         self.tasks: Queue[str] = Queue()
-        self.results: Queue[Union[ModuleProperties, str]] = Queue()
+        self.results: Queue[ModuleProperties | str] = Queue()
         self.proc = Process(target=worker, args=(self.tasks, self.results, sys.path))
         self.proc.start()
         self.counter = 0  # Number of successful roundtrips
@@ -155,7 +155,7 @@ class ModuleInspect:
         self.counter += 1
         return res
 
-    def _get_from_queue(self) -> Union[ModuleProperties, str, None]:
+    def _get_from_queue(self) -> ModuleProperties | str | None:
         """Get value from the queue.
 
         Return the value read from the queue, or None if the process unexpectedly died.

@@ -34,9 +34,9 @@ def insert_uninit_checks(ir: FuncIR) -> None:
 
 
 def split_blocks_at_uninits(
-    blocks: List[BasicBlock], pre_must_defined: AnalysisDict[Value]
-) -> List[BasicBlock]:
-    new_blocks: List[BasicBlock] = []
+    blocks: list[BasicBlock], pre_must_defined: AnalysisDict[Value]
+) -> list[BasicBlock]:
+    new_blocks: list[BasicBlock] = []
 
     init_registers = []
     init_registers_set = set()
@@ -92,7 +92,7 @@ def split_blocks_at_uninits(
             cur_block.ops.append(op)
 
     if init_registers:
-        new_ops: List[Op] = []
+        new_ops: list[Op] = []
         for reg in init_registers:
             err = LoadErrorValue(reg.type, undefines=True)
             new_ops.append(err)
