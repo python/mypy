@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import List, NamedTuple, Optional
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
@@ -127,59 +127,59 @@ class ClassIR:
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
-        self.builtin_base: Optional[str] = None
+        self.builtin_base: str | None = None
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
 
-        self.attributes: Dict[str, RType] = {}
+        self.attributes: dict[str, RType] = {}
         # Deletable attributes
-        self.deletable: List[str] = []
+        self.deletable: list[str] = []
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
-        self.method_decls: Dict[str, FuncDecl] = {}
+        self.method_decls: dict[str, FuncDecl] = {}
         # Map of methods that are actually present in an extension class
-        self.methods: Dict[str, FuncIR] = {}
+        self.methods: dict[str, FuncIR] = {}
         # Glue methods for boxing/unboxing when a class changes the type
         # while overriding a method. Maps from (parent class overridden, method)
         # to IR of glue method.
-        self.glue_methods: Dict[Tuple[ClassIR, str], FuncIR] = {}
+        self.glue_methods: dict[tuple[ClassIR, str], FuncIR] = {}
 
         # Properties are accessed like attributes, but have behavior like method calls.
         # They don't belong in the methods dictionary, since we don't want to expose them to
         # Python's method API. But we want to put them into our own vtable as methods, so that
         # they are properly handled and overridden. The property dictionary values are a tuple
         # containing a property getter and an optional property setter.
-        self.properties: Dict[str, Tuple[FuncIR, Optional[FuncIR]]] = {}
+        self.properties: dict[str, tuple[FuncIR, FuncIR | None]] = {}
         # We generate these in prepare_class_def so that we have access to them when generating
         # other methods and properties that rely on these types.
-        self.property_types: Dict[str, RType] = {}
+        self.property_types: dict[str, RType] = {}
 
-        self.vtable: Optional[Dict[str, int]] = None
+        self.vtable: dict[str, int] | None = None
         self.vtable_entries: VTableEntries = []
-        self.trait_vtables: Dict[ClassIR, VTableEntries] = {}
+        self.trait_vtables: dict[ClassIR, VTableEntries] = {}
         # N.B: base might not actually quite be the direct base.
         # It is the nearest concrete base, but we allow a trait in between.
-        self.base: Optional[ClassIR] = None
-        self.traits: List[ClassIR] = []
+        self.base: ClassIR | None = None
+        self.traits: list[ClassIR] = []
         # Supply a working mro for most generated classes. Real classes will need to
         # fix it up.
-        self.mro: List[ClassIR] = [self]
+        self.mro: list[ClassIR] = [self]
         # base_mro is the chain of concrete (non-trait) ancestors
-        self.base_mro: List[ClassIR] = [self]
+        self.base_mro: list[ClassIR] = [self]
 
         # Direct subclasses of this class (use subclasses() to also include non-direct ones)
         # None if separate compilation prevents this from working
-        self.children: Optional[List[ClassIR]] = []
+        self.children: list[ClassIR] | None = []
 
         # Instance attributes that are initialized in the class body.
-        self.attrs_with_defaults: Set[str] = set()
+        self.attrs_with_defaults: set[str] = set()
 
         # Attributes that are always initialized in __init__ or class body
         # (inferred in mypyc.analysis.attrdefined using interprocedural analysis)
-        self._always_initialized_attrs: Set[str] = set()
+        self._always_initialized_attrs: set[str] = set()
 
         # Attributes that are sometimes initialized in __init__
-        self._sometimes_initialized_attrs: Set[str] = set()
+        self._sometimes_initialized_attrs: set[str] = set()
 
         # If True, __init__ can make 'self' visible to unanalyzed/arbitrary code
         self.init_self_leak = False
@@ -197,7 +197,7 @@ class ClassIR:
     def fullname(self) -> str:
         return f"{self.module_name}.{self.name}"
 
-    def real_base(self) -> Optional[ClassIR]:
+    def real_base(self) -> ClassIR | None:
         """Return the actual concrete base class, if there is one."""
         if len(self.mro) > 1 and not self.mro[1].is_trait:
             return self.mro[1]
@@ -208,7 +208,7 @@ class ClassIR:
         assert name in self.vtable, f"{self.name!r} has no attribute {name!r}"
         return self.vtable[name]
 
-    def attr_details(self, name: str) -> Tuple[RType, ClassIR]:
+    def attr_details(self, name: str) -> tuple[RType, ClassIR]:
         for ir in self.mro:
             if name in ir.attributes:
                 return ir.attributes[name], ir
@@ -274,18 +274,18 @@ class ClassIR:
     def struct_name(self, names: NameGenerator) -> str:
         return f"{exported_name(self.fullname)}Object"
 
-    def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, ClassIR]]:
+    def get_method_and_class(self, name: str) -> tuple[FuncIR, ClassIR] | None:
         for ir in self.mro:
             if name in ir.methods:
                 return ir.methods[name], ir
 
         return None
 
-    def get_method(self, name: str) -> Optional[FuncIR]:
+    def get_method(self, name: str) -> FuncIR | None:
         res = self.get_method_and_class(name)
         return res[0] if res else None
 
-    def subclasses(self) -> Optional[Set[ClassIR]]:
+    def subclasses(self) -> set[ClassIR] | None:
         """Return all subclasses of this class, both direct and indirect.
 
         Return None if it is impossible to identify all subclasses, for example
@@ -302,7 +302,7 @@ class ClassIR:
                 result.update(child_subs)
         return result
 
-    def concrete_subclasses(self) -> Optional[List[ClassIR]]:
+    def concrete_subclasses(self) -> list[ClassIR] | None:
         """Return all concrete (i.e. non-trait and non-abstract) subclasses.
 
         Include both direct and indirect subclasses. Place classes with no children first.
@@ -449,7 +449,7 @@ def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:
     }
 
 
-def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
+def serialize_vtable(vtable: VTableEntries) -> list[JsonDict]:
     return [serialize_vtable_entry(v) for v in vtable]
 
 
@@ -464,11 +464,11 @@ def deserialize_vtable_entry(data: JsonDict, ctx: DeserMaps) -> VTableMethod:
     assert False, "Bogus vtable .class: %s" % data[".class"]
 
 
-def deserialize_vtable(data: List[JsonDict], ctx: DeserMaps) -> VTableEntries:
+def deserialize_vtable(data: list[JsonDict], ctx: DeserMaps) -> VTableEntries:
     return [deserialize_vtable_entry(x, ctx) for x in data]
 
 
-def all_concrete_classes(class_ir: ClassIR) -> Optional[List[ClassIR]]:
+def all_concrete_classes(class_ir: ClassIR) -> list[ClassIR] | None:
     """Return all concrete classes among the class itself and its subclasses."""
     concrete = class_ir.concrete_subclasses()
     if concrete is None:

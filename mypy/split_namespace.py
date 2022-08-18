@@ -10,7 +10,7 @@ regular namespace.
 from __future__ import annotations
 
 import argparse
-from typing import Any, Tuple
+from typing import Any
 
 
 class SplitNamespace(argparse.Namespace):
@@ -19,7 +19,7 @@ class SplitNamespace(argparse.Namespace):
         self.__dict__["_alt_namespace"] = alt_namespace
         self.__dict__["_alt_prefix"] = alt_prefix
 
-    def _get(self) -> Tuple[Any, Any]:
+    def _get(self) -> tuple[Any, Any]:
         return (self._standard_namespace, self._alt_namespace)
 
     def __setattr__(self, name: str, value: Any) -> None:

@@ -9,7 +9,7 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from typing import Callable, List, Optional, Sequence, Tuple, Union
+from typing import Callable, Sequence
 
 from mypy.nodes import (
     AssertStmt,
@@ -362,8 +362,8 @@ def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
 def transform_try_except(
     builder: IRBuilder,
     body: GenFunc,
-    handlers: Sequence[Tuple[Optional[Expression], Optional[Expression], GenFunc]],
-    else_body: Optional[GenFunc],
+    handlers: Sequence[tuple[Expression | None, Expression | None, GenFunc]],
+    else_body: GenFunc | None,
     line: int,
 ) -> None:
     """Generalized try/except/else handling that takes functions to gen the bodies.
@@ -464,7 +464,7 @@ def try_finally_try(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     try_body: GenFunc,
-) -> Union[Register, AssignmentTarget, None]:
+) -> Register | AssignmentTarget | None:
     # Compile the try block with an error handler
     control = TryFinallyNonlocalControl(return_entry)
     builder.builder.push_error_handler(err_handler)
@@ -485,7 +485,7 @@ def try_finally_entry_blocks(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     finally_block: BasicBlock,
-    ret_reg: Union[Register, AssignmentTarget, None],
+    ret_reg: Register | AssignmentTarget | None,
 ) -> Value:
     old_exc = Register(exc_rtuple)
 
@@ -511,7 +511,7 @@ def try_finally_entry_blocks(
 
 def try_finally_body(
     builder: IRBuilder, finally_block: BasicBlock, finally_body: GenFunc, old_exc: Value
-) -> Tuple[BasicBlock, FinallyNonlocalControl]:
+) -> tuple[BasicBlock, FinallyNonlocalControl]:
     cleanup_block = BasicBlock()
     # Compile the finally block with the nonlocal control flow overridden to restore exc_info
     builder.builder.push_error_handler(cleanup_block)
@@ -529,7 +529,7 @@ def try_finally_resolve_control(
     cleanup_block: BasicBlock,
     finally_control: FinallyNonlocalControl,
     old_exc: Value,
-    ret_reg: Union[Register, AssignmentTarget, None],
+    ret_reg: Register | AssignmentTarget | None,
 ) -> BasicBlock:
     """Resolve the control flow out of a finally block.
 
@@ -626,7 +626,7 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
         transform_try_except_stmt(builder, t)
 
 
-def get_sys_exc_info(builder: IRBuilder) -> List[Value]:
+def get_sys_exc_info(builder: IRBuilder) -> list[Value]:
     exc_info = builder.call_c(get_exc_info_op, [], -1)
     return [builder.add(TupleGet(exc_info, i, -1)) for i in range(3)]
 
@@ -634,7 +634,7 @@ def get_sys_exc_info(builder: IRBuilder) -> List[Value]:
 def transform_with(
     builder: IRBuilder,
     expr: Expression,
-    target: Optional[Lvalue],
+    target: Lvalue | None,
     body: GenFunc,
     is_async: bool,
     line: int,

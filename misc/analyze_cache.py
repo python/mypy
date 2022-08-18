@@ -6,7 +6,7 @@ import json
 import os
 import os.path
 from collections import Counter
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 ROOT: Final = ".mypy_cache/3.5"
@@ -75,18 +75,18 @@ def pluck(name: str, chunks: Iterable[JsonDict]) -> Iterable[JsonDict]:
     return (chunk for chunk in chunks if chunk[".class"] == name)
 
 
-def report_counter(counter: Counter, amount: Optional[int] = None) -> None:
+def report_counter(counter: Counter, amount: int | None = None) -> None:
     for name, count in counter.most_common(amount):
         print(f"    {count: <8} {name}")
     print()
 
 
-def report_most_common(chunks: List[JsonDict], amount: Optional[int] = None) -> None:
+def report_most_common(chunks: list[JsonDict], amount: int | None = None) -> None:
     report_counter(Counter(str(chunk) for chunk in chunks), amount)
 
 
 def compress(chunk: JsonDict) -> JsonDict:
-    cache = {}  # type: Dict[int, JsonDict]
+    cache: dict[int, JsonDict] = {}
     counter = 0
 
     def helper(chunk: Any) -> Any:
@@ -119,7 +119,7 @@ def compress(chunk: JsonDict) -> JsonDict:
 
 
 def decompress(chunk: JsonDict) -> JsonDict:
-    cache = {}  # type: Dict[int, JsonDict]
+    cache: dict[int, JsonDict] = {}
 
     def helper(chunk: Any) -> Any:
         if not isinstance(chunk, dict):

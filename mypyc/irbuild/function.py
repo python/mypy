@@ -13,7 +13,7 @@ instance of the callable class.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import DefaultDict, NamedTuple, Sequence
 
 from mypy.nodes import (
     ArgKind,
@@ -115,7 +115,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     func_ir, func_reg = gen_func_item(
         builder, dec.func, dec.func.name, builder.mapper.fdef_to_sig(dec.func)
     )
-    decorated_func: Optional[Value] = None
+    decorated_func: Value | None = None
     if func_reg:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
         builder.assign(get_func_target(builder, dec.func), decorated_func, dec.func.line)
@@ -174,8 +174,8 @@ def gen_func_item(
     fitem: FuncItem,
     name: str,
     sig: FuncSignature,
-    cdef: Optional[ClassDef] = None,
-) -> Tuple[FuncIR, Optional[Value]]:
+    cdef: ClassDef | None = None,
+) -> tuple[FuncIR, Value | None]:
     """Generate and return the FuncIR for a given FuncDef.
 
     If the given FuncItem is a nested function, then we generate a
@@ -212,7 +212,7 @@ def gen_func_item(
 
     # TODO: do something about abstract methods.
 
-    func_reg: Optional[Value] = None
+    func_reg: Value | None = None
 
     # We treat lambdas as always being nested because we always generate
     # a class for lambdas, no matter where they are. (It would probably also
@@ -286,7 +286,7 @@ def gen_func_item(
     # them even if they are declared after the nested function's definition.
     # Note that this is done before visiting the body of this function.
 
-    env_for_func: Union[FuncInfo, ImplicitClass] = builder.fn_info
+    env_for_func: FuncInfo | ImplicitClass = builder.fn_info
     if builder.fn_info.is_generator:
         env_for_func = builder.fn_info.generator_class
     elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
@@ -346,13 +346,13 @@ def gen_func_item(
 
 def gen_func_ir(
     builder: IRBuilder,
-    args: List[Register],
-    blocks: List[BasicBlock],
+    args: list[Register],
+    blocks: list[BasicBlock],
     sig: FuncSignature,
     fn_info: FuncInfo,
-    cdef: Optional[ClassDef],
+    cdef: ClassDef | None,
     is_singledispatch_main_func: bool = False,
-) -> Tuple[FuncIR, Optional[Value]]:
+) -> tuple[FuncIR, Value | None]:
     """Generate the FuncIR for a function.
 
     This takes the basic blocks and function info of a particular
@@ -360,7 +360,7 @@ def gen_func_ir(
     also returns the register containing the instance of the
     corresponding callable class.
     """
-    func_reg: Optional[Value] = None
+    func_reg: Value | None = None
     if fn_info.is_nested or fn_info.in_non_ext:
         func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
         add_get_to_callable_class(builder, fn_info)
@@ -487,8 +487,8 @@ def handle_non_ext_method(
 def calculate_arg_defaults(
     builder: IRBuilder,
     fn_info: FuncInfo,
-    func_reg: Optional[Value],
-    symtable: Dict[SymbolNode, SymbolTarget],
+    func_reg: Value | None,
+    symtable: dict[SymbolNode, SymbolTarget],
 ) -> None:
     """Calculate default argument values and store them.
 
@@ -572,9 +572,9 @@ def gen_glue(
 
 
 class ArgInfo(NamedTuple):
-    args: List[Value]
-    arg_names: List[Optional[str]]
-    arg_kinds: List[ArgKind]
+    args: list[Value]
+    arg_names: list[str | None]
+    arg_kinds: list[ArgKind]
 
 
 def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> ArgInfo:
@@ -746,7 +746,7 @@ def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
     return class_obj
 
 
-def load_func(builder: IRBuilder, func_name: str, fullname: Optional[str], line: int) -> Value:
+def load_func(builder: IRBuilder, func_name: str, fullname: str | None, line: int) -> Value:
     if fullname is not None and not fullname.startswith(builder.current_module):
         # we're calling a function in a different module
 
@@ -848,7 +848,7 @@ def gen_calls_to_correct_impl(
 
 def gen_dispatch_func_ir(
     builder: IRBuilder, fitem: FuncDef, main_func_name: str, dispatch_name: str, sig: FuncSignature
-) -> Tuple[FuncIR, Value]:
+) -> tuple[FuncIR, Value]:
     """Create a dispatch function (a function that checks the first argument type and dispatches
     to the correct implementation)
     """
@@ -933,7 +933,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
     line = fitem.line
     is_singledispatch_main_func = fitem in builder.singledispatch_impls
     # dict of singledispatch_func to list of register_types (fitem is the function to register)
-    to_register: DefaultDict[FuncDef, List[TypeInfo]] = defaultdict(list)
+    to_register: DefaultDict[FuncDef, list[TypeInfo]] = defaultdict(list)
     for main_func, impls in builder.singledispatch_impls.items():
         for dispatch_type, impl in impls:
             if fitem == impl:
@@ -978,7 +978,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         builder.gen_method_call(dispatch_cache, "clear", [], None, line)
 
 
-def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> Dict[FuncDef, int]:
+def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> dict[FuncDef, int]:
     """Return a dict of registered implementation to native implementation ID for all
     implementations
     """

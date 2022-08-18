@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Type as typing_Type
+from typing import Callable, Type as typing_Type
 
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin
@@ -33,7 +33,7 @@ class ProperTypePlugin(Plugin):
     all these became dangerous because typ may be e.g. an alias to union.
     """
 
-    def get_function_hook(self, fullname: str) -> Optional[Callable[[FunctionContext], Type]]:
+    def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         if fullname == "builtins.isinstance":
             return isinstance_proper_hook
         if fullname == "mypy.types.get_proper_type":

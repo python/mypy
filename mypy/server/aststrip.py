@@ -34,7 +34,7 @@ Notes:
 from __future__ import annotations
 
 from contextlib import contextmanager, nullcontext
-from typing import Dict, Iterator, Optional, Tuple, Union
+from typing import Dict, Iterator, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (
@@ -71,7 +71,7 @@ SavedAttributes: _TypeAlias = Dict[Tuple[ClassDef, str], SymbolTableNode]
 
 
 def strip_target(
-    node: Union[MypyFile, FuncDef, OverloadedFuncDef], saved_attrs: SavedAttributes
+    node: MypyFile | FuncDef | OverloadedFuncDef, saved_attrs: SavedAttributes
 ) -> None:
     """Reset a fine-grained incremental target to state before semantic analysis.
 
@@ -94,7 +94,7 @@ def strip_target(
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self, saved_class_attrs: SavedAttributes) -> None:
         # The current active class.
-        self.type: Optional[TypeInfo] = None
+        self.type: TypeInfo | None = None
         # This is True at class scope, but not in methods.
         self.is_class_body = False
         # By default, process function definitions. If False, don't -- this is used for

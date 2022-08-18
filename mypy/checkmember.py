@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Optional, Sequence, Union, cast
+from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
@@ -88,8 +88,8 @@ class MemberContext:
         context: Context,
         msg: MessageBuilder,
         chk: mypy.checker.TypeChecker,
-        self_type: Optional[Type],
-        module_symbol_table: Optional[SymbolTable] = None,
+        self_type: Type | None,
+        module_symbol_table: SymbolTable | None = None,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -110,9 +110,9 @@ class MemberContext:
     def copy_modified(
         self,
         *,
-        messages: Optional[MessageBuilder] = None,
-        self_type: Optional[Type] = None,
-        is_lvalue: Optional[bool] = None,
+        messages: MessageBuilder | None = None,
+        self_type: Type | None = None,
+        is_lvalue: bool | None = None,
     ) -> MemberContext:
         mx = MemberContext(
             self.is_lvalue,
@@ -145,10 +145,10 @@ def analyze_member_access(
     *,
     original_type: Type,
     chk: mypy.checker.TypeChecker,
-    override_info: Optional[TypeInfo] = None,
+    override_info: TypeInfo | None = None,
     in_literal_context: bool = False,
-    self_type: Optional[Type] = None,
-    module_symbol_table: Optional[SymbolTable] = None,
+    self_type: Type | None = None,
+    module_symbol_table: SymbolTable | None = None,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -197,7 +197,7 @@ def analyze_member_access(
 
 
 def _analyze_member_access(
-    name: str, typ: Type, mx: MemberContext, override_info: Optional[TypeInfo] = None
+    name: str, typ: Type, mx: MemberContext, override_info: TypeInfo | None = None
 ) -> Type:
     # TODO: This and following functions share some logic with subtypes.find_member;
     #       consider refactoring.
@@ -238,7 +238,7 @@ def _analyze_member_access(
 
 
 def may_be_awaitable_attribute(
-    name: str, typ: Type, mx: MemberContext, override_info: Optional[TypeInfo] = None
+    name: str, typ: Type, mx: MemberContext, override_info: TypeInfo | None = None
 ) -> bool:
     """Check if the given type has the attribute when awaited."""
     if mx.chk.checking_missing_await:
@@ -257,7 +257,7 @@ def report_missing_attribute(
     typ: Type,
     name: str,
     mx: MemberContext,
-    override_info: Optional[TypeInfo] = None,
+    override_info: TypeInfo | None = None,
 ) -> Type:
     res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
     if may_be_awaitable_attribute(name, typ, mx, override_info):
@@ -270,7 +270,7 @@ def report_missing_attribute(
 
 
 def analyze_instance_member_access(
-    name: str, typ: Instance, mx: MemberContext, override_info: Optional[TypeInfo]
+    name: str, typ: Instance, mx: MemberContext, override_info: TypeInfo | None
 ) -> Type:
     if name == "__init__" and not mx.is_super:
         # Accessing __init__ in statically typed code would compromise
@@ -361,7 +361,7 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
 
 
 def analyze_type_type_member_access(
-    name: str, typ: TypeType, mx: MemberContext, override_info: Optional[TypeInfo]
+    name: str, typ: TypeType, mx: MemberContext, override_info: TypeInfo | None
 ) -> Type:
     # Similar to analyze_type_callable_attribute_access.
     item = None
@@ -772,9 +772,7 @@ def freeze_type_vars(member_type: Type) -> None:
                 v.id.meta_level = 0
 
 
-def lookup_member_var_or_accessor(
-    info: TypeInfo, name: str, is_lvalue: bool
-) -> Optional[SymbolNode]:
+def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) -> SymbolNode | None:
     """Find the attribute/accessor node that refers to a member of a type."""
     # TODO handle lvalues
     node = info.get(name)
@@ -843,9 +841,9 @@ def analyze_class_attribute_access(
     itype: Instance,
     name: str,
     mx: MemberContext,
-    override_info: Optional[TypeInfo] = None,
-    original_vars: Optional[Sequence[TypeVarLikeType]] = None,
-) -> Optional[Type]:
+    override_info: TypeInfo | None = None,
+    original_vars: Sequence[TypeVarLikeType] | None = None,
+) -> Type | None:
     """Analyze access to an attribute on a class object.
 
     itype is the return type of the class object callable, original_type is the type
@@ -901,7 +899,7 @@ def analyze_class_attribute_access(
 
         # Find the class where method/variable was defined.
         if isinstance(node.node, Decorator):
-            super_info: Optional[TypeInfo] = node.node.var.info
+            super_info: TypeInfo | None = node.node.var.info
         elif isinstance(node.node, (Var, SYMBOL_FUNCBASE_TYPES)):
             super_info = node.node.info
         else:
@@ -993,8 +991,8 @@ def analyze_class_attribute_access(
 
 
 def apply_class_attr_hook(
-    mx: MemberContext, hook: Optional[Callable[[AttributeContext], Type]], result: Type
-) -> Optional[Type]:
+    mx: MemberContext, hook: Callable[[AttributeContext], Type] | None, result: Type
+) -> Type | None:
     if hook:
         result = hook(
             AttributeContext(get_proper_type(mx.original_type), result, mx.context, mx.chk)
@@ -1004,7 +1002,7 @@ def apply_class_attr_hook(
 
 def analyze_enum_class_attribute_access(
     itype: Instance, name: str, mx: MemberContext
-) -> Optional[Type]:
+) -> Type | None:
     # Skip these since Enum will remove it
     if name in ENUM_REMOVED_PROPS:
         return report_missing_attribute(mx.original_type, itype, name, mx)
@@ -1017,7 +1015,7 @@ def analyze_enum_class_attribute_access(
 
 
 def analyze_typeddict_access(
-    name: str, typ: TypedDictType, mx: MemberContext, override_info: Optional[TypeInfo]
+    name: str, typ: TypedDictType, mx: MemberContext, override_info: TypeInfo | None
 ) -> Type:
     if name == "__setitem__":
         if isinstance(mx.context, IndexExpr):
@@ -1052,10 +1050,10 @@ def analyze_typeddict_access(
 
 def add_class_tvars(
     t: ProperType,
-    isuper: Optional[Instance],
+    isuper: Instance | None,
     is_classmethod: bool,
     original_type: Type,
-    original_vars: Optional[Sequence[TypeVarLikeType]] = None,
+    original_vars: Sequence[TypeVarLikeType] | None = None,
 ) -> Type:
     """Instantiate type variables during analyze_class_attribute_access,
     e.g T and Q in the following:
@@ -1152,7 +1150,7 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
 
     fallback = info.metaclass_type or named_type("builtins.type")
     if init_index < new_index:
-        method: Union[FuncBase, Decorator] = init_method.node
+        method: FuncBase | Decorator = init_method.node
         is_new = False
     elif init_index > new_index:
         method = new_method.node
@@ -1190,10 +1188,10 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
 
 
 def analyze_decorator_or_funcbase_access(
-    defn: Union[Decorator, FuncBase],
+    defn: Decorator | FuncBase,
     itype: Instance,
     info: TypeInfo,
-    self_type: Optional[Type],
+    self_type: Type | None,
     name: str,
     mx: MemberContext,
 ) -> Type:
@@ -1209,7 +1207,7 @@ def analyze_decorator_or_funcbase_access(
     )
 
 
-def is_valid_constructor(n: Optional[SymbolNode]) -> bool:
+def is_valid_constructor(n: SymbolNode | None) -> bool:
     """Does this node represents a valid constructor method?
 
     This includes normal functions, overloaded functions, and decorators

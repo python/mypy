@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Callable, Mapping, Tuple
 
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header
@@ -141,9 +141,9 @@ def slot_key(attr: str) -> str:
     return attr
 
 
-def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
-    fields: Dict[str, str] = {}
-    generated: Dict[str, str] = {}
+def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    generated: dict[str, str] = {}
     # Sort for determinism on Python 3.5
     for name, (slot, generator) in sorted(table.items(), key=lambda x: slot_key(x[0])):
         method_cls = cl.get_method_and_class(name)
@@ -200,7 +200,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
 
-    fields: Dict[str, str] = {}
+    fields: dict[str, str] = {}
     fields["tp_name"] = f'"{name}"'
 
     generate_full = not cl.is_trait and not cl.builtin_base
@@ -296,7 +296,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
 
         if cl.allow_interpreted_subclasses:
-            shadow_vtable_name: Optional[str] = generate_vtables(
+            shadow_vtable_name: str | None = generate_vtables(
                 cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
             )
             emit_line()
@@ -362,8 +362,8 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    seen_attrs: Set[Tuple[str, RType]] = set()
-    lines: List[str] = []
+    seen_attrs: set[tuple[str, RType]] = set()
+    lines: list[str] = []
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__") and emitter.use_vectorcall():
         lines.append("vectorcallfunc vectorcall;")
@@ -490,7 +490,7 @@ def generate_vtable(
     entries: VTableEntries,
     vtable_name: str,
     emitter: Emitter,
-    subtables: List[Tuple[ClassIR, str, str]],
+    subtables: list[tuple[ClassIR, str, str]],
     shadow: bool,
 ) -> None:
     emitter.emit_line(f"CPyVTableItem {vtable_name}_scratch[] = {{")
@@ -524,9 +524,9 @@ def generate_vtable(
 def generate_setup_for_class(
     cl: ClassIR,
     func_name: str,
-    defaults_fn: Optional[FuncIR],
+    defaults_fn: FuncIR | None,
     vtable_name: str,
-    shadow_vtable_name: Optional[str],
+    shadow_vtable_name: str | None,
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
@@ -573,7 +573,7 @@ def generate_setup_for_class(
 def generate_constructor_for_class(
     cl: ClassIR,
     fn: FuncDecl,
-    init_fn: Optional[FuncIR],
+    init_fn: FuncIR | None,
     setup_name: str,
     vtable_name: str,
     emitter: Emitter,
@@ -642,7 +642,7 @@ def generate_new_for_class(
     func_name: str,
     vtable_name: str,
     setup_name: str,
-    init_fn: Optional[FuncIR],
+    init_fn: FuncIR | None,
     emitter: Emitter,
 ) -> None:
     emitter.emit_line("static PyObject *")
@@ -781,8 +781,8 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 
 
 def generate_side_table_for_class(
-    cl: ClassIR, name: str, type: str, slots: Dict[str, str], emitter: Emitter
-) -> Optional[str]:
+    cl: ClassIR, name: str, type: str, slots: dict[str, str], emitter: Emitter
+) -> str | None:
     name = f"{cl.name_prefix(emitter.names)}_{name}"
     emitter.emit_line(f"static {type} {name} = {{")
     for field, value in slots.items():

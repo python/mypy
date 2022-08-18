@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar, List, Optional, Tuple, Type, Union
+from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
@@ -58,7 +58,7 @@ def for_loop_helper(
     index: Lvalue,
     expr: Expression,
     body_insts: GenFunc,
-    else_insts: Optional[GenFunc],
+    else_insts: GenFunc | None,
     line: int,
 ) -> None:
     """Generate IR for a loop.
@@ -166,7 +166,7 @@ def sequence_from_generator_preallocate_helper(
     gen: GeneratorExpr,
     empty_op_llbuilder: Callable[[Value, int], Value],
     set_item_op: CFunctionDescription,
-) -> Optional[Value]:
+) -> Value | None:
     """Generate a new tuple or list from a simple generator expression.
 
     Currently we only optimize for simplest generator expression, which means that
@@ -245,7 +245,7 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
 
 def comprehension_helper(
     builder: IRBuilder,
-    loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
+    loop_params: list[tuple[Lvalue, Expression, list[Expression]]],
     gen_inner_stmts: Callable[[], None],
     line: int,
 ) -> None:
@@ -260,7 +260,7 @@ def comprehension_helper(
         gen_inner_stmts: function to generate the IR for the body of the innermost loop
     """
 
-    def handle_loop(loop_params: List[Tuple[Lvalue, Expression, List[Expression]]]) -> None:
+    def handle_loop(loop_params: list[tuple[Lvalue, Expression, list[Expression]]]) -> None:
         """Generate IR for a loop.
 
         Given a list of (index, expression, [conditions]) tuples, generate IR
@@ -272,8 +272,8 @@ def comprehension_helper(
         )
 
     def loop_contents(
-        conds: List[Expression],
-        remaining_loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
+        conds: list[Expression],
+        remaining_loop_params: list[tuple[Lvalue, Expression, list[Expression]]],
     ) -> None:
         """Generate the body of the loop.
 
@@ -420,7 +420,7 @@ def make_for_loop_generator(
         rtype = builder.node_type(expr.callee.expr)
         if is_dict_rprimitive(rtype) and expr.callee.name in ("keys", "values", "items"):
             expr_reg = builder.accept(expr.callee.expr)
-            for_dict_type: Optional[Type[ForGenerator]] = None
+            for_dict_type: type[ForGenerator] | None = None
             if expr.callee.name == "keys":
                 target_type = builder.get_dict_key_type(expr.callee.expr)
                 for_dict_type = ForDictionaryKeys
@@ -494,7 +494,7 @@ class ForGenerator:
     def gen_cleanup(self) -> None:
         """Generate post-loop cleanup (if needed)."""
 
-    def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
+    def load_len(self, expr: Value | AssignmentTarget) -> Value:
         """A helper to get collection length, used by several subclasses."""
         return self.builder.builder.builtin_len(self.builder.read(expr, self.line), self.line)
 
@@ -796,9 +796,7 @@ class ForRange(ForGenerator):
         builder.assign(index_reg, start_reg, -1)
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
-        self.index_target: Union[Register, AssignmentTarget] = builder.get_assignment_target(
-            self.index
-        )
+        self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
         builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
 
     def gen_condition(self) -> None:
@@ -845,9 +843,7 @@ class ForInfiniteCounter(ForGenerator):
         # initialize this register along with the loop index to 0.
         zero = Integer(0)
         self.index_reg = builder.maybe_spill_assignable(zero)
-        self.index_target: Union[Register, AssignmentTarget] = builder.get_assignment_target(
-            self.index
-        )
+        self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
         builder.assign(self.index_target, zero, self.line)
 
     def gen_step(self) -> None:
@@ -907,12 +903,12 @@ class ForZip(ForGenerator):
         # redundant cleanup block, but that's okay.
         return True
 
-    def init(self, indexes: List[Lvalue], exprs: List[Expression]) -> None:
+    def init(self, indexes: list[Lvalue], exprs: list[Expression]) -> None:
         assert len(indexes) == len(exprs)
         # Condition check will require multiple basic blocks, since there will be
         # multiple conditions to check.
         self.cond_blocks = [BasicBlock() for _ in range(len(indexes) - 1)] + [self.body_block]
-        self.gens: List[ForGenerator] = []
+        self.gens: list[ForGenerator] = []
         for index, expr, next_block in zip(indexes, exprs, self.cond_blocks):
             gen = make_for_loop_generator(
                 self.builder, index, expr, next_block, self.loop_exit, self.line, nested=True

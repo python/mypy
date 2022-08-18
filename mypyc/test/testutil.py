@@ -7,7 +7,7 @@ import os
 import os.path
 import re
 import shutil
-from typing import Callable, Iterator, List, Optional, Tuple
+from typing import Callable, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
@@ -33,7 +33,7 @@ TESTUTIL_PATH = os.path.join(test_data_prefix, "fixtures/testutil.py")
 
 class MypycDataSuite(DataSuite):
     # Need to list no files, since this will be picked up as a suite of tests
-    files: List[str] = []
+    files: list[str] = []
     data_prefix = test_data_prefix
 
 
@@ -90,13 +90,13 @@ def perform_test(
 
 
 def build_ir_for_single_file(
-    input_lines: List[str], compiler_options: Optional[CompilerOptions] = None
-) -> List[FuncIR]:
+    input_lines: list[str], compiler_options: CompilerOptions | None = None
+) -> list[FuncIR]:
     return build_ir_for_single_file2(input_lines, compiler_options).functions
 
 
 def build_ir_for_single_file2(
-    input_lines: List[str], compiler_options: Optional[CompilerOptions] = None
+    input_lines: list[str], compiler_options: CompilerOptions | None = None
 ) -> ModuleIR:
     program_text = "\n".join(input_lines)
 
@@ -137,7 +137,7 @@ def build_ir_for_single_file2(
     return module
 
 
-def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
+def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:
     # TODO: backport this to mypy
     assert testcase.old_cwd is not None, "test was not properly set up"
     testcase_path = os.path.join(testcase.old_cwd, testcase.file)
@@ -167,10 +167,10 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
 
 def assert_test_output(
     testcase: DataDrivenTestCase,
-    actual: List[str],
+    actual: list[str],
     message: str,
-    expected: Optional[List[str]] = None,
-    formatted: Optional[List[str]] = None,
+    expected: list[str] | None = None,
+    formatted: list[str] | None = None,
 ) -> None:
     __tracebackhide__ = True
 
@@ -183,7 +183,7 @@ def assert_test_output(
     )
 
 
-def get_func_names(expected: List[str]) -> List[str]:
+def get_func_names(expected: list[str]) -> list[str]:
     res = []
     for s in expected:
         m = re.match(r"def ([_a-zA-Z0-9.*$]+)\(", s)
@@ -192,7 +192,7 @@ def get_func_names(expected: List[str]) -> List[str]:
     return res
 
 
-def remove_comment_lines(a: List[str]) -> List[str]:
+def remove_comment_lines(a: list[str]) -> list[str]:
     """Return a copy of array with comments removed.
 
     Lines starting with '--' (but not with '---') are removed.
@@ -216,7 +216,7 @@ def heading(text: str) -> None:
     print("=" * 20 + " " + text + " " + "=" * 20)
 
 
-def show_c(cfiles: List[List[Tuple[str, str]]]) -> None:
+def show_c(cfiles: list[list[tuple[str, str]]]) -> None:
     heading("Generated C")
     for group in cfiles:
         for cfile, ctext in group:
@@ -233,7 +233,7 @@ def fudge_dir_mtimes(dir: str, delta: int) -> None:
             os.utime(path, times=(new_mtime, new_mtime))
 
 
-def replace_word_size(text: List[str]) -> List[str]:
+def replace_word_size(text: list[str]) -> list[str]:
     """Replace WORDSIZE with platform specific word sizes"""
     result = []
     for line in text:
@@ -249,7 +249,7 @@ def replace_word_size(text: List[str]) -> List[str]:
     return result
 
 
-def infer_ir_build_options_from_test_name(name: str) -> Optional[CompilerOptions]:
+def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
     """Look for magic substrings in test case name to set compiler options.
 
     Return None if the test case should be skipped (always pass).

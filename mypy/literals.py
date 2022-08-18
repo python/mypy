@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import (
@@ -135,7 +135,7 @@ def subkeys(key: Key) -> Iterable[Key]:
     return [elt for elt in key if isinstance(elt, tuple)]
 
 
-def literal_hash(e: Expression) -> Optional[Key]:
+def literal_hash(e: Expression) -> Key | None:
     return e.accept(_hasher)
 
 
@@ -180,16 +180,16 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_unary_expr(self, e: UnaryExpr) -> Key:
         return ("Unary", e.op, literal_hash(e.expr))
 
-    def seq_expr(self, e: Union[ListExpr, TupleExpr, SetExpr], name: str) -> Optional[Key]:
+    def seq_expr(self, e: ListExpr | TupleExpr | SetExpr, name: str) -> Key | None:
         if all(literal(x) == LITERAL_YES for x in e.items):
             rest: Any = tuple(literal_hash(x) for x in e.items)
             return (name,) + rest
         return None
 
-    def visit_list_expr(self, e: ListExpr) -> Optional[Key]:
+    def visit_list_expr(self, e: ListExpr) -> Key | None:
         return self.seq_expr(e, "List")
 
-    def visit_dict_expr(self, e: DictExpr) -> Optional[Key]:
+    def visit_dict_expr(self, e: DictExpr) -> Key | None:
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
             rest: Any = tuple(
                 (literal_hash(a) if a else None, literal_hash(b)) for a, b in e.items
@@ -197,18 +197,18 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
             return ("Dict",) + rest
         return None
 
-    def visit_tuple_expr(self, e: TupleExpr) -> Optional[Key]:
+    def visit_tuple_expr(self, e: TupleExpr) -> Key | None:
         return self.seq_expr(e, "Tuple")
 
-    def visit_set_expr(self, e: SetExpr) -> Optional[Key]:
+    def visit_set_expr(self, e: SetExpr) -> Key | None:
         return self.seq_expr(e, "Set")
 
-    def visit_index_expr(self, e: IndexExpr) -> Optional[Key]:
+    def visit_index_expr(self, e: IndexExpr) -> Key | None:
         if literal(e.index) == LITERAL_YES:
             return ("Index", literal_hash(e.base), literal_hash(e.index))
         return None
 
-    def visit_assignment_expr(self, e: AssignmentExpr) -> Optional[Key]:
+    def visit_assignment_expr(self, e: AssignmentExpr) -> Key | None:
         return literal_hash(e.target)
 
     def visit_call_expr(self, e: CallExpr) -> None:
