@@ -92,7 +92,7 @@ class MapActualsToFormalsSuite(Suite):
     def assert_map(
         self,
         caller_kinds_: list[ArgKind | str],
-        callee_kinds_: list[ArgKind | tuple[ArgKind, str]],
+        callee_kinds_: list[ArgKind | Tuple[ArgKind, str]],
         expected: list[list[int]],
     ) -> None:
         caller_kinds, caller_names = expand_caller_kinds(caller_kinds_)
