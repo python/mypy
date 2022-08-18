@@ -86,7 +86,7 @@ def report_most_common(chunks: List[JsonDict], amount: Optional[int] = None) -> 
 
 
 def compress(chunk: JsonDict) -> JsonDict:
-    cache = {}  # type: Dict[int, JsonDict]
+    cache: Dict[int, JsonDict] = {}
     counter = 0
 
     def helper(chunk: Any) -> Any:
@@ -119,7 +119,7 @@ def compress(chunk: JsonDict) -> JsonDict:
 
 
 def decompress(chunk: JsonDict) -> JsonDict:
-    cache = {}  # type: Dict[int, JsonDict]
+    cache: Dict[int, JsonDict] = {}
 
     def helper(chunk: Any) -> Any:
         if not isinstance(chunk, dict):

@@ -134,8 +134,8 @@ class BuildSourceSet:
 
     def __init__(self, sources: List[BuildSource]) -> None:
         self.source_text_present = False
-        self.source_modules = {}  # type: Dict[str, str]
-        self.source_paths = set()  # type: Set[str]
+        self.source_modules: Dict[str, str] = {}
+        self.source_paths: Set[str] = set()
 
         for source in sources:
             if source.text is not None:

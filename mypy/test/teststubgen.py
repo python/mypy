@@ -887,8 +887,8 @@ class StubgencSuite(unittest.TestCase):
                 """
                 pass
 
-        output = []  # type: List[str]
-        imports = []  # type: List[str]
+        output: List[str] = []
+        imports: List[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
             mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
@@ -902,8 +902,8 @@ class StubgencSuite(unittest.TestCase):
             def test(cls, arg0: str) -> None:
                 pass
 
-        output = []  # type: List[str]
-        imports = []  # type: List[str]
+        output: List[str] = []
+        imports: List[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
             mod, "test", TestClass.test, output, imports, self_var="cls", class_name="TestClass"

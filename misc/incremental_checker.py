@@ -136,7 +136,7 @@ def run_mypy(
 
     If `daemon` is True, we use daemon mode; the daemon must be started and stopped by the caller.
     """
-    stats = {}  # type: Dict[str, Any]
+    stats: Dict[str, Any] = {}
     if daemon:
         command = DAEMON_CMD + ["check", "-v"]
     else:
@@ -163,7 +163,7 @@ def run_mypy(
 
 
 def filter_daemon_stats(output: str) -> Tuple[str, Dict[str, Any]]:
-    stats = {}  # type: Dict[str, Any]
+    stats: Dict[str, Any] = {}
     lines = output.splitlines()
     output_lines = []
     for line in lines:
@@ -258,7 +258,7 @@ def test_incremental(
     """
     print("Note: first commit is evaluated twice to warm up cache")
     commits = [commits[0]] + commits
-    overall_stats = {}  # type: Dict[str, float]
+    overall_stats: Dict[str, float] = {}
     for commit_id, message in commits:
         print(f'Now testing commit {commit_id}: "{message}"')
         execute(["git", "-C", temp_repo_path, "checkout", commit_id])
@@ -266,8 +266,8 @@ def test_incremental(
             target_file_path, mypy_cache_path, mypy_script, incremental=True, daemon=daemon
         )
         relevant_stats = combine_stats(overall_stats, stats)
-        expected_runtime = cache[commit_id]["runtime"]  # type: float
-        expected_output = cache[commit_id]["output"]  # type: str
+        expected_runtime: float = cache[commit_id]["runtime"]
+        expected_output: str = cache[commit_id]["output"]
         if output != expected_output:
             print("    Output does not match expected result!")
             print(f"    Expected output ({expected_runtime:.3f} sec):")
@@ -289,7 +289,7 @@ def test_incremental(
 def combine_stats(overall_stats: Dict[str, float], new_stats: Dict[str, Any]) -> Dict[str, float]:
     INTERESTING_KEYS = ["build_time", "gc_time"]
     # For now, we only support float keys
-    relevant_stats = {}  # type: Dict[str, float]
+    relevant_stats: Dict[str, float] = {}
     for key in INTERESTING_KEYS:
         if key in new_stats:
             value = float(new_stats[key])
@@ -391,9 +391,9 @@ def test_repo(
 
 
 def main() -> None:
-    help_factory = lambda prog: RawDescriptionHelpFormatter(
+    help_factory: Any = lambda prog: RawDescriptionHelpFormatter(
         prog=prog, max_help_position=32
-    )  # type: Any
+    )
     parser = ArgumentParser(
         prog="incremental_checker", description=__doc__, formatter_class=help_factory
     )

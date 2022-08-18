@@ -64,7 +64,7 @@ def make_touch_wrappers(filename: str) -> Tuple[Command, Command]:
 
 
 def make_change_wrappers(filename: str) -> Tuple[Command, Command]:
-    copy = None  # type: Optional[str]
+    copy: Optional[str] = None
 
     def setup() -> None:
         nonlocal copy
