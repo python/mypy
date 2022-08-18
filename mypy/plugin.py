@@ -279,9 +279,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(
-        self, fullname: str, args: list[Type] | None = None
-    ) -> Instance | None:
+    def named_type_or_none(self, fullname: str, args: list[Type] | None = None) -> Instance | None:
         """Construct an instance of a type with given type arguments.
 
         Return None if a type could not be constructed for the qualified
@@ -574,9 +572,7 @@ class Plugin(CommonPluginApi):
         """
         return []
 
-    def get_type_analyze_hook(
-        self, fullname: str
-    ) -> Callable[[AnalyzeTypeContext], Type] | None:
+    def get_type_analyze_hook(self, fullname: str) -> Callable[[AnalyzeTypeContext], Type] | None:
         """Customize behaviour of the type analyzer for given full names.
 
         This method is called during the semantic analysis pass whenever mypy sees an
@@ -696,9 +692,7 @@ class Plugin(CommonPluginApi):
         """
         return None
 
-    def get_class_attribute_hook(
-        self, fullname: str
-    ) -> Callable[[AttributeContext], Type] | None:
+    def get_class_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         """
         Adjust type of a class attribute.
 
@@ -716,9 +710,7 @@ class Plugin(CommonPluginApi):
         """
         return None
 
-    def get_class_decorator_hook(
-        self, fullname: str
-    ) -> Callable[[ClassDefContext], None] | None:
+    def get_class_decorator_hook(self, fullname: str) -> Callable[[ClassDefContext], None] | None:
         """Update class definition for given class decorators.
 
         The plugin can modify a TypeInfo _in place_ (for example add some generated
@@ -839,9 +831,7 @@ class ChainedPlugin(Plugin):
             deps.extend(plugin.get_additional_deps(file))
         return deps
 
-    def get_type_analyze_hook(
-        self, fullname: str
-    ) -> Callable[[AnalyzeTypeContext], Type] | None:
+    def get_type_analyze_hook(self, fullname: str) -> Callable[[AnalyzeTypeContext], Type] | None:
         return self._find_hook(lambda plugin: plugin.get_type_analyze_hook(fullname))
 
     def get_function_signature_hook(
@@ -863,14 +853,10 @@ class ChainedPlugin(Plugin):
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         return self._find_hook(lambda plugin: plugin.get_attribute_hook(fullname))
 
-    def get_class_attribute_hook(
-        self, fullname: str
-    ) -> Callable[[AttributeContext], Type] | None:
+    def get_class_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         return self._find_hook(lambda plugin: plugin.get_class_attribute_hook(fullname))
 
-    def get_class_decorator_hook(
-        self, fullname: str
-    ) -> Callable[[ClassDefContext], None] | None:
+    def get_class_decorator_hook(self, fullname: str) -> Callable[[ClassDefContext], None] | None:
         return self._find_hook(lambda plugin: plugin.get_class_decorator_hook(fullname))
 
     def get_class_decorator_hook_2(

@@ -43,10 +43,7 @@ if sys.platform == "win32":
     from subprocess import STARTUPINFO
 
     def daemonize(
-        options: Options,
-        status_file: str,
-        timeout: int | None = None,
-        log_file: str | None = None,
+        options: Options, status_file: str, timeout: int | None = None, log_file: str | None = None
     ) -> int:
         """Create the daemon process via "dmypy daemon" and pass options via command line
 
@@ -118,10 +115,7 @@ else:
             os._exit(1)
 
     def daemonize(
-        options: Options,
-        status_file: str,
-        timeout: int | None = None,
-        log_file: str | None = None,
+        options: Options, status_file: str, timeout: int | None = None, log_file: str | None = None
     ) -> int:
         """Run the mypy daemon in a grandchild of the current process
 

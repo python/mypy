@@ -106,9 +106,7 @@ class DefaultPlugin(Plugin):
             return enums.enum_value_callback
         return None
 
-    def get_class_decorator_hook(
-        self, fullname: str
-    ) -> Callable[[ClassDefContext], None] | None:
+    def get_class_decorator_hook(self, fullname: str) -> Callable[[ClassDefContext], None] | None:
         from mypy.plugins import attrs, dataclasses
 
         # These dataclass and attrs hooks run in the main semantic analysis pass

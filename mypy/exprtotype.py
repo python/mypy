@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from mypy.fastparse import parse_type_string
 from mypy.nodes import (
     BytesExpr,

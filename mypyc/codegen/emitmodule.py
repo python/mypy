@@ -121,9 +121,7 @@ class MypycPlugin(Plugin):
         self.compiler_options = compiler_options
         self.metastore = create_metastore(options)
 
-    def report_config_data(
-        self, ctx: ReportConfigContext
-    ) -> tuple[str | None, list[str]] | None:
+    def report_config_data(self, ctx: ReportConfigContext) -> tuple[str | None, list[str]] | None:
         # The config data we report is the group map entry for the module.
         # If the data is being used to check validity, we do additional checks
         # that the IR cache exists and matches the metadata cache and all

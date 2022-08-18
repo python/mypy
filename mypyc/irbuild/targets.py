@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from mypyc.ir.ops import Register, Value
 from mypyc.ir.rtypes import RInstance, RType, object_rprimitive
 

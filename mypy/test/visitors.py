@@ -8,7 +8,6 @@ even if the test was compiled.
 
 from __future__ import annotations
 
-
 from mypy.nodes import (
     AssignmentStmt,
     CallExpr,

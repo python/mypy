@@ -25,14 +25,7 @@ import os.path
 import re
 import sys
 import time
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    NoReturn,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError

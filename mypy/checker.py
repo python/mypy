@@ -988,10 +988,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
 
     def check_func_item(
-        self,
-        defn: FuncItem,
-        type_override: CallableType | None = None,
-        name: str | None = None,
+        self, defn: FuncItem, type_override: CallableType | None = None, name: str | None = None
     ) -> None:
         """Type check a function.
 
@@ -2950,9 +2947,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         finally:
             self._is_final_def = old_ctx
 
-    def check_final(
-        self, s: AssignmentStmt | OperatorAssignmentStmt | AssignmentExpr
-    ) -> None:
+    def check_final(self, s: AssignmentStmt | OperatorAssignmentStmt | AssignmentExpr) -> None:
         """Check if this assignment does not assign to a final attribute.
 
         This function performs the check only for name assignments at module
@@ -3421,9 +3416,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             self.msg.type_not_iterable(rvalue_type, context)
 
-    def check_lvalue(
-        self, lvalue: Lvalue
-    ) -> tuple[Type | None, IndexExpr | None, Var | None]:
+    def check_lvalue(self, lvalue: Lvalue) -> tuple[Type | None, IndexExpr | None, Var | None]:
         lvalue_type = None
         index_lvalue = None
         inferred = None
@@ -6173,9 +6166,7 @@ def conditional_types(
 
 
 def conditional_types(
-    current_type: Type,
-    proposed_type_ranges: list[TypeRange] | None,
-    default: Type | None = None,
+    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: Type | None = None
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 

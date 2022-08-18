@@ -274,9 +274,7 @@ def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
     return TRUTH_VALUE_UNKNOWN
 
 
-def contains_int_or_tuple_of_ints(
-    expr: Expression,
-) -> None | int | tuple[int] | tuple[int, ...]:
+def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int] | tuple[int, ...]:
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, TupleExpr):
@@ -290,9 +288,7 @@ def contains_int_or_tuple_of_ints(
     return None
 
 
-def contains_sys_version_info(
-    expr: Expression,
-) -> None | int | tuple[int | None, int | None]:
+def contains_sys_version_info(expr: Expression) -> None | int | tuple[int | None, int | None]:
     if is_sys_attr(expr, "version_info"):
         return (None, None)  # Same as sys.version_info[:]
     if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, "version_info"):

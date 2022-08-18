@@ -15,15 +15,7 @@ import difflib
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    List,
-    Sequence,
-    cast,
-)
+from typing import Any, Callable, Iterable, Iterator, List, Sequence, cast
 from typing_extensions import Final
 
 from mypy import errorcodes as codes, message_registry
@@ -820,10 +812,7 @@ class MessageBuilder:
         )
 
     def too_few_arguments(
-        self,
-        callee: CallableType,
-        context: Context,
-        argument_names: Sequence[str | None] | None,
+        self, callee: CallableType, context: Context, argument_names: Sequence[str | None] | None
     ) -> None:
         if argument_names is not None:
             num_positional_args = sum(k is None for k in argument_names)

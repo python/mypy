@@ -391,9 +391,7 @@ def test_repo(
 
 
 def main() -> None:
-    help_factory: Any = lambda prog: RawDescriptionHelpFormatter(
-        prog=prog, max_help_position=32
-    )
+    help_factory: Any = lambda prog: RawDescriptionHelpFormatter(prog=prog, max_help_position=32)
     parser = ArgumentParser(
         prog="incremental_checker", description=__doc__, formatter_class=help_factory
     )

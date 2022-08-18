@@ -199,9 +199,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sna
     return result
 
 
-def snapshot_definition(
-    node: SymbolNode | None, common: tuple[object, ...]
-) -> tuple[object, ...]:
+def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> tuple[object, ...]:
     """Create a snapshot description of a symbol table node.
 
     The representation is nested tuples and dicts. Only externally

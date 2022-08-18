@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from mypy.nodes import ARG_POS, CallExpr, Decorator, Expression, FuncDef, RefExpr, Var
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.typeops import function_type

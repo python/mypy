@@ -17,7 +17,6 @@ non-locals is via an instance of an environment class. Example:
 
 from __future__ import annotations
 
-
 from mypy.nodes import FuncDef, SymbolNode
 from mypyc.common import ENV_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR

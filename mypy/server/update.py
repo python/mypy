@@ -1150,9 +1150,7 @@ def is_verbose(manager: BuildManager) -> bool:
     return manager.options.verbosity >= 1 or DEBUG_FINE_GRAINED
 
 
-def target_from_node(
-    module: str, node: FuncDef | MypyFile | OverloadedFuncDef
-) -> str | None:
+def target_from_node(module: str, node: FuncDef | MypyFile | OverloadedFuncDef) -> str | None:
     """Return the target name corresponding to a deferred node.
 
     Args:

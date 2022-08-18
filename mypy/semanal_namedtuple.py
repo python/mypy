@@ -318,9 +318,7 @@ class NamedTupleAnalyzer:
 
     def parse_namedtuple_args(
         self, call: CallExpr, fullname: str
-    ) -> None | (
-        tuple[list[str], list[Type], list[Expression], str, list[TypeVarLikeType], bool]
-    ):
+    ) -> None | (tuple[list[str], list[Type], list[Expression], str, list[TypeVarLikeType], bool]):
         """Parse a namedtuple() call into data needed to construct a type.
 
         Returns a 5-tuple:

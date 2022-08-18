@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from mypy.nodes import (
     AssertTypeExpr,
     AssignmentExpr,

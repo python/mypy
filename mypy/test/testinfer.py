@@ -118,7 +118,7 @@ class MapActualsToFormalsSuite(Suite):
 
 
 def expand_caller_kinds(
-    kinds_or_names: list[ArgKind | str]
+    kinds_or_names: list[ArgKind | str],
 ) -> tuple[list[ArgKind], list[str | None]]:
     kinds = []
     names: list[str | None] = []

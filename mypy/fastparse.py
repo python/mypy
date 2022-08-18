@@ -149,10 +149,7 @@ try:
         )
 
         def ast3_parse(
-            source: str | bytes,
-            filename: str,
-            mode: str,
-            feature_version: int = PY_MINOR_VERSION,
+            source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
         ) -> AST:
             return ast3.parse(
                 source,
@@ -185,10 +182,7 @@ try:
         )
 
         def ast3_parse(
-            source: str | bytes,
-            filename: str,
-            mode: str,
-            feature_version: int = PY_MINOR_VERSION,
+            source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
         ) -> AST:
             return ast3.parse(source, filename, mode, feature_version=feature_version)
 

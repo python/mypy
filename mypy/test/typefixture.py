@@ -5,7 +5,6 @@ It contains class TypeInfos and Type objects.
 
 from __future__ import annotations
 
-
 from mypy.nodes import (
     ARG_OPT,
     ARG_POS,

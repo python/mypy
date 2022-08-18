@@ -5,7 +5,6 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from __future__ import annotations
 
-
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -136,9 +135,7 @@ class NewTypeAnalyzer:
         newtype_class_info.line = s.line
         return True
 
-    def analyze_newtype_declaration(
-        self, s: AssignmentStmt
-    ) -> tuple[str | None, CallExpr | None]:
+    def analyze_newtype_declaration(self, s: AssignmentStmt) -> tuple[str | None, CallExpr | None]:
         """Return the NewType call expression if `s` is a newtype declaration or None otherwise."""
         name, call = None, None
         if (

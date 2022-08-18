@@ -155,10 +155,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
 
 
 def register_function(
-    ctx: PluginContext,
-    singledispatch_obj: Instance,
-    func: Type,
-    register_arg: Type | None = None,
+    ctx: PluginContext, singledispatch_obj: Instance, func: Type, register_arg: Type | None = None
 ) -> None:
     """Register a function"""
 

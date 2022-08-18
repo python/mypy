@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Sequence, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
@@ -772,9 +772,7 @@ def freeze_type_vars(member_type: Type) -> None:
                 v.id.meta_level = 0
 
 
-def lookup_member_var_or_accessor(
-    info: TypeInfo, name: str, is_lvalue: bool
-) -> SymbolNode | None:
+def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) -> SymbolNode | None:
     """Find the attribute/accessor node that refers to a member of a type."""
     # TODO handle lvalues
     node = info.get(name)

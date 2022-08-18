@@ -1048,10 +1048,7 @@ class CompileError(Exception):
     module_with_blocker: str | None = None
 
     def __init__(
-        self,
-        messages: list[str],
-        use_stdout: bool = False,
-        module_with_blocker: str | None = None,
+        self, messages: list[str], use_stdout: bool = False, module_with_blocker: str | None = None
     ) -> None:
         super().__init__("\n".join(messages))
         self.messages = messages

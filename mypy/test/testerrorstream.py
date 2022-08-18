@@ -1,7 +1,6 @@
 """Tests for mypy incremental error output."""
 from __future__ import annotations
 
-
 from mypy import build
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource

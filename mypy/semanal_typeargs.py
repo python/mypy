@@ -7,7 +7,6 @@ operations, including subtype checks.
 
 from __future__ import annotations
 
-
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors

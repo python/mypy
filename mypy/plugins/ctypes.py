@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.
 import mypy.plugin
 from mypy import nodes

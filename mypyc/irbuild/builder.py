@@ -218,9 +218,7 @@ class IRBuilder:
     def accept(self, node: Statement) -> None:
         ...
 
-    def accept(
-        self, node: Statement | Expression, *, can_borrow: bool = False
-    ) -> Value | None:
+    def accept(self, node: Statement | Expression, *, can_borrow: bool = False) -> Value | None:
         """Transform an expression or a statement.
 
         If can_borrow is true, prefer to generate a borrowed reference.
@@ -518,9 +516,7 @@ class IRBuilder:
             error_msg=f'value for final name "{error_name}" was not set',
         )
 
-    def load_final_literal_value(
-        self, val: int | str | bytes | float | bool, line: int
-    ) -> Value:
+    def load_final_literal_value(self, val: int | str | bytes | float | bool, line: int) -> Value:
         """Load value of a final name or class-level attribute."""
         if isinstance(val, bool):
             if val:
@@ -629,9 +625,7 @@ class IRBuilder:
 
         assert False, "Unsupported lvalue: %r" % target
 
-    def assign(
-        self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int
-    ) -> None:
+    def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
             self.add(Assign(target, self.coerce(rvalue_reg, target.type, line)))
         elif isinstance(target, AssignmentTargetRegister):
@@ -1168,11 +1162,7 @@ class IRBuilder:
         return self.type_to_rtype(mypy_type)
 
     def add_var_to_env_class(
-        self,
-        var: SymbolNode,
-        rtype: RType,
-        base: FuncInfo | ImplicitClass,
-        reassign: bool = False,
+        self, var: SymbolNode, rtype: RType, base: FuncInfo | ImplicitClass, reassign: bool = False
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.

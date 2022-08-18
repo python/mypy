@@ -251,11 +251,7 @@ class ConditionalTypeBinder:
         self.type_assignments = old_assignments
 
     def assign_type(
-        self,
-        expr: Expression,
-        type: Type,
-        declared_type: Type | None,
-        restrict_any: bool = False,
+        self, expr: Expression, type: Type, declared_type: Type | None, restrict_any: bool = False
     ) -> None:
         # We should erase last known value in binder, because if we are using it,
         # it means that the target is not final, and therefore can't hold a literal.

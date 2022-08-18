@@ -10,14 +10,7 @@ import contextlib
 import io
 import re
 import tokenize
-from typing import (
-    Any,
-    MutableMapping,
-    MutableSequence,
-    NamedTuple,
-    Sequence,
-    Tuple,
-)
+from typing import Any, MutableMapping, MutableSequence, NamedTuple, Sequence, Tuple
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').

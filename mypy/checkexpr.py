@@ -4,15 +4,7 @@ from __future__ import annotations
 
 import itertools
 from contextlib import contextmanager
-from typing import (
-    Callable,
-    ClassVar,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    cast,
-)
+from typing import Callable, ClassVar, Iterator, List, Optional, Sequence, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias, overload
 
 import mypy.checker
@@ -708,11 +700,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
 
     def check_typeddict_call_with_dict(
-        self,
-        callee: TypedDictType,
-        kwargs: DictExpr,
-        context: Context,
-        orig_callee: Type | None,
+        self, callee: TypedDictType, kwargs: DictExpr, context: Context, orig_callee: Type | None
     ) -> Type:
         validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
         if validated_kwargs is not None:
@@ -3918,9 +3906,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.resolved_type[e] = ct
         return ct
 
-    def check_lst_expr(
-        self, e: ListExpr | SetExpr | TupleExpr, fullname: str, tag: str
-    ) -> Type:
+    def check_lst_expr(self, e: ListExpr | SetExpr | TupleExpr, fullname: str, tag: str) -> Type:
         # fast path
         t = self.fast_container_type(e, fullname)
         if t:

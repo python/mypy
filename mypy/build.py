@@ -1353,11 +1353,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
 
 
 def validate_meta(
-    meta: CacheMeta | None,
-    id: str,
-    path: str | None,
-    ignore_all: bool,
-    manager: BuildManager,
+    meta: CacheMeta | None, id: str, path: str | None, ignore_all: bool, manager: BuildManager
 ) -> CacheMeta | None:
     """Checks whether the cached AST of this module can be used.
 

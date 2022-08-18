@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from mypy_extensions import mypyc_attr
 
 from mypy.nodes import (

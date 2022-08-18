@@ -86,9 +86,7 @@ def get_package_properties(package_id: str) -> ModuleProperties:
     )
 
 
-def worker(
-    tasks: Queue[str], results: Queue[str | ModuleProperties], sys_path: list[str]
-) -> None:
+def worker(tasks: Queue[str], results: Queue[str | ModuleProperties], sys_path: list[str]) -> None:
     """The main loop of a worker introspection process."""
     sys.path = sys_path
     while True:

@@ -1641,9 +1641,7 @@ class LowLevelIRBuilder:
         )
         return call_c_op
 
-    def translate_eq_cmp(
-        self, lreg: Value, rreg: Value, expr_op: str, line: int
-    ) -> Value | None:
+    def translate_eq_cmp(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value | None:
         """Add a equality comparison operation.
 
         Args:

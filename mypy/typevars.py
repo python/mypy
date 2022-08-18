@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from mypy.erasetype import erase_typevars
 from mypy.nodes import TypeInfo
 from mypy.types import (

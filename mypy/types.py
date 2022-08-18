@@ -1510,9 +1510,7 @@ class Parameters(ProperType):
         else:
             return None
 
-    def try_synthesizing_arg_from_vararg(
-        self, position: int | None
-    ) -> FormalArgument | None:
+    def try_synthesizing_arg_from_vararg(self, position: int | None) -> FormalArgument | None:
         var_arg = self.var_arg()
         if var_arg is not None:
             return FormalArgument(None, position, var_arg.typ, False)
@@ -1821,9 +1819,7 @@ class CallableType(FunctionLike):
         else:
             return None
 
-    def try_synthesizing_arg_from_vararg(
-        self, position: int | None
-    ) -> FormalArgument | None:
+    def try_synthesizing_arg_from_vararg(self, position: int | None) -> FormalArgument | None:
         var_arg = self.var_arg()
         if var_arg is not None:
             return FormalArgument(None, position, var_arg.typ, False)
@@ -2748,9 +2744,7 @@ def get_proper_types(it: Iterable[Type | None]) -> list[ProperType | None]:
     ...
 
 
-def get_proper_types(
-    it: Iterable[Type | None],
-) -> list[ProperType] | list[ProperType | None]:
+def get_proper_types(it: Iterable[Type | None]) -> list[ProperType] | list[ProperType | None]:
     return [get_proper_type(t) for t in it]
 
 

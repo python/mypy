@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 import mypy.typeops
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT

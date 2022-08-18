@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import mypy.typeops
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo

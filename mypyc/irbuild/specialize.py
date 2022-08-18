@@ -84,11 +84,7 @@ specializers: dict[tuple[str, RType | None], list[Specializer]] = {}
 
 
 def _apply_specialization(
-    builder: IRBuilder,
-    expr: CallExpr,
-    callee: RefExpr,
-    name: str | None,
-    typ: RType | None = None,
+    builder: IRBuilder, expr: CallExpr, callee: RefExpr, name: str | None, typ: RType | None = None
 ) -> Value | None:
     # TODO: Allow special cases to have default args or named args. Currently they don't since
     #       they check that everything in arg_kinds is ARG_POS.
@@ -515,9 +511,7 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
 
 @specialize_function("setdefault", dict_rprimitive)
-def translate_dict_setdefault(
-    builder: IRBuilder, expr: CallExpr, callee: RefExpr
-) -> Value | None:
+def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for 'dict.setdefault' which would only construct
     default empty collection when needed.
 

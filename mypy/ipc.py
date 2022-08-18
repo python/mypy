@@ -36,7 +36,6 @@ class IPCException(Exception):
     """Exception for IPC issues."""
 
 
-
 class IPCBase:
     """Base class for communication between the dmypy client and server.
 

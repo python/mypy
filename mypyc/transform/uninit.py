@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from mypyc.analysis.dataflow import AnalysisDict, analyze_must_defined_regs, cleanup_cfg, get_cfg
 from mypyc.ir.func_ir import FuncIR, all_values
 from mypyc.ir.ops import (

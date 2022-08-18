@@ -596,9 +596,7 @@ def add_non_ext_class_attr(
 
 
 def find_attr_initializers(
-    builder: IRBuilder,
-    cdef: ClassDef,
-    skip: Callable[[str, AssignmentStmt], bool] | None = None,
+    builder: IRBuilder, cdef: ClassDef, skip: Callable[[str, AssignmentStmt], bool] | None = None
 ) -> tuple[set[str], list[AssignmentStmt]]:
     """Find initializers of attributes in a class body.
 

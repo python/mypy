@@ -14,7 +14,7 @@ import binascii
 import os
 import time
 from abc import abstractmethod
-from typing import Any, Iterable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
     # We avoid importing sqlite3 unless we are using it so we can mostly work

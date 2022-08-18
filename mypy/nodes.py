@@ -1442,9 +1442,7 @@ class IfStmt(Statement):
     body: list[Block]
     else_body: Block | None
 
-    def __init__(
-        self, expr: list[Expression], body: list[Block], else_body: Block | None
-    ) -> None:
+    def __init__(self, expr: list[Expression], body: list[Block], else_body: Block | None) -> None:
         super().__init__()
         self.expr = expr
         self.body = body
@@ -2513,9 +2511,7 @@ class EnumCallExpr(Expression):
     items: list[str]
     values: list[Expression | None]
 
-    def __init__(
-        self, info: TypeInfo, items: list[str], values: list[Expression | None]
-    ) -> None:
+    def __init__(self, info: TypeInfo, items: list[str], values: list[Expression | None]) -> None:
         super().__init__()
         self.info = info
         self.items = items

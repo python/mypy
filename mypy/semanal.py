@@ -51,17 +51,7 @@ Some important properties:
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    TypeVar,
-    cast,
-)
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Set, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes, message_registry
@@ -1633,9 +1623,7 @@ class SemanticAnalyzer(
             tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
-    def analyze_class_typevar_declaration(
-        self, base: Type
-    ) -> tuple[TypeVarLikeList, bool] | None:
+    def analyze_class_typevar_declaration(self, base: Type) -> tuple[TypeVarLikeList, bool] | None:
         """Analyze type variables declared using Generic[...] or Protocol[...].
 
         Args:
@@ -3542,9 +3530,7 @@ class SemanticAnalyzer(
         node = memberexpr.expr.node
         return isinstance(node, Var) and node.is_self
 
-    def check_lvalue_validity(
-        self, node: Expression | SymbolNode | None, ctx: Context
-    ) -> None:
+    def check_lvalue_validity(self, node: Expression | SymbolNode | None, ctx: Context) -> None:
         if isinstance(node, TypeVarExpr):
             self.fail("Invalid assignment target", ctx)
         elif isinstance(node, TypeInfo):
@@ -5260,9 +5246,7 @@ class SemanticAnalyzer(
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
-    def named_type_or_none(
-        self, fullname: str, args: list[Type] | None = None
-    ) -> Instance | None:
+    def named_type_or_none(self, fullname: str, args: list[Type] | None = None) -> Instance | None:
         sym = self.lookup_fully_qualified_or_none(fullname)
         if not sym or isinstance(sym.node, PlaceholderNode):
             return None
@@ -5814,11 +5798,7 @@ class SemanticAnalyzer(
             self.note(hint, ctx, code=codes.NAME_DEFINED)
 
     def already_defined(
-        self,
-        name: str,
-        ctx: Context,
-        original_ctx: SymbolTableNode | SymbolNode | None,
-        noun: str,
+        self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None, noun: str
     ) -> None:
         if isinstance(original_ctx, SymbolTableNode):
             node: SymbolNode | None = original_ctx.node
@@ -5843,18 +5823,12 @@ class SemanticAnalyzer(
         )
 
     def name_already_defined(
-        self,
-        name: str,
-        ctx: Context,
-        original_ctx: SymbolTableNode | SymbolNode | None = None,
+        self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None = None
     ) -> None:
         self.already_defined(name, ctx, original_ctx, noun="Name")
 
     def attribute_already_defined(
-        self,
-        name: str,
-        ctx: Context,
-        original_ctx: SymbolTableNode | SymbolNode | None = None,
+        self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None = None
     ) -> None:
         self.already_defined(name, ctx, original_ctx, noun="Attribute")
 
@@ -6062,9 +6036,7 @@ class SemanticAnalyzer(
             target = self.scope.current_target()
         self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
 
-    def add_type_alias_deps(
-        self, aliases_used: Iterable[str], target: str | None = None
-    ) -> None:
+    def add_type_alias_deps(self, aliases_used: Iterable[str], target: str | None = None) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.

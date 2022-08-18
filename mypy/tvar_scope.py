@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from mypy.nodes import (
     ParamSpecExpr,
     SymbolTableNode,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint
 from mypy.solve import solve_constraints
 from mypy.test.helpers import Suite, assert_equal

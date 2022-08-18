@@ -5,7 +5,6 @@ functions that will find a semantic node by its name.
 
 from __future__ import annotations
 
-
 from mypy.nodes import MypyFile, SymbolTableNode, TypeInfo
 
 # TODO: gradually move existing lookup functions to this module.

@@ -263,7 +263,6 @@ class BadStatus(Exception):
     """
 
 
-
 def main(argv: list[str]) -> None:
     """The code is top-down."""
     check_python_version("dmypy")
@@ -547,10 +546,7 @@ def do_inspect(args: argparse.Namespace) -> None:
 
 
 def check_output(
-    response: dict[str, Any],
-    verbose: bool,
-    junit_xml: str | None,
-    perf_stats_file: str | None,
+    response: dict[str, Any], verbose: bool, junit_xml: str | None, perf_stats_file: str | None
 ) -> None:
     """Print the output from a check or recheck command.
 

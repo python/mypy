@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from mypy.nodes import FuncItem
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import INVALID_FUNC_DEF
