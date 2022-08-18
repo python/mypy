@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import math
 import sys
+import sysconfig
 from typing import Any, Dict, Optional, Tuple
 from typing_extensions import Final
 
@@ -30,7 +32,10 @@ TOP_LEVEL_NAME: Final = "__top_level__"  # Special function representing module 
 # Maximal number of subclasses for a class to trigger fast path in isinstance() checks.
 FAST_ISINSTANCE_MAX_SUBCLASSES: Final = 2
 
-IS_32_BIT_PLATFORM: Final = sys.maxsize < (1 << 31)
+# Size of size_t, if configured.
+SIZEOF_SIZE_T: Final = sysconfig.get_config_var("SIZEOF_SIZE_T") or math.log2(sys.maxsize)
+
+IS_32_BIT_PLATFORM: Final = sys.maxsize < (1 << 31) if SIZEOF_SIZE_T is None else int(SIZEOF_SIZE_T) == 4
 
 PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 
@@ -42,13 +47,13 @@ PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_info < (3, 6)
 
 # Maximum value for a short tagged integer.
-MAX_SHORT_INT: Final = sys.maxsize >> 1
+MAX_SHORT_INT: Final = sys.maxsize >> 1 if SIZEOF_SIZE_T is None else 2**int(SIZEOF_SIZE_T)
 
 # Maximum value for a short tagged integer represented as a C integer literal.
 #
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
-MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2**30 - 1
+MAX_LITERAL_SHORT_INT: Final = MAX_SHORT_INT if not IS_MIXED_32_64_BIT_BUILD else 2**30 - 1
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
 # Runtime C library files
