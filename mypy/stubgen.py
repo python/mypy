@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Dict, Iterable, List, Mapping, Optional, cast
+from typing import Iterable, List, Mapping, cast
 from typing_extensions import Final
 
 import mypy.build
@@ -1652,7 +1652,8 @@ def generate_stubs(options: Options) -> None:
     py_modules, c_modules = collect_build_targets(options, mypy_opts)
 
     # Collect info from docs (if given):
-    sigs = class_sigs = None  # type: Optional[Dict[str, str]]
+    sigs: dict[str, str] | None = None
+    class_sigs = sigs
     if options.doc_dir:
         sigs, class_sigs = collect_docs_signatures(options.doc_dir)
 
