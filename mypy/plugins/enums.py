@@ -267,7 +267,7 @@ def _extract_underlying_field_name(typ: Type) -> str | None:
     return underlying_literal.value
 
 
-def is_definitely_not_enum_member(name: str, typ: Optional[Type]) -> bool:
+def is_definitely_not_enum_member(name: str, typ: Type | None) -> bool:
     """
     Return `True` if we are certain that an object inside an enum class statement
     will not be converted to become a member of the enum.

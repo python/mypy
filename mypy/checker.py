@@ -2125,7 +2125,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(f'Cannot extend enum with existing members: "{base.name}"', defn)
                 break
 
-    def is_final_enum_value(self, node: Optional[SymbolNode]) -> bool:
+    def is_final_enum_value(self, node: SymbolNode | None) -> bool:
         if isinstance(node, (FuncBase, Decorator)):
             return False  # A method is fine
         if not isinstance(node, Var):
