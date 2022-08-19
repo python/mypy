@@ -1473,6 +1473,58 @@ A.__attrs_attrs__.x  # E: "_AttrsAttributes" has no attribute "x"
 
 [builtins fixtures/attr.pyi]
 
+[case testAttrsMagicAttributeProtocol]
+import attr
+from typing import Protocol, TypeVar, Type
+
+T = TypeVar("T")
+
+class AttrsInstance(Protocol[T]):
+    __attrs_attrs__: T
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+def takes_attrs_cls(cls: Type[AttrsInstance]) -> None:
+    pass
+
+def takes_attrs_instance(inst: AttrsInstance) -> None:
+    pass
+
+takes_attrs_cls(A)
+takes_attrs_instance(A(1, ""))
+
+takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible type "A"; expected "Type[AttrsInstance[Any]]"
+takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance[Any]"
+
+[builtins fixtures/attr.pyi]
+
+[case testAttrsFields]
+import attr
+
+from typing import Protocol, TypeVar, Type
+
+T = TypeVar("T")
+
+class AttrsInstance(Protocol[T]):
+    __attrs_attrs__: T
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+def fields(cls: Type[AttrsInstance[T]]) -> T:
+    return cls.__attrs_attrs__
+
+reveal_type(fields(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+reveal_type(fields(A).c)  # N: Revealed type is "attr.Attribute[builtins.str]"
+fields(A).a  # E: "_AttrsAttributes" has no attribute "a"
+
+[builtins fixtures/attr.pyi]
+
 [case testAttrsClassWithSlots]
 import attr
 

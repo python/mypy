@@ -803,14 +803,15 @@ def _add_attrs_magic_attribute(
         ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
     attributes_type = Instance(ti, [])
 
-    # TODO: refactor using `add_attribute_to_class`
-    var = Var(name=MAGIC_ATTR_NAME, type=TupleType(attributes_types, fallback=attributes_type))
-    var.info = ctx.cls.info
-    var.is_classvar = True
-    var._fullname = f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}"
-    var.allow_incompatible_override = True
-    ctx.cls.info.names[MAGIC_ATTR_NAME] = SymbolTableNode(
-        kind=MDEF, node=var, plugin_generated=True, no_serialize=True
+    add_attribute_to_class(
+        ctx.api,
+        ctx.cls,
+        MAGIC_ATTR_NAME,
+        TupleType(attributes_types, fallback=attributes_type),
+        no_serialize=True,
+        fullname=f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}",
+        override_allow_incompatible=True,
+        final=True,
     )
 
 
