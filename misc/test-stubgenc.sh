@@ -3,7 +3,7 @@
 set -e
 set -x
 
-cd "$(dirname $0)/.."
+cd "$(dirname "$0")/.."
 
 # Install dependencies, demo project and mypy
 python -m pip install -r test-requirements.txt
@@ -18,12 +18,11 @@ EXIT=0
 function stubgenc_test() {
     # Remove expected stubs and generate new inplace
     STUBGEN_OUTPUT_FOLDER=./test-data/pybind11_mypy_demo/$1
-    rm -rf $STUBGEN_OUTPUT_FOLDER/*
-    stubgen -o $STUBGEN_OUTPUT_FOLDER "${@:2}"
+    rm -rf "${STUBGEN_OUTPUT_FOLDER:?}/*"
+    stubgen -o "$STUBGEN_OUTPUT_FOLDER" "${@:2}"
 
     # Compare generated stubs to expected ones
-    git diff --exit-code $STUBGEN_OUTPUT_FOLDER
-    if [ $? -ne 0 ]
+    if ! git diff --exit-code "$STUBGEN_OUTPUT_FOLDER";
     then
         EXIT=$?
     fi
