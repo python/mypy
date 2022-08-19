@@ -1,9 +1,10 @@
 import _tkinter
 import sys
 import tkinter
+from _typeshed import Incomplete
 from collections.abc import Callable
 from tkinter.font import _FontDescription
-from typing import Any, overload
+from typing import Any, Union, overload
 from typing_extensions import Literal, TypeAlias, TypedDict
 
 __all__ = [
@@ -35,23 +36,31 @@ __all__ = [
 ]
 
 def tclobjs_to_py(adict: dict[Any, Any]) -> dict[Any, Any]: ...
-def setup_master(master: Any | None = ...): ...
+def setup_master(master: Incomplete | None = ...): ...
+
+_Padding: TypeAlias = Union[
+    tkinter._ScreenUnits,
+    tuple[tkinter._ScreenUnits],
+    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits],
+    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits],
+    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits],
+]
 
 # from ttk_widget (aka ttk::widget) manual page, differs from tkinter._Compound
 _TtkCompound: TypeAlias = Literal["text", "image", tkinter._Compound]
 
 class Style:
-    master: Any
+    master: Incomplete
     tk: _tkinter.TkappType
     def __init__(self, master: tkinter.Misc | None = ...) -> None: ...
-    def configure(self, style, query_opt: Any | None = ..., **kw): ...
-    def map(self, style, query_opt: Any | None = ..., **kw): ...
-    def lookup(self, style, option, state: Any | None = ..., default: Any | None = ...): ...
-    def layout(self, style, layoutspec: Any | None = ...): ...
+    def configure(self, style, query_opt: Incomplete | None = ..., **kw): ...
+    def map(self, style, query_opt: Incomplete | None = ..., **kw): ...
+    def lookup(self, style, option, state: Incomplete | None = ..., default: Incomplete | None = ...): ...
+    def layout(self, style, layoutspec: Incomplete | None = ...): ...
     def element_create(self, elementname, etype, *args, **kw) -> None: ...
     def element_names(self): ...
     def element_options(self, elementname): ...
-    def theme_create(self, themename, parent: Any | None = ..., settings: Any | None = ...) -> None: ...
+    def theme_create(self, themename, parent: Incomplete | None = ..., settings: Incomplete | None = ...) -> None: ...
     def theme_settings(self, themename, settings) -> None: ...
     def theme_names(self) -> tuple[str, ...]: ...
     @overload
@@ -60,10 +69,10 @@ class Style:
     def theme_use(self, themename: None = ...) -> str: ...
 
 class Widget(tkinter.Widget):
-    def __init__(self, master: tkinter.Misc | None, widgetname, kw: Any | None = ...) -> None: ...
+    def __init__(self, master: tkinter.Misc | None, widgetname, kw: Incomplete | None = ...) -> None: ...
     def identify(self, x: int, y: int) -> str: ...
-    def instate(self, statespec, callback: Any | None = ..., *args, **kw): ...
-    def state(self, statespec: Any | None = ...): ...
+    def instate(self, statespec, callback: Incomplete | None = ..., *args, **kw): ...
+    def state(self, statespec: Incomplete | None = ...): ...
 
 class Button(Widget):
     def __init__(
@@ -77,7 +86,7 @@ class Button(Widget):
         default: Literal["normal", "active", "disabled"] = ...,
         image: tkinter._ImageSpec = ...,
         name: str = ...,
-        padding: Any = ...,  # undocumented
+        padding=...,  # undocumented
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -96,7 +105,7 @@ class Button(Widget):
         cursor: tkinter._Cursor = ...,
         default: Literal["normal", "active", "disabled"] = ...,
         image: tkinter._ImageSpec = ...,
-        padding: Any = ...,
+        padding=...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -123,7 +132,7 @@ class Checkbutton(Widget):
         name: str = ...,
         offvalue: Any = ...,
         onvalue: Any = ...,
-        padding: Any = ...,  # undocumented
+        padding=...,  # undocumented
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -147,7 +156,7 @@ class Checkbutton(Widget):
         image: tkinter._ImageSpec = ...,
         offvalue: Any = ...,
         onvalue: Any = ...,
-        padding: Any = ...,
+        padding=...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -255,8 +264,8 @@ class Combobox(Entry):
         invalidcommand: tkinter._EntryValidateCommand = ...,  # undocumented
         justify: Literal["left", "center", "right"] = ...,
         name: str = ...,
-        postcommand: Callable[[], Any] | str = ...,
-        show: Any = ...,  # undocumented
+        postcommand: Callable[[], object] | str = ...,
+        show=...,  # undocumented
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -280,8 +289,8 @@ class Combobox(Entry):
         height: int = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
-        postcommand: Callable[[], Any] | str = ...,
-        show: Any = ...,
+        postcommand: Callable[[], object] | str = ...,
+        show=...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -308,8 +317,8 @@ class Combobox(Entry):
         height: int = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
-        postcommand: Callable[[], Any] | str = ...,
-        show: Any = ...,
+        postcommand: Callable[[], object] | str = ...,
+        show=...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -336,7 +345,7 @@ class Frame(Widget):
         cursor: tkinter._Cursor = ...,
         height: tkinter._ScreenUnits = ...,
         name: str = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         relief: tkinter._Relief = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -351,7 +360,7 @@ class Frame(Widget):
         borderwidth: tkinter._ScreenUnits = ...,
         cursor: tkinter._Cursor = ...,
         height: tkinter._ScreenUnits = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         relief: tkinter._Relief = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -378,7 +387,7 @@ class Label(Widget):
         image: tkinter._ImageSpec = ...,
         justify: Literal["left", "center", "right"] = ...,
         name: str = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         relief: tkinter._Relief = ...,
         state: str = ...,
         style: str = ...,
@@ -404,7 +413,7 @@ class Label(Widget):
         foreground: tkinter._Color = ...,
         image: tkinter._ImageSpec = ...,
         justify: Literal["left", "center", "right"] = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         relief: tkinter._Relief = ...,
         state: str = ...,
         style: str = ...,
@@ -432,7 +441,7 @@ class Labelframe(Widget):
         labelanchor: Literal["nw", "n", "ne", "en", "e", "es", "se", "s", "sw", "ws", "w", "wn"] = ...,
         labelwidget: tkinter.Misc = ...,
         name: str = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         relief: tkinter._Relief = ...,  # undocumented
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -451,7 +460,7 @@ class Labelframe(Widget):
         height: tkinter._ScreenUnits = ...,
         labelanchor: Literal["nw", "n", "ne", "en", "e", "es", "se", "s", "sw", "ws", "w", "wn"] = ...,
         labelwidget: tkinter.Misc = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         relief: tkinter._Relief = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -477,7 +486,7 @@ class Menubutton(Widget):
         image: tkinter._ImageSpec = ...,
         menu: tkinter.Menu = ...,
         name: str = ...,
-        padding: Any = ...,  # undocumented
+        padding=...,  # undocumented
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -496,7 +505,7 @@ class Menubutton(Widget):
         direction: Literal["above", "below", "left", "right", "flush"] = ...,
         image: tkinter._ImageSpec = ...,
         menu: tkinter.Menu = ...,
-        padding: Any = ...,
+        padding=...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -518,7 +527,7 @@ class Notebook(Widget):
         cursor: tkinter._Cursor = ...,
         height: int = ...,
         name: str = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         width: int = ...,
@@ -530,7 +539,7 @@ class Notebook(Widget):
         *,
         cursor: tkinter._Cursor = ...,
         height: int = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         width: int = ...,
@@ -544,9 +553,9 @@ class Notebook(Widget):
         *,
         state: Literal["normal", "disabled", "hidden"] = ...,
         sticky: str = ...,  # consists of letters 'n', 's', 'w', 'e', no repeats, may be empty
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         text: str = ...,
-        image: Any = ...,  # Sequence of an image name, followed by zero or more (sequences of one or more state names followed by an image name)
+        image=...,  # Sequence of an image name, followed by zero or more (sequences of one or more state names followed by an image name)
         compound: tkinter._Compound = ...,
         underline: int = ...,
     ) -> None: ...
@@ -555,8 +564,8 @@ class Notebook(Widget):
     def identify(self, x: int, y: int) -> str: ...
     def index(self, tab_id): ...
     def insert(self, pos, child, **kw) -> None: ...
-    def select(self, tab_id: Any | None = ...): ...
-    def tab(self, tab_id, option: Any | None = ..., **kw): ...
+    def select(self, tab_id: Incomplete | None = ...): ...
+    def tab(self, tab_id, option: Incomplete | None = ..., **kw): ...
     def tabs(self): ...
     def enable_traversal(self) -> None: ...
 
@@ -603,10 +612,10 @@ class Panedwindow(Widget, tkinter.PanedWindow):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def config(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
-    forget: Any
+    forget: Incomplete
     def insert(self, pos, child, **kw) -> None: ...
-    def pane(self, pane, option: Any | None = ..., **kw): ...
-    def sashpos(self, index, newpos: Any | None = ...): ...
+    def pane(self, pane, option: Incomplete | None = ..., **kw): ...
+    def sashpos(self, index, newpos: Incomplete | None = ...): ...
 
 PanedWindow = Panedwindow
 
@@ -662,7 +671,7 @@ class Radiobutton(Widget):
         cursor: tkinter._Cursor = ...,
         image: tkinter._ImageSpec = ...,
         name: str = ...,
-        padding: Any = ...,  # undocumented
+        padding=...,  # undocumented
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -682,7 +691,7 @@ class Radiobutton(Widget):
         compound: _TtkCompound = ...,
         cursor: tkinter._Cursor = ...,
         image: tkinter._ImageSpec = ...,
-        padding: Any = ...,
+        padding=...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -705,7 +714,7 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
         master: tkinter.Misc | None = ...,
         *,
         class_: str = ...,
-        command: str | Callable[[str], Any] = ...,
+        command: str | Callable[[str], object] = ...,
         cursor: tkinter._Cursor = ...,
         from_: float = ...,
         length: tkinter._ScreenUnits = ...,
@@ -723,7 +732,7 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
         self,
         cnf: dict[str, Any] | None = ...,
         *,
-        command: str | Callable[[str], Any] = ...,
+        command: str | Callable[[str], object] = ...,
         cursor: tkinter._Cursor = ...,
         from_: float = ...,
         length: tkinter._ScreenUnits = ...,
@@ -743,7 +752,7 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
         self,
         cnf: dict[str, Any] | None = ...,
         *,
-        command: str | Callable[[str], Any] = ...,
+        command: str | Callable[[str], object] = ...,
         cursor: tkinter._Cursor = ...,
         from_: float = ...,
         length: tkinter._ScreenUnits = ...,
@@ -858,7 +867,7 @@ class Spinbox(Entry):
         *,
         background: tkinter._Color = ...,  # undocumented
         class_: str = ...,
-        command: Callable[[], Any] | str | list[str] | tuple[str, ...] = ...,
+        command: Callable[[], object] | str | list[str] | tuple[str, ...] = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,  # undocumented
         font: _FontDescription = ...,  # undocumented
@@ -869,7 +878,7 @@ class Spinbox(Entry):
         invalidcommand: tkinter._EntryValidateCommand = ...,  # undocumented
         justify: Literal["left", "center", "right"] = ...,  # undocumented
         name: str = ...,
-        show: Any = ...,  # undocumented
+        show=...,  # undocumented
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -888,7 +897,7 @@ class Spinbox(Entry):
         cnf: dict[str, Any] | None = ...,
         *,
         background: tkinter._Color = ...,
-        command: Callable[[], Any] | str | list[str] | tuple[str, ...] = ...,
+        command: Callable[[], object] | str | list[str] | tuple[str, ...] = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,
         font: _FontDescription = ...,
@@ -898,7 +907,7 @@ class Spinbox(Entry):
         increment: float = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
-        show: Any = ...,
+        show=...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
@@ -957,7 +966,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         displaycolumns: str | list[str] | tuple[str, ...] | list[int] | tuple[int, ...] | Literal["#all"] = ...,
         height: int = ...,
         name: str = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         selectmode: Literal["extended", "browse", "none"] = ...,
         # list/tuple of Literal don't actually work in mypy
         #
@@ -978,7 +987,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         cursor: tkinter._Cursor = ...,
         displaycolumns: str | list[str] | tuple[str, ...] | list[int] | tuple[int, ...] | Literal["#all"] = ...,
         height: int = ...,
-        padding: tkinter._Padding = ...,
+        padding: _Padding = ...,
         selectmode: Literal["extended", "browse", "none"] = ...,
         show: Literal["tree", "headings", "tree headings", ""] | list[str] | tuple[str, ...] = ...,
         style: str = ...,
@@ -1042,7 +1051,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         text: str = ...,
         image: tkinter._ImageSpec = ...,
         anchor: tkinter._Anchor = ...,
-        command: str | Callable[[], Any] = ...,
+        command: str | Callable[[], object] = ...,
     ) -> None: ...
     def identify(self, component, x, y): ...  # Internal Method. Leave untyped
     def identify_row(self, y: int) -> str: ...
@@ -1098,7 +1107,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     if sys.version_info >= (3, 8):
         def selection(self) -> tuple[str, ...]: ...
     else:
-        def selection(self, selop: Any | None = ..., items: Any | None = ...) -> tuple[str, ...]: ...
+        def selection(self, selop: Incomplete | None = ..., items: Incomplete | None = ...) -> tuple[str, ...]: ...
 
     def selection_set(self, items: str | list[str] | tuple[str, ...]) -> None: ...
     def selection_add(self, items: str | list[str] | tuple[str, ...]) -> None: ...
@@ -1114,7 +1123,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     # Also, it's 'callback' instead of 'func' here.
     @overload
     def tag_bind(
-        self, tagname: str, sequence: str | None = ..., callback: Callable[[tkinter.Event[Treeview]], Any] | None = ...
+        self, tagname: str, sequence: str | None = ..., callback: Callable[[tkinter.Event[Treeview]], object] | None = ...
     ) -> str: ...
     @overload
     def tag_bind(self, tagname: str, sequence: str | None, callback: str) -> None: ...
@@ -1144,8 +1153,8 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     def tag_has(self, tagname: str, item: str) -> bool: ...
 
 class LabeledScale(Frame):
-    label: Any
-    scale: Any
+    label: Incomplete
+    scale: Incomplete
     # TODO: don't any-type **kw. That goes to Frame.__init__.
     def __init__(
         self,
@@ -1155,7 +1164,7 @@ class LabeledScale(Frame):
         to: float = ...,
         *,
         compound: Literal["top", "bottom"] = ...,
-        **kw: Any,
+        **kw,
     ) -> None: ...
     # destroy is overridden, signature does not change
     value: Any
@@ -1170,8 +1179,8 @@ class OptionMenu(Menubutton):
         # rest of these are keyword-only because *args syntax used above
         style: str = ...,
         direction: Literal["above", "below", "left", "right", "flush"] = ...,
-        command: Callable[[tkinter.StringVar], Any] | None = ...,
+        command: Callable[[tkinter.StringVar], object] | None = ...,
     ) -> None: ...
     # configure, config, cget, destroy are inherited from Menubutton
     # destroy and __setitem__ are overridden, signature does not change
-    def set_menu(self, default: Any | None = ..., *values) -> None: ...
+    def set_menu(self, default: Incomplete | None = ..., *values) -> None: ...

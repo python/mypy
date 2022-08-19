@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import List, Optional
 
 from mypyc.analysis.ircheck import FnError, can_coerce_to, check_func_ir
 from mypyc.ir.class_ir import ClassIR
@@ -37,13 +36,13 @@ class TestIrcheck(unittest.TestCase):
     def setUp(self) -> None:
         self.label = 0
 
-    def basic_block(self, ops: List[Op]) -> BasicBlock:
+    def basic_block(self, ops: list[Op]) -> BasicBlock:
         self.label += 1
         block = BasicBlock(self.label)
         block.ops = ops
         return block
 
-    def func_decl(self, name: str, ret_type: Optional[RType] = None) -> FuncDecl:
+    def func_decl(self, name: str, ret_type: RType | None = None) -> FuncDecl:
         if ret_type is None:
             ret_type = none_rprimitive
         return FuncDecl(

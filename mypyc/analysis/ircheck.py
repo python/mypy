@@ -1,8 +1,6 @@
 """Utilities for checking that internal ir is valid and consistent."""
 from __future__ import annotations
 
-from typing import List, Set, Tuple, Union
-
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR
 from mypyc.ir.ops import (
     Assign,
@@ -66,7 +64,7 @@ from mypyc.ir.rtypes import (
 
 
 class FnError:
-    def __init__(self, source: Union[Op, BasicBlock], desc: str) -> None:
+    def __init__(self, source: Op | BasicBlock, desc: str) -> None:
         self.source = source
         self.desc = desc
 
@@ -79,7 +77,7 @@ class FnError:
         return f"FnError(source={self.source}, desc={self.desc})"
 
 
-def check_func_ir(fn: FuncIR) -> List[FnError]:
+def check_func_ir(fn: FuncIR) -> list[FnError]:
     """Applies validations to a given function ir and returns a list of errors found."""
     errors = []
 
@@ -123,10 +121,10 @@ def assert_func_ir_valid(fn: FuncIR) -> None:
         )
 
 
-def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
+def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
     errors = []
-    valid_ops: Set[Op] = set()
-    valid_registers: Set[Register] = set()
+    valid_ops: set[Op] = set()
+    valid_registers: set[Register] = set()
 
     for block in fn.blocks:
         valid_ops.update(block.ops)
@@ -199,7 +197,7 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
 class OpChecker(OpVisitor[None]):
     def __init__(self, parent_fn: FuncIR) -> None:
         self.parent_fn = parent_fn
-        self.errors: List[FnError] = []
+        self.errors: list[FnError] = []
 
     def fail(self, source: Op, desc: str) -> None:
         self.errors.append(FnError(source=source, desc=desc))
@@ -243,7 +241,7 @@ class OpChecker(OpVisitor[None]):
         # has an error value.
         pass
 
-    def check_tuple_items_valid_literals(self, op: LoadLiteral, t: Tuple[object, ...]) -> None:
+    def check_tuple_items_valid_literals(self, op: LoadLiteral, t: tuple[object, ...]) -> None:
         for x in t:
             if x is not None and not isinstance(x, (str, bytes, bool, int, float, complex, tuple)):
                 self.fail(op, f"Invalid type for item of tuple literal: {type(x)})")

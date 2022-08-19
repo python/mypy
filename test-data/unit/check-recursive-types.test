@@ -611,6 +611,30 @@ def foo() -> None:
     reveal_type(b)  # N: Revealed type is "Tuple[Any, builtins.int, fallback=__main__.B@4]"
 [builtins fixtures/tuple.pyi]
 
+[case testBasicRecursiveGenericNamedTuple]
+# flags: --enable-recursive-aliases
+from typing import Generic, NamedTuple, TypeVar, Union
+
+T = TypeVar("T", covariant=True)
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: Union[T, NT[T]]
+
+class A: ...
+class B(A): ...
+
+nti: NT[int] = NT(key=0, value=NT(key=1, value=A()))  # E: Argument "value" to "NT" has incompatible type "A"; expected "Union[int, NT[int]]"
+reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, Union[builtins.int, ...], fallback=__main__.NT[builtins.int]]"
+
+nta: NT[A]
+ntb: NT[B]
+nta = ntb  # OK, covariance
+ntb = nti  # E: Incompatible types in assignment (expression has type "NT[int]", variable has type "NT[B]")
+
+def last(arg: NT[T]) -> T: ...
+reveal_type(last(ntb))  # N: Revealed type is "__main__.B"
+[builtins fixtures/tuple.pyi]
+
 [case testBasicRecursiveTypedDictClass]
 # flags: --enable-recursive-aliases
 from typing import TypedDict
@@ -750,5 +774,39 @@ def f(x: T, y: T) -> T: ...
 # Join for recursive types is very basic, but just add tests that we don't crash.
 reveal_type(f(tda1, tda2))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': TypedDict('__main__.TDA1', {'x': builtins.int, 'y': ...})})"
 reveal_type(f(tda1, tdb))  # N: Revealed type is "TypedDict({})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testBasicRecursiveGenericTypedDict]
+# flags: --enable-recursive-aliases
+from typing import TypedDict, TypeVar, Generic, Optional, List
+
+T = TypeVar("T")
+class Tree(TypedDict, Generic[T], total=False):
+    value: T
+    left: Tree[T]
+    right: Tree[T]
+
+def collect(arg: Tree[T]) -> List[T]: ...
+
+reveal_type(collect({"left": {"right": {"value": 0}}}))  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRecursiveGenericTypedDictExtending]
+# flags: --enable-recursive-aliases
+from typing import TypedDict, Generic, TypeVar, List
+
+T = TypeVar("T")
+
+class TD(TypedDict, Generic[T]):
+    val: T
+    other: STD[T]
+class STD(TD[T]):
+    sval: T
+    one: TD[T]
+
+std: STD[str]
+reveal_type(std)  # N: Revealed type is "TypedDict('__main__.STD', {'val': builtins.str, 'other': ..., 'sval': builtins.str, 'one': TypedDict('__main__.TD', {'val': builtins.str, 'other': ...})})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

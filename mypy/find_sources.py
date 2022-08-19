@@ -1,8 +1,10 @@
 """Routines for finding the sources that mypy will check"""
 
+from __future__ import annotations
+
 import functools
 import os
-from typing import List, Optional, Sequence, Set, Tuple
+from typing import Sequence
 from typing_extensions import Final
 
 from mypy.fscache import FileSystemCache
@@ -19,9 +21,9 @@ class InvalidSourceList(Exception):
 def create_source_list(
     paths: Sequence[str],
     options: Options,
-    fscache: Optional[FileSystemCache] = None,
+    fscache: FileSystemCache | None = None,
     allow_empty_dir: bool = False,
-) -> List[BuildSource]:
+) -> list[BuildSource]:
     """From a list of source files/directories, makes a list of BuildSources.
 
     Raises InvalidSourceList on errors.
@@ -47,7 +49,7 @@ def create_source_list(
     return sources
 
 
-def keyfunc(name: str) -> Tuple[bool, int, str]:
+def keyfunc(name: str) -> tuple[bool, int, str]:
     """Determines sort order for directory listing.
 
     The desirable properties are:
@@ -70,7 +72,7 @@ def normalise_package_base(root: str) -> str:
     return root
 
 
-def get_explicit_package_bases(options: Options) -> Optional[List[str]]:
+def get_explicit_package_bases(options: Options) -> list[str] | None:
     """Returns explicit package bases to use if the option is enabled, or None if disabled.
 
     We currently use MYPYPATH and the current directory as the package bases. In the future,
@@ -98,10 +100,10 @@ class SourceFinder:
         assert self.explicit_package_bases
         return normalise_package_base(path) in self.explicit_package_bases
 
-    def find_sources_in_dir(self, path: str) -> List[BuildSource]:
+    def find_sources_in_dir(self, path: str) -> list[BuildSource]:
         sources = []
 
-        seen: Set[str] = set()
+        seen: set[str] = set()
         names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
             # Skip certain names altogether
@@ -126,7 +128,7 @@ class SourceFinder:
 
         return sources
 
-    def crawl_up(self, path: str) -> Tuple[str, str]:
+    def crawl_up(self, path: str) -> tuple[str, str]:
         """Given a .py[i] filename, return module and base directory.
 
         For example, given "xxx/yyy/foo/bar.py", we might return something like:
@@ -155,11 +157,11 @@ class SourceFinder:
         module = module_join(parent_module, module_name)
         return module, base_dir
 
-    def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
+    def crawl_up_dir(self, dir: str) -> tuple[str, str]:
         return self._crawl_up_helper(dir) or ("", dir)
 
     @functools.lru_cache()  # noqa: B019
-    def _crawl_up_helper(self, dir: str) -> Optional[Tuple[str, str]]:
+    def _crawl_up_helper(self, dir: str) -> tuple[str, str] | None:
         """Given a directory, maybe returns module and base directory.
 
         We return a non-None value if we were able to find something clearly intended as a base
@@ -208,7 +210,7 @@ class SourceFinder:
         mod_prefix, base_dir = result
         return module_join(mod_prefix, name), base_dir
 
-    def get_init_file(self, dir: str) -> Optional[str]:
+    def get_init_file(self, dir: str) -> str | None:
         """Check whether a directory contains a file named __init__.py[i].
 
         If so, return the file's name (with dir prefixed).  If not, return None.
@@ -231,7 +233,7 @@ def module_join(parent: str, child: str) -> str:
     return child
 
 
-def strip_py(arg: str) -> Optional[str]:
+def strip_py(arg: str) -> str | None:
     """Strip a trailing .py or .pyi suffix.
 
     Return None if no such suffix is found.

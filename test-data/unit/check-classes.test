@@ -7339,3 +7339,30 @@ a: int = child.foo(1)
 b: str = child.bar("abc")
 c: float = child.baz(3.4)
 d: bool = child.foobar()
+
+[case testGenericTupleTypeCreation]
+from typing import Generic, Tuple, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+class C(Tuple[T, S]):
+    def __init__(self, x: T, y: S) -> None: ...
+    def foo(self, arg: T) -> S: ...
+
+cis: C[int, str]
+reveal_type(cis)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.C[builtins.int, builtins.str]]"
+cii = C(0, 1)
+reveal_type(cii)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.C[builtins.int, builtins.int]]"
+reveal_type(cis.foo)  # N: Revealed type is "def (arg: builtins.int) -> builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testGenericTupleTypeSubclassing]
+from typing import Generic, Tuple, TypeVar, List
+
+T = TypeVar("T")
+class C(Tuple[T, T]): ...
+class D(C[List[T]]): ...
+
+di: D[int]
+reveal_type(di)  # N: Revealed type is "Tuple[builtins.list[builtins.int], builtins.list[builtins.int], fallback=__main__.D[builtins.int]]"
+[builtins fixtures/tuple.pyi]

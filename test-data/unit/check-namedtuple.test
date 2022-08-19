@@ -1162,3 +1162,147 @@ NT5 = NamedTuple(b'NT5', [('x', int), ('y', int)])  # E: "NamedTuple()" expects 
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleCreation]
+from typing import Generic, NamedTuple, TypeVar
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+nts: NT[str]
+reveal_type(nts)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.NT[builtins.str]]"
+reveal_type(nts.value)  # N: Revealed type is "builtins.str"
+
+nti = NT(key=0, value=0)
+reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(nti.value)  # N: Revealed type is "builtins.int"
+
+NT[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleAlias]
+from typing import NamedTuple, Generic, TypeVar, List
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+Alias = NT[List[T]]
+
+an: Alias[str]
+reveal_type(an)  # N: Revealed type is "Tuple[builtins.int, builtins.list[builtins.str], fallback=__main__.NT[builtins.list[builtins.str]]]"
+Alias[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "List[str]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleMethods]
+from typing import Generic, NamedTuple, TypeVar
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+x: int
+
+nti: NT[int]
+reveal_type(nti * x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+
+nts: NT[str]
+reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleCustomMethods]
+from typing import Generic, NamedTuple, TypeVar
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+    def foo(self) -> T: ...
+    @classmethod
+    def from_value(cls, value: T) -> NT[T]: ...
+
+nts: NT[str]
+reveal_type(nts.foo())  # N: Revealed type is "builtins.str"
+
+nti = NT.from_value(1)
+reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+NT[str].from_value(1)  # E: Argument 1 to "from_value" of "NT" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleSubtyping]
+from typing import Generic, NamedTuple, TypeVar, Tuple
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+nts: NT[str]
+nti: NT[int]
+
+def foo(x: Tuple[int, ...]) -> None: ...
+foo(nti)
+foo(nts)  # E: Argument 1 to "foo" has incompatible type "NT[str]"; expected "Tuple[int, ...]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleJoin]
+from typing import Generic, NamedTuple, TypeVar, Tuple
+
+T = TypeVar("T", covariant=True)
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+nts: NT[str]
+nti: NT[int]
+x: Tuple[int, ...]
+
+S = TypeVar("S")
+def foo(x: S, y: S) -> S: ...
+reveal_type(foo(nti, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+
+reveal_type(foo(nti, nts))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
+reveal_type(foo(nts, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
+
+reveal_type(foo(nti, x))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(x, nti))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleCallSyntax]
+from typing import NamedTuple, TypeVar
+
+T = TypeVar("T")
+NT = NamedTuple("NT", [("key", int), ("value", T)])
+reveal_type(NT)  # N: Revealed type is "def [T] (key: builtins.int, value: T`-1) -> Tuple[builtins.int, T`-1, fallback=__main__.NT[T`-1]]"
+
+nts: NT[str]
+reveal_type(nts)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.NT[builtins.str]]"
+
+nti = NT(key=0, value=0)
+reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+NT[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleNoLegacySyntax]
+from typing import TypeVar, NamedTuple
+
+T = TypeVar("T")
+class C(
+    NamedTuple("_C", [("x", int), ("y", T)])  # E: Generic named tuples are not supported for legacy class syntax \
+                                              # N: Use either Python 3 class syntax, or the assignment syntax
+): ...
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

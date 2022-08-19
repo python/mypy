@@ -12,7 +12,7 @@ or methods in a single compilation unit.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence
+from typing import Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
@@ -78,22 +78,22 @@ def generate_traceback_code(
     return traceback_code
 
 
-def make_arg_groups(args: List[RuntimeArg]) -> Dict[ArgKind, List[RuntimeArg]]:
+def make_arg_groups(args: list[RuntimeArg]) -> dict[ArgKind, list[RuntimeArg]]:
     """Group arguments by kind."""
     return {k: [arg for arg in args if arg.kind == k] for k in ArgKind}
 
 
-def reorder_arg_groups(groups: Dict[ArgKind, List[RuntimeArg]]) -> List[RuntimeArg]:
+def reorder_arg_groups(groups: dict[ArgKind, list[RuntimeArg]]) -> list[RuntimeArg]:
     """Reorder argument groups to match their order in a format string."""
     return groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
 
 
-def make_static_kwlist(args: List[RuntimeArg]) -> str:
+def make_static_kwlist(args: list[RuntimeArg]) -> str:
     arg_names = "".join(f'"{arg.name}", ' for arg in args)
     return f"static const char * const kwlist[] = {{{arg_names}0}};"
 
 
-def make_format_string(func_name: Optional[str], groups: Dict[ArgKind, List[RuntimeArg]]) -> str:
+def make_format_string(func_name: str | None, groups: dict[ArgKind, list[RuntimeArg]]) -> str:
     """Return a format string that specifies the accepted arguments.
 
     The format string is an extended subset of what is supported by
@@ -157,7 +157,7 @@ def generate_wrapper_function(
 
     cleanups = [f"CPy_DECREF(obj_{arg.name});" for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_ptrs: List[str] = []
+    arg_ptrs: list[str] = []
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         arg_ptrs += [f"&obj_{groups[ARG_STAR][0].name}" if groups[ARG_STAR] else "NULL"]
         arg_ptrs += [f"&obj_{groups[ARG_STAR2][0].name}" if groups[ARG_STAR2] else "NULL"]
@@ -241,7 +241,7 @@ def generate_legacy_wrapper_function(
 
     cleanups = [f"CPy_DECREF(obj_{arg.name});" for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_ptrs: List[str] = []
+    arg_ptrs: list[str] = []
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         arg_ptrs += [f"&obj_{groups[ARG_STAR][0].name}" if groups[ARG_STAR] else "NULL"]
         arg_ptrs += [f"&obj_{groups[ARG_STAR2][0].name}" if groups[ARG_STAR2] else "NULL"]
@@ -410,7 +410,7 @@ RICHCOMPARE_OPS = {
 }
 
 
-def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> Optional[str]:
+def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> str | None:
     """Generates a wrapper for richcompare dunder methods."""
     # Sort for determinism on Python 3.5
     matches = sorted(name for name in RICHCOMPARE_OPS if cl.has_method(name))
@@ -656,10 +656,10 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 def generate_wrapper_core(
     fn: FuncIR,
     emitter: Emitter,
-    optional_args: Optional[List[RuntimeArg]] = None,
-    arg_names: Optional[List[str]] = None,
-    cleanups: Optional[List[str]] = None,
-    traceback_code: Optional[str] = None,
+    optional_args: list[RuntimeArg] | None = None,
+    arg_names: list[str] | None = None,
+    cleanups: list[str] | None = None,
+    traceback_code: str | None = None,
 ) -> None:
     """Generates the core part of a wrapper function for a native function.
 
@@ -684,7 +684,7 @@ def generate_arg_check(
     name: str,
     typ: RType,
     emitter: Emitter,
-    error: Optional[ErrorHandler] = None,
+    error: ErrorHandler | None = None,
     *,
     optional: bool = False,
     raise_exception: bool = True,
@@ -734,11 +734,11 @@ class WrapperGenerator:
 
     # TODO: Use this for more wrappers
 
-    def __init__(self, cl: Optional[ClassIR], emitter: Emitter) -> None:
+    def __init__(self, cl: ClassIR | None, emitter: Emitter) -> None:
         self.cl = cl
         self.emitter = emitter
-        self.cleanups: List[str] = []
-        self.optional_args: List[RuntimeArg] = []
+        self.cleanups: list[str] = []
+        self.optional_args: list[RuntimeArg] = []
         self.traceback_code = ""
 
     def set_target(self, fn: FuncIR) -> None:
@@ -775,7 +775,7 @@ class WrapperGenerator:
         )
 
     def emit_arg_processing(
-        self, error: Optional[ErrorHandler] = None, raise_exception: bool = True
+        self, error: ErrorHandler | None = None, raise_exception: bool = True
     ) -> None:
         """Emit validation and unboxing of arguments."""
         error = error or self.error()

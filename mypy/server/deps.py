@@ -81,7 +81,7 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 
 from __future__ import annotations
 
-from typing import DefaultDict, Dict, List, Optional, Set, Tuple
+from typing import DefaultDict, List
 
 from mypy.nodes import (
     GDEF,
@@ -177,10 +177,10 @@ from mypy.util import correct_relative_import
 
 def get_dependencies(
     target: MypyFile,
-    type_map: Dict[Expression, Type],
-    python_version: Tuple[int, int],
+    type_map: dict[Expression, Type],
+    python_version: tuple[int, int],
     options: Options,
-) -> Dict[str, Set[str]]:
+) -> dict[str, set[str]]:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps, options)
     target.accept(visitor)
@@ -191,9 +191,9 @@ def get_dependencies_of_target(
     module_id: str,
     module_tree: MypyFile,
     target: Node,
-    type_map: Dict[Expression, Type],
-    python_version: Tuple[int, int],
-) -> Dict[str, Set[str]]:
+    type_map: dict[Expression, Type],
+    python_version: tuple[int, int],
+) -> dict[str, set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version, module_tree.alias_deps)
@@ -218,10 +218,10 @@ def get_dependencies_of_target(
 class DependencyVisitor(TraverserVisitor):
     def __init__(
         self,
-        type_map: Dict[Expression, Type],
-        python_version: Tuple[int, int],
-        alias_deps: DefaultDict[str, Set[str]],
-        options: Optional[Options] = None,
+        type_map: dict[Expression, Type],
+        python_version: tuple[int, int],
+        alias_deps: DefaultDict[str, set[str]],
+        options: Options | None = None,
     ) -> None:
         self.scope = Scope()
         self.type_map = type_map
@@ -235,7 +235,7 @@ class DependencyVisitor(TraverserVisitor):
         # are preserved at alias expansion points in `semanal.py`, stored as an attribute
         # on MypyFile, and then passed here.
         self.alias_deps = alias_deps
-        self.map: Dict[str, Set[str]] = {}
+        self.map: dict[str, set[str]] = {}
         self.is_class = False
         self.is_package_init_file = False
         self.options = options
@@ -287,7 +287,7 @@ class DependencyVisitor(TraverserVisitor):
             # then if `dec` is unannotated, then it will "spoil" `func` and consequently
             # all call sites, making them all `Any`.
             for d in o.decorators:
-                tname: Optional[str] = None
+                tname: str | None = None
                 if isinstance(d, RefExpr) and d.fullname is not None:
                     tname = d.fullname
                 if (
@@ -501,7 +501,7 @@ class DependencyVisitor(TraverserVisitor):
                 and isinstance(rvalue.callee, RefExpr)
                 and rvalue.callee.fullname is not None
             ):
-                fname: Optional[str] = None
+                fname: str | None = None
                 if isinstance(rvalue.callee.node, TypeInfo):
                     # use actual __init__ as a dependency source
                     init = rvalue.callee.node.get("__init__")
@@ -694,7 +694,7 @@ class DependencyVisitor(TraverserVisitor):
                     #         missing.f()  # Generate dependency from "missing.f"
                     self.add_dependency(make_trigger(name))
 
-    def get_unimported_fullname(self, e: MemberExpr, typ: AnyType) -> Optional[str]:
+    def get_unimported_fullname(self, e: MemberExpr, typ: AnyType) -> str | None:
         """If e refers to an unimported definition, infer the fullname of this.
 
         Return None if e doesn't refer to an unimported definition or if we can't
@@ -863,7 +863,7 @@ class DependencyVisitor(TraverserVisitor):
             for alias in self.alias_deps[target]:
                 self.add_dependency(make_trigger(alias))
 
-    def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+    def add_dependency(self, trigger: str, target: str | None = None) -> None:
         """Add dependency from trigger to a target.
 
         If the target is not given explicitly, use the current target.
@@ -880,7 +880,7 @@ class DependencyVisitor(TraverserVisitor):
             target = self.scope.current_target()
         self.map.setdefault(trigger, set()).add(target)
 
-    def add_type_dependencies(self, typ: Type, target: Optional[str] = None) -> None:
+    def add_type_dependencies(self, typ: Type, target: str | None = None) -> None:
         """Add dependencies to all components of a type.
 
         Args:
@@ -896,7 +896,7 @@ class DependencyVisitor(TraverserVisitor):
         for target in targets:
             self.add_dependency(target)
 
-    def attribute_triggers(self, typ: Type, name: str) -> List[str]:
+    def attribute_triggers(self, typ: Type, name: str) -> list[str]:
         """Return all triggers associated with the attribute of a type."""
         typ = get_proper_type(typ)
         if isinstance(typ, TypeVarType):
@@ -939,29 +939,29 @@ class DependencyVisitor(TraverserVisitor):
     def use_logical_deps(self) -> bool:
         return self.options is not None and self.options.logical_deps
 
-    def get_type_triggers(self, typ: Type) -> List[str]:
+    def get_type_triggers(self, typ: Type) -> list[str]:
         return get_type_triggers(typ, self.use_logical_deps())
 
 
 def get_type_triggers(
-    typ: Type, use_logical_deps: bool, seen_aliases: Optional[Set[TypeAliasType]] = None
-) -> List[str]:
+    typ: Type, use_logical_deps: bool, seen_aliases: set[TypeAliasType] | None = None
+) -> list[str]:
     """Return all triggers that correspond to a type becoming stale."""
     return typ.accept(TypeTriggersVisitor(use_logical_deps, seen_aliases))
 
 
 class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def __init__(
-        self, use_logical_deps: bool, seen_aliases: Optional[Set[TypeAliasType]] = None
+        self, use_logical_deps: bool, seen_aliases: set[TypeAliasType] | None = None
     ) -> None:
-        self.deps: List[str] = []
-        self.seen_aliases: Set[TypeAliasType] = seen_aliases or set()
+        self.deps: list[str] = []
+        self.seen_aliases: set[TypeAliasType] = seen_aliases or set()
         self.use_logical_deps = use_logical_deps
 
-    def get_type_triggers(self, typ: Type) -> List[str]:
+    def get_type_triggers(self, typ: Type) -> list[str]:
         return get_type_triggers(typ, self.use_logical_deps, self.seen_aliases)
 
-    def visit_instance(self, typ: Instance) -> List[str]:
+    def visit_instance(self, typ: Instance) -> list[str]:
         trigger = make_trigger(typ.type.fullname)
         triggers = [trigger]
         for arg in typ.args:
@@ -970,7 +970,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             triggers.extend(self.get_type_triggers(typ.last_known_value))
         return triggers
 
-    def visit_type_alias_type(self, typ: TypeAliasType) -> List[str]:
+    def visit_type_alias_type(self, typ: TypeAliasType) -> list[str]:
         if typ in self.seen_aliases:
             return []
         self.seen_aliases.add(typ)
@@ -984,15 +984,15 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers.extend(self.get_type_triggers(typ.alias.target))
         return triggers
 
-    def visit_any(self, typ: AnyType) -> List[str]:
+    def visit_any(self, typ: AnyType) -> list[str]:
         if typ.missing_import_name is not None:
             return [make_trigger(typ.missing_import_name)]
         return []
 
-    def visit_none_type(self, typ: NoneType) -> List[str]:
+    def visit_none_type(self, typ: NoneType) -> list[str]:
         return []
 
-    def visit_callable_type(self, typ: CallableType) -> List[str]:
+    def visit_callable_type(self, typ: CallableType) -> list[str]:
         triggers = []
         for arg in typ.arg_types:
             triggers.extend(self.get_type_triggers(arg))
@@ -1001,30 +1001,30 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         # processed separately.
         return triggers
 
-    def visit_overloaded(self, typ: Overloaded) -> List[str]:
+    def visit_overloaded(self, typ: Overloaded) -> list[str]:
         triggers = []
         for item in typ.items:
             triggers.extend(self.get_type_triggers(item))
         return triggers
 
-    def visit_erased_type(self, t: ErasedType) -> List[str]:
+    def visit_erased_type(self, t: ErasedType) -> list[str]:
         # This type should exist only temporarily during type inference
         assert False, "Should not see an erased type here"
 
-    def visit_deleted_type(self, typ: DeletedType) -> List[str]:
+    def visit_deleted_type(self, typ: DeletedType) -> list[str]:
         return []
 
-    def visit_partial_type(self, typ: PartialType) -> List[str]:
+    def visit_partial_type(self, typ: PartialType) -> list[str]:
         assert False, "Should not see a partial type here"
 
-    def visit_tuple_type(self, typ: TupleType) -> List[str]:
+    def visit_tuple_type(self, typ: TupleType) -> list[str]:
         triggers = []
         for item in typ.items:
             triggers.extend(self.get_type_triggers(item))
         triggers.extend(self.get_type_triggers(typ.partial_fallback))
         return triggers
 
-    def visit_type_type(self, typ: TypeType) -> List[str]:
+    def visit_type_type(self, typ: TypeType) -> list[str]:
         triggers = self.get_type_triggers(typ.item)
         if not self.use_logical_deps:
             old_triggers = triggers[:]
@@ -1033,7 +1033,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
                 triggers.append(trigger.rstrip(">") + ".__new__>")
         return triggers
 
-    def visit_type_var(self, typ: TypeVarType) -> List[str]:
+    def visit_type_var(self, typ: TypeVarType) -> list[str]:
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
@@ -1043,58 +1043,58 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             triggers.extend(self.get_type_triggers(val))
         return triggers
 
-    def visit_param_spec(self, typ: ParamSpecType) -> List[str]:
+    def visit_param_spec(self, typ: ParamSpecType) -> list[str]:
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
         triggers.extend(self.get_type_triggers(typ.upper_bound))
         return triggers
 
-    def visit_type_var_tuple(self, typ: TypeVarTupleType) -> List[str]:
+    def visit_type_var_tuple(self, typ: TypeVarTupleType) -> list[str]:
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
         triggers.extend(self.get_type_triggers(typ.upper_bound))
         return triggers
 
-    def visit_unpack_type(self, typ: UnpackType) -> List[str]:
+    def visit_unpack_type(self, typ: UnpackType) -> list[str]:
         return typ.type.accept(self)
 
-    def visit_parameters(self, typ: Parameters) -> List[str]:
+    def visit_parameters(self, typ: Parameters) -> list[str]:
         triggers = []
         for arg in typ.arg_types:
             triggers.extend(self.get_type_triggers(arg))
         return triggers
 
-    def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
+    def visit_typeddict_type(self, typ: TypedDictType) -> list[str]:
         triggers = []
         for item in typ.items.values():
             triggers.extend(self.get_type_triggers(item))
         triggers.extend(self.get_type_triggers(typ.fallback))
         return triggers
 
-    def visit_literal_type(self, typ: LiteralType) -> List[str]:
+    def visit_literal_type(self, typ: LiteralType) -> list[str]:
         return self.get_type_triggers(typ.fallback)
 
-    def visit_unbound_type(self, typ: UnboundType) -> List[str]:
+    def visit_unbound_type(self, typ: UnboundType) -> list[str]:
         return []
 
-    def visit_uninhabited_type(self, typ: UninhabitedType) -> List[str]:
+    def visit_uninhabited_type(self, typ: UninhabitedType) -> list[str]:
         return []
 
-    def visit_union_type(self, typ: UnionType) -> List[str]:
+    def visit_union_type(self, typ: UnionType) -> list[str]:
         triggers = []
         for item in typ.items:
             triggers.extend(self.get_type_triggers(item))
         return triggers
 
 
-def merge_dependencies(new_deps: Dict[str, Set[str]], deps: Dict[str, Set[str]]) -> None:
+def merge_dependencies(new_deps: dict[str, set[str]], deps: dict[str, set[str]]) -> None:
     for trigger, targets in new_deps.items():
         deps.setdefault(trigger, set()).update(targets)
 
 
-def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
+def non_trivial_bases(info: TypeInfo) -> list[TypeInfo]:
     return [base for base in info.mro[1:] if base.fullname != "builtins.object"]
 
 
@@ -1103,13 +1103,13 @@ def has_user_bases(info: TypeInfo) -> bool:
 
 
 def dump_all_dependencies(
-    modules: Dict[str, MypyFile],
-    type_map: Dict[Expression, Type],
-    python_version: Tuple[int, int],
+    modules: dict[str, MypyFile],
+    type_map: dict[Expression, Type],
+    python_version: tuple[int, int],
     options: Options,
 ) -> None:
     """Generate dependencies for all interesting modules and print them to stdout."""
-    all_deps: Dict[str, Set[str]] = {}
+    all_deps: dict[str, set[str]] = {}
     for id, node in modules.items():
         # Uncomment for debugging:
         # print('processing', id)

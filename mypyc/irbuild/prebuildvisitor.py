@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict, List, Set
-
 from mypy.nodes import (
     Decorator,
     Expression,
@@ -36,39 +34,39 @@ class PreBuildVisitor(TraverserVisitor):
         self,
         errors: Errors,
         current_file: MypyFile,
-        decorators_to_remove: Dict[FuncDef, List[int]],
+        decorators_to_remove: dict[FuncDef, list[int]],
     ) -> None:
         super().__init__()
         # Dict from a function to symbols defined directly in the
         # function that are used as non-local (free) variables within a
         # nested function.
-        self.free_variables: Dict[FuncItem, Set[SymbolNode]] = {}
+        self.free_variables: dict[FuncItem, set[SymbolNode]] = {}
 
         # Intermediate data structure used to find the function where
         # a SymbolNode is declared. Initially this may point to a
         # function nested inside the function with the declaration,
         # but we'll eventually update this to refer to the function
         # with the declaration.
-        self.symbols_to_funcs: Dict[SymbolNode, FuncItem] = {}
+        self.symbols_to_funcs: dict[SymbolNode, FuncItem] = {}
 
         # Stack representing current function nesting.
-        self.funcs: List[FuncItem] = []
+        self.funcs: list[FuncItem] = []
 
         # All property setters encountered so far.
-        self.prop_setters: Set[FuncDef] = set()
+        self.prop_setters: set[FuncDef] = set()
 
         # A map from any function that contains nested functions to
         # a set of all the functions that are nested within it.
-        self.encapsulating_funcs: Dict[FuncItem, List[FuncItem]] = {}
+        self.encapsulating_funcs: dict[FuncItem, list[FuncItem]] = {}
 
         # Map nested function to its parent/encapsulating function.
-        self.nested_funcs: Dict[FuncItem, FuncItem] = {}
+        self.nested_funcs: dict[FuncItem, FuncItem] = {}
 
         # Map function to its non-special decorators.
-        self.funcs_to_decorators: Dict[FuncDef, List[Expression]] = {}
+        self.funcs_to_decorators: dict[FuncDef, list[Expression]] = {}
 
         # Map function to indices of decorators to remove
-        self.decorators_to_remove: Dict[FuncDef, List[int]] = decorators_to_remove
+        self.decorators_to_remove: dict[FuncDef, list[int]] = decorators_to_remove
 
         self.errors: Errors = errors
 

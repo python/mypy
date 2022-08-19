@@ -5,6 +5,8 @@ We support a filesystem tree based cache and a sqlite based cache.
 See mypy/metastore.py for details.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 
