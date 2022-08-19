@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Container, Dict, List, Optional, cast
+from typing import Callable, Container, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -135,7 +135,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         raise RuntimeError("Type aliases should be expanded before accepting this visitor")
 
 
-def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:
+def erase_typevars(t: Type, ids_to_erase: Container[TypeVarId] | None = None) -> Type:
     """Replace all type variables in a type with any,
     or just the ones in the provided collection.
     """
@@ -208,12 +208,12 @@ class LastKnownValueEraser(TypeTranslator):
         instances = [item for item in new.items if isinstance(get_proper_type(item), Instance)]
         # Avoid merge in simple cases such as optional types.
         if len(instances) > 1:
-            instances_by_name: Dict[str, List[Instance]] = {}
+            instances_by_name: dict[str, list[Instance]] = {}
             p_new_items = get_proper_types(new.items)
             for p_item in p_new_items:
                 if isinstance(p_item, Instance) and not p_item.args:
                     instances_by_name.setdefault(p_item.type.fullname, []).append(p_item)
-            merged: List[Type] = []
+            merged: list[Type] = []
             for item in new.items:
                 orig_item = item
                 item = get_proper_type(item)

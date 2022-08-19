@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List, Optional, Union
-
 from mypy.fixup import TypeFixer
 from mypy.nodes import (
     ARG_POS,
@@ -63,7 +61,7 @@ def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr, name: str, default:
     return default
 
 
-def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
+def _get_argument(call: CallExpr, name: str) -> Expression | None:
     """Return the expression for the specific argument."""
     # To do this we use the CallableType of the callee to find the FormalArgument,
     # then walk the actual CallExpr looking for the appropriate argument.
@@ -102,10 +100,10 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
 def add_method(
     ctx: ClassDefContext,
     name: str,
-    args: List[Argument],
+    args: list[Argument],
     return_type: Type,
-    self_type: Optional[Type] = None,
-    tvar_def: Optional[TypeVarType] = None,
+    self_type: Type | None = None,
+    tvar_def: TypeVarType | None = None,
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
 ) -> None:
@@ -127,13 +125,13 @@ def add_method(
 
 
 def add_method_to_class(
-    api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],
+    api: SemanticAnalyzerPluginInterface | CheckerPluginInterface,
     cls: ClassDef,
     name: str,
-    args: List[Argument],
+    args: list[Argument],
     return_type: Type,
-    self_type: Optional[Type] = None,
-    tvar_def: Optional[TypeVarType] = None,
+    self_type: Type | None = None,
+    tvar_def: TypeVarType | None = None,
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
 ) -> None:
@@ -246,9 +244,7 @@ def add_attribute_to_class(
     )
 
 
-def deserialize_and_fixup_type(
-    data: Union[str, JsonDict], api: SemanticAnalyzerPluginInterface
-) -> Type:
+def deserialize_and_fixup_type(data: str | JsonDict, api: SemanticAnalyzerPluginInterface) -> Type:
     typ = deserialize_type(data)
     typ.accept(TypeFixer(api.modules, allow_missing=False))
     return typ

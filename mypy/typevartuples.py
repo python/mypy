@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple, TypeVar
+from typing import Sequence, TypeVar
 
 from mypy.types import Instance, ProperType, Type, UnpackType, get_proper_type
 
 
-def find_unpack_in_list(items: Sequence[Type]) -> Optional[int]:
-    unpack_index: Optional[int] = None
+def find_unpack_in_list(items: Sequence[Type]) -> int | None:
+    unpack_index: int | None = None
     for i, item in enumerate(items):
         proper_item = get_proper_type(item)
         if isinstance(proper_item, UnpackType):
@@ -26,8 +26,8 @@ T = TypeVar("T")
 
 
 def split_with_prefix_and_suffix(
-    types: Tuple[T, ...], prefix: int, suffix: int
-) -> Tuple[Tuple[T, ...], Tuple[T, ...], Tuple[T, ...]]:
+    types: tuple[T, ...], prefix: int, suffix: int
+) -> tuple[tuple[T, ...], tuple[T, ...], tuple[T, ...]]:
     if suffix:
         return (types[:prefix], types[prefix:-suffix], types[-suffix:])
     else:
@@ -36,7 +36,7 @@ def split_with_prefix_and_suffix(
 
 def split_with_instance(
     typ: Instance,
-) -> Tuple[Tuple[Type, ...], Tuple[Type, ...], Tuple[Type, ...]]:
+) -> tuple[tuple[Type, ...], tuple[Type, ...], tuple[Type, ...]]:
     assert typ.type.type_var_tuple_prefix is not None
     assert typ.type.type_var_tuple_suffix is not None
     return split_with_prefix_and_suffix(
@@ -44,7 +44,7 @@ def split_with_instance(
     )
 
 
-def extract_unpack(types: Sequence[Type]) -> Optional[ProperType]:
+def extract_unpack(types: Sequence[Type]) -> ProperType | None:
     """Given a list of types, extracts either a single type from an unpack, or returns None."""
     if len(types) == 1:
         proper_type = get_proper_type(types[0])

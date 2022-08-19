@@ -1,13 +1,19 @@
 import abc
+import sys
 from _typeshed import IdentityFunction, Self
 from collections.abc import ItemsView, KeysView, Mapping, ValuesView
-from typing import Any, Generic, TypeVar, overload
+from typing import Any, ClassVar, Generic, TypeVar, overload, type_check_only
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
+# N.B. Keep this mostly in sync with typing(_extensions)._TypedDict
+@type_check_only
 class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
+    __total__: ClassVar[bool]
+    # Unlike typing(_extensions).TypedDict,
+    # subclasses of mypy_extensions.TypedDict do NOT have the __required_keys__ and __optional_keys__ ClassVars
     def copy(self: Self) -> Self: ...
     # Using NoReturn so that only calls using mypy plugin hook that specialize the signature
     # can go through.
@@ -19,6 +25,9 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     def keys(self) -> KeysView[str]: ...
     def values(self) -> ValuesView[object]: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+    if sys.version_info >= (3, 9):
+        def __or__(self: Self, __other: Self) -> Self: ...
+        def __ior__(self: Self, __other: Self) -> Self: ...
 
 def TypedDict(typename: str, fields: dict[str, type[Any]], total: bool = ...) -> type[dict[str, Any]]: ...
 @overload

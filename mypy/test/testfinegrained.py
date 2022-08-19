@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 import re
 import sys
-from typing import Any, Dict, List, Tuple, Union, cast
+from typing import Any, cast
 
 import pytest
 
@@ -162,19 +162,19 @@ class FineGrainedSuite(DataSuite):
 
         return options
 
-    def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
+    def run_check(self, server: Server, sources: list[BuildSource]) -> list[str]:
         response = server.check(sources, export_types=True, is_tty=False, terminal_width=-1)
         out = cast(str, response["out"] or response["err"])
         return out.splitlines()
 
-    def build(self, options: Options, sources: List[BuildSource]) -> List[str]:
+    def build(self, options: Options, sources: list[BuildSource]) -> list[str]:
         try:
             result = build.build(sources=sources, options=options)
         except CompileError as e:
             return e.messages
         return result.errors
 
-    def format_triggered(self, triggered: List[List[str]]) -> List[str]:
+    def format_triggered(self, triggered: list[list[str]]) -> list[str]:
         result = []
         for n, triggers in enumerate(triggered):
             filtered = [trigger for trigger in triggers if not trigger.endswith("__>")]
@@ -193,7 +193,7 @@ class FineGrainedSuite(DataSuite):
 
     def perform_step(
         self,
-        operations: List[Union[UpdateFile, DeleteFile]],
+        operations: list[UpdateFile | DeleteFile],
         server: Server,
         options: Options,
         build_options: Options,
@@ -201,7 +201,7 @@ class FineGrainedSuite(DataSuite):
         main_src: str,
         step: int,
         num_regular_incremental_steps: int,
-    ) -> Tuple[List[str], List[List[str]]]:
+    ) -> tuple[list[str], list[list[str]]]:
         """Perform one fine-grained incremental build step (after some file updates/deletions).
 
         Return (mypy output, triggered targets).
@@ -214,9 +214,9 @@ class FineGrainedSuite(DataSuite):
         else:
             new_messages = self.run_check(server, sources)
 
-        updated: List[str] = []
-        changed: List[str] = []
-        targets: List[str] = []
+        updated: list[str] = []
+        changed: list[str] = []
+        targets: list[str] = []
         triggered = []
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -250,7 +250,7 @@ class FineGrainedSuite(DataSuite):
 
     def parse_sources(
         self, program_text: str, incremental_step: int, options: Options
-    ) -> List[BuildSource]:
+    ) -> list[BuildSource]:
         """Return target BuildSources for a test case.
 
         Normally, the unit tests will check all files included in the test
@@ -286,8 +286,8 @@ class FineGrainedSuite(DataSuite):
             # when there aren't any .py files in an increment
             return [base] + create_source_list([test_temp_dir], options, allow_empty_dir=True)
 
-    def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
-        output: List[str] = []
+    def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> list[str]:
+        output: list[str] = []
         targets = self.get_suggest(src, step)
         for flags, target in targets:
             json = "--json" in flags
@@ -300,7 +300,7 @@ class FineGrainedSuite(DataSuite):
             use_fixme = m.group(1) if m else None
             m = re.match("--max-guesses=([0-9]+)", flags)
             max_guesses = int(m.group(1)) if m else None
-            res: Dict[str, Any] = server.cmd_suggest(
+            res: dict[str, Any] = server.cmd_suggest(
                 target.strip(),
                 json=json,
                 no_any=no_any,
@@ -318,8 +318,8 @@ class FineGrainedSuite(DataSuite):
             output.extend(val.strip().split("\n"))
         return normalize_messages(output)
 
-    def maybe_inspect(self, step: int, server: Server, src: str) -> List[str]:
-        output: List[str] = []
+    def maybe_inspect(self, step: int, server: Server, src: str) -> list[str]:
+        output: list[str] = []
         targets = self.get_inspect(src, step)
         for flags, location in targets:
             m = re.match(r"--show=(\w+)", flags)
@@ -336,7 +336,7 @@ class FineGrainedSuite(DataSuite):
             include_object_attrs = "--include-object-attrs" in flags
             union_attrs = "--union-attrs" in flags
             force_reload = "--force-reload" in flags
-            res: Dict[str, Any] = server.cmd_inspect(
+            res: dict[str, Any] = server.cmd_inspect(
                 show,
                 location,
                 verbosity=verbosity,
@@ -351,18 +351,18 @@ class FineGrainedSuite(DataSuite):
             output.extend(val.strip().split("\n"))
         return normalize_messages(output)
 
-    def get_suggest(self, program_text: str, incremental_step: int) -> List[Tuple[str, str]]:
+    def get_suggest(self, program_text: str, incremental_step: int) -> list[tuple[str, str]]:
         step_bit = "1?" if incremental_step == 1 else str(incremental_step)
         regex = f"# suggest{step_bit}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$"
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
-    def get_inspect(self, program_text: str, incremental_step: int) -> List[Tuple[str, str]]:
+    def get_inspect(self, program_text: str, incremental_step: int) -> list[tuple[str, str]]:
         step_bit = "1?" if incremental_step == 1 else str(incremental_step)
         regex = f"# inspect{step_bit}: (--[a-zA-Z0-9_\\-=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$"
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
 
-def normalize_messages(messages: List[str]) -> List[str]:
+def normalize_messages(messages: list[str]) -> list[str]:
     return [re.sub("^tmp" + re.escape(os.sep), "", message) for message in messages]

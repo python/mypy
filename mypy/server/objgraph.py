@@ -5,7 +5,7 @@ from __future__ import annotations
 import types
 import weakref
 from collections.abc import Iterable
-from typing import Dict, Iterator, List, Mapping, Tuple
+from typing import Iterator, Mapping
 from typing_extensions import Final
 
 method_descriptor_type: Final = type(object.__dir__)
@@ -37,7 +37,7 @@ def isproperty(o: object, attr: str) -> bool:
     return isinstance(getattr(type(o), attr, None), property)
 
 
-def get_edge_candidates(o: object) -> Iterator[Tuple[object, object]]:
+def get_edge_candidates(o: object) -> Iterator[tuple[object, object]]:
     # use getattr because mypyc expects dict, not mappingproxy
     if "__getattribute__" in getattr(type(o), "__dict__"):  # noqa: B009
         return
@@ -57,7 +57,7 @@ def get_edge_candidates(o: object) -> Iterator[Tuple[object, object]]:
             yield i, e
 
 
-def get_edges(o: object) -> Iterator[Tuple[object, object]]:
+def get_edges(o: object) -> Iterator[tuple[object, object]]:
     for s, e in get_edge_candidates(o):
         if isinstance(e, FUNCTION_TYPES):
             # We don't want to collect methods, but do want to collect values
@@ -74,7 +74,7 @@ def get_edges(o: object) -> Iterator[Tuple[object, object]]:
                 yield s, e
 
 
-def get_reachable_graph(root: object) -> Tuple[Dict[int, object], Dict[int, Tuple[int, object]]]:
+def get_reachable_graph(root: object) -> tuple[dict[int, object], dict[int, tuple[int, object]]]:
     parents = {}
     seen = {id(root): root}
     worklist = [root]
@@ -91,8 +91,8 @@ def get_reachable_graph(root: object) -> Tuple[Dict[int, object], Dict[int, Tupl
 
 
 def get_path(
-    o: object, seen: Dict[int, object], parents: Dict[int, Tuple[int, object]]
-) -> List[Tuple[object, object]]:
+    o: object, seen: dict[int, object], parents: dict[int, tuple[int, object]]
+) -> list[tuple[object, object]]:
     path = []
     while id(o) in parents:
         pid, attr = parents[id(o)]

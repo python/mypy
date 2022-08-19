@@ -5,8 +5,6 @@ It contains class TypeInfos and Type objects.
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
 from mypy.nodes import (
     ARG_OPT,
     ARG_POS,
@@ -54,7 +52,7 @@ class TypeFixture:
         # Type variables (these are effectively global)
 
         def make_type_var(
-            name: str, id: int, values: List[Type], upper_bound: Type, variance: int
+            name: str, id: int, values: list[Type], upper_bound: Type, variance: int
         ) -> TypeVarType:
             return TypeVarType(name, name, id, values, upper_bound, variance)
 
@@ -274,13 +272,13 @@ class TypeFixture:
     def make_type_info(
         self,
         name: str,
-        module_name: Optional[str] = None,
+        module_name: str | None = None,
         is_abstract: bool = False,
-        mro: Optional[List[TypeInfo]] = None,
-        bases: Optional[List[Instance]] = None,
-        typevars: Optional[List[str]] = None,
-        typevar_tuple_index: Optional[int] = None,
-        variances: Optional[List[int]] = None,
+        mro: list[TypeInfo] | None = None,
+        bases: list[Instance] | None = None,
+        typevars: list[str] | None = None,
+        typevar_tuple_index: int | None = None,
+        variances: list[int] | None = None,
     ) -> TypeInfo:
         """Make a TypeInfo suitable for use in unit tests."""
 
@@ -294,7 +292,7 @@ class TypeFixture:
                 module_name = "__main__"
 
         if typevars:
-            v: List[TypeVarLikeType] = []
+            v: list[TypeVarLikeType] = []
             for id, n in enumerate(typevars, 1):
                 if typevar_tuple_index is not None and id - 1 == typevar_tuple_index:
                     v.append(TypeVarTupleType(n, n, id, self.o))
@@ -322,7 +320,7 @@ class TypeFixture:
 
         return info
 
-    def def_alias_1(self, base: Instance) -> Tuple[TypeAliasType, Type]:
+    def def_alias_1(self, base: Instance) -> tuple[TypeAliasType, Type]:
         A = TypeAliasType(None, [])
         target = Instance(
             self.std_tuplei, [UnionType([base, A])]
@@ -331,7 +329,7 @@ class TypeFixture:
         A.alias = AN
         return A, target
 
-    def def_alias_2(self, base: Instance) -> Tuple[TypeAliasType, Type]:
+    def def_alias_2(self, base: Instance) -> tuple[TypeAliasType, Type]:
         A = TypeAliasType(None, [])
         target = UnionType(
             [base, Instance(self.std_tuplei, [A])]

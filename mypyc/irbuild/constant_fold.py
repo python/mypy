@@ -5,7 +5,7 @@ For example, 3 + 5 can be constant folded into 8.
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Union
 from typing_extensions import Final
 
 from mypy.nodes import Expression, IntExpr, MemberExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var
@@ -16,7 +16,7 @@ ConstantValue = Union[int, str]
 CONST_TYPES: Final = (int, str)
 
 
-def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[ConstantValue]:
+def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
     """Return the constant value of an expression for supported operations.
 
     Return None otherwise.
@@ -53,7 +53,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[Constan
     return None
 
 
-def constant_fold_binary_int_op(op: str, left: int, right: int) -> Optional[int]:
+def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | None:
     if op == "+":
         return left + right
     if op == "-":
@@ -84,7 +84,7 @@ def constant_fold_binary_int_op(op: str, left: int, right: int) -> Optional[int]
     return None
 
 
-def constant_fold_unary_int_op(op: str, value: int) -> Optional[int]:
+def constant_fold_unary_int_op(op: str, value: int) -> int | None:
     if op == "-":
         return -value
     elif op == "~":
@@ -94,7 +94,7 @@ def constant_fold_unary_int_op(op: str, value: int) -> Optional[int]:
     return None
 
 
-def constant_fold_binary_str_op(op: str, left: str, right: str) -> Optional[str]:
+def constant_fold_binary_str_op(op: str, left: str, right: str) -> str | None:
     if op == "+":
         return left + right
     return None

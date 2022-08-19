@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Union
 from typing_extensions import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
@@ -156,9 +155,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.literals = emitter.context.literals
         self.rare = False
         # Next basic block to be processed after the current one (if any), set by caller
-        self.next_block: Optional[BasicBlock] = None
+        self.next_block: BasicBlock | None = None
         # Ops in the basic block currently being processed, set by caller
-        self.ops: List[Op] = []
+        self.ops: list[Op] = []
         # Current index within ops; visit methods can increment this to skip/merge ops
         self.op_index = 0
 
@@ -289,7 +288,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             self.emit_line("%s = (CPyTagged)CPyStatics[%d] | 1;%s" % (self.reg(op), index, ann))
 
-    def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
+    def get_attr_expr(self, obj: str, op: GetAttr | SetAttr, decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.
 
         This either has a form like obj->attr_name for attributes defined in non-trait
@@ -388,7 +387,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif not always_defined:
                 self.emitter.emit_line("}")
 
-    def next_branch(self) -> Optional[Branch]:
+    def next_branch(self) -> Branch | None:
         if self.op_index + 1 < len(self.ops):
             next_op = self.ops[self.op_index + 1]
             if isinstance(next_op, Branch):
