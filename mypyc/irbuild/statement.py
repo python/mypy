@@ -100,6 +100,7 @@ from mypyc.primitives.misc_ops import (
 )
 
 GenFunc = Callable[[], None]
+ValueGenFunc = Callable[[], Value]
 
 
 def transform_block(builder: IRBuilder, block: Block) -> None:
@@ -327,9 +328,6 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
 
 def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
-    if s.is_async:
-        builder.error("async for is unimplemented", s.line)
-
     def body() -> None:
         builder.accept(s.body)
 
@@ -337,7 +335,9 @@ def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
         assert s.else_body is not None
         builder.accept(s.else_body)
 
-    for_loop_helper(builder, s.index, s.expr, body, else_block if s.else_body else None, s.line)
+    for_loop_helper(
+        builder, s.index, s.expr, body, else_block if s.else_body else None, s.is_async, s.line
+    )
 
 
 def transform_break_stmt(builder: IRBuilder, node: BreakStmt) -> None:
@@ -362,7 +362,7 @@ def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
 def transform_try_except(
     builder: IRBuilder,
     body: GenFunc,
-    handlers: Sequence[tuple[Expression | None, Expression | None, GenFunc]],
+    handlers: Sequence[tuple[tuple[ValueGenFunc, int] | None, Expression | None, GenFunc]],
     else_body: GenFunc | None,
     line: int,
 ) -> None:
@@ -399,8 +399,9 @@ def transform_try_except(
     for type, var, handler_body in handlers:
         next_block = None
         if type:
+            type_f, type_line = type
             next_block, body_block = BasicBlock(), BasicBlock()
-            matches = builder.call_c(exc_matches_op, [builder.accept(type)], type.line)
+            matches = builder.call_c(exc_matches_op, [type_f()], type_line)
             builder.add(Branch(matches, body_block, next_block, Branch.BOOL))
             builder.activate_block(body_block)
         if var:
@@ -451,8 +452,12 @@ def transform_try_except_stmt(builder: IRBuilder, t: TryStmt) -> None:
     def make_handler(body: Block) -> GenFunc:
         return lambda: builder.accept(body)
 
+    def make_entry(type: Expression) -> tuple[ValueGenFunc, int]:
+        return (lambda: builder.accept(type), type.line)
+
     handlers = [
-        (type, var, make_handler(body)) for type, var, body in zip(t.types, t.vars, t.handlers)
+        (make_entry(type) if type else None, var, make_handler(body))
+        for type, var, body in zip(t.types, t.vars, t.handlers)
     ]
     else_body = (lambda: builder.accept(t.else_body)) if t.else_body else None
     transform_try_except(builder, body, handlers, else_body, t.line)
