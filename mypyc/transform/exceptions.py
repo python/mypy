@@ -11,8 +11,6 @@ only be placed at the end of a basic block.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import (
     ERR_ALWAYS,
@@ -60,9 +58,9 @@ def add_handler_block(ir: FuncIR) -> BasicBlock:
 
 
 def split_blocks_at_errors(
-    blocks: List[BasicBlock], default_error_handler: BasicBlock, func_name: Optional[str]
-) -> List[BasicBlock]:
-    new_blocks: List[BasicBlock] = []
+    blocks: list[BasicBlock], default_error_handler: BasicBlock, func_name: str | None
+) -> list[BasicBlock]:
+    new_blocks: list[BasicBlock] = []
 
     # First split blocks on ops that may raise.
     for block in blocks:
@@ -133,7 +131,7 @@ def split_blocks_at_errors(
     return new_blocks
 
 
-def primitive_call(desc: CFunctionDescription, args: List[Value], line: int) -> CallC:
+def primitive_call(desc: CFunctionDescription, args: list[Value], line: int) -> CallC:
     return CallC(
         desc.c_function_name,
         [],

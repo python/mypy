@@ -5,7 +5,7 @@ Subclass TransformVisitor to perform non-trivial transformations.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, cast
+from typing import Iterable, Optional, cast
 
 from mypy.nodes import (
     GDEF,
@@ -123,12 +123,12 @@ class TransformVisitor(NodeVisitor[Node]):
         self.test_only = False
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
-        self.var_map: Dict[Var, Var] = {}
+        self.var_map: dict[Var, Var] = {}
         # These are uninitialized placeholder nodes used temporarily for nested
         # functions while we are transforming a top-level function. This maps an
         # untransformed node to a placeholder (which will later become the
         # transformed node).
-        self.func_placeholder_map: Dict[FuncDef, FuncDef] = {}
+        self.func_placeholder_map: dict[FuncDef, FuncDef] = {}
 
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
         assert self.test_only, "This visitor should not be used for whole files."
@@ -641,7 +641,7 @@ class TransformVisitor(NodeVisitor[Node]):
     #
     # All the node helpers also propagate line numbers.
 
-    def optional_expr(self, expr: Optional[Expression]) -> Optional[Expression]:
+    def optional_expr(self, expr: Expression | None) -> Expression | None:
         if expr:
             return self.expr(expr)
         else:
@@ -652,31 +652,31 @@ class TransformVisitor(NodeVisitor[Node]):
         new.line = block.line
         return new
 
-    def optional_block(self, block: Optional[Block]) -> Optional[Block]:
+    def optional_block(self, block: Block | None) -> Block | None:
         if block:
             return self.block(block)
         else:
             return None
 
-    def statements(self, statements: List[Statement]) -> List[Statement]:
+    def statements(self, statements: list[Statement]) -> list[Statement]:
         return [self.stmt(stmt) for stmt in statements]
 
-    def expressions(self, expressions: List[Expression]) -> List[Expression]:
+    def expressions(self, expressions: list[Expression]) -> list[Expression]:
         return [self.expr(expr) for expr in expressions]
 
     def optional_expressions(
-        self, expressions: Iterable[Optional[Expression]]
-    ) -> List[Optional[Expression]]:
+        self, expressions: Iterable[Expression | None]
+    ) -> list[Expression | None]:
         return [self.optional_expr(expr) for expr in expressions]
 
-    def blocks(self, blocks: List[Block]) -> List[Block]:
+    def blocks(self, blocks: list[Block]) -> list[Block]:
         return [self.block(block) for block in blocks]
 
-    def names(self, names: List[NameExpr]) -> List[NameExpr]:
+    def names(self, names: list[NameExpr]) -> list[NameExpr]:
         return [self.duplicate_name(name) for name in names]
 
-    def optional_names(self, names: Iterable[Optional[NameExpr]]) -> List[Optional[NameExpr]]:
-        result: List[Optional[NameExpr]] = []
+    def optional_names(self, names: Iterable[NameExpr | None]) -> list[NameExpr | None]:
+        result: list[NameExpr | None] = []
         for name in names:
             if name:
                 result.append(self.duplicate_name(name))
@@ -688,13 +688,13 @@ class TransformVisitor(NodeVisitor[Node]):
         # Override this method to transform types.
         return type
 
-    def optional_type(self, type: Optional[Type]) -> Optional[Type]:
+    def optional_type(self, type: Type | None) -> Type | None:
         if type:
             return self.type(type)
         else:
             return None
 
-    def types(self, types: List[Type]) -> List[Type]:
+    def types(self, types: list[Type]) -> list[Type]:
         return [self.type(type) for type in types]
 
 

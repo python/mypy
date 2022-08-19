@@ -9,7 +9,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from typing import Any, Callable, Iterator, List, Optional
+from typing import Any, Callable, Iterator
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs
@@ -104,7 +104,7 @@ def staticmethod(f: T) -> T: ...
 
 
 def run_stubtest(
-    stub: str, runtime: str, options: List[str], config_file: Optional[str] = None
+    stub: str, runtime: str, options: list[str], config_file: str | None = None
 ) -> str:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
@@ -131,7 +131,7 @@ def run_stubtest(
 
 
 class Case:
-    def __init__(self, stub: str, runtime: str, error: Optional[str]):
+    def __init__(self, stub: str, runtime: str, error: str | None):
         self.stub = stub
         self.runtime = runtime
         self.error = error

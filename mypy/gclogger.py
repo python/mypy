@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import gc
 import time
-from typing import Mapping, Optional
+from typing import Mapping
 
 
 class GcLogger:
     """Context manager to log GC stats and overall time."""
 
     def __enter__(self) -> GcLogger:
-        self.gc_start_time: Optional[float] = None
+        self.gc_start_time: float | None = None
         self.gc_time = 0.0
         self.gc_calls = 0
         self.gc_collected = 0

@@ -52,7 +52,7 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Sequence, Set, Tuple, Union
+from typing import Sequence, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (
@@ -108,8 +108,8 @@ SnapshotItem: _TypeAlias = Tuple[object, ...]
 
 
 def compare_symbol_table_snapshots(
-    name_prefix: str, snapshot1: Dict[str, SnapshotItem], snapshot2: Dict[str, SnapshotItem]
-) -> Set[str]:
+    name_prefix: str, snapshot1: dict[str, SnapshotItem], snapshot2: dict[str, SnapshotItem]
+) -> set[str]:
     """Return names that are different in two snapshots of a symbol table.
 
     Only shallow (intra-module) differences are considered. References to things defined
@@ -150,7 +150,7 @@ def compare_symbol_table_snapshots(
     return triggers
 
 
-def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, SnapshotItem]:
+def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, SnapshotItem]:
     """Create a snapshot description that represents the state of a symbol table.
 
     The snapshot has a representation based on nested tuples and dicts
@@ -160,7 +160,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
     things defined in other modules are represented just by the names of
     the targets.
     """
-    result: Dict[str, SnapshotItem] = {}
+    result: dict[str, SnapshotItem] = {}
     for name, symbol in table.items():
         node = symbol.node
         # TODO: cross_ref?
@@ -199,9 +199,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
     return result
 
 
-def snapshot_definition(
-    node: Optional[SymbolNode], common: Tuple[object, ...]
-) -> Tuple[object, ...]:
+def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> tuple[object, ...]:
     """Create a snapshot description of a symbol table node.
 
     The representation is nested tuples and dicts. Only externally
@@ -277,7 +275,7 @@ def snapshot_type(typ: Type) -> SnapshotItem:
     return typ.accept(SnapshotTypeVisitor())
 
 
-def snapshot_optional_type(typ: Optional[Type]) -> Optional[SnapshotItem]:
+def snapshot_optional_type(typ: Type | None) -> SnapshotItem | None:
     if typ:
         return snapshot_type(typ)
     else:
@@ -292,7 +290,7 @@ def snapshot_simple_type(typ: Type) -> SnapshotItem:
     return (type(typ).__name__,)
 
 
-def encode_optional_str(s: Optional[str]) -> str:
+def encode_optional_str(s: str | None) -> str:
     if s is None:
         return "<None>"
     else:
@@ -432,7 +430,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ("TypeAliasType", typ.alias.fullname, snapshot_types(typ.args))
 
 
-def snapshot_untyped_signature(func: Union[OverloadedFuncDef, FuncItem]) -> Tuple[object, ...]:
+def snapshot_untyped_signature(func: OverloadedFuncDef | FuncItem) -> tuple[object, ...]:
     """Create a snapshot of the signature of a function that has no explicit signature.
 
     If the arguments to a function without signature change, it must be

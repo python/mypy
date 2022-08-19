@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
-from typing import Any, Iterator, List, cast
+from typing import Any, Iterator, cast
 
 from mypy import build
 from mypy.errors import CompileError
@@ -78,7 +78,7 @@ setup(name='test_run_output',
 WORKDIR = "build"
 
 
-def run_setup(script_name: str, script_args: List[str]) -> bool:
+def run_setup(script_name: str, script_args: list[str]) -> bool:
     """Run a setup script in a somewhat controlled environment.
 
     This is adapted from code in distutils and our goal here is that is

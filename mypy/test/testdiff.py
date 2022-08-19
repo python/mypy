@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Tuple
 
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
@@ -50,9 +49,7 @@ class ASTDiffSuite(DataSuite):
             testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
         )
 
-    def build(
-        self, source: str, options: Options
-    ) -> Tuple[List[str], Optional[Dict[str, MypyFile]]]:
+    def build(self, source: str, options: Options) -> tuple[list[str], dict[str, MypyFile] | None]:
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull

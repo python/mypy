@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
-from typing import Any, Tuple
+from typing import Any
 
 try:
     import click
@@ -20,7 +20,7 @@ def apply_all(
     directory: str,
     extension: str,
     to_extension: str = "",
-    exclude: Tuple[str] = ("",),
+    exclude: tuple[str] = ("",),
     recursive: bool = True,
     debug: bool = False,
 ) -> None:
@@ -100,7 +100,7 @@ def main(
     directory: str,
     extension: str,
     to_extension: str,
-    exclude: Tuple[str],
+    exclude: tuple[str],
     not_recursive: bool,
 ) -> None:
     """

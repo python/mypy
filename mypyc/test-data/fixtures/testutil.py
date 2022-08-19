@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from collections.abc import Iterator
 from typing import (
     Any, Iterator, TypeVar, Generator, Optional, List, Tuple, Sequence,
-    Union, Callable, Generic, Awaitable,
+    Union, Callable, Awaitable,
 )
 
 @contextmanager

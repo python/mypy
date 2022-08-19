@@ -11,7 +11,7 @@ import inspect
 import os.path
 import re
 from types import ModuleType
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Mapping
 from typing_extensions import Final
 
 from mypy.moduleinspect import is_c_module
@@ -43,8 +43,8 @@ _DEFAULT_TYPING_IMPORTS: Final = (
 def generate_stub_for_c_module(
     module_name: str,
     target: str,
-    sigs: Optional[Dict[str, str]] = None,
-    class_sigs: Optional[Dict[str, str]] = None,
+    sigs: dict[str, str] | None = None,
+    class_sigs: dict[str, str] | None = None,
 ) -> None:
     """Generate stub for C module.
 
@@ -59,15 +59,15 @@ def generate_stub_for_c_module(
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
-    imports: List[str] = []
-    functions: List[str] = []
+    imports: list[str] = []
+    functions: list[str] = []
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
             generate_c_function_stub(module, name, obj, functions, imports=imports, sigs=sigs)
             done.add(name)
-    types: List[str] = []
+    types: list[str] = []
     for name, obj in items:
         if name.startswith("__") and name.endswith("__"):
             continue
@@ -100,7 +100,7 @@ def generate_stub_for_c_module(
             file.write(f"{line}\n")
 
 
-def add_typing_import(output: List[str]) -> List[str]:
+def add_typing_import(output: list[str]) -> list[str]:
     """Add typing imports for collections/types that occur in the generated stub."""
     names = []
     for name in _DEFAULT_TYPING_IMPORTS:
@@ -151,12 +151,12 @@ def generate_c_function_stub(
     module: ModuleType,
     name: str,
     obj: object,
-    output: List[str],
-    imports: List[str],
-    self_var: Optional[str] = None,
-    sigs: Optional[Dict[str, str]] = None,
-    class_name: Optional[str] = None,
-    class_sigs: Optional[Dict[str, str]] = None,
+    output: list[str],
+    imports: list[str],
+    self_var: str | None = None,
+    sigs: dict[str, str] | None = None,
+    class_name: str | None = None,
+    class_sigs: dict[str, str] | None = None,
 ) -> None:
     """Generate stub for a single function or method.
 
@@ -178,7 +178,7 @@ def generate_c_function_stub(
         and class_name
         and class_name in class_sigs
     ):
-        inferred: Optional[List[FunctionSig]] = [
+        inferred: list[FunctionSig] | None = [
             FunctionSig(
                 name=name,
                 args=infer_arg_sig_from_anon_docstring(class_sigs[class_name]),
@@ -246,7 +246,7 @@ def generate_c_function_stub(
             )
 
 
-def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
+def strip_or_import(typ: str, module: ModuleType, imports: list[str]) -> str:
     """Strips unnecessary module names from typ.
 
     If typ represents a type that is inside module or is a type coming from builtins, remove
@@ -283,19 +283,19 @@ def is_static_property(obj: object) -> bool:
 def generate_c_property_stub(
     name: str,
     obj: object,
-    static_properties: List[str],
-    rw_properties: List[str],
-    ro_properties: List[str],
+    static_properties: list[str],
+    rw_properties: list[str],
+    ro_properties: list[str],
     readonly: bool,
-    module: Optional[ModuleType] = None,
-    imports: Optional[List[str]] = None,
+    module: ModuleType | None = None,
+    imports: list[str] | None = None,
 ) -> None:
     """Generate property stub using introspection of 'obj'.
 
     Try to infer type from docstring, append resulting lines to 'output'.
     """
 
-    def infer_prop_type(docstr: Optional[str]) -> Optional[str]:
+    def infer_prop_type(docstr: str | None) -> str | None:
         """Infer property type from docstring or docstring signature."""
         if docstr is not None:
             inferred = infer_ret_type_sig_from_anon_docstring(docstr)
@@ -336,10 +336,10 @@ def generate_c_type_stub(
     module: ModuleType,
     class_name: str,
     obj: type,
-    output: List[str],
-    imports: List[str],
-    sigs: Optional[Dict[str, str]] = None,
-    class_sigs: Optional[Dict[str, str]] = None,
+    output: list[str],
+    imports: list[str],
+    sigs: dict[str, str] | None = None,
+    class_sigs: dict[str, str] | None = None,
 ) -> None:
     """Generate stub for a single class using runtime introspection.
 
@@ -350,12 +350,12 @@ def generate_c_type_stub(
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
     obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa: B009
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
-    methods: List[str] = []
-    types: List[str] = []
-    static_properties: List[str] = []
-    rw_properties: List[str] = []
-    ro_properties: List[str] = []
-    done: Set[str] = set()
+    methods: list[str] = []
+    types: list[str] = []
+    static_properties: list[str] = []
+    rw_properties: list[str] = []
+    ro_properties: list[str] = []
+    done: set[str] = set()
     for attr, value in items:
         if is_c_method(value) or is_c_classmethod(value):
             done.add(attr)
@@ -422,7 +422,7 @@ def generate_c_type_stub(
     # remove the class itself
     all_bases = all_bases[1:]
     # Remove base classes of other bases as redundant.
-    bases: List[type] = []
+    bases: list[type] = []
     for base in all_bases:
         if not any(issubclass(b, base) for b in bases):
             bases.append(base)
@@ -459,7 +459,7 @@ def get_type_fullname(typ: type) -> str:
     return f"{typ.__module__}.{getattr(typ, '__qualname__', typ.__name__)}"
 
 
-def method_name_sort_key(name: str) -> Tuple[int, str]:
+def method_name_sort_key(name: str) -> tuple[int, str]:
     """Sort methods in classes in a typical order.
 
     I.e.: constructor, normal methods, special methods.
@@ -489,8 +489,8 @@ def is_skipped_attribute(attr: str) -> bool:
     )
 
 
-def infer_method_sig(name: str, self_var: Optional[str] = None) -> List[ArgSig]:
-    args: Optional[List[ArgSig]] = None
+def infer_method_sig(name: str, self_var: str | None = None) -> list[ArgSig]:
+    args: list[ArgSig] | None = None
     if name.startswith("__") and name.endswith("__"):
         name = name[2:-2]
         if name in (

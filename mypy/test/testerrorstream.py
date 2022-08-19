@@ -1,8 +1,6 @@
 """Tests for mypy incremental error output."""
 from __future__ import annotations
 
-from typing import List
-
 from mypy import build
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource
@@ -28,9 +26,9 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     options = Options()
     options.show_traceback = True
 
-    logged_messages: List[str] = []
+    logged_messages: list[str] = []
 
-    def flush_errors(msgs: List[str], serious: bool) -> None:
+    def flush_errors(msgs: list[str], serious: bool) -> None:
         if msgs:
             logged_messages.append("==== Errors flushed ====")
             logged_messages.extend(msgs)

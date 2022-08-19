@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Dict, Iterable, List, Optional, Set, Tuple, TypeVar
+from typing import Iterable, List, Optional, Tuple, TypeVar
 
 from mypy.build import (
     BuildResult,
@@ -112,7 +112,7 @@ class MypycPlugin(Plugin):
         self, options: Options, compiler_options: CompilerOptions, groups: Groups
     ) -> None:
         super().__init__(options)
-        self.group_map: Dict[str, Tuple[Optional[str], List[str]]] = {}
+        self.group_map: dict[str, tuple[str | None, list[str]]] = {}
         for sources, name in groups:
             modules = sorted(source.module for source in sources)
             for id in modules:
@@ -121,9 +121,7 @@ class MypycPlugin(Plugin):
         self.compiler_options = compiler_options
         self.metastore = create_metastore(options)
 
-    def report_config_data(
-        self, ctx: ReportConfigContext
-    ) -> Optional[Tuple[Optional[str], List[str]]]:
+    def report_config_data(self, ctx: ReportConfigContext) -> tuple[str | None, list[str]] | None:
         # The config data we report is the group map entry for the module.
         # If the data is being used to check validity, we do additional checks
         # that the IR cache exists and matches the metadata cache and all
@@ -172,18 +170,18 @@ class MypycPlugin(Plugin):
 
         return self.group_map[id]
 
-    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
+    def get_additional_deps(self, file: MypyFile) -> list[tuple[int, str, int]]:
         # Report dependency on modules in the module's group
         return [(10, id, -1) for id in self.group_map.get(file.fullname, (None, []))[1]]
 
 
 def parse_and_typecheck(
-    sources: List[BuildSource],
+    sources: list[BuildSource],
     options: Options,
     compiler_options: CompilerOptions,
     groups: Groups,
-    fscache: Optional[FileSystemCache] = None,
-    alt_lib_path: Optional[str] = None,
+    fscache: FileSystemCache | None = None,
+    alt_lib_path: str | None = None,
 ) -> BuildResult:
     assert options.strict_optional, "strict_optional must be turned on"
     result = build(
@@ -199,7 +197,7 @@ def parse_and_typecheck(
 
 
 def compile_scc_to_ir(
-    scc: List[MypyFile],
+    scc: list[MypyFile],
     result: BuildResult,
     mapper: Mapper,
     compiler_options: CompilerOptions,
@@ -280,7 +278,7 @@ def compile_ir_to_c(
     result: BuildResult,
     mapper: Mapper,
     compiler_options: CompilerOptions,
-) -> Dict[Optional[str], List[Tuple[str, str]]]:
+) -> dict[str | None, list[tuple[str, str]]]:
     """Compile a collection of ModuleIRs to C source text.
 
     Returns a dictionary mapping group names to a list of (file name,
@@ -296,7 +294,7 @@ def compile_ir_to_c(
 
     # Generate C code for each compilation group. Each group will be
     # compiled into a separate extension module.
-    ctext: Dict[Optional[str], List[Tuple[str, str]]] = {}
+    ctext: dict[str | None, list[tuple[str, str]]] = {}
     for group_sources, group_name in groups:
         group_modules = [
             (source.module, modules[source.module])
@@ -326,8 +324,8 @@ def get_state_ir_cache_name(state: State) -> str:
 def write_cache(
     modules: ModuleIRs,
     result: BuildResult,
-    group_map: Dict[str, Optional[str]],
-    ctext: Dict[Optional[str], List[Tuple[str, str]]],
+    group_map: dict[str, str | None],
+    ctext: dict[str | None, list[tuple[str, str]]],
 ) -> None:
     """Write out the cache information for modules.
 
@@ -377,7 +375,7 @@ def write_cache(
 
 
 def load_scc_from_cache(
-    scc: List[MypyFile], result: BuildResult, mapper: Mapper, ctx: DeserMaps
+    scc: list[MypyFile], result: BuildResult, mapper: Mapper, ctx: DeserMaps
 ) -> ModuleIRs:
     """Load IR for an SCC of modules from the cache.
 
@@ -396,7 +394,7 @@ def load_scc_from_cache(
 
 def compile_modules_to_c(
     result: BuildResult, compiler_options: CompilerOptions, errors: Errors, groups: Groups
-) -> Tuple[ModuleIRs, List[FileContents]]:
+) -> tuple[ModuleIRs, list[FileContents]]:
     """Compile Python module(s) to the source of Python C extension modules.
 
     This generates the source code for the "shared library" module
@@ -466,10 +464,10 @@ def group_dir(group_name: str) -> str:
 class GroupGenerator:
     def __init__(
         self,
-        modules: List[Tuple[str, ModuleIR]],
-        source_paths: Dict[str, str],
-        group_name: Optional[str],
-        group_map: Dict[str, Optional[str]],
+        modules: list[tuple[str, ModuleIR]],
+        source_paths: dict[str, str],
+        group_name: str | None,
+        group_map: dict[str, str | None],
         names: NameGenerator,
         compiler_options: CompilerOptions,
     ) -> None:
@@ -494,7 +492,7 @@ class GroupGenerator:
         self.names = names
         # Initializations of globals to simple values that we can't
         # do statically because the windows loader is bad.
-        self.simple_inits: List[Tuple[str, str]] = []
+        self.simple_inits: list[tuple[str, str]] = []
         self.group_name = group_name
         self.use_shared_lib = group_name is not None
         self.compiler_options = compiler_options
@@ -508,7 +506,7 @@ class GroupGenerator:
     def short_group_suffix(self) -> str:
         return "_" + exported_name(self.group_name.split(".")[-1]) if self.group_name else ""
 
-    def generate_c_for_modules(self) -> List[Tuple[str, str]]:
+    def generate_c_for_modules(self) -> list[tuple[str, str]]:
         file_contents = []
         multi_file = self.use_shared_lib and self.multi_file
 
@@ -924,7 +922,7 @@ class GroupGenerator:
         )
 
         # HACK: Manually instantiate generated classes here
-        type_structs: List[str] = []
+        type_structs: list[str] = []
         for cl in module.classes:
             type_struct = emitter.type_struct_name(cl)
             type_structs.append(type_struct)
@@ -967,7 +965,7 @@ class GroupGenerator:
                 )
                 break
 
-    def toposort_declarations(self) -> List[HeaderDeclaration]:
+    def toposort_declarations(self) -> list[HeaderDeclaration]:
         """Topologically sort the declaration dict by dependencies.
 
         Declarations can require other declarations to come prior in C (such as declaring structs).
@@ -977,7 +975,7 @@ class GroupGenerator:
         This runs in O(V + E).
         """
         result = []
-        marked_declarations: Dict[str, MarkedDeclaration] = {}
+        marked_declarations: dict[str, MarkedDeclaration] = {}
         for k, v in self.context.declarations.items():
             marked_declarations[k] = MarkedDeclaration(v, False)
 
@@ -998,7 +996,7 @@ class GroupGenerator:
         return result
 
     def declare_global(
-        self, type_spaced: str, name: str, *, initializer: Optional[str] = None
+        self, type_spaced: str, name: str, *, initializer: str | None = None
     ) -> None:
         if "[" not in type_spaced:
             base = f"{type_spaced}{name}"
@@ -1036,7 +1034,7 @@ class GroupGenerator:
             self.declare_module(imp, emitter)
 
     def declare_finals(
-        self, module: str, final_names: Iterable[Tuple[str, RType]], emitter: Emitter
+        self, module: str, final_names: Iterable[tuple[str, RType]], emitter: Emitter
     ) -> None:
         for name, typ in final_names:
             static_name = emitter.static_name(name, module)
@@ -1061,10 +1059,10 @@ class GroupGenerator:
         self.declare_global("PyObject *", symbol)
 
 
-def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]]:
+def sort_classes(classes: list[tuple[str, ClassIR]]) -> list[tuple[str, ClassIR]]:
     mod_name = {ir: name for name, ir in classes}
     irs = [ir for _, ir in classes]
-    deps: Dict[ClassIR, Set[ClassIR]] = {}
+    deps: dict[ClassIR, set[ClassIR]] = {}
     for ir in irs:
         if ir not in deps:
             deps[ir] = set()
@@ -1078,13 +1076,13 @@ def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]
 T = TypeVar("T")
 
 
-def toposort(deps: Dict[T, Set[T]]) -> List[T]:
+def toposort(deps: dict[T, set[T]]) -> list[T]:
     """Topologically sort a dict from item to dependencies.
 
     This runs in O(V + E).
     """
     result = []
-    visited: Set[T] = set()
+    visited: set[T] = set()
 
     def visit(item: T) -> None:
         if item in visited:
@@ -1102,7 +1100,7 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
     return result
 
 
-def is_fastcall_supported(fn: FuncIR, capi_version: Tuple[int, int]) -> bool:
+def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
     if fn.class_name is not None:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported
@@ -1124,7 +1122,7 @@ def collect_literals(fn: FuncIR, literals: Literals) -> None:
                 literals.record_literal(op.value)
 
 
-def c_array_initializer(components: List[str]) -> str:
+def c_array_initializer(components: list[str]) -> str:
     """Construct an initializer for a C array variable.
 
     Components are C expressions valid in an initializer.
@@ -1137,7 +1135,7 @@ def c_array_initializer(components: List[str]) -> str:
     If the result is long, split it into multiple lines.
     """
     res = []
-    current: List[str] = []
+    current: list[str] = []
     cur_len = 0
     for c in components:
         if not current or cur_len + 2 + len(c) < 70:
@@ -1155,7 +1153,7 @@ def c_array_initializer(components: List[str]) -> str:
     return "{\n    " + ",\n    ".join(res) + "\n}"
 
 
-def c_string_array_initializer(components: List[bytes]) -> str:
+def c_string_array_initializer(components: list[bytes]) -> str:
     result = []
     result.append("{\n")
     for s in components:
