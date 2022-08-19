@@ -49,7 +49,9 @@ PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_info < (3, 6)
 
 # Maximum value for a short tagged integer.
-MAX_SHORT_INT: Final = sys.maxsize >> 1 if SIZEOF_SIZE_T is None else 2 ** int(SIZEOF_SIZE_T)
+MAX_SHORT_INT: Final = (
+    sys.maxsize >> 1 if SIZEOF_SIZE_T is None else 2 ** (8 * int(SIZEOF_SIZE_T) - 2) - 1
+)
 
 # Maximum value for a short tagged integer represented as a C integer literal.
 #
