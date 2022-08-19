@@ -3,10 +3,10 @@ import sys
 from _typeshed import StrOrBytesPath, SupportsRead
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from email.message import Message
-from http.client import HTTPMessage, HTTPResponse, _HTTPConnectionProtocol
+from http.client import HTTPConnection, HTTPMessage, HTTPResponse
 from http.cookiejar import CookieJar
 from re import Pattern
-from typing import IO, Any, ClassVar, NoReturn, TypeVar, overload
+from typing import IO, Any, ClassVar, NoReturn, Protocol, TypeVar, overload
 from typing_extensions import TypeAlias
 from urllib.error import HTTPError as HTTPError
 from urllib.response import addclosehook, addinfourl
@@ -223,6 +223,16 @@ class HTTPDigestAuthHandler(BaseHandler, AbstractDigestAuthHandler):
 class ProxyDigestAuthHandler(BaseHandler, AbstractDigestAuthHandler):
     auth_header: ClassVar[str]  # undocumented
     def http_error_407(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
+
+class _HTTPConnectionProtocol(Protocol):
+    def __call__(
+        self,
+        host: str,
+        port: int | None = ...,
+        timeout: float = ...,
+        source_address: tuple[str, int] | None = ...,
+        blocksize: int = ...,
+    ) -> HTTPConnection: ...
 
 class AbstractHTTPHandler(BaseHandler):  # undocumented
     def __init__(self, debuglevel: int = ...) -> None: ...

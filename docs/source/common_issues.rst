@@ -197,19 +197,6 @@ including imports or docstrings) has the effect of ignoring the *entire* module.
 
     foo.bar()
 
-Unexpected errors about 'None' and/or 'Optional' types
-------------------------------------------------------
-
-Starting from mypy 0.600, mypy uses
-:ref:`strict optional checking <strict_optional>` by default,
-and the ``None`` value is not compatible with non-optional types.
-It's easy to switch back to the older behavior where ``None`` was
-compatible with arbitrary types (see :ref:`no_strict_optional`).
-You can also fall back to this behavior if strict optional
-checking would require a large number of ``assert foo is not None``
-checks to be inserted, and you want to minimize the number
-of code changes required to get a clean mypy run.
-
 Issues with code at runtime
 ---------------------------
 

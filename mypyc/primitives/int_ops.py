@@ -10,7 +10,7 @@ Use mypyc.ir.ops.IntOp for operations on fixed-width/C integers.
 
 from __future__ import annotations
 
-from typing import Dict, NamedTuple
+from typing import NamedTuple
 
 from mypyc.ir.ops import ERR_ALWAYS, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER, ComparisonOp
 from mypyc.ir.rtypes import (
@@ -189,7 +189,7 @@ int_less_than_ = custom_op(
 
 # Provide mapping from textual op to short int's op variant and boxed int's description.
 # Note that these are not complete implementations and require extra IR.
-int_comparison_op_mapping: Dict[str, IntComparisonOpDescription] = {
+int_comparison_op_mapping: dict[str, IntComparisonOpDescription] = {
     "==": IntComparisonOpDescription(ComparisonOp.EQ, int_equal_, False, False),
     "!=": IntComparisonOpDescription(ComparisonOp.NEQ, int_equal_, True, False),
     "<": IntComparisonOpDescription(ComparisonOp.SLT, int_less_than_, False, False),

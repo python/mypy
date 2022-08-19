@@ -1,11 +1,10 @@
 import sys
 import threading
 from _typeshed import Self
-from abc import abstractmethod
-from collections.abc import Callable, Container, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from logging import Logger
 from types import TracebackType
-from typing import Any, Generic, Protocol, TypeVar, overload
+from typing import Any, Generic, TypeVar, overload
 from typing_extensions import Literal, ParamSpec, SupportsIndex
 
 if sys.version_info >= (3, 9):
@@ -33,15 +32,7 @@ if sys.version_info >= (3, 8):
 class BrokenExecutor(RuntimeError): ...
 
 _T = TypeVar("_T")
-_T_co = TypeVar("_T_co", covariant=True)
 _P = ParamSpec("_P")
-
-# Copied over Collection implementation as it does not exist in Python 2 and <3.6.
-# Also to solve pytype issues with _Collection.
-class _Collection(Iterable[_T_co], Container[_T_co], Protocol[_T_co]):
-    # Implement Sized (but don't have it as a base class).
-    @abstractmethod
-    def __len__(self) -> int: ...
 
 class Future(Generic[_T]):
     def __init__(self) -> None: ...

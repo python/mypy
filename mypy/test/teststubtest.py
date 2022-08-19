@@ -9,7 +9,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from typing import Any, Callable, Iterator, List, Optional
+from typing import Any, Callable, Iterator
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs
@@ -54,6 +54,7 @@ class TypeVar:
 class ParamSpec:
     def __init__(self, name: str) -> None: ...
 
+AnyStr = TypeVar("AnyStr", str, bytes)
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _K = TypeVar("_K")
@@ -64,7 +65,7 @@ _R = TypeVar("_R", covariant=True)
 class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
 class Mapping(Generic[_K, _V]): ...
-class Match(Generic[_T]): ...
+class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
 def overload(func: _T) -> _T: ...
@@ -104,7 +105,7 @@ def staticmethod(f: T) -> T: ...
 
 
 def run_stubtest(
-    stub: str, runtime: str, options: List[str], config_file: Optional[str] = None
+    stub: str, runtime: str, options: list[str], config_file: str | None = None
 ) -> str:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
@@ -131,7 +132,7 @@ def run_stubtest(
 
 
 class Case:
-    def __init__(self, stub: str, runtime: str, error: Optional[str]):
+    def __init__(self, stub: str, runtime: str, error: str | None):
         self.stub = stub
         self.runtime = runtime
         self.error = error

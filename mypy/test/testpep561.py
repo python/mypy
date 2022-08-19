@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
-from typing import Iterator, List, Tuple
+from typing import Iterator
 
 import filelock
 
@@ -28,7 +28,7 @@ class PEP561Suite(DataSuite):
 
 
 @contextmanager
-def virtualenv(python_executable: str = sys.executable) -> Iterator[Tuple[str, str]]:
+def virtualenv(python_executable: str = sys.executable) -> Iterator[tuple[str, str]]:
     """Context manager that creates a virtualenv in a temporary directory
 
     Returns the path to the created Python executable
@@ -143,7 +143,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
             os.remove(program)
 
 
-def parse_pkgs(comment: str) -> Tuple[List[str], List[str]]:
+def parse_pkgs(comment: str) -> tuple[list[str], list[str]]:
     if not comment.startswith("# pkgs:"):
         return ([], [])
     else:
@@ -151,7 +151,7 @@ def parse_pkgs(comment: str) -> Tuple[List[str], List[str]]:
         return ([pkg.strip() for pkg in pkgs_str.split(",")], [arg.strip() for arg in args])
 
 
-def parse_mypy_args(line: str) -> List[str]:
+def parse_mypy_args(line: str) -> list[str]:
     m = re.match("# flags: (.*)$", line)
     if not m:
         return []  # No args; mypy will spit out an error.

@@ -775,7 +775,9 @@ class A(Generic[t]):
 [out]
 
 [case testTestExtendPrimitives]
-class C(bool): pass # E: "bool" is not a valid base class
+# Extending bool is not checked here as it should be typed
+# as final meaning the type checker will detect it.
+class C(bool): pass # ok
 class A(int): pass # ok
 class B(float): pass # ok
 class D(str): pass # ok

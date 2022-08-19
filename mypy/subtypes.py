@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, List, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.applytype
@@ -83,7 +83,7 @@ class SubtypeContext:
         # Proper subtype flags
         erase_instances: bool = False,
         keep_erased_types: bool = False,
-        options: Optional[Options] = None,
+        options: Options | None = None,
     ) -> None:
         self.ignore_type_params = ignore_type_params
         self.ignore_pos_arg_names = ignore_pos_arg_names
@@ -110,12 +110,12 @@ def is_subtype(
     left: Type,
     right: Type,
     *,
-    subtype_context: Optional[SubtypeContext] = None,
+    subtype_context: SubtypeContext | None = None,
     ignore_type_params: bool = False,
     ignore_pos_arg_names: bool = False,
     ignore_declared_variance: bool = False,
     ignore_promotions: bool = False,
-    options: Optional[Options] = None,
+    options: Options | None = None,
 ) -> bool:
     """Is 'left' subtype of 'right'?
 
@@ -175,7 +175,7 @@ def is_proper_subtype(
     left: Type,
     right: Type,
     *,
-    subtype_context: Optional[SubtypeContext] = None,
+    subtype_context: SubtypeContext | None = None,
     ignore_promotions: bool = False,
     erase_instances: bool = False,
     keep_erased_types: bool = False,
@@ -214,7 +214,7 @@ def is_equivalent(
     *,
     ignore_type_params: bool = False,
     ignore_pos_arg_names: bool = False,
-    options: Optional[Options] = None,
+    options: Options | None = None,
 ) -> bool:
     return is_subtype(
         a,
@@ -455,7 +455,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
                     # Helper for case 2 below so we can treat them the same.
                     def check_mixed(
-                        unpacked_type: ProperType, compare_to: Tuple[Type, ...]
+                        unpacked_type: ProperType, compare_to: tuple[Type, ...]
                     ) -> bool:
                         if isinstance(unpacked_type, TypeVarTupleType):
                             return False
@@ -811,7 +811,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_union_type(self, left: UnionType) -> bool:
         if isinstance(self.right, Instance):
-            literal_types: Set[Instance] = set()
+            literal_types: set[Instance] = set()
             # avoid redundant check for union of literals
             for item in left.relevant_items():
                 p_item = get_proper_type(item)
@@ -869,7 +869,7 @@ T = TypeVar("T", bound=Type)
 
 
 @contextmanager
-def pop_on_exit(stack: List[Tuple[T, T]], left: T, right: T) -> Iterator[None]:
+def pop_on_exit(stack: list[tuple[T, T]], left: T, right: T) -> Iterator[None]:
     stack.append((left, right))
     yield
     stack.pop()
@@ -975,7 +975,7 @@ def is_protocol_implementation(
 
 def find_member(
     name: str, itype: Instance, subtype: Type, is_operator: bool = False
-) -> Optional[Type]:
+) -> Type | None:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
     Find the member type after applying type arguments from 'itype', and binding
@@ -1024,7 +1024,7 @@ def find_member(
     return None
 
 
-def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
+def get_member_flags(name: str, info: TypeInfo) -> set[int]:
     """Detect whether a member 'name' is settable, whether it is an
     instance or class variable, and whether it is class or static method.
 
@@ -1063,14 +1063,14 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
     return set()
 
 
-def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -> Type:
+def find_node_type(node: Var | FuncBase, itype: Instance, subtype: Type) -> Type:
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
     from mypy.typeops import bind_self
 
     if isinstance(node, FuncBase):
-        typ: Optional[Type] = mypy.typeops.function_type(
+        typ: Type | None = mypy.typeops.function_type(
             node, fallback=Instance(itype.type.mro[-1], [])
         )
     else:
@@ -1098,11 +1098,11 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     return typ
 
 
-def non_method_protocol_members(tp: TypeInfo) -> List[str]:
+def non_method_protocol_members(tp: TypeInfo) -> list[str]:
     """Find all non-callable members of a protocol."""
 
     assert tp.is_protocol
-    result: List[str] = []
+    result: list[str] = []
     anytype = AnyType(TypeOfAny.special_form)
     instance = Instance(tp, [anytype] * len(tp.defn.type_vars))
 
@@ -1118,7 +1118,7 @@ def is_callable_compatible(
     right: CallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
-    is_compat_return: Optional[Callable[[Type, Type], bool]] = None,
+    is_compat_return: Callable[[Type, Type], bool] | None = None,
     ignore_return: bool = False,
     ignore_pos_arg_names: bool = False,
     check_args_covariantly: bool = False,
@@ -1277,8 +1277,8 @@ def is_callable_compatible(
 
 
 def are_parameters_compatible(
-    left: Union[Parameters, CallableType],
-    right: Union[Parameters, CallableType],
+    left: Parameters | CallableType,
+    right: Parameters | CallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
     ignore_pos_arg_names: bool = False,
@@ -1330,9 +1330,7 @@ def are_parameters_compatible(
     #           Furthermore, if we're checking for compatibility in all cases,
     #           we confirm that if R accepts an infinite number of arguments,
     #           L must accept the same.
-    def _incompatible(
-        left_arg: Optional[FormalArgument], right_arg: Optional[FormalArgument]
-    ) -> bool:
+    def _incompatible(left_arg: FormalArgument | None, right_arg: FormalArgument | None) -> bool:
         if right_arg is None:
             return False
         if left_arg is None:
@@ -1453,7 +1451,7 @@ def are_args_compatible(
     allow_partial_overlap: bool,
     is_compat: Callable[[Type, Type], bool],
 ) -> bool:
-    def is_different(left_item: Optional[object], right_item: Optional[object]) -> bool:
+    def is_different(left_item: object | None, right_item: object | None) -> bool:
         """Checks if the left and right items are different.
 
         If the right item is unspecified (e.g. if the right callable doesn't care
@@ -1504,8 +1502,8 @@ def unify_generic_callable(
     type: CallableType,
     target: CallableType,
     ignore_return: bool,
-    return_constraint_direction: Optional[int] = None,
-) -> Optional[CallableType]:
+    return_constraint_direction: int | None = None,
+) -> CallableType | None:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
@@ -1515,7 +1513,7 @@ def unify_generic_callable(
     if return_constraint_direction is None:
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
-    constraints: List[mypy.constraints.Constraint] = []
+    constraints: list[mypy.constraints.Constraint] = []
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
         c = mypy.constraints.infer_constraints(
             arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF
@@ -1545,7 +1543,7 @@ def unify_generic_callable(
     return applied
 
 
-def try_restrict_literal_union(t: UnionType, s: Type) -> Optional[List[Type]]:
+def try_restrict_literal_union(t: UnionType, s: Type) -> list[Type] | None:
     """Return the items of t, excluding any occurrence of s, if and only if
       - t only contains simple literals
       - s is a simple literal
@@ -1556,7 +1554,7 @@ def try_restrict_literal_union(t: UnionType, s: Type) -> Optional[List[Type]]:
     if not mypy.typeops.is_simple_literal(ps):
         return None
 
-    new_items: List[Type] = []
+    new_items: list[Type] = []
     for i in t.relevant_items():
         pi = get_proper_type(i)
         if not mypy.typeops.is_simple_literal(pi):

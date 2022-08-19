@@ -5,7 +5,7 @@ import types
 from _typeshed import Self, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket
-from typing import IO, Any, BinaryIO, Protocol, TypeVar, overload
+from typing import IO, Any, BinaryIO, TypeVar, overload
 from typing_extensions import TypeAlias
 
 __all__ = [
@@ -136,18 +136,6 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     def geturl(self) -> str: ...
     def getcode(self) -> int: ...
     def begin(self) -> None: ...
-
-# This is an API stub only for the class below, not a class itself.
-# urllib.request uses it for a parameter.
-class _HTTPConnectionProtocol(Protocol):
-    def __call__(
-        self,
-        host: str,
-        port: int | None = ...,
-        timeout: float = ...,
-        source_address: tuple[str, int] | None = ...,
-        blocksize: int = ...,
-    ) -> HTTPConnection: ...
 
 class HTTPConnection:
     auto_open: int  # undocumented

@@ -3696,6 +3696,37 @@ def foo(x: Point) -> int:
 ==
 b.py:4: error: Unsupported operand types for + ("int" and "str")
 
+[case testTypedDictUpdateGeneric]
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: int
+[file a.py.2]
+from mypy_extensions import TypedDict
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+class Point(TypedDict, Generic[T]):
+    x: int
+    y: T
+[file b.py]
+from a import Point
+def foo() -> None:
+    p = Point(x=0, y=1)
+    i: int = p["y"]
+[file b.py.3]
+from a import Point
+def foo() -> None:
+    p = Point(x=0, y="no")
+    i: int = p["y"]
+[builtins fixtures/dict.pyi]
+[out]
+==
+==
+b.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testBasicAliasUpdate]
 import b
 [file a.py]

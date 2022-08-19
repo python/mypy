@@ -3,9 +3,8 @@ from __future__ import annotations
 import copy
 import re
 import sys
-import typing  # for typing.Type, which conflicts with types.Type
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, List, Optional, Sequence, TypeVar, Union, cast
 from typing_extensions import Final, Literal, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
@@ -150,10 +149,7 @@ try:
         )
 
         def ast3_parse(
-            source: Union[str, bytes],
-            filename: str,
-            mode: str,
-            feature_version: int = PY_MINOR_VERSION,
+            source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
         ) -> AST:
             return ast3.parse(
                 source,
@@ -186,10 +182,7 @@ try:
         )
 
         def ast3_parse(
-            source: Union[str, bytes],
-            filename: str,
-            mode: str,
-            feature_version: int = PY_MINOR_VERSION,
+            source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
         ) -> AST:
             return ast3.parse(source, filename, mode, feature_version=feature_version)
 
@@ -252,11 +245,11 @@ TYPE_IGNORE_PATTERN: Final = re.compile(r"[^#]*#\s*type:\s*ignore\s*(.*)")
 
 
 def parse(
-    source: Union[str, bytes],
+    source: str | bytes,
     fnam: str,
-    module: Optional[str],
-    errors: Optional[Errors] = None,
-    options: Optional[Options] = None,
+    module: str | None,
+    errors: Errors | None = None,
+    options: Options | None = None,
 ) -> MypyFile:
 
     """Parse a source file, without doing any semantic analysis.
@@ -313,7 +306,7 @@ def parse(
     return tree
 
 
-def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
+def parse_type_ignore_tag(tag: str | None) -> list[str] | None:
     """Parse optional "[code, ...]" tag after "# type: ignore".
 
     Return:
@@ -332,8 +325,8 @@ def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
 
 
 def parse_type_comment(
-    type_comment: str, line: int, column: int, errors: Optional[Errors]
-) -> Tuple[Optional[List[str]], Optional[ProperType]]:
+    type_comment: str, line: int, column: int, errors: Errors | None
+) -> tuple[list[str] | None, ProperType | None]:
     """Parse type portion of a type comment (+ optional type ignore).
 
     Return (ignore info, parsed type).
@@ -352,8 +345,8 @@ def parse_type_comment(
         extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment)
         if extra_ignore:
             # Typeshed has a non-optional return type for group!
-            tag: Optional[str] = cast(Any, extra_ignore).group(1)
-            ignored: Optional[List[str]] = parse_type_ignore_tag(tag)
+            tag: str | None = cast(Any, extra_ignore).group(1)
+            ignored: list[str] | None = parse_type_ignore_tag(tag)
             if ignored is None:
                 if errors is not None:
                     errors.report(line, column, INVALID_TYPE_IGNORE, code=codes.SYNTAX)
@@ -404,17 +397,17 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
 class ASTConverter:
     def __init__(self, options: Options, is_stub: bool, errors: Errors) -> None:
         # 'C' for class, 'F' for function
-        self.class_and_function_stack: List[Literal["C", "F"]] = []
-        self.imports: List[ImportBase] = []
+        self.class_and_function_stack: list[Literal["C", "F"]] = []
+        self.imports: list[ImportBase] = []
 
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
 
-        self.type_ignores: Dict[int, List[str]] = {}
+        self.type_ignores: dict[int, list[str]] = {}
 
         # Cache of visit_X methods keyed by type of visited object
-        self.visitor_cache: Dict[type, Callable[[Optional[AST]], Any]] = {}
+        self.visitor_cache: dict[type, Callable[[AST | None], Any]] = {}
 
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity="note", code=codes.SYNTAX)
@@ -439,7 +432,7 @@ class ASTConverter:
             code=codes.MISC,
         )
 
-    def visit(self, node: Optional[AST]) -> Any:
+    def visit(self, node: AST | None) -> Any:
         if node is None:
             return None
         typeobj = type(node)
@@ -458,17 +451,17 @@ class ASTConverter:
 
         return node
 
-    def translate_opt_expr_list(self, l: Sequence[Optional[AST]]) -> List[Optional[Expression]]:
-        res: List[Optional[Expression]] = []
+    def translate_opt_expr_list(self, l: Sequence[AST | None]) -> list[Expression | None]:
+        res: list[Expression | None] = []
         for e in l:
             exp = self.visit(e)
             res.append(exp)
         return res
 
-    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
+    def translate_expr_list(self, l: Sequence[AST]) -> list[Expression]:
         return cast(List[Expression], self.translate_opt_expr_list(l))
 
-    def get_lineno(self, node: Union[ast3.expr, ast3.stmt]) -> int:
+    def get_lineno(self, node: ast3.expr | ast3.stmt) -> int:
         if (
             isinstance(node, (ast3.AsyncFunctionDef, ast3.ClassDef, ast3.FunctionDef))
             and node.decorator_list
@@ -478,7 +471,7 @@ class ASTConverter:
 
     def translate_stmt_list(
         self, stmts: Sequence[ast3.stmt], ismodule: bool = False
-    ) -> List[Statement]:
+    ) -> list[Statement]:
         # A "# type: ignore" comment before the first statement of a module
         # ignores the whole module:
         if (
@@ -494,7 +487,7 @@ class ASTConverter:
             mark_block_unreachable(block)
             return [block]
 
-        res: List[Statement] = []
+        res: list[Statement] = []
         for stmt in stmts:
             node = self.visit(stmt)
             res.append(node)
@@ -502,8 +495,8 @@ class ASTConverter:
         return res
 
     def translate_type_comment(
-        self, n: Union[ast3.stmt, ast3.arg], type_comment: Optional[str]
-    ) -> Optional[ProperType]:
+        self, n: ast3.stmt | ast3.arg, type_comment: str | None
+    ) -> ProperType | None:
         if type_comment is None:
             return None
         else:
@@ -513,7 +506,7 @@ class ASTConverter:
                 self.type_ignores[lineno] = extra_ignore
             return typ
 
-    op_map: Final[Dict[typing.Type[AST], str]] = {
+    op_map: Final[dict[type[AST], str]] = {
         ast3.Add: "+",
         ast3.Sub: "-",
         ast3.Mult: "*",
@@ -536,7 +529,7 @@ class ASTConverter:
         else:
             return op_name
 
-    comp_op_map: Final[Dict[typing.Type[AST], str]] = {
+    comp_op_map: Final[dict[type[AST], str]] = {
         ast3.Gt: ">",
         ast3.Lt: "<",
         ast3.Eq: "==",
@@ -556,14 +549,14 @@ class ASTConverter:
         else:
             return op_name
 
-    def as_block(self, stmts: List[ast3.stmt], lineno: int) -> Optional[Block]:
+    def as_block(self, stmts: list[ast3.stmt], lineno: int) -> Block | None:
         b = None
         if stmts:
             b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             b.set_line(lineno)
         return b
 
-    def as_required_block(self, stmts: List[ast3.stmt], lineno: int) -> Block:
+    def as_required_block(self, stmts: list[ast3.stmt], lineno: int) -> Block:
         assert stmts  # must be non-empty
         b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
         # TODO: in most call sites line is wrong (includes first line of enclosing statement)
@@ -571,20 +564,20 @@ class ASTConverter:
         b.set_line(lineno)
         return b
 
-    def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
-        ret: List[Statement] = []
-        current_overload: List[OverloadPart] = []
-        current_overload_name: Optional[str] = None
+    def fix_function_overloads(self, stmts: list[Statement]) -> list[Statement]:
+        ret: list[Statement] = []
+        current_overload: list[OverloadPart] = []
+        current_overload_name: str | None = None
         seen_unconditional_func_def = False
-        last_if_stmt: Optional[IfStmt] = None
-        last_if_overload: Optional[Union[Decorator, FuncDef, OverloadedFuncDef]] = None
-        last_if_stmt_overload_name: Optional[str] = None
-        last_if_unknown_truth_value: Optional[IfStmt] = None
-        skipped_if_stmts: List[IfStmt] = []
+        last_if_stmt: IfStmt | None = None
+        last_if_overload: Decorator | FuncDef | OverloadedFuncDef | None = None
+        last_if_stmt_overload_name: str | None = None
+        last_if_unknown_truth_value: IfStmt | None = None
+        skipped_if_stmts: list[IfStmt] = []
         for stmt in stmts:
-            if_overload_name: Optional[str] = None
-            if_block_with_overload: Optional[Block] = None
-            if_unknown_truth_value: Optional[IfStmt] = None
+            if_overload_name: str | None = None
+            if_block_with_overload: Block | None = None
+            if_unknown_truth_value: IfStmt | None = None
             if isinstance(stmt, IfStmt) and seen_unconditional_func_def is False:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
@@ -712,8 +705,8 @@ class ASTConverter:
         return ret
 
     def _check_ifstmt_for_overloads(
-        self, stmt: IfStmt, current_overload_name: Optional[str] = None
-    ) -> Optional[str]:
+        self, stmt: IfStmt, current_overload_name: str | None = None
+    ) -> str | None:
         """Check if IfStmt contains only overloads with the same name.
         Return overload_name if found, None otherwise.
         """
@@ -756,7 +749,7 @@ class ASTConverter:
 
     def _get_executable_if_block_with_overloads(
         self, stmt: IfStmt
-    ) -> Tuple[Optional[Block], Optional[IfStmt]]:
+    ) -> tuple[Block | None, IfStmt | None]:
         """Return block from IfStmt that will get executed.
 
         Return
@@ -844,17 +837,17 @@ class ASTConverter:
     #             stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
-    def visit_FunctionDef(self, n: ast3.FunctionDef) -> Union[FuncDef, Decorator]:
+    def visit_FunctionDef(self, n: ast3.FunctionDef) -> FuncDef | Decorator:
         return self.do_func_def(n)
 
     # AsyncFunctionDef(identifier name, arguments args,
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
-    def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -> Union[FuncDef, Decorator]:
+    def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -> FuncDef | Decorator:
         return self.do_func_def(n, is_coroutine=True)
 
     def do_func_def(
-        self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef], is_coroutine: bool = False
-    ) -> Union[FuncDef, Decorator]:
+        self, n: ast3.FunctionDef | ast3.AsyncFunctionDef, is_coroutine: bool = False
+    ) -> FuncDef | Decorator:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
         self.class_and_function_stack.append("F")
         no_type_check = bool(
@@ -870,7 +863,7 @@ class ASTConverter:
         arg_kinds = [arg.kind for arg in args]
         arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
 
-        arg_types: List[Optional[Type]] = []
+        arg_types: list[Type | None] = []
         if no_type_check:
             arg_types = [None] * len(args)
             return_type = None
@@ -990,7 +983,7 @@ class ASTConverter:
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
             deco.set_line(first.lineno, first.col_offset, end_line, end_column)
-            retval: Union[FuncDef, Decorator] = deco
+            retval: FuncDef | Decorator = deco
         else:
             # FuncDef overrides set_line -- can't use self.set_line
             func_def.set_line(lineno, n.col_offset, end_line, end_column)
@@ -998,7 +991,7 @@ class ASTConverter:
         self.class_and_function_stack.pop()
         return retval
 
-    def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
+    def set_type_optional(self, type: Type | None, initializer: Expression | None) -> None:
         if self.options.no_implicit_optional:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
@@ -1008,9 +1001,9 @@ class ASTConverter:
 
     def transform_args(
         self, args: ast3.arguments, line: int, no_type_check: bool = False
-    ) -> List[Argument]:
+    ) -> list[Argument]:
         new_args = []
-        names: List[ast3.arg] = []
+        names: list[ast3.arg] = []
         posonlyargs = getattr(args, "posonlyargs", cast(List[ast3.arg], []))
         args_args = posonlyargs + args.args
         args_defaults = args.defaults
@@ -1053,7 +1046,7 @@ class ASTConverter:
     def make_argument(
         self,
         arg: ast3.arg,
-        default: Optional[ast3.expr],
+        default: ast3.expr | None,
         kind: ArgKind,
         no_type_check: bool,
         pos_only: bool = False,
@@ -1252,7 +1245,7 @@ class ASTConverter:
 
     # Import(alias* names)
     def visit_Import(self, n: ast3.Import) -> Import:
-        names: List[Tuple[str, Optional[str]]] = []
+        names: list[tuple[str, str | None]] = []
         for alias in n.names:
             name = self.translate_module_id(alias.name)
             asname = alias.asname
@@ -1333,7 +1326,7 @@ class ASTConverter:
         # potentially inefficient!
         return self.group(op, self.translate_expr_list(n.values), n)
 
-    def group(self, op: str, vals: List[Expression], n: ast3.expr) -> OpExpr:
+    def group(self, op: str, vals: list[Expression], n: ast3.expr) -> OpExpr:
         if len(vals) == 2:
             e = OpExpr(op, vals[0], vals[1])
         else:
@@ -1495,14 +1488,14 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # Num(object n) -- a number as a PyObject.
-    def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
+    def visit_Num(self, n: ast3.Num) -> IntExpr | FloatExpr | ComplexExpr:
         # The n field has the type complex, but complex isn't *really*
         # a parent of int and float, and this causes isinstance below
         # to think that the complex branch is always picked. Avoid
         # this by throwing away the type.
         val: object = n.n
         if isinstance(val, int):
-            e: Union[IntExpr, FloatExpr, ComplexExpr] = IntExpr(val)
+            e: IntExpr | FloatExpr | ComplexExpr = IntExpr(val)
         elif isinstance(val, float):
             e = FloatExpr(val)
         elif isinstance(val, complex):
@@ -1552,7 +1545,7 @@ class ASTConverter:
         return self.set_line(result_expression, n)
 
     # Bytes(bytes s)
-    def visit_Bytes(self, n: ast3.Bytes) -> Union[BytesExpr, StrExpr]:
+    def visit_Bytes(self, n: ast3.Bytes) -> BytesExpr | StrExpr:
         e = BytesExpr(bytes_to_human_readable_repr(n.s))
         return self.set_line(e, n)
 
@@ -1567,7 +1560,7 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # Attribute(expr value, identifier attr, expr_context ctx)
-    def visit_Attribute(self, n: Attribute) -> Union[MemberExpr, SuperExpr]:
+    def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:
         value = n.value
         member_expr = MemberExpr(self.visit(value), n.attr)
         obj = member_expr.expr
@@ -1576,7 +1569,7 @@ class ASTConverter:
             and isinstance(obj.callee, NameExpr)
             and obj.callee.name == "super"
         ):
-            e: Union[MemberExpr, SuperExpr] = SuperExpr(member_expr.name, obj)
+            e: MemberExpr | SuperExpr = SuperExpr(member_expr.name, obj)
         else:
             e = member_expr
         return self.set_line(e, n)
@@ -1609,11 +1602,11 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # List(expr* elts, expr_context ctx)
-    def visit_List(self, n: ast3.List) -> Union[ListExpr, TupleExpr]:
-        expr_list: List[Expression] = [self.visit(e) for e in n.elts]
+    def visit_List(self, n: ast3.List) -> ListExpr | TupleExpr:
+        expr_list: list[Expression] = [self.visit(e) for e in n.elts]
         if isinstance(n.ctx, ast3.Store):
             # [x, y] = z and (x, y) = z means exactly the same thing
-            e: Union[ListExpr, TupleExpr] = TupleExpr(expr_list)
+            e: ListExpr | TupleExpr = TupleExpr(expr_list)
         else:
             e = ListExpr(expr_list)
         return self.set_line(e, n)
@@ -1714,7 +1707,7 @@ class ASTConverter:
 class TypeConverter:
     def __init__(
         self,
-        errors: Optional[Errors],
+        errors: Errors | None,
         line: int = -1,
         override_column: int = -1,
         is_evaluated: bool = True,
@@ -1722,7 +1715,7 @@ class TypeConverter:
         self.errors = errors
         self.line = line
         self.override_column = override_column
-        self.node_stack: List[AST] = []
+        self.node_stack: list[AST] = []
         self.is_evaluated = is_evaluated
 
     def convert_column(self, column: int) -> int:
@@ -1736,7 +1729,7 @@ class TypeConverter:
         else:
             return self.override_column
 
-    def invalid_type(self, node: AST, note: Optional[str] = None) -> RawExpressionType:
+    def invalid_type(self, node: AST, note: str | None = None) -> RawExpressionType:
         """Constructs a type representing some expression that normally forms an invalid type.
         For example, if we see a type hint that says "3 + 4", we would transform that
         expression into a RawExpressionType.
@@ -1755,10 +1748,10 @@ class TypeConverter:
         ...
 
     @overload
-    def visit(self, node: Optional[AST]) -> Optional[ProperType]:
+    def visit(self, node: AST | None) -> ProperType | None:
         ...
 
-    def visit(self, node: Optional[AST]) -> Optional[ProperType]:
+    def visit(self, node: AST | None) -> ProperType | None:
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1773,7 +1766,7 @@ class TypeConverter:
         finally:
             self.node_stack.pop()
 
-    def parent(self) -> Optional[AST]:
+    def parent(self) -> AST | None:
         """Return the AST node above the one we are processing"""
         if len(self.node_stack) < 2:
             return None
@@ -1787,7 +1780,7 @@ class TypeConverter:
         if self.errors:
             self.errors.report(line, column, msg, severity="note", code=codes.SYNTAX)
 
-    def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
+    def translate_expr_list(self, l: Sequence[ast3.expr]) -> list[Type]:
         return [self.visit(e) for e in l]
 
     def visit_Call(self, e: Call) -> Type:
@@ -1803,7 +1796,7 @@ class TypeConverter:
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
 
-        name: Optional[str] = None
+        name: str | None = None
         default_type = AnyType(TypeOfAny.special_form)
         typ: Type = default_type
         for i, arg in enumerate(e.args):
@@ -1850,7 +1843,7 @@ class TypeConverter:
     def translate_argument_list(self, l: Sequence[ast3.expr]) -> TypeList:
         return TypeList([self.visit(e) for e in l], line=self.line)
 
-    def _extract_argument_name(self, n: ast3.expr) -> Optional[str]:
+    def _extract_argument_name(self, n: ast3.expr) -> str | None:
         if isinstance(n, Str):
             return n.s.strip()
         elif isinstance(n, NameConstant) and str(n.value) == "None":
@@ -1923,7 +1916,7 @@ class TypeConverter:
         # to think that the complex branch is always picked. Avoid
         # this by throwing away the type.
         if isinstance(value, int):
-            numeric_value: Optional[int] = value
+            numeric_value: int | None = value
             type_name = "builtins.int"
         else:
             # Other kinds of numbers (floats, complex) are not valid parameters for
@@ -2031,7 +2024,7 @@ class TypeConverter:
         return self.translate_argument_list(n.elts)
 
 
-def stringify_name(n: AST) -> Optional[str]:
+def stringify_name(n: AST) -> str | None:
     if isinstance(n, Name):
         return n.id
     elif isinstance(n, Attribute):

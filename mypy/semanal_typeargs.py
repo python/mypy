@@ -7,8 +7,6 @@ operations, including subtype checks.
 
 from __future__ import annotations
 
-from typing import List, Optional, Set
-
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors
@@ -45,7 +43,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.recurse_into_functions = True
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases: Set[TypeAliasType] = set()
+        self.seen_aliases: set[TypeAliasType] = set()
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.errors.set_file(o.path, o.fullname, scope=self.scope)
@@ -136,9 +134,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def check_type_var_values(
         self,
         type: TypeInfo,
-        actuals: List[Type],
+        actuals: list[Type],
         arg_name: str,
-        valids: List[Type],
+        valids: list[Type],
         arg_number: int,
         context: Context,
     ) -> None:
@@ -165,5 +163,5 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         code=codes.TYPE_VAR,
                     )
 
-    def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: str, context: Context, *, code: ErrorCode | None = None) -> None:
         self.errors.report(context.get_line(), context.get_column(), msg, code=code)

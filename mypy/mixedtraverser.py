@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from mypy.nodes import (
     AssertTypeExpr,
     AssignmentStmt,
@@ -104,6 +102,6 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     # Helpers
 
-    def visit_optional_type(self, t: Optional[Type]) -> None:
+    def visit_optional_type(self, t: Type | None) -> None:
         if t:
             t.accept(self)

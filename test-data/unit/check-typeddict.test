@@ -789,7 +789,7 @@ from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int})
 d: object
 if isinstance(d, D):   # E: Cannot use isinstance() with TypedDict type
-    reveal_type(d)     # N: Revealed type is "__main__.D"
+    reveal_type(d)     # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int})"
 issubclass(object, D)  # E: Cannot use issubclass() with TypedDict type
 [builtins fixtures/isinstancelist.pyi]
 
@@ -1517,7 +1517,7 @@ from b import tp
 x: tp
 reveal_type(x['x'])  # N: Revealed type is "builtins.int"
 
-reveal_type(tp)  # N: Revealed type is "def () -> b.tp"
+reveal_type(tp)  # N: Revealed type is "def (*, x: builtins.int) -> TypedDict('b.tp', {'x': builtins.int})"
 tp(x='no')  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 
 [file b.py]
@@ -2410,5 +2410,135 @@ def func(foo: Union[F1, F2]):
     foo[1] = "m"  # E: TypedDict key must be a string literal; expected one of ("z", "a") \
                   # E: TypedDict key must be a string literal; expected one of ("z", "b") \
                   # E: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictCreation]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar("T")
+
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+tds: TD[str]
+reveal_type(tds)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.str})"
+
+tdi = TD(key=0, value=0)
+reveal_type(tdi)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.int})"
+TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
+TD[str]({"key": 0, "value": 0})  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictInference]
+from typing import TypedDict, Generic, TypeVar, List
+
+T = TypeVar("T")
+
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+def foo(x: TD[T]) -> List[T]: ...
+
+reveal_type(foo(TD(key=1, value=2)))  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(foo({"key": 1, "value": 2}))  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(foo(dict(key=1, value=2)))  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictExtending]
+from typing import TypedDict, Generic, TypeVar, List
+
+T = TypeVar("T")
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+S = TypeVar("S")
+class STD(TD[List[S]]):
+    other: S
+
+std: STD[str]
+reveal_type(std)  # N: Revealed type is "TypedDict('__main__.STD', {'key': builtins.int, 'value': builtins.list[builtins.str], 'other': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictExtendingErrors]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar("T")
+class Base(TypedDict, Generic[T]):
+    x: T
+class Sub(Base[{}]):  # E: Invalid TypedDict type argument \
+                      # E: Type expected within [...] \
+                      # E: Invalid base class "Base"
+    y: int
+s: Sub
+reveal_type(s)  # N: Revealed type is "TypedDict('__main__.Sub', {'y': builtins.int})"
+
+class Sub2(Base[int, str]):  # E: Invalid number of type arguments for "Base" \
+                             # E: "Base" expects 1 type argument, but 2 given
+    y: int
+s2: Sub2
+reveal_type(s2)  # N: Revealed type is "TypedDict('__main__.Sub2', {'x': Any, 'y': builtins.int})"
+
+class Sub3(Base):  # OK
+    y: int
+s3: Sub3
+reveal_type(s3)  # N: Revealed type is "TypedDict('__main__.Sub3', {'x': Any, 'y': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAttributeOnClassObject]
+from typing import TypedDict
+
+class TD(TypedDict):
+    x: str
+    y: str
+
+reveal_type(TD.__iter__)  # N: Revealed type is "def (typing._TypedDict) -> typing.Iterator[builtins.str]"
+reveal_type(TD.__annotations__)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
+reveal_type(TD.values)  # N: Revealed type is "def (self: typing.Mapping[T`1, T_co`2]) -> typing.Iterable[T_co`2]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictAlias]
+# flags: --disallow-any-generics
+from typing import TypedDict, Generic, TypeVar, List
+
+T = TypeVar("T")
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+Alias = TD[List[T]]
+
+ad: Alias[str]
+reveal_type(ad)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.list[builtins.str]})"
+Alias[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "List[str]")
+
+# Generic aliases are *always* filled with Any, so this is different from TD(...) call.
+Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
+                       # E: Incompatible types (expression has type "int", TypedDict item "value" has type "List[Any]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictCallSyntax]
+from typing import TypedDict, TypeVar
+
+T = TypeVar("T")
+TD = TypedDict("TD", {"key": int, "value": T})
+reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`-1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`-1})"
+
+tds: TD[str]
+reveal_type(tds)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.str})"
+
+tdi = TD(key=0, value=0)
+reveal_type(tdi)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.int})"
+TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
+TD[str]({"key": 0, "value": 0})  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

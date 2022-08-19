@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict
 from typing_extensions import Final
 
 from mypy.util import unnamed_function
@@ -86,17 +86,17 @@ def short_name(name: str) -> str:
     return name
 
 
-def use_fastcall(capi_version: Tuple[int, int]) -> bool:
+def use_fastcall(capi_version: tuple[int, int]) -> bool:
     # We can use METH_FASTCALL for faster wrapper functions on Python 3.7+.
     return capi_version >= (3, 7)
 
 
-def use_vectorcall(capi_version: Tuple[int, int]) -> bool:
+def use_vectorcall(capi_version: tuple[int, int]) -> bool:
     # We can use vectorcalls to make calls on Python 3.8+ (PEP 590).
     return capi_version >= (3, 8)
 
 
-def use_method_vectorcall(capi_version: Tuple[int, int]) -> bool:
+def use_method_vectorcall(capi_version: tuple[int, int]) -> bool:
     # We can use a dedicated vectorcall API to call methods on Python 3.9+.
     return capi_version >= (3, 9)
 
@@ -114,7 +114,7 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
         return fullname
 
 
-def short_id_from_name(func_name: str, shortname: str, line: Optional[int]) -> str:
+def short_id_from_name(func_name: str, shortname: str, line: int | None) -> str:
     if unnamed_function(func_name):
         assert line is not None
         partial_name = f"{shortname}.{line}"
