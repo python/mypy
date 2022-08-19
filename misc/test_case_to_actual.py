@@ -22,7 +22,7 @@ def normalize(lines: Iterator[str]) -> Iterator[str]:
 
 
 def produce_chunks(lines: Iterator[str]) -> Iterator[Chunk]:
-    current_chunk: Optional[Chunk] = None
+    current_chunk: Chunk | None = None
     for line in normalize(lines):
         if is_header(line):
             if current_chunk is not None:
