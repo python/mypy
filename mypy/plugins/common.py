@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from __future__ import annotations
 
 from mypy.fixup import TypeFixer
 from mypy.nodes import (
@@ -19,7 +19,9 @@ from mypy.nodes import (
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import ALLOW_INCOMPATIBLE_OVERRIDE, set_callable_name
-from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
+from mypy.typeops import (  # noqa: F401  # Part of public API
+    try_getting_str_literals as try_getting_str_literals,
+)
 from mypy.types import (
     CallableType,
     Overloaded,
@@ -57,7 +59,7 @@ def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr, name: str, default:
     return default
 
 
-def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
+def _get_argument(call: CallExpr, name: str) -> Expression | None:
     """Return the expression for the specific argument."""
     # To do this we use the CallableType of the callee to find the FormalArgument,
     # then walk the actual CallExpr looking for the appropriate argument.
@@ -96,10 +98,10 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
 def add_method(
     ctx: ClassDefContext,
     name: str,
-    args: List[Argument],
+    args: list[Argument],
     return_type: Type,
-    self_type: Optional[Type] = None,
-    tvar_def: Optional[TypeVarType] = None,
+    self_type: Type | None = None,
+    tvar_def: TypeVarType | None = None,
 ) -> None:
     """
     Adds a new method to a class.
@@ -117,13 +119,13 @@ def add_method(
 
 
 def add_method_to_class(
-    api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],
+    api: SemanticAnalyzerPluginInterface | CheckerPluginInterface,
     cls: ClassDef,
     name: str,
-    args: List[Argument],
+    args: list[Argument],
     return_type: Type,
-    self_type: Optional[Type] = None,
-    tvar_def: Optional[TypeVarType] = None,
+    self_type: Type | None = None,
+    tvar_def: TypeVarType | None = None,
 ) -> None:
     """Adds a new method to a class definition."""
     info = cls.info
@@ -205,9 +207,7 @@ def add_attribute_to_class(
     )
 
 
-def deserialize_and_fixup_type(
-    data: Union[str, JsonDict], api: SemanticAnalyzerPluginInterface
-) -> Type:
+def deserialize_and_fixup_type(data: str | JsonDict, api: SemanticAnalyzerPluginInterface) -> Type:
     typ = deserialize_type(data)
     typ.accept(TypeFixer(api.modules, allow_missing=False))
     return typ

@@ -13,6 +13,8 @@ particular place and runtime subtyping is used to determine whether a
 coercion is necessary first.
 """
 
+from __future__ import annotations
+
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,

@@ -11,14 +11,12 @@ The visitors are all re-exported from mypy.types and that is how
 other modules refer to them.
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Any, Callable, Generic, Iterable, List, Optional, Sequence, Set, TypeVar, cast
+from typing import Any, Callable, Generic, Iterable, Sequence, TypeVar, cast
 
 from mypy_extensions import mypyc_attr, trait
-
-from mypy.backports import OrderedDict
-
-T = TypeVar("T")
 
 from mypy.types import (
     AnyType,
@@ -52,6 +50,8 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
 )
+
+T = TypeVar("T")
 
 
 @trait
@@ -206,7 +206,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        last_known_value: Optional[LiteralType] = None
+        last_known_value: LiteralType | None = None
         if t.last_known_value is not None:
             raw_last_known_value = t.last_known_value.accept(self)
             assert isinstance(raw_last_known_value, LiteralType)  # type: ignore
@@ -254,9 +254,7 @@ class TypeTranslator(TypeVisitor[Type]):
         )
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = OrderedDict(
-            [(item_name, item_type.accept(self)) for (item_name, item_type) in t.items.items()]
-        )
+        items = {item_name: item_type.accept(self) for (item_name, item_type) in t.items.items()}
         return TypedDictType(
             items,
             t.required_keys,
@@ -274,7 +272,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.column)
 
-    def translate_types(self, types: Iterable[Type]) -> List[Type]:
+    def translate_types(self, types: Iterable[Type]) -> list[Type]:
         return [t.accept(self) for t in types]
 
     def translate_variables(
@@ -283,7 +281,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items: List[CallableType] = []
+        items: list[CallableType] = []
         for item in t.items:
             new = item.accept(self)
             assert isinstance(new, CallableType)  # type: ignore
@@ -320,7 +318,11 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         self.strategy = strategy
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases: Set[TypeAliasType] = set()
+        self.seen_aliases: set[TypeAliasType] = set()
+        # By default, we eagerly expand type aliases, and query also types in the
+        # alias target. In most cases this is a desired behavior, but we may want
+        # to skip targets in some cases (e.g. when collecting type variables).
+        self.skip_alias_target = False
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -402,6 +404,8 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        if self.skip_alias_target:
+            return self.query_types(t.args)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:
@@ -410,7 +414,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         Use the strategy to combine the results.
         Skip type aliases already visited types to avoid infinite recursion.
         """
-        res: List[T] = []
+        res: list[T] = []
         for t in types:
             if isinstance(t, TypeAliasType):
                 # Avoid infinite recursion for recursive type aliases.

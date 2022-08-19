@@ -1,7 +1,7 @@
-import unittest
-from typing import List, Optional
+from __future__ import annotations
 
-from mypy.backports import OrderedDict
+import unittest
+
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
@@ -75,7 +75,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     """Test generation of fragments of C from individual IR ops."""
 
     def setUp(self) -> None:
-        self.registers: List[Register] = []
+        self.registers: list[Register] = []
 
         def add_local(name: str, rtype: RType) -> Register:
             reg = Register(rtype, name)
@@ -85,7 +85,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.n = add_local("n", int_rprimitive)
         self.m = add_local("m", int_rprimitive)
         self.k = add_local("k", int_rprimitive)
-        self.l = add_local("l", list_rprimitive)  # noqa
+        self.l = add_local("l", list_rprimitive)
         self.ll = add_local("ll", list_rprimitive)
         self.o = add_local("o", object_rprimitive)
         self.o2 = add_local("o2", object_rprimitive)
@@ -103,7 +103,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "tt", RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive])
         )
         ir = ClassIR("A", "mod")
-        ir.attributes = OrderedDict([("x", bool_rprimitive), ("y", int_rprimitive)])
+        ir.attributes = {"x": bool_rprimitive, "y": int_rprimitive}
         compute_vtable(ir)
         ir.mro = [ir]
         self.r = add_local("r", RInstance(ir))
@@ -735,10 +735,10 @@ else {
         self,
         op: Op,
         expected: str,
-        next_block: Optional[BasicBlock] = None,
+        next_block: BasicBlock | None = None,
         *,
         rare: bool = False,
-        next_branch: Optional[Branch] = None,
+        next_branch: Branch | None = None,
         skip_next: bool = False,
     ) -> None:
         block = BasicBlock(0)

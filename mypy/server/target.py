@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 def trigger_to_target(s: str) -> str:
     assert s[0] == "<"
     # Strip off the angle brackets

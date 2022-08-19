@@ -20,9 +20,10 @@ For the core of the IR transform implementation, look at build_ir()
 below, mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 """
 
-from typing import Any, Callable, Dict, List, TypeVar, cast
+from __future__ import annotations
 
-from mypy.backports import OrderedDict
+from typing import Any, Callable, TypeVar, cast
+
 from mypy.build import Graph
 from mypy.nodes import ClassDef, Expression, MypyFile
 from mypy.state import state
@@ -49,9 +50,9 @@ strict_optional_dec = cast(Callable[[F], F], state.strict_optional_set(True))
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do
 def build_ir(
-    modules: List[MypyFile],
+    modules: list[MypyFile],
     graph: Graph,
-    types: Dict[Expression, Type],
+    types: dict[Expression, Type],
     mapper: Mapper,
     options: CompilerOptions,
     errors: Errors,
@@ -61,7 +62,7 @@ def build_ir(
     build_type_map(mapper, modules, graph, types, options, errors)
     singledispatch_info = find_singledispatch_register_impls(modules, errors)
 
-    result: ModuleIRs = OrderedDict()
+    result: ModuleIRs = {}
 
     # Generate IR for all modules.
     class_irs = []

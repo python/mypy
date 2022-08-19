@@ -1,7 +1,8 @@
+import _typeshed
 import abc
 import collections
 import sys
-from _typeshed import IdentityFunction, Self as TypeshedSelf  # see #6932 for why the Self alias cannot have a leading underscore
+from _typeshed import IdentityFunction
 from collections.abc import Iterable
 from typing import (  # noqa: Y022,Y027,Y039
     TYPE_CHECKING as TYPE_CHECKING,
@@ -31,6 +32,7 @@ from typing import (  # noqa: Y022,Y027,Y039
     ValuesView,
     _Alias,
     overload as overload,
+    type_check_only,
 )
 
 __all__ = [
@@ -120,11 +122,13 @@ Literal: _SpecialForm
 def IntVar(name: str) -> Any: ...  # returns a new TypeVar
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
+# N.B. Keep this mostly in sync with typing._TypedDict/mypy_extensions._TypedDict
+@type_check_only
 class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
-    __required_keys__: frozenset[str]
-    __optional_keys__: frozenset[str]
-    __total__: bool
-    def copy(self: TypeshedSelf) -> TypeshedSelf: ...
+    __required_keys__: ClassVar[frozenset[str]]
+    __optional_keys__: ClassVar[frozenset[str]]
+    __total__: ClassVar[bool]
+    def copy(self: _typeshed.Self) -> _typeshed.Self: ...
     # Using NoReturn so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...
@@ -135,6 +139,9 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     def keys(self) -> KeysView[str]: ...
     def values(self) -> ValuesView[object]: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+    if sys.version_info >= (3, 9):
+        def __or__(self: _typeshed.Self, __value: _typeshed.Self) -> _typeshed.Self: ...
+        def __ior__(self: _typeshed.Self, __value: _typeshed.Self) -> _typeshed.Self: ...
 
 # TypedDict is a (non-subscriptable) special form.
 TypedDict: object
@@ -256,10 +263,10 @@ else:
         @overload
         def __init__(self, typename: str, fields: None = ..., **kwargs: Any) -> None: ...
         @classmethod
-        def _make(cls: type[TypeshedSelf], iterable: Iterable[Any]) -> TypeshedSelf: ...
+        def _make(cls: type[_typeshed.Self], iterable: Iterable[Any]) -> _typeshed.Self: ...
         if sys.version_info >= (3, 8):
             def _asdict(self) -> dict[str, Any]: ...
         else:
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
 
-        def _replace(self: TypeshedSelf, **kwargs: Any) -> TypeshedSelf: ...
+        def _replace(self: _typeshed.Self, **kwargs: Any) -> _typeshed.Self: ...

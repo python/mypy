@@ -1,6 +1,7 @@
 """Plugin for supporting the functools standard library module."""
-from typing import Dict, NamedTuple, Optional
+from __future__ import annotations
 
+from typing import NamedTuple
 from typing_extensions import Final
 
 import mypy.plugin
@@ -22,10 +23,6 @@ def functools_total_ordering_maker_callback(
     ctx: mypy.plugin.ClassDefContext, auto_attribs_default: bool = False
 ) -> bool:
     """Add dunder methods to classes decorated with functools.total_ordering."""
-    if ctx.api.options.python_version < (3,):
-        # This plugin is not supported in Python 2 mode (it's a no-op).
-        return True
-
     comparison_methods = _analyze_class(ctx)
     if not comparison_methods:
         ctx.api.fail(
@@ -83,10 +80,10 @@ def _find_other_type(method: _MethodInfo) -> Type:
     return other_arg
 
 
-def _analyze_class(ctx: mypy.plugin.ClassDefContext) -> Dict[str, Optional[_MethodInfo]]:
+def _analyze_class(ctx: mypy.plugin.ClassDefContext) -> dict[str, _MethodInfo | None]:
     """Analyze the class body, its parents, and return the comparison methods found."""
     # Traverse the MRO and collect ordering methods.
-    comparison_methods: Dict[str, Optional[_MethodInfo]] = {}
+    comparison_methods: dict[str, _MethodInfo | None] = {}
     # Skip object because total_ordering does not use methods from object
     for cls in ctx.cls.info.mro[:-1]:
         for name in _ORDERING_METHODS:

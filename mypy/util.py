@@ -1,5 +1,7 @@
 """Utility functions with no non-trivial dependencies."""
 
+from __future__ import annotations
+
 import hashlib
 import io
 import os
@@ -8,33 +10,27 @@ import re
 import shutil
 import sys
 import time
-from typing import (
-    IO,
-    Callable,
-    Container,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Sized,
-    Tuple,
-    TypeVar,
-    Union,
-)
-
-from typing_extensions import Final, Literal, Type
+from importlib import resources as importlib_resources
+from typing import IO, Callable, Container, Iterable, Sequence, Sized, TypeVar
+from typing_extensions import Final, Literal
 
 try:
     import curses
 
-    import _curses  # noqa
+    import _curses  # noqa: F401
 
     CURSES_ENABLED = True
 except ImportError:
     CURSES_ENABLED = False
 
 T = TypeVar("T")
+
+with importlib_resources.path(
+    "mypy",  # mypy-c doesn't support __package__
+    "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
+) as _resource:
+    TYPESHED_DIR: Final = str(_resource.parent / "typeshed")
+
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
@@ -73,7 +69,7 @@ def is_sunder(name: str) -> bool:
     return not is_dunder(name) and name.startswith("_") and name.endswith("_")
 
 
-def split_module_names(mod_name: str) -> List[str]:
+def split_module_names(mod_name: str) -> list[str]:
     """Return the module and all parent module names.
 
     So, if `mod_name` is 'a.b.c', this function will return
@@ -86,15 +82,15 @@ def split_module_names(mod_name: str) -> List[str]:
     return out
 
 
-def module_prefix(modules: Iterable[str], target: str) -> Optional[str]:
+def module_prefix(modules: Iterable[str], target: str) -> str | None:
     result = split_target(modules, target)
     if result is None:
         return None
     return result[0]
 
 
-def split_target(modules: Iterable[str], target: str) -> Optional[Tuple[str, str]]:
-    remaining: List[str] = []
+def split_target(modules: Iterable[str], target: str) -> tuple[str, str] | None:
+    remaining: list[str] = []
     while True:
         if target in modules:
             return target, ".".join(remaining)
@@ -116,7 +112,7 @@ def short_type(obj: object) -> str:
     return t.split(".")[-1].rstrip("'>")
 
 
-def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, int]:
+def find_python_encoding(text: bytes) -> tuple[str, int]:
     """PEP-263 for detecting Python file encoding"""
     result = ENCODING_RE.match(text)
     if result:
@@ -127,7 +123,7 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
             encoding = "latin-1"
         return encoding, line
     else:
-        default_encoding = "utf8" if pyversion[0] >= 3 else "ascii"
+        default_encoding = "utf8"
         return default_encoding, -1
 
 
@@ -152,7 +148,7 @@ class DecodeError(Exception):
     """
 
 
-def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
+def decode_python_encoding(source: bytes) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection.
 
     Returns the source as a string.
@@ -163,7 +159,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
         source = source[3:]
     else:
         # look at first two lines and check if PEP-263 coding is present
-        encoding, _ = find_python_encoding(source, pyversion)
+        encoding, _ = find_python_encoding(source)
 
     try:
         source_text = source.decode(encoding)
@@ -172,9 +168,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     return source_text
 
 
-def read_py_file(
-    path: str, read: Callable[[str], bytes], pyversion: Tuple[int, int]
-) -> Optional[List[str]]:
+def read_py_file(path: str, read: Callable[[str], bytes]) -> list[str] | None:
     """Try reading a Python file as list of source lines.
 
     Return None if something goes wrong.
@@ -185,13 +179,13 @@ def read_py_file(
         return None
     else:
         try:
-            source_lines = decode_python_encoding(source, pyversion).splitlines()
+            source_lines = decode_python_encoding(source).splitlines()
         except DecodeError:
             return None
         return source_lines
 
 
-def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple[str, int]:
+def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> tuple[str, int]:
     """Trim a line of source code to fit into max_len.
 
     Show 'min_width' characters on each side of 'col' (an error location). If either
@@ -223,7 +217,7 @@ def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple
     return "..." + line[-max_len:], len(line) - max_len - 3
 
 
-def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
+def get_mypy_comments(source: str) -> list[tuple[int, str]]:
     PREFIX = "# mypy: "
     # Don't bother splitting up the lines unless we know it is useful
     if PREFIX not in source:
@@ -262,7 +256,7 @@ ERROR_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 
 
 def write_junit_xml(
-    dt: float, serious: bool, messages: List[str], path: str, version: str, platform: str
+    dt: float, serious: bool, messages: list[str], path: str, version: str, platform: str
 ) -> None:
     from xml.sax.saxutils import escape
 
@@ -296,7 +290,7 @@ class IdMapper:
     """
 
     def __init__(self) -> None:
-        self.id_map: Dict[object, int] = {}
+        self.id_map: dict[object, int] = {}
         self.next_id = 0
 
     def id(self, o: object) -> int:
@@ -311,7 +305,7 @@ def get_prefix(fullname: str) -> str:
     return fullname.rsplit(".", 1)[0]
 
 
-def get_top_two_prefixes(fullname: str) -> Tuple[str, str]:
+def get_top_two_prefixes(fullname: str) -> tuple[str, str]:
     """Return one and two component prefixes of a fully qualified name.
 
     Given 'a.b.c.d', return ('a', 'a.b').
@@ -324,7 +318,7 @@ def get_top_two_prefixes(fullname: str) -> Tuple[str, str]:
 
 def correct_relative_import(
     cur_mod_id: str, relative: int, target: str, is_cur_package_init_file: bool
-) -> Tuple[str, bool]:
+) -> tuple[str, bool]:
     if relative == 0:
         return target, True
     parts = cur_mod_id.split(".")
@@ -337,10 +331,10 @@ def correct_relative_import(
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-fields_cache: Final[Dict[Type[object], List[str]]] = {}
+fields_cache: Final[dict[type[object], list[str]]] = {}
 
 
-def get_class_descriptors(cls: "Type[object]") -> Sequence[str]:
+def get_class_descriptors(cls: type[object]) -> Sequence[str]:
     import inspect  # Lazy import for minor startup speed win
 
     # Maintain a cache of type -> attributes defined by descriptors in the class
@@ -353,7 +347,9 @@ def get_class_descriptors(cls: "Type[object]") -> Sequence[str]:
     return fields_cache[cls]
 
 
-def replace_object_state(new: object, old: object, copy_dict: bool = False) -> None:
+def replace_object_state(
+    new: object, old: object, copy_dict: bool = False, skip_slots: tuple[str, ...] = ()
+) -> None:
     """Copy state of old node to the new node.
 
     This handles cases where there is __dict__ and/or attribute descriptors
@@ -368,6 +364,8 @@ def replace_object_state(new: object, old: object, copy_dict: bool = False) -> N
             new.__dict__ = old.__dict__
 
     for attr in get_class_descriptors(old.__class__):
+        if attr in skip_slots:
+            continue
         try:
             if hasattr(old, attr):
                 setattr(new, attr, getattr(old, attr))
@@ -420,14 +418,14 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 6):
+    if sys.version_info[:2] < (3, 7):
         sys.exit(
-            "Running {name} with Python 3.5 or lower is not supported; "
-            "please upgrade to 3.6 or newer".format(name=program)
+            "Running {name} with Python 3.6 or lower is not supported; "
+            "please upgrade to 3.7 or newer".format(name=program)
         )
 
 
-def count_stats(messages: List[str]) -> Tuple[int, int, int]:
+def count_stats(messages: list[str]) -> tuple[int, int, int]:
     """Count total number of errors, notes and error_files in message list."""
     errors = [e for e in messages if ": error:" in e]
     error_files = {e.split(":")[0] for e in errors}
@@ -435,10 +433,10 @@ def count_stats(messages: List[str]) -> Tuple[int, int, int]:
     return len(errors), len(notes), len(error_files)
 
 
-def split_words(msg: str) -> List[str]:
+def split_words(msg: str) -> list[str]:
     """Split line of text into words (but not within quoted groups)."""
     next_word = ""
-    res: List[str] = []
+    res: list[str] = []
     allow_break = True
     for c in msg:
         if c == " " and allow_break:
@@ -482,7 +480,7 @@ def soft_wrap(msg: str, max_len: int, first_offset: int, num_indent: int = 0) ->
     """
     words = split_words(msg)
     next_line = words.pop(0)
-    lines: List[str] = []
+    lines: list[str] = []
     while words:
         next_word = words.pop(0)
         max_line_len = max_len - num_indent if lines else max_len - first_offset
@@ -514,7 +512,7 @@ def parse_gray_color(cup: bytes) -> str:
     if sys.platform == "win32":
         assert False, "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
-    gray = curses.tparm(set_color.encode("utf-8"), 1, 89).decode()
+    gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
 
 
@@ -643,8 +641,8 @@ class FancyFormatter:
         return start + self.colors[color] + text + self.NORMAL
 
     def fit_in_terminal(
-        self, messages: List[str], fixed_terminal_width: Optional[int] = None
-    ) -> List[str]:
+        self, messages: list[str], fixed_terminal_width: int | None = None
+    ) -> list[str]:
         """Improve readability by wrapping error messages and trimming source code."""
         width = fixed_terminal_width or get_terminal_width()
         new_messages = messages.copy()
@@ -772,18 +770,20 @@ class FancyFormatter:
 
 
 def is_typeshed_file(file: str) -> bool:
-    # gross, but no other clear way to tell
-    return "typeshed" in os.path.abspath(file).split(os.sep)
+    try:
+        return os.path.commonpath((TYPESHED_DIR, os.path.abspath(file))) == TYPESHED_DIR
+    except ValueError:  # Different drives on Windows
+        return False
 
 
 def is_stub_package_file(file: str) -> bool:
     # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
     if not file.endswith(".pyi"):
         return False
-    return any(component.endswith("-stubs") for component in os.path.abspath(file).split(os.sep))
+    return any(component.endswith("-stubs") for component in os.path.split(os.path.abspath(file)))
 
 
-def unnamed_function(name: Optional[str]) -> bool:
+def unnamed_function(name: str | None) -> bool:
     return name is not None and name == "_"
 
 
@@ -796,7 +796,7 @@ def time_spent_us(t0: float) -> int:
     return int((time.perf_counter() - t0) * 1e6)
 
 
-def plural_s(s: Union[int, Sized]) -> str:
+def plural_s(s: int | Sized) -> str:
     count = s if isinstance(s, int) else len(s)
     if count > 1:
         return "s"

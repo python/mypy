@@ -1830,7 +1830,8 @@ reveal_type(unify(func))  # N: Revealed type is "<nothing>"
 --
 
 [case testLiteralIntelligentIndexingTuples]
-from typing import Tuple, NamedTuple
+# flags: --strict-optional
+from typing import Tuple, NamedTuple, Optional, Final
 from typing_extensions import Literal
 
 class A: pass
@@ -1846,17 +1847,23 @@ idx3: Literal[3]
 idx4: Literal[4]
 idx5: Literal[5]
 idx_neg1: Literal[-1]
+idx_final: Final = 2
 
-tup1: Tuple[A, B, C, D, E]
+tup1: Tuple[A, B, Optional[C], D, E]
 reveal_type(tup1[idx0])       # N: Revealed type is "__main__.A"
 reveal_type(tup1[idx1])       # N: Revealed type is "__main__.B"
-reveal_type(tup1[idx2])       # N: Revealed type is "__main__.C"
+reveal_type(tup1[idx2])       # N: Revealed type is "Union[__main__.C, None]"
+reveal_type(tup1[idx_final])  # N: Revealed type is "Union[__main__.C, None]"
 reveal_type(tup1[idx3])       # N: Revealed type is "__main__.D"
 reveal_type(tup1[idx4])       # N: Revealed type is "__main__.E"
 reveal_type(tup1[idx_neg1])   # N: Revealed type is "__main__.E"
 tup1[idx5]                    # E: Tuple index out of range
-reveal_type(tup1[idx2:idx4])  # N: Revealed type is "Tuple[__main__.C, __main__.D]"
-reveal_type(tup1[::idx2])     # N: Revealed type is "Tuple[__main__.A, __main__.C, __main__.E]"
+reveal_type(tup1[idx2:idx4])  # N: Revealed type is "Tuple[Union[__main__.C, None], __main__.D]"
+reveal_type(tup1[::idx2])     # N: Revealed type is "Tuple[__main__.A, Union[__main__.C, None], __main__.E]"
+if tup1[idx2] is not None:
+    reveal_type(tup1[idx2])   # N: Revealed type is "Union[__main__.C, None]"
+if tup1[idx_final] is not None:
+    reveal_type(tup1[idx_final]) # N: Revealed type is "__main__.C"
 
 Tup2Class = NamedTuple('Tup2Class', [('a', A), ('b', B), ('c', C), ('d', D), ('e', E)])
 tup2: Tup2Class
@@ -1870,7 +1877,6 @@ tup2[idx5]                    # E: Tuple index out of range
 reveal_type(tup2[idx2:idx4])  # N: Revealed type is "Tuple[__main__.C, __main__.D, fallback=__main__.Tup2Class]"
 reveal_type(tup2[::idx2])     # N: Revealed type is "Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]"
 [builtins fixtures/slice.pyi]
-[out]
 
 [case testLiteralIntelligentIndexingTypedDict]
 from typing_extensions import Literal

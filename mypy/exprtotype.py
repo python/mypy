@@ -1,6 +1,6 @@
 """Translate an Expression to a Type value."""
 
-from typing import Optional
+from __future__ import annotations
 
 from mypy.fastparse import parse_type_string
 from mypy.nodes import (
@@ -42,7 +42,7 @@ class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
 
-def _extract_argument_name(expr: Expression) -> Optional[str]:
+def _extract_argument_name(expr: Expression) -> str | None:
     if isinstance(expr, NameExpr) and expr.name == "None":
         return None
     elif isinstance(expr, StrExpr):
@@ -53,9 +53,9 @@ def _extract_argument_name(expr: Expression) -> Optional[str]:
 
 def expr_to_unanalyzed_type(
     expr: Expression,
-    options: Optional[Options] = None,
+    options: Options | None = None,
     allow_new_syntax: bool = False,
-    _parent: Optional[Expression] = None,
+    _parent: Expression | None = None,
 ) -> ProperType:
     """Translate an expression to the corresponding type.
 
@@ -67,7 +67,7 @@ def expr_to_unanalyzed_type(
     """
     # The `parent` parameter is used in recursive calls to provide context for
     # understanding whether an CallableArgument is ok.
-    name: Optional[str] = None
+    name: str | None = None
     if isinstance(expr, NameExpr):
         name = expr.name
         if name == "True":

@@ -3,14 +3,17 @@
 These happen after semantic analysis and before type checking.
 """
 
-from typing import List, Optional, Set
+from __future__ import annotations
 
 from typing_extensions import Final
 
 from mypy.errors import Errors
 from mypy.nodes import (
+    IMPLICITLY_ABSTRACT,
+    IS_ABSTRACT,
     CallExpr,
     Decorator,
+    FuncDef,
     Node,
     OverloadedFuncDef,
     PromoteExpr,
@@ -45,9 +48,10 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     """
     if typ.typeddict_type:
         return  # TypedDict can't be abstract
-    concrete: Set[str] = set()
-    abstract: List[str] = []
-    abstract_in_this_class: List[str] = []
+    concrete: set[str] = set()
+    # List of abstract attributes together with their abstract status
+    abstract: list[tuple[str, int]] = []
+    abstract_in_this_class: list[str] = []
     if typ.is_newtype:
         # Special case: NewTypes are considered as always non-abstract, so they can be used as:
         #     Config = NewType('Config', Mapping[str, str])
@@ -63,22 +67,26 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                 # different items have a different abstract status, there
                 # should be an error reported elsewhere.
                 if node.items:  # can be empty for invalid overloads
-                    func: Optional[Node] = node.items[0]
+                    func: Node | None = node.items[0]
                 else:
                     func = None
             else:
                 func = node
             if isinstance(func, Decorator):
-                fdef = func.func
-                if fdef.is_abstract and name not in concrete:
+                func = func.func
+            if isinstance(func, FuncDef):
+                if (
+                    func.abstract_status in (IS_ABSTRACT, IMPLICITLY_ABSTRACT)
+                    and name not in concrete
+                ):
                     typ.is_abstract = True
-                    abstract.append(name)
+                    abstract.append((name, func.abstract_status))
                     if base is typ:
                         abstract_in_this_class.append(name)
             elif isinstance(node, Var):
                 if node.is_abstract_var and name not in concrete:
                     typ.is_abstract = True
-                    abstract.append(name)
+                    abstract.append((name, IS_ABSTRACT))
                     if base is typ:
                         abstract_in_this_class.append(name)
             concrete.add(name)
@@ -96,13 +104,13 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
             def report(message: str, severity: str) -> None:
                 errors.report(typ.line, typ.column, message, severity=severity)
 
-            attrs = ", ".join(f'"{attr}"' for attr in sorted(abstract))
+            attrs = ", ".join(f'"{attr}"' for attr, _ in sorted(abstract))
             report(f"Class {typ.fullname} has abstract attributes {attrs}", "error")
             report(
                 "If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass", "note"
             )
     if typ.is_final and abstract:
-        attrs = ", ".join(f'"{attr}"' for attr in sorted(abstract))
+        attrs = ", ".join(f'"{attr}"' for attr, _ in sorted(abstract))
         errors.report(
             typ.line, typ.column, f"Final class {typ.fullname} has abstract attributes {attrs}"
         )
@@ -147,7 +155,7 @@ def add_type_promotion(
     This includes things like 'int' being compatible with 'float'.
     """
     defn = info.defn
-    promote_targets: List[Type] = []
+    promote_targets: list[Type] = []
     for decorator in defn.decorators:
         if isinstance(decorator, CallExpr):
             analyzed = decorator.analyzed

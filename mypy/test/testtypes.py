@@ -1,6 +1,6 @@
 """Test cases for mypy types and type operations."""
 
-from typing import List, Tuple
+from __future__ import annotations
 
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
@@ -8,9 +8,8 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.join import join_simple, join_types
 from mypy.meet import meet_types, narrow_declared_type
 from mypy.nodes import ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, CONTRAVARIANT, COVARIANT, INVARIANT
-from mypy.sametypes import is_same_type
 from mypy.state import state
-from mypy.subtypes import is_more_precise, is_proper_subtype, is_subtype
+from mypy.subtypes import is_more_precise, is_proper_subtype, is_same_type, is_subtype
 from mypy.test.helpers import Suite, assert_equal, assert_type, skip
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
 from mypy.typeops import false_only, make_simplified_union, true_only
@@ -211,7 +210,7 @@ class TypeOpsSuite(Suite):
     #   multiple arguments
 
     def assert_expand(
-        self, orig: Type, map_items: List[Tuple[TypeVarId, Type]], result: Type
+        self, orig: Type, map_items: list[tuple[TypeVarId, Type]], result: Type
     ) -> None:
         lower_bounds = {}
 
@@ -535,7 +534,7 @@ class TypeOpsSuite(Suite):
             [fx.lit1_inst, fx.lit3_inst], UnionType([fx.lit1_inst, fx.lit3_inst])
         )
         self.assert_simplified_union([fx.lit1_inst, fx.uninhabited], fx.lit1_inst)
-        self.assert_simplified_union([fx.lit1, fx.lit1_inst], UnionType([fx.lit1, fx.lit1_inst]))
+        self.assert_simplified_union([fx.lit1, fx.lit1_inst], fx.lit1)
         self.assert_simplified_union([fx.lit1, fx.lit2_inst], UnionType([fx.lit1, fx.lit2_inst]))
         self.assert_simplified_union([fx.lit1, fx.lit3_inst], UnionType([fx.lit1, fx.lit3_inst]))
 
@@ -590,7 +589,7 @@ class TypeOpsSuite(Suite):
             UnionType([fx.lit_str1, fx.lit_str1_inst]),
         )
 
-    def assert_simplified_union(self, original: List[Type], union: Type) -> None:
+    def assert_simplified_union(self, original: list[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
         assert_equal(make_simplified_union(list(reversed(original))), union)
 
@@ -599,12 +598,12 @@ class TypeOpsSuite(Suite):
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
 
-    def callable(self, vars: List[str], *a: Type) -> CallableType:
+    def callable(self, vars: list[str], *a: Type) -> CallableType:
         """callable(args, a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r and type arguments
         vars.
         """
-        tv: List[TypeVarType] = []
+        tv: list[TypeVarType] = []
         n = -1
         for v in vars:
             tv.append(TypeVarType(v, v, n, [], self.fx.o))
@@ -1276,7 +1275,7 @@ class RemoveLastKnownValueSuite(Suite):
         t = UnionType.make_union([self.fx.ga, self.fx.gb])
         self.assert_union_result(t, [self.fx.ga, self.fx.gb])
 
-    def assert_union_result(self, t: ProperType, expected: List[Type]) -> None:
+    def assert_union_result(self, t: ProperType, expected: list[Type]) -> None:
         t2 = remove_instance_last_known_values(t)
         assert type(t2) is UnionType
         assert t2.items == expected

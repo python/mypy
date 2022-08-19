@@ -1,6 +1,7 @@
-from typing import Callable, Dict, Optional, Sequence
+from __future__ import annotations
 
-import mypy.sametypes
+from typing import Callable, Sequence
+
 import mypy.subtypes
 from mypy.expandtype import expand_type
 from mypy.nodes import Context
@@ -10,38 +11,37 @@ from mypy.types import (
     Parameters,
     ParamSpecType,
     PartialType,
-    ProperType,
     Type,
     TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     get_proper_type,
-    get_proper_types,
 )
 
 
 def get_target_type(
     tvar: TypeVarLikeType,
-    type: ProperType,
+    type: Type,
     callable: CallableType,
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool,
-) -> Optional[Type]:
+) -> Type | None:
     if isinstance(tvar, ParamSpecType):
         return type
     if isinstance(tvar, TypeVarTupleType):
         return type
     assert isinstance(tvar, TypeVarType)
-    values = get_proper_types(tvar.values)
+    values = tvar.values
+    p_type = get_proper_type(type)
     if values:
-        if isinstance(type, AnyType):
+        if isinstance(p_type, AnyType):
             return type
-        if isinstance(type, TypeVarType) and type.values:
+        if isinstance(p_type, TypeVarType) and p_type.values:
             # Allow substituting T1 for T if every allowed value of T1
             # is also a legal value of T.
-            if all(any(mypy.sametypes.is_same_type(v, v1) for v in values) for v1 in type.values):
+            if all(any(mypy.subtypes.is_same_type(v, v1) for v in values) for v1 in p_type.values):
                 return type
         matching = []
         for value in values:
@@ -68,7 +68,7 @@ def get_target_type(
 
 def apply_generic_arguments(
     callable: CallableType,
-    orig_types: Sequence[Optional[Type]],
+    orig_types: Sequence[Type | None],
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool = False,
@@ -87,12 +87,10 @@ def apply_generic_arguments(
     assert len(tvars) == len(orig_types)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
-    types = get_proper_types(orig_types)
-
     # Create a map from type variable id to target type.
-    id_to_type: Dict[TypeVarId, Type] = {}
+    id_to_type: dict[TypeVarId, Type] = {}
 
-    for tvar, type in zip(tvars, types):
+    for tvar, type in zip(tvars, orig_types):
         assert not isinstance(type, PartialType), "Internal error: must never apply partial type"
         if type is None:
             continue
