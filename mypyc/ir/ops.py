@@ -235,6 +235,10 @@ class Op(Value):
     def sources(self) -> list[Value]:
         """All the values the op may read."""
 
+    @abstractmethod
+    def set_sources(self, new: list[Value]) -> None:
+        """Rewrite the soruces of an op"""
+
     def stolen(self) -> list[Value]:
         """Return arguments that have a reference count stolen by this op"""
         return []
@@ -271,6 +275,9 @@ class Assign(BaseAssign):
     def sources(self) -> list[Value]:
         return [self.src]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
     def stolen(self) -> list[Value]:
         return [self.src]
 
@@ -300,6 +307,9 @@ class AssignMulti(BaseAssign):
 
     def sources(self) -> list[Value]:
         return self.src.copy()
+
+    def set_sources(self, new: list[Value]) -> None:
+        self.src = new[:]
 
     def stolen(self) -> list[Value]:
         return []
@@ -341,6 +351,9 @@ class Goto(ControlOp):
 
     def sources(self) -> list[Value]:
         return []
+
+    def set_sources(self, new: list[Value]) -> None:
+        assert not new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_goto(self)
@@ -402,6 +415,9 @@ class Branch(ControlOp):
     def sources(self) -> list[Value]:
         return [self.value]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.value,) = new
+
     def invert(self) -> None:
         self.negated = not self.negated
 
@@ -420,6 +436,9 @@ class Return(ControlOp):
 
     def sources(self) -> list[Value]:
         return [self.value]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.value,) = new
 
     def stolen(self) -> list[Value]:
         return [self.value]
@@ -451,6 +470,9 @@ class Unreachable(ControlOp):
 
     def sources(self) -> list[Value]:
         return []
+
+    def set_sources(self, new: list[Value]) -> None:
+        assert not new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_unreachable(self)
@@ -494,6 +516,9 @@ class IncRef(RegisterOp):
     def sources(self) -> list[Value]:
         return [self.src]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_inc_ref(self)
 
@@ -519,6 +544,9 @@ class DecRef(RegisterOp):
     def sources(self) -> list[Value]:
         return [self.src]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_dec_ref(self)
 
@@ -543,6 +571,9 @@ class Call(RegisterOp):
 
     def sources(self) -> list[Value]:
         return list(self.args.copy())
+
+    def set_sources(self, new: list[Value]) -> None:
+        self.args = new[:]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_call(self)
@@ -572,6 +603,9 @@ class MethodCall(RegisterOp):
     def sources(self) -> list[Value]:
         return self.args.copy() + [self.obj]
 
+    def set_sources(self, new: list[Value]) -> None:
+        *self.args, self.obj = new
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_method_call(self)
 
@@ -598,6 +632,9 @@ class LoadErrorValue(RegisterOp):
 
     def sources(self) -> list[Value]:
         return []
+
+    def set_sources(self, new: list[Value]) -> None:
+        assert not new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_error_value(self)
@@ -631,6 +668,9 @@ class LoadLiteral(RegisterOp):
     def sources(self) -> list[Value]:
         return []
 
+    def set_sources(self, new: list[Value]) -> None:
+        assert not new
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_literal(self)
 
@@ -654,6 +694,9 @@ class GetAttr(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.obj]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.obj,) = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_get_attr(self)
@@ -686,6 +729,9 @@ class SetAttr(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.obj, self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        self.obj, self.src = new
 
     def stolen(self) -> list[Value]:
         return [self.src]
@@ -737,6 +783,9 @@ class LoadStatic(RegisterOp):
     def sources(self) -> list[Value]:
         return []
 
+    def set_sources(self, new: list[Value]) -> None:
+        assert not new
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_static(self)
 
@@ -765,6 +814,9 @@ class InitStatic(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.value]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.value,) = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_init_static(self)
@@ -795,6 +847,9 @@ class TupleSet(RegisterOp):
     def stolen(self) -> list[Value]:
         return self.items.copy()
 
+    def set_sources(self, new: list[Value]) -> None:
+        self.items = new[:]
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_set(self)
 
@@ -815,6 +870,9 @@ class TupleGet(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_get(self)
@@ -838,6 +896,9 @@ class Cast(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
 
     def stolen(self) -> list[Value]:
         if self.is_borrowed:
@@ -872,6 +933,9 @@ class Box(RegisterOp):
     def sources(self) -> list[Value]:
         return [self.src]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
     def stolen(self) -> list[Value]:
         return [self.src]
 
@@ -897,6 +961,9 @@ class Unbox(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_unbox(self)
@@ -929,6 +996,9 @@ class RaiseStandardError(RegisterOp):
 
     def sources(self) -> list[Value]:
         return []
+
+    def set_sources(self, new: list[Value]) -> None:
+        assert not new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_raise_standard_error(self)
@@ -968,7 +1038,10 @@ class CallC(RegisterOp):
         self.var_arg_idx = var_arg_idx
 
     def sources(self) -> list[Value]:
-        return self.args
+        return self.args[:]
+
+    def set_sources(self, new: list[Value]) -> None:
+        self.args = new[:]
 
     def stolen(self) -> list[Value]:
         if isinstance(self.steals, list):
@@ -1001,6 +1074,9 @@ class Truncate(RegisterOp):
     def sources(self) -> list[Value]:
         return [self.src]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
     def stolen(self) -> list[Value]:
         return []
 
@@ -1032,6 +1108,9 @@ class Extend(RegisterOp):
     def sources(self) -> list[Value]:
         return [self.src]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
     def stolen(self) -> list[Value]:
         return []
 
@@ -1058,6 +1137,9 @@ class LoadGlobal(RegisterOp):
 
     def sources(self) -> list[Value]:
         return []
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_global(self)
@@ -1114,6 +1196,9 @@ class IntOp(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
+
+    def set_sources(self, new: list[Value]) -> None:
+        self.lhs, self.rhs = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_int_op(self)
@@ -1178,6 +1263,9 @@ class ComparisonOp(RegisterOp):
     def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
 
+    def set_sources(self, new: list[Value]) -> None:
+        self.lhs, self.rhs = new
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_comparison_op(self)
 
@@ -1211,6 +1299,9 @@ class FloatOp(RegisterOp):
     def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.lhs, self.rhs) = new
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_op(self)
 
@@ -1232,6 +1323,9 @@ class FloatNeg(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_neg(self)
@@ -1260,6 +1354,9 @@ class FloatComparisonOp(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.lhs, self.rhs) = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_comparison_op(self)
@@ -1292,6 +1389,9 @@ class LoadMem(RegisterOp):
     def sources(self) -> list[Value]:
         return [self.src]
 
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_mem(self)
 
@@ -1316,6 +1416,9 @@ class SetMem(Op):
 
     def sources(self) -> list[Value]:
         return [self.src, self.dest]
+
+    def set_sources(self, new: list[Value]) -> None:
+        self.src, self.dest = new
 
     def stolen(self) -> list[Value]:
         return [self.src]
@@ -1342,6 +1445,9 @@ class GetElementPtr(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_get_element_ptr(self)
@@ -1370,6 +1476,11 @@ class LoadAddress(RegisterOp):
             return [self.src]
         else:
             return []
+
+    def set_sources(self, new: list[Value]) -> None:
+        if new:
+            assert isinstance(new[0], Register)
+            self.src = new[0]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_address(self)
@@ -1415,6 +1526,9 @@ class KeepAlive(RegisterOp):
             return self.src.copy()
         return []
 
+    def set_sources(self, new: list[Value]) -> None:
+        self.src = new[:]
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_keep_alive(self)
 
@@ -1453,6 +1567,9 @@ class Unborrow(RegisterOp):
 
     def sources(self) -> list[Value]:
         return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
 
     def stolen(self) -> list[Value]:
         return []
