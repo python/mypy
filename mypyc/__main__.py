@@ -12,6 +12,7 @@ mypycify, suitable for prototyping and testing.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import os.path
 import subprocess
@@ -31,10 +32,8 @@ setup(name='mypyc_output',
 
 def main() -> None:
     build_dir = "build"  # can this be overridden??
-    try:
+    with contextlib.suppress(FileExistsError):
         os.mkdir(build_dir)
-    except FileExistsError:
-        pass
 
     opt_level = os.getenv("MYPYC_OPT_LEVEL", "3")
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
