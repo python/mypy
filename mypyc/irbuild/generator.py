@@ -181,6 +181,8 @@ def add_helper_to_generator_class(
     )
     fn_info.generator_class.ir.methods["__mypyc_generator_helper__"] = helper_fn_ir
     builder.functions.append(helper_fn_ir)
+    fn_info.env_class.env_user_function = helper_fn_ir
+
     return helper_fn_decl
 
 

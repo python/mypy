@@ -679,3 +679,21 @@ def test_basic() -> None:
     with context:
         assert context.x == 1
     assert context.x == 0
+
+
+[case testYieldSpill]
+from typing import Generator
+
+def f() -> int:
+    return 1
+
+def yield_spill() -> Generator[str, int, int]:
+    return f() + (yield "foo")
+
+[file driver.py]
+from native import yield_spill
+from testutil import run_generator
+
+yields, val = run_generator(yield_spill(), [2])
+assert yields == ('foo',)
+assert val == 3, val

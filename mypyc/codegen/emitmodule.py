@@ -58,6 +58,7 @@ from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.refcount import insert_ref_count_opcodes
+from mypyc.transform.spill import insert_spills
 from mypyc.transform.uninit import insert_uninit_checks
 
 # All of the modules being compiled are divided into "groups". A group
@@ -225,6 +226,10 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
+    # XXX: HOW WILL WE DEAL WITH REFCOUNTING ON THE SPILLAGE
+    # DO WE DO IT... LAST? MAYBE MAYBE MAYBE YES
+    # ONLY DO UNINIT.... YEAH OK
+
     # Insert uninit checks.
     for module in modules.values():
         for fn in module.functions:
@@ -237,6 +242,10 @@ def compile_scc_to_ir(
     for module in modules.values():
         for fn in module.functions:
             insert_ref_count_opcodes(fn)
+    for module in modules.values():
+        for cls in module.classes:
+            if cls.env_user_function:
+                insert_spills(cls.env_user_function, cls)
 
     return modules
 

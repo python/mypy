@@ -430,9 +430,16 @@ class Return(ControlOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, value: Value, line: int = -1) -> None:
+    def __init__(
+        self, value: Value, line: int = -1, *, yield_target: BasicBlock | None = None
+    ) -> None:
         super().__init__(line)
         self.value = value
+        # If this return is created by a yield, keep track of the next
+        # basic block. This doesn't affect the code we generate but
+        # can feed into analysis that need to understand the
+        # *original* CFG.
+        self.yield_target = yield_target
 
     def sources(self) -> list[Value]:
         return [self.value]
