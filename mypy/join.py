@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
 import mypy.typeops
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
@@ -50,7 +48,7 @@ from mypy.types import (
 
 class InstanceJoiner:
     def __init__(self) -> None:
-        self.seen_instances: List[Tuple[Instance, Instance]] = []
+        self.seen_instances: list[tuple[Instance, Instance]] = []
 
     def join_instances(self, t: Instance, s: Instance) -> ProperType:
         if (t, s) in self.seen_instances or (s, t) in self.seen_instances:
@@ -64,13 +62,13 @@ class InstanceJoiner:
             # potentially different arguments).
 
             # Combine type arguments.
-            args: List[Type] = []
+            args: list[Type] = []
             # N.B: We use zip instead of indexing because the lengths might have
             # mismatches during daemon reprocessing.
             for ta, sa, type_var in zip(t.args, s.args, t.type.defn.type_vars):
                 ta_proper = get_proper_type(ta)
                 sa_proper = get_proper_type(sa)
-                new_type: Optional[Type] = None
+                new_type: Type | None = None
                 if isinstance(ta_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
                 elif isinstance(sa_proper, AnyType):
@@ -125,7 +123,7 @@ class InstanceJoiner:
         # Compute the "best" supertype of t when joined with s.
         # The definition of "best" may evolve; for now it is the one with
         # the longest MRO.  Ties are broken by using the earlier base.
-        best: Optional[ProperType] = None
+        best: ProperType | None = None
         for base in t.type.bases:
             mapped = map_instance_to_supertype(t, base.type)
             res = self.join_instances(mapped, s)
@@ -141,7 +139,7 @@ class InstanceJoiner:
         return best
 
 
-def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
+def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
     """Return a simple least upper bound given the declared type."""
     # TODO: check infinite recursion for aliases here.
     declaration = get_proper_type(declaration)
@@ -191,7 +189,7 @@ def trivial_join(s: Type, t: Type) -> ProperType:
         return object_or_any_from_type(get_proper_type(t))
 
 
-def join_types(s: Type, t: Type, instance_joiner: Optional[InstanceJoiner] = None) -> ProperType:
+def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> ProperType:
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
@@ -242,7 +240,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
       s: The other (left) type operand.
     """
 
-    def __init__(self, s: ProperType, instance_joiner: Optional[InstanceJoiner] = None) -> None:
+    def __init__(self, s: ProperType, instance_joiner: InstanceJoiner | None = None) -> None:
         self.s = s
         self.instance_joiner = instance_joiner
 
@@ -308,7 +306,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if self.instance_joiner is None:
                 self.instance_joiner = InstanceJoiner()
             nominal = self.instance_joiner.join_instances(t, self.s)
-            structural: Optional[Instance] = None
+            structural: Instance | None = None
             if t.type.is_protocol and is_protocol_implementation(self.s, t):
                 structural = t
             elif self.s.type.is_protocol and is_protocol_implementation(t, self.s):
@@ -393,7 +391,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         #       Ov([Any, int] -> Any, [Any, int] -> Any)
         #
         # TODO: Consider more cases of callable subtyping.
-        result: List[CallableType] = []
+        result: list[CallableType] = []
         s = self.s
         if isinstance(s, FunctionLike):
             # The interesting case where both types are function types.
@@ -437,7 +435,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             )
             assert isinstance(fallback, Instance)
             if self.s.length() == t.length():
-                items: List[Type] = []
+                items: list[Type] = []
                 for i in range(t.length()):
                     items.append(self.join(t.items[i], self.s.items[i]))
                 return TupleType(items, fallback)
@@ -544,7 +542,7 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
 def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.meet import meet_types
 
-    arg_types: List[Type] = []
+    arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)
@@ -564,7 +562,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    arg_types: List[Type] = []
+    arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names
@@ -583,7 +581,7 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     )
 
 
-def combine_arg_names(t: CallableType, s: CallableType) -> List[Optional[str]]:
+def combine_arg_names(t: CallableType, s: CallableType) -> list[str | None]:
     """Produces a list of argument names compatible with both callables.
 
     For example, suppose 't' and 's' have the following signatures:
@@ -641,7 +639,7 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
     return AnyType(TypeOfAny.implementation_artifact)
 
 
-def join_type_list(types: List[Type]) -> ProperType:
+def join_type_list(types: list[Type]) -> ProperType:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
         # with all variable length tuples, and this makes it possible.
@@ -652,7 +650,7 @@ def join_type_list(types: List[Type]) -> ProperType:
     return joined
 
 
-def unpack_callback_protocol(t: Instance) -> Optional[Type]:
+def unpack_callback_protocol(t: Instance) -> Type | None:
     assert t.type.is_protocol
     if t.type.protocol_members == ["__call__"]:
         return find_member("__call__", t, t, is_operator=True)

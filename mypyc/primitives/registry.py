@@ -37,7 +37,7 @@ optimized implementations of all ops.
 
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple
 from typing_extensions import Final
 
 from mypyc.ir.ops import StealsDescription
@@ -73,30 +73,30 @@ LoadAddressDescription = NamedTuple(
 
 
 # CallC op for method call(such as 'str.join')
-method_call_ops: Dict[str, List[CFunctionDescription]] = {}
+method_call_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for top level function call(such as 'builtins.list')
-function_ops: Dict[str, List[CFunctionDescription]] = {}
+function_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for binary ops
-binary_ops: Dict[str, List[CFunctionDescription]] = {}
+binary_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for unary ops
-unary_ops: Dict[str, List[CFunctionDescription]] = {}
+unary_ops: dict[str, list[CFunctionDescription]] = {}
 
-builtin_names: Dict[str, Tuple[RType, str]] = {}
+builtin_names: dict[str, tuple[RType, str]] = {}
 
 
 def method_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -146,14 +146,14 @@ def method_op(
 
 def function_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -189,14 +189,14 @@ def function_op(
 
 def binary_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -228,14 +228,14 @@ def binary_op(
 
 
 def custom_op(
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
 ) -> CFunctionDescription:
@@ -265,9 +265,9 @@ def unary_op(
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,

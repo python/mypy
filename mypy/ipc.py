@@ -12,7 +12,7 @@ import shutil
 import sys
 import tempfile
 from types import TracebackType
-from typing import Callable, Optional, Type
+from typing import Callable
 from typing_extensions import Final
 
 if sys.platform == "win32":
@@ -35,8 +35,6 @@ else:
 class IPCException(Exception):
     """Exception for IPC issues."""
 
-    pass
-
 
 class IPCBase:
     """Base class for communication between the dmypy client and server.
@@ -47,7 +45,7 @@ class IPCBase:
 
     connection: _IPCHandle
 
-    def __init__(self, name: str, timeout: Optional[float]) -> None:
+    def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
 
@@ -125,7 +123,7 @@ class IPCBase:
 class IPCClient(IPCBase):
     """The client side of an IPC connection."""
 
-    def __init__(self, name: str, timeout: Optional[float]) -> None:
+    def __init__(self, name: str, timeout: float | None) -> None:
         super().__init__(name, timeout)
         if sys.platform == "win32":
             timeout = int(self.timeout * 1000) if self.timeout else _winapi.NMPWAIT_WAIT_FOREVER
@@ -166,9 +164,9 @@ class IPCClient(IPCBase):
 
     def __exit__(
         self,
-        exc_ty: Optional[Type[BaseException]] = None,
-        exc_val: Optional[BaseException] = None,
-        exc_tb: Optional[TracebackType] = None,
+        exc_ty: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
     ) -> None:
         self.close()
 
@@ -177,7 +175,7 @@ class IPCServer(IPCBase):
 
     BUFFER_SIZE: Final = 2**16
 
-    def __init__(self, name: str, timeout: Optional[float] = None) -> None:
+    def __init__(self, name: str, timeout: float | None = None) -> None:
         if sys.platform == "win32":
             name = r"\\.\pipe\{}-{}.pipe".format(
                 name, base64.urlsafe_b64encode(os.urandom(6)).decode()
@@ -245,9 +243,9 @@ class IPCServer(IPCBase):
 
     def __exit__(
         self,
-        exc_ty: Optional[Type[BaseException]] = None,
-        exc_val: Optional[BaseException] = None,
-        exc_tb: Optional[TracebackType] = None,
+        exc_ty: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
     ) -> None:
         if sys.platform == "win32":
             try:

@@ -8,7 +8,7 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
@@ -16,7 +16,7 @@ from mypy import errorcodes as codes
 
 class ErrorMessage(NamedTuple):
     value: str
-    code: Optional[codes.ErrorCode] = None
+    code: codes.ErrorCode | None = None
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)

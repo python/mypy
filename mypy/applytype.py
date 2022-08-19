@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional, Sequence
+from typing import Callable, Sequence
 
 import mypy.subtypes
 from mypy.expandtype import expand_type
@@ -27,7 +27,7 @@ def get_target_type(
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool,
-) -> Optional[Type]:
+) -> Type | None:
     if isinstance(tvar, ParamSpecType):
         return type
     if isinstance(tvar, TypeVarTupleType):
@@ -68,7 +68,7 @@ def get_target_type(
 
 def apply_generic_arguments(
     callable: CallableType,
-    orig_types: Sequence[Optional[Type]],
+    orig_types: Sequence[Type | None],
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool = False,
@@ -88,7 +88,7 @@ def apply_generic_arguments(
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
     # Create a map from type variable id to target type.
-    id_to_type: Dict[TypeVarId, Type] = {}
+    id_to_type: dict[TypeVarId, Type] = {}
 
     for tvar, type in zip(tvars, orig_types):
         assert not isinstance(type, PartialType), "Internal error: must never apply partial type"

@@ -21,7 +21,6 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
-    Optional,
     Sequence,
     TextIO,
     Tuple,
@@ -38,7 +37,7 @@ _CONFIG_VALUE_TYPES: _TypeAlias = Union[
 _INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 
-def parse_version(v: Union[str, float]) -> Tuple[int, int]:
+def parse_version(v: str | float) -> tuple[int, int]:
     m = re.match(r"\A(\d)\.(\d+)\Z", str(v))
     if not m:
         raise argparse.ArgumentTypeError(f"Invalid python version '{v}' (expected format: 'x.y')")
@@ -62,7 +61,7 @@ def parse_version(v: Union[str, float]) -> Tuple[int, int]:
     return major, minor
 
 
-def try_split(v: Union[str, Sequence[str]], split_regex: str = "[,]") -> List[str]:
+def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
     """Split and trim a str or list of str into a list of str"""
     if isinstance(v, str):
         return [p.strip() for p in re.split(split_regex, v)]
@@ -78,13 +77,13 @@ def expand_path(path: str) -> str:
     return os.path.expandvars(os.path.expanduser(path))
 
 
-def str_or_array_as_list(v: Union[str, Sequence[str]]) -> List[str]:
+def str_or_array_as_list(v: str | Sequence[str]) -> list[str]:
     if isinstance(v, str):
         return [v.strip()] if v.strip() else []
     return [p.strip() for p in v if p.strip()]
 
 
-def split_and_match_files_list(paths: Sequence[str]) -> List[str]:
+def split_and_match_files_list(paths: Sequence[str]) -> list[str]:
     """Take a list of files/directories (with support for globbing through the glob library).
 
     Where a path/glob matches no file, we still include the raw path in the resulting list.
@@ -104,7 +103,7 @@ def split_and_match_files_list(paths: Sequence[str]) -> List[str]:
     return expanded_paths
 
 
-def split_and_match_files(paths: str) -> List[str]:
+def split_and_match_files(paths: str) -> list[str]:
     """Take a string representing a list of files/directories (with support for globbing
     through the glob library).
 
@@ -131,7 +130,7 @@ def check_follow_imports(choice: str) -> str:
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
 # types.
-ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
+ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "python_version": parse_version,
     "strict_optional_whitelist": lambda s: s.split(),
     "custom_typing_module": str,
@@ -158,7 +157,7 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
 }
 
 # Reuse the ini_config_types and overwrite the diff
-toml_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.copy()
+toml_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.copy()
 toml_config_types.update(
     {
         "python_version": parse_version,
@@ -180,9 +179,9 @@ toml_config_types.update(
 def parse_config_file(
     options: Options,
     set_strict_flags: Callable[[], None],
-    filename: Optional[str],
-    stdout: Optional[TextIO] = None,
-    stderr: Optional[TextIO] = None,
+    filename: str | None,
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
 ) -> None:
     """Parse a config file into an Options object.
 
@@ -194,7 +193,7 @@ def parse_config_file(
     stderr = stderr or sys.stderr
 
     if filename is not None:
-        config_files: Tuple[str, ...] = (filename,)
+        config_files: tuple[str, ...] = (filename,)
     else:
         config_files_iter: Iterable[str] = map(os.path.expanduser, defaults.CONFIG_FILES)
         config_files = tuple(config_files_iter)
@@ -296,7 +295,7 @@ def is_toml(filename: str) -> bool:
     return filename.lower().endswith(".toml")
 
 
-def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
+def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 
@@ -385,15 +384,15 @@ def parse_section(
     template: Options,
     set_strict_flags: Callable[[], None],
     section: Mapping[str, Any],
-    config_types: Dict[str, Any],
+    config_types: dict[str, Any],
     stderr: TextIO = sys.stderr,
-) -> Tuple[Dict[str, object], Dict[str, str]]:
+) -> tuple[dict[str, object], dict[str, str]]:
     """Parse one section of a config file.
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
-    results: Dict[str, object] = {}
-    report_dirs: Dict[str, str] = {}
+    results: dict[str, object] = {}
+    report_dirs: dict[str, str] = {}
     for key in section:
         invert = False
         options_key = key
@@ -485,7 +484,7 @@ def parse_section(
     return results, report_dirs
 
 
-def convert_to_boolean(value: Optional[Any]) -> bool:
+def convert_to_boolean(value: Any | None) -> bool:
     """Return a boolean value translating from other types if necessary."""
     if isinstance(value, bool):
         return value
@@ -496,12 +495,12 @@ def convert_to_boolean(value: Optional[Any]) -> bool:
     return configparser.RawConfigParser.BOOLEAN_STATES[value.lower()]
 
 
-def split_directive(s: str) -> Tuple[List[str], List[str]]:
+def split_directive(s: str) -> tuple[list[str], list[str]]:
     """Split s on commas, except during quoted sections.
 
     Returns the parts and a list of error messages."""
     parts = []
-    cur: List[str] = []
+    cur: list[str] = []
     errors = []
     i = 0
     while i < len(s):
@@ -525,7 +524,7 @@ def split_directive(s: str) -> Tuple[List[str], List[str]]:
     return parts, errors
 
 
-def mypy_comments_to_config_map(line: str, template: Options) -> Tuple[Dict[str, str], List[str]]:
+def mypy_comments_to_config_map(line: str, template: Options) -> tuple[dict[str, str], list[str]]:
     """Rewrite the mypy comment syntax into ini file syntax.
 
     Returns
@@ -548,15 +547,15 @@ def mypy_comments_to_config_map(line: str, template: Options) -> Tuple[Dict[str,
 
 
 def parse_mypy_comments(
-    args: List[Tuple[int, str]], template: Options
-) -> Tuple[Dict[str, object], List[Tuple[int, str]]]:
+    args: list[tuple[int, str]], template: Options
+) -> tuple[dict[str, object], list[tuple[int, str]]]:
     """Parse a collection of inline mypy: configuration comments.
 
     Returns a dictionary of options to be applied and a list of error messages
     generated.
     """
 
-    errors: List[Tuple[int, str]] = []
+    errors: list[tuple[int, str]] = []
     sections = {}
 
     for lineno, line in args:
@@ -596,7 +595,7 @@ def parse_mypy_comments(
     return sections, errors
 
 
-def get_config_module_names(filename: Optional[str], modules: List[str]) -> str:
+def get_config_module_names(filename: str | None, modules: list[str]) -> str:
     if not filename or not modules:
         return ""
 

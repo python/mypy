@@ -13,7 +13,7 @@ functions are transformed in mypyc.irbuild.function.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Callable, Iterator, Sequence, Union
 from typing_extensions import Final, overload
 
 from mypy.build import Graph
@@ -137,31 +137,31 @@ class IRBuilder:
     def __init__(
         self,
         current_module: str,
-        types: Dict[Expression, Type],
+        types: dict[Expression, Type],
         graph: Graph,
         errors: Errors,
         mapper: Mapper,
         pbv: PreBuildVisitor,
         visitor: IRVisitor,
         options: CompilerOptions,
-        singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]],
+        singledispatch_impls: dict[FuncDef, list[RegisterImplInfo]],
     ) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper, options)
         self.builders = [self.builder]
-        self.symtables: List[Dict[SymbolNode, SymbolTarget]] = [{}]
-        self.runtime_args: List[List[RuntimeArg]] = [[]]
-        self.function_name_stack: List[str] = []
-        self.class_ir_stack: List[ClassIR] = []
+        self.symtables: list[dict[SymbolNode, SymbolTarget]] = [{}]
+        self.runtime_args: list[list[RuntimeArg]] = [[]]
+        self.function_name_stack: list[str] = []
+        self.class_ir_stack: list[ClassIR] = []
 
         self.current_module = current_module
         self.mapper = mapper
         self.types = types
         self.graph = graph
-        self.ret_types: List[RType] = []
-        self.functions: List[FuncIR] = []
-        self.classes: List[ClassIR] = []
-        self.final_names: List[Tuple[str, RType]] = []
-        self.callable_class_names: Set[str] = set()
+        self.ret_types: list[RType] = []
+        self.functions: list[FuncIR] = []
+        self.classes: list[ClassIR] = []
+        self.final_names: list[tuple[str, RType]] = []
+        self.callable_class_names: set[str] = set()
         self.options = options
 
         # These variables keep track of the number of lambdas, implicit indices, and implicit
@@ -186,17 +186,17 @@ class IRBuilder:
         # be generated) is stored in that FuncInfo instance. When the function is done being
         # generated, its corresponding FuncInfo is popped off the stack.
         self.fn_info = FuncInfo(INVALID_FUNC_DEF, "", "")
-        self.fn_infos: List[FuncInfo] = [self.fn_info]
+        self.fn_infos: list[FuncInfo] = [self.fn_info]
 
         # This list operates as a stack of constructs that modify the
         # behavior of nonlocal control flow constructs.
-        self.nonlocal_control: List[NonlocalControl] = []
+        self.nonlocal_control: list[NonlocalControl] = []
 
         self.errors = errors
         # Notionally a list of all of the modules imported by the
         # module being compiled, but stored as an OrderedDict so we
         # can also do quick lookups.
-        self.imports: Dict[str, None] = {}
+        self.imports: dict[str, None] = {}
 
         self.can_borrow = False
 
@@ -218,9 +218,7 @@ class IRBuilder:
     def accept(self, node: Statement) -> None:
         ...
 
-    def accept(
-        self, node: Union[Statement, Expression], *, can_borrow: bool = False
-    ) -> Optional[Value]:
+    def accept(self, node: Statement | Expression, *, can_borrow: bool = False) -> Value | None:
         """Transform an expression or a statement.
 
         If can_borrow is true, prefer to generate a borrowed reference.
@@ -311,10 +309,10 @@ class IRBuilder:
     def false(self) -> Value:
         return self.builder.false()
 
-    def new_list_op(self, values: List[Value], line: int) -> Value:
+    def new_list_op(self, values: list[Value], line: int) -> Value:
         return self.builder.new_list_op(values, line)
 
-    def new_set_op(self, values: List[Value], line: int) -> Value:
+    def new_set_op(self, values: list[Value], line: int) -> Value:
         return self.builder.new_set_op(values, line)
 
     def translate_is_op(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
@@ -323,10 +321,10 @@ class IRBuilder:
     def py_call(
         self,
         function: Value,
-        arg_values: List[Value],
+        arg_values: list[Value],
         line: int,
-        arg_kinds: Optional[List[ArgKind]] = None,
-        arg_names: Optional[Sequence[Optional[str]]] = None,
+        arg_kinds: list[ArgKind] | None = None,
+        arg_names: Sequence[str | None] | None = None,
     ) -> Value:
         return self.builder.py_call(function, arg_values, line, arg_kinds, arg_names)
 
@@ -340,11 +338,11 @@ class IRBuilder:
         self,
         base: Value,
         name: str,
-        arg_values: List[Value],
-        result_type: Optional[RType],
+        arg_values: list[Value],
+        result_type: RType | None,
         line: int,
-        arg_kinds: Optional[List[ArgKind]] = None,
-        arg_names: Optional[List[Optional[str]]] = None,
+        arg_kinds: list[ArgKind] | None = None,
+        arg_names: list[str | None] | None = None,
     ) -> Value:
         return self.builder.gen_method_call(
             base, name, arg_values, result_type, line, arg_kinds, arg_names, self.can_borrow
@@ -353,7 +351,7 @@ class IRBuilder:
     def load_module(self, name: str) -> Value:
         return self.builder.load_module(name)
 
-    def call_c(self, desc: CFunctionDescription, args: List[Value], line: int) -> Value:
+    def call_c(self, desc: CFunctionDescription, args: list[Value], line: int) -> Value:
         return self.builder.call_c(desc, args, line)
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
@@ -368,7 +366,7 @@ class IRBuilder:
     def builtin_len(self, val: Value, line: int) -> Value:
         return self.builder.builtin_len(val, line)
 
-    def new_tuple(self, items: List[Value], line: int) -> Value:
+    def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
 
     # Helpers for IR building
@@ -381,7 +379,7 @@ class IRBuilder:
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
     def gen_import_from(
-        self, id: str, globals_dict: Value, imported: List[str], line: int
+        self, id: str, globals_dict: Value, imported: list[str], line: int
     ) -> Value:
         self.imports[id] = None
 
@@ -465,7 +463,7 @@ class IRBuilder:
         if not block.terminated:
             self.add(Unreachable())
 
-    def disallow_class_assignments(self, lvalues: List[Lvalue], line: int) -> None:
+    def disallow_class_assignments(self, lvalues: list[Lvalue], line: int) -> None:
         # Some best-effort attempts to disallow assigning to class
         # variables that aren't marked ClassVar, since we blatantly
         # miscompile the interaction between instance and class
@@ -488,9 +486,9 @@ class IRBuilder:
         self,
         lvalue: Lvalue,
         rvalue_reg: Value,
-        class_name: Optional[str] = None,
+        class_name: str | None = None,
         *,
-        type_override: Optional[RType] = None,
+        type_override: RType | None = None,
     ) -> None:
         assert isinstance(lvalue, NameExpr)
         assert isinstance(lvalue.node, Var)
@@ -505,7 +503,7 @@ class IRBuilder:
             self.add(InitStatic(coerced, name, self.module_name))
 
     def load_final_static(
-        self, fullname: str, typ: RType, line: int, error_name: Optional[str] = None
+        self, fullname: str, typ: RType, line: int, error_name: str | None = None
     ) -> Value:
         split_name = split_target(self.graph, fullname)
         assert split_name is not None
@@ -518,9 +516,7 @@ class IRBuilder:
             error_msg=f'value for final name "{error_name}" was not set',
         )
 
-    def load_final_literal_value(
-        self, val: Union[int, str, bytes, float, bool], line: int
-    ) -> Value:
+    def load_final_literal_value(self, val: int | str | bytes | float | bool, line: int) -> Value:
         """Load value of a final name or class-level attribute."""
         if isinstance(val, bool):
             if val:
@@ -589,7 +585,7 @@ class IRBuilder:
             return AssignmentTargetAttr(obj, lvalue.name, can_borrow=can_borrow)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
-            star_idx: Optional[int] = None
+            star_idx: int | None = None
             lvalues = []
             for idx, item in enumerate(lvalue.items):
                 targ = self.get_assignment_target(item)
@@ -607,7 +603,7 @@ class IRBuilder:
         assert False, "Unsupported lvalue: %r" % lvalue
 
     def read(
-        self, target: Union[Value, AssignmentTarget], line: int = -1, can_borrow: bool = False
+        self, target: Value | AssignmentTarget, line: int = -1, can_borrow: bool = False
     ) -> Value:
         if isinstance(target, Value):
             return target
@@ -629,9 +625,7 @@ class IRBuilder:
 
         assert False, "Unsupported lvalue: %r" % target
 
-    def assign(
-        self, target: Union[Register, AssignmentTarget], rvalue_reg: Value, line: int
-    ) -> None:
+    def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
             self.add(Assign(target, self.coerce(rvalue_reg, target.type, line)))
         elif isinstance(target, AssignmentTargetRegister):
@@ -800,7 +794,7 @@ class IRBuilder:
         self.assign(target, value, -1)
         return target
 
-    def maybe_spill(self, value: Value) -> Union[Value, AssignmentTarget]:
+    def maybe_spill(self, value: Value) -> Value | AssignmentTarget:
         """
         Moves a given Value instance into the environment class for generator functions. For
         non-generator functions, leaves the Value instance as it is.
@@ -812,7 +806,7 @@ class IRBuilder:
             return self.spill(value)
         return value
 
-    def maybe_spill_assignable(self, value: Value) -> Union[Register, AssignmentTarget]:
+    def maybe_spill_assignable(self, value: Value) -> Register | AssignmentTarget:
         """
         Moves a given Value instance into the environment class for generator functions. For
         non-generator functions, allocate a temporary Register.
@@ -831,7 +825,7 @@ class IRBuilder:
         self.assign(reg, value, -1)
         return reg
 
-    def extract_int(self, e: Expression) -> Optional[int]:
+    def extract_int(self, e: Expression) -> int | None:
         if isinstance(e, IntExpr):
             return e.value
         elif isinstance(e, UnaryExpr) and e.op == "-" and isinstance(e.expr, IntExpr):
@@ -906,7 +900,7 @@ class IRBuilder:
         """Is a type something other than just a class we've created?"""
         return typ.is_named_tuple or typ.is_newtype or typ.typeddict_type is not None
 
-    def get_final_ref(self, expr: MemberExpr) -> Optional[Tuple[str, Var, bool]]:
+    def get_final_ref(self, expr: MemberExpr) -> tuple[str, Var, bool] | None:
         """Check if `expr` is a final attribute.
 
         This needs to be done differently for class and module attributes to
@@ -939,7 +933,7 @@ class IRBuilder:
 
     def emit_load_final(
         self, final_var: Var, fullname: str, name: str, native: bool, typ: Type, line: int
-    ) -> Optional[Value]:
+    ) -> Value | None:
         """Emit code for loading value of a final name (if possible).
 
         Args:
@@ -961,7 +955,7 @@ class IRBuilder:
         return isinstance(expr.expr, RefExpr) and isinstance(expr.expr.node, MypyFile)
 
     def call_refexpr_with_args(
-        self, expr: CallExpr, callee: RefExpr, arg_values: List[Value]
+        self, expr: CallExpr, callee: RefExpr, arg_values: list[Value]
     ) -> Value:
 
         # Handle data-driven special-cased primitive call ops.
@@ -1014,7 +1008,7 @@ class IRBuilder:
 
     # Basic helpers
 
-    def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
+    def flatten_classes(self, arg: RefExpr | TupleExpr) -> list[ClassIR] | None:
         """Flatten classes in isinstance(obj, (A, (B, C))).
 
         If at least one item is not a reference to a native class, return None.
@@ -1026,7 +1020,7 @@ class IRBuilder:
                     return [ir]
             return None
         else:
-            res: List[ClassIR] = []
+            res: list[ClassIR] = []
             for item in arg.items:
                 if isinstance(item, (RefExpr, TupleExpr)):
                     item_part = self.flatten_classes(item)
@@ -1037,7 +1031,7 @@ class IRBuilder:
                     return None
             return res
 
-    def enter(self, fn_info: Union[FuncInfo, str] = "") -> None:
+    def enter(self, fn_info: FuncInfo | str = "") -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
         self.builder = LowLevelIRBuilder(self.current_module, self.mapper, self.options)
@@ -1053,7 +1047,7 @@ class IRBuilder:
             self.nonlocal_control.append(BaseNonlocalControl())
         self.activate_block(BasicBlock())
 
-    def leave(self) -> Tuple[List[Register], List[RuntimeArg], List[BasicBlock], RType, FuncInfo]:
+    def leave(self) -> tuple[list[Register], list[RuntimeArg], list[BasicBlock], RType, FuncInfo]:
         builder = self.builders.pop()
         self.symtables.pop()
         runtime_args = self.runtime_args.pop()
@@ -1070,8 +1064,8 @@ class IRBuilder:
         class_ir: ClassIR,
         name: str,
         ret_type: RType,
-        fn_info: Union[FuncInfo, str] = "",
-        self_type: Optional[RType] = None,
+        fn_info: FuncInfo | str = "",
+        self_type: RType | None = None,
     ) -> Iterator[None]:
         """Generate IR for a method.
 
@@ -1106,7 +1100,7 @@ class IRBuilder:
             class_ir.method_decls[name] = ir.decl
             self.functions.append(ir)
 
-    def add_argument(self, var: Union[str, Var], typ: RType, kind: ArgKind = ARG_POS) -> Register:
+    def add_argument(self, var: str | Var, typ: RType, kind: ArgKind = ARG_POS) -> Register:
         """Declare an argument in the current function.
 
         You should use this instead of directly calling add_local() in new code.
@@ -1155,7 +1149,7 @@ class IRBuilder:
         self.symtables[-1][symbol] = target
         return target
 
-    def type_to_rtype(self, typ: Optional[Type]) -> RType:
+    def type_to_rtype(self, typ: Type | None) -> RType:
         return self.mapper.type_to_rtype(typ)
 
     def node_type(self, node: Expression) -> RType:
@@ -1168,11 +1162,7 @@ class IRBuilder:
         return self.type_to_rtype(mypy_type)
 
     def add_var_to_env_class(
-        self,
-        var: SymbolNode,
-        rtype: RType,
-        base: Union[FuncInfo, ImplicitClass],
-        reassign: bool = False,
+        self, var: SymbolNode, rtype: RType, base: FuncInfo | ImplicitClass, reassign: bool = False
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.indirection import TypeIndirectionVisitor
@@ -212,7 +210,7 @@ class TypeOpsSuite(Suite):
     #   multiple arguments
 
     def assert_expand(
-        self, orig: Type, map_items: List[Tuple[TypeVarId, Type]], result: Type
+        self, orig: Type, map_items: list[tuple[TypeVarId, Type]], result: Type
     ) -> None:
         lower_bounds = {}
 
@@ -591,7 +589,7 @@ class TypeOpsSuite(Suite):
             UnionType([fx.lit_str1, fx.lit_str1_inst]),
         )
 
-    def assert_simplified_union(self, original: List[Type], union: Type) -> None:
+    def assert_simplified_union(self, original: list[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
         assert_equal(make_simplified_union(list(reversed(original))), union)
 
@@ -600,12 +598,12 @@ class TypeOpsSuite(Suite):
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
 
-    def callable(self, vars: List[str], *a: Type) -> CallableType:
+    def callable(self, vars: list[str], *a: Type) -> CallableType:
         """callable(args, a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r and type arguments
         vars.
         """
-        tv: List[TypeVarType] = []
+        tv: list[TypeVarType] = []
         n = -1
         for v in vars:
             tv.append(TypeVarType(v, v, n, [], self.fx.o))
@@ -1277,7 +1275,7 @@ class RemoveLastKnownValueSuite(Suite):
         t = UnionType.make_union([self.fx.ga, self.fx.gb])
         self.assert_union_result(t, [self.fx.ga, self.fx.gb])
 
-    def assert_union_result(self, t: ProperType, expected: List[Type]) -> None:
+    def assert_union_result(self, t: ProperType, expected: list[Type]) -> None:
         t2 = remove_instance_last_known_values(t)
         assert type(t2) is UnionType
         assert t2.items == expected

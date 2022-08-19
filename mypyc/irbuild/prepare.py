@@ -14,7 +14,7 @@ Also build a mapping from mypy TypeInfos to ClassIR objects.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
+from typing import DefaultDict, Iterable, NamedTuple, Tuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -64,9 +64,9 @@ from mypyc.options import CompilerOptions
 
 def build_type_map(
     mapper: Mapper,
-    modules: List[MypyFile],
+    modules: list[MypyFile],
     graph: Graph,
-    types: Dict[Expression, Type],
+    types: dict[Expression, Type],
     options: CompilerOptions,
     errors: Errors,
 ) -> None:
@@ -111,7 +111,7 @@ def is_from_module(node: SymbolNode, module: MypyFile) -> bool:
     return node.fullname == module.fullname + "." + node.name
 
 
-def load_type_map(mapper: Mapper, modules: List[MypyFile], deser_ctx: DeserMaps) -> None:
+def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps) -> None:
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
         for name, node in module.names.items():
@@ -139,7 +139,7 @@ def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:
 
 
 def prepare_func_def(
-    module_name: str, class_name: Optional[str], fdef: FuncDef, mapper: Mapper
+    module_name: str, class_name: str | None, fdef: FuncDef, mapper: Mapper
 ) -> FuncDecl:
     kind = (
         FUNC_STATICMETHOD
@@ -152,7 +152,7 @@ def prepare_func_def(
 
 
 def prepare_method_def(
-    ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Mapper, node: Union[FuncDef, Decorator]
+    ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Mapper, node: FuncDef | Decorator
 ) -> None:
     if isinstance(node, FuncDef):
         ir.method_decls[node.name] = prepare_func_def(module_name, cdef.name, node, mapper)
@@ -358,12 +358,12 @@ RegisterImplInfo = Tuple[TypeInfo, FuncDef]
 
 
 class SingledispatchInfo(NamedTuple):
-    singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]
-    decorators_to_remove: Dict[FuncDef, List[int]]
+    singledispatch_impls: dict[FuncDef, list[RegisterImplInfo]]
+    decorators_to_remove: dict[FuncDef, list[int]]
 
 
 def find_singledispatch_register_impls(
-    modules: List[MypyFile], errors: Errors
+    modules: list[MypyFile], errors: Errors
 ) -> SingledispatchInfo:
     visitor = SingledispatchVisitor(errors)
     for module in modules:
@@ -379,20 +379,20 @@ class SingledispatchVisitor(TraverserVisitor):
         super().__init__()
 
         # Map of main singledispatch function to list of registered implementations
-        self.singledispatch_impls: DefaultDict[FuncDef, List[RegisterImplInfo]] = defaultdict(list)
+        self.singledispatch_impls: DefaultDict[FuncDef, list[RegisterImplInfo]] = defaultdict(list)
 
         # Map of decorated function to the indices of any decorators to remove
-        self.decorators_to_remove: Dict[FuncDef, List[int]] = {}
+        self.decorators_to_remove: dict[FuncDef, list[int]] = {}
 
         self.errors: Errors = errors
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
             decorators_to_store = dec.decorators.copy()
-            decorators_to_remove: List[int] = []
+            decorators_to_remove: list[int] = []
             # the index of the last non-register decorator before finding a register decorator
             # when going through decorators from top to bottom
-            last_non_register: Optional[int] = None
+            last_non_register: int | None = None
             for i, d in enumerate(decorators_to_store):
                 impl = get_singledispatch_register_call_info(d, dec.func)
                 if impl is not None:
@@ -435,7 +435,7 @@ class RegisteredImpl(NamedTuple):
 
 def get_singledispatch_register_call_info(
     decorator: Expression, func: FuncDef
-) -> Optional[RegisteredImpl]:
+) -> RegisteredImpl | None:
     # @fun.register(complex)
     # def g(arg): ...
     if (
@@ -467,7 +467,7 @@ def get_singledispatch_register_call_info(
 
 def registered_impl_from_possible_register_call(
     expr: MemberExpr, dispatch_type: TypeInfo
-) -> Optional[RegisteredImpl]:
+) -> RegisteredImpl | None:
     if expr.name == "register" and isinstance(expr.expr, NameExpr):
         node = expr.expr.node
         if isinstance(node, Decorator):

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from typing import Any, Sequence, Union
 from typing_extensions import Final
 
 from mypyc.common import short_name
@@ -60,7 +60,7 @@ ErrorSource = Union[BasicBlock, Op]
 class IRPrettyPrintVisitor(OpVisitor[str]):
     """Internal visitor that pretty-prints ops."""
 
-    def __init__(self, names: Dict[Value, str]) -> None:
+    def __init__(self, names: dict[Value, str]) -> None:
         # This should contain a name for all values that are shown as
         # registers in the output. This is not just for Register
         # instances -- all Ops that produce values need (generated) names.
@@ -304,7 +304,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return "".join(result)
 
 
-def format_registers(func_ir: FuncIR, names: Dict[Value, str]) -> List[str]:
+def format_registers(func_ir: FuncIR, names: dict[Value, str]) -> list[str]:
     result = []
     i = 0
     regs = all_values_full(func_ir.arg_regs, func_ir.blocks)
@@ -320,16 +320,16 @@ def format_registers(func_ir: FuncIR, names: Dict[Value, str]) -> List[str]:
 
 
 def format_blocks(
-    blocks: List[BasicBlock],
-    names: Dict[Value, str],
-    source_to_error: Dict[ErrorSource, List[str]],
-) -> List[str]:
+    blocks: list[BasicBlock],
+    names: dict[Value, str],
+    source_to_error: dict[ErrorSource, list[str]],
+) -> list[str]:
     """Format a list of IR basic blocks into a human-readable form."""
     # First label all of the blocks
     for i, block in enumerate(blocks):
         block.label = i
 
-    handler_map: Dict[BasicBlock, List[BasicBlock]] = {}
+    handler_map: dict[BasicBlock, list[BasicBlock]] = {}
     for b in blocks:
         if b.error_handler:
             handler_map.setdefault(b.error_handler, []).append(b)
@@ -370,7 +370,7 @@ def format_blocks(
     return lines
 
 
-def format_func(fn: FuncIR, errors: Sequence[Tuple[ErrorSource, str]] = ()) -> List[str]:
+def format_func(fn: FuncIR, errors: Sequence[tuple[ErrorSource, str]] = ()) -> list[str]:
     lines = []
     cls_prefix = fn.class_name + "." if fn.class_name else ""
     lines.append(
@@ -389,7 +389,7 @@ def format_func(fn: FuncIR, errors: Sequence[Tuple[ErrorSource, str]] = ()) -> L
     return lines
 
 
-def format_modules(modules: ModuleIRs) -> List[str]:
+def format_modules(modules: ModuleIRs) -> list[str]:
     ops = []
     for module in modules.values():
         for fn in module.functions:
@@ -398,13 +398,13 @@ def format_modules(modules: ModuleIRs) -> List[str]:
     return ops
 
 
-def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dict[Value, str]:
+def generate_names_for_ir(args: list[Register], blocks: list[BasicBlock]) -> dict[Value, str]:
     """Generate unique names for IR values.
 
     Give names such as 'r5' to temp values in IR which are useful when
     pretty-printing or generating C. Ensure generated names are unique.
     """
-    names: Dict[Value, str] = {}
+    names: dict[Value, str] = {}
     used_names = set()
 
     temp_index = 0

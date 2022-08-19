@@ -8,7 +8,7 @@ import statistics
 import subprocess
 import textwrap
 import time
-from typing import Callable, List, Tuple
+from typing import Callable, Tuple
 
 
 class Command:
@@ -28,7 +28,7 @@ def delete_folder(folder_path: str) -> None:
         shutil.rmtree(folder_path)
 
 
-def execute(command: List[str]) -> None:
+def execute(command: list[str]) -> None:
     proc = subprocess.Popen(
         " ".join(command), stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
     )
@@ -45,7 +45,7 @@ def execute(command: List[str]) -> None:
         raise RuntimeError("Unexpected error from external tool.")
 
 
-def trial(num_trials: int, command: Command) -> List[float]:
+def trial(num_trials: int, command: Command) -> list[float]:
     trials = []
     for i in range(num_trials):
         command.setup()
@@ -56,7 +56,7 @@ def trial(num_trials: int, command: Command) -> List[float]:
     return trials
 
 
-def report(name: str, times: List[float]) -> None:
+def report(name: str, times: list[float]) -> None:
     print(f"{name}:")
     print(f"  Times: {times}")
     print(f"  Mean:  {statistics.mean(times)}")

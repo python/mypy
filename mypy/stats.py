@@ -6,7 +6,7 @@ import os
 import typing
 from collections import Counter
 from contextlib import contextmanager
-from typing import Dict, Iterator, List, Optional, Union, cast
+from typing import Iterator, cast
 from typing_extensions import Final
 
 from mypy import nodes
@@ -74,8 +74,8 @@ class StatisticsVisitor(TraverserVisitor):
         self,
         inferred: bool,
         filename: str,
-        modules: Dict[str, MypyFile],
-        typemap: Optional[Dict[Expression, Type]] = None,
+        modules: dict[str, MypyFile],
+        typemap: dict[Expression, Type] | None = None,
         all_nodes: bool = False,
         visit_untyped_defs: bool = True,
     ) -> None:
@@ -100,10 +100,10 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line = -1
 
-        self.line_map: Dict[int, int] = {}
+        self.line_map: dict[int, int] = {}
 
         self.type_of_any_counter: typing.Counter[int] = Counter()
-        self.any_line_map: Dict[int, List[AnyType]] = {}
+        self.any_line_map: dict[int, list[AnyType]] = {}
 
         # For each scope (top level/function), whether the scope was type checked
         # (annotated function).
@@ -111,7 +111,7 @@ class StatisticsVisitor(TraverserVisitor):
         # TODO: Handle --check-untyped-defs
         self.checked_scopes = [True]
 
-        self.output: List[str] = []
+        self.output: list[str] = []
 
         TraverserVisitor.__init__(self)
 
@@ -126,7 +126,7 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_import_all(self, imp: ImportAll) -> None:
         self.process_import(imp)
 
-    def process_import(self, imp: Union[ImportFrom, ImportAll]) -> None:
+    def process_import(self, imp: ImportFrom | ImportAll) -> None:
         import_id, ok = correct_relative_import(
             self.cur_mod_id, imp.relative, imp.id, self.cur_mod_node.is_package_init_file()
         )
@@ -349,7 +349,7 @@ class StatisticsVisitor(TraverserVisitor):
             kind = TYPE_ANY
         self.record_line(node.line, kind)
 
-    def type(self, t: Optional[Type]) -> None:
+    def type(self, t: Type | None) -> None:
         t = get_proper_type(t)
 
         if not t:
@@ -415,9 +415,9 @@ class StatisticsVisitor(TraverserVisitor):
 def dump_type_stats(
     tree: MypyFile,
     path: str,
-    modules: Dict[str, MypyFile],
+    modules: dict[str, MypyFile],
     inferred: bool = False,
-    typemap: Optional[Dict[Expression, Type]] = None,
+    typemap: dict[Expression, Type] | None = None,
 ) -> None:
     if is_special_module(path):
         return

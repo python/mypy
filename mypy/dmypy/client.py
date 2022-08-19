@@ -14,7 +14,7 @@ import pickle
 import sys
 import time
 import traceback
-from typing import Any, Callable, Dict, List, Mapping, NoReturn, Optional, Tuple
+from typing import Any, Callable, Mapping, NoReturn
 
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
@@ -262,10 +262,8 @@ class BadStatus(Exception):
     - Process whose pid is in the status file does not exist
     """
 
-    pass
 
-
-def main(argv: List[str]) -> None:
+def main(argv: list[str]) -> None:
     """The code is top-down."""
     check_python_version("dmypy")
     args = parser.parse_args(argv)
@@ -548,10 +546,7 @@ def do_inspect(args: argparse.Namespace) -> None:
 
 
 def check_output(
-    response: Dict[str, Any],
-    verbose: bool,
-    junit_xml: Optional[str],
-    perf_stats_file: Optional[str],
+    response: dict[str, Any], verbose: bool, junit_xml: str | None, perf_stats_file: str | None
 ) -> None:
     """Print the output from a check or recheck command.
 
@@ -640,8 +635,8 @@ def do_help(args: argparse.Namespace) -> None:
 
 
 def request(
-    status_file: str, command: str, *, timeout: Optional[int] = None, **kwds: object
-) -> Dict[str, Any]:
+    status_file: str, command: str, *, timeout: int | None = None, **kwds: object
+) -> dict[str, Any]:
     """Send a request to the daemon.
 
     Return the JSON dict with the response.
@@ -653,7 +648,7 @@ def request(
     raised OSError.  This covers cases such as connection refused or
     closed prematurely as well as invalid JSON received.
     """
-    response: Dict[str, str] = {}
+    response: dict[str, str] = {}
     args = dict(kwds)
     args["command"] = command
     # Tell the server whether this request was initiated from a human-facing terminal,
@@ -673,7 +668,7 @@ def request(
         return response
 
 
-def get_status(status_file: str) -> Tuple[int, str]:
+def get_status(status_file: str) -> tuple[int, str]:
     """Read status file and check if the process is alive.
 
     Return (pid, connection_name) on success.
@@ -684,7 +679,7 @@ def get_status(status_file: str) -> Tuple[int, str]:
     return check_status(data)
 
 
-def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
+def check_status(data: dict[str, Any]) -> tuple[int, str]:
     """Check if the process is alive.
 
     Return (pid, connection_name) on success.
@@ -706,7 +701,7 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
     return pid, connection_name
 
 
-def read_status(status_file: str) -> Dict[str, object]:
+def read_status(status_file: str) -> dict[str, object]:
     """Read status file.
 
     Raise BadStatus if the status file doesn't exist or contains

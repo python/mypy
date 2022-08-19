@@ -14,7 +14,7 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Optional
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -80,16 +80,12 @@ Specializer = Callable[["IRBuilder", CallExpr, RefExpr], Optional[Value]]
 #
 # Specializers can operate on methods as well, and are keyed on the
 # name and RType in that case.
-specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
+specializers: dict[tuple[str, RType | None], list[Specializer]] = {}
 
 
 def _apply_specialization(
-    builder: IRBuilder,
-    expr: CallExpr,
-    callee: RefExpr,
-    name: Optional[str],
-    typ: Optional[RType] = None,
-) -> Optional[Value]:
+    builder: IRBuilder, expr: CallExpr, callee: RefExpr, name: str | None, typ: RType | None = None
+) -> Value | None:
     # TODO: Allow special cases to have default args or named args. Currently they don't since
     #       they check that everything in arg_kinds is ARG_POS.
 
@@ -105,21 +101,21 @@ def _apply_specialization(
 
 def apply_function_specialization(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
-) -> Optional[Value]:
+) -> Value | None:
     """Invoke the Specializer callback for a function if one has been registered"""
     return _apply_specialization(builder, expr, callee, callee.fullname)
 
 
 def apply_method_specialization(
-    builder: IRBuilder, expr: CallExpr, callee: MemberExpr, typ: Optional[RType] = None
-) -> Optional[Value]:
+    builder: IRBuilder, expr: CallExpr, callee: MemberExpr, typ: RType | None = None
+) -> Value | None:
     """Invoke the Specializer callback for a method if one has been registered"""
     name = callee.fullname if typ is None else callee.name
     return _apply_specialization(builder, expr, callee, name, typ)
 
 
 def specialize_function(
-    name: str, typ: Optional[RType] = None
+    name: str, typ: RType | None = None
 ) -> Callable[[Specializer], Specializer]:
     """Decorator to register a function as being a specializer.
 
@@ -136,14 +132,14 @@ def specialize_function(
 
 
 @specialize_function("builtins.globals")
-def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 0:
         return builder.load_globals_dict()
     return None
 
 
 @specialize_function("builtins.len")
-def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
         arg = expr.args[0]
         expr_rtype = builder.node_type(arg)
@@ -163,7 +159,7 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Option
 
 
 @specialize_function("builtins.list")
-def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Specialize a common case when list() is called on a dictionary
     view method call.
 
@@ -196,7 +192,7 @@ def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) 
 @specialize_function("builtins.list")
 def translate_list_from_generator_call(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
-) -> Optional[Value]:
+) -> Value | None:
     """Special case for simplest list comprehension.
 
     For example:
@@ -221,7 +217,7 @@ def translate_list_from_generator_call(
 @specialize_function("builtins.tuple")
 def translate_tuple_from_generator_call(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
-) -> Optional[Value]:
+) -> Value | None:
     """Special case for simplest tuple creation from a generator.
 
     For example:
@@ -246,7 +242,7 @@ def translate_tuple_from_generator_call(
 @specialize_function("builtins.set")
 def translate_set_from_generator_call(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
-) -> Optional[Value]:
+) -> Value | None:
     """Special case for set creation from a generator.
 
     For example:
@@ -263,7 +259,7 @@ def translate_set_from_generator_call(
 
 @specialize_function("builtins.min")
 @specialize_function("builtins.max")
-def faster_min_max(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def faster_min_max(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if expr.arg_kinds == [ARG_POS, ARG_POS]:
         x, y = builder.accept(expr.args[0]), builder.accept(expr.args[1])
         result = Register(builder.node_type(expr))
@@ -302,7 +298,7 @@ def faster_min_max(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optio
 @specialize_function("update", set_rprimitive)
 def translate_safe_generator_call(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
-) -> Optional[Value]:
+) -> Value | None:
     """Special cases for things that consume iterators where we know we
     can safely compile a generator into a list.
     """
@@ -337,7 +333,7 @@ def translate_safe_generator_call(
 
 
 @specialize_function("builtins.any")
-def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if (
         len(expr.args) == 1
         and expr.arg_kinds == [ARG_POS]
@@ -348,7 +344,7 @@ def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
 
 
 @specialize_function("builtins.all")
-def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if (
         len(expr.args) == 1
         and expr.arg_kinds == [ARG_POS]
@@ -391,7 +387,7 @@ def any_all_helper(
 
 
 @specialize_function("builtins.sum")
-def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     # specialized implementation is used if:
     # - only one or two arguments given (if not, sum() has been given invalid arguments)
     # - first argument is a Generator (there is no benefit to optimizing the performance of eg.
@@ -433,7 +429,7 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
 @specialize_function("attr.Factory")
 def translate_dataclasses_field_call(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
-) -> Optional[Value]:
+) -> Value | None:
     """Special case for 'dataclasses.field', 'attr.attrib', and 'attr.Factory'
     function calls because the results of such calls are type-checked
     by mypy using the types of the arguments to their respective
@@ -445,7 +441,7 @@ def translate_dataclasses_field_call(
 
 
 @specialize_function("builtins.next")
-def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for calling next() on a generator expression, an
     idiom that shows up some in mypy.
 
@@ -489,7 +485,7 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
 
 @specialize_function("builtins.isinstance")
-def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for builtins.isinstance.
 
     Prevent coercions on the thing we are checking the instance of -
@@ -515,9 +511,7 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
 
 @specialize_function("setdefault", dict_rprimitive)
-def translate_dict_setdefault(
-    builder: IRBuilder, expr: CallExpr, callee: RefExpr
-) -> Optional[Value]:
+def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for 'dict.setdefault' which would only construct
     default empty collection when needed.
 
@@ -563,7 +557,7 @@ def translate_dict_setdefault(
 
 
 @specialize_function("format", str_rprimitive)
-def translate_str_format(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_str_format(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if (
         isinstance(callee, MemberExpr)
         and isinstance(callee.expr, StrExpr)
@@ -583,7 +577,7 @@ def translate_str_format(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
 
 @specialize_function("join", str_rprimitive)
-def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for f-string, which is translated into str.join()
     in mypy AST.
 
@@ -614,7 +608,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Op
                 return None
 
         format_ops = []
-        exprs: List[Expression] = []
+        exprs: list[Expression] = []
 
         for item in expr.args[0].items:
             if isinstance(item, StrExpr) and item.value != "":
