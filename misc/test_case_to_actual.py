@@ -22,7 +22,7 @@ def normalize(lines: Iterator[str]) -> Iterator[str]:
 
 
 def produce_chunks(lines: Iterator[str]) -> Iterator[Chunk]:
-    current_chunk: Chunk = None
+    current_chunk: Chunk | None = None
     for line in normalize(lines):
         if is_header(line):
             if current_chunk is not None:
@@ -30,7 +30,7 @@ def produce_chunks(lines: Iterator[str]) -> Iterator[Chunk]:
             parts = line[1:-1].split(" ", 1)
             args = parts[1] if len(parts) > 1 else ""
             current_chunk = Chunk(parts[0], args)
-        else:
+        elif current_chunk is not None:
             current_chunk.lines.append(line)
     if current_chunk is not None:
         yield current_chunk
