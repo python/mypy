@@ -533,7 +533,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     Return -1 if can't determine the line unambiguously.
     """
     in_desired_section = False
-    try:
+    with contextlib.suppress(OSError):
         results = []
         with open(path, encoding="UTF-8") as f:
             for i, line in enumerate(f):
@@ -545,8 +545,6 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
                     results.append(i + 1)
         if len(results) == 1:
             return results[0]
-    except OSError:
-        pass
     return -1
 
 
@@ -1189,12 +1187,10 @@ def add_catch_all_gitignore(target_dir: str) -> None:
     No-op if the .gitignore already exists.
     """
     gitignore = os.path.join(target_dir, ".gitignore")
-    try:
+    with contextlib.suppress(FileExistsError):
         with open(gitignore, "x") as f:
             print("# Automatically created by mypy", file=f)
             print("*", file=f)
-    except FileExistsError:
-        pass
 
 
 def exclude_from_backups(target_dir: str) -> None:
@@ -1203,7 +1199,7 @@ def exclude_from_backups(target_dir: str) -> None:
     If the CACHEDIR.TAG file exists the function is a no-op.
     """
     cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
-    try:
+    with contextlib.suppress(FileExistsError):
         with open(cachedir_tag, "x") as f:
             f.write(
                 """Signature: 8a477f597d28d172789f06886806bc55
@@ -1211,8 +1207,6 @@ def exclude_from_backups(target_dir: str) -> None:
 # For information about cache directory tags see https://bford.info/cachedir/
 """
             )
-    except FileExistsError:
-        pass
 
 
 def create_metastore(options: Options) -> MetadataStore:

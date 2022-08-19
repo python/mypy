@@ -21,7 +21,7 @@ import types
 import typing
 import typing_extensions
 import warnings
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout, suppress
 from functools import singledispatch
 from pathlib import Path
 from typing import Any, Generic, Iterator, TypeVar, Union, cast
@@ -1427,15 +1427,13 @@ def build_stubs(modules: list[str], options: Options, find_submodules: bool = Fa
             # find submodules via mypy
             all_modules.extend(s.module for s in found_sources if s.module not in all_modules)
             # find submodules via pkgutil
-            try:
+            with suppress(Exception):
                 runtime = silent_import_module(module)
                 all_modules.extend(
                     m.name
                     for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
                     if m.name not in all_modules
                 )
-            except Exception:
-                pass
 
     if sources:
         try:

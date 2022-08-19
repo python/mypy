@@ -12,6 +12,7 @@ import time
 import tokenize
 import typing
 from abc import ABCMeta, abstractmethod
+from contextlib import suppress
 from operator import attrgetter
 from typing import Any, Callable, Dict, Iterator, Tuple, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
@@ -61,10 +62,8 @@ class Reports:
             self.add_report(report_type, report_dir)
 
     def add_report(self, report_type: str, report_dir: str) -> AbstractReporter:
-        try:
+        with suppress(KeyError):
             return self.named_reporters[report_type]
-        except KeyError:
-            pass
         reporter_cls, needs_lxml = reporter_classes[report_type]
         if needs_lxml and not LXML_INSTALLED:
             print(

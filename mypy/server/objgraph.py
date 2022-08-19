@@ -5,6 +5,7 @@ from __future__ import annotations
 import types
 import weakref
 from collections.abc import Iterable
+from contextlib import suppress
 from typing import Iterator, Mapping
 from typing_extensions import Final
 
@@ -43,13 +44,11 @@ def get_edge_candidates(o: object) -> Iterator[tuple[object, object]]:
         return
     if type(o) not in COLLECTION_TYPE_BLACKLIST:
         for attr in dir(o):
-            try:
+            with suppress(AssertionError):
                 if attr not in ATTR_BLACKLIST and hasattr(o, attr) and not isproperty(o, attr):
                     e = getattr(o, attr)
                     if not type(e) in ATOMIC_TYPE_BLACKLIST:
                         yield attr, e
-            except AssertionError:
-                pass
     if isinstance(o, Mapping):
         yield from o.items()
     elif isinstance(o, Iterable) and not isinstance(o, str):

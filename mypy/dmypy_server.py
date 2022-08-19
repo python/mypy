@@ -16,7 +16,7 @@ import subprocess
 import sys
 import time
 import traceback
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout, suppress
 from typing import AbstractSet, Any, Callable, List, Sequence, Tuple
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -232,11 +232,10 @@ class Server:
                                 resp.update(self._response_metadata())
                                 server.write(json.dumps(resp).encode("utf8"))
                                 raise
-                    try:
+                    with suppress(OSError):
+                        # OSError suppressed in case the client hung up
                         resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode("utf8"))
-                    except OSError:
-                        pass  # Maybe the client hung up
                     if command == "stop":
                         reset_global_state()
                         sys.exit(0)
@@ -248,10 +247,8 @@ class Server:
             # status file.)
             if command != "stop":
                 os.unlink(self.status_file)
-            try:
+            with suppress(OSError):
                 server.cleanup()  # try to remove the socket dir on Linux
-            except OSError:
-                pass
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)

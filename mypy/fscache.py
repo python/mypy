@@ -30,6 +30,7 @@ advantage of the benefits.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import stat
 
@@ -71,10 +72,8 @@ class FileSystemCache:
             st = os.stat(path)
         except OSError as err:
             if self.init_under_package_root(path):
-                try:
+                with contextlib.suppress(OSError):
                     return self._fake_init(path)
-                except OSError:
-                    pass
             # Take a copy to get rid of associated traceback and frame objects.
             # Just assigning to __traceback__ doesn't free them.
             self.stat_error_cache[path] = copy_os_error(err)

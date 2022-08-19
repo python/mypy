@@ -10,6 +10,7 @@ import re
 import shutil
 import sys
 import time
+from contextlib import suppress
 from importlib import resources as importlib_resources
 from typing import IO, Callable, Container, Iterable, Sequence, Sized, TypeVar
 from typing_extensions import Final, Literal
@@ -366,17 +367,15 @@ def replace_object_state(
     for attr in get_class_descriptors(old.__class__):
         if attr in skip_slots:
             continue
-        try:
+        with suppress(AttributeError):
+            # There is no way to distinguish getsetdescriptors that allow
+            # writes from ones that don't (I think?), so we just ignore
+            # AttributeErrors if we need to.
+            # TODO: What about getsetdescriptors that act like properties???
             if hasattr(old, attr):
                 setattr(new, attr, getattr(old, attr))
             elif hasattr(new, attr):
                 delattr(new, attr)
-        # There is no way to distinguish getsetdescriptors that allow
-        # writes from ones that don't (I think?), so we just ignore
-        # AttributeErrors if we need to.
-        # TODO: What about getsetdescriptors that act like properties???
-        except AttributeError:
-            pass
 
 
 def is_sub_path(path1: str, path2: str) -> bool:

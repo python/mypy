@@ -14,6 +14,7 @@ import binascii
 import os
 import time
 from abc import abstractmethod
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
@@ -153,10 +154,8 @@ def connect_db(db_file: str) -> sqlite3.Connection:
     db = sqlite3.dbapi2.connect(db_file)
     db.executescript(SCHEMA)
     for migr in MIGRATIONS:
-        try:
+        with suppress(sqlite3.OperationalError):
             db.executescript(migr)
-        except sqlite3.OperationalError:
-            pass
     return db
 
 

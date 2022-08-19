@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import itertools
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Callable, ClassVar, Iterator, List, Optional, Sequence, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias, overload
 
@@ -415,11 +415,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for typ in mypy.checker.flatten(e.args[1]):
                 node = None
                 if isinstance(typ, NameExpr):
-                    try:
-                        node = self.chk.lookup_qualified(typ.name)
-                    except KeyError:
+                    with suppress(KeyError):
                         # Undefined names should already be reported in semantic analysis.
-                        pass
+                        node = self.chk.lookup_qualified(typ.name)
                 if is_expr_literal_type(typ):
                     self.msg.cannot_use_function_with_type(e.callee.name, "Literal", e)
                     continue
