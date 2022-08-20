@@ -106,7 +106,7 @@ async def decorated_host_coroutine(func) -> None:
 # Main driver.
 
 
-def main():
+def main() -> None:
     verbose = "-v" in sys.argv
     for host in [
         plain_host_generator,
