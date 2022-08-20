@@ -761,9 +761,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(", ".join(args))
         self.add(f"){retfield}:")
         if self._include_docstrings and o.docstring:
-            self.add(f'\n{self._indent}    """{o.docstring}"""\n{self._indent}   ')
+            self.add(f'\n{self._indent}    """{o.docstring}"""\n')
+        else:
+            self.add(" ...\n")
 
-        self.add(" ...\n")
         self._state = FUNC
 
     def is_none_expr(self, expr: Expression) -> bool:
@@ -947,7 +948,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if len(self._output) == n:
             if self._state == EMPTY_CLASS and sep is not None:
                 self._output[sep] = ""
-            self._output[-1] = self._output[-1][:-1] + " ...\n"
+            if not (self._include_docstrings and o.docstring):
+                self._output[-1] = self._output[-1][:-1] + " ...\n"
             self._state = EMPTY_CLASS
         else:
             self._state = CLASS

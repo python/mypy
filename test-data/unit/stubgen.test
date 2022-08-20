@@ -2709,9 +2709,13 @@ def f(): ...
 [case testIncludeDocstrings]
 # flags:  --include-docstrings
 class A:
-    """class docstring"""
+    """class docstring
+
+    a multiline docstring"""
     def func():
-        """func docstring"""
+        """func docstring
+        
+        don't forget to indent"""
         ...
     def nodoc():
         ...
@@ -2723,24 +2727,29 @@ class B:
         ...
 [out]
 class A:
-    """class docstring"""
+    """class docstring
+
+    a multiline docstring"""
     def func() -> None:
-        """func docstring"""
-        ...
+        """func docstring
+        
+        don't forget to indent"""
     def nodoc() -> None: ...
 
 class B:
     def func() -> None:
         """func docstring"""
-        ...
     def nodoc() -> None: ...
 
 [case testIgnoreDocstrings]
 class A:
-    """class docstring"""
+    """class docstring
+
+    a multiline docstring"""
     def func():
-        """func docstring"""
-        ...
+        """func docstring
+        
+        don't forget to indent"""
     def nodoc():
         ...
 
