@@ -194,6 +194,7 @@ from mypy.types import (
     TypeTranslator,
     TypeType,
     TypeVarId,
+    TypeVarLikeType,
     TypeVarType,
     UnboundType,
     UninhabitedType,
@@ -3161,7 +3162,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: maybe elsewhere; redundant.
         rvalue_type = get_proper_type(rv_type or self.expr_checker.accept(rvalue))
 
-        if isinstance(rvalue_type, TypeVarType):
+        if isinstance(rvalue_type, TypeVarLikeType):
             rvalue_type = get_proper_type(rvalue_type.upper_bound)
 
         if isinstance(rvalue_type, UnionType):
