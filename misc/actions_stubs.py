@@ -41,7 +41,7 @@ def apply_all(
             break
 
 
-def confirm(resp: bool = False, **kargs) -> bool:
+def confirm(resp: bool = False, **kargs: Any) -> bool:
     kargs["rest"] = "to this {f2}/*{e2}".format(**kargs) if kargs.get("f2") else ""
     prompt = "{act} all files {rec}matching this expression {f1}/*{e1} {rest}".format(**kargs)
     prompt.format(**kargs)

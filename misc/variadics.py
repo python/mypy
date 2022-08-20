@@ -37,7 +37,7 @@ def expand_template(
     print(s)
 
 
-def main():
+def main() -> None:
     prelude(LIMIT, BOUND)
 
     # map()

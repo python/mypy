@@ -45,7 +45,7 @@ import textwrap
 import time
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from typing import Any, Dict, Tuple
-from typing_extensions import TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 CACHE_PATH: Final = ".incremental_checker_cache.json"
 MYPY_REPO_URL: Final = "https://github.com/python/mypy.git"
