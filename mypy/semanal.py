@@ -1215,8 +1215,8 @@ class SemanticAnalyzer(
             self.function_stack.pop()
 
     def check_classvar_in_signature(self, typ: ProperType) -> None:
+        t: ProperType
         if isinstance(typ, Overloaded):
-            t: ProperType
             for t in typ.items:
                 self.check_classvar_in_signature(t)
             return
