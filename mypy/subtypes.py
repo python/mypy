@@ -418,6 +418,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
         # We ignore this for unsafe overload checks, so that and empty list and
         # a list of int will be considered non-overlapping.
+        if isinstance(self.right, UninhabitedType):
+            return True
         return not self.subtype_context.ignore_uninhabited
 
     def visit_erased_type(self, left: ErasedType) -> bool:
