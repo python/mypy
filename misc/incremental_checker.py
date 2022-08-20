@@ -44,7 +44,7 @@ import sys
 import textwrap
 import time
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 CACHE_PATH: Final = ".incremental_checker_cache.json"
@@ -70,7 +70,7 @@ def execute(command: list[str], fail_on_error: bool = True) -> tuple[str, str, i
     proc = subprocess.Popen(
         " ".join(command), stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
     )
-    stdout_bytes, stderr_bytes = proc.communicate()  # type: Tuple[bytes, bytes]
+    stdout_bytes, stderr_bytes = proc.communicate()
     stdout, stderr = stdout_bytes.decode("utf-8"), stderr_bytes.decode("utf-8")
     if fail_on_error and proc.returncode != 0:
         print("EXECUTED COMMAND:", repr(command))

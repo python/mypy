@@ -35,7 +35,6 @@ from typing import (
     Mapping,
     NamedTuple,
     NoReturn,
-    Optional,
     Sequence,
     TextIO,
     TypeVar,
@@ -2490,7 +2489,8 @@ class State:
             line = self.dep_line_map.get(dep, 1)
             try:
                 if dep in self.ancestors:
-                    state, ancestor = None, self  # type: (Optional[State], Optional[State])
+                    state: State | None = None
+                    ancestor: State | None = self
                 else:
                     state, ancestor = self, None
                 # Called just for its side effects of producing diagnostics.

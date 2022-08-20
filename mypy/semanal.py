@@ -51,7 +51,7 @@ Some important properties:
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterable, Iterator, List, Optional, Set, TypeVar, cast
+from typing import Any, Callable, Iterable, Iterator, List, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes, message_registry
@@ -1215,8 +1215,9 @@ class SemanticAnalyzer(
             self.function_stack.pop()
 
     def check_classvar_in_signature(self, typ: ProperType) -> None:
+        t: ProperType
         if isinstance(typ, Overloaded):
-            for t in typ.items:  # type: ProperType
+            for t in typ.items:
                 self.check_classvar_in_signature(t)
             return
         if not isinstance(typ, CallableType):
@@ -1463,7 +1464,8 @@ class SemanticAnalyzer(
         ):
             # Don't reprocess everything. We just need to process methods defined
             # in the named tuple class body.
-            is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
+            is_named_tuple = True
+            info: TypeInfo | None = defn.info
         else:
             is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(
                 defn, self.is_stub_file, self.is_func_scope()
@@ -3149,11 +3151,9 @@ class SemanticAnalyzer(
         res: Type | None = None
         if self.is_none_alias(rvalue):
             res = NoneType()
-            alias_tvars, depends_on, qualified_tvars = (
-                [],
-                set(),
-                [],
-            )  # type: List[str], Set[str], List[str]
+            alias_tvars: list[str] = []
+            depends_on: set[str] = set()
+            qualified_tvars: list[str] = []
         else:
             tag = self.track_incomplete_refs()
             res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(
