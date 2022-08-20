@@ -49,7 +49,7 @@ class Node(xml.dom.Node):
     def __exit__(self, et, ev, tb) -> None: ...
 
 class DocumentFragment(Node):
-    nodeType: Any
+    nodeType: int
     nodeName: str
     nodeValue: Any
     attributes: Any
@@ -59,7 +59,7 @@ class DocumentFragment(Node):
 
 class Attr(Node):
     name: str
-    nodeType: Any
+    nodeType: int
     attributes: Any
     specified: bool
     ownerElement: Any
@@ -114,7 +114,7 @@ class TypeInfo:
     def __init__(self, namespace, name) -> None: ...
 
 class Element(Node):
-    nodeType: Any
+    nodeType: int
     nodeValue: Any
     schemaType: Any
     parentNode: Any
@@ -165,7 +165,7 @@ class Childless:
     def replaceChild(self, newChild, oldChild) -> None: ...
 
 class ProcessingInstruction(Childless, Node):
-    nodeType: Any
+    nodeType: int
     target: Any
     data: Any
     def __init__(self, target, data) -> None: ...
@@ -189,7 +189,7 @@ class CharacterData(Childless, Node):
     def length(self) -> int: ...
 
 class Text(CharacterData):
-    nodeType: Any
+    nodeType: int
     nodeName: str
     attributes: Any
     data: Any
@@ -202,13 +202,13 @@ class Text(CharacterData):
     def wholeText(self) -> str: ...
 
 class Comment(CharacterData):
-    nodeType: Any
+    nodeType: int
     nodeName: str
     def __init__(self, data) -> None: ...
     def writexml(self, writer, indent: str = ..., addindent: str = ..., newl: str = ...) -> None: ...
 
 class CDATASection(Text):
-    nodeType: Any
+    nodeType: int
     nodeName: str
     def writexml(self, writer, indent: str = ..., addindent: str = ..., newl: str = ...) -> None: ...
 
@@ -231,7 +231,7 @@ class Identified:
     systemId: Any
 
 class DocumentType(Identified, Childless, Node):
-    nodeType: Any
+    nodeType: int
     nodeValue: Any
     name: Any
     internalSubset: Any
@@ -244,7 +244,7 @@ class DocumentType(Identified, Childless, Node):
 
 class Entity(Identified, Node):
     attributes: Any
-    nodeType: Any
+    nodeType: int
     nodeValue: Any
     actualEncoding: Any
     encoding: Any
@@ -259,7 +259,7 @@ class Entity(Identified, Node):
     def replaceChild(self, newChild, oldChild) -> None: ...
 
 class Notation(Identified, Childless, Node):
-    nodeType: Any
+    nodeType: int
     nodeValue: Any
     nodeName: Any
     def __init__(self, name, publicId, systemId) -> None: ...
@@ -282,7 +282,7 @@ class ElementInfo:
 
 class Document(Node, DocumentLS):
     implementation: Any
-    nodeType: Any
+    nodeType: int
     nodeName: str
     nodeValue: Any
     attributes: Any
