@@ -14,7 +14,7 @@ Also build a mapping from mypy TypeInfos to ClassIR objects.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict, Iterable, NamedTuple, Tuple
+from typing import Iterable, NamedTuple, Tuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -379,7 +379,7 @@ class SingledispatchVisitor(TraverserVisitor):
         super().__init__()
 
         # Map of main singledispatch function to list of registered implementations
-        self.singledispatch_impls: DefaultDict[FuncDef, list[RegisterImplInfo]] = defaultdict(list)
+        self.singledispatch_impls: defaultdict[FuncDef, list[RegisterImplInfo]] = defaultdict(list)
 
         # Map of decorated function to the indices of any decorators to remove
         self.decorators_to_remove: dict[FuncDef, list[int]] = {}

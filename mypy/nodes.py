@@ -10,7 +10,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    DefaultDict,
     Dict,
     Iterator,
     Optional,
@@ -306,7 +305,7 @@ class MypyFile(SymbolNode):
     # Top-level definitions and statements
     defs: list[Statement]
     # Type alias dependencies as mapping from target to set of alias full names
-    alias_deps: DefaultDict[str, set[str]]
+    alias_deps: defaultdict[str, set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom: bool
     names: SymbolTable
