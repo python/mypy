@@ -262,8 +262,8 @@ def generate_c_function_stub(
                         ret=strip_or_import(signature.ret_type, module, imports),
                     )
                 )
-                output.append('    """{docstr}"""'.format(docstr=docstr.strip()))
-                output.append("    ...")
+                docstr_indented = "\n    ".join(docstr.strip().split("\n"))
+                output.extend(f'    """{docstr_indented}"""'.split("\n"))
             else:
                 output.append(
                     "def {function}({args}) -> {ret}: ...".format(
