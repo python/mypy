@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import typing
 from collections import Counter
 from contextlib import contextmanager
 from typing import Iterator, cast
@@ -102,7 +101,7 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line_map: dict[int, int] = {}
 
-        self.type_of_any_counter: typing.Counter[int] = Counter()
+        self.type_of_any_counter: Counter[int] = Counter()
         self.any_line_map: dict[int, list[AnyType]] = {}
 
         # For each scope (top level/function), whether the scope was type checked
