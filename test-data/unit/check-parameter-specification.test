@@ -1092,3 +1092,23 @@ def func(callback: Callable[P, str]) -> Callable[P, str]:
         return 'baz'
     return inner
 [builtins fixtures/paramspec.pyi]
+
+[case testUnpackingParamsSpecArgsAndKwargs]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+def func(callback: Callable[P, str]) -> Callable[P, str]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> str:
+        a, *b = args
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.object]"
+        c, *d = kwargs
+        reveal_type(c)  # N: Revealed type is "builtins.str"
+        reveal_type(d)  # N: Revealed type is "builtins.list[builtins.str]"
+        e = {**kwargs}
+        reveal_type(e)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+        return "foo"
+    return inner
+[builtins fixtures/paramspec.pyi]
