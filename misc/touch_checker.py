@@ -79,7 +79,7 @@ def make_change_wrappers(filename: str) -> tuple[Command, Command]:
             stream.write(copy)
 
         # Re-run to reset cache
-        execute(["python3", "-m", "mypy", "-i", "mypy"]),
+        execute(["python3", "-m", "mypy", "-i", "mypy"])
 
     return setup, teardown
 

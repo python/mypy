@@ -9,6 +9,7 @@ from mypy.nodes import (
     Block,
     CallExpr,
     ClassDef,
+    Decorator,
     Expression,
     FuncDef,
     JsonDict,
@@ -26,6 +27,7 @@ from mypy.types import (
     CallableType,
     Overloaded,
     Type,
+    TypeType,
     TypeVarType,
     deserialize_type,
     get_proper_type,
@@ -102,6 +104,8 @@ def add_method(
     return_type: Type,
     self_type: Type | None = None,
     tvar_def: TypeVarType | None = None,
+    is_classmethod: bool = False,
+    is_staticmethod: bool = False,
 ) -> None:
     """
     Adds a new method to a class.
@@ -115,6 +119,8 @@ def add_method(
         return_type=return_type,
         self_type=self_type,
         tvar_def=tvar_def,
+        is_classmethod=is_classmethod,
+        is_staticmethod=is_staticmethod,
     )
 
 
@@ -126,8 +132,15 @@ def add_method_to_class(
     return_type: Type,
     self_type: Type | None = None,
     tvar_def: TypeVarType | None = None,
+    is_classmethod: bool = False,
+    is_staticmethod: bool = False,
 ) -> None:
     """Adds a new method to a class definition."""
+
+    assert not (
+        is_classmethod is True and is_staticmethod is True
+    ), "Can't add a new method that's both staticmethod and classmethod."
+
     info = cls.info
 
     # First remove any previously generated methods with the same name
@@ -137,13 +150,21 @@ def add_method_to_class(
         if sym.plugin_generated and isinstance(sym.node, FuncDef):
             cls.defs.body.remove(sym.node)
 
-    self_type = self_type or fill_typevars(info)
     if isinstance(api, SemanticAnalyzerPluginInterface):
         function_type = api.named_type("builtins.function")
     else:
         function_type = api.named_generic_type("builtins.function", [])
 
-    args = [Argument(Var("self"), self_type, None, ARG_POS)] + args
+    if is_classmethod:
+        self_type = self_type or TypeType(fill_typevars(info))
+        first = [Argument(Var("_cls"), self_type, None, ARG_POS, True)]
+    elif is_staticmethod:
+        first = []
+    else:
+        self_type = self_type or fill_typevars(info)
+        first = [Argument(Var("self"), self_type, None, ARG_POS)]
+    args = first + args
+
     arg_types, arg_names, arg_kinds = [], [], []
     for arg in args:
         assert arg.type_annotation, "All arguments must be fully typed."
@@ -158,6 +179,8 @@ def add_method_to_class(
     func = FuncDef(name, args, Block([PassStmt()]))
     func.info = info
     func.type = set_callable_name(signature, func)
+    func.is_class = is_classmethod
+    func.is_static = is_staticmethod
     func._fullname = info.fullname + "." + name
     func.line = info.line
 
@@ -168,7 +191,21 @@ def add_method_to_class(
         r_name = get_unique_redefinition_name(name, info.names)
         info.names[r_name] = info.names[name]
 
-    info.names[name] = SymbolTableNode(MDEF, func, plugin_generated=True)
+    # Add decorator for is_staticmethod. It's unnecessary for is_classmethod.
+    if is_staticmethod:
+        func.is_decorated = True
+        v = Var(name, func.type)
+        v.info = info
+        v._fullname = func._fullname
+        v.is_staticmethod = True
+        dec = Decorator(func, [], v)
+        dec.line = info.line
+        sym = SymbolTableNode(MDEF, dec)
+    else:
+        sym = SymbolTableNode(MDEF, func)
+    sym.plugin_generated = True
+    info.names[name] = sym
+
     info.defn.defs.body.append(func)
 
 

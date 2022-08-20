@@ -5911,6 +5911,38 @@ tmp/c.py:4: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M'
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 tmp/c.py:7: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M', {'r': Union[..., None], 'x': builtins.int}), None], 'x': builtins.int})"
 
+[case testIncrementalAddClassMethodPlugin]
+# flags: --config-file tmp/mypy.ini
+import b
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py
+
+[file a.py]
+class BaseAddMethod: pass
+
+class MyClass(BaseAddMethod):
+    pass
+
+[file b.py]
+import a
+
+[file b.py.2]
+import a
+
+my_class = a.MyClass()
+reveal_type(a.MyClass.foo_classmethod)
+reveal_type(a.MyClass.foo_staticmethod)
+reveal_type(my_class.foo_classmethod)
+reveal_type(my_class.foo_staticmethod)
+
+[rechecked b]
+[out2]
+tmp/b.py:4: note: Revealed type is "def ()"
+tmp/b.py:5: note: Revealed type is "def (builtins.int) -> builtins.str"
+tmp/b.py:6: note: Revealed type is "def ()"
+tmp/b.py:7: note: Revealed type is "def (builtins.int) -> builtins.str"
 [case testGenericNamedTupleSerialization]
 import b
 [file a.py]

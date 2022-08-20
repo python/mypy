@@ -5988,7 +5988,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             vartype = UnionType(union_list)
         elif isinstance(vartype, TypeType):
             vartype = vartype.item
-        elif isinstance(vartype, Instance) and vartype.type.fullname == "builtins.type":
+        elif isinstance(vartype, Instance) and vartype.type.is_metaclass():
             vartype = self.named_type("builtins.object")
         else:
             # Any other object whose type we don't know precisely

@@ -68,7 +68,7 @@ def process_output(output: str, filename: str, start_line: int) -> tuple[str | N
     return None, True  # finding no reveal_type is an error
 
 
-def main():
+def main() -> None:
     filename, start_line_str, start_col_str, end_line_str, end_col_str, *mypy_and_args = sys.argv[
         1:
     ]
