@@ -197,7 +197,9 @@ def stop_daemon() -> None:
 def load_cache(incremental_cache_path: str = CACHE_PATH) -> JsonDict:
     if os.path.exists(incremental_cache_path):
         with open(incremental_cache_path) as stream:
-            return json.load(stream)
+            cache = json.load(stream)
+            assert isinstance(cache, dict)
+            return cache
     else:
         return {}
 

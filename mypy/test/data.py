@@ -680,7 +680,9 @@ class DataFileCollector(pytest.Collector):
     def from_parent(  # type: ignore[override]
         cls, parent: DataSuiteCollector, *, name: str
     ) -> DataFileCollector:
-        return super().from_parent(parent, name=name)
+        collector = super().from_parent(parent, name=name)
+        assert isinstance(collector, DataFileCollector)
+        return collector
 
     def collect(self) -> Iterator[DataDrivenTestCase]:
         yield from split_test_cases(
