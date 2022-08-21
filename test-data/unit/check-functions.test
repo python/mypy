@@ -2674,3 +2674,13 @@ class A:
     def h(self, *args, **kwargs) -> int: pass   # OK
 [builtins fixtures/property.pyi]
 [out]
+
+[case testSubtypingUnionGenericBounds]
+from typing import Callable, TypeVar, Union, Sequence
+
+TI = TypeVar("TI", bound=int)
+TS = TypeVar("TS", bound=str)
+
+f: Callable[[Sequence[TI]], None]
+g: Callable[[Union[Sequence[TI], Sequence[TS]]], None]
+f = g
