@@ -1774,7 +1774,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if isinstance(original_type, FunctionLike):
                 original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
-                if is_property(original_node):
+                if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
 
             if isinstance(typ, FunctionLike) and is_property(defn):
@@ -1812,7 +1812,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 #
                 pass
             elif (
-                base_attr.node
+                original_node
                 and not self.is_writable_attribute(original_node)
                 and is_subtype(typ, original_type)
             ):
