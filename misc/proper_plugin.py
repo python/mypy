@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Type as typing_Type
+from typing import Callable
 
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin
@@ -161,5 +161,5 @@ def get_proper_type_instance(ctx: FunctionContext) -> Instance:
     return Instance(proper_type_info.node, [])
 
 
-def plugin(version: str) -> typing_Type[ProperTypePlugin]:
+def plugin(version: str) -> type[ProperTypePlugin]:
     return ProperTypePlugin

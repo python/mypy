@@ -8,7 +8,7 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from typing import Any, Iterable, List, Sequence, Type as TypingType, TypeVar, cast
+from typing import Any, Iterable, List, Sequence, TypeVar, cast
 
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -741,7 +741,7 @@ T = TypeVar("T")
 
 
 def try_getting_literals_from_type(
-    typ: Type, target_literal_type: TypingType[T], target_fullname: str
+    typ: Type, target_literal_type: type[T], target_fullname: str
 ) -> list[T] | None:
     """If the given expression or type corresponds to a Literal or
     union of Literals where the underlying values correspond to the given
