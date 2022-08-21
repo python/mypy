@@ -729,7 +729,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # This is to match the direction the implementation's return
                 # needs to be compatible in.
                 if impl_type.variables:
-                    impl = unify_generic_callable(
+                    impl: CallableType | None = unify_generic_callable(
                         # Normalize both before unifying
                         impl_type.with_unpacked_kwargs(),
                         sig1.with_unpacked_kwargs(),

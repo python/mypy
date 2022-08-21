@@ -263,11 +263,11 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarType,
     UnboundType,
+    UnpackType,
     get_proper_type,
     get_proper_types,
     invalid_recursive_alias,
     is_named_instance,
-    UnpackType,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import (

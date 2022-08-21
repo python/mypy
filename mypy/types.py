@@ -11,6 +11,7 @@ from typing import (
     Dict,
     Iterable,
     NamedTuple,
+    NewType,
     Sequence,
     TypeVar,
     Union,
@@ -1561,6 +1562,9 @@ class Parameters(ProperType):
             return NotImplemented
 
 
+CT = TypeVar("CT", bound="CallableType")
+
+
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (such as function)."""
 
@@ -1658,7 +1662,7 @@ class CallableType(FunctionLike):
         self.unpack_kwargs = unpack_kwargs
 
     def copy_modified(
-        self,
+        self: CT,
         arg_types: Bogus[Sequence[Type]] = _dummy,
         arg_kinds: Bogus[list[ArgKind]] = _dummy,
         arg_names: Bogus[list[str | None]] = _dummy,
@@ -1678,8 +1682,8 @@ class CallableType(FunctionLike):
         type_guard: Bogus[Type | None] = _dummy,
         from_concatenate: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
-    ) -> CallableType:
-        return CallableType(
+    ) -> CT:
+        return type(self)(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
@@ -1894,9 +1898,9 @@ class CallableType(FunctionLike):
                 variables=[*variables, *self.variables],
             )
 
-    def with_unpacked_kwargs(self) -> CallableType:
+    def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
-            return self.copy_modified()
+            return NormalizedCallableType(self.copy_modified())
         last_type = get_proper_type(self.arg_types[-1])
         assert isinstance(last_type, ProperType) and isinstance(last_type, TypedDictType)
         extra_kinds = [
@@ -1906,11 +1910,13 @@ class CallableType(FunctionLike):
         new_arg_kinds = self.arg_kinds[:-1] + extra_kinds
         new_arg_names = self.arg_names[:-1] + list(last_type.items)
         new_arg_types = self.arg_types[:-1] + list(last_type.items.values())
-        return self.copy_modified(
-            arg_kinds=new_arg_kinds,
-            arg_names=new_arg_names,
-            arg_types=new_arg_types,
-            unpack_kwargs=False,
+        return NormalizedCallableType(
+            self.copy_modified(
+                arg_kinds=new_arg_kinds,
+                arg_names=new_arg_names,
+                arg_types=new_arg_types,
+                unpack_kwargs=False,
+            )
         )
 
     def __hash__(self) -> int:
@@ -1989,6 +1995,12 @@ class CallableType(FunctionLike):
             from_concatenate=data["from_concatenate"],
             unpack_kwargs=data["unpack_kwargs"],
         )
+
+
+# This is a little safety net to prevent reckless special-casing of callables
+# that can potentially break Unpack[...] with **kwargs.
+# TODO: use this in more places in checkexpr.py etc?
+NormalizedCallableType = NewType("NormalizedCallableType", CallableType)
 
 
 class Overloaded(FunctionLike):

@@ -932,7 +932,7 @@ class Person(TypedDict, Generic[T]):
 def test(cb: CBPerson[T]) -> T: ...
 
 def foo(*, name: str, value: int) -> None: ...
-reveal_type(test(foo))  # E: Revealed type is "builtins.int"
+reveal_type(test(foo))  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testUnpackKwargsOverload]
