@@ -274,7 +274,7 @@ def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
     return TRUTH_VALUE_UNKNOWN
 
 
-def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int] | tuple[int, ...]:
+def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int, ...]:
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, TupleExpr):
