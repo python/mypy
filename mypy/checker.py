@@ -194,6 +194,7 @@ from mypy.types import (
     TypeTranslator,
     TypeType,
     TypeVarId,
+    TypeVarLikeType,
     TypeVarType,
     UnboundType,
     UninhabitedType,
@@ -3161,6 +3162,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: maybe elsewhere; redundant.
         rvalue_type = get_proper_type(rv_type or self.expr_checker.accept(rvalue))
 
+        if isinstance(rvalue_type, TypeVarLikeType):
+            rvalue_type = get_proper_type(rvalue_type.upper_bound)
+
         if isinstance(rvalue_type, UnionType):
             # If this is an Optional type in non-strict Optional code, unwrap it.
             relevant_items = rvalue_type.relevant_items()
@@ -5985,7 +5989,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             vartype = UnionType(union_list)
         elif isinstance(vartype, TypeType):
             vartype = vartype.item
-        elif isinstance(vartype, Instance) and vartype.type.fullname == "builtins.type":
+        elif isinstance(vartype, Instance) and vartype.type.is_metaclass():
             vartype = self.named_type("builtins.object")
         else:
             # Any other object whose type we don't know precisely

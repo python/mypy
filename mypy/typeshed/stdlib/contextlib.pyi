@@ -1,8 +1,10 @@
+import abc
 import sys
 from _typeshed import Self, StrOrBytesPath
+from abc import abstractmethod
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterator
 from types import TracebackType
-from typing import IO, Any, AsyncContextManager, ContextManager, Generic, Protocol, TypeVar, overload  # noqa: Y022,Y027
+from typing import IO, Any, Generic, Protocol, TypeVar, overload, runtime_checkable
 from typing_extensions import ParamSpec, TypeAlias
 
 __all__ = [
@@ -35,8 +37,21 @@ _P = ParamSpec("_P")
 _ExitFunc: TypeAlias = Callable[[type[BaseException] | None, BaseException | None, TracebackType | None], bool | None]
 _CM_EF = TypeVar("_CM_EF", bound=AbstractContextManager[Any] | _ExitFunc)
 
-AbstractContextManager = ContextManager
-AbstractAsyncContextManager = AsyncContextManager
+@runtime_checkable
+class AbstractContextManager(Protocol[_T_co]):
+    def __enter__(self) -> _T_co: ...
+    @abstractmethod
+    def __exit__(
+        self, __exc_type: type[BaseException] | None, __exc_value: BaseException | None, __traceback: TracebackType | None
+    ) -> bool | None: ...
+
+@runtime_checkable
+class AbstractAsyncContextManager(Protocol[_T_co]):
+    async def __aenter__(self) -> _T_co: ...
+    @abstractmethod
+    async def __aexit__(
+        self, __exc_type: type[BaseException] | None, __exc_value: BaseException | None, __traceback: TracebackType | None
+    ) -> bool | None: ...
 
 class ContextDecorator:
     def __call__(self, func: _F) -> _F: ...
@@ -119,7 +134,9 @@ class _RedirectStream(AbstractContextManager[_T_io]):
 class redirect_stdout(_RedirectStream[_T_io]): ...
 class redirect_stderr(_RedirectStream[_T_io]): ...
 
-class ExitStack:
+# In reality this is a subclass of `AbstractContextManager`;
+# see #7961 for why we don't do that in the stub
+class ExitStack(metaclass=abc.ABCMeta):
     def __init__(self) -> None: ...
     def enter_context(self, cm: AbstractContextManager[_T]) -> _T: ...
     def push(self, exit: _CM_EF) -> _CM_EF: ...
@@ -134,7 +151,9 @@ class ExitStack:
 _ExitCoroFunc: TypeAlias = Callable[[type[BaseException] | None, BaseException | None, TracebackType | None], Awaitable[bool]]
 _ACM_EF = TypeVar("_ACM_EF", bound=AbstractAsyncContextManager[Any] | _ExitCoroFunc)
 
-class AsyncExitStack:
+# In reality this is a subclass of `AbstractAsyncContextManager`;
+# see #7961 for why we don't do that in the stub
+class AsyncExitStack(metaclass=abc.ABCMeta):
     def __init__(self) -> None: ...
     def enter_context(self, cm: AbstractContextManager[_T]) -> _T: ...
     async def enter_async_context(self, cm: AbstractAsyncContextManager[_T]) -> _T: ...

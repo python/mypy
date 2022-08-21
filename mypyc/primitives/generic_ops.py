@@ -334,3 +334,19 @@ next_raw_op = custom_op(
     c_function_name="CPyIter_Next",
     error_kind=ERR_NEVER,
 )
+
+# this would be aiter(obj) if it existed
+aiter_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_GetAIter",
+    error_kind=ERR_MAGIC,
+)
+
+# this would be anext(obj) if it existed
+anext_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_GetANext",
+    error_kind=ERR_MAGIC,
+)

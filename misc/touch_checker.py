@@ -10,7 +10,7 @@ import subprocess
 import sys
 import textwrap
 import time
-from typing import Callable, Tuple
+from typing import Callable
 
 
 def print_offset(text: str, indent_length: int = 4) -> None:
@@ -28,7 +28,7 @@ def execute(command: list[str]) -> None:
     proc = subprocess.Popen(
         " ".join(command), stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
     )
-    stdout_bytes, stderr_bytes = proc.communicate()  # type: Tuple[bytes, bytes]
+    stdout_bytes, stderr_bytes = proc.communicate()
     stdout, stderr = stdout_bytes.decode("utf-8"), stderr_bytes.decode("utf-8")
     if proc.returncode != 0:
         print("EXECUTED COMMAND:", repr(command))
@@ -79,7 +79,7 @@ def make_change_wrappers(filename: str) -> tuple[Command, Command]:
             stream.write(copy)
 
         # Re-run to reset cache
-        execute(["python3", "-m", "mypy", "-i", "mypy"]),
+        execute(["python3", "-m", "mypy", "-i", "mypy"])
 
     return setup, teardown
 
