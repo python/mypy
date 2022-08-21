@@ -347,9 +347,35 @@ def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list
                     merged_option = None
                 merged_options.append(merged_option)
             return any_constraints(list(merged_options), eager)
+
+    # If normal logic didn't work, try excluding trivially unsatisfiable constraint (due to
+    # upper bounds) from each option, and comparing them again.
+    filtered_options = [filter_satisfiable(o) for o in options]
+    if filtered_options != options:
+        return any_constraints(filtered_options, eager=eager)
+
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
     return []
+
+
+def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | None:
+    """Keep only constraints that can possibly be satisfied.
+
+    Currently, we filter out constraints where target is not a subtype of the upper bound.
+    Since those can be never satisfied. We may add more cases in future if it improves type
+    inference.
+    """
+    if not option:
+        return option
+    satisfiable = []
+    for c in option:
+        # TODO: add similar logic for TypeVar values (also in various other places)?
+        if mypy.subtypes.is_subtype(c.target, c.origin_type_var.upper_bound):
+            satisfiable.append(c)
+    if not satisfiable:
+        return None
+    return satisfiable
 
 
 def is_same_constraints(x: list[Constraint], y: list[Constraint]) -> bool:
