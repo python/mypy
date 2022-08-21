@@ -2403,18 +2403,14 @@ def pretty_callable(tp: CallableType) -> str:
         and tp.definition.name is not None
         and hasattr(tp.definition, "arguments")
     ):
-        definition_args = [
-            arg.variable.name for arg in tp.definition.arguments if not arg.pos_only
-        ]
+        definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
         if (
-            definition_args
-            and tp.arg_names != definition_args
-            and len(definition_args) > 0
-            and definition_args[0]
+            len(definition_arg_names) > len(tp.arg_names)
+            and definition_arg_names[0]
         ):
             if s:
                 s = ", " + s
-            s = definition_args[0] + s
+            s = definition_arg_names[0] + s
         s = f"{tp.definition.name}({s})"
     elif tp.name:
         first_arg = tp.def_extras.get("first_arg")
