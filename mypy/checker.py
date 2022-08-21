@@ -1720,8 +1720,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 context = defn.func
 
             # Construct the type of the overriding method.
+            # TODO: this logic is much less complete than similar one in checkmember.py
             if isinstance(defn, (FuncDef, OverloadedFuncDef)):
-                typ: Type = self.function_type(defn)
+                if isinstance(defn, OverloadedFuncDef) and defn.is_property:
+                    # Type for a settable property is stored in a non-trivial way.
+                    first = defn.items[0]
+                    assert isinstance(first, Decorator)
+                    first_type = first.var.type
+                    assert isinstance(first_type, ProperType) and isinstance(first_type, CallableType)
+                    typ: Type = first_type.ret_type
+                else:
+                    typ = self.function_type(defn)
                 override_class_or_static = defn.is_class or defn.is_static
                 override_class = defn.is_class
             else:
@@ -4311,7 +4320,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if len([k for k in sig.arg_kinds if k.is_required()]) > 1:
                     self.msg.fail("Too many arguments for property", e)
             self.check_incompatible_property_override(e)
-        if e.func.info and not e.func.is_dynamic():
+        # For overloaded functions we already checked override for overload as a whole.
+        if e.func.info and not e.func.is_dynamic() and not e.is_overload:
             self.check_method_override(e)
 
         if e.func.info and e.func.name in ("__init__", "__new__"):
