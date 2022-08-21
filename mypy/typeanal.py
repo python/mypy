@@ -838,7 +838,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> Type:
         """Analyze signature argument type for *args and **kwargs argument."""
-        # TODO: Check that suffix and kind match
         if isinstance(t, UnboundType) and t.name and "." in t.name and not t.args:
             components = t.name.split(".")
             sym = self.lookup_qualified(".".join(components[:-1]), t)
@@ -847,8 +846,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if isinstance(tvar_def, ParamSpecType):
                     if kind == ARG_STAR:
                         make_paramspec = paramspec_args
+                        if components[-1] == "kwargs":
+                            self.fail('Use ".args" for "*" argument', t)
                     elif kind == ARG_STAR2:
                         make_paramspec = paramspec_kwargs
+                        if components[-1] == "args":
+                            self.fail('Use ".kwargs" for "**" argument', t)
                     else:
                         assert False, kind
                     return make_paramspec(
