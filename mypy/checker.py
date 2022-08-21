@@ -115,6 +115,7 @@ from mypy.nodes import (
     ReturnStmt,
     StarExpr,
     Statement,
+    SymbolNode,
     SymbolTable,
     SymbolTableNode,
     TempNode,
@@ -1722,22 +1723,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Construct the type of the overriding method.
             # TODO: this logic is much less complete than similar one in checkmember.py
             if isinstance(defn, (FuncDef, OverloadedFuncDef)):
-                if isinstance(defn, OverloadedFuncDef) and defn.is_property:
-                    property_type = get_settable_property_type(defn)
-                    # TODO: are this and below asserts correct, what if decorator was deferred?
-                    assert property_type is not None
-                    typ = property_type
-                else:
-                    typ = self.function_type(defn)
+                typ: Type = self.function_type(defn)
                 override_class_or_static = defn.is_class or defn.is_static
                 override_class = defn.is_class
             else:
                 assert defn.var.is_ready
                 assert defn.var.type is not None
                 typ = defn.var.type
-                if defn.func.is_property:
-                    assert isinstance(typ, ProperType) and isinstance(typ, CallableType)
-                    typ = typ.ret_type
                 override_class_or_static = defn.func.is_class or defn.func.is_static
                 override_class = defn.func.is_class
             typ = get_proper_type(typ)
@@ -1745,15 +1737,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 typ = bind_self(typ, self.scope.active_self_type(), is_classmethod=override_class)
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
-            if isinstance(base_attr.node, OverloadedFuncDef) and base_attr.node.is_property:
-                original_type = get_settable_property_type(base_attr.node)
-            else:
-                original_type = base_attr.type
-            original_type = get_proper_type(original_type)
+            original_type = get_proper_type(base_attr.type)
             original_node = base_attr.node
-            if isinstance(original_node, Decorator) and original_node.func.is_property:
-                if isinstance(original_type, CallableType):
-                    original_type = get_proper_type(original_type.ret_type)
             # `original_type` can be partial if (e.g.) it is originally an
             # instance variable from an `__init__` block that becomes deferred.
             if original_type is None or isinstance(original_type, PartialType):
@@ -1786,15 +1771,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 original_class_or_static = fdef.is_class or fdef.is_static
             else:
                 original_class_or_static = False  # a variable can't be class or static
+
+            if isinstance(original_type, FunctionLike):
+                original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
+                if is_property(original_node):
+                    original_type = get_property_type(original_type)
+
+            if isinstance(typ, FunctionLike) and is_property(defn):
+                typ = get_property_type(typ)
+                if (
+                    isinstance(original_node, Var)
+                    and not original_node.is_final
+                    and (not original_node.is_property or original_node.is_settable_property)
+                    and isinstance(defn, Decorator)
+                ):
+                    # We only give an error where no other similar errors will be given.
+                    self.msg.fail(
+                        "Cannot override writeable attribute with read-only property", defn
+                    )
+
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
-                original = self.bind_and_map_method(base_attr, original_type, defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
                 self.check_override(
                     typ,
-                    original,
+                    original_type,
                     defn.name,
                     name,
                     base.name,
@@ -1810,7 +1813,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 pass
             elif (
                 base_attr.node
-                and not self.is_writable_attribute(base_attr.node)
+                and not self.is_writable_attribute(original_node)
                 and is_subtype(typ, original_type)
             ):
                 # If the attribute is read-only, allow covariance
@@ -6084,6 +6087,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def is_writable_attribute(self, node: Node) -> bool:
         """Check if an attribute is writable"""
         if isinstance(node, Var):
+            if node.is_property and not node.is_settable_property:
+                return False
             return True
         elif isinstance(node, OverloadedFuncDef) and node.is_property:
             first_item = cast(Decorator, node.items[0])
@@ -6991,13 +6996,21 @@ def is_static(func: FuncBase | Decorator) -> bool:
     assert False, f"Unexpected func type: {type(func)}"
 
 
-def get_settable_property_type(defn: OverloadedFuncDef) -> Type | None:
-    assert isinstance(defn.items[0], Decorator)
-    first_type = defn.items[0].var.type
-    if first_type is None:
-        return None
-    assert isinstance(first_type, ProperType) and isinstance(first_type, CallableType)
-    return first_type.ret_type
+def is_property(defn: SymbolNode) -> bool:
+    if isinstance(defn, Decorator):
+        return defn.func.is_property
+    if isinstance(defn, OverloadedFuncDef):
+        if defn.items and isinstance(defn.items[0], Decorator):
+            return defn.items[0].func.is_property
+    return False
+
+
+def get_property_type(t: ProperType) -> ProperType:
+    if isinstance(t, CallableType):
+        return get_proper_type(t.ret_type)
+    if isinstance(t, Overloaded):
+        return get_proper_type(t.items[0].ret_type)
+    return t
 
 
 def is_subtype_no_promote(left: Type, right: Type) -> bool:
