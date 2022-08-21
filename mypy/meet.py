@@ -78,6 +78,10 @@ def meet_types(s: Type, t: Type) -> ProperType:
         return t
     if isinstance(s, UnionType) and not isinstance(t, UnionType):
         s, t = t, s
+
+    # Meets/joins require callable type normalization.
+    s, t = join.normalize_callables(s, t)
+
     return t.accept(TypeMeetVisitor(s))
 
 

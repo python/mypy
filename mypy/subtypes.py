@@ -1249,6 +1249,10 @@ def is_callable_compatible(
         If the 'some_check' function is also symmetric, the two calls would be equivalent
         whether or not we check the args covariantly.
     """
+    # Normalize both types before comparing them.
+    left = left.with_unpacked_kwargs()
+    right = right.with_unpacked_kwargs()
+
     if is_compat_return is None:
         is_compat_return = is_compat
 

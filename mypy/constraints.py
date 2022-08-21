@@ -735,9 +735,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return res
 
     def visit_callable_type(self, template: CallableType) -> list[Constraint]:
+        # Normalize callables before matching against each other.
+        # Note that non-normalized callables can be created in annotations
+        # using e.g. callback protocols.
+        template = template.with_unpacked_kwargs()
         if isinstance(self.actual, CallableType):
             res: list[Constraint] = []
-            cactual = self.actual
+            cactual = self.actual.with_unpacked_kwargs()
             param_spec = template.param_spec()
             if param_spec is None:
                 # FIX verify argument counts
