@@ -5110,7 +5110,7 @@ class SemanticAnalyzer(
                     # This might be something like valid `P.args` or invalid `P.__bound__` access.
                     # Important note that `ParamSpecExpr` is also ignored in other places.
                     # See https://github.com/python/mypy/pull/13468
-                    if isinstance(node, ParamSpecExpr) and part in ('args', 'kwargs'):
+                    if isinstance(node, ParamSpecExpr) and part in ("args", "kwargs"):
                         return None
                     # Lookup through invalid node, such as variable or function
                     nextsym = None
