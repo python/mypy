@@ -6467,3 +6467,29 @@ spam: Callable[..., str] = lambda x, y: 'baz'
 reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
 
 [builtins fixtures/paramspec.pyi]
+
+[case testGenericOverloadOverlapWithType]
+import m
+
+[file m.pyi]
+from typing import TypeVar, Type, overload, Callable
+
+T = TypeVar("T", bound=str)
+@overload
+def foo(x: Type[T] | int) -> int: ...
+@overload
+def foo(x: Callable[[int], bool]) -> str: ...
+
+[case testGenericOverloadOverlapWithCollection]
+import m
+
+[file m.pyi]
+from typing import TypeVar, Sequence, overload, List
+
+T = TypeVar("T", bound=str)
+
+@overload
+def foo(x: List[T]) -> str: ...
+@overload
+def foo(x: Sequence[int]) -> int: ...
+[builtins fixtures/list.pyi]
