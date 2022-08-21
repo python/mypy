@@ -1112,3 +1112,18 @@ def func(callback: Callable[P, str]) -> Callable[P, str]:
         return "foo"
     return inner
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecArgsAndKwargsMissmatch]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P1 = ParamSpec("P1")
+
+def func(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(
+        *args: P1.kwargs,   # E: Use "P1.args" for variadic "*" parameter
+        **kwargs: P1.args,  # E: Use "P1.kwargs" for variadic "**" parameter
+    ) -> str:
+        return "foo"
+    return inner
+[builtins fixtures/paramspec.pyi]
