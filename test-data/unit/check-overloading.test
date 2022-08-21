@@ -6494,22 +6494,7 @@ def foo(x: List[T]) -> str: ...
 def foo(x: Sequence[int]) -> int: ...
 [builtins fixtures/list.pyi]
 
-[case testOverloadPositionalOnlyErrorMessage]
-from typing import overload
-
-@overload
-def foo(a: int, /): ...
-@overload
-def foo(a: str): ...
-def foo(a): ...
-
-foo(a=1)
-[out]
-main:9: error: No overload variant of "foo" matches argument type "int"
-main:9: note: Possible overload variants:
-main:9: note:     def foo(int, /) -> Any
-main:9: note:     def foo(a: str) -> Any
-
+# Also see `check-python38.test` for similar tests with `/` args:
 [case testOverloadPositionalOnlyErrorMessageOldStyle]
 from typing import overload
 
@@ -6525,51 +6510,6 @@ main:9: error: No overload variant of "foo" matches argument type "int"
 main:9: note: Possible overload variants:
 main:9: note:     def foo(int, /) -> Any
 main:9: note:     def foo(a: str) -> Any
-
-[case testOverloadPositionalOnlyErrorMessageMethod]
-from typing import overload
-
-class Some:
-    @overload
-    def foo(self, __a: int): ...
-    @overload
-    def foo(self, a: float, /): ...
-    @overload
-    def foo(self, a: str): ...
-    def foo(self, a): ...
-
-Some().foo(a=1)
-[out]
-main:12: error: No overload variant of "foo" of "Some" matches argument type "int"
-main:12: note: Possible overload variants:
-main:12: note:     def foo(self, int, /) -> Any
-main:12: note:     def foo(self, float, /) -> Any
-main:12: note:     def foo(self, a: str) -> Any
-
-[case testOverloadPositionalOnlyErrorMessageClassMethod]
-from typing import overload
-
-class Some:
-    @overload
-    @classmethod
-    def foo(cls, __a: int): ...
-    @overload
-    @classmethod
-    def foo(cls, a: float, /): ...
-    @overload
-    @classmethod
-    def foo(cls, a: str): ...
-    @classmethod
-    def foo(cls, a): ...
-
-Some.foo(a=1)
-[builtins fixtures/classmethod.pyi]
-[out]
-main:16: error: No overload variant of "foo" of "Some" matches argument type "int"
-main:16: note: Possible overload variants:
-main:16: note:     def foo(cls, int, /) -> Any
-main:16: note:     def foo(cls, float, /) -> Any
-main:16: note:     def foo(cls, a: str) -> Any
 
 [case testOverloadUnionGenericBounds]
 from typing import overload, TypeVar, Sequence, Union

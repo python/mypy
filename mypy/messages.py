@@ -2377,6 +2377,7 @@ def pretty_callable(tp: CallableType) -> str:
     """
     s = ""
     asterisk = False
+    slash = False
     for i in range(len(tp.arg_types)):
         if s:
             s += ", "
@@ -2394,8 +2395,17 @@ def pretty_callable(tp: CallableType) -> str:
         s += format_type_bare(tp.arg_types[i])
         if tp.arg_kinds[i].is_optional():
             s += " = ..."
-        elif tp.arg_kinds[i].is_positional() and name is None:
+        if (
+            not slash
+            and tp.arg_kinds[i].is_positional()
+            and name is None
+            and (
+                i == len(tp.arg_types) - 1
+                or (tp.arg_names[i + 1] is not None or not tp.arg_kinds[i + 1].is_positional())
+            )
+        ):
             s += ", /"
+            slash = True
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
     if (
@@ -2404,10 +2414,7 @@ def pretty_callable(tp: CallableType) -> str:
         and hasattr(tp.definition, "arguments")
     ):
         definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
-        if (
-            len(definition_arg_names) > len(tp.arg_names)
-            and definition_arg_names[0]
-        ):
+        if len(definition_arg_names) > len(tp.arg_names) and definition_arg_names[0]:
             if s:
                 s = ", " + s
             s = definition_arg_names[0] + s
