@@ -847,11 +847,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if isinstance(tvar_def, ParamSpecType):
                     if kind == ARG_STAR:
                         make_paramspec = paramspec_args
-                        if components[-1] == "kwargs":
+                        if components[-1] != "args":
                             self.fail(f'Use "{tvar_name}.args" for variadic "*" parameter', t)
                     elif kind == ARG_STAR2:
                         make_paramspec = paramspec_kwargs
-                        if components[-1] == "args":
+                        if components[-1] != "kwargs":
                             self.fail(f'Use "{tvar_name}.kwargs" for variadic "**" parameter', t)
                     else:
                         assert False, kind
