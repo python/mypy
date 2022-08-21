@@ -34,6 +34,7 @@ from mypy.types import (
     TypeQuery,
     TypeType,
     TypeVarId,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
@@ -73,10 +74,11 @@ class Constraint:
     op = 0  # SUBTYPE_OF or SUPERTYPE_OF
     target: Type
 
-    def __init__(self, type_var: TypeVarId, op: int, target: Type) -> None:
-        self.type_var = type_var
+    def __init__(self, type_var: TypeVarLikeType, op: int, target: Type) -> None:
+        self.type_var = type_var.id
         self.op = op
         self.target = target
+        self.origin_type_var = type_var
 
     def __repr__(self) -> str:
         op_str = "<:"
@@ -190,7 +192,7 @@ def _infer_constraints(template: Type, actual: Type, direction: int) -> list[Con
     #     T :> U2", but they are not equivalent to the constraint solver,
     #     which never introduces new Union types (it uses join() instead).
     if isinstance(template, TypeVarType):
-        return [Constraint(template.id, direction, actual)]
+        return [Constraint(template, direction, actual)]
 
     # Now handle the case of either template or actual being a Union.
     # For a Union to be a subtype of another type, every item of the Union
@@ -286,7 +288,7 @@ def merge_with_any(constraint: Constraint) -> Constraint:
     # TODO: if we will support multiple sources Any, use this here instead.
     any_type = AnyType(TypeOfAny.implementation_artifact)
     return Constraint(
-        constraint.type_var,
+        constraint.origin_type_var,
         constraint.op,
         UnionType.make_union([target, any_type], target.line, target.column),
     )
@@ -560,9 +562,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 suffix.arg_kinds[len(prefix.arg_kinds) :],
                                 suffix.arg_names[len(prefix.arg_names) :],
                             )
-                            res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
                     elif isinstance(tvar, TypeVarTupleType):
                         raise NotImplementedError
 
@@ -583,7 +585,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(template_unpack, TypeVarTupleType):
                             res.append(
                                 Constraint(
-                                    template_unpack.id, SUPERTYPE_OF, TypeList(list(mapped_middle))
+                                    template_unpack, SUPERTYPE_OF, TypeList(list(mapped_middle))
                                 )
                             )
                         elif (
@@ -644,9 +646,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 suffix.arg_kinds[len(prefix.arg_kinds) :],
                                 suffix.arg_names[len(prefix.arg_names) :],
                             )
-                            res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                 return res
             if (
                 template.type.is_protocol
@@ -763,7 +765,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     prefix_len = min(prefix_len, max_prefix_len)
                     res.append(
                         Constraint(
-                            param_spec.id,
+                            param_spec,
                             SUBTYPE_OF,
                             cactual.copy_modified(
                                 arg_types=cactual.arg_types[prefix_len:],
@@ -774,7 +776,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         )
                     )
                 else:
-                    res.append(Constraint(param_spec.id, SUBTYPE_OF, cactual_ps))
+                    res.append(Constraint(param_spec, SUBTYPE_OF, cactual_ps))
 
                 # compare prefixes
                 cactual_prefix = cactual.copy_modified(
@@ -805,7 +807,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             else:
                 res = [
                     Constraint(
-                        param_spec.id,
+                        param_spec,
                         SUBTYPE_OF,
                         callable_with_ellipsis(any_type, any_type, template.fallback),
                     )
@@ -877,7 +879,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         modified_actual = actual.copy_modified(items=list(actual_items))
                     return [
                         Constraint(
-                            type_var=unpacked_type.id, op=self.direction, target=modified_actual
+                            type_var=unpacked_type, op=self.direction, target=modified_actual
                         )
                     ]
 
