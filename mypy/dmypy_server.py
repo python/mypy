@@ -942,7 +942,7 @@ MiB: Final = 2**20
 def get_meminfo() -> dict[str, Any]:
     res: dict[str, Any] = {}
     try:
-        import psutil  # type: ignore  # It's not in typeshed yet
+        import psutil
     except ImportError:
         res["memory_psutil_missing"] = (
             "psutil not found, run pip install mypy[dmypy] "
