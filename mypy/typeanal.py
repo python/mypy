@@ -840,18 +840,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """Analyze signature argument type for *args and **kwargs argument."""
         if isinstance(t, UnboundType) and t.name and "." in t.name and not t.args:
             components = t.name.split(".")
-            sym = self.lookup_qualified(".".join(components[:-1]), t)
+            tvar_name = ".".join(components[:-1])
+            sym = self.lookup_qualified(tvar_name, t)
             if sym is not None and isinstance(sym.node, ParamSpecExpr):
                 tvar_def = self.tvar_scope.get_binding(sym)
                 if isinstance(tvar_def, ParamSpecType):
                     if kind == ARG_STAR:
                         make_paramspec = paramspec_args
                         if components[-1] == "kwargs":
-                            self.fail('Use ".args" for "*" argument', t)
+                            self.fail(f'Use "{tvar_name}.args" for variadic "*" parameter', t)
                     elif kind == ARG_STAR2:
                         make_paramspec = paramspec_kwargs
                         if components[-1] == "args":
-                            self.fail('Use ".kwargs" for "**" argument', t)
+                            self.fail(f'Use "{tvar_name}.kwargs" for variadic "**" parameter', t)
                     else:
                         assert False, kind
                     return make_paramspec(
