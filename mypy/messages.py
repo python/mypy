@@ -2381,6 +2381,7 @@ def pretty_callable(tp: CallableType) -> str:
         if s:
             s += ", "
         if tp.arg_kinds[i].is_named() and not asterisk:
+            print("a")
             s += "*, "
             asterisk = True
         if tp.arg_kinds[i] == ARG_STAR:
@@ -2394,6 +2395,8 @@ def pretty_callable(tp: CallableType) -> str:
         s += format_type_bare(tp.arg_types[i])
         if tp.arg_kinds[i].is_optional():
             s += " = ..."
+        elif tp.arg_kinds[i].is_positional() and name is None:
+            s += ", /"
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
     if (
@@ -2401,7 +2404,9 @@ def pretty_callable(tp: CallableType) -> str:
         and tp.definition.name is not None
         and hasattr(tp.definition, "arguments")
     ):
-        definition_args = [arg.variable.name for arg in tp.definition.arguments]
+        definition_args = [
+            arg.variable.name for arg in tp.definition.arguments if not arg.pos_only
+        ]
         if (
             definition_args
             and tp.arg_names != definition_args
