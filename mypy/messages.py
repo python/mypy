@@ -2381,7 +2381,6 @@ def pretty_callable(tp: CallableType) -> str:
         if s:
             s += ", "
         if tp.arg_kinds[i].is_named() and not asterisk:
-            print("a")
             s += "*, "
             asterisk = True
         if tp.arg_kinds[i] == ARG_STAR:
