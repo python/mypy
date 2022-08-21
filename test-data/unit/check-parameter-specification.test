@@ -1127,3 +1127,38 @@ def func(callback: Callable[P1, str]) -> Callable[P1, str]:
         return "foo"
     return inner
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecTestPropAccess]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P1 = ParamSpec("P1")
+
+def func1(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(
+        *args: P1.typo,  # E: Use "P1.args" for variadic "*" parameter \
+                         # E: Name "P1.typo" is not defined
+        **kwargs: P1.kwargs,
+    ) -> str:
+        return "foo"
+    return inner
+
+def func2(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(
+        *args: P1.args,
+        **kwargs: P1.__bound__,  # E: Use "P1.kwargs" for variadic "**" parameter \
+                                 # E: Name "P1.__bound__" is not defined
+    ) -> str:
+        return "foo"
+    return inner
+
+def func3(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(
+        *args: P1.__bound__,   # E: Use "P1.args" for variadic "*" parameter \
+                               # E: Name "P1.__bound__" is not defined
+        **kwargs: P1.invalid,  # E: Use "P1.kwargs" for variadic "**" parameter \
+                               # E: Name "P1.invalid" is not defined
+    ) -> str:
+        return "foo"
+    return inner
+[builtins fixtures/paramspec.pyi]

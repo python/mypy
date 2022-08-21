@@ -5107,6 +5107,11 @@ class SemanticAnalyzer(
                         if isinstance(typ, AnyType):
                             # Allow access through Var with Any type without error.
                             return self.implicit_symbol(sym, name, parts[i:], typ)
+                    # This might be something like valid `P.args` or invalid `P.__bound__` access.
+                    # Important note that `ParamSpecExpr` is also ignored in other places.
+                    # See https://github.com/python/mypy/pull/13468
+                    if isinstance(node, ParamSpecExpr) and part in ("args", "kwargs"):
+                        return None
                     # Lookup through invalid node, such as variable or function
                     nextsym = None
                 if not nextsym or nextsym.module_hidden:
