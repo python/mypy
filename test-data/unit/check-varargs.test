@@ -970,3 +970,22 @@ def bar(**kwargs: Unpack[Person]) -> None: ...
 reveal_type([foo, bar])  # N: Revealed type is "builtins.list[def (*, name: builtins.str, age: builtins.int)]"
 reveal_type([bar, foo])  # N: Revealed type is "builtins.list[def (*, name: builtins.str, age: builtins.int)]"
 [builtins fixtures/dict.pyi]
+
+[case testUnpackKwargsParamSpec]
+from typing import Callable, Any, TypeVar, List
+from typing_extensions import ParamSpec, Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
+
+@dec
+def g(**kwargs: Unpack[Person]) -> int: ...
+
+reveal_type(g)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> builtins.list[builtins.int]"
+[builtins fixtures/dict.pyi]
