@@ -215,6 +215,7 @@ def is_overlapping_types(
     right: Type,
     ignore_promotions: bool = False,
     prohibit_none_typevar_overlap: bool = False,
+    ignore_uninhabited: bool = False,
 ) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
 
@@ -239,6 +240,7 @@ def is_overlapping_types(
             right,
             ignore_promotions=ignore_promotions,
             prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
+            ignore_uninhabited=ignore_uninhabited,
         )
 
     # We should never encounter this type.
@@ -286,8 +288,10 @@ def is_overlapping_types(
     ):
         return True
 
-    if is_proper_subtype(left, right, ignore_promotions=ignore_promotions) or is_proper_subtype(
-        right, left, ignore_promotions=ignore_promotions
+    if is_proper_subtype(
+        left, right, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
+    ) or is_proper_subtype(
+        right, left, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
     ):
         return True
 
@@ -429,8 +433,10 @@ def is_overlapping_types(
     if isinstance(left, Instance) and isinstance(right, Instance):
         # First we need to handle promotions and structural compatibility for instances
         # that came as fallbacks, so simply call is_subtype() to avoid code duplication.
-        if is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
-            right, left, ignore_promotions=ignore_promotions
+        if is_subtype(
+            left, right, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
+        ) or is_subtype(
+            right, left, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
         ):
             return True
 
@@ -471,7 +477,7 @@ def is_overlapping_types(
     # Note: it's unclear however, whether returning False is the right thing
     # to do when inferring reachability -- see  https://github.com/python/mypy/issues/5529
 
-    assert type(left) != type(right)
+    assert type(left) != type(right), f"{type(left)} vs {type(right)}"
     return False
 
 

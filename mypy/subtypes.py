@@ -68,7 +68,7 @@ IS_SETTABLE: Final = 1
 IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
 
-TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool], bool]
+TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
 
 class SubtypeContext:
@@ -81,6 +81,7 @@ class SubtypeContext:
         ignore_declared_variance: bool = False,
         # Supported for both proper and non-proper
         ignore_promotions: bool = False,
+        ignore_uninhabited: bool = False,
         # Proper subtype flags
         erase_instances: bool = False,
         keep_erased_types: bool = False,
@@ -90,6 +91,7 @@ class SubtypeContext:
         self.ignore_pos_arg_names = ignore_pos_arg_names
         self.ignore_declared_variance = ignore_declared_variance
         self.ignore_promotions = ignore_promotions
+        self.ignore_uninhabited = ignore_uninhabited
         self.erase_instances = erase_instances
         self.keep_erased_types = keep_erased_types
         self.options = options
@@ -116,6 +118,7 @@ def is_subtype(
     ignore_pos_arg_names: bool = False,
     ignore_declared_variance: bool = False,
     ignore_promotions: bool = False,
+    ignore_uninhabited: bool = False,
     options: Options | None = None,
 ) -> bool:
     """Is 'left' subtype of 'right'?
@@ -135,6 +138,7 @@ def is_subtype(
             ignore_pos_arg_names=ignore_pos_arg_names,
             ignore_declared_variance=ignore_declared_variance,
             ignore_promotions=ignore_promotions,
+            ignore_uninhabited=ignore_uninhabited,
             options=options,
         )
     else:
@@ -144,6 +148,7 @@ def is_subtype(
                 ignore_pos_arg_names,
                 ignore_declared_variance,
                 ignore_promotions,
+                ignore_uninhabited,
                 options,
             }
         ), "Don't pass both context and individual flags"
@@ -178,6 +183,7 @@ def is_proper_subtype(
     *,
     subtype_context: SubtypeContext | None = None,
     ignore_promotions: bool = False,
+    ignore_uninhabited: bool = False,
     erase_instances: bool = False,
     keep_erased_types: bool = False,
 ) -> bool:
@@ -193,12 +199,19 @@ def is_proper_subtype(
     if subtype_context is None:
         subtype_context = SubtypeContext(
             ignore_promotions=ignore_promotions,
+            ignore_uninhabited=ignore_uninhabited,
             erase_instances=erase_instances,
             keep_erased_types=keep_erased_types,
         )
     else:
         assert not any(
-            {ignore_promotions, erase_instances, keep_erased_types}
+            {
+                ignore_promotions,
+                ignore_uninhabited,
+                erase_instances,
+                keep_erased_types,
+                ignore_uninhabited,
+            }
         ), "Don't pass both context and individual flags"
     if TypeState.is_assumed_proper_subtype(left, right):
         return True
@@ -216,6 +229,7 @@ def is_equivalent(
     ignore_type_params: bool = False,
     ignore_pos_arg_names: bool = False,
     options: Options | None = None,
+    subtype_context: SubtypeContext | None = None,
 ) -> bool:
     return is_subtype(
         a,
@@ -223,16 +237,20 @@ def is_equivalent(
         ignore_type_params=ignore_type_params,
         ignore_pos_arg_names=ignore_pos_arg_names,
         options=options,
+        subtype_context=subtype_context,
     ) and is_subtype(
         b,
         a,
         ignore_type_params=ignore_type_params,
         ignore_pos_arg_names=ignore_pos_arg_names,
         options=options,
+        subtype_context=subtype_context,
     )
 
 
-def is_same_type(a: Type, b: Type, ignore_promotions: bool = True) -> bool:
+def is_same_type(
+    a: Type, b: Type, ignore_promotions: bool = True, subtype_context: SubtypeContext | None = None
+) -> bool:
     """Are these types proper subtypes of each other?
 
     This means types may have different representation (e.g. an alias, or
@@ -242,8 +260,10 @@ def is_same_type(a: Type, b: Type, ignore_promotions: bool = True) -> bool:
     # considered not the same type (which is the case at runtime).
     # Also Union[bool, int] (if it wasn't simplified before) will be different
     # from plain int, etc.
-    return is_proper_subtype(a, b, ignore_promotions=ignore_promotions) and is_proper_subtype(
-        b, a, ignore_promotions=ignore_promotions
+    return is_proper_subtype(
+        a, b, ignore_promotions=ignore_promotions, subtype_context=subtype_context
+    ) and is_proper_subtype(
+        b, a, ignore_promotions=ignore_promotions, subtype_context=subtype_context
     )
 
 
@@ -307,11 +327,15 @@ def _is_subtype(
     return left.accept(SubtypeVisitor(orig_right, subtype_context, proper_subtype))
 
 
-# TODO: should we pass on the original flags here and in couple other places?
-# This seems logical but was never done in the past for some reasons.
-def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
+def check_type_parameter(
+    lefta: Type, righta: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
+) -> bool:
     def check(left: Type, right: Type) -> bool:
-        return is_proper_subtype(left, right) if proper_subtype else is_subtype(left, right)
+        return (
+            is_proper_subtype(left, right, subtype_context=subtype_context)
+            if proper_subtype
+            else is_subtype(left, right, subtype_context=subtype_context)
+        )
 
     if variance == COVARIANT:
         return check(lefta, righta)
@@ -319,11 +343,18 @@ def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtyp
         return check(righta, lefta)
     else:
         if proper_subtype:
-            return is_same_type(lefta, righta)
-        return is_equivalent(lefta, righta)
+            # We pass ignore_promotions=False because it is a default for subtype checks.
+            # The actual value will be taken from the subtype_context, and it is whatever
+            # the original caller passed.
+            return is_same_type(
+                lefta, righta, ignore_promotions=False, subtype_context=subtype_context
+            )
+        return is_equivalent(lefta, righta, subtype_context=subtype_context)
 
 
-def ignore_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
+def ignore_type_parameter(
+    lefta: Type, righta: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
+) -> bool:
     return True
 
 
@@ -386,7 +417,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
 
     def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
-        return True
+        # We ignore this for unsafe overload checks, so that and empty list and
+        # a list of int will be considered non-overlapping.
+        if isinstance(self.right, UninhabitedType):
+            return True
+        return not self.subtype_context.ignore_uninhabited
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         # This may be encountered during type inference. The result probably doesn't
@@ -522,12 +557,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 for lefta, righta, tvar in type_params:
                     if isinstance(tvar, TypeVarType):
                         if not self.check_type_parameter(
-                            lefta, righta, tvar.variance, self.proper_subtype
+                            lefta, righta, tvar.variance, self.proper_subtype, self.subtype_context
                         ):
                             nominal = False
                     else:
                         if not self.check_type_parameter(
-                            lefta, righta, COVARIANT, self.proper_subtype
+                            lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
                         ):
                             nominal = False
                 if nominal:
@@ -697,6 +732,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if not left.names_are_wider_than(right):
                 return False
             for name, l, r in left.zip(right):
+                # TODO: should we pass on the full subtype_context here and below?
                 if self.proper_subtype:
                     check = is_same_type(l, r)
                 else:
