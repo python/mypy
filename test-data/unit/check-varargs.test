@@ -805,6 +805,50 @@ def foo(name: str, **kwargs: Unpack[Person]) -> None:  # E: Overlap between argu
     ...
 [builtins fixtures/dict.pyi]
 
+[case testUnpackWithDuplicateNamePositionalOnly]
+from typing_extensions import Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
+    ...
+[builtins fixtures/dict.pyi]
+
+[case testUnpackWithDuplicateKeywordKwargs]
+from typing_extensions import Unpack, TypedDict
+from typing import Dict, List
+
+class Spec(TypedDict):
+    args: List[int]
+    kwargs: Dict[int, int]
+def foo(**kwargs: Unpack[Spec]) -> None:  # Allowed
+    ...
+foo(args=[1], kwargs={"2": 3})  # E: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
+[builtins fixtures/dict.pyi]
+
+[case testUnpackKwargsNonIdentifier]
+from typing_extensions import Unpack, TypedDict
+
+Weird = TypedDict("Weird", {"@": int})
+
+def foo(**kwargs: Unpack[Weird]) -> None:
+    reveal_type(kwargs["@"])  # N: Revealed type is "builtins.int"
+foo(**{"@": 42})
+foo(**{"no": "way"})  # E: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testUnpackKwargsEmpty]
+from typing_extensions import Unpack, TypedDict
+
+Empty = TypedDict("Empty", {})
+
+def foo(**kwargs: Unpack[Empty]) -> None:  # N: "foo" defined here
+    reveal_type(kwargs)  # N: Revealed type is "TypedDict('__main__.Empty', {})"
+foo()
+foo(x=1)  # E: Unexpected keyword argument "x" for "foo"
+[builtins fixtures/dict.pyi]
+
 [case testUnpackTypedDictTotality]
 from typing_extensions import Unpack, TypedDict
 
@@ -896,11 +940,34 @@ class Base:
 class SubGood(Base):
     def foo(self, *, name: str, age: int, extra: bool = False) -> None: ...
 class SubBad(Base):
-    def foo(self, *, name: str, age: str) -> None: ...  # E: Signature of "foo" incompatible with supertype "Base" \
+    def foo(self, *, name: str, age: str) -> None: ...  # E: Argument 2 of "foo" is incompatible with supertype "Base"; supertype defines the argument type as "int" \
+    # N: This violates the Liskov substitution principle \
+    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+[builtins fixtures/dict.pyi]
+
+[case testUnpackKwargsOverridesTypedDict]
+from typing_extensions import Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+class PersonExtra(Person, total=False):
+    extra: bool
+
+class Unrelated(TypedDict):
+    baz: int
+
+class Base:
+    def foo(self, **kwargs: Unpack[Person]) -> None: ...
+class SubGood(Base):
+    def foo(self, **kwargs: Unpack[PersonExtra]) -> None: ...
+class SubBad(Base):
+    def foo(self, **kwargs: Unpack[Unrelated]) -> None: ...  # E: Signature of "foo" incompatible with supertype "Base" \
     # N:      Superclass: \
-    # N:          def foo(self, **kwargs: Unpack[Person]) -> None \
+    # N:          def foo(*, name: str, age: int) -> None \
     # N:      Subclass: \
-    # N:          def foo(self, *, name: str, age: str) -> None
+    # N:          def foo(self, *, baz: int) -> None
 [builtins fixtures/dict.pyi]
 
 [case testUnpackKwargsGeneric]
