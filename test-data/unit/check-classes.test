@@ -1897,12 +1897,12 @@ class B(A):
 [out]
 tmp/foo.pyi:5: error: Signature of "__add__" incompatible with supertype "A"
 tmp/foo.pyi:5: note:      Superclass:
-tmp/foo.pyi:5: note:          def __add__(self, int) -> int
+tmp/foo.pyi:5: note:          def __add__(self, int, /) -> int
 tmp/foo.pyi:5: note:      Subclass:
 tmp/foo.pyi:5: note:          @overload
-tmp/foo.pyi:5: note:          def __add__(self, int) -> int
+tmp/foo.pyi:5: note:          def __add__(self, int, /) -> int
 tmp/foo.pyi:5: note:          @overload
-tmp/foo.pyi:5: note:          def __add__(self, str) -> str
+tmp/foo.pyi:5: note:          def __add__(self, str, /) -> str
 tmp/foo.pyi:5: note: Overloaded operator methods cannot have wider argument types in overrides
 
 [case testOperatorMethodOverrideWideningArgumentType]
@@ -2012,16 +2012,16 @@ class B(A):
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
 tmp/foo.pyi:8: note:      Superclass:
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, int) -> A
+tmp/foo.pyi:8: note:          def __add__(self, int, /) -> A
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, str) -> A
+tmp/foo.pyi:8: note:          def __add__(self, str, /) -> A
 tmp/foo.pyi:8: note:      Subclass:
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, int) -> A
+tmp/foo.pyi:8: note:          def __add__(self, int, /) -> A
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, str) -> A
+tmp/foo.pyi:8: note:          def __add__(self, str, /) -> A
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, type) -> A
+tmp/foo.pyi:8: note:          def __add__(self, type, /) -> A
 tmp/foo.pyi:8: note: Overloaded operator methods cannot have wider argument types in overrides
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]

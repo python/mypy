@@ -906,8 +906,8 @@ B() < B()
 A() < object() # E: Unsupported operand types for < ("A" and "object")
 B() < object() # E: No overload variant of "__lt__" of "B" matches argument type "object" \
                # N: Possible overload variants: \
-               # N:     def __lt__(self, B) -> int \
-               # N:     def __lt__(self, A) -> int
+               # N:     def __lt__(self, B, /) -> int \
+               # N:     def __lt__(self, A, /) -> int
 
 [case testOverloadedForwardMethodAndCallingReverseMethod]
 from foo import *
@@ -925,8 +925,8 @@ A() + 1
 A() + B()
 A() + '' # E: No overload variant of "__add__" of "A" matches argument type "str" \
          # N: Possible overload variants: \
-         # N:     def __add__(self, A) -> int \
-         # N:     def __add__(self, int) -> int
+         # N:     def __add__(self, A, /) -> int \
+         # N:     def __add__(self, int, /) -> int
 
 [case testOverrideOverloadSwapped]
 from foo import *
@@ -4738,12 +4738,12 @@ reveal_type(actually_b + Other())               # Note
 [out]
 main:12: error: Signature of "__add__" incompatible with supertype "A"
 main:12: note:      Superclass:
-main:12: note:          def __add__(self, A) -> A
+main:12: note:          def __add__(self, A, /) -> A
 main:12: note:      Subclass:
 main:12: note:          @overload
-main:12: note:          def __add__(self, Other) -> B
+main:12: note:          def __add__(self, Other, /) -> B
 main:12: note:          @overload
-main:12: note:          def __add__(self, A) -> A
+main:12: note:          def __add__(self, A, /) -> A
 main:12: note: Overloaded operator methods cannot have wider argument types in overrides
 main:32: note: Revealed type is "__main__.Other"
 
@@ -6493,6 +6493,23 @@ def foo(x: List[T]) -> str: ...
 @overload
 def foo(x: Sequence[int]) -> int: ...
 [builtins fixtures/list.pyi]
+
+# Also see `check-python38.test` for similar tests with `/` args:
+[case testOverloadPositionalOnlyErrorMessageOldStyle]
+from typing import overload
+
+@overload
+def foo(__a: int): ...
+@overload
+def foo(a: str): ...
+def foo(a): ...
+
+foo(a=1)
+[out]
+main:9: error: No overload variant of "foo" matches argument type "int"
+main:9: note: Possible overload variants:
+main:9: note:     def foo(int, /) -> Any
+main:9: note:     def foo(a: str) -> Any
 
 [case testOverloadUnionGenericBounds]
 from typing import overload, TypeVar, Sequence, Union
