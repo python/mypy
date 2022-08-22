@@ -99,12 +99,14 @@ class Point:
     def length(self) -> float: ...
 
 def answer() -> int:
-    """answer() -> int
+    '''answer() -> int
     
-    answer docstring"""
+    answer docstring, with end quote"'''
 def midpoint(left: float, right: float) -> float:
     """midpoint(left: float, right: float) -> float"""
 def sum(arg0: int, arg1: int) -> int:
-    """sum(arg0: int, arg1: int) -> int"""
+    '''sum(arg0: int, arg1: int) -> int
+    
+    multiline docstring test, edge case quotes """\'\'\''''
 def weighted_midpoint(left: float, right: float, alpha: float = ...) -> float:
     """weighted_midpoint(left: float, right: float, alpha: float = 0.5) -> float"""

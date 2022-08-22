@@ -2714,16 +2714,25 @@ class A:
     a multiline docstring"""
     def func():
         """func docstring
-        
         don't forget to indent"""
         ...
     def nodoc():
         ...
 class B:
-    def func():
-        """func docstring"""
+    def quoteA():
+        '''func docstring with quotes"""\\n
+        and an end quote\''''
         ...
-    def nodoc():
+    def quoteB():
+        '''func docstring with quotes"""
+        \'\'\'
+        and an end quote\\"'''
+        ...
+    def quoteC():
+        """func docstring with end quote\\\""""
+        ...
+    def quoteD():
+        r'''raw with quotes\"'''
         ...
 [out]
 class A:
@@ -2732,14 +2741,21 @@ class A:
     a multiline docstring"""
     def func() -> None:
         """func docstring
-        
         don't forget to indent"""
     def nodoc() -> None: ...
 
 class B:
-    def func() -> None:
-        """func docstring"""
-    def nodoc() -> None: ...
+    def quoteA() -> None:
+        '''func docstring with quotes"""\\n
+        and an end quote\''''
+    def quoteB() -> None:
+        '''func docstring with quotes"""
+        \'\'\'
+        and an end quote\\"'''
+    def quoteC() -> None:
+        '''func docstring with end quote\\"'''
+    def quoteD() -> None:
+        '''raw with quotes\\"'''
 
 [case testIgnoreDocstrings]
 class A:

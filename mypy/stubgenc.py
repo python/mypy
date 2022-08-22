@@ -14,6 +14,7 @@ from types import ModuleType
 from typing import Any, Mapping
 from typing_extensions import Final
 
+import mypy.util
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
     ArgSig,
@@ -262,8 +263,9 @@ def generate_c_function_stub(
                         ret=strip_or_import(signature.ret_type, module, imports),
                     )
                 )
-                docstr_indented = "\n    ".join(docstr.strip().split("\n"))
-                output.extend(f'    """{docstr_indented}"""'.split("\n"))
+                docstr_quoted = mypy.util.quote_docstring(docstr.strip())
+                docstr_indented = "\n    ".join(docstr_quoted.split("\n"))
+                output.extend(f"    {docstr_indented}".split("\n"))
             else:
                 output.append(
                     "def {function}({args}) -> {ret}: ...".format(

@@ -761,7 +761,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(", ".join(args))
         self.add(f"){retfield}:")
         if self._include_docstrings and o.docstring:
-            self.add(f'\n{self._indent}    """{o.docstring}"""\n')
+            docstring = mypy.util.quote_docstring(o.docstring)
+            self.add(f"\n{self._indent}    {docstring}\n")
         else:
             self.add(" ...\n")
 
@@ -938,7 +939,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(":\n")
         self._indent += "    "
         if self._include_docstrings and o.docstring:
-            self.add(f'{self._indent}"""{o.docstring}"""\n')
+            docstring = mypy.util.quote_docstring(o.docstring)
+            self.add(f"{self._indent}{docstring}\n")
         n = len(self._output)
         self._vars.append([])
         super().visit_class_def(o)
