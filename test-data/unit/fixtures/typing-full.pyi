@@ -11,6 +11,7 @@ from abc import abstractmethod, ABCMeta
 class GenericMeta(type): pass
 
 def cast(t, o): ...
+def assert_type(o, t): ...
 overload = 0
 Any = 0
 Union = 0
@@ -21,7 +22,6 @@ Protocol = 0
 Tuple = 0
 Callable = 0
 _promote = 0
-NamedTuple = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
@@ -37,6 +37,8 @@ T_contra = TypeVar('T_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
+
+class NamedTuple(tuple[Any, ...]): ...
 
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?

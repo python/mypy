@@ -10,12 +10,29 @@ from _typeshed import (
     StrPath,
 )
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterator, Mapping, Sequence
 from importlib.machinery import ModuleSpec
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
-from typing import IO, Any, BinaryIO, Iterator, Mapping, NoReturn, Protocol, Sequence, Union, overload, runtime_checkable
-from typing_extensions import Literal
+from typing import IO, Any, BinaryIO, NoReturn, Protocol, overload, runtime_checkable
+from typing_extensions import Literal, TypeAlias
 
-_Path = Union[bytes, str]
+if sys.version_info >= (3, 11):
+    __all__ = [
+        "Loader",
+        "Finder",
+        "MetaPathFinder",
+        "PathEntryFinder",
+        "ResourceLoader",
+        "InspectLoader",
+        "ExecutionLoader",
+        "FileLoader",
+        "SourceLoader",
+        "ResourceReader",
+        "Traversable",
+        "TraversableResources",
+    ]
+
+_Path: TypeAlias = bytes | str
 
 class Finder(metaclass=ABCMeta): ...
 
@@ -68,9 +85,6 @@ class Loader(metaclass=ABCMeta):
     # but expected in new code.
     def exec_module(self, module: types.ModuleType) -> None: ...
 
-class _LoaderProtocol(Protocol):
-    def load_module(self, fullname: str) -> types.ModuleType: ...
-
 class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     name: str
     path: _Path
@@ -79,20 +93,20 @@ class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     def get_filename(self, name: str | None = ...) -> _Path: ...
     def load_module(self, name: str | None = ...) -> types.ModuleType: ...
 
-if sys.version_info >= (3, 7):
-    class ResourceReader(metaclass=ABCMeta):
+class ResourceReader(metaclass=ABCMeta):
+    @abstractmethod
+    def open_resource(self, resource: StrOrBytesPath) -> IO[bytes]: ...
+    @abstractmethod
+    def resource_path(self, resource: StrOrBytesPath) -> str: ...
+    if sys.version_info >= (3, 10):
         @abstractmethod
-        def open_resource(self, resource: StrOrBytesPath) -> IO[bytes]: ...
+        def is_resource(self, path: str) -> bool: ...
+    else:
         @abstractmethod
-        def resource_path(self, resource: StrOrBytesPath) -> str: ...
-        if sys.version_info >= (3, 10):
-            @abstractmethod
-            def is_resource(self, path: str) -> bool: ...
-        else:
-            @abstractmethod
-            def is_resource(self, name: str) -> bool: ...
-        @abstractmethod
-        def contents(self) -> Iterator[str]: ...
+        def is_resource(self, name: str) -> bool: ...
+
+    @abstractmethod
+    def contents(self) -> Iterator[str]: ...
 
 if sys.version_info >= (3, 9):
     @runtime_checkable
@@ -157,7 +171,7 @@ if sys.version_info >= (3, 9):
         @overload
         @abstractmethod
         def open(
-            self, mode: OpenBinaryMode, buffering: int, encoding: None = ..., errors: None = ..., newline: None = ...
+            self, mode: OpenBinaryMode, buffering: int = ..., encoding: None = ..., errors: None = ..., newline: None = ...
         ) -> BinaryIO: ...
         # Fallback if mode is not specified
         @overload
@@ -168,11 +182,12 @@ if sys.version_info >= (3, 9):
         @property
         def name(self) -> str: ...
         @abstractmethod
-        def __truediv__(self, key: StrPath) -> Traversable: ...
+        def __truediv__(self, child: StrPath) -> Traversable: ...
         @abstractmethod
         def read_bytes(self) -> bytes: ...
         @abstractmethod
         def read_text(self, encoding: str | None = ...) -> str: ...
+
     class TraversableResources(ResourceReader):
         @abstractmethod
         def files(self) -> Traversable: ...

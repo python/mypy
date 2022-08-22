@@ -1,9 +1,9 @@
 import importlib.abc
 import importlib.machinery
-import sys
 import types
 from _typeshed import StrOrBytesPath
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from typing_extensions import ParamSpec
 
 _P = ParamSpec("_P")
@@ -38,5 +38,4 @@ class LazyLoader(importlib.abc.Loader):
     def create_module(self, spec: importlib.machinery.ModuleSpec) -> types.ModuleType | None: ...
     def exec_module(self, module: types.ModuleType) -> None: ...
 
-if sys.version_info >= (3, 7):
-    def source_hash(source_bytes: bytes) -> int: ...
+def source_hash(source_bytes: bytes) -> int: ...

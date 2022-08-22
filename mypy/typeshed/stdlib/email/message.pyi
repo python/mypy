@@ -1,23 +1,26 @@
+from _typeshed import Self
+from collections.abc import Generator, Iterator, Sequence
+from email import _ParamsType, _ParamType
 from email.charset import Charset
 from email.contentmanager import ContentManager
 from email.errors import MessageDefect
 from email.policy import Policy
-from typing import Any, Generator, Iterator, Optional, Sequence, TypeVar, Union
+from typing import Any, TypeVar
+from typing_extensions import TypeAlias
+
+__all__ = ["Message", "EmailMessage"]
 
 _T = TypeVar("_T")
 
-_PayloadType = Union[list[Message], str, bytes]
-_CharsetType = Union[Charset, str, None]
-_ParamsType = Union[str, None, tuple[str, Optional[str], str]]
-_ParamType = Union[str, tuple[Optional[str], Optional[str], str]]
-_HeaderType = Any
+_PayloadType: TypeAlias = list[Message] | str | bytes
+_CharsetType: TypeAlias = Charset | str | None
+_HeaderType: TypeAlias = Any
 
 class Message:
     policy: Policy  # undocumented
     preamble: str | None
     epilogue: str | None
     defects: list[MessageDefect]
-    def __str__(self) -> str: ...
     def is_multipart(self) -> bool: ...
     def set_unixfrom(self, unixfrom: str) -> None: ...
     def get_unixfrom(self) -> str | None: ...
@@ -53,7 +56,7 @@ class Message:
     def set_boundary(self, boundary: str) -> None: ...
     def get_content_charset(self, failobj: _T = ...) -> _T | str: ...
     def get_charsets(self, failobj: _T = ...) -> _T | list[str]: ...
-    def walk(self) -> Generator[Message, None, None]: ...
+    def walk(self: Self) -> Generator[Self, None, None]: ...
     def get_content_disposition(self) -> str | None: ...
     def as_string(self, unixfrom: bool = ..., maxheaderlen: int = ..., policy: Policy | None = ...) -> str: ...
     def as_bytes(self, unixfrom: bool = ..., policy: Policy | None = ...) -> bytes: ...

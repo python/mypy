@@ -1,24 +1,171 @@
-from tkinter import Canvas, Frame, PhotoImage
-from typing import Any, Callable, ClassVar, Sequence, TypeVar, Union, overload
+from _typeshed import Self
+from collections.abc import Callable, Sequence
+from tkinter import Canvas, Frame, Misc, PhotoImage, Scrollbar
+from typing import Any, ClassVar, Union, overload
+from typing_extensions import TypeAlias
+
+__all__ = [
+    "ScrolledCanvas",
+    "TurtleScreen",
+    "Screen",
+    "RawTurtle",
+    "Turtle",
+    "RawPen",
+    "Pen",
+    "Shape",
+    "Vec2D",
+    "addshape",
+    "bgcolor",
+    "bgpic",
+    "bye",
+    "clearscreen",
+    "colormode",
+    "delay",
+    "exitonclick",
+    "getcanvas",
+    "getshapes",
+    "listen",
+    "mainloop",
+    "mode",
+    "numinput",
+    "onkey",
+    "onkeypress",
+    "onkeyrelease",
+    "onscreenclick",
+    "ontimer",
+    "register_shape",
+    "resetscreen",
+    "screensize",
+    "setup",
+    "setworldcoordinates",
+    "textinput",
+    "title",
+    "tracer",
+    "turtles",
+    "update",
+    "window_height",
+    "window_width",
+    "back",
+    "backward",
+    "begin_fill",
+    "begin_poly",
+    "bk",
+    "circle",
+    "clear",
+    "clearstamp",
+    "clearstamps",
+    "clone",
+    "color",
+    "degrees",
+    "distance",
+    "dot",
+    "down",
+    "end_fill",
+    "end_poly",
+    "fd",
+    "fillcolor",
+    "filling",
+    "forward",
+    "get_poly",
+    "getpen",
+    "getscreen",
+    "get_shapepoly",
+    "getturtle",
+    "goto",
+    "heading",
+    "hideturtle",
+    "home",
+    "ht",
+    "isdown",
+    "isvisible",
+    "left",
+    "lt",
+    "onclick",
+    "ondrag",
+    "onrelease",
+    "pd",
+    "pen",
+    "pencolor",
+    "pendown",
+    "pensize",
+    "penup",
+    "pos",
+    "position",
+    "pu",
+    "radians",
+    "right",
+    "reset",
+    "resizemode",
+    "rt",
+    "seth",
+    "setheading",
+    "setpos",
+    "setposition",
+    "settiltangle",
+    "setundobuffer",
+    "setx",
+    "sety",
+    "shape",
+    "shapesize",
+    "shapetransform",
+    "shearfactor",
+    "showturtle",
+    "speed",
+    "st",
+    "stamp",
+    "tilt",
+    "tiltangle",
+    "towards",
+    "turtlesize",
+    "undo",
+    "undobufferentries",
+    "up",
+    "width",
+    "write",
+    "xcor",
+    "ycor",
+    "write_docstringdict",
+    "done",
+    "Terminator",
+]
 
 # Note: '_Color' is the alias we use for arguments and _AnyColor is the
 # alias we use for return types. Really, these two aliases should be the
 # same, but as per the "no union returns" typeshed policy, we'll return
 # Any instead.
-_Color = Union[str, tuple[float, float, float]]
-_AnyColor = Any
+_Color: TypeAlias = Union[str, tuple[float, float, float]]
+_AnyColor: TypeAlias = Any
 
 # TODO: Replace this with a TypedDict once it becomes standardized.
-_PenState = dict[str, Any]
+_PenState: TypeAlias = dict[str, Any]
 
-_Speed = Union[str, float]
-_PolygonCoords = Sequence[tuple[float, float]]
+_Speed: TypeAlias = str | float
+_PolygonCoords: TypeAlias = Sequence[tuple[float, float]]
 
-# TODO: Type this more accurately
-# Vec2D is actually a custom subclass of 'tuple'.
-Vec2D = tuple[float, float]
+class Vec2D(tuple[float, float]):
+    def __new__(cls: type[Self], x: float, y: float) -> Self: ...
+    def __add__(self, other: tuple[float, float]) -> Vec2D: ...  # type: ignore[override]
+    @overload  # type: ignore[override]
+    def __mul__(self, other: Vec2D) -> float: ...
+    @overload
+    def __mul__(self, other: float) -> Vec2D: ...
+    def __rmul__(self, other: float) -> Vec2D: ...  # type: ignore[override]
+    def __sub__(self, other: tuple[float, float]) -> Vec2D: ...
+    def __neg__(self) -> Vec2D: ...
+    def __abs__(self) -> float: ...
+    def rotate(self, angle: float) -> Vec2D: ...
 
-class ScrolledCanvas(Frame): ...
+# Does not actually inherit from Canvas, but dynamically gets all methods of Canvas
+class ScrolledCanvas(Canvas, Frame):  # type: ignore[misc]
+    bg: str
+    hscroll: Scrollbar
+    vscroll: Scrollbar
+    def __init__(
+        self, master: Misc | None, width: int = ..., height: int = ..., canvwidth: int = ..., canvheight: int = ...
+    ) -> None: ...
+    canvwidth: int
+    canvheight: int
+    def reset(self, canvwidth: int | None = ..., canvheight: int | None = ..., bg: str | None = ...) -> None: ...
 
 class TurtleScreenBase:
     cv: Canvas
@@ -74,10 +221,10 @@ class TurtleScreen(TurtleScreenBase):
     def window_height(self) -> int: ...
     def getcanvas(self) -> Canvas: ...
     def getshapes(self) -> list[str]: ...
-    def onclick(self, fun: Callable[[float, float], Any], btn: int = ..., add: Any | None = ...) -> None: ...
-    def onkey(self, fun: Callable[[], Any], key: str) -> None: ...
+    def onclick(self, fun: Callable[[float, float], object], btn: int = ..., add: Any | None = ...) -> None: ...
+    def onkey(self, fun: Callable[[], object], key: str) -> None: ...
     def listen(self, xdummy: float | None = ..., ydummy: float | None = ...) -> None: ...
-    def ontimer(self, fun: Callable[[], Any], t: int = ...) -> None: ...
+    def ontimer(self, fun: Callable[[], object], t: int = ...) -> None: ...
     @overload
     def bgpic(self, picname: None = ...) -> str: ...
     @overload
@@ -91,7 +238,7 @@ class TurtleScreen(TurtleScreenBase):
     resetscreen = reset
     clearscreen = clear
     addshape = register_shape
-    def onkeypress(self, fun: Callable[[], Any], key: str | None = ...) -> None: ...
+    def onkeypress(self, fun: Callable[[], object], key: str | None = ...) -> None: ...
     onkeyrelease = onkey
 
 class TNavigator:
@@ -205,8 +352,6 @@ class TPen:
     st = showturtle
     ht = hideturtle
 
-_T = TypeVar("_T")
-
 class RawTurtle(TPen, TNavigator):
     screen: TurtleScreen
     screens: ClassVar[list[TurtleScreen]]
@@ -217,7 +362,7 @@ class RawTurtle(TPen, TNavigator):
     def setundobuffer(self, size: int | None) -> None: ...
     def undobufferentries(self) -> int: ...
     def clear(self) -> None: ...
-    def clone(self: _T) -> _T: ...
+    def clone(self: Self) -> Self: ...
     @overload
     def shape(self, name: None = ...) -> str: ...
     @overload
@@ -262,11 +407,11 @@ class RawTurtle(TPen, TNavigator):
     def end_poly(self) -> None: ...
     def get_poly(self) -> _PolygonCoords | None: ...
     def getscreen(self) -> TurtleScreen: ...
-    def getturtle(self: _T) -> _T: ...
+    def getturtle(self: Self) -> Self: ...
     getpen = getturtle
-    def onclick(self, fun: Callable[[float, float], Any], btn: int = ..., add: bool | None = ...) -> None: ...
-    def onrelease(self, fun: Callable[[float, float], Any], btn: int = ..., add: bool | None = ...) -> None: ...
-    def ondrag(self, fun: Callable[[float, float], Any], btn: int = ..., add: bool | None = ...) -> None: ...
+    def onclick(self, fun: Callable[[float, float], object], btn: int = ..., add: bool | None = ...) -> None: ...
+    def onrelease(self, fun: Callable[[float, float], object], btn: int = ..., add: bool | None = ...) -> None: ...
+    def ondrag(self, fun: Callable[[float, float], object], btn: int = ..., add: bool | None = ...) -> None: ...
     def undo(self) -> None: ...
     turtlesize = shapesize
 
@@ -274,7 +419,11 @@ class _Screen(TurtleScreen):
     def __init__(self) -> None: ...
     # Note int and float are interpreted differently, hence the Union instead of just float
     def setup(
-        self, width: int | float = ..., height: int | float = ..., startx: int | None = ..., starty: int | None = ...
+        self,
+        width: int | float = ...,  # noqa: Y041
+        height: int | float = ...,  # noqa: Y041
+        startx: int | None = ...,
+        starty: int | None = ...,
     ) -> None: ...
     def title(self, titlestring: str) -> None: ...
     def bye(self) -> None: ...
@@ -341,10 +490,10 @@ def window_width() -> int: ...
 def window_height() -> int: ...
 def getcanvas() -> Canvas: ...
 def getshapes() -> list[str]: ...
-def onclick(fun: Callable[[float, float], Any], btn: int = ..., add: Any | None = ...) -> None: ...
-def onkey(fun: Callable[[], Any], key: str) -> None: ...
+def onclick(fun: Callable[[float, float], object], btn: int = ..., add: Any | None = ...) -> None: ...
+def onkey(fun: Callable[[], object], key: str) -> None: ...
 def listen(xdummy: float | None = ..., ydummy: float | None = ...) -> None: ...
-def ontimer(fun: Callable[[], Any], t: int = ...) -> None: ...
+def ontimer(fun: Callable[[], object], t: int = ...) -> None: ...
 @overload
 def bgpic(picname: None = ...) -> str: ...
 @overload
@@ -359,7 +508,7 @@ resetscreen = reset
 clearscreen = clear
 addshape = register_shape
 
-def onkeypress(fun: Callable[[], Any], key: str | None = ...) -> None: ...
+def onkeypress(fun: Callable[[], object], key: str | None = ...) -> None: ...
 
 onkeyrelease = onkey
 
@@ -531,8 +680,8 @@ def getturtle() -> Turtle: ...
 
 getpen = getturtle
 
-def onrelease(fun: Callable[[float, float], Any], btn: int = ..., add: Any | None = ...) -> None: ...
-def ondrag(fun: Callable[[float, float], Any], btn: int = ..., add: Any | None = ...) -> None: ...
+def onrelease(fun: Callable[[float, float], object], btn: int = ..., add: Any | None = ...) -> None: ...
+def ondrag(fun: Callable[[float, float], object], btn: int = ..., add: Any | None = ...) -> None: ...
 def undo() -> None: ...
 
 turtlesize = shapesize

@@ -1,4 +1,5 @@
-from typing import ClassVar, Iterable, NoReturn
+from collections.abc import Iterable
+from typing import ClassVar, NoReturn
 from typing_extensions import Literal
 
 class Quitter:

@@ -1,11 +1,28 @@
 import os
 from _typeshed import BytesPath, StrOrBytesPath, StrPath, SupportsRichComparisonT
-from typing import Sequence, overload
-from typing_extensions import Literal
+from collections.abc import Sequence
+from typing import overload
+from typing_extensions import Literal, LiteralString
+
+__all__ = [
+    "commonprefix",
+    "exists",
+    "getatime",
+    "getctime",
+    "getmtime",
+    "getsize",
+    "isdir",
+    "isfile",
+    "samefile",
+    "sameopenfile",
+    "samestat",
+]
 
 # All overloads can return empty string. Ideally, Literal[""] would be a valid
 # Iterable[T], so that list[T] | Literal[""] could be used as a return
 # type. But because this only works when T is str, we need Sequence[T] instead.
+@overload
+def commonprefix(m: Sequence[LiteralString]) -> LiteralString: ...
 @overload
 def commonprefix(m: Sequence[StrPath]) -> str: ...
 @overload

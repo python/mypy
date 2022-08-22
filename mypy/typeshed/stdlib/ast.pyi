@@ -1,30 +1,29 @@
-# Rename typing to _typing, as not to conflict with typing imported
-# from _ast below when loaded in an unorthodox way by the Dropbox
-# internal Bazel integration.
-
-# The same unorthodox Bazel integration causes issues with sys, which
-# is imported in both modules. unfortunately we can't just rename sys,
-# since mypy only supports version checks with a sys that is named
-# sys.
 import sys
-import typing as _typing
 from _ast import *
-from typing import Any, Iterator, TypeVar, overload
+from collections.abc import Iterator
+from typing import Any, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
-    class Num(Constant):
+    class _ABC(type):
+        if sys.version_info >= (3, 9):
+            def __init__(cls, *args: object) -> None: ...
+
+    class Num(Constant, metaclass=_ABC):
         value: complex
-    class Str(Constant):
+
+    class Str(Constant, metaclass=_ABC):
         value: str
         # Aliases for value, for backwards compatibility
         s: str
-    class Bytes(Constant):
+
+    class Bytes(Constant, metaclass=_ABC):
         value: bytes
         # Aliases for value, for backwards compatibility
         s: bytes
-    class NameConstant(Constant): ...
-    class Ellipsis(Constant): ...
+
+    class NameConstant(Constant, metaclass=_ABC): ...
+    class Ellipsis(Constant, metaclass=_ABC): ...
 
 if sys.version_info >= (3, 9):
     class slice(AST): ...
@@ -88,6 +87,7 @@ class NodeVisitor:
     def visit_Constant(self, node: Constant) -> Any: ...
     if sys.version_info >= (3, 8):
         def visit_NamedExpr(self, node: NamedExpr) -> Any: ...
+
     def visit_Attribute(self, node: Attribute) -> Any: ...
     def visit_Subscript(self, node: Subscript) -> Any: ...
     def visit_Starred(self, node: Starred) -> Any: ...
@@ -162,7 +162,7 @@ if sys.version_info >= (3, 8):
         mode: Literal["exec"] = ...,
         *,
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> Module: ...
     @overload
     def parse(
@@ -171,7 +171,7 @@ if sys.version_info >= (3, 8):
         mode: Literal["eval"],
         *,
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> Expression: ...
     @overload
     def parse(
@@ -180,7 +180,7 @@ if sys.version_info >= (3, 8):
         mode: Literal["func_type"],
         *,
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> FunctionType: ...
     @overload
     def parse(
@@ -189,7 +189,7 @@ if sys.version_info >= (3, 8):
         mode: Literal["single"],
         *,
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> Interactive: ...
     @overload
     def parse(
@@ -197,7 +197,7 @@ if sys.version_info >= (3, 8):
         *,
         mode: Literal["eval"],
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> Expression: ...
     @overload
     def parse(
@@ -205,7 +205,7 @@ if sys.version_info >= (3, 8):
         *,
         mode: Literal["func_type"],
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> FunctionType: ...
     @overload
     def parse(
@@ -213,7 +213,7 @@ if sys.version_info >= (3, 8):
         *,
         mode: Literal["single"],
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> Interactive: ...
     @overload
     def parse(
@@ -222,7 +222,7 @@ if sys.version_info >= (3, 8):
         mode: str = ...,
         *,
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> AST: ...
 
 else:
@@ -256,10 +256,13 @@ def fix_missing_locations(node: _T) -> _T: ...
 def get_docstring(node: AST, clean: bool = ...) -> str | None: ...
 def increment_lineno(node: _T, n: int = ...) -> _T: ...
 def iter_child_nodes(node: AST) -> Iterator[AST]: ...
-def iter_fields(node: AST) -> Iterator[_typing.Tuple[str, Any]]: ...
+def iter_fields(node: AST) -> Iterator[tuple[str, Any]]: ...
 def literal_eval(node_or_string: str | AST) -> Any: ...
 
 if sys.version_info >= (3, 8):
     def get_source_segment(source: str, node: AST, *, padded: bool = ...) -> str | None: ...
 
 def walk(node: AST) -> Iterator[AST]: ...
+
+if sys.version_info >= (3, 9):
+    def main() -> None: ...

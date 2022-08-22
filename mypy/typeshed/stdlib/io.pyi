@@ -1,16 +1,43 @@
+import abc
 import builtins
 import codecs
 import sys
 from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
+from collections.abc import Callable, Iterable, Iterator
 from os import _Opener
 from types import TracebackType
-from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, TextIO, Type
+from typing import IO, Any, BinaryIO, TextIO
+from typing_extensions import Literal
 
-DEFAULT_BUFFER_SIZE: int
+__all__ = [
+    "BlockingIOError",
+    "open",
+    "IOBase",
+    "RawIOBase",
+    "FileIO",
+    "BytesIO",
+    "StringIO",
+    "BufferedIOBase",
+    "BufferedReader",
+    "BufferedWriter",
+    "BufferedRWPair",
+    "BufferedRandom",
+    "TextIOBase",
+    "TextIOWrapper",
+    "UnsupportedOperation",
+    "SEEK_SET",
+    "SEEK_CUR",
+    "SEEK_END",
+]
 
-SEEK_SET: int
-SEEK_CUR: int
-SEEK_END: int
+if sys.version_info >= (3, 8):
+    __all__ += ["open_code"]
+
+DEFAULT_BUFFER_SIZE: Literal[8192]
+
+SEEK_SET: Literal[0]
+SEEK_CUR: Literal[1]
+SEEK_END: Literal[2]
 
 open = builtins.open
 
@@ -21,13 +48,13 @@ BlockingIOError = builtins.BlockingIOError
 
 class UnsupportedOperation(OSError, ValueError): ...
 
-class IOBase:
+class IOBase(metaclass=abc.ABCMeta):
     def __iter__(self) -> Iterator[bytes]: ...
     def __next__(self) -> bytes: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
-    ) -> bool | None: ...
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> None: ...
     def close(self) -> None: ...
     def fileno(self) -> int: ...
     def flush(self) -> None: ...
@@ -84,19 +111,13 @@ class BytesIO(BufferedIOBase, BinaryIO):
     def __enter__(self: Self) -> Self: ...
     def getvalue(self) -> bytes: ...
     def getbuffer(self) -> memoryview: ...
-    if sys.version_info >= (3, 7):
-        def read1(self, __size: int | None = ...) -> bytes: ...
-    else:
-        def read1(self, __size: int | None) -> bytes: ...  # type: ignore[override]
+    def read1(self, __size: int | None = ...) -> bytes: ...
 
 class BufferedReader(BufferedIOBase, BinaryIO):
     def __enter__(self: Self) -> Self: ...
     def __init__(self, raw: RawIOBase, buffer_size: int = ...) -> None: ...
     def peek(self, __size: int = ...) -> bytes: ...
-    if sys.version_info >= (3, 7):
-        def read1(self, __size: int = ...) -> bytes: ...
-    else:
-        def read1(self, __size: int) -> bytes: ...  # type: ignore[override]
+    def read1(self, __size: int = ...) -> bytes: ...
 
 class BufferedWriter(BufferedIOBase, BinaryIO):
     def __enter__(self: Self) -> Self: ...
@@ -107,10 +128,7 @@ class BufferedRandom(BufferedReader, BufferedWriter):
     def __enter__(self: Self) -> Self: ...
     def __init__(self, raw: RawIOBase, buffer_size: int = ...) -> None: ...
     def seek(self, __target: int, __whence: int = ...) -> int: ...
-    if sys.version_info >= (3, 7):
-        def read1(self, __size: int = ...) -> bytes: ...
-    else:
-        def read1(self, __size: int) -> bytes: ...  # type: ignore[override]
+    def read1(self, __size: int = ...) -> bytes: ...
 
 class BufferedRWPair(BufferedIOBase):
     def __init__(self, reader: RawIOBase, writer: RawIOBase, buffer_size: int = ...) -> None: ...
@@ -146,18 +164,17 @@ class TextIOWrapper(TextIOBase, TextIO):
     def closed(self) -> bool: ...
     @property
     def line_buffering(self) -> bool: ...
-    if sys.version_info >= (3, 7):
-        @property
-        def write_through(self) -> bool: ...
-        def reconfigure(
-            self,
-            *,
-            encoding: str | None = ...,
-            errors: str | None = ...,
-            newline: str | None = ...,
-            line_buffering: bool | None = ...,
-            write_through: bool | None = ...,
-        ) -> None: ...
+    @property
+    def write_through(self) -> bool: ...
+    def reconfigure(
+        self,
+        *,
+        encoding: str | None = ...,
+        errors: str | None = ...,
+        newline: str | None = ...,
+        line_buffering: bool | None = ...,
+        write_through: bool | None = ...,
+    ) -> None: ...
     # These are inherited from TextIOBase, but must exist in the stub to satisfy mypy.
     def __enter__(self: Self) -> Self: ...
     def __iter__(self) -> Iterator[str]: ...  # type: ignore[override]
@@ -180,3 +197,4 @@ class IncrementalNewlineDecoder(codecs.IncrementalDecoder):
     def decode(self, input: bytes | str, final: bool = ...) -> str: ...
     @property
     def newlines(self) -> str | tuple[str, ...] | None: ...
+    def setstate(self, __state: tuple[bytes, int]) -> None: ...

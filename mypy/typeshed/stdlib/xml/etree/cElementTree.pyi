@@ -1,1 +1,1 @@
-from xml.etree.ElementTree import *  # noqa: F403
+from xml.etree.ElementTree import *

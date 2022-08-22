@@ -53,6 +53,7 @@ Type                   Description
 ``Iterable[int]``      iterable object containing ints
 ``Sequence[bool]``     sequence of booleans (read-only)
 ``Mapping[str, int]``  mapping from ``str`` keys to ``int`` values (read-only)
+``type[C]``            type object of ``C`` (``C`` is a class/type variable/union of types)
 ====================== ===============================
 
 The type ``dict`` is a *generic* class, signified by type arguments within
@@ -82,6 +83,7 @@ Type                   Description
 ``Iterable[int]``      iterable object containing ints
 ``Sequence[bool]``     sequence of booleans (read-only)
 ``Mapping[str, int]``  mapping from ``str`` keys to ``int`` values (read-only)
+``Type[C]``            type object of ``C`` (``C`` is a class/type variable/union of types)
 ====================== ===============================
 
 ``List`` is an alias for the built-in type ``list`` that supports

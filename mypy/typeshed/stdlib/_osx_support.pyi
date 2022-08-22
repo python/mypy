@@ -1,11 +1,12 @@
 import sys
-from typing import Iterable, Sequence, TypeVar
+from collections.abc import Iterable, Sequence
+from typing import TypeVar
 
 _T = TypeVar("_T")
 _K = TypeVar("_K")
 _V = TypeVar("_V")
 
-__all__: list[str]
+__all__ = ["compiler_fixup", "customize_config_vars", "customize_compiler", "get_platform_osx"]
 
 _UNIVERSAL_CONFIG_VARS: tuple[str, ...]  # undocumented
 _COMPILER_CONFIG_VARS: tuple[str, ...]  # undocumented

@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from email.message import Message
-from typing import Any, Callable
+from typing import Any
 
 class ContentManager:
     def __init__(self) -> None: ...

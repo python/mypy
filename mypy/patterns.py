@@ -1,13 +1,15 @@
 """Classes for representing match statement patterns."""
-from typing import TypeVar, List, Optional, Union
+
+from __future__ import annotations
+
+from typing import TypeVar
 
 from mypy_extensions import trait
 
-from mypy.nodes import Node, RefExpr, NameExpr, Expression
+from mypy.nodes import Expression, NameExpr, Node, RefExpr
 from mypy.visitor import PatternVisitor
 
-
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @trait
@@ -17,19 +19,21 @@ class Pattern(Node):
     __slots__ = ()
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
-        raise RuntimeError('Not implemented')
+        raise RuntimeError("Not implemented")
 
 
 class AsPattern(Pattern):
+    """The pattern <pattern> as <name>"""
+
     # The python ast, and therefore also our ast merges capture, wildcard and as patterns into one
     # for easier handling.
     # If pattern is None this is a capture pattern. If name and pattern are both none this is a
     # wildcard pattern.
     # Only name being None should not happen but also won't break anything.
-    pattern: Optional[Pattern]
-    name: Optional[NameExpr]
+    pattern: Pattern | None
+    name: NameExpr | None
 
-    def __init__(self, pattern: Optional[Pattern], name: Optional[NameExpr]) -> None:
+    def __init__(self, pattern: Pattern | None, name: NameExpr | None) -> None:
         super().__init__()
         self.pattern = pattern
         self.name = name
@@ -39,9 +43,11 @@ class AsPattern(Pattern):
 
 
 class OrPattern(Pattern):
-    patterns: List[Pattern]
+    """The pattern <pattern> | <pattern> | ..."""
 
-    def __init__(self, patterns: List[Pattern]) -> None:
+    patterns: list[Pattern]
+
+    def __init__(self, patterns: list[Pattern]) -> None:
         super().__init__()
         self.patterns = patterns
 
@@ -50,6 +56,8 @@ class OrPattern(Pattern):
 
 
 class ValuePattern(Pattern):
+    """The pattern x.y (or x.y.z, ...)"""
+
     expr: Expression
 
     def __init__(self, expr: Expression):
@@ -62,9 +70,9 @@ class ValuePattern(Pattern):
 
 class SingletonPattern(Pattern):
     # This can be exactly True, False or None
-    value: Union[bool, None]
+    value: bool | None
 
-    def __init__(self, value: Union[bool, None]):
+    def __init__(self, value: bool | None):
         super().__init__()
         self.value = value
 
@@ -73,9 +81,11 @@ class SingletonPattern(Pattern):
 
 
 class SequencePattern(Pattern):
-    patterns: List[Pattern]
+    """The pattern [<pattern>, ...]"""
 
-    def __init__(self, patterns: List[Pattern]):
+    patterns: list[Pattern]
+
+    def __init__(self, patterns: list[Pattern]):
         super().__init__()
         self.patterns = patterns
 
@@ -86,9 +96,9 @@ class SequencePattern(Pattern):
 class StarredPattern(Pattern):
     # None corresponds to *_ in a list pattern. It will match multiple items but won't bind them to
     # a name.
-    capture: Optional[NameExpr]
+    capture: NameExpr | None
 
-    def __init__(self, capture: Optional[NameExpr]):
+    def __init__(self, capture: NameExpr | None):
         super().__init__()
         self.capture = capture
 
@@ -97,12 +107,11 @@ class StarredPattern(Pattern):
 
 
 class MappingPattern(Pattern):
-    keys: List[Expression]
-    values: List[Pattern]
-    rest: Optional[NameExpr]
+    keys: list[Expression]
+    values: list[Pattern]
+    rest: NameExpr | None
 
-    def __init__(self, keys: List[Expression], values: List[Pattern],
-                 rest: Optional[NameExpr]):
+    def __init__(self, keys: list[Expression], values: list[Pattern], rest: NameExpr | None):
         super().__init__()
         assert len(keys) == len(values)
         self.keys = keys
@@ -114,13 +123,20 @@ class MappingPattern(Pattern):
 
 
 class ClassPattern(Pattern):
-    class_ref: RefExpr
-    positionals: List[Pattern]
-    keyword_keys: List[str]
-    keyword_values: List[Pattern]
+    """The pattern Cls(...)"""
 
-    def __init__(self, class_ref: RefExpr, positionals: List[Pattern], keyword_keys: List[str],
-                 keyword_values: List[Pattern]):
+    class_ref: RefExpr
+    positionals: list[Pattern]
+    keyword_keys: list[str]
+    keyword_values: list[Pattern]
+
+    def __init__(
+        self,
+        class_ref: RefExpr,
+        positionals: list[Pattern],
+        keyword_keys: list[str],
+        keyword_values: list[Pattern],
+    ):
         super().__init__()
         assert len(keyword_keys) == len(keyword_values)
         self.class_ref = class_ref

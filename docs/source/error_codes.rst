@@ -24,7 +24,7 @@ Displaying error codes
 ----------------------
 
 Error codes are not displayed by default.  Use :option:`--show-error-codes <mypy --show-error-codes>`
-or config `show_error_codes = True` to display error codes. Error codes are shown inside square brackets:
+or config ``show_error_codes = True`` to display error codes. Error codes are shown inside square brackets:
 
 .. code-block:: text
 
@@ -46,11 +46,8 @@ line.  This can be used even if you have not configured mypy to show
 error codes. Currently it's only possible to disable arbitrary error
 codes on individual lines using this comment.
 
-.. note::
-
-  There are command-line flags and config file settings for enabling
-  certain optional error codes, such as :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`,
-  which enables the ``no-untyped-def`` error code.
+You can also use :option:`--disable-error-code <mypy --disable-error-code>`
+to disable specific error codes globally.
 
 This example shows how to ignore an error about an imported name mypy
 thinks is undefined:
@@ -60,3 +57,15 @@ thinks is undefined:
    # 'foo' is defined in 'foolib', even though mypy can't see the
    # definition.
    from foolib import foo  # type: ignore[attr-defined]
+
+
+Enabling specific error codes
+-----------------------------
+
+There are command-line flags and config file settings for enabling
+certain optional error codes, such as :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`,
+which enables the ``no-untyped-def`` error code.
+
+You can use :option:`--enable-error-code <mypy --enable-error-code>` to
+enable specific error codes that don't have a dedicated command-line
+flag or config file setting.

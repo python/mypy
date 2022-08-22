@@ -1,4 +1,5 @@
-from typing import Any, Iterator, Protocol, TypeVar
+from collections.abc import Iterator
+from typing import Any, Protocol, TypeVar
 
 _T = TypeVar("_T")
 
@@ -13,6 +14,9 @@ class PackageMetadata(Protocol):
 
 class SimplePath(Protocol):
     def joinpath(self) -> SimplePath: ...
-    def __div__(self) -> SimplePath: ...
     def parent(self) -> SimplePath: ...
     def read_text(self) -> str: ...
+    # There was a bug in `SimplePath` definition in cpython, see #8451
+    #  Strictly speaking `__div__` was defined in 3.10, not __truediv__,
+    # but it should have always been `__truediv__`.
+    def __truediv__(self) -> SimplePath: ...

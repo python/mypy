@@ -405,9 +405,48 @@ async def g() -> NoReturn:
   await f()
 
 async def h() -> NoReturn:  # E: Implicit return in function which does not return
-  f()
+  # Purposely not evaluating coroutine
+  _ = f()
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testNoWarnNoReturn]
+# flags: --no-warn-no-return --strict-optional
+import typing
+
+def implicit_optional_return(arg) -> typing.Optional[str]:
+    if arg:
+        return "false"
+
+def unsound_implicit_return(arg) -> str:  # E: Incompatible return value type (implicitly returns "None", expected "str")
+    if arg:
+        return "false"
+
+def implicit_return_gen(arg) -> typing.Generator[int, None, typing.Optional[str]]:
+    yield 1
+
+def unsound_implicit_return_gen(arg) -> typing.Generator[int, None, str]:  # E: Incompatible return value type (implicitly returns "None", expected "str")
+    yield 1
+[builtins fixtures/dict.pyi]
+
+[case testNoWarnNoReturnNoStrictOptional]
+# flags: --no-warn-no-return --no-strict-optional
+import typing
+
+def implicit_optional_return(arg) -> typing.Optional[str]:
+    if arg:
+        return "false"
+
+def unsound_implicit_return(arg) -> str:
+    if arg:
+        return "false"
+
+def implicit_return_gen(arg) -> typing.Generator[int, None, typing.Optional[str]]:
+    yield 1
+
+def unsound_implicit_return_gen(arg) -> typing.Generator[int, None, str]:
+    yield 1
+[builtins fixtures/dict.pyi]
 
 [case testNoReturnImportFromTyping]
 from typing import NoReturn
@@ -1377,6 +1416,16 @@ p: Future  # E: Missing type parameters for generic type "Future" \
            # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html#not-generic-runtime
 q: Queue  # E: Missing type parameters for generic type "Queue" \
           # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html#not-generic-runtime
+[file asyncio/__init__.pyi]
+from asyncio.futures import Future as Future
+[file asyncio/futures.pyi]
+from typing import TypeVar, Generic
+_T = TypeVar('_T')
+class Future(Generic[_T]): ...
+[file queue.pyi]
+from typing import TypeVar, Generic
+_T = TypeVar('_T')
+class Queue(Generic[_T]): ...
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1845,6 +1894,28 @@ def f() -> G:  # E: Missing type parameters for generic type "G"
 x: G[Any] = G()  # no error
 y: G = x  # E: Missing type parameters for generic type "G"
 
+[case testDisallowAnyGenericsForAliasesInRuntimeContext]
+# flags: --disallow-any-generics
+from typing import Any, TypeVar, Generic, Tuple
+
+T = TypeVar("T")
+class G(Generic[T]):
+    @classmethod
+    def foo(cls) -> T: ...
+
+A = G[Tuple[T, T]]
+A()  # E: Missing type parameters for generic type "A"
+A.foo()  # E: Missing type parameters for generic type "A"
+
+B = G
+B()
+B.foo()
+
+def foo(x: Any) -> None: ...
+foo(A)
+foo(A.foo)
+[builtins fixtures/classmethod.pyi]
+
 [case testDisallowSubclassingAny]
 # flags: --config-file tmp/mypy.ini
 import m
@@ -1928,40 +1999,6 @@ no_implicit_optional = true
 module = 'm'
 no_implicit_optional = false
 
-
-[case testNoImplicitOptionalPerModulePython2]
-# flags: --config-file tmp/mypy.ini --python-version 2.7
-import m
-
-[file m.py]
-def f(a = None):
-    # type: (str) -> int
-    return 0
-
-[file mypy.ini]
-\[mypy]
-no_implicit_optional = True
-\[mypy-m]
-no_implicit_optional = False
-
-
-[case testNoImplicitOptionalPerModulePython2PyProjectTOML]
-# flags: --config-file tmp/pyproject.toml --python-version 2.7
-import m
-
-[file m.py]
-def f(a = None):
-    # type: (str) -> int
-    return 0
-
-[file pyproject.toml]
-\[tool.mypy]
-no_implicit_optional = true
-\[[tool.mypy.overrides]]
-module = 'm'
-no_implicit_optional = false
-
-
 [case testDisableErrorCode]
 # flags: --disable-error-code attr-defined
 x = 'should be fine'
@@ -1990,7 +2027,8 @@ x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 [case testEnableDifferentErrorCode]
 # flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-code
 x = 'should not be fine'
-x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+x.trim()
+y.trim()  # E: Name "y" is not defined  [name-defined]
 
 [case testEnableMultipleErrorCode]
 # flags: \

@@ -1,23 +1,36 @@
 import sys
-from re import RegexFlag
-from typing import Any, Iterable, Mapping, Sequence
+from _typeshed import StrOrLiteralStr
+from collections.abc import Iterable, Mapping, Sequence
+from re import Pattern, RegexFlag
+from typing import Any, overload
+from typing_extensions import LiteralString
 
-if sys.version_info >= (3, 8):
-    from re import Pattern
-else:
-    from typing import Pattern
+__all__ = [
+    "ascii_letters",
+    "ascii_lowercase",
+    "ascii_uppercase",
+    "capwords",
+    "digits",
+    "hexdigits",
+    "octdigits",
+    "printable",
+    "punctuation",
+    "whitespace",
+    "Formatter",
+    "Template",
+]
 
-ascii_letters: str
-ascii_lowercase: str
-ascii_uppercase: str
-digits: str
-hexdigits: str
-octdigits: str
-punctuation: str
-printable: str
-whitespace: str
+ascii_letters: LiteralString
+ascii_lowercase: LiteralString
+ascii_uppercase: LiteralString
+digits: LiteralString
+hexdigits: LiteralString
+octdigits: LiteralString
+punctuation: LiteralString
+printable: LiteralString
+whitespace: LiteralString
 
-def capwords(s: str, sep: str | None = ...) -> str: ...
+def capwords(s: StrOrLiteralStr, sep: StrOrLiteralStr | None = ...) -> StrOrLiteralStr: ...
 
 class Template:
     template: str
@@ -29,12 +42,24 @@ class Template:
     def __init__(self, template: str) -> None: ...
     def substitute(self, __mapping: Mapping[str, object] = ..., **kwds: object) -> str: ...
     def safe_substitute(self, __mapping: Mapping[str, object] = ..., **kwds: object) -> str: ...
+    if sys.version_info >= (3, 11):
+        def get_identifiers(self) -> list[str]: ...
+        def is_valid(self) -> bool: ...
 
-# TODO(MichalPokorny): This is probably badly and/or loosely typed.
 class Formatter:
+    @overload
+    def format(self, __format_string: LiteralString, *args: LiteralString, **kwargs: LiteralString) -> LiteralString: ...
+    @overload
     def format(self, __format_string: str, *args: Any, **kwargs: Any) -> str: ...
+    @overload
+    def vformat(
+        self, format_string: LiteralString, args: Sequence[LiteralString], kwargs: Mapping[LiteralString, LiteralString]
+    ) -> LiteralString: ...
+    @overload
     def vformat(self, format_string: str, args: Sequence[Any], kwargs: Mapping[str, Any]) -> str: ...
-    def parse(self, format_string: str) -> Iterable[tuple[str, str | None, str | None, str | None]]: ...
+    def parse(
+        self, format_string: StrOrLiteralStr
+    ) -> Iterable[tuple[StrOrLiteralStr, StrOrLiteralStr | None, StrOrLiteralStr | None, StrOrLiteralStr | None]]: ...
     def get_field(self, field_name: str, args: Sequence[Any], kwargs: Mapping[str, Any]) -> Any: ...
     def get_value(self, key: int | str, args: Sequence[Any], kwargs: Mapping[str, Any]) -> Any: ...
     def check_unused_args(self, used_args: Sequence[int | str], args: Sequence[Any], kwargs: Mapping[str, Any]) -> None: ...

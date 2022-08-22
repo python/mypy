@@ -1,6 +1,8 @@
 """Git utilities."""
 
 # Used also from setup.py, so don't pull in anything additional here (like mypy or typing):
+from __future__ import annotations
+
 import os
 import subprocess
 

@@ -1,8 +1,11 @@
+from collections.abc import Sequence
+from lib2to3.pgen2 import _Convert
 from lib2to3.pgen2.grammar import _DFAS, Grammar
-from lib2to3.pytree import _NL, _Convert, _RawNode
-from typing import Any, Sequence
+from lib2to3.pytree import _NL, _RawNode
+from typing import Any
+from typing_extensions import TypeAlias
 
-_Context = Sequence[Any]
+_Context: TypeAlias = Sequence[Any]
 
 class ParseError(Exception):
     msg: str

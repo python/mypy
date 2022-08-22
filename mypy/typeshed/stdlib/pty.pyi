@@ -1,10 +1,10 @@
 import sys
-from typing import Callable, Iterable
-from typing_extensions import Literal
+from collections.abc import Callable, Iterable
+from typing_extensions import Literal, TypeAlias
 
 if sys.platform != "win32":
     __all__ = ["openpty", "fork", "spawn"]
-    _Reader = Callable[[int], bytes]
+    _Reader: TypeAlias = Callable[[int], bytes]
 
     STDIN_FILENO: Literal[0]
     STDOUT_FILENO: Literal[1]

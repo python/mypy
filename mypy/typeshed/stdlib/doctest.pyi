@@ -1,6 +1,45 @@
 import types
 import unittest
-from typing import Any, Callable, NamedTuple, Type
+from _typeshed import ExcInfo
+from collections.abc import Callable
+from typing import Any, NamedTuple
+from typing_extensions import TypeAlias
+
+__all__ = [
+    "register_optionflag",
+    "DONT_ACCEPT_TRUE_FOR_1",
+    "DONT_ACCEPT_BLANKLINE",
+    "NORMALIZE_WHITESPACE",
+    "ELLIPSIS",
+    "SKIP",
+    "IGNORE_EXCEPTION_DETAIL",
+    "COMPARISON_FLAGS",
+    "REPORT_UDIFF",
+    "REPORT_CDIFF",
+    "REPORT_NDIFF",
+    "REPORT_ONLY_FIRST_FAILURE",
+    "REPORTING_FLAGS",
+    "FAIL_FAST",
+    "Example",
+    "DocTest",
+    "DocTestParser",
+    "DocTestFinder",
+    "DocTestRunner",
+    "OutputChecker",
+    "DocTestFailure",
+    "UnexpectedException",
+    "DebugRunner",
+    "testmod",
+    "testfile",
+    "run_docstring_examples",
+    "DocTestSuite",
+    "DocFileSuite",
+    "set_unittest_reportflags",
+    "script_from_examples",
+    "testsource",
+    "debug_src",
+    "debug",
+]
 
 class TestResults(NamedTuple):
     failed: int
@@ -46,7 +85,7 @@ class Example:
         indent: int = ...,
         options: dict[int, bool] | None = ...,
     ) -> None: ...
-    def __hash__(self) -> int: ...
+    def __eq__(self, other: object) -> bool: ...
 
 class DocTest:
     examples: list[Example]
@@ -64,8 +103,8 @@ class DocTest:
         lineno: int | None,
         docstring: str | None,
     ) -> None: ...
-    def __hash__(self) -> int: ...
     def __lt__(self, other: DocTest) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
 
 class DocTestParser:
     def parse(self, string: str, name: str = ...) -> list[str | Example]: ...
@@ -85,8 +124,7 @@ class DocTestFinder:
         extraglobs: dict[str, Any] | None = ...,
     ) -> list[DocTest]: ...
 
-_Out = Callable[[str], Any]
-_ExcInfo = tuple[Type[BaseException], BaseException, types.TracebackType]
+_Out: TypeAlias = Callable[[str], object]
 
 class DocTestRunner:
     DIVIDER: str
@@ -99,7 +137,7 @@ class DocTestRunner:
     def report_start(self, out: _Out, test: DocTest, example: Example) -> None: ...
     def report_success(self, out: _Out, test: DocTest, example: Example, got: str) -> None: ...
     def report_failure(self, out: _Out, test: DocTest, example: Example, got: str) -> None: ...
-    def report_unexpected_exception(self, out: _Out, test: DocTest, example: Example, exc_info: _ExcInfo) -> None: ...
+    def report_unexpected_exception(self, out: _Out, test: DocTest, example: Example, exc_info: ExcInfo) -> None: ...
     def run(
         self, test: DocTest, compileflags: int | None = ..., out: _Out | None = ..., clear_globs: bool = ...
     ) -> TestResults: ...
@@ -119,8 +157,8 @@ class DocTestFailure(Exception):
 class UnexpectedException(Exception):
     test: DocTest
     example: Example
-    exc_info: _ExcInfo
-    def __init__(self, test: DocTest, example: Example, exc_info: _ExcInfo) -> None: ...
+    exc_info: ExcInfo
+    def __init__(self, test: DocTest, example: Example, exc_info: ExcInfo) -> None: ...
 
 class DebugRunner(DocTestRunner): ...
 
@@ -161,8 +199,8 @@ class DocTestCase(unittest.TestCase):
         self,
         test: DocTest,
         optionflags: int = ...,
-        setUp: Callable[[DocTest], Any] | None = ...,
-        tearDown: Callable[[DocTest], Any] | None = ...,
+        setUp: Callable[[DocTest], object] | None = ...,
+        tearDown: Callable[[DocTest], object] | None = ...,
         checker: OutputChecker | None = ...,
     ) -> None: ...
     def setUp(self) -> None: ...
@@ -171,7 +209,7 @@ class DocTestCase(unittest.TestCase):
     def format_failure(self, err: str) -> str: ...
     def debug(self) -> None: ...
     def id(self) -> str: ...
-    def __hash__(self) -> int: ...
+    def __eq__(self, other: object) -> bool: ...
     def shortDescription(self) -> str: ...
 
 class SkipDocTestCase(DocTestCase):

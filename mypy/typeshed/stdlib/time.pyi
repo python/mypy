@@ -1,22 +1,20 @@
 import sys
 from _typeshed import structseq
-from types import SimpleNamespace
-from typing import Any, Union
-from typing_extensions import final
+from typing import Any, Protocol
+from typing_extensions import Final, Literal, TypeAlias, final
 
-_TimeTuple = tuple[int, int, int, int, int, int, int, int, int]
+_TimeTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int]
 
 altzone: int
 daylight: int
 timezone: int
 tzname: tuple[str, str]
 
-if sys.version_info >= (3, 7):
-    if sys.platform == "linux":
-        CLOCK_BOOTTIME: int
-    if sys.platform != "linux" and sys.platform != "win32" and sys.platform != "darwin":
-        CLOCK_PROF: int  # FreeBSD, NetBSD, OpenBSD
-        CLOCK_UPTIME: int  # FreeBSD, OpenBSD
+if sys.platform == "linux":
+    CLOCK_BOOTTIME: int
+if sys.platform != "linux" and sys.platform != "win32" and sys.platform != "darwin":
+    CLOCK_PROF: int  # FreeBSD, NetBSD, OpenBSD
+    CLOCK_UPTIME: int  # FreeBSD, OpenBSD
 
 if sys.platform != "win32":
     CLOCK_MONOTONIC: int
@@ -38,7 +36,9 @@ if sys.version_info >= (3, 9) and sys.platform == "linux":
 # even if an iterable with length >9 is passed.
 # https://github.com/python/typeshed/pull/6560#discussion_r767162532
 @final
-class struct_time(structseq[Union[Any, int]], _TimeTuple):
+class struct_time(structseq[Any | int], _TimeTuple):
+    if sys.version_info >= (3, 10):
+        __match_args__: Final = ("tm_year", "tm_mon", "tm_mday", "tm_hour", "tm_min", "tm_sec", "tm_wday", "tm_yday", "tm_isdst")
     @property
     def tm_year(self) -> int: ...
     @property
@@ -80,7 +80,13 @@ def time() -> float: ...
 if sys.platform != "win32":
     def tzset() -> None: ...  # Unix only
 
-def get_clock_info(name: str) -> SimpleNamespace: ...
+class _ClockInfo(Protocol):
+    adjustable: bool
+    implementation: str
+    monotonic: bool
+    resolution: float
+
+def get_clock_info(name: Literal["monotonic", "perf_counter", "process_time", "time", "thread_time"]) -> _ClockInfo: ...
 def monotonic() -> float: ...
 def perf_counter() -> float: ...
 def process_time() -> float: ...
@@ -90,13 +96,16 @@ if sys.platform != "win32":
     def clock_gettime(clk_id: int) -> float: ...  # Unix only
     def clock_settime(clk_id: int, time: float) -> None: ...  # Unix only
 
-if sys.version_info >= (3, 7):
-    if sys.platform != "win32":
-        def clock_gettime_ns(clock_id: int) -> int: ...
-        def clock_settime_ns(clock_id: int, time: int) -> int: ...
-    def monotonic_ns() -> int: ...
-    def perf_counter_ns() -> int: ...
-    def process_time_ns() -> int: ...
-    def time_ns() -> int: ...
-    def thread_time() -> float: ...
-    def thread_time_ns() -> int: ...
+if sys.platform != "win32":
+    def clock_gettime_ns(clock_id: int) -> int: ...
+    def clock_settime_ns(clock_id: int, time: int) -> int: ...
+
+if sys.platform == "linux":
+    def pthread_getcpuclockid(thread_id: int) -> int: ...
+
+def monotonic_ns() -> int: ...
+def perf_counter_ns() -> int: ...
+def process_time_ns() -> int: ...
+def time_ns() -> int: ...
+def thread_time() -> float: ...
+def thread_time_ns() -> int: ...

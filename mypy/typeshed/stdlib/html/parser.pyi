@@ -1,5 +1,7 @@
 from _markupbase import ParserBase
-from typing import Pattern
+from re import Pattern
+
+__all__ = ["HTMLParser"]
 
 class HTMLParser(ParserBase):
     def __init__(self, *, convert_charrefs: bool = ...) -> None: ...

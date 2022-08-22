@@ -1,10 +1,12 @@
 import subprocess
 from collections import deque
-from typing import IO, Any, Callable, Optional, Sequence, Union
+from collections.abc import Callable, Sequence
+from typing import IO, Any
+from typing_extensions import TypeAlias
 
 from . import events, futures, protocols, transports
 
-_File = Optional[Union[int, IO[Any]]]
+_File: TypeAlias = int | IO[Any] | None
 
 class BaseSubprocessTransport(transports.SubprocessTransport):
 
@@ -42,19 +44,12 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
         bufsize: int,
         **kwargs: Any,
     ) -> None: ...  # undocumented
-    def set_protocol(self, protocol: protocols.BaseProtocol) -> None: ...
-    def get_protocol(self) -> protocols.BaseProtocol: ...
-    def is_closing(self) -> bool: ...
-    def close(self) -> None: ...
     def get_pid(self) -> int | None: ...  # type: ignore[override]
-    def get_returncode(self) -> int | None: ...
     def get_pipe_transport(self, fd: int) -> _File: ...  # type: ignore[override]
     def _check_proc(self) -> None: ...  # undocumented
     def send_signal(self, signal: int) -> None: ...  # type: ignore[override]
-    def terminate(self) -> None: ...
-    def kill(self) -> None: ...
     async def _connect_pipes(self, waiter: futures.Future[Any] | None) -> None: ...  # undocumented
-    def _call(self, cb: Callable[..., Any], *data: Any) -> None: ...  # undocumented
+    def _call(self, cb: Callable[..., object], *data: Any) -> None: ...  # undocumented
     def _pipe_connection_lost(self, fd: int, exc: BaseException | None) -> None: ...  # undocumented
     def _pipe_data_received(self, fd: int, data: bytes) -> None: ...  # undocumented
     def _process_exited(self, returncode: int) -> None: ...  # undocumented
@@ -64,10 +59,5 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
 
 class WriteSubprocessPipeProto(protocols.BaseProtocol):  # undocumented
     def __init__(self, proc: BaseSubprocessTransport, fd: int) -> None: ...
-    def connection_made(self, transport: transports.BaseTransport) -> None: ...
-    def connection_lost(self, exc: BaseException | None) -> None: ...
-    def pause_writing(self) -> None: ...
-    def resume_writing(self) -> None: ...
 
-class ReadSubprocessPipeProto(WriteSubprocessPipeProto, protocols.Protocol):  # undocumented
-    def data_received(self, data: bytes) -> None: ...
+class ReadSubprocessPipeProto(WriteSubprocessPipeProto, protocols.Protocol): ...  # undocumented

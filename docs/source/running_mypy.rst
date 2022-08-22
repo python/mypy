@@ -205,7 +205,7 @@ will continue to be of type ``Any``.
 1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
-2.  To suppress *all* missing import imports errors from a single library, add
+2.  To suppress *all* missing import errors from a single library, add
     a section to your :ref:`mypy config file <config-file>` for that library setting
     :confval:`ignore_missing_imports` to True. For example, suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
@@ -322,7 +322,7 @@ this error, try:
 In some rare cases, you may get the "Cannot find implementation or library
 stub for module" error even when the module is installed in your system.
 This can happen when the module is both missing type hints and is installed
-on your system in a unconventional way.
+on your system in an unconventional way.
 
 In this case, follow the steps above on how to handle
 :ref:`missing type hints in third party libraries <missing-type-hints-for-third-party-library>`.
@@ -516,6 +516,7 @@ same directory on the search path, only the stub file is used.
 (However, if the files are in different directories, the one found
 in the earlier directory is used.)
 
+
 Other advice and best practices
 *******************************
 
@@ -536,17 +537,3 @@ For example, if you have multiple projects that happen to be
 using the same set of work-in-progress stubs, it could be
 convenient to just have your ``MYPYPATH`` point to a single
 directory containing the stubs.
-
-Directories specific to Python 2 (@python2)
-*******************************************
-
-When type checking in Python 2 mode, mypy also looks for files under
-the ``@python2`` subdirectory of each ``MYPYPATH`` and ``mypy_path``
-entry, if the subdirectory exists. Files under the subdirectory take
-precedence over the parent directory. This can be used to provide
-separate Python 2 versions of stubs.
-
-.. note::
-
-    This does not need to be used (and cannot be used) with
-    :ref:`PEP 561 compliant stub packages <installed-packages>`.
