@@ -38,6 +38,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    NormalizedCallableType,
     Overloaded,
     Parameters,
     ParamSpecType,
@@ -626,8 +627,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
-        right = self.right
-        if isinstance(right, Parameters) or isinstance(right, CallableType):
+        if isinstance(self.right, Parameters) or isinstance(self.right, CallableType):
+            right = self.right
+            if isinstance(right, CallableType):
+                right = right.with_unpacked_kwargs()
             return are_parameters_compatible(
                 left,
                 right,
@@ -671,7 +674,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Parameters):
             # this doesn't check return types.... but is needed for is_equivalent
             return are_parameters_compatible(
-                left,
+                left.with_unpacked_kwargs(),
                 right,
                 is_compat=self._is_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
@@ -1249,6 +1252,10 @@ def is_callable_compatible(
         If the 'some_check' function is also symmetric, the two calls would be equivalent
         whether or not we check the args covariantly.
     """
+    # Normalize both types before comparing them.
+    left = left.with_unpacked_kwargs()
+    right = right.with_unpacked_kwargs()
+
     if is_compat_return is None:
         is_compat_return = is_compat
 
@@ -1313,8 +1320,8 @@ def is_callable_compatible(
 
 
 def are_parameters_compatible(
-    left: Parameters | CallableType,
-    right: Parameters | CallableType,
+    left: Parameters | NormalizedCallableType,
+    right: Parameters | NormalizedCallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
     ignore_pos_arg_names: bool = False,
@@ -1535,11 +1542,11 @@ def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type
 
 
 def unify_generic_callable(
-    type: CallableType,
-    target: CallableType,
+    type: NormalizedCallableType,
+    target: NormalizedCallableType,
     ignore_return: bool,
     return_constraint_direction: int | None = None,
-) -> CallableType | None:
+) -> NormalizedCallableType | None:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
@@ -1576,7 +1583,7 @@ def unify_generic_callable(
     )
     if had_errors:
         return None
-    return applied
+    return cast(NormalizedCallableType, applied)
 
 
 def try_restrict_literal_union(t: UnionType, s: Type) -> list[Type] | None:

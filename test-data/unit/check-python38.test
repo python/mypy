@@ -669,3 +669,13 @@ main:16: note: Possible overload variants:
 main:16: note:     def foo(cls, int, /) -> Any
 main:16: note:     def foo(cls, float, /) -> Any
 main:16: note:     def foo(cls, a: str) -> Any
+
+[case testUnpackWithDuplicateNamePositionalOnly]
+from typing_extensions import Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
+    ...
+[builtins fixtures/dict.pyi]

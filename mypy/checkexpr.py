@@ -1322,6 +1322,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         See the docstring of check_call for more information.
         """
+        # Always unpack **kwargs before checking a call.
+        callee = callee.with_unpacked_kwargs()
         if callable_name is None and callee.name:
             callable_name = callee.name
         ret_type = get_proper_type(callee.ret_type)
@@ -2057,6 +2059,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         context: Context,
     ) -> tuple[Type, Type]:
         """Checks a call to an overloaded function."""
+        # Normalize unpacked kwargs before checking the call.
+        callee = callee.with_unpacked_kwargs()
         arg_types = self.infer_arg_types_in_empty_context(args)
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(

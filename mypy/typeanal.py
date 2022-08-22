@@ -538,7 +538,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
             # We don't want people to try to use this yet.
             if not self.options.enable_incomplete_features:
-                self.fail('"Unpack" is not supported by mypy yet', t)
+                self.fail('"Unpack" is not supported yet, use --enable-incomplete-features', t)
                 return AnyType(TypeOfAny.from_error)
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
         return None
