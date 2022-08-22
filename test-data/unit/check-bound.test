@@ -215,3 +215,13 @@ if int():
     b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 twice(a) # E: Value of type variable "T" of "twice" cannot be "int"
 [builtins fixtures/args.pyi]
+
+
+[case testIterableBoundUnpacking]
+from typing import Tuple, TypeVar
+TupleT = TypeVar("TupleT", bound=Tuple[int, ...])
+def f(t: TupleT) -> None:
+    a, *b = t
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/tuple.pyi]

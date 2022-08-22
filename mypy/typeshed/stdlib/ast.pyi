@@ -5,21 +5,25 @@ from typing import Any, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
-    class Num(Constant):
+    class _ABC(type):
+        if sys.version_info >= (3, 9):
+            def __init__(cls, *args: object) -> None: ...
+
+    class Num(Constant, metaclass=_ABC):
         value: complex
 
-    class Str(Constant):
+    class Str(Constant, metaclass=_ABC):
         value: str
         # Aliases for value, for backwards compatibility
         s: str
 
-    class Bytes(Constant):
+    class Bytes(Constant, metaclass=_ABC):
         value: bytes
         # Aliases for value, for backwards compatibility
         s: bytes
 
-    class NameConstant(Constant): ...
-    class Ellipsis(Constant): ...
+    class NameConstant(Constant, metaclass=_ABC): ...
+    class Ellipsis(Constant, metaclass=_ABC): ...
 
 if sys.version_info >= (3, 9):
     class slice(AST): ...

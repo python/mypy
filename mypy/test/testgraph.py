@@ -1,7 +1,9 @@
 """Test cases for graph processing code in build.py."""
 
+from __future__ import annotations
+
 import sys
-from typing import AbstractSet, Dict, List, Set
+from typing import AbstractSet
 
 from mypy.build import (
     BuildManager,
@@ -28,13 +30,13 @@ class GraphSuite(Suite):
         b = frozenset({"B"})
         c = frozenset({"C"})
         d = frozenset({"D"})
-        data: Dict[AbstractSet[str], Set[AbstractSet[str]]] = {a: {b, c}, b: {d}, c: {d}}
+        data: dict[AbstractSet[str], set[AbstractSet[str]]] = {a: {b, c}, b: {d}, c: {d}}
         res = list(topsort(data))
         assert_equal(res, [{d}, {b, c}, {a}])
 
     def test_scc(self) -> None:
         vertices = {"A", "B", "C", "D"}
-        edges: Dict[str, List[str]] = {"A": ["B", "C"], "B": ["C"], "C": ["B", "D"], "D": []}
+        edges: dict[str, list[str]] = {"A": ["B", "C"], "B": ["C"], "C": ["B", "D"], "D": []}
         sccs = {frozenset(x) for x in strongly_connected_components(vertices, edges)}
         assert_equal(sccs, {frozenset({"A"}), frozenset({"B", "C"}), frozenset({"D"})})
 

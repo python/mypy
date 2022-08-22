@@ -5,6 +5,8 @@ Usage:
   python3 misc/cherry-pick-typeshed.py --typeshed-dir dir hash
 """
 
+from __future__ import annotations
+
 import argparse
 import os.path
 import re

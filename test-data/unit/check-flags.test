@@ -1894,6 +1894,28 @@ def f() -> G:  # E: Missing type parameters for generic type "G"
 x: G[Any] = G()  # no error
 y: G = x  # E: Missing type parameters for generic type "G"
 
+[case testDisallowAnyGenericsForAliasesInRuntimeContext]
+# flags: --disallow-any-generics
+from typing import Any, TypeVar, Generic, Tuple
+
+T = TypeVar("T")
+class G(Generic[T]):
+    @classmethod
+    def foo(cls) -> T: ...
+
+A = G[Tuple[T, T]]
+A()  # E: Missing type parameters for generic type "A"
+A.foo()  # E: Missing type parameters for generic type "A"
+
+B = G
+B()
+B.foo()
+
+def foo(x: Any) -> None: ...
+foo(A)
+foo(A.foo)
+[builtins fixtures/classmethod.pyi]
+
 [case testDisallowSubclassingAny]
 # flags: --config-file tmp/mypy.ini
 import m

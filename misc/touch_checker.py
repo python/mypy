@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import glob
 import os
 import shutil
@@ -8,7 +10,7 @@ import subprocess
 import sys
 import textwrap
 import time
-from typing import Callable, List, Optional, Tuple
+from typing import Callable
 
 
 def print_offset(text: str, indent_length: int = 4) -> None:
@@ -22,11 +24,11 @@ def delete_folder(folder_path: str) -> None:
         shutil.rmtree(folder_path)
 
 
-def execute(command: List[str]) -> None:
+def execute(command: list[str]) -> None:
     proc = subprocess.Popen(
         " ".join(command), stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
     )
-    stdout_bytes, stderr_bytes = proc.communicate()  # type: Tuple[bytes, bytes]
+    stdout_bytes, stderr_bytes = proc.communicate()
     stdout, stderr = stdout_bytes.decode("utf-8"), stderr_bytes.decode("utf-8")
     if proc.returncode != 0:
         print("EXECUTED COMMAND:", repr(command))
@@ -51,7 +53,7 @@ def test(setup: Command, command: Command, teardown: Command) -> float:
     return end
 
 
-def make_touch_wrappers(filename: str) -> Tuple[Command, Command]:
+def make_touch_wrappers(filename: str) -> tuple[Command, Command]:
     def setup() -> None:
         execute(["touch", filename])
 
@@ -61,8 +63,8 @@ def make_touch_wrappers(filename: str) -> Tuple[Command, Command]:
     return setup, teardown
 
 
-def make_change_wrappers(filename: str) -> Tuple[Command, Command]:
-    copy = None  # type: Optional[str]
+def make_change_wrappers(filename: str) -> tuple[Command, Command]:
+    copy: str | None = None
 
     def setup() -> None:
         nonlocal copy
@@ -77,7 +79,7 @@ def make_change_wrappers(filename: str) -> Tuple[Command, Command]:
             stream.write(copy)
 
         # Re-run to reset cache
-        execute(["python3", "-m", "mypy", "-i", "mypy"]),
+        execute(["python3", "-m", "mypy", "-i", "mypy"])
 
     return setup, teardown
 

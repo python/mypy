@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import inspect
 import io
@@ -7,7 +9,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from typing import Any, Callable, Iterator, List, Optional
+from typing import Any, Callable, Iterator
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs
@@ -52,6 +54,7 @@ class TypeVar:
 class ParamSpec:
     def __init__(self, name: str) -> None: ...
 
+AnyStr = TypeVar("AnyStr", str, bytes)
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _K = TypeVar("_K")
@@ -62,7 +65,7 @@ _R = TypeVar("_R", covariant=True)
 class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
 class Mapping(Generic[_K, _V]): ...
-class Match(Generic[_T]): ...
+class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
 def overload(func: _T) -> _T: ...
@@ -102,7 +105,7 @@ def staticmethod(f: T) -> T: ...
 
 
 def run_stubtest(
-    stub: str, runtime: str, options: List[str], config_file: Optional[str] = None
+    stub: str, runtime: str, options: list[str], config_file: str | None = None
 ) -> str:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
@@ -121,11 +124,15 @@ def run_stubtest(
         with contextlib.redirect_stdout(output):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
         # remove cwd as it's not available from outside
-        return output.getvalue().replace(tmp_dir + os.sep, "")
+        return (
+            output.getvalue()
+            .replace(os.path.realpath(tmp_dir) + os.sep, "")
+            .replace(tmp_dir + os.sep, "")
+        )
 
 
 class Case:
-    def __init__(self, stub: str, runtime: str, error: Optional[str]):
+    def __init__(self, stub: str, runtime: str, error: str | None):
         self.stub = stub
         self.runtime = runtime
         self.error = error
@@ -1327,6 +1334,104 @@ class StubtestUnit(unittest.TestCase):
         # But, stubs can add extra abstract metaclass, this might be a typing hack:
         yield Case(stub="class A3(metaclass=ABCMeta): ...", runtime="class A3: ...", error=None)
 
+    @collect_cases
+    def test_abstract_methods(self) -> Iterator[Case]:
+        yield Case(
+            stub="from abc import abstractmethod",
+            runtime="from abc import abstractmethod",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class A1:
+                def some(self) -> None: ...
+            """,
+            runtime="""
+            class A1:
+                @abstractmethod
+                def some(self) -> None: ...
+            """,
+            error="A1.some",
+        )
+        yield Case(
+            stub="""
+            class A2:
+                @abstractmethod
+                def some(self) -> None: ...
+            """,
+            runtime="""
+            class A2:
+                @abstractmethod
+                def some(self) -> None: ...
+            """,
+            error=None,
+        )
+        # Runtime can miss `@abstractmethod`:
+        yield Case(
+            stub="""
+            class A3:
+                @abstractmethod
+                def some(self) -> None: ...
+            """,
+            runtime="""
+            class A3:
+                def some(self) -> None: ...
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_abstract_properties(self) -> Iterator[Case]:
+        yield Case(
+            stub="from abc import abstractmethod",
+            runtime="from abc import abstractmethod",
+            error=None,
+        )
+        # Ensure that `@property` also can be abstract:
+        yield Case(
+            stub="""
+            class AP1:
+                def some(self) -> int: ...
+            """,
+            runtime="""
+            class AP1:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            error="AP1.some",
+        )
+        yield Case(
+            stub="""
+            class AP2:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            runtime="""
+            class AP2:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            error=None,
+        )
+        # Runtime can miss `@abstractmethod`:
+        yield Case(
+            stub="""
+            class AP3:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            runtime="""
+            class AP3:
+                @property
+                def some(self) -> int: ...
+            """,
+            error=None,
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
@@ -1342,7 +1447,8 @@ class StubtestMiscUnit(unittest.TestCase):
         expected = (
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
             'from runtime argument "num"\n'
-            "Stub: at line 1\ndef (number: builtins.int, text: builtins.str)\n"
+            f"Stub: at line 1 in file {TEST_MODULE_NAME}.pyi\n"
+            "def (number: builtins.int, text: builtins.str)\n"
             f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
@@ -1470,13 +1576,14 @@ class StubtestMiscUnit(unittest.TestCase):
             assert output_str == "Success: no issues found in 1 module\n"
 
     def test_get_typeshed_stdlib_modules(self) -> None:
-        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 7))
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
         assert "graphlib" not in stdlib
         assert "formatter" in stdlib
+        assert "contextvars" in stdlib  # 3.7+
         assert "importlib.metadata" not in stdlib
 
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 10))
@@ -1500,7 +1607,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
             f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"
-            "Stub: at line 2\n_decimal.Decimal\nRuntime:\n5\n\n"
+            f"Stub: at line 2 in file {TEST_MODULE_NAME}.pyi\n_decimal.Decimal\nRuntime:\n5\n\n"
             "Found 1 error (checked 1 module)\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)

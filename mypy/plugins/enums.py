@@ -10,8 +10,9 @@ Note that this file does *not* contain all special-cased logic related to enums:
 we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
-from typing import Iterable, Optional, Sequence, TypeVar, cast
+from __future__ import annotations
 
+from typing import Iterable, Sequence, TypeVar, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
@@ -29,7 +30,7 @@ ENUM_VALUE_ACCESS: Final = {f"{prefix}.value" for prefix in ENUM_BASES} | {
 }
 
 
-def enum_name_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
+def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """This plugin refines the 'name' attribute in enums to act as if
     they were declared to be final.
 
@@ -56,7 +57,7 @@ def enum_name_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
 _T = TypeVar("_T")
 
 
-def _first(it: Iterable[_T]) -> Optional[_T]:
+def _first(it: Iterable[_T]) -> _T | None:
     """Return the first value from any iterable.
 
     Returns ``None`` if the iterable is empty.
@@ -67,8 +68,8 @@ def _first(it: Iterable[_T]) -> Optional[_T]:
 
 
 def _infer_value_type_with_auto_fallback(
-    ctx: "mypy.plugin.AttributeContext", proper_type: Optional[ProperType]
-) -> Optional[Type]:
+    ctx: mypy.plugin.AttributeContext, proper_type: ProperType | None
+) -> Type | None:
     """Figure out the type of an enum value accounting for `auto()`.
 
     This method is a no-op for a `None` proper_type and also in the case where
@@ -116,7 +117,7 @@ def _implements_new(info: TypeInfo) -> bool:
     return type_with_new.fullname not in ("enum.Enum", "enum.IntEnum", "enum.StrEnum")
 
 
-def enum_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
+def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """This plugin refines the 'value' attribute in enums to refer to
     the original underlying value. For example, suppose we have the
     following:
@@ -228,7 +229,7 @@ def enum_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
     return underlying_type
 
 
-def _extract_underlying_field_name(typ: Type) -> Optional[str]:
+def _extract_underlying_field_name(typ: Type) -> str | None:
     """If the given type corresponds to some Enum instance, returns the
     original name of that enum. For example, if we receive in the type
     corresponding to 'SomeEnum.FOO', we return the string "SomeEnum.Foo".

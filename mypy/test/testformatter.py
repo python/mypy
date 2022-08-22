@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest import TestCase, main
 
 from mypy.util import split_words, trim_source_line

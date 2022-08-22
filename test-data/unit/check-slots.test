@@ -361,8 +361,7 @@ a.a = 1
 a.b = custom_obj
 a.c = custom_obj
 a.d = custom_obj
-# TODO: Should this be allowed?
-a.e = custom_obj  # E: Cannot assign to a method
+a.e = custom_obj
 [out]
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]

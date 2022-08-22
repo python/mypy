@@ -32,3 +32,5 @@ __all__ = (
     "ProcessPoolExecutor",
     "ThreadPoolExecutor",
 )
+
+def __dir__() -> tuple[str, ...]: ...

@@ -3,9 +3,10 @@
 This should be pretty lightweight and not depend on other mypy code (other than ipc).
 """
 
+from __future__ import annotations
+
 import json
 from typing import Any
-
 from typing_extensions import Final
 
 from mypy.ipc import IPCBase

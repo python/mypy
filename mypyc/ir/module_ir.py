@@ -1,6 +1,8 @@
 """Intermediate representation of modules."""
 
-from typing import Dict, List, Tuple
+from __future__ import annotations
+
+from typing import Dict
 
 from mypyc.common import JsonDict
 from mypyc.ir.class_ir import ClassIR
@@ -15,10 +17,10 @@ class ModuleIR:
     def __init__(
         self,
         fullname: str,
-        imports: List[str],
-        functions: List[FuncIR],
-        classes: List[ClassIR],
-        final_names: List[Tuple[str, RType]],
+        imports: list[str],
+        functions: list[FuncIR],
+        classes: list[ClassIR],
+        final_names: list[tuple[str, RType]],
     ) -> None:
         self.fullname = fullname
         self.imports = imports[:]
@@ -36,7 +38,7 @@ class ModuleIR:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "ModuleIR":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> ModuleIR:
         return ModuleIR(
             data["fullname"],
             data["imports"],
@@ -46,7 +48,7 @@ class ModuleIR:
         )
 
 
-def deserialize_modules(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, ModuleIR]:
+def deserialize_modules(data: dict[str, JsonDict], ctx: DeserMaps) -> dict[str, ModuleIR]:
     """Deserialize a collection of modules.
 
     The modules can contain dependencies on each other.

@@ -1,4 +1,3 @@
-
 from mypy.plugin import Plugin
 
 

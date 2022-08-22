@@ -1,6 +1,8 @@
 """Utilities for mapping between actual and formal arguments (and their types)."""
 
-from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Set
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable, Sequence
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
@@ -20,12 +22,12 @@ if TYPE_CHECKING:
 
 
 def map_actuals_to_formals(
-    actual_kinds: List[nodes.ArgKind],
-    actual_names: Optional[Sequence[Optional[str]]],
-    formal_kinds: List[nodes.ArgKind],
-    formal_names: Sequence[Optional[str]],
+    actual_kinds: list[nodes.ArgKind],
+    actual_names: Sequence[str | None] | None,
+    formal_kinds: list[nodes.ArgKind],
+    formal_names: Sequence[str | None],
     actual_arg_type: Callable[[int], Type],
-) -> List[List[int]]:
+) -> list[list[int]]:
     """Calculate mapping between actual (caller) args and formals.
 
     The result contains a list of caller argument indexes mapping to each
@@ -35,8 +37,8 @@ def map_actuals_to_formals(
     argument type with the given index.
     """
     nformals = len(formal_kinds)
-    formal_to_actual: List[List[int]] = [[] for i in range(nformals)]
-    ambiguous_actual_kwargs: List[int] = []
+    formal_to_actual: list[list[int]] = [[] for i in range(nformals)]
+    ambiguous_actual_kwargs: list[int] = []
     fi = 0
     for ai, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
@@ -118,18 +120,18 @@ def map_actuals_to_formals(
 
 
 def map_formals_to_actuals(
-    actual_kinds: List[nodes.ArgKind],
-    actual_names: Optional[Sequence[Optional[str]]],
-    formal_kinds: List[nodes.ArgKind],
-    formal_names: List[Optional[str]],
+    actual_kinds: list[nodes.ArgKind],
+    actual_names: Sequence[str | None] | None,
+    formal_kinds: list[nodes.ArgKind],
+    formal_names: list[str | None],
     actual_arg_type: Callable[[int], Type],
-) -> List[List[int]]:
+) -> list[list[int]]:
     """Calculate the reverse mapping of map_actuals_to_formals."""
     formal_to_actual = map_actuals_to_formals(
         actual_kinds, actual_names, formal_kinds, formal_names, actual_arg_type
     )
     # Now reverse the mapping.
-    actual_to_formal: List[List[int]] = [[] for _ in actual_kinds]
+    actual_to_formal: list[list[int]] = [[] for _ in actual_kinds]
     for formal, actuals in enumerate(formal_to_actual):
         for actual in actuals:
             actual_to_formal[actual].append(formal)
@@ -158,11 +160,11 @@ class ArgTypeExpander:
     needs a separate instance since instances have per-call state.
     """
 
-    def __init__(self, context: "ArgumentInferContext") -> None:
+    def __init__(self, context: ArgumentInferContext) -> None:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
-        self.kwargs_used: Set[str] = set()
+        self.kwargs_used: set[str] = set()
         # Type context for `*` and `**` arg kinds.
         self.context = context
 
@@ -170,7 +172,7 @@ class ArgTypeExpander:
         self,
         actual_type: Type,
         actual_kind: nodes.ArgKind,
-        formal_name: Optional[str],
+        formal_name: str | None,
         formal_kind: nodes.ArgKind,
     ) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.

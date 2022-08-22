@@ -5659,6 +5659,23 @@ class D(C):
 [out2]
 tmp/a.py:9: error: Trying to assign name "z" that is not in "__slots__" of type "a.D"
 
+[case testMethodAliasIncremental]
+import b
+[file a.py]
+class A:
+    def f(self) -> None: pass
+    g = f
+
+[file b.py]
+from a import A
+A().g()
+[file b.py.2]
+# trivial change
+from a import A
+A().g()
+[out]
+[out2]
+
 [case testIncrementalWithDifferentKindsOfNestedTypesWithinMethod]
 # flags: --python-version 3.7
 
@@ -5740,3 +5757,235 @@ class C:
         nt2: NT2 = NT2(x=1)
 
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleUpdateNonRecursiveToRecursiveCoarse]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from b import M
+from typing import NamedTuple, Optional
+class N(NamedTuple):
+    r: Optional[M]
+    x: int
+n: N
+[file b.py]
+from a import N
+from typing import NamedTuple
+class M(NamedTuple):
+    r: None
+    x: int
+[file b.py.2]
+from a import N
+from typing import NamedTuple, Optional
+class M(NamedTuple):
+    r: Optional[N]
+    x: int
+[file c.py]
+import a
+def f(x: a.N) -> None:
+    if x.r is not None:
+        s: int = x.r.x
+[file c.py.3]
+import a
+def f(x: a.N) -> None:
+    if x.r is not None and x.r.r is not None and x.r.r.r is not None:
+        reveal_type(x)
+        s: int = x.r.r.r.r
+f(a.n)
+reveal_type(a.n)
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+[out3]
+tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+tmp/c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+
+[case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from b import M
+from typing import Tuple, Optional
+class N(Tuple[Optional[M], int]): ...
+[file b.py]
+from a import N
+from typing import Tuple
+class M(Tuple[None, int]): ...
+[file b.py.2]
+from a import N
+from typing import Tuple, Optional
+class M(Tuple[Optional[N], int]): ...
+[file c.py]
+import a
+def f(x: a.N) -> None:
+    if x[0] is not None:
+        s: int = x[0][1]
+[file c.py.3]
+import a
+def f(x: a.N) -> None:
+    if x[0] is not None and x[0][0] is not None and x[0][0][0] is not None:
+        reveal_type(x)
+        s: int = x[0][0][0][0]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+[out3]
+tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+
+[case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from b import M
+from typing import Tuple, Optional
+N = Tuple[Optional[M], int]
+[file b.py]
+from a import N
+from typing import Tuple
+M = Tuple[None, int]
+[file b.py.2]
+from a import N
+from typing import Tuple, Optional
+M = Tuple[Optional[N], int]
+[file c.py]
+import a
+def f(x: a.N) -> None:
+    if x[0] is not None:
+        s: int = x[0][1]
+[file c.py.3]
+import a
+def f(x: a.N) -> None:
+    if x[0] is not None and x[0][0] is not None and x[0][0][0] is not None:
+        reveal_type(x)
+        s: int = x[0][0][0][0]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+[out3]
+tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int], None], builtins.int]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+
+[case testTypedDictUpdateNonRecursiveToRecursiveCoarse]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from b import M
+from typing import TypedDict, Optional
+class N(TypedDict):
+    r: Optional[M]
+    x: int
+n: N
+[file b.py]
+from a import N
+from typing import TypedDict
+class M(TypedDict):
+    r: None
+    x: int
+[file b.py.2]
+from a import N
+from typing import TypedDict, Optional
+class M(TypedDict):
+    r: Optional[N]
+    x: int
+[file c.py]
+import a
+def f(x: a.N) -> None:
+    if x["r"] is not None:
+        s: int = x["r"]["x"]
+[file c.py.3]
+import a
+def f(x: a.N) -> None:
+    if x["r"] is not None and x["r"]["r"] is not None and x["r"]["r"]["r"] is not None:
+        reveal_type(x)
+        s: int = x["r"]["r"]["r"]["r"]
+f(a.n)
+reveal_type(a.n)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+[out2]
+[out3]
+tmp/c.py:4: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M', {'r': Union[..., None], 'x': builtins.int}), None], 'x': builtins.int})"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+tmp/c.py:7: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M', {'r': Union[..., None], 'x': builtins.int}), None], 'x': builtins.int})"
+
+[case testIncrementalAddClassMethodPlugin]
+# flags: --config-file tmp/mypy.ini
+import b
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py
+
+[file a.py]
+class BaseAddMethod: pass
+
+class MyClass(BaseAddMethod):
+    pass
+
+[file b.py]
+import a
+
+[file b.py.2]
+import a
+
+my_class = a.MyClass()
+reveal_type(a.MyClass.foo_classmethod)
+reveal_type(a.MyClass.foo_staticmethod)
+reveal_type(my_class.foo_classmethod)
+reveal_type(my_class.foo_staticmethod)
+
+[rechecked b]
+[out2]
+tmp/b.py:4: note: Revealed type is "def ()"
+tmp/b.py:5: note: Revealed type is "def (builtins.int) -> builtins.str"
+tmp/b.py:6: note: Revealed type is "def ()"
+tmp/b.py:7: note: Revealed type is "def (builtins.int) -> builtins.str"
+[case testGenericNamedTupleSerialization]
+import b
+[file a.py]
+from typing import NamedTuple, Generic, TypeVar
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+[file b.py]
+from a import NT
+nt = NT(key=0, value="yes")
+s: str = nt.value
+[file b.py.2]
+from a import NT
+nt = NT(key=0, value=42)
+s: str = nt.value
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testGenericTypedDictSerialization]
+import b
+[file a.py]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar("T")
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+[file b.py]
+from a import TD
+td = TD(key=0, value="yes")
+s: str = td["value"]
+[file b.py.2]
+from a import TD
+td = TD(key=0, value=42)
+s: str = td["value"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+[out2]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
