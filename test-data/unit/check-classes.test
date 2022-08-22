@@ -7366,3 +7366,26 @@ class D(C[List[T]]): ...
 di: D[int]
 reveal_type(di)  # N: Revealed type is "Tuple[builtins.list[builtins.int], builtins.list[builtins.int], fallback=__main__.D[builtins.int]]"
 [builtins fixtures/tuple.pyi]
+
+[case testOverrideAttrWithSettableProperty]
+class Foo:
+    def __init__(self) -> None:
+        self.x = 42
+
+class Bar(Foo):
+    @property
+    def x(self) -> int: ...
+    @x.setter
+    def x(self, value: int) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testOverrideAttrWithSettablePropertyAnnotation]
+class Foo:
+    x: int
+
+class Bar(Foo):
+    @property
+    def x(self) -> int: ...
+    @x.setter
+    def x(self, value: int) -> None: ...
+[builtins fixtures/property.pyi]

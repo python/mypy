@@ -1475,9 +1475,8 @@ class A:
         self.x = [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 class B(A):
-    # TODO?: This error is kind of a false positive, unfortunately
     @property
-    def x(self) -> List[int]:  # E: Signature of "x" incompatible with supertype "A"
+    def x(self) -> List[int]:  # E: Cannot override writeable attribute with read-only property
         return [123]
 [builtins fixtures/list.pyi]
 
