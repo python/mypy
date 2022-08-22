@@ -1786,9 +1786,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     and isinstance(defn, Decorator)
                 ):
                     # We only give an error where no other similar errors will be given.
-                    self.msg.fail(
-                        "Cannot override writeable attribute with read-only property", defn
-                    )
+                    if not isinstance(original_type, AnyType):
+                        self.msg.fail(
+                            "Cannot override writeable attribute with read-only property",
+                            # Give an error on function line to match old behaviour.
+                            defn.func,
+                            code=codes.OVERRIDE,
+                        )
 
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
