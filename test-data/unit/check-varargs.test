@@ -805,17 +805,6 @@ def foo(name: str, **kwargs: Unpack[Person]) -> None:  # E: Overlap between argu
     ...
 [builtins fixtures/dict.pyi]
 
-[case testUnpackWithDuplicateNamePositionalOnly]
-# flags: --python-version=3.8
-from typing_extensions import Unpack, TypedDict
-
-class Person(TypedDict):
-    name: str
-    age: int
-def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
-    ...
-[builtins fixtures/dict.pyi]
-
 [case testUnpackWithDuplicateKeywordKwargs]
 from typing_extensions import Unpack, TypedDict
 from typing import Dict, List
