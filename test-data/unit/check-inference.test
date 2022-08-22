@@ -1475,8 +1475,8 @@ class A:
         self.x = [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 class B(A):
-    @property  # E: Cannot override writeable attribute with read-only property
-    def x(self) -> List[int]:
+    @property
+    def x(self) -> List[int]:  # E: Cannot override writeable attribute with read-only property
         return [123]
 [builtins fixtures/list.pyi]
 
