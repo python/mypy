@@ -1286,7 +1286,7 @@ class A:
 @dataclass
 class B(A):
     @property
-    def foo(self) -> int: pass  # E: Signature of "foo" incompatible with supertype "A"
+    def foo(self) -> int: pass
 
 reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
 

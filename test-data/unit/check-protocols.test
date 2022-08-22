@@ -2896,12 +2896,12 @@ c: Lst3[Str]
 f(Lst3(c))  # E: Argument 1 to "f" has incompatible type "Lst3[Lst3[Str]]"; expected "GetItem[GetItem[Str]]" \
 # N: Following member(s) of "Lst3[Lst3[Str]]" have conflicts: \
 # N:     Expected:                  \
-# N:         def __getitem__(self, int) -> GetItem[Str] \
+# N:         def __getitem__(self, int, /) -> GetItem[Str] \
 # N:     Got:                       \
 # N:         @overload              \
-# N:         def __getitem__(self, slice) -> Lst3[Lst3[Str]] \
+# N:         def __getitem__(self, slice, /) -> Lst3[Lst3[Str]] \
 # N:         @overload              \
-# N:         def __getitem__(self, bool) -> Lst3[Str]
+# N:         def __getitem__(self, bool, /) -> Lst3[Str]
 
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
