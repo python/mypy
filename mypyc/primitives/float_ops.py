@@ -1,5 +1,7 @@
 """Primitive float ops."""
 
+from __future__ import annotations
+
 from mypyc.ir.ops import ERR_MAGIC
 from mypyc.ir.rtypes import float_rprimitive, object_rprimitive, str_rprimitive
 from mypyc.primitives.registry import function_op, load_address_op

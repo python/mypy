@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from typing_extensions import Final
 
@@ -108,5 +108,5 @@ def special_function_elide_names(name: str) -> bool:
     return name in MAGIC_METHODS_POS_ARGS_ONLY
 
 
-def argument_elide_name(name: Optional[str]) -> bool:
+def argument_elide_name(name: str | None) -> bool:
     return name is not None and name.startswith("__") and not name.endswith("__")

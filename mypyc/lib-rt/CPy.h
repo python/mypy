@@ -610,6 +610,10 @@ PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
                                              PyObject *func);
+
+PyObject *CPy_GetAIter(PyObject *obj);
+PyObject *CPy_GetANext(PyObject *aiter);
+
 #ifdef __cplusplus
 }
 #endif

@@ -85,11 +85,6 @@ First install any additional dependencies needed for testing:
 
     python3 -m pip install -U -r test-requirements.txt
 
-You must also have a Python 2.7 binary installed that can import the `typing`
-module:
-
-    python2 -m pip install -U typing
-
 The unit test suites are driven by the `pytest` framework. To run all mypy tests,
 run `pytest` in the mypy repository:
 

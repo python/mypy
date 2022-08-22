@@ -4,7 +4,7 @@ The class defines __call__ for calling the function and allows access to
 non-local variables defined in outer scopes.
 """
 
-from typing import List
+from __future__ import annotations
 
 from mypyc.common import ENV_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
@@ -80,8 +80,8 @@ def setup_callable_class(builder: IRBuilder) -> None:
 
 def add_call_to_callable_class(
     builder: IRBuilder,
-    args: List[Register],
-    blocks: List[BasicBlock],
+    args: list[Register],
+    blocks: list[BasicBlock],
     sig: FuncSignature,
     fn_info: FuncInfo,
 ) -> FuncIR:

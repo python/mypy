@@ -1,14 +1,16 @@
+from __future__ import annotations
+
 import os
 import os.path
 import sys
-from typing import Iterator, List
+from typing import Iterator
 
 
 class Chunk:
     def __init__(self, header_type: str, args: str) -> None:
         self.header_type = header_type
         self.args = args
-        self.lines = []  # type: List[str]
+        self.lines: list[str] = []
 
 
 def is_header(line: str) -> bool:
@@ -20,7 +22,7 @@ def normalize(lines: Iterator[str]) -> Iterator[str]:
 
 
 def produce_chunks(lines: Iterator[str]) -> Iterator[Chunk]:
-    current_chunk = None  # type: Chunk
+    current_chunk: Chunk | None = None
     for line in normalize(lines):
         if is_header(line):
             if current_chunk is not None:
@@ -28,13 +30,13 @@ def produce_chunks(lines: Iterator[str]) -> Iterator[Chunk]:
             parts = line[1:-1].split(" ", 1)
             args = parts[1] if len(parts) > 1 else ""
             current_chunk = Chunk(parts[0], args)
-        else:
+        elif current_chunk is not None:
             current_chunk.lines.append(line)
     if current_chunk is not None:
         yield current_chunk
 
 
-def write_out(filename: str, lines: List[str]) -> None:
+def write_out(filename: str, lines: list[str]) -> None:
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, "w") as stream:
         stream.write("\n".join(lines))

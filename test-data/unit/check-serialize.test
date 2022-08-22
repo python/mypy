@@ -1066,11 +1066,11 @@ class C:
 [out1]
 main:2: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
 main:3: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
-main:4: note: Revealed type is "def () -> ntcrash.C.A@4"
+main:4: note: Revealed type is "def (*, x: builtins.int) -> TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
 [out2]
 main:2: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
 main:3: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
-main:4: note: Revealed type is "def () -> ntcrash.C.A@4"
+main:4: note: Revealed type is "def (*, x: builtins.int) -> TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
 
 [case testSerializeNonTotalTypedDict]
 from m import d

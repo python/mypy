@@ -1,5 +1,8 @@
 """Classes for representing match statement patterns."""
-from typing import List, Optional, TypeVar, Union
+
+from __future__ import annotations
+
+from typing import TypeVar
 
 from mypy_extensions import trait
 
@@ -27,10 +30,10 @@ class AsPattern(Pattern):
     # If pattern is None this is a capture pattern. If name and pattern are both none this is a
     # wildcard pattern.
     # Only name being None should not happen but also won't break anything.
-    pattern: Optional[Pattern]
-    name: Optional[NameExpr]
+    pattern: Pattern | None
+    name: NameExpr | None
 
-    def __init__(self, pattern: Optional[Pattern], name: Optional[NameExpr]) -> None:
+    def __init__(self, pattern: Pattern | None, name: NameExpr | None) -> None:
         super().__init__()
         self.pattern = pattern
         self.name = name
@@ -42,9 +45,9 @@ class AsPattern(Pattern):
 class OrPattern(Pattern):
     """The pattern <pattern> | <pattern> | ..."""
 
-    patterns: List[Pattern]
+    patterns: list[Pattern]
 
-    def __init__(self, patterns: List[Pattern]) -> None:
+    def __init__(self, patterns: list[Pattern]) -> None:
         super().__init__()
         self.patterns = patterns
 
@@ -67,9 +70,9 @@ class ValuePattern(Pattern):
 
 class SingletonPattern(Pattern):
     # This can be exactly True, False or None
-    value: Union[bool, None]
+    value: bool | None
 
-    def __init__(self, value: Union[bool, None]):
+    def __init__(self, value: bool | None):
         super().__init__()
         self.value = value
 
@@ -80,9 +83,9 @@ class SingletonPattern(Pattern):
 class SequencePattern(Pattern):
     """The pattern [<pattern>, ...]"""
 
-    patterns: List[Pattern]
+    patterns: list[Pattern]
 
-    def __init__(self, patterns: List[Pattern]):
+    def __init__(self, patterns: list[Pattern]):
         super().__init__()
         self.patterns = patterns
 
@@ -93,9 +96,9 @@ class SequencePattern(Pattern):
 class StarredPattern(Pattern):
     # None corresponds to *_ in a list pattern. It will match multiple items but won't bind them to
     # a name.
-    capture: Optional[NameExpr]
+    capture: NameExpr | None
 
-    def __init__(self, capture: Optional[NameExpr]):
+    def __init__(self, capture: NameExpr | None):
         super().__init__()
         self.capture = capture
 
@@ -104,11 +107,11 @@ class StarredPattern(Pattern):
 
 
 class MappingPattern(Pattern):
-    keys: List[Expression]
-    values: List[Pattern]
-    rest: Optional[NameExpr]
+    keys: list[Expression]
+    values: list[Pattern]
+    rest: NameExpr | None
 
-    def __init__(self, keys: List[Expression], values: List[Pattern], rest: Optional[NameExpr]):
+    def __init__(self, keys: list[Expression], values: list[Pattern], rest: NameExpr | None):
         super().__init__()
         assert len(keys) == len(values)
         self.keys = keys
@@ -123,16 +126,16 @@ class ClassPattern(Pattern):
     """The pattern Cls(...)"""
 
     class_ref: RefExpr
-    positionals: List[Pattern]
-    keyword_keys: List[str]
-    keyword_values: List[Pattern]
+    positionals: list[Pattern]
+    keyword_keys: list[str]
+    keyword_values: list[Pattern]
 
     def __init__(
         self,
         class_ref: RefExpr,
-        positionals: List[Pattern],
-        keyword_keys: List[str],
-        keyword_values: List[Pattern],
+        positionals: list[Pattern],
+        keyword_keys: list[str],
+        keyword_values: list[Pattern],
     ):
         super().__init__()
         assert len(keyword_keys) == len(keyword_values)

@@ -1,7 +1,8 @@
 """Intermediate representation of functions."""
 
-from typing import List, Optional, Sequence
+from __future__ import annotations
 
+from typing import Sequence
 from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
@@ -52,7 +53,7 @@ class RuntimeArg:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "RuntimeArg":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RuntimeArg:
         return RuntimeArg(
             data["name"],
             deserialize_type(data["type"], ctx),
@@ -77,7 +78,7 @@ class FuncSignature:
         return {"args": [t.serialize() for t in self.args], "ret_type": self.ret_type.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "FuncSignature":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncSignature:
         return FuncSignature(
             [RuntimeArg.deserialize(arg, ctx) for arg in data["args"]],
             deserialize_type(data["ret_type"], ctx),
@@ -99,7 +100,7 @@ class FuncDecl:
     def __init__(
         self,
         name: str,
-        class_name: Optional[str],
+        class_name: str | None,
         module_name: str,
         sig: FuncSignature,
         kind: int = FUNC_NORMAL,
@@ -114,7 +115,7 @@ class FuncDecl:
         self.is_prop_setter = is_prop_setter
         self.is_prop_getter = is_prop_getter
         if class_name is None:
-            self.bound_sig: Optional[FuncSignature] = None
+            self.bound_sig: FuncSignature | None = None
         else:
             if kind == FUNC_STATICMETHOD:
                 self.bound_sig = sig
@@ -123,7 +124,7 @@ class FuncDecl:
 
         # this is optional because this will be set to the line number when the corresponding
         # FuncIR is created
-        self._line: Optional[int] = None
+        self._line: int | None = None
 
     @property
     def line(self) -> int:
@@ -140,7 +141,7 @@ class FuncDecl:
         return get_id_from_name(self.name, self.fullname, self.line)
 
     @staticmethod
-    def compute_shortname(class_name: Optional[str], name: str) -> str:
+    def compute_shortname(class_name: str | None, name: str) -> str:
         return class_name + "." + name if class_name else name
 
     @property
@@ -176,7 +177,7 @@ class FuncDecl:
         return get_id_from_name(decl["name"], fullname, func_ir["line"])
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "FuncDecl":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncDecl:
         return FuncDecl(
             data["name"],
             data["class_name"],
@@ -197,10 +198,10 @@ class FuncIR:
     def __init__(
         self,
         decl: FuncDecl,
-        arg_regs: List[Register],
-        blocks: List[BasicBlock],
+        arg_regs: list[Register],
+        blocks: list[BasicBlock],
         line: int = -1,
-        traceback_name: Optional[str] = None,
+        traceback_name: str | None = None,
     ) -> None:
         # Declaration of the function, including the signature
         self.decl = decl
@@ -227,7 +228,7 @@ class FuncIR:
         return self.decl.sig.ret_type
 
     @property
-    def class_name(self) -> Optional[str]:
+    def class_name(self) -> str | None:
         return self.decl.class_name
 
     @property
@@ -264,7 +265,7 @@ class FuncIR:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "FuncIR":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncIR:
         return FuncIR(
             FuncDecl.deserialize(data["decl"], ctx), [], [], data["line"], data["traceback_name"]
         )
@@ -273,12 +274,12 @@ class FuncIR:
 INVALID_FUNC_DEF: Final = FuncDef("<INVALID_FUNC_DEF>", [], Block([]))
 
 
-def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+def all_values(args: list[Register], blocks: list[BasicBlock]) -> list[Value]:
     """Return the set of all values that may be initialized in the blocks.
 
     This omits registers that are only read.
     """
-    values: List[Value] = list(args)
+    values: list[Value] = list(args)
     seen_registers = set(args)
 
     for block in blocks:
@@ -304,9 +305,9 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
     return values
 
 
-def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+def all_values_full(args: list[Register], blocks: list[BasicBlock]) -> list[Value]:
     """Return set of all values that are initialized or accessed."""
-    values: List[Value] = list(args)
+    values: list[Value] = list(args)
     seen_registers = set(args)
 
     for block in blocks:

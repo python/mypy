@@ -541,19 +541,47 @@ A type variable may not have both a value restriction (see
 Declaring decorators
 ********************
 
-One common application of type variable upper bounds is in declaring a
-decorator that preserves the signature of the function it decorates,
-regardless of that signature.
+One common application of type variables along with parameter specifications
+is in declaring a decorator that preserves the signature of the function it decorates.
 
 Note that class decorators are handled differently than function decorators in
 mypy: decorating a class does not erase its type, even if the decorator has
 incomplete type annotations.
 
-Here's a complete example of a function decorator:
+Suppose we have the following decorator, not type annotated yet, 
+that preserves the original function's signature and merely prints the decorated function's name:
 
 .. code-block:: python
 
-   from typing import Any, Callable, TypeVar, cast
+   def my_decorator(func):
+       def wrapper(*args, **kwds):
+           print("Calling", func)
+           return func(*args, **kwds)
+       return wrapper
+
+and we use it to decorate function ``add_forty_two``:
+
+.. code-block:: python
+
+   # A decorated function.
+   @my_decorator
+   def add_forty_two(value: int) -> int:
+       return value + 42
+
+   a = add_forty_two(3)
+
+Since ``my_decorator`` is not type-annotated, the following won't get type-checked:
+
+.. code-block:: python
+
+   reveal_type(a)  # revealed type: Any
+   add_forty_two('foo')  # no type-checker error :(
+
+Before parameter specifications, here's how one might have annotated the decorator:
+
+.. code-block:: python
+
+   from typing import Callable, TypeVar
 
    F = TypeVar('F', bound=Callable[..., Any])
 
@@ -564,26 +592,57 @@ Here's a complete example of a function decorator:
            return func(*args, **kwds)
        return cast(F, wrapper)
 
-   # A decorated function.
-   @my_decorator
-   def foo(a: int) -> str:
-       return str(a)
+and that would enable the following type checks:
 
-   a = foo(12)
+.. code-block:: python
+
    reveal_type(a)  # str
-   foo('x')    # Type check error: incompatible type "str"; expected "int"
+   add_forty_two('x')    # Type check error: incompatible type "str"; expected "int"
 
-From the final block we see that the signatures of the decorated
-functions ``foo()`` and ``bar()`` are the same as those of the original
-functions (before the decorator is applied).
 
-The bound on ``F`` is used so that calling the decorator on a
-non-function (e.g. ``my_decorator(1)``) will be rejected.
-
-Also note that the ``wrapper()`` function is not type-checked. Wrapper
+Note that the ``wrapper()`` function is not type-checked. Wrapper
 functions are typically small enough that this is not a big
 problem. This is also the reason for the :py:func:`~typing.cast` call in the
-``return`` statement in ``my_decorator()``. See :ref:`casts <casts>`.
+``return`` statement in ``my_decorator()``. See :ref:`casts <casts>`.  However,
+with the introduction of parameter specifications in mypy 0.940, we can now
+have a more faithful type annotation:
+
+.. code-block:: python
+
+   from typing import Callable, ParamSpec, TypeVar
+
+   P = ParamSpec('P')
+   T = TypeVar('T')
+
+   def my_decorator(func: Callable[P, T]) -> Callable[P, T]:
+       def wrapper(*args: P.args, **kwds: P.kwargs) -> T:
+           print("Calling", func)
+           return func(*args, **kwds)
+       return wrapper
+
+When the decorator alters the signature, parameter specifications truly show their potential:
+
+.. code-block:: python
+
+   from typing import Callable, ParamSpec, TypeVar
+
+   P = ParamSpec('P')
+   T = TypeVar('T')
+
+    # Note: We reuse 'P' in the return type, but replace 'T' with 'str'
+   def stringify(func: Callable[P, T]) -> Callable[P, str]:
+       def wrapper(*args: P.args, **kwds: P.kwargs) -> str:
+           return str(func(*args, **kwds))
+       return wrapper
+
+    @stringify
+    def add_forty_two(value: int) -> int:
+        return value + 42
+
+    a = add_forty_two(3)
+    reveal_type(a)  # str
+    foo('x')    # Type check error: incompatible type "str"; expected "int"
+
 
 .. _decorator-factories:
 

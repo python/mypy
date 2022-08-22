@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 from mypy.errors import Errors
 from mypy.nodes import MypyFile
@@ -6,11 +6,7 @@ from mypy.options import Options
 
 
 def parse(
-    source: Union[str, bytes],
-    fnam: str,
-    module: Optional[str],
-    errors: Optional[Errors],
-    options: Options,
+    source: str | bytes, fnam: str, module: str | None, errors: Errors | None, options: Options
 ) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 

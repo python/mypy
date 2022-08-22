@@ -3,6 +3,8 @@
 See https://github.com/python/typing/issues/193#issuecomment-236383893
 """
 
+from __future__ import annotations
+
 LIMIT = 5
 BOUND = "object"
 
@@ -35,7 +37,7 @@ def expand_template(
     print(s)
 
 
-def main():
+def main() -> None:
     prelude(LIMIT, BOUND)
 
     # map()
