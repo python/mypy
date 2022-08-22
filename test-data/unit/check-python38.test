@@ -576,3 +576,13 @@ class Bar:
     def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:
         ...
 [builtins fixtures/bool.pyi]
+
+[case testUnpackWithDuplicateNamePositionalOnly]
+from typing_extensions import Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
+    ...
+[builtins fixtures/dict.pyi]

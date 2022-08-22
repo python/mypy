@@ -11,6 +11,7 @@ from typing import (
     Dict,
     Iterable,
     NamedTuple,
+    NewType,
     Sequence,
     TypeVar,
     Union,
@@ -1561,6 +1562,9 @@ class Parameters(ProperType):
             return NotImplemented
 
 
+CT = TypeVar("CT", bound="CallableType")
+
+
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (such as function)."""
 
@@ -1590,6 +1594,7 @@ class CallableType(FunctionLike):
         "type_guard",  # T, if -> TypeGuard[T] (ret_type is bool in this case).
         "from_concatenate",  # whether this callable is from a concatenate object
         # (this is used for error messages)
+        "unpack_kwargs",  # Was an Unpack[...] with **kwargs used to define this callable?
     )
 
     def __init__(
@@ -1613,6 +1618,7 @@ class CallableType(FunctionLike):
         def_extras: dict[str, Any] | None = None,
         type_guard: Type | None = None,
         from_concatenate: bool = False,
+        unpack_kwargs: bool = False,
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1653,9 +1659,10 @@ class CallableType(FunctionLike):
         else:
             self.def_extras = {}
         self.type_guard = type_guard
+        self.unpack_kwargs = unpack_kwargs
 
     def copy_modified(
-        self,
+        self: CT,
         arg_types: Bogus[Sequence[Type]] = _dummy,
         arg_kinds: Bogus[list[ArgKind]] = _dummy,
         arg_names: Bogus[list[str | None]] = _dummy,
@@ -1674,8 +1681,9 @@ class CallableType(FunctionLike):
         def_extras: Bogus[dict[str, Any]] = _dummy,
         type_guard: Bogus[Type | None] = _dummy,
         from_concatenate: Bogus[bool] = _dummy,
-    ) -> CallableType:
-        return CallableType(
+        unpack_kwargs: Bogus[bool] = _dummy,
+    ) -> CT:
+        return type(self)(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
@@ -1698,6 +1706,7 @@ class CallableType(FunctionLike):
             from_concatenate=(
                 from_concatenate if from_concatenate is not _dummy else self.from_concatenate
             ),
+            unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
         )
 
     def var_arg(self) -> FormalArgument | None:
@@ -1889,6 +1898,27 @@ class CallableType(FunctionLike):
                 variables=[*variables, *self.variables],
             )
 
+    def with_unpacked_kwargs(self) -> NormalizedCallableType:
+        if not self.unpack_kwargs:
+            return NormalizedCallableType(self.copy_modified())
+        last_type = get_proper_type(self.arg_types[-1])
+        assert isinstance(last_type, ProperType) and isinstance(last_type, TypedDictType)
+        extra_kinds = [
+            ArgKind.ARG_NAMED if name in last_type.required_keys else ArgKind.ARG_NAMED_OPT
+            for name in last_type.items
+        ]
+        new_arg_kinds = self.arg_kinds[:-1] + extra_kinds
+        new_arg_names = self.arg_names[:-1] + list(last_type.items)
+        new_arg_types = self.arg_types[:-1] + list(last_type.items.values())
+        return NormalizedCallableType(
+            self.copy_modified(
+                arg_kinds=new_arg_kinds,
+                arg_names=new_arg_names,
+                arg_types=new_arg_types,
+                unpack_kwargs=False,
+            )
+        )
+
     def __hash__(self) -> int:
         # self.is_type_obj() will fail if self.fallback.type is a FakeInfo
         if isinstance(self.fallback.type, FakeInfo):
@@ -1940,6 +1970,7 @@ class CallableType(FunctionLike):
             "def_extras": dict(self.def_extras),
             "type_guard": self.type_guard.serialize() if self.type_guard is not None else None,
             "from_concatenate": self.from_concatenate,
+            "unpack_kwargs": self.unpack_kwargs,
         }
 
     @classmethod
@@ -1962,7 +1993,14 @@ class CallableType(FunctionLike):
                 deserialize_type(data["type_guard"]) if data["type_guard"] is not None else None
             ),
             from_concatenate=data["from_concatenate"],
+            unpack_kwargs=data["unpack_kwargs"],
         )
+
+
+# This is a little safety net to prevent reckless special-casing of callables
+# that can potentially break Unpack[...] with **kwargs.
+# TODO: use this in more places in checkexpr.py etc?
+NormalizedCallableType = NewType("NormalizedCallableType", CallableType)
 
 
 class Overloaded(FunctionLike):
@@ -2008,6 +2046,9 @@ class Overloaded(FunctionLike):
 
     def get_name(self) -> str | None:
         return self._items[0].name
+
+    def with_unpacked_kwargs(self) -> Overloaded:
+        return Overloaded([i.with_unpacked_kwargs() for i in self.items])
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_overloaded(self)
@@ -2917,7 +2958,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             name = t.arg_names[i]
             if name:
                 s += name + ": "
-            s += t.arg_types[i].accept(self)
+            type_str = t.arg_types[i].accept(self)
+            if t.arg_kinds[i] == ARG_STAR2 and t.unpack_kwargs:
+                type_str = f"Unpack[{type_str}]"
+            s += type_str
             if t.arg_kinds[i].is_optional():
                 s += " ="
 

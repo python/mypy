@@ -2391,7 +2391,10 @@ def pretty_callable(tp: CallableType) -> str:
         name = tp.arg_names[i]
         if name:
             s += name + ": "
-        s += format_type_bare(tp.arg_types[i])
+        type_str = format_type_bare(tp.arg_types[i])
+        if tp.arg_kinds[i] == ARG_STAR2 and tp.unpack_kwargs:
+            type_str = f"Unpack[{type_str}]"
+        s += type_str
         if tp.arg_kinds[i].is_optional():
             s += " = ..."
 
