@@ -68,6 +68,7 @@ from mypy.nodes import (
     TypeAlias,
     TypeInfo,
     TypeVarExpr,
+    TypeVarTupleExpr,
     Var,
 )
 from mypy.types import (
@@ -189,6 +190,8 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sna
             )
         elif isinstance(node, ParamSpecExpr):
             result[name] = ("ParamSpec", node.variance, snapshot_type(node.upper_bound))
+        elif isinstance(node, TypeVarTupleExpr):
+            result[name] = ("TypeVarTuple", node.variance, snapshot_type(node.upper_bound))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
