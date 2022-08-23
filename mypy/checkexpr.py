@@ -4280,7 +4280,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # checking super() we will still get an error. So to be consistent, we also
             # allow such imprecise annotations for use with super(), where we fall back
             # to the current class MRO instead.
-            if is_self_type_like(instance_type, method.is_class):
+            if is_self_type_like(instance_type, is_classmethod=method.is_class):
                 if e.info and type_info in e.info.mro:
                     mro = e.info.mro
                     index = mro.index(type_info)
