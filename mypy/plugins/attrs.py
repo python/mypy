@@ -1,11 +1,11 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from __future__ import annotations
 
+from typing import Iterable, List, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.backports import OrderedDict
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -81,7 +81,7 @@ MAGIC_ATTR_CLS_NAME: Final = "_AttrsAttributes"  # The namedtuple subclass name.
 class Converter:
     """Holds information about a `converter=` argument"""
 
-    def __init__(self, init_type: Optional[Type] = None) -> None:
+    def __init__(self, init_type: Type | None = None) -> None:
         self.init_type = init_type
 
 
@@ -95,9 +95,9 @@ class Attribute:
         has_default: bool,
         init: bool,
         kw_only: bool,
-        converter: Optional[Converter],
+        converter: Converter | None,
         context: Context,
-        init_type: Optional[Type],
+        init_type: Type | None,
     ) -> None:
         self.name = name
         self.info = info
@@ -108,11 +108,11 @@ class Attribute:
         self.context = context
         self.init_type = init_type
 
-    def argument(self, ctx: "mypy.plugin.ClassDefContext") -> Argument:
+    def argument(self, ctx: mypy.plugin.ClassDefContext) -> Argument:
         """Return this attribute as an argument to __init__."""
         assert self.init
 
-        init_type: Optional[Type] = None
+        init_type: Type | None = None
         if self.converter:
             if self.converter.init_type:
                 init_type = self.converter.init_type
@@ -169,7 +169,7 @@ class Attribute:
     @classmethod
     def deserialize(
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
-    ) -> "Attribute":
+    ) -> Attribute:
         """Return the Attribute that was serialized."""
         raw_init_type = data["init_type"]
         init_type = deserialize_and_fixup_type(raw_init_type, api) if raw_init_type else None
@@ -200,7 +200,7 @@ class Attribute:
             self.init_type = None
 
 
-def _determine_eq_order(ctx: "mypy.plugin.ClassDefContext") -> bool:
+def _determine_eq_order(ctx: mypy.plugin.ClassDefContext) -> bool:
     """
     Validate the combination of *cmp*, *eq*, and *order*. Derive the effective
     value of order.
@@ -230,8 +230,8 @@ def _determine_eq_order(ctx: "mypy.plugin.ClassDefContext") -> bool:
 
 
 def _get_decorator_optional_bool_argument(
-    ctx: "mypy.plugin.ClassDefContext", name: str, default: Optional[bool] = None
-) -> Optional[bool]:
+    ctx: mypy.plugin.ClassDefContext, name: str, default: bool | None = None
+) -> bool | None:
     """Return the Optional[bool] argument for the decorator.
 
     This handles both @decorator(...) and @decorator.
@@ -253,7 +253,7 @@ def _get_decorator_optional_bool_argument(
         return default
 
 
-def attr_tag_callback(ctx: "mypy.plugin.ClassDefContext") -> None:
+def attr_tag_callback(ctx: mypy.plugin.ClassDefContext) -> None:
     """Record that we have an attrs class in the main semantic analysis pass.
 
     The later pass implemented by attr_class_maker_callback will use this
@@ -264,8 +264,8 @@ def attr_tag_callback(ctx: "mypy.plugin.ClassDefContext") -> None:
 
 
 def attr_class_maker_callback(
-    ctx: "mypy.plugin.ClassDefContext",
-    auto_attribs_default: Optional[bool] = False,
+    ctx: mypy.plugin.ClassDefContext,
+    auto_attribs_default: bool | None = False,
     frozen_default: bool = False,
 ) -> bool:
     """Add necessary dunder methods to classes decorated with attr.s.
@@ -274,8 +274,8 @@ def attr_class_maker_callback(
 
     At a quick glance, the decorator searches the class body for assignments of `attr.ib`s (or
     annotated variables if auto_attribs=True), then depending on how the decorator is called,
-    it will add an __init__ or all the __cmp__ methods.  For frozen=True it will turn the attrs
-    into properties.
+    it will add an __init__ or all the compare methods.
+    For frozen=True it will turn the attrs into properties.
 
     See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
@@ -334,7 +334,7 @@ def attr_class_maker_callback(
     return True
 
 
-def _get_frozen(ctx: "mypy.plugin.ClassDefContext", frozen_default: bool) -> bool:
+def _get_frozen(ctx: mypy.plugin.ClassDefContext, frozen_default: bool) -> bool:
     """Return whether this class is frozen."""
     if _get_decorator_bool_argument(ctx, "frozen", frozen_default):
         return True
@@ -346,15 +346,15 @@ def _get_frozen(ctx: "mypy.plugin.ClassDefContext", frozen_default: bool) -> boo
 
 
 def _analyze_class(
-    ctx: "mypy.plugin.ClassDefContext", auto_attribs: Optional[bool], kw_only: bool
-) -> List[Attribute]:
+    ctx: mypy.plugin.ClassDefContext, auto_attribs: bool | None, kw_only: bool
+) -> list[Attribute]:
     """Analyze the class body of an attr maker, its parents, and return the Attributes found.
 
     auto_attribs=True means we'll generate attributes from type annotations also.
     auto_attribs=None means we'll detect which mode to use.
     kw_only=True means that all attributes created here will be keyword only args in __init__.
     """
-    own_attrs: OrderedDict[str, Attribute] = OrderedDict()
+    own_attrs: dict[str, Attribute] = {}
     if auto_attribs is None:
         auto_attribs = _detect_auto_attribs(ctx)
 
@@ -429,7 +429,7 @@ def _add_empty_metadata(info: TypeInfo) -> None:
     info.metadata["attrs"] = {"attributes": [], "frozen": False}
 
 
-def _detect_auto_attribs(ctx: "mypy.plugin.ClassDefContext") -> bool:
+def _detect_auto_attribs(ctx: mypy.plugin.ClassDefContext) -> bool:
     """Return whether auto_attribs should be enabled or disabled.
 
     It's disabled if there are any unannotated attribs()
@@ -459,7 +459,7 @@ def _detect_auto_attribs(ctx: "mypy.plugin.ClassDefContext") -> bool:
 
 
 def _attributes_from_assignment(
-    ctx: "mypy.plugin.ClassDefContext", stmt: AssignmentStmt, auto_attribs: bool, kw_only: bool
+    ctx: mypy.plugin.ClassDefContext, stmt: AssignmentStmt, auto_attribs: bool, kw_only: bool
 ) -> Iterable[Attribute]:
     """Return Attribute objects that are created by this assignment.
 
@@ -493,7 +493,7 @@ def _attributes_from_assignment(
                 yield _attribute_from_auto_attrib(ctx, kw_only, lhs, rvalue, stmt)
 
 
-def _cleanup_decorator(stmt: Decorator, attr_map: Dict[str, Attribute]) -> None:
+def _cleanup_decorator(stmt: Decorator, attr_map: dict[str, Attribute]) -> None:
     """Handle decorators in class bodies.
 
     `x.default` will set a default value on x
@@ -525,7 +525,7 @@ def _cleanup_decorator(stmt: Decorator, attr_map: Dict[str, Attribute]) -> None:
 
 
 def _attribute_from_auto_attrib(
-    ctx: "mypy.plugin.ClassDefContext",
+    ctx: mypy.plugin.ClassDefContext,
     kw_only: bool,
     lhs: NameExpr,
     rvalue: Expression,
@@ -541,13 +541,13 @@ def _attribute_from_auto_attrib(
 
 
 def _attribute_from_attrib_maker(
-    ctx: "mypy.plugin.ClassDefContext",
+    ctx: mypy.plugin.ClassDefContext,
     auto_attribs: bool,
     kw_only: bool,
     lhs: NameExpr,
     rvalue: CallExpr,
     stmt: AssignmentStmt,
-) -> Optional[Attribute]:
+) -> Attribute | None:
     """Return an Attribute from the assignment or None if you can't make one."""
     if auto_attribs and not stmt.new_syntax:
         # auto_attribs requires an annotation on *every* attr.ib.
@@ -608,8 +608,8 @@ def _attribute_from_attrib_maker(
 
 
 def _parse_converter(
-    ctx: "mypy.plugin.ClassDefContext", converter_expr: Optional[Expression]
-) -> Optional[Converter]:
+    ctx: mypy.plugin.ClassDefContext, converter_expr: Expression | None
+) -> Converter | None:
     """Return the Converter object from an Expression."""
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
     if not converter_expr:
@@ -629,7 +629,7 @@ def _parse_converter(
     else:
         is_attr_converters_optional = False
 
-    converter_type: Optional[Type] = None
+    converter_type: Type | None = None
     if isinstance(converter_expr, RefExpr) and converter_expr.node:
         if isinstance(converter_expr.node, FuncDef):
             if converter_expr.node.type and isinstance(converter_expr.node.type, FunctionLike):
@@ -664,7 +664,7 @@ def _parse_converter(
     if isinstance(converter_type, CallableType) and converter_type.arg_types:
         converter_info.init_type = converter_type.arg_types[0]
     elif isinstance(converter_type, Overloaded):
-        types: List[Type] = []
+        types: list[Type] = []
         for item in converter_type.items:
             # Walk the overloads looking for methods that can accept one argument.
             num_arg_types = len(item.arg_types)
@@ -694,10 +694,10 @@ def is_valid_overloaded_converter(defn: OverloadedFuncDef) -> bool:
 
 def _parse_assignments(
     lvalue: Expression, stmt: AssignmentStmt
-) -> Tuple[List[NameExpr], List[Expression]]:
+) -> tuple[list[NameExpr], list[Expression]]:
     """Convert a possibly complex assignment expression into lists of lvalues and rvalues."""
-    lvalues: List[NameExpr] = []
-    rvalues: List[Expression] = []
+    lvalues: list[NameExpr] = []
+    rvalues: list[Expression] = []
     if isinstance(lvalue, (TupleExpr, ListExpr)):
         if all(isinstance(item, NameExpr) for item in lvalue.items):
             lvalues = cast(List[NameExpr], lvalue.items)
@@ -709,7 +709,7 @@ def _parse_assignments(
     return lvalues, rvalues
 
 
-def _add_order(ctx: "mypy.plugin.ClassDefContext", adder: "MethodAdder") -> None:
+def _add_order(ctx: mypy.plugin.ClassDefContext, adder: MethodAdder) -> None:
     """Generate all the ordering methods for this class."""
     bool_type = ctx.api.named_type("builtins.bool")
     object_type = ctx.api.named_type("builtins.object")
@@ -730,7 +730,7 @@ def _add_order(ctx: "mypy.plugin.ClassDefContext", adder: "MethodAdder") -> None
         adder.add_method(method, args, bool_type, self_type=tvd, tvd=tvd)
 
 
-def _make_frozen(ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute]) -> None:
+def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
     """Turn all the attributes into properties to simulate frozen classes."""
     for attribute in attributes:
         if attribute.name in ctx.cls.info.names:
@@ -749,7 +749,7 @@ def _make_frozen(ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute]
 
 
 def _add_init(
-    ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute], adder: "MethodAdder"
+    ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute], adder: MethodAdder
 ) -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
     # Convert attributes to arguments with kw_only arguments at the  end of
@@ -781,10 +781,10 @@ def _add_init(
 
 
 def _add_attrs_magic_attribute(
-    ctx: "mypy.plugin.ClassDefContext", attrs: "List[Tuple[str, Optional[Type]]]"
+    ctx: mypy.plugin.ClassDefContext, attrs: list[tuple[str, Type | None]]
 ) -> None:
     any_type = AnyType(TypeOfAny.explicit)
-    attributes_types: "List[Type]" = [
+    attributes_types: list[Type] = [
         ctx.api.named_type_or_none("attr.Attribute", [attr_type or any_type]) or any_type
         for _, attr_type in attrs
     ]
@@ -814,12 +814,12 @@ def _add_attrs_magic_attribute(
     )
 
 
-def _add_slots(ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute]) -> None:
+def _add_slots(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
     # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
     ctx.cls.info.slots = {attr.name for attr in attributes}
 
 
-def _add_match_args(ctx: "mypy.plugin.ClassDefContext", attributes: List[Attribute]) -> None:
+def _add_match_args(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
     if (
         "__match_args__" not in ctx.cls.info.names
         or ctx.cls.info.names["__match_args__"].plugin_generated
@@ -844,17 +844,17 @@ class MethodAdder:
 
     # TODO: Combine this with the code build_namedtuple_typeinfo to support both.
 
-    def __init__(self, ctx: "mypy.plugin.ClassDefContext") -> None:
+    def __init__(self, ctx: mypy.plugin.ClassDefContext) -> None:
         self.ctx = ctx
         self.self_type = fill_typevars(ctx.cls.info)
 
     def add_method(
         self,
         method_name: str,
-        args: List[Argument],
+        args: list[Argument],
         ret_type: Type,
-        self_type: Optional[Type] = None,
-        tvd: Optional[TypeVarType] = None,
+        self_type: Type | None = None,
+        tvd: TypeVarType | None = None,
     ) -> None:
         """Add a method: def <method_name>(self, <args>) -> <ret_type>): ... to info.
 

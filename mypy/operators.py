@@ -1,5 +1,7 @@
 """Information about Python operators"""
 
+from __future__ import annotations
+
 from typing_extensions import Final
 
 # Map from binary operator id to related method name (in Python 3).
@@ -28,7 +30,6 @@ op_methods: Final = {
 }
 
 op_methods_to_symbols: Final = {v: k for (k, v) in op_methods.items()}
-op_methods_to_symbols["__div__"] = "/"
 
 ops_falling_back_to_cmp: Final = {"__ne__", "__eq__", "__lt__", "__le__", "__gt__", "__ge__"}
 
@@ -83,7 +84,6 @@ op_methods_that_shortcut: Final = {
     "__add__",
     "__sub__",
     "__mul__",
-    "__div__",
     "__truediv__",
     "__mod__",
     "__divmod__",

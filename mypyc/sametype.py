@@ -1,5 +1,7 @@
 """Same type check for RTypes."""
 
+from __future__ import annotations
+
 from mypyc.ir.func_ir import FuncSignature
 from mypyc.ir.rtypes import (
     RArray,

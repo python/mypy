@@ -6,8 +6,9 @@ ultimately consumed by messages.MessageBuilder.fail(). For more non-trivial mess
 add a method to MessageBuilder and call this instead.
 """
 
-from typing import NamedTuple, Optional
+from __future__ import annotations
 
+from typing import NamedTuple
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
@@ -15,9 +16,9 @@ from mypy import errorcodes as codes
 
 class ErrorMessage(NamedTuple):
     value: str
-    code: Optional[codes.ErrorCode] = None
+    code: codes.ErrorCode | None = None
 
-    def format(self, *args: object, **kwargs: object) -> "ErrorMessage":
+    def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
 
 
@@ -67,7 +68,6 @@ INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "y
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
 INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage("Incompatible types in capture pattern")
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
-INVALID_TUPLE_INDEX_TYPE: Final = ErrorMessage("Invalid tuple index type")
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
 INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
@@ -141,9 +141,6 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     "Function {} could always be true in boolean context", code=codes.TRUTHY_BOOL
 )
 NOT_CALLABLE: Final = "{} not callable"
-PYTHON2_PRINT_FILE_TYPE: Final = (
-    'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
-)
 TYPE_MUST_BE_USED: Final = "Value of type {} must be used"
 
 # Generic

@@ -8,7 +8,7 @@ The top-level logic for dealing with generator functions is in
 mypyc.irbuild.function.
 """
 
-from typing import List
+from __future__ import annotations
 
 from mypy.nodes import ARG_OPT, Var
 from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
@@ -141,8 +141,8 @@ def add_methods_to_generator_class(
     builder: IRBuilder,
     fn_info: FuncInfo,
     sig: FuncSignature,
-    arg_regs: List[Register],
-    blocks: List[BasicBlock],
+    arg_regs: list[Register],
+    blocks: list[BasicBlock],
     is_coroutine: bool,
 ) -> None:
     helper_fn_decl = add_helper_to_generator_class(builder, arg_regs, blocks, sig, fn_info)
@@ -157,8 +157,8 @@ def add_methods_to_generator_class(
 
 def add_helper_to_generator_class(
     builder: IRBuilder,
-    arg_regs: List[Register],
-    blocks: List[BasicBlock],
+    arg_regs: list[Register],
+    blocks: list[BasicBlock],
     sig: FuncSignature,
     fn_info: FuncInfo,
 ) -> FuncDecl:

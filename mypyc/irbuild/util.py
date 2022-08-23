@@ -1,6 +1,8 @@
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
-from typing import Any, Dict, Optional, Union
+from __future__ import annotations
+
+from typing import Any
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -37,7 +39,7 @@ def is_trait(cdef: ClassDef) -> bool:
     return any(is_trait_decorator(d) for d in cdef.decorators) or cdef.info.is_protocol
 
 
-def dataclass_decorator_type(d: Expression) -> Optional[str]:
+def dataclass_decorator_type(d: Expression) -> str | None:
     if isinstance(d, RefExpr) and d.fullname in DATACLASS_DECORATORS:
         return d.fullname.split(".")[0]
     elif (
@@ -65,7 +67,7 @@ def is_dataclass(cdef: ClassDef) -> bool:
     return any(is_dataclass_decorator(d) for d in cdef.decorators)
 
 
-def dataclass_type(cdef: ClassDef) -> Optional[str]:
+def dataclass_type(cdef: ClassDef) -> str | None:
     for d in cdef.decorators:
         typ = dataclass_decorator_type(d)
         if typ is not None:
@@ -88,7 +90,7 @@ def get_mypyc_attr_literal(e: Expression) -> Any:
     return NotImplemented
 
 
-def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
+def get_mypyc_attr_call(d: Expression) -> CallExpr | None:
     """Check if an expression is a call to mypyc_attr and return it if so."""
     if (
         isinstance(d, CallExpr)
@@ -99,9 +101,9 @@ def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
     return None
 
 
-def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
+def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
     """Collect all the mypyc_attr attributes on a class definition or a function."""
-    attrs: Dict[str, Any] = {}
+    attrs: dict[str, Any] = {}
     for dec in stmt.decorators:
         d = get_mypyc_attr_call(dec)
         if d:
@@ -134,7 +136,7 @@ def is_extension_class(cdef: ClassDef) -> bool:
     return True
 
 
-def get_func_def(op: Union[FuncDef, Decorator, OverloadedFuncDef]) -> FuncDef:
+def get_func_def(op: FuncDef | Decorator | OverloadedFuncDef) -> FuncDef:
     if isinstance(op, OverloadedFuncDef):
         assert op.impl
         op = op.impl

@@ -7,11 +7,14 @@ on:
     - 'docs/**'
     - '**/*.rst'
     - '**/*.md'
+    - 'misc/**'
     - 'mypyc/**'
     - 'mypy/stubtest.py'
     - 'mypy/stubgen.py'
     - 'mypy/stubgenc.py'
     - 'mypy/test/**'
+    - 'scripts/**'
+    - 'test-data/**'
 
 jobs:
   mypy_primer:

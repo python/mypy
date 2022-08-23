@@ -130,17 +130,13 @@ two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_myp
 two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
-[case testFlagsFile-skip]
+-- Note that we use `----`, because this is how `--` is escaped while `--` is a comment starter.
+[case testFlagsFile]
 # cmd: mypy @flagsfile
 [file flagsfile]
---always-true=FLAG
+----always-true=FLAG
 main.py
 [file main.py]
-# TODO: this test case passes if you try the exact same thing
-# outside of the test suite. what's going on? it's not related
-# to the extra flags that testcmdline adds. and things work
-# in the test suite with py2 (perhaps because it's a
-# special option)
 x: int
 FLAG = False
 if not FLAG:
@@ -1439,3 +1435,42 @@ b\.c \d+
 # cmd: mypy --enable-incomplete-features a.py
 [file a.py]
 pass
+
+[case testShadowTypingModuleEarlyLoad]
+# cmd: mypy dir
+[file dir/__init__.py]
+from typing import Union
+
+def foo(a: Union[int, str]) -> str:
+    return str
+[file typing.py]
+# Since this file will be picked by mypy itself, we need it to be a fully-working typing
+# A bare minimum would be NamedTuple and TypedDict, which are used in runtime,
+# everything else technically can be just mocked.
+import sys
+import os
+del sys.modules["typing"]
+path = sys.path
+try:
+    sys.path.remove(os.getcwd())
+except ValueError:
+    sys.path.remove("")  # python 3.6
+from typing import *
+sys.path = path
+[out]
+mypy: "typing.py" shadows library module "typing"
+note: A user-defined top-level module with name "typing" is not supported
+== Return code: 2
+
+[case testCustomTypeshedDirWithRelativePathDoesNotCrash]
+# cmd: mypy --custom-typeshed-dir dir dir/typing.pyi
+[file dir/stdlib/abc.pyi]
+[file dir/stdlib/builtins.pyi]
+[file dir/stdlib/sys.pyi]
+[file dir/stdlib/types.pyi]
+[file dir/stdlib/typing.pyi]
+[file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/VERSIONS]
+[out]
+Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
+== Return code: 2

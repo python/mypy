@@ -3,13 +3,14 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Dict, List, Optional, Set, Tuple
+from __future__ import annotations
 
-from typing_extensions import ClassVar, Final, TypeAlias as _TypeAlias
+from typing import ClassVar, Dict, Set, Tuple
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo
 from mypy.server.trigger import make_trigger
-from mypy.types import Instance, Type, TypeAliasType, get_proper_type
+from mypy.types import Instance, Type, get_proper_type
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]
@@ -52,7 +53,7 @@ class TypeState:
     # A blocking error will be generated in this case, since we can't proceed safely.
     # For the description of kinds of protocol dependencies and corresponding examples,
     # see _snapshot_protocol_deps.
-    proto_deps: ClassVar[Optional[Dict[str, Set[str]]]] = {}
+    proto_deps: ClassVar[dict[str, set[str]] | None] = {}
 
     # Protocols (full names) a given class attempted to implement.
     # Used to calculate fine grained protocol dependencies and optimize protocol
@@ -60,13 +61,13 @@ class TypeState:
     # of type a.A to a function expecting something compatible with protocol p.P,
     # we'd have 'a.A' -> {'p.P', ...} in the map. This map is flushed after every incremental
     # update.
-    _attempted_protocols: Final[Dict[str, Set[str]]] = {}
+    _attempted_protocols: Final[dict[str, set[str]]] = {}
     # We also snapshot protocol members of the above protocols. For example, if we pass
     # a value of type a.A to a function expecting something compatible with Iterable, we'd have
     # 'a.A' -> {'__iter__', ...} in the map. This map is also flushed after every incremental
     # update. This map is needed to only generate dependencies like <a.A.__iter__> -> <a.A>
     # instead of a wildcard to avoid unnecessarily invalidating classes.
-    _checked_against_members: Final[Dict[str, Set[str]]] = {}
+    _checked_against_members: Final[dict[str, set[str]]] = {}
     # TypeInfos that appeared as a left type (subtype) in a subtype check since latest
     # dependency snapshot update. This is an optimisation for fine grained mode; during a full
     # run we only take a dependency snapshot at the very end, so this set will contain all
@@ -74,16 +75,18 @@ class TypeState:
     # dependencies generated from (typically) few TypeInfos that were subtype-checked
     # (i.e. appeared as r.h.s. in an assignment or an argument in a function call in
     # a re-checked target) during the update.
-    _rechecked_types: Final[Set[TypeInfo]] = set()
+    _rechecked_types: Final[set[TypeInfo]] = set()
 
     # The two attributes below are assumption stacks for subtyping relationships between
     # recursive type aliases. Normally, one would pass type assumptions as an additional
     # arguments to is_subtype(), but this would mean updating dozens of related functions
     # threading this through all callsites (see also comment for TypeInfo.assuming).
-    _assuming: Final[List[Tuple[TypeAliasType, TypeAliasType]]] = []
-    _assuming_proper: Final[List[Tuple[TypeAliasType, TypeAliasType]]] = []
+    _assuming: Final[list[tuple[Type, Type]]] = []
+    _assuming_proper: Final[list[tuple[Type, Type]]] = []
     # Ditto for inference of generic constraints against recursive type aliases.
-    _inferring: Final[List[TypeAliasType]] = []
+    inferring: Final[list[tuple[Type, Type]]] = []
+    # Whether to use joins or unions when solving constraints, see checkexpr.py for details.
+    infer_unions: ClassVar = False
 
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
@@ -107,6 +110,12 @@ class TypeState:
             ) == get_proper_type(right):
                 return True
         return False
+
+    @staticmethod
+    def get_assumptions(is_proper: bool) -> list[tuple[Type, Type]]:
+        if is_proper:
+            return TypeState._assuming_proper
+        return TypeState._assuming
 
     @staticmethod
     def reset_all_subtype_caches() -> None:
@@ -170,7 +179,7 @@ class TypeState:
         )
 
     @staticmethod
-    def _snapshot_protocol_deps() -> Dict[str, Set[str]]:
+    def _snapshot_protocol_deps() -> dict[str, set[str]]:
         """Collect protocol attribute dependencies found so far from registered subtype checks.
 
         There are three kinds of protocol dependencies. For example, after a subtype check:
@@ -199,7 +208,7 @@ class TypeState:
         proper subtype checks, and calculating meets and joins, if this involves calling
         'subtypes.is_protocol_implementation').
         """
-        deps: Dict[str, Set[str]] = {}
+        deps: dict[str, set[str]] = {}
         for info in TypeState._rechecked_types:
             for attr in TypeState._checked_against_members[info.fullname]:
                 # The need for full MRO here is subtle, during an update, base classes of
@@ -225,7 +234,7 @@ class TypeState:
         return deps
 
     @staticmethod
-    def update_protocol_deps(second_map: Optional[Dict[str, Set[str]]] = None) -> None:
+    def update_protocol_deps(second_map: dict[str, set[str]] | None = None) -> None:
         """Update global protocol dependency map.
 
         We update the global map incrementally, using a snapshot only from recently
@@ -246,7 +255,7 @@ class TypeState:
         TypeState._checked_against_members.clear()
 
     @staticmethod
-    def add_all_protocol_deps(deps: Dict[str, Set[str]]) -> None:
+    def add_all_protocol_deps(deps: dict[str, set[str]]) -> None:
         """Add all known protocol dependencies to deps.
 
         This is used by tests and debug output, and also when collecting

@@ -857,8 +857,8 @@ a[b]
 a[c]
 a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "int" \
       # N: Possible overload variants: \
-      # N:     def __getitem__(self, B) -> int \
-      # N:     def __getitem__(self, C) -> str
+      # N:     def __getitem__(self, B, /) -> int \
+      # N:     def __getitem__(self, C, /) -> str
 
 i, s = None, None  # type: (int, str)
 if int():
@@ -2165,6 +2165,19 @@ if x in (1, 2):
     pass
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+
+[case testOverlappingClassCallables]
+# flags: --strict-equality
+from typing import Any, Callable, Type
+
+x: Type[int]
+y: Callable[[], Any]
+x == y
+y == x
+int == y
+y == int
+[builtins fixtures/bool.pyi]
 
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \

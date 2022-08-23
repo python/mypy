@@ -177,7 +177,7 @@ In this example, the function ``format_id()`` has no annotation:
 .. code-block:: python
 
    def format_id(user):
-       return "User: {}".format(user)
+       return f"User: {user}"
 
    root = format_id(0)
 
@@ -227,11 +227,6 @@ command.
 
    Only allow some fraction of types in the suggested signature to be ``Any`` types.
    The fraction ranges from ``0`` (same as ``--no-any``) to ``1``.
-
-.. option:: --try-text
-
-   Try also using ``unicode`` wherever ``str`` is inferred. This flag may be useful
-   for annotating Python 2/3 straddling code.
 
 .. option:: --callsites
 

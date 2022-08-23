@@ -1,6 +1,6 @@
-from typing import Callable, Optional
+from __future__ import annotations
 
-from typing_extensions import Type as typing_Type
+from typing import Callable
 
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin
@@ -33,7 +33,7 @@ class ProperTypePlugin(Plugin):
     all these became dangerous because typ may be e.g. an alias to union.
     """
 
-    def get_function_hook(self, fullname: str) -> Optional[Callable[[FunctionContext], Type]]:
+    def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         if fullname == "builtins.isinstance":
             return isinstance_proper_hook
         if fullname == "mypy.types.get_proper_type":
@@ -84,7 +84,10 @@ def is_special_target(right: ProperType) -> bool:
             return True
         if right.type_object().fullname in (
             "mypy.types.UnboundType",
+            "mypy.types.TypeVarLikeType",
             "mypy.types.TypeVarType",
+            "mypy.types.UnpackType",
+            "mypy.types.TypeVarTupleType",
             "mypy.types.ParamSpecType",
             "mypy.types.RawExpressionType",
             "mypy.types.EllipsisType",
@@ -93,6 +96,8 @@ def is_special_target(right: ProperType) -> bool:
             "mypy.types.CallableArgument",
             "mypy.types.PartialType",
             "mypy.types.ErasedType",
+            "mypy.types.DeletedType",
+            "mypy.types.RequiredType",
         ):
             # Special case: these are not valid targets for a type alias and thus safe.
             # TODO: introduce a SyntheticType base to simplify this?
@@ -156,5 +161,5 @@ def get_proper_type_instance(ctx: FunctionContext) -> Instance:
     return Instance(proper_type_info.node, [])
 
 
-def plugin(version: str) -> typing_Type[ProperTypePlugin]:
+def plugin(version: str) -> type[ProperTypePlugin]:
     return ProperTypePlugin

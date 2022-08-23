@@ -1,4 +1,6 @@
-from typing import Callable, Container, Dict, List, Optional, cast
+from __future__ import annotations
+
+from typing import Callable, Container, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -133,7 +135,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         raise RuntimeError("Type aliases should be expanded before accepting this visitor")
 
 
-def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:
+def erase_typevars(t: Type, ids_to_erase: Container[TypeVarId] | None = None) -> Type:
     """Replace all type variables in a type with any,
     or just the ones in the provided collection.
     """
@@ -190,10 +192,7 @@ class LastKnownValueEraser(TypeTranslator):
     def visit_instance(self, t: Instance) -> Type:
         if not t.last_known_value and not t.args:
             return t
-        new_t = t.copy_modified(args=[a.accept(self) for a in t.args], last_known_value=None)
-        new_t.can_be_true = t.can_be_true
-        new_t.can_be_false = t.can_be_false
-        return new_t
+        return t.copy_modified(args=[a.accept(self) for a in t.args], last_known_value=None)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Type aliases can't contain literal values, because they are
@@ -209,13 +208,15 @@ class LastKnownValueEraser(TypeTranslator):
         instances = [item for item in new.items if isinstance(get_proper_type(item), Instance)]
         # Avoid merge in simple cases such as optional types.
         if len(instances) > 1:
-            instances_by_name: Dict[str, List[Instance]] = {}
-            new_items = get_proper_types(new.items)
-            for item in new_items:
-                if isinstance(item, Instance) and not item.args:
-                    instances_by_name.setdefault(item.type.fullname, []).append(item)
-            merged: List[Type] = []
-            for item in new_items:
+            instances_by_name: dict[str, list[Instance]] = {}
+            p_new_items = get_proper_types(new.items)
+            for p_item in p_new_items:
+                if isinstance(p_item, Instance) and not p_item.args:
+                    instances_by_name.setdefault(p_item.type.fullname, []).append(p_item)
+            merged: list[Type] = []
+            for item in new.items:
+                orig_item = item
+                item = get_proper_type(item)
                 if isinstance(item, Instance) and not item.args:
                     types = instances_by_name.get(item.type.fullname)
                     if types is not None:
@@ -227,6 +228,6 @@ class LastKnownValueEraser(TypeTranslator):
                             merged.append(make_simplified_union(types))
                             del instances_by_name[item.type.fullname]
                 else:
-                    merged.append(item)
+                    merged.append(orig_item)
             return UnionType.make_union(merged)
         return new

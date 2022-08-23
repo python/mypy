@@ -1,4 +1,6 @@
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, TypeVar, Union, cast
+from __future__ import annotations
+
+from typing import Iterable, Mapping, Sequence, TypeVar, cast
 
 from mypy.types import (
     AnyType,
@@ -50,7 +52,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     if not instance.args:
         return typ
     else:
-        variables: Dict[TypeVarId, Type] = {}
+        variables: dict[TypeVarId, Type] = {}
         if instance.type.has_type_var_tuple_type:
             assert instance.type.type_var_tuple_prefix is not None
             assert instance.type.type_var_tuple_suffix is not None
@@ -83,7 +85,7 @@ def freshen_function_type_vars(callee: F) -> F:
         if not callee.is_generic():
             return cast(F, callee)
         tvs = []
-        tvmap: Dict[TypeVarId, Type] = {}
+        tvmap: dict[TypeVarId, Type] = {}
         for v in callee.variables:
             # TODO(PEP612): fix for ParamSpecType
             if isinstance(v, TypeVarType):
@@ -139,21 +141,19 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return args
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        repl = get_proper_type(self.variables.get(t.id, t))
-        if isinstance(repl, Instance):
-            inst = repl
-            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
-        else:
-            return repl
+        repl = self.variables.get(t.id, t)
+        if isinstance(repl, ProperType) and isinstance(repl, Instance):
+            # TODO: do we really need to do this?
+            # If I try to remove this special-casing ~40 tests fail on reveal_type().
+            return repl.copy_modified(last_known_value=None)
+        return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
-            inst = repl
-            # Return copy of instance with type erasure flag on.
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.
-            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
+            return repl
         elif isinstance(repl, ParamSpecType):
             return repl.copy_modified(
                 flavor=t.flavor,
@@ -195,13 +195,12 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # instead.
         assert False, "Mypy bug: unpacking must happen at a higher level"
 
-    def expand_unpack(self, t: UnpackType) -> Optional[Union[List[Type], Instance, AnyType]]:
+    def expand_unpack(self, t: UnpackType) -> list[Type] | Instance | AnyType | None:
         """May return either a list of types to unpack to, any, or a single
         variable length tuple. The latter may not be valid in all contexts.
         """
-        proper_typ = get_proper_type(t.type)
-        if isinstance(proper_typ, TypeVarTupleType):
-            repl = get_proper_type(self.variables.get(proper_typ.id, t))
+        if isinstance(t.type, TypeVarTupleType):
+            repl = get_proper_type(self.variables.get(t.type.id, t))
             if isinstance(repl, TupleType):
                 return repl.items
             if isinstance(repl, TypeList):
@@ -221,7 +220,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             else:
                 raise NotImplementedError(f"Invalid type replacement to expand: {repl}")
         else:
-            raise NotImplementedError(f"Invalid type to expand: {proper_typ}")
+            raise NotImplementedError(f"Invalid type to expand: {t.type}")
 
     def visit_parameters(self, t: Parameters) -> Type:
         return t.copy_modified(arg_types=self.expand_types(t.arg_types))
@@ -258,7 +257,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         )
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items: List[CallableType] = []
+        items: list[CallableType] = []
         for item in t.items:
             new_item = item.accept(self)
             assert isinstance(new_item, ProperType)
@@ -268,18 +267,17 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def expand_types_with_unpack(
         self, typs: Sequence[Type]
-    ) -> Union[List[Type], AnyType, UninhabitedType, Instance]:
+    ) -> list[Type] | AnyType | UninhabitedType | Instance:
         """Expands a list of types that has an unpack.
 
         In corner cases, this can return a type rather than a list, in which case this
         indicates use of Any or some error occurred earlier. In this case callers should
         simply propagate the resulting type.
         """
-        items: List[Type] = []
+        items: list[Type] = []
         for item in typs:
-            proper_item = get_proper_type(item)
-            if isinstance(proper_item, UnpackType):
-                unpacked_items = self.expand_unpack(proper_item)
+            if isinstance(item, UnpackType):
+                unpacked_items = self.expand_unpack(item)
                 if unpacked_items is None:
                     # TODO: better error, something like tuple of unknown?
                     return UninhabitedType()
@@ -293,18 +291,27 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                 else:
                     items.extend(unpacked_items)
             else:
-                items.append(proper_item.accept(self))
+                # Must preserve original aliases when possible.
+                items.append(item.accept(self))
         return items
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         items = self.expand_types_with_unpack(t.items)
         if isinstance(items, list):
-            return t.copy_modified(items=items)
+            fallback = t.partial_fallback.accept(self)
+            fallback = get_proper_type(fallback)
+            if not isinstance(fallback, Instance):
+                fallback = t.partial_fallback
+            return t.copy_modified(items=items, fallback=fallback)
         else:
             return items
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        return t.copy_modified(item_types=self.expand_types(t.items.values()))
+        fallback = t.fallback.accept(self)
+        fallback = get_proper_type(fallback)
+        if not isinstance(fallback, Instance):
+            fallback = t.fallback
+        return t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         # TODO: Verify this implementation is correct
@@ -332,8 +339,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # so we just expand the arguments.
         return t.copy_modified(args=self.expand_types(t.args))
 
-    def expand_types(self, types: Iterable[Type]) -> List[Type]:
-        a: List[Type] = []
+    def expand_types(self, types: Iterable[Type]) -> list[Type]:
+        a: list[Type] = []
         for t in types:
             a.append(t.accept(self))
         return a

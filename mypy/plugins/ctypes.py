@@ -1,6 +1,6 @@
 """Plugin to provide accurate types for some parts of the ctypes module."""
 
-from typing import List, Optional
+from __future__ import annotations
 
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.
 import mypy.plugin
@@ -18,34 +18,14 @@ from mypy.types import (
     Type,
     TypeOfAny,
     UnionType,
+    flatten_nested_unions,
     get_proper_type,
-    union_items,
 )
 
 
-def _get_bytes_type(api: "mypy.plugin.CheckerPluginInterface") -> Instance:
-    """Return the type corresponding to bytes on the current Python version.
-
-    This is bytes in Python 3, and str in Python 2.
-    """
-    return api.named_generic_type(
-        "builtins.bytes" if api.options.python_version >= (3,) else "builtins.str", []
-    )
-
-
-def _get_text_type(api: "mypy.plugin.CheckerPluginInterface") -> Instance:
-    """Return the type corresponding to Text on the current Python version.
-
-    This is str in Python 3, and unicode in Python 2.
-    """
-    return api.named_generic_type(
-        "builtins.str" if api.options.python_version >= (3,) else "builtins.unicode", []
-    )
-
-
 def _find_simplecdata_base_arg(
-    tp: Instance, api: "mypy.plugin.CheckerPluginInterface"
-) -> Optional[ProperType]:
+    tp: Instance, api: mypy.plugin.CheckerPluginInterface
+) -> ProperType | None:
     """Try to find a parametrized _SimpleCData in tp's bases and return its single type argument.
 
     None is returned if _SimpleCData appears nowhere in tp's (direct or indirect) bases.
@@ -60,7 +40,7 @@ def _find_simplecdata_base_arg(
     return None
 
 
-def _autoconvertible_to_cdata(tp: Type, api: "mypy.plugin.CheckerPluginInterface") -> Type:
+def _autoconvertible_to_cdata(tp: Type, api: mypy.plugin.CheckerPluginInterface) -> Type:
     """Get a type that is compatible with all types that can be implicitly converted to the given
     CData type.
 
@@ -74,7 +54,8 @@ def _autoconvertible_to_cdata(tp: Type, api: "mypy.plugin.CheckerPluginInterface
     # items. This is not quite correct - strictly speaking, only types convertible to *all* of the
     # union items should be allowed. This may be worth changing in the future, but the more
     # correct algorithm could be too strict to be useful.
-    for t in union_items(tp):
+    for t in flatten_nested_unions([tp]):
+        t = get_proper_type(t)
         # Every type can be converted from itself (obviously).
         allowed_types.append(t)
         if isinstance(t, Instance):
@@ -117,7 +98,7 @@ def _autounboxed_cdata(tp: Type) -> ProperType:
     return tp
 
 
-def _get_array_element_type(tp: Type) -> Optional[ProperType]:
+def _get_array_element_type(tp: Type) -> ProperType | None:
     """Get the element type of the Array type tp, or None if not specified."""
     tp = get_proper_type(tp)
     if isinstance(tp, Instance):
@@ -127,7 +108,7 @@ def _get_array_element_type(tp: Type) -> Optional[ProperType]:
     return None
 
 
-def array_constructor_callback(ctx: "mypy.plugin.FunctionContext") -> Type:
+def array_constructor_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     """Callback to provide an accurate signature for the ctypes.Array constructor."""
     # Extract the element type from the constructor's return type, i. e. the type of the array
     # being constructed.
@@ -161,7 +142,7 @@ def array_constructor_callback(ctx: "mypy.plugin.FunctionContext") -> Type:
     return ctx.default_return_type
 
 
-def array_getitem_callback(ctx: "mypy.plugin.MethodContext") -> Type:
+def array_getitem_callback(ctx: mypy.plugin.MethodContext) -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__getitem__."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
@@ -181,7 +162,7 @@ def array_getitem_callback(ctx: "mypy.plugin.MethodContext") -> Type:
     return ctx.default_return_type
 
 
-def array_setitem_callback(ctx: "mypy.plugin.MethodSigContext") -> CallableType:
+def array_setitem_callback(ctx: mypy.plugin.MethodSigContext) -> CallableType:
     """Callback to provide an accurate signature for ctypes.Array.__setitem__."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
@@ -203,7 +184,7 @@ def array_setitem_callback(ctx: "mypy.plugin.MethodSigContext") -> CallableType:
     return ctx.default_signature
 
 
-def array_iter_callback(ctx: "mypy.plugin.MethodContext") -> Type:
+def array_iter_callback(ctx: mypy.plugin.MethodContext) -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__iter__."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
@@ -212,18 +193,19 @@ def array_iter_callback(ctx: "mypy.plugin.MethodContext") -> Type:
     return ctx.default_return_type
 
 
-def array_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
+def array_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """Callback to provide an accurate type for ctypes.Array.value."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
-        types: List[Type] = []
-        for tp in union_items(et):
+        types: list[Type] = []
+        for tp in flatten_nested_unions([et]):
+            tp = get_proper_type(tp)
             if isinstance(tp, AnyType):
                 types.append(AnyType(TypeOfAny.from_another_any, source_any=tp))
             elif isinstance(tp, Instance) and tp.type.fullname == "ctypes.c_char":
-                types.append(_get_bytes_type(ctx.api))
+                types.append(ctx.api.named_generic_type("builtins.bytes", []))
             elif isinstance(tp, Instance) and tp.type.fullname == "ctypes.c_wchar":
-                types.append(_get_text_type(ctx.api))
+                types.append(ctx.api.named_generic_type("builtins.str", []))
             else:
                 ctx.api.msg.fail(
                     'Array attribute "value" is only available'
@@ -234,18 +216,19 @@ def array_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
     return ctx.default_attr_type
 
 
-def array_raw_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
+def array_raw_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """Callback to provide an accurate type for ctypes.Array.raw."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
-        types: List[Type] = []
-        for tp in union_items(et):
+        types: list[Type] = []
+        for tp in flatten_nested_unions([et]):
+            tp = get_proper_type(tp)
             if (
                 isinstance(tp, AnyType)
                 or isinstance(tp, Instance)
                 and tp.type.fullname == "ctypes.c_char"
             ):
-                types.append(_get_bytes_type(ctx.api))
+                types.append(ctx.api.named_generic_type("builtins.bytes", []))
             else:
                 ctx.api.msg.fail(
                     'Array attribute "raw" is only available'

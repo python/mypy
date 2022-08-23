@@ -1,9 +1,9 @@
+from __future__ import annotations
+
 import sys
 import traceback
 from contextlib import contextmanager
-from typing import Iterator
-
-from typing_extensions import NoReturn
+from typing import Iterator, NoReturn
 
 
 @contextmanager
@@ -14,7 +14,7 @@ def catch_errors(module_path: str, line: int) -> Iterator[None]:
         crash_report(module_path, line)
 
 
-def crash_report(module_path: str, line: int) -> "NoReturn":
+def crash_report(module_path: str, line: int) -> NoReturn:
     # Adapted from report_internal_error in mypy
     err = sys.exc_info()[1]
     tb = traceback.extract_stack()[:-4]

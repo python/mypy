@@ -85,9 +85,6 @@ class Loader(metaclass=ABCMeta):
     # but expected in new code.
     def exec_module(self, module: types.ModuleType) -> None: ...
 
-class _LoaderProtocol(Protocol):
-    def load_module(self, fullname: str) -> types.ModuleType: ...
-
 class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     name: str
     path: _Path

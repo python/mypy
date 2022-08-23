@@ -883,9 +883,9 @@ from typing import TypeVar, Generic, Tuple
 T = TypeVar('T')
 class Test(Generic[T], Tuple[T]): pass
 x = Test() # type: Test[int]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.Test[builtins.int]]"
 [builtins fixtures/tuple.pyi]
 [out]
-main:4: error: Generic tuple types not supported
 
 
 -- Variable-length tuples (Tuple[t, ...] with literal '...')
@@ -1226,7 +1226,11 @@ t = (0, "")
 x = 0
 y = ""
 reveal_type(t[x])  # N: Revealed type is "Union[builtins.int, builtins.str]"
-t[y]  # E: Invalid tuple index type (actual type "str", expected type "Union[int, slice]")
+t[y]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
+      # N: Possible overload variants: \
+      # N:     def __getitem__(self, int, /) -> object \
+      # N:     def __getitem__(self, slice, /) -> Tuple[object, ...]
+
 [builtins fixtures/tuple.pyi]
 
 [case testNonliteralTupleSlice]

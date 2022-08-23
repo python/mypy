@@ -1,14 +1,15 @@
 """Mypy type checker command line tool."""
 
+from __future__ import annotations
+
 import argparse
 import os
 import subprocess
 import sys
 import time
 from gettext import gettext
-from typing import IO, Any, Dict, List, Optional, Sequence, TextIO, Tuple, Union
-
-from typing_extensions import Final, NoReturn
+from typing import IO, Any, NoReturn, Sequence, TextIO
+from typing_extensions import Final
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
@@ -40,16 +41,15 @@ def stat_proxy(path: str) -> os.stat_result:
 
 
 def main(
-    script_path: Optional[str],
-    stdout: TextIO,
-    stderr: TextIO,
-    args: Optional[List[str]] = None,
+    *,
+    args: list[str] | None = None,
+    stdout: TextIO = sys.stdout,
+    stderr: TextIO = sys.stderr,
     clean_exit: bool = False,
 ) -> None:
     """Main entry point to the type checker.
 
     Args:
-        script_path: Path to the 'mypy' script (used for finding data files).
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
             be used.
         clean_exit: Don't hard kill the process on exit. This allows catching
@@ -144,18 +144,18 @@ def main(
 
 
 def run_build(
-    sources: List[BuildSource],
+    sources: list[BuildSource],
     options: Options,
     fscache: FileSystemCache,
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
-) -> Tuple[Optional[build.BuildResult], List[str], bool]:
+) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     messages = []
 
-    def flush_errors(new_messages: List[str], serious: bool) -> None:
+    def flush_errors(new_messages: list[str], serious: bool) -> None:
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
@@ -202,7 +202,7 @@ def run_build(
 
 
 def show_messages(
-    messages: List[str], f: TextIO, formatter: util.FancyFormatter, options: Options
+    messages: list[str], f: TextIO, formatter: util.FancyFormatter, options: Options
 ) -> None:
     for msg in messages:
         if options.color_output:
@@ -228,7 +228,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 
 # Define pairs of flag prefixes with inverse meaning.
 flag_prefix_pairs: Final = [("allow", "disallow"), ("show", "hide")]
-flag_prefix_map: Final[Dict[str, str]] = {}
+flag_prefix_map: Final[dict[str, str]] = {}
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a
@@ -250,7 +250,7 @@ class PythonExecutableInferenceError(Exception):
     """Represents a failure to infer the version or executable while searching."""
 
 
-def python_executable_prefix(v: str) -> List[str]:
+def python_executable_prefix(v: str) -> list[str]:
     if sys.platform == "win32":
         # on Windows, all Python executables are named `python`. To handle this, there
         # is the `py` launcher, which can be passed a version e.g. `py -3.8`, and it will
@@ -261,7 +261,7 @@ def python_executable_prefix(v: str) -> List[str]:
         return [f"python{v}"]
 
 
-def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
+def _python_executable_from_version(python_version: tuple[int, int]) -> str:
     if sys.version_info[:2] == python_version:
         return sys.executable
     str_ver = ".".join(map(str, python_version))
@@ -350,17 +350,17 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # =====================
     # Help-printing methods
     # =====================
-    def print_usage(self, file: Optional[IO[str]] = None) -> None:
+    def print_usage(self, file: IO[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_usage(), file)
 
-    def print_help(self, file: Optional[IO[str]] = None) -> None:
+    def print_help(self, file: IO[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_help(), file)
 
-    def _print_message(self, message: str, file: Optional[IO[str]] = None) -> None:
+    def _print_message(self, message: str, file: IO[str] | None = None) -> None:
         if message:
             if file is None:
                 file = self.stderr
@@ -369,7 +369,7 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # ===============
     # Exiting methods
     # ===============
-    def exit(self, status: int = 0, message: Optional[str] = None) -> NoReturn:
+    def exit(self, status: int = 0, message: str | None = None) -> NoReturn:
         if message:
             self._print_message(message, self.stderr)
         sys.exit(status)
@@ -407,7 +407,7 @@ class CapturableVersionAction(argparse.Action):
         dest: str = argparse.SUPPRESS,
         default: str = argparse.SUPPRESS,
         help: str = "show program's version number and exit",
-        stdout: Optional[IO[str]] = None,
+        stdout: IO[str] | None = None,
     ):
         super().__init__(
             option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
@@ -419,8 +419,8 @@ class CapturableVersionAction(argparse.Action):
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values: Union[str, Sequence[Any], None],
-        option_string: Optional[str] = None,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
     ) -> NoReturn:
         formatter = parser._get_formatter()
         formatter.add_text(self.version)
@@ -429,15 +429,15 @@ class CapturableVersionAction(argparse.Action):
 
 
 def process_options(
-    args: List[str],
-    stdout: Optional[TextIO] = None,
-    stderr: Optional[TextIO] = None,
+    args: list[str],
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
     require_targets: bool = True,
     server_options: bool = False,
-    fscache: Optional[FileSystemCache] = None,
+    fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
-) -> Tuple[List[BuildSource], Options]:
+) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
@@ -458,18 +458,18 @@ def process_options(
         stderr=stderr,
     )
 
-    strict_flag_names: List[str] = []
-    strict_flag_assignments: List[Tuple[str, bool]] = []
+    strict_flag_names: list[str] = []
+    strict_flag_assignments: list[tuple[str, bool]] = []
 
     def add_invertible_flag(
         flag: str,
         *,
-        inverse: Optional[str] = None,
+        inverse: str | None = None,
         default: bool,
-        dest: Optional[str] = None,
+        dest: str | None = None,
         help: str,
         strict_flag: bool = False,
-        group: Optional[argparse._ActionsContainer] = None,
+        group: argparse._ActionsContainer | None = None,
     ) -> None:
         if inverse is None:
             inverse = invert_flag_name(flag)
@@ -483,7 +483,7 @@ def process_options(
             flag, action="store_false" if default else "store_true", dest=dest, help=help
         )
         dest = arg.dest
-        arg = group.add_argument(
+        group.add_argument(
             inverse,
             action="store_true" if default else "store_false",
             dest=dest,
@@ -766,14 +766,14 @@ def process_options(
         "--warn-return-any",
         default=False,
         strict_flag=True,
-        help="Warn about returning values of type Any" " from non-Any typed functions",
+        help="Warn about returning values of type Any from non-Any typed functions",
         group=lint_group,
     )
     add_invertible_flag(
         "--warn-unreachable",
         default=False,
         strict_flag=False,
-        help="Warn about statements or expressions inferred to be" " unreachable",
+        help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
 
@@ -815,7 +815,7 @@ def process_options(
         "--strict-equality",
         default=False,
         strict_flag=True,
-        help="Prohibit equality, identity, and container checks for" " non-overlapping types",
+        help="Prohibit equality, identity, and container checks for non-overlapping types",
         group=strictness_group,
     )
 
@@ -976,6 +976,11 @@ def process_options(
         metavar="MODULE",
         dest="custom_typing_module",
         help="Use a custom typing module",
+    )
+    internals_group.add_argument(
+        "--enable-recursive-aliases",
+        action="store_true",
+        help="Experimental support for recursive type aliases",
     )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
@@ -1184,7 +1189,7 @@ def process_options(
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
-    if getattr(dummy, "special-opts:strict"):  # noqa
+    if getattr(dummy, "special-opts:strict"):
         set_strict_flags()
 
     # Override cache_dir if provided in the environment
@@ -1341,7 +1346,7 @@ def process_options(
 
 
 def process_package_roots(
-    fscache: Optional[FileSystemCache], parser: argparse.ArgumentParser, options: Options
+    fscache: FileSystemCache | None, parser: argparse.ArgumentParser, options: Options
 ) -> None:
     """Validate and normalize package_root."""
     if fscache is None:
@@ -1399,7 +1404,7 @@ def process_cache_map(
         options.cache_map[source] = (meta_file, data_file)
 
 
-def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options: Options) -> None:
+def maybe_write_junit_xml(td: float, serious: bool, messages: list[str], options: Options) -> None:
     if options.junit_xml:
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         util.write_junit_xml(
@@ -1414,7 +1419,7 @@ def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     sys.exit(2)
 
 
-def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]:
+def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]:
     if not os.path.isdir(cache_dir):
         if not after_run:
             sys.stderr.write(
