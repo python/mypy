@@ -162,7 +162,10 @@ class MessageBuilder:
     #
 
     def filter_errors(
-        self, *, filter_errors: bool = True, save_filtered_errors: bool = False
+        self,
+        *,
+        filter_errors: bool | Callable[[str, ErrorInfo], bool] = True,
+        save_filtered_errors: bool = False,
     ) -> ErrorWatcher:
         return ErrorWatcher(
             self.errors, filter_errors=filter_errors, save_filtered_errors=save_filtered_errors
