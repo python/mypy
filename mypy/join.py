@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Tuple
-
 import mypy.typeops
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
@@ -536,7 +534,7 @@ def is_better(t: Type, s: Type) -> bool:
     return False
 
 
-def normalize_callables(s: ProperType, t: ProperType) -> Tuple[ProperType, ProperType]:
+def normalize_callables(s: ProperType, t: ProperType) -> tuple[ProperType, ProperType]:
     if isinstance(s, (CallableType, Overloaded)):
         s = s.with_unpacked_kwargs()
     if isinstance(t, (CallableType, Overloaded)):
