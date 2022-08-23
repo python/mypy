@@ -3313,6 +3313,16 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
     return typ.value == value
 
 
+def is_self_type_like(typ: Type, *, is_classmethod: bool) -> bool:
+    """Does this look like a self-type annotation?"""
+    typ = get_proper_type(typ)
+    if not is_classmethod:
+        return isinstance(typ, TypeVarType)
+    if not isinstance(typ, TypeType):
+        return False
+    return isinstance(typ.item, TypeVarType)
+
+
 names: Final = globals().copy()
 names.pop("NOT_READY", None)
 deserialize_map: Final = {

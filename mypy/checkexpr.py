@@ -153,6 +153,7 @@ from mypy.types import (
     is_generic_instance,
     is_named_instance,
     is_optional,
+    is_self_type_like,
     remove_optional,
 )
 from mypy.typestate import TypeState
@@ -4268,9 +4269,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # The base is the first MRO entry *after* type_info that has a member
         # with the right name
-        try:
+        index = None
+        if type_info in mro:
             index = mro.index(type_info)
-        except ValueError:
+        else:
+            method = self.chk.scope.top_function()
+            assert method is not None
+            # Mypy explicitly allows supertype upper bounds (and no upper bound at all)
+            # for annotating self-types. However, if such an annotation is used for
+            # checking super() we will still get an error. So to be consistent, we also
+            # allow such imprecise annotations for use with super(), where we fall back
+            # to the current class MRO instead.
+            if is_self_type_like(instance_type, is_classmethod=method.is_class):
+                if e.info and type_info in e.info.mro:
+                    mro = e.info.mro
+                    index = mro.index(type_info)
+        if index is None:
             self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
             return AnyType(TypeOfAny.from_error)
 
