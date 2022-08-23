@@ -107,6 +107,15 @@ def tuple_fallback(typ: TupleType) -> Instance:
     return Instance(info, [join_type_list(items)])
 
 
+def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
+    if isinstance(get_proper_type(func.ret_type), UninhabitedType):
+        return func.ret_type
+    elif func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
+        return func.arg_types[0]
+    else:
+        return None
+
+
 def type_object_type_from_function(
     signature: FunctionLike, info: TypeInfo, def_info: TypeInfo, fallback: Instance, is_new: bool
 ) -> FunctionLike:
@@ -117,14 +126,7 @@ def type_object_type_from_function(
     # classes such as subprocess.Popen.
     default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
-        orig_self_types = [
-            (
-                it.arg_types[0]
-                if it.arg_types and it.arg_types[0] != default_self and it.arg_kinds[0] == ARG_POS
-                else None
-            )
-            for it in signature.items
-        ]
+        orig_self_types = [get_self_type(it, default_self) for it in signature.items]
     else:
         orig_self_types = [None] * len(signature.items)
 
@@ -177,7 +179,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)

@@ -1734,7 +1734,9 @@ class CallableType(FunctionLike):
         return ARG_STAR2 in self.arg_kinds
 
     def is_type_obj(self) -> bool:
-        return self.fallback.type.is_metaclass()
+        return self.fallback.type.is_metaclass() and not isinstance(
+            get_proper_type(self.ret_type), UninhabitedType
+        )
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
