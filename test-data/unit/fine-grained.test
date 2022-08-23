@@ -9819,6 +9819,89 @@ x: str
 [out]
 ==
 
+[case testParamSpecCached]
+import a
+
+[file a.py]
+import b
+
+def f(x: int) -> str: return 'x'
+
+b.foo(f)
+
+[file a.py.2]
+import b
+
+def f(x: int) -> str: return 'x'
+
+reveal_type(b.foo(f))
+
+[file b.py]
+from typing import TypeVar, Callable, Union
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def foo(f: Callable[P, T]) -> Callable[P, Union[T, None]]:
+    return f
+
+[file b.py.2]
+from typing import TypeVar, Callable, Union
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def foo(f: Callable[P, T]) -> Callable[P, Union[T, None]]:
+    return f
+
+x = 0  # Arbitrary change to trigger reprocessing
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+a.py:5: note: Revealed type is "def (x: builtins.int) -> builtins.str"
+
+[case testTypeVarTupleCached]
+import a
+
+[file a.py]
+import b
+
+def f(x: int) -> str: return 'x'
+
+b.foo((1, 'x'))
+
+[file a.py.2]
+import b
+
+reveal_type(b.foo((1, 'x')))
+
+[file b.py]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+def foo(t: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    return t
+
+[file b.py.2]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+def foo(t: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    return t
+
+x = 0  # Arbitrary change to trigger reprocessing
+[builtins fixtures/dict.pyi]
+[out]
+==
+a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
+
 [case testUnpackKwargsUpdateFine]
 # flags: --enable-incomplete-features
 import m
