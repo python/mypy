@@ -26,6 +26,7 @@ from mypy.types import (
     PartialType,
     Type,
     TypeOfAny,
+    TypeType,
     UnionType,
     get_proper_type,
 )
@@ -463,7 +464,10 @@ def get_declaration(expr: BindableExpression) -> Type | None:
             if not isinstance(get_proper_type(type), PartialType):
                 return type
         elif isinstance(expr.node, TypeInfo):
-            return Instance(
-                expr.node, [AnyType(TypeOfAny.implementation_artifact)] * len(expr.node.type_vars)
+            return TypeType(
+                Instance(
+                    expr.node,
+                    [AnyType(TypeOfAny.implementation_artifact)] * len(expr.node.type_vars),
+                )
             )
     return None
