@@ -21,7 +21,6 @@ from mypy.nodes import (
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
-    Instance,
     NoneType,
     PartialType,
     Type,
@@ -30,6 +29,7 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
+from mypy.typevars import fill_typevars_with_any
 
 BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
 
@@ -464,10 +464,5 @@ def get_declaration(expr: BindableExpression) -> Type | None:
             if not isinstance(get_proper_type(type), PartialType):
                 return type
         elif isinstance(expr.node, TypeInfo):
-            return TypeType(
-                Instance(
-                    expr.node,
-                    [AnyType(TypeOfAny.implementation_artifact)] * len(expr.node.type_vars),
-                )
-            )
+            return TypeType(fill_typevars_with_any(expr.node))
     return None
