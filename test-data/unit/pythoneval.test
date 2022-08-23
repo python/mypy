@@ -27,6 +27,18 @@ print(list(reversed(A())))
 \['c', 'b', 'a']
 \['f', 'o', 'o']
 
+[case testOldIterableAndIterableProtocolAreIncompatible]
+from typing import Iterable
+
+def some(i: Iterable[int]): pass
+
+class A:
+    def __getitem__(self, arg: int) -> int: pass
+
+# We treat `Iterable` and types with `__getitem__` compatible: see #13485
+some(A())
+[out]
+
 [case testIntAndFloatConversion]
 from typing import SupportsInt, SupportsFloat
 class A(SupportsInt):

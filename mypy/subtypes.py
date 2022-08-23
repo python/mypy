@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, List, TypeVar, cast
+from typing import Any, Callable, Iterator, List, Tuple, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.applytype
@@ -14,6 +14,7 @@ from mypy.maptype import map_instance_to_supertype
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy.nodes import (
+    ARG_POS,
     ARG_STAR,
     ARG_STAR2,
     CONTRAVARIANT,
@@ -956,9 +957,10 @@ def is_protocol_implementation(
             ignore_names = member != "__call__"  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
-            supertype = get_proper_type(find_member(member, right, left))
+            supertype, subtype = find_members(member, right, left, left)
+            supertype = get_proper_type(supertype)
             assert supertype is not None
-            subtype = get_proper_type(find_member(member, left, left))
+            subtype = get_proper_type(subtype)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1010,6 +1012,56 @@ def is_protocol_implementation(
     )
     TypeState.record_subtype_cache_entry(subtype_kind, left, right)
     return True
+
+
+def find_members(
+    name: str, supertype: Instance, subtype: Instance, context: Type
+) -> Tuple[Type | None, Type | None]:
+    """Find types of member by name for two instances.
+
+    We do it with respect to some special cases, like `Iterable` and `__geitem__`.
+    """
+    if name == "__iter__":
+        # So, this is a special case: old-style iterbale protocol
+        # must be supported even without explicit `__iter__` method.
+        # Because all types with `__geitem__` defined have default `__iter__`
+        # implementation. See #2220
+        # First, we need to find which is one actually `Iterable`:
+        if is_named_instance(supertype, "typing.Iterable"):
+            left, right = _iterable_special_member(supertype, subtype, context)
+            if left is not None and right is not None:
+                return left, right
+        elif is_named_instance(subtype, "typing.Iterable"):
+            left, right = _iterable_special_member(subtype, supertype, context)
+            if left is not None and right is not None:
+                return right, left
+
+    # This is not a special case.
+    # Falling back to regular `find_member` call:
+    return (find_member(name, supertype, context), find_member(name, subtype, context))
+
+
+def _iterable_special_member(
+    iterable: Instance, candidate: Instance, context: Type
+) -> Tuple[Type | None, Type | None]:
+    name = "__iter__"
+    iterable_method = get_proper_type(find_member(name, iterable, context))
+    candidate_method = get_proper_type(find_member("__getitem__", candidate, context))
+    if isinstance(iterable_method, CallableType) and isinstance(
+        (ret := get_proper_type(iterable_method.ret_type)), Instance
+    ):
+        # We need to transform
+        # `__iter__() -> Iterable[ret]` into
+        # `__getitem__(Any) -> ret`
+        iterable_method = iterable_method.copy_modified(
+            arg_names=[None],
+            arg_types=[AnyType(TypeOfAny.implementation_artifact)],
+            arg_kinds=[ARG_POS],
+            ret_type=ret.args[0],
+            name="__getitem__",
+        )
+        return (iterable_method, candidate_method)
+    return None, None
 
 
 def find_member(

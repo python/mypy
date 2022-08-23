@@ -2032,6 +2032,158 @@ reveal_type(list(b for b in B()))  # N: Revealed type is "builtins.list[__main__
 reveal_type(list(B()))  # N: Revealed type is "builtins.list[__main__.B]"
 [builtins fixtures/list.pyi]
 
+[case testOldStyleIterableOnClass]
+from typing import Tuple, TypeVar, Generic
+
+class CorrectGetItem:
+    def __getitem__(self, arg: int) -> str: pass
+class CorrectChild(CorrectGetItem): pass
+
+T = TypeVar('T')
+class WithGeneric(Generic[T]):
+    def __getitem__(self, arg: int) -> T: pass
+
+class ReturnsTuple:
+    def __getitem__(self, arg: int) -> Tuple[int, str]: pass
+
+# Despite the fact that `arg` must have `int` type due to the spec,
+# we allow other signatures right now.
+class WrongGetItemSig:
+    def __getitem__(self, arg: str) -> str: pass
+
+reveal_type(list(a for a in CorrectGetItem()))  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(list(a for a in CorrectChild()))  # N: Revealed type is "builtins.list[builtins.str]"
+
+x: WithGeneric[int]
+reveal_type(list(a for a in x))  # N: Revealed type is "builtins.list[builtins.int]"
+
+reveal_type(list(a for a in ReturnsTuple()))  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str]]"
+
+reveal_type(list(a for a in WrongGetItemSig()))  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testOldIterableTypeAliasAndFor]
+from typing import Iterator
+
+KeyId = str
+
+class A:
+    def __getitem__(self, arg: int) -> KeyId: pass
+
+for a in A():
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testIterableAndOldIterableProtocolsOnClass]
+from typing import Iterator
+
+class A:
+    def __iter__(self) -> Iterator[str]: pass
+    def __getitem__(self, arg: int) -> int: pass
+class B(A): pass
+
+reveal_type(list(a for a in A()))  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(list(b for b in B()))  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testOldStyleIterableProtocolYieldFrom]
+from typing import Iterator
+class A:
+    def __getitem__(self, arg: int) -> int: pass
+def f() -> Iterator[str]:
+    yield from A()  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
+[builtins fixtures/list.pyi]
+
+[case testOldStyleIterableProtocolUnpack]
+class A:
+    def __getitem__(self, arg: int) -> str: pass
+
+a, b = A()
+reveal_type(a)  # N: Revealed type is "builtins.str"
+reveal_type(b)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testGetItemProtocolJustInCase]
+from typing import Protocol, Generic, TypeVar
+
+TCO = TypeVar('TCO', covariant=True)
+T = TypeVar('T')
+
+class GetItemProto(Protocol[TCO]):
+    def __getitem__(self, arg: int) -> TCO: pass
+
+def getitem(p: GetItemProto[T]) -> T:
+    return p[0]
+
+class Regular:
+    def __getitem__(self, arg: int) -> str: pass
+class WithGeneric(Generic[T]):
+    def __getitem__(self, arg: int) -> T: pass
+class DifferentSig:
+    def __getitem__(self, arg: str) -> str: pass
+
+reveal_type(getitem(Regular()))  # N: Revealed type is "builtins.str"
+
+x: WithGeneric[str]
+reveal_type(getitem(x))  # N: Revealed type is "builtins.str"
+
+getitem(DifferentSig())  # E: Argument 1 to "getitem" has incompatible type "DifferentSig"; expected "GetItemProto[<nothing>]"
+[builtins fixtures/list.pyi]
+
+[case testIterableAndGetItemAreCompatible]
+from typing import Iterable, TypeVar, Generic
+
+T = TypeVar('T')
+
+def some_generic(i: Iterable[T]) -> T: pass
+def some_regular(i: Iterable[int]): pass
+
+class Regular:
+    def __getitem__(self, arg: int) -> int: pass
+class WithGeneric(Generic[T]):
+    def __getitem__(self, arg: int) -> T: pass
+
+reveal_type(some_generic(Regular()))  # N: Revealed type is "builtins.int"
+x: WithGeneric[int]
+reveal_type(some_generic(x))  # N: Revealed type is "builtins.int"
+
+some_regular(Regular())
+some_regular(x)
+y: WithGeneric[str]
+some_regular(y)  # E: Argument 1 to "some_regular" has incompatible type "WithGeneric[str]"; expected "Iterable[int]"
+[builtins fixtures/list.pyi]
+
+[case testIterableAndGetItemProtocolsAreNotCompatible]
+from typing import Iterable, Protocol
+
+def expects_iterable(i: Iterable[int]): pass
+
+class GetItem(Protocol):
+    def __getitem__(self, arg: int) -> int: pass
+
+def expects_getitem(i: GetItem): pass
+
+x: GetItem
+expects_iterable(x)  # E: Argument 1 to "expects_iterable" has incompatible type "GetItem"; expected "Iterable[int]"
+
+y: Iterable[int]
+expects_getitem(y)  # E: Argument 1 to "expects_getitem" has incompatible type "Iterable[int]"; expected "GetItem"
+[builtins fixtures/list.pyi]
+
+[case testCustomIterableAndGetItemProtocolsAreNotCompatible]
+from typing import Protocol, Iterator
+
+class MyIterable(Protocol):
+    def __iter__(self) -> Iterator[int]: pass
+
+class Regular:
+    def __getitem__(self, arg: int) -> int: pass
+
+def some(i: MyIterable): pass
+
+some(Regular())  # E: Argument 1 to "some" has incompatible type "Regular"; expected "MyIterable"
+[builtins fixtures/list.pyi]
+
 [case testIterableProtocolOnMetaclass]
 from typing import TypeVar, Iterator, Type
 T = TypeVar('T')
@@ -2047,6 +2199,17 @@ class C(E):
 
 reveal_type(list(c for c in C))  # N: Revealed type is "builtins.list[__main__.C]"
 reveal_type(list(C))  # N: Revealed type is "builtins.list[__main__.C]"
+[builtins fixtures/list.pyi]
+
+[case testOldStyleIterableProtocolOnMetaclass]
+class EMeta(type):
+    def __getitem__(self, arg: int) -> str: pass
+
+class E(metaclass=EMeta): pass
+class C(E): pass
+
+reveal_type(list(e for e in E))  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(list(c for c in C))  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/list.pyi]
 
 [case testClassesGetattrWithProtocols]

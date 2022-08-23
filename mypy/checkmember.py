@@ -90,6 +90,7 @@ class MemberContext:
         chk: mypy.checker.TypeChecker,
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
+        suggest_awaitable: bool = True,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -100,6 +101,7 @@ class MemberContext:
         self.msg = msg
         self.chk = chk
         self.module_symbol_table = module_symbol_table
+        self.suggest_awaitable = suggest_awaitable
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -149,6 +151,7 @@ def analyze_member_access(
     in_literal_context: bool = False,
     self_type: Type | None = None,
     module_symbol_table: SymbolTable | None = None,
+    suggest_awaitable: bool = True,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -183,6 +186,7 @@ def analyze_member_access(
         chk=chk,
         self_type=self_type,
         module_symbol_table=module_symbol_table,
+        suggest_awaitable=suggest_awaitable,
     )
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
@@ -260,7 +264,7 @@ def report_missing_attribute(
     override_info: TypeInfo | None = None,
 ) -> Type:
     res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
-    if may_be_awaitable_attribute(name, typ, mx, override_info):
+    if mx.suggest_awaitable and may_be_awaitable_attribute(name, typ, mx, override_info):
         mx.msg.possible_missing_await(mx.context)
     return res_type
 
