@@ -35,7 +35,9 @@ to rely on them for infrequently used ops. It's impractical to have
 optimized implementations of all ops.
 """
 
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from __future__ import annotations
+
+from typing import List, NamedTuple, Optional, Tuple
 from typing_extensions import Final
 
 from mypyc.ir.ops import StealsDescription
@@ -71,30 +73,30 @@ LoadAddressDescription = NamedTuple(
 
 
 # CallC op for method call(such as 'str.join')
-method_call_ops: Dict[str, List[CFunctionDescription]] = {}
+method_call_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for top level function call(such as 'builtins.list')
-function_ops: Dict[str, List[CFunctionDescription]] = {}
+function_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for binary ops
-binary_ops: Dict[str, List[CFunctionDescription]] = {}
+binary_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for unary ops
-unary_ops: Dict[str, List[CFunctionDescription]] = {}
+unary_ops: dict[str, list[CFunctionDescription]] = {}
 
-builtin_names: Dict[str, Tuple[RType, str]] = {}
+builtin_names: dict[str, tuple[RType, str]] = {}
 
 
 def method_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -144,14 +146,14 @@ def method_op(
 
 def function_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -187,14 +189,14 @@ def function_op(
 
 def binary_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -226,14 +228,14 @@ def binary_op(
 
 
 def custom_op(
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
 ) -> CFunctionDescription:
@@ -263,9 +265,9 @@ def unary_op(
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] = [],
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -302,13 +304,13 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     return LoadAddressDescription(name, type, src)
 
 
-import mypyc.primitives.bytes_ops  # noqa
-import mypyc.primitives.dict_ops  # noqa
-import mypyc.primitives.float_ops  # noqa
+import mypyc.primitives.bytes_ops
+import mypyc.primitives.dict_ops
+import mypyc.primitives.float_ops
 
 # Import various modules that set up global state.
-import mypyc.primitives.int_ops  # noqa
-import mypyc.primitives.list_ops  # noqa
-import mypyc.primitives.misc_ops  # noqa
-import mypyc.primitives.str_ops  # noqa
-import mypyc.primitives.tuple_ops  # noqa
+import mypyc.primitives.int_ops
+import mypyc.primitives.list_ops
+import mypyc.primitives.misc_ops
+import mypyc.primitives.str_ops
+import mypyc.primitives.tuple_ops  # noqa: F401

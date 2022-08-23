@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+
+from __future__ import annotations
+
 import os
 import shutil
-from typing import Any, Tuple
+from typing import Any
 
 try:
     import click
@@ -17,7 +20,7 @@ def apply_all(
     directory: str,
     extension: str,
     to_extension: str = "",
-    exclude: Tuple[str] = ("",),
+    exclude: tuple[str, ...] = ("",),
     recursive: bool = True,
     debug: bool = False,
 ) -> None:
@@ -38,7 +41,7 @@ def apply_all(
             break
 
 
-def confirm(resp: bool = False, **kargs) -> bool:
+def confirm(resp: bool = False, **kargs: Any) -> bool:
     kargs["rest"] = "to this {f2}/*{e2}".format(**kargs) if kargs.get("f2") else ""
     prompt = "{act} all files {rec}matching this expression {f1}/*{e1} {rest}".format(**kargs)
     prompt.format(**kargs)
@@ -97,7 +100,7 @@ def main(
     directory: str,
     extension: str,
     to_extension: str,
-    exclude: Tuple[str],
+    exclude: tuple[str, ...],
     not_recursive: bool,
 ) -> None:
     """

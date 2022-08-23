@@ -10,13 +10,14 @@ Note: These test cases are *not* included in the main test suite, as including
       this suite would slow down the main suite too much.
 """
 
+from __future__ import annotations
+
 import os
 import os.path
 import re
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from typing import List
 
 from mypy import api
 from mypy.defaults import PYTHON3_VERSION
@@ -94,7 +95,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
     )
 
 
-def adapt_output(testcase: DataDrivenTestCase) -> List[str]:
+def adapt_output(testcase: DataDrivenTestCase) -> list[str]:
     """Translates the generic _program.py into the actual filename."""
     program = "_" + testcase.name + ".py"
     return [program_re.sub(program, line) for line in testcase.output]

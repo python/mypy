@@ -16,7 +16,9 @@ decremented before returning. An assignment to a borrowed value turns it
 into a regular, owned reference that needs to freed before return.
 """
 
-from typing import Dict, Iterable, List, Set, Tuple
+from __future__ import annotations
+
+from typing import Dict, Iterable, Tuple
 
 from mypyc.analysis.dataflow import (
     AnalysisDict,
@@ -62,7 +64,7 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     values = all_values(ir.arg_regs, ir.blocks)
 
     borrowed = {value for value in values if value.is_borrowed}
-    args: Set[Value] = set(ir.arg_regs)
+    args: set[Value] = set(ir.arg_regs)
     live = analyze_live_regs(ir.blocks, cfg)
     borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
     defined = analyze_must_defined_regs(ir.blocks, cfg, args, values, strict_errors=True)
@@ -85,31 +87,31 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     cleanup_cfg(ir.blocks)
 
 
-def is_maybe_undefined(post_must_defined: Set[Value], src: Value) -> bool:
+def is_maybe_undefined(post_must_defined: set[Value], src: Value) -> bool:
     return isinstance(src, Register) and src not in post_must_defined
 
 
 def maybe_append_dec_ref(
-    ops: List[Op], dest: Value, defined: "AnalysisDict[Value]", key: Tuple[BasicBlock, int]
+    ops: list[Op], dest: Value, defined: AnalysisDict[Value], key: tuple[BasicBlock, int]
 ) -> None:
     if dest.type.is_refcounted and not isinstance(dest, Integer):
         ops.append(DecRef(dest, is_xdec=is_maybe_undefined(defined[key], dest)))
 
 
-def maybe_append_inc_ref(ops: List[Op], dest: Value) -> None:
+def maybe_append_inc_ref(ops: list[Op], dest: Value) -> None:
     if dest.type.is_refcounted:
         ops.append(IncRef(dest))
 
 
 def transform_block(
     block: BasicBlock,
-    pre_live: "AnalysisDict[Value]",
-    post_live: "AnalysisDict[Value]",
-    pre_borrow: "AnalysisDict[Value]",
-    post_must_defined: "AnalysisDict[Value]",
+    pre_live: AnalysisDict[Value],
+    post_live: AnalysisDict[Value],
+    pre_borrow: AnalysisDict[Value],
+    post_must_defined: AnalysisDict[Value],
 ) -> None:
     old_ops = block.ops
-    ops: List[Op] = []
+    ops: list[Op] = []
     for i, op in enumerate(old_ops):
         key = (block, i)
 
@@ -155,12 +157,12 @@ def transform_block(
 def insert_branch_inc_and_decrefs(
     block: BasicBlock,
     cache: BlockCache,
-    blocks: List[BasicBlock],
-    pre_live: "AnalysisDict[Value]",
-    pre_borrow: "AnalysisDict[Value]",
-    post_borrow: "AnalysisDict[Value]",
-    post_must_defined: "AnalysisDict[Value]",
-    ordering: Dict[Value, int],
+    blocks: list[BasicBlock],
+    pre_live: AnalysisDict[Value],
+    pre_borrow: AnalysisDict[Value],
+    post_borrow: AnalysisDict[Value],
+    post_must_defined: AnalysisDict[Value],
+    ordering: dict[Value, int],
 ) -> None:
     """Insert inc_refs and/or dec_refs after a branch/goto.
 
@@ -204,13 +206,13 @@ def insert_branch_inc_and_decrefs(
 
 def after_branch_decrefs(
     label: BasicBlock,
-    pre_live: "AnalysisDict[Value]",
-    source_defined: Set[Value],
-    source_borrowed: Set[Value],
-    source_live_regs: Set[Value],
-    ordering: Dict[Value, int],
+    pre_live: AnalysisDict[Value],
+    source_defined: set[Value],
+    source_borrowed: set[Value],
+    source_live_regs: set[Value],
+    ordering: dict[Value, int],
     omitted: Iterable[Value],
-) -> Tuple[Tuple[Value, bool], ...]:
+) -> tuple[tuple[Value, bool], ...]:
     target_pre_live = pre_live[label, 0]
     decref = source_live_regs - target_pre_live - source_borrowed
     if decref:
@@ -224,11 +226,11 @@ def after_branch_decrefs(
 
 def after_branch_increfs(
     label: BasicBlock,
-    pre_live: "AnalysisDict[Value]",
-    pre_borrow: "AnalysisDict[Value]",
-    source_borrowed: Set[Value],
-    ordering: Dict[Value, int],
-) -> Tuple[Value, ...]:
+    pre_live: AnalysisDict[Value],
+    pre_borrow: AnalysisDict[Value],
+    source_borrowed: set[Value],
+    ordering: dict[Value, int],
+) -> tuple[Value, ...]:
     target_pre_live = pre_live[label, 0]
     target_borrowed = pre_borrow[label, 0]
     incref = (source_borrowed - target_borrowed) & target_pre_live
@@ -240,7 +242,7 @@ def after_branch_increfs(
 
 
 def add_block(
-    decs: Decs, incs: Incs, cache: BlockCache, blocks: List[BasicBlock], label: BasicBlock
+    decs: Decs, incs: Incs, cache: BlockCache, blocks: list[BasicBlock], label: BasicBlock
 ) -> BasicBlock:
     if not decs and not incs:
         return label
@@ -258,13 +260,13 @@ def add_block(
     return block
 
 
-def make_value_ordering(ir: FuncIR) -> Dict[Value, int]:
+def make_value_ordering(ir: FuncIR) -> dict[Value, int]:
     """Create a ordering of values that allows them to be sorted.
 
     This omits registers that are only ever read.
     """
     # TODO: Never initialized values??
-    result: Dict[Value, int] = {}
+    result: dict[Value, int] = {}
     n = 0
 
     for arg in ir.arg_regs:

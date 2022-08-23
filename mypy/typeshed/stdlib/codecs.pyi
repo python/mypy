@@ -75,7 +75,7 @@ class _Stream(_WritableStream, _ReadableStream, Protocol): ...
 # bytes is the raw form and str is the cooked form.
 # In the long run, both should become template parameters maybe?
 # There *are* bytes->bytes and str->str encodings in the standard library.
-# They are much more common in Python 2 than in Python 3.
+# They were much more common in Python 2 than in Python 3.
 
 class _Encoder(Protocol):
     def __call__(self, input: str, errors: str = ...) -> tuple[bytes, int]: ...  # signature of Codec().encode

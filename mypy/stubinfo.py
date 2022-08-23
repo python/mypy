@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 def is_legacy_bundled_package(prefix: str) -> bool:
     return prefix in legacy_bundled_packages
 

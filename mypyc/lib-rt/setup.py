@@ -3,6 +3,8 @@
 The tests are written in C++ and use the Google Test framework.
 """
 
+from __future__ import annotations
+
 import sys
 from distutils.core import Extension, setup
 

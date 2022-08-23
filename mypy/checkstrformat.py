@@ -10,20 +10,10 @@ here we use a regexp-based approach. This way we 99% match runtime behaviour whi
 implementation simple.
 """
 
+from __future__ import annotations
+
 import re
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Dict,
-    List,
-    Match,
-    Optional,
-    Pattern,
-    Set,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Callable, Dict, Match, Pattern, Tuple, Union, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
@@ -178,9 +168,9 @@ class ConversionSpecifier:
         return self.width == "*" or self.precision == "*"
 
 
-def parse_conversion_specifiers(format_str: str) -> List[ConversionSpecifier]:
+def parse_conversion_specifiers(format_str: str) -> list[ConversionSpecifier]:
     """Parse c-printf-style format string into list of conversion specifiers."""
-    specifiers: List[ConversionSpecifier] = []
+    specifiers: list[ConversionSpecifier] = []
     for m in re.finditer(FORMAT_RE, format_str):
         specifiers.append(ConversionSpecifier(m, start_pos=m.start()))
     return specifiers
@@ -188,7 +178,7 @@ def parse_conversion_specifiers(format_str: str) -> List[ConversionSpecifier]:
 
 def parse_format_value(
     format_value: str, ctx: Context, msg: MessageBuilder, nested: bool = False
-) -> Optional[List[ConversionSpecifier]]:
+) -> list[ConversionSpecifier] | None:
     """Parse format string into list of conversion specifiers.
 
     The specifiers may be nested (two levels maximum), in this case they are ordered as
@@ -198,7 +188,7 @@ def parse_format_value(
     if top_targets is None:
         return None
 
-    result: List[ConversionSpecifier] = []
+    result: list[ConversionSpecifier] = []
     for target, start_pos in top_targets:
         match = FORMAT_RE_NEW.fullmatch(target)
         if match:
@@ -244,7 +234,7 @@ def parse_format_value(
 
 def find_non_escaped_targets(
     format_value: str, ctx: Context, msg: MessageBuilder
-) -> Optional[List[Tuple[str, int]]]:
+) -> list[tuple[str, int]] | None:
     """Return list of raw (un-parsed) format specifiers in format string.
 
     Format specifiers don't include enclosing braces. We don't use regexp for
@@ -272,7 +262,7 @@ def find_non_escaped_targets(
                     pos += 1
                 else:
                     msg.fail(
-                        "Invalid conversion specifier in format string:" " unexpected }",
+                        "Invalid conversion specifier in format string: unexpected }",
                         ctx,
                         code=codes.STRING_FORMATTING,
                     )
@@ -291,7 +281,7 @@ def find_non_escaped_targets(
         pos += 1
     if nesting:
         msg.fail(
-            "Invalid conversion specifier in format string:" " unmatched {",
+            "Invalid conversion specifier in format string: unmatched {",
             ctx,
             code=codes.STRING_FORMATTING,
         )
@@ -306,16 +296,16 @@ class StringFormatterChecker:
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: "mypy.checker.TypeChecker"
+    chk: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Some services are provided by a ExpressionChecker instance.
-    exprchk: "mypy.checkexpr.ExpressionChecker"
+    exprchk: mypy.checkexpr.ExpressionChecker
 
     def __init__(
         self,
-        exprchk: "mypy.checkexpr.ExpressionChecker",
-        chk: "mypy.checker.TypeChecker",
+        exprchk: mypy.checkexpr.ExpressionChecker,
+        chk: mypy.checker.TypeChecker,
         msg: MessageBuilder,
     ) -> None:
         """Construct an expression type checker."""
@@ -352,7 +342,7 @@ class StringFormatterChecker:
         self.check_specs_in_format_call(call, conv_specs, format_value)
 
     def check_specs_in_format_call(
-        self, call: CallExpr, specs: List[ConversionSpecifier], format_value: str
+        self, call: CallExpr, specs: list[ConversionSpecifier], format_value: str
     ) -> None:
         """Perform pairwise checks for conversion specifiers vs their replacements.
 
@@ -387,7 +377,7 @@ class StringFormatterChecker:
                     continue
             # Adjust expected and actual types.
             if not spec.conv_type:
-                expected_type: Optional[Type] = AnyType(TypeOfAny.special_form)
+                expected_type: Type | None = AnyType(TypeOfAny.special_form)
             else:
                 assert isinstance(call.callee, MemberExpr)
                 if isinstance(call.callee.expr, StrExpr):
@@ -468,13 +458,13 @@ class StringFormatterChecker:
                     code=codes.STRING_FORMATTING,
                 )
 
-    def find_replacements_in_call(self, call: CallExpr, keys: List[str]) -> List[Expression]:
+    def find_replacements_in_call(self, call: CallExpr, keys: list[str]) -> list[Expression]:
         """Find replacement expression for every specifier in str.format() call.
 
         In case of an error use TempNode(AnyType).
         """
-        result: List[Expression] = []
-        used: Set[Expression] = set()
+        result: list[Expression] = []
+        used: set[Expression] = set()
         for key in keys:
             if key.isdecimal():
                 expr = self.get_expr_by_position(int(key), call)
@@ -505,7 +495,7 @@ class StringFormatterChecker:
             self.msg.too_many_string_formatting_arguments(call)
         return result
 
-    def get_expr_by_position(self, pos: int, call: CallExpr) -> Optional[Expression]:
+    def get_expr_by_position(self, pos: int, call: CallExpr) -> Expression | None:
         """Get positional replacement expression from '{0}, {1}'.format(x, y, ...) call.
 
         If the type is from *args, return TempNode(<item type>). Return None in case of
@@ -531,7 +521,7 @@ class StringFormatterChecker:
         ).type
         return TempNode(map_instance_to_supertype(varargs_type, iter_info).args[0])
 
-    def get_expr_by_name(self, key: str, call: CallExpr) -> Optional[Expression]:
+    def get_expr_by_name(self, key: str, call: CallExpr) -> Expression | None:
         """Get named replacement expression from '{name}'.format(name=...) call.
 
         If the type is from **kwargs, return TempNode(<item type>). Return None in case of
@@ -558,7 +548,7 @@ class StringFormatterChecker:
         mapping_info = self.chk.named_generic_type("typing.Mapping", [any_type, any_type]).type
         return TempNode(map_instance_to_supertype(kwargs_type, mapping_info).args[1])
 
-    def auto_generate_keys(self, all_specs: List[ConversionSpecifier], ctx: Context) -> bool:
+    def auto_generate_keys(self, all_specs: list[ConversionSpecifier], ctx: Context) -> bool:
         """Translate '{} {name} {}' to '{0} {name} {1}'.
 
         Return True if generation was successful, otherwise report an error and return false.
@@ -567,7 +557,7 @@ class StringFormatterChecker:
         all_defined = all(bool(s.key) for s in all_specs)
         if some_defined and not all_defined:
             self.msg.fail(
-                "Cannot combine automatic field numbering and" " manual field specification",
+                "Cannot combine automatic field numbering and manual field specification",
                 ctx,
                 code=codes.STRING_FORMATTING,
             )
@@ -716,8 +706,8 @@ class StringFormatterChecker:
             assert False
 
     def analyze_conversion_specifiers(
-        self, specifiers: List[ConversionSpecifier], context: Context
-    ) -> Optional[bool]:
+        self, specifiers: list[ConversionSpecifier], context: Context
+    ) -> bool | None:
         has_star = any(specifier.has_star() for specifier in specifiers)
         has_key = any(specifier.has_key() for specifier in specifiers)
         all_have_keys = all(
@@ -734,7 +724,7 @@ class StringFormatterChecker:
 
     def check_simple_str_interpolation(
         self,
-        specifiers: List[ConversionSpecifier],
+        specifiers: list[ConversionSpecifier],
         replacements: Expression,
         expr: FormatStringExpr,
     ) -> None:
@@ -744,7 +734,7 @@ class StringFormatterChecker:
             return
 
         rhs_type = get_proper_type(self.accept(replacements))
-        rep_types: List[Type] = []
+        rep_types: list[Type] = []
         if isinstance(rhs_type, TupleType):
             rep_types = rhs_type.items
         elif isinstance(rhs_type, AnyType):
@@ -791,7 +781,7 @@ class StringFormatterChecker:
 
     def check_mapping_str_interpolation(
         self,
-        specifiers: List[ConversionSpecifier],
+        specifiers: list[ConversionSpecifier],
         replacements: Expression,
         expr: FormatStringExpr,
     ) -> None:
@@ -799,13 +789,13 @@ class StringFormatterChecker:
         if isinstance(replacements, DictExpr) and all(
             isinstance(k, (StrExpr, BytesExpr)) for k, v in replacements.items
         ):
-            mapping: Dict[str, Type] = {}
+            mapping: dict[str, Type] = {}
             for k, v in replacements.items:
                 if isinstance(expr, BytesExpr):
                     # Special case: for bytes formatting keys must be bytes.
                     if not isinstance(k, BytesExpr):
                         self.msg.fail(
-                            "Dictionary keys in bytes formatting must be bytes," " not strings",
+                            "Dictionary keys in bytes formatting must be bytes, not strings",
                             expr,
                             code=codes.STRING_FORMATTING,
                         )
@@ -862,9 +852,9 @@ class StringFormatterChecker:
             assert False, "Unreachable"
 
     def build_replacement_checkers(
-        self, specifiers: List[ConversionSpecifier], context: Context, expr: FormatStringExpr
-    ) -> Optional[List[Checkers]]:
-        checkers: List[Checkers] = []
+        self, specifiers: list[ConversionSpecifier], context: Context, expr: FormatStringExpr
+    ) -> list[Checkers] | None:
+        checkers: list[Checkers] = []
         for specifier in specifiers:
             checker = self.replacement_checkers(specifier, context, expr)
             if checker is None:
@@ -874,12 +864,12 @@ class StringFormatterChecker:
 
     def replacement_checkers(
         self, specifier: ConversionSpecifier, context: Context, expr: FormatStringExpr
-    ) -> Optional[List[Checkers]]:
+    ) -> list[Checkers] | None:
         """Returns a list of tuples of two functions that check whether a replacement is
         of the right type for the specifier. The first function takes a node and checks
         its type in the right type context. The second function just checks a type.
         """
-        checkers: List[Checkers] = []
+        checkers: list[Checkers] = []
 
         if specifier.width == "*":
             checkers.append(self.checkers_for_star(context))
@@ -929,7 +919,7 @@ class StringFormatterChecker:
 
     def checkers_for_regular_type(
         self, conv_type: str, context: Context, expr: FormatStringExpr
-    ) -> Optional[Checkers]:
+    ) -> Checkers | None:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type'. Return None in case of an error.
         """
@@ -976,7 +966,7 @@ class StringFormatterChecker:
 
     def checkers_for_c_type(
         self, type: str, context: Context, format_expr: FormatStringExpr
-    ) -> Optional[Checkers]:
+    ) -> Checkers | None:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type' that is a character type.
         """
@@ -1019,7 +1009,7 @@ class StringFormatterChecker:
 
     def conversion_type(
         self, p: str, context: Context, expr: FormatStringExpr, format_call: bool = False
-    ) -> Optional[Type]:
+    ) -> Type | None:
         """Return the type that is accepted for a string interpolation conversion specifier type.
 
         Note that both Python's float (e.g. %f) and integer (e.g. %d)
@@ -1088,7 +1078,7 @@ class StringFormatterChecker:
         """
         return self.chk.named_type(name)
 
-    def accept(self, expr: Expression, context: Optional[Type] = None) -> Type:
+    def accept(self, expr: Expression, context: Type | None = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.expr_checker.accept(expr, context)
 

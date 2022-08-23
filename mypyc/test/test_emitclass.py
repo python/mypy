@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 from mypyc.codegen.emitclass import getter_name, setter_name, slot_key

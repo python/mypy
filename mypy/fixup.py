@@ -1,6 +1,8 @@
 """Fix up various things after deserialization."""
 
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any
 from typing_extensions import Final
 
 from mypy.lookup import lookup_fully_qualified
@@ -46,16 +48,16 @@ from mypy.visitor import NodeVisitor
 # N.B: we do a allow_missing fixup when fixing up a fine-grained
 # incremental cache load (since there may be cross-refs into deleted
 # modules)
-def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
+def fixup_module(tree: MypyFile, modules: dict[str, MypyFile], allow_missing: bool) -> None:
     node_fixer = NodeFixer(modules, allow_missing)
     node_fixer.visit_symbol_table(tree.names, tree.fullname)
 
 
 # TODO: Fix up .info when deserializing, i.e. much earlier.
 class NodeFixer(NodeVisitor[None]):
-    current_info: Optional[TypeInfo] = None
+    current_info: TypeInfo | None = None
 
-    def __init__(self, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
+    def __init__(self, modules: dict[str, MypyFile], allow_missing: bool) -> None:
         self.modules = modules
         self.allow_missing = allow_missing
         self.type_fixer = TypeFixer(self.modules, allow_missing)
@@ -80,6 +82,7 @@ class NodeFixer(NodeVisitor[None]):
                 info.update_tuple_type(info.tuple_type)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
+                info.update_typeddict_type(info.typeddict_type)
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
@@ -180,7 +183,7 @@ class NodeFixer(NodeVisitor[None]):
 
 
 class TypeFixer(TypeVisitor[None]):
-    def __init__(self, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
+    def __init__(self, modules: dict[str, MypyFile], allow_missing: bool) -> None:
         self.modules = modules
         self.allow_missing = allow_missing
 
@@ -323,7 +326,7 @@ class TypeFixer(TypeVisitor[None]):
 
 
 def lookup_fully_qualified_typeinfo(
-    modules: Dict[str, MypyFile], name: str, *, allow_missing: bool
+    modules: dict[str, MypyFile], name: str, *, allow_missing: bool
 ) -> TypeInfo:
     stnode = lookup_fully_qualified(name, modules, raise_on_missing=not allow_missing)
     node = stnode.node if stnode else None
@@ -333,30 +336,37 @@ def lookup_fully_qualified_typeinfo(
         # Looks like a missing TypeInfo during an initial daemon load, put something there
         assert (
             allow_missing
-        ), "Should never get here in normal mode," " got {}:{} instead of TypeInfo".format(
+        ), "Should never get here in normal mode, got {}:{} instead of TypeInfo".format(
             type(node).__name__, node.fullname if node else ""
         )
         return missing_info(modules)
 
 
 def lookup_fully_qualified_alias(
-    modules: Dict[str, MypyFile], name: str, *, allow_missing: bool
+    modules: dict[str, MypyFile], name: str, *, allow_missing: bool
 ) -> TypeAlias:
     stnode = lookup_fully_qualified(name, modules, raise_on_missing=not allow_missing)
     node = stnode.node if stnode else None
     if isinstance(node, TypeAlias):
         return node
     elif isinstance(node, TypeInfo):
-        if node.tuple_alias:
-            return node.tuple_alias
-        alias = TypeAlias.from_tuple_type(node)
-        node.tuple_alias = alias
+        if node.special_alias:
+            # Already fixed up.
+            return node.special_alias
+        if node.tuple_type:
+            alias = TypeAlias.from_tuple_type(node)
+        elif node.typeddict_type:
+            alias = TypeAlias.from_typeddict_type(node)
+        else:
+            assert allow_missing
+            return missing_alias()
+        node.special_alias = alias
         return alias
     else:
         # Looks like a missing TypeAlias during an initial daemon load, put something there
         assert (
             allow_missing
-        ), "Should never get here in normal mode," " got {}:{} instead of TypeAlias".format(
+        ), "Should never get here in normal mode, got {}:{} instead of TypeAlias".format(
             type(node).__name__, node.fullname if node else ""
         )
         return missing_alias()
@@ -365,7 +375,7 @@ def lookup_fully_qualified_alias(
 _SUGGESTION: Final = "<missing {}: *should* have gone away during fine-grained update>"
 
 
-def missing_info(modules: Dict[str, MypyFile]) -> TypeInfo:
+def missing_info(modules: dict[str, MypyFile]) -> TypeInfo:
     suggestion = _SUGGESTION.format("info")
     dummy_def = ClassDef(suggestion, Block([]))
     dummy_def.fullname = suggestion
