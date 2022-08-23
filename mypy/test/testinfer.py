@@ -44,15 +44,15 @@ class MapActualsToFormalsSuite(Suite):
 
     def test_tuple_star(self) -> None:
         any_type = AnyType(TypeOfAny.special_form)
-        self.assert_vararg_map([ARG_STAR], [ARG_POS], [[0]], self.tuple(any_type))
+        self.assert_vararg_map([ARG_STAR], [ARG_POS], [[0]], self.make_tuple(any_type))
         self.assert_vararg_map(
-            [ARG_STAR], [ARG_POS, ARG_POS], [[0], [0]], self.tuple(any_type, any_type)
+            [ARG_STAR], [ARG_POS, ARG_POS], [[0], [0]], self.make_tuple(any_type, any_type)
         )
         self.assert_vararg_map(
-            [ARG_STAR], [ARG_POS, ARG_OPT, ARG_OPT], [[0], [0], []], self.tuple(any_type, any_type)
+            [ARG_STAR], [ARG_POS, ARG_OPT, ARG_OPT], [[0], [0], []], self.make_tuple(any_type, any_type)
         )
 
-    def tuple(self, *args: Type) -> TupleType:
+    def make_tuple(self, *args: Type) -> TupleType:
         return TupleType(list(args), TypeFixture().std_tuple)
 
     def test_named_args(self) -> None:
