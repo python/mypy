@@ -49,7 +49,10 @@ class MapActualsToFormalsSuite(Suite):
             [ARG_STAR], [ARG_POS, ARG_POS], [[0], [0]], self.make_tuple(any_type, any_type)
         )
         self.assert_vararg_map(
-            [ARG_STAR], [ARG_POS, ARG_OPT, ARG_OPT], [[0], [0], []], self.make_tuple(any_type, any_type)
+            [ARG_STAR],
+            [ARG_POS, ARG_OPT, ARG_OPT],
+            [[0], [0], []],
+            self.make_tuple(any_type, any_type),
         )
 
     def make_tuple(self, *args: Type) -> TupleType:
