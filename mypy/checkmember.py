@@ -302,7 +302,7 @@ def analyze_instance_member_access(
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type("builtins.function"))
         signature = freshen_function_type_vars(signature)
-        if name == "__new__":
+        if name == "__new__" or method.is_static:
             # __new__ is special and behaves like a static method -- don't strip
             # the first argument.
             pass
@@ -315,6 +315,8 @@ def analyze_instance_member_access(
                     signature, dispatched_type, method.is_class, mx.context, name, mx.msg
                 )
             signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
+        # TODO: should we skip these steps for static methods as well?
+        # Since generic static methods should not be allowed.
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
         freeze_type_vars(member_type)

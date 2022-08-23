@@ -6527,3 +6527,20 @@ class Test:
     def foo(self, arg: Sequence[A]) -> None: ...
     def foo(self, arg: Union[Sequence[E], Sequence[A]]) -> None:
         ...
+
+[case testOverloadedStaticMethodOnInstance]
+from typing import overload
+
+class Snafu(object):
+    @overload
+    @staticmethod
+    def snafu(value: bytes) -> bytes: ...
+    @overload
+    @staticmethod
+    def snafu(value: str) -> str: ...
+    @staticmethod
+    def snafu(value):
+        ...
+reveal_type(Snafu().snafu('123'))  # N: Revealed type is "builtins.str"
+reveal_type(Snafu.snafu('123'))  # N: Revealed type is "builtins.str"
+[builtins fixtures/staticmethod.pyi]
