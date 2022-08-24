@@ -3007,7 +3007,10 @@ class SemanticAnalyzer(
             ):
                 self.fail("All protocol members must have explicitly declared types", s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
+            # We skip this step for type scope because it messes up with class attribute
+            # inference for literal types (also annotated and non-annotated variables at class
+            # scope are semantically different, so we should not souch statement type).
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr) and not self.type:
                 if s.lvalues[0].is_inferred_def:
                     s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
         if s.type:
@@ -3026,7 +3029,6 @@ class SemanticAnalyzer(
 
     def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Type | None:
         """Return builtins.int if rvalue is an int literal, etc.
-
         If this is a 'Final' context, we return "Literal[...]" instead."""
         if self.options.semantic_analysis_only or self.function_stack:
             # Skip this if we're only doing the semantic analysis pass.

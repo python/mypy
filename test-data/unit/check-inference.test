@@ -3263,3 +3263,68 @@ from typing import Dict, Iterable, Tuple, Union
 def foo(x: Union[Tuple[str, Dict[str, int], str], Iterable[object]]) -> None: ...
 foo(("a", {"a": "b"}, "b"))
 [builtins fixtures/dict.pyi]
+
+[case testUseSupertypeAsInferenceContext]
+# flags: --strict-optional
+from typing import List, Optional
+
+class B:
+    x: List[Optional[int]]
+
+class C(B):
+    x = [1]
+
+reveal_type(C().x)  # N: Revealed type is "builtins.list[Union[builtins.int, None]]"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextInvalidType]
+from typing import List
+class P:
+    x: List[int]
+class C(P):
+    x = ['a']  # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartial]
+from typing import List
+
+class A:
+    x: List[str]
+
+class B(A):
+    x = []
+
+reveal_type(B().x)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartialError]
+class A:
+    x = ['a', 'b']
+
+class B(A):
+    x = []
+    x.append(2)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "str"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartialErrorProperty]
+from typing import List
+
+class P:
+    @property
+    def x(self) -> List[int]: ...
+class C(P):
+    x = []
+
+C.x.append("no")  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextConflict]
+from typing import List
+class P:
+    x: List[int]
+class M:
+    x: List[str]
+class C(P, M):
+    x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+reveal_type(C.x)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/list.pyi]
