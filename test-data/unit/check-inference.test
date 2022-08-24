@@ -3288,3 +3288,12 @@ class B(A):
 
 reveal_type(B().x)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartialError]
+class A:
+    x = ['a', 'b']
+
+class B(A):
+    x = []
+    x.append(2)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "str"
+[builtins fixtures/list.pyi]

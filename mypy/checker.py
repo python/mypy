@@ -2690,7 +2690,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if inferred.info:
                     for base in inferred.info.mro[1:]:
                         base_type, base_node = self.lvalue_type_from_base(inferred, base)
-                        if base_type and isinstance(base_node, Var) and not base_node.is_inferred:
+                        if base_type and not (
+                            isinstance(base_node, Var) and base_node.invalid_partial_type
+                        ):
                             # Use most derived supertype as type context if available.
                             type_context = base_type
                             break
@@ -5878,7 +5880,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.msg.need_annotation_for_var(var, context, self.options.python_version)
                         self.partial_reported.add(var)
                     if var.type:
-                        var.type = self.fixup_partial_type(var.type)
+                        fixed = self.fixup_partial_type(var.type)
+                        var.invalid_partial_type = fixed != var.type
+                        var.type = fixed
 
     def handle_partial_var_type(
         self, typ: PartialType, is_lvalue: bool, node: Var, context: Context
