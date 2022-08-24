@@ -61,6 +61,7 @@ from mypy.types import (
     is_named_instance,
 )
 from mypy.typestate import SubtypeKind, TypeState
+from mypy.typevars import fill_typevars_with_any
 from mypy.typevartuples import extract_unpack, split_with_instance
 
 # Flags for detected protocol members
@@ -1060,6 +1061,10 @@ def find_member(
                     return getattr_type
         if itype.type.fallback_to_any:
             return AnyType(TypeOfAny.special_form)
+        if isinstance(v, TypeInfo):
+            # PEP 544 doesn't specify anything about such use cases. So we just try
+            # to do something meaningful (at least we should not crash).
+            return TypeType(fill_typevars_with_any(v))
     return None
 
 

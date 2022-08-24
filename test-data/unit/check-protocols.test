@@ -3118,3 +3118,23 @@ class P(Protocol):
 
 class A(P): ...
 A() # E: Cannot instantiate abstract class "A" with abstract attribute "f"
+
+[case testProtocolWithNestedClass]
+from typing import TypeVar, Protocol
+
+class Template(Protocol):
+    var: int
+    class Meta: ...
+
+class B:
+    var: int
+    class Meta: ...
+class C:
+    var: int
+    class Meta(Template.Meta): ...
+
+def foo(t: Template) -> None: ...
+foo(B())  # E: Argument 1 to "foo" has incompatible type "B"; expected "Template" \
+          # N: Following member(s) of "B" have conflicts: \
+          # N:     Meta: expected "Type[__main__.Template.Meta]", got "Type[__main__.B.Meta]"
+foo(C())  # OK
