@@ -668,6 +668,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 assert call is not None
                 if self._is_subtype(left, call):
                     return True
+            if right.type.is_protocol and left.is_type_obj():
+                ret_type = get_proper_type(left.ret_type)
+                if isinstance(ret_type, TupleType):
+                    ret_type = mypy.typeops.tuple_fallback(ret_type)
+                if isinstance(ret_type, Instance) and is_protocol_implementation(
+                    ret_type, right, proper_subtype=self.proper_subtype, class_obj=True
+                ):
+                    return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
@@ -897,6 +905,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if isinstance(item, TypeVarType):
                 item = get_proper_type(item.upper_bound)
             if isinstance(item, Instance):
+                if right.type.is_protocol and is_protocol_implementation(
+                    item, right, proper_subtype=self.proper_subtype, class_obj=True
+                ):
+                    return True
                 metaclass = item.type.metaclass_type
                 return metaclass is not None and self._is_subtype(metaclass, right)
         return False
@@ -916,7 +928,7 @@ def pop_on_exit(stack: list[tuple[T, T]], left: T, right: T) -> Iterator[None]:
 
 
 def is_protocol_implementation(
-    left: Instance, right: Instance, proper_subtype: bool = False
+    left: Instance, right: Instance, proper_subtype: bool = False, class_obj: bool = False
 ) -> bool:
     """Check whether 'left' implements the protocol 'right'.
 
@@ -959,7 +971,19 @@ def is_protocol_implementation(
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = get_proper_type(find_member(member, right, left))
             assert supertype is not None
-            subtype = get_proper_type(find_member(member, left, left))
+            if member == "__call__" and class_obj:
+                # Special case: class objects always have __call__ that is just the constructor.
+                # TODO: move this helper function to typeops.py?
+                import mypy.checkmember
+
+                def named_type(fullname: str) -> Instance:
+                    return Instance(left.type.mro[-1], [])
+
+                subtype: ProperType | None = mypy.checkmember.type_object_type(
+                    left.type, named_type
+                )
+            else:
+                subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -986,14 +1010,19 @@ def is_protocol_implementation(
             if isinstance(subtype, NoneType) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
-            subflags = get_member_flags(member, left.type)
+            subflags = get_member_flags(member, left.type, class_obj=class_obj)
             superflags = get_member_flags(member, right.type)
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
                 if not is_subtype(supertype, subtype):
                     return False
-            if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
-                return False
+            if not class_obj:
+                if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
+                    return False
+            else:
+                if IS_SETTABLE in superflags and IS_CLASSVAR not in subflags:
+                    # Only class variables are allowed for class object access.
+                    return False
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 return False
             # This rule is copied from nominal check in checker.py
@@ -1014,7 +1043,7 @@ def is_protocol_implementation(
 
 
 def find_member(
-    name: str, itype: Instance, subtype: Type, is_operator: bool = False
+    name: str, itype: Instance, subtype: Type, is_operator: bool = False, class_obj: bool = False
 ) -> Type | None:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
@@ -1027,23 +1056,24 @@ def find_member(
     method = info.get_method(name)
     if method:
         if isinstance(method, Decorator):
-            return find_node_type(method.var, itype, subtype)
+            return find_node_type(method.var, itype, subtype, class_obj=class_obj)
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            return find_node_type(dec.var, itype, subtype)
-        return find_node_type(method, itype, subtype)
+            return find_node_type(dec.var, itype, subtype, class_obj=class_obj)
+        return find_node_type(method, itype, subtype, class_obj=class_obj)
     else:
         # don't have such method, maybe variable or decorator?
         node = info.get(name)
         v = node.node if node else None
         if isinstance(v, Var):
-            return find_node_type(v, itype, subtype)
+            return find_node_type(v, itype, subtype, class_obj=class_obj)
         if (
             not v
             and name not in ["__getattr__", "__setattr__", "__getattribute__"]
             and not is_operator
+            and not class_obj
         ):
             for method_name in ("__getattribute__", "__getattr__"):
                 # Normally, mypy assumes that instances that define __getattr__ have all
@@ -1068,7 +1098,7 @@ def find_member(
     return None
 
 
-def get_member_flags(name: str, info: TypeInfo) -> set[int]:
+def get_member_flags(name: str, info: TypeInfo, class_obj: bool = False) -> set[int]:
     """Detect whether a member 'name' is settable, whether it is an
     instance or class variable, and whether it is class or static method.
 
@@ -1103,11 +1133,15 @@ def get_member_flags(name: str, info: TypeInfo) -> set[int]:
         flags = {IS_SETTABLE}
         if v.is_classvar:
             flags.add(IS_CLASSVAR)
+        if class_obj and v.is_inferred:
+            flags.add(IS_CLASSVAR)
         return flags
     return set()
 
 
-def find_node_type(node: Var | FuncBase, itype: Instance, subtype: Type) -> Type:
+def find_node_type(
+    node: Var | FuncBase, itype: Instance, subtype: Type, class_obj: bool = False
+) -> Type:
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
@@ -1129,10 +1163,16 @@ def find_node_type(node: Var | FuncBase, itype: Instance, subtype: Type) -> Type
         and not node.is_staticmethod
     ):
         assert isinstance(p_typ, FunctionLike)
-        signature = bind_self(
-            p_typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
-        )
-        if node.is_property:
+        if class_obj and not (
+            node.is_class if isinstance(node, FuncBase) else node.is_classmethod
+        ):
+            # Don't bind instance methods on class objects.
+            signature = p_typ
+        else:
+            signature = bind_self(
+                p_typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
+            )
+        if node.is_property and not class_obj:
             assert isinstance(signature, CallableType)
             typ = signature.ret_type
         else:
