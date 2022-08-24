@@ -6,7 +6,9 @@ from typing_extensions import Final
 
 # Supported Python literal types. All tuple / frozenset items must have supported
 # literal types as well, but we can't represent the type precisely.
-LiteralValue = Union[str, bytes, int, bool, float, complex, Tuple[object, ...], FrozenSet[object], None]
+LiteralValue = Union[
+    str, bytes, int, bool, float, complex, Tuple[object, ...], FrozenSet[object], None
+]
 
 # Some literals are singletons and handled specially (None, False and True)
 NUM_SINGLETONS: Final = 3
@@ -130,48 +132,36 @@ class Literals:
         return _encode_complex_values(self.complex_literals)
 
     def encoded_tuple_values(self) -> list[str]:
-        """Encode tuple values into a C array.
+        return self._encode_collection_values(self.tuple_literals)
+
+    def encoded_frozenset_values(self) -> List[str]:
+        return self._encode_collection_values(self.frozenset_literals)
+
+    def _encode_collection_values(
+        self, values: dict[tuple[object, ...], int] | dict[frozenset[object], int]
+    ) -> list[str]:
+        """Encode tuple/frozen values into a C array.
 
         The format of the result is like this:
 
-           <number of tuples>
-           <length of the first tuple>
+           <number of collections>
+           <length of the first collection>
            <literal index of first item>
            ...
            <literal index of last item>
-           <length of the second tuple>
+           <length of the second collection>
            ...
         """
-        values = self.tuple_literals
         value_by_index = {index: value for value, index in values.items()}
         result = []
-        num = len(values)
-        result.append(str(num))
-        for i in range(num):
-            value = value_by_index[i]
-            result.append(str(len(value)))
-            for item in value:
-                index = self.literal_index(cast(Any, item))
-                result.append(str(index))
-        return result
-
-    def encoded_frozenset_values(self) -> List[str]:
-        """Encode frozenset values into a C array.
-
-        The format used here is identical to one used by tuples.
-        """
-        values = self.frozenset_literals
-        value_by_index = {index: value for value, index in values.items()}
-        set_count = len(values)
-        result = []
-        result.append(str(set_count))
-        for i in range(set_count):
-            value = value_by_index[i]
-            result.append(str(len(value)))
-            for item in value:
-                index = self.literal_index(cast(Any, item))
-                result.append(str(index))
-
+        count = len(values)
+        result.append(str(count))
+        for i in range(count):
+           value = value_by_index[i]
+           result.append(str(len(value)))
+           for item in value:
+               index = self.literal_index(cast(Any, item))
+               result.append(str(index))
         return result
 
 

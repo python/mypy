@@ -670,7 +670,7 @@ class GroupGenerator:
         self.declare_global("const int []", "CPyLit_Tuple", initializer=init_tuple)
         # Descriptions of frozenset literals
         init_frozenset = c_array_initializer(literals.encoded_frozenset_values())
-        self.declare_global('const int []', 'CPyLit_FrozenSet', initializer=init_frozenset)
+        self.declare_global("const int []", "CPyLit_FrozenSet", initializer=init_frozenset)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.

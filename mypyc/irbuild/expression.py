@@ -6,7 +6,7 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
-from typing import Callable, cast
+from typing import Callable, Sequence, Tuple, Union, cast
 
 from mypy.nodes import (
     ARG_POS,
@@ -68,6 +68,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive,
     is_none_rprimitive,
     object_rprimitive,
+    set_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
@@ -92,7 +93,7 @@ from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
-from mypyc.primitives.set_ops import set_add_op, set_update_op
+from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
@@ -600,6 +601,48 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     return target
 
 
+def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
+    """Try to pre-compute a frozenset literal during module initialization.
+
+    Return None if it's not possible.
+
+    Only references to "simple" final variables, tuple literals (with items that
+    are themselves supported), and other non-container literals are supported.
+    """
+    SupportedValue = Union[str, bytes, bool, int, float, complex, Tuple[object, ...], None]
+
+    def _set_literal_final_values(items: Sequence[Expression]) -> list[SupportedValue] | None:
+        values: list[SupportedValue] = []
+        for item in items:
+            if isinstance(item, NameExpr) and item.name in ("None", "True", "False"):
+                if item.name == "None":
+                    values.append(None)
+                elif item.name == "True":
+                    values.append(True)
+                elif item.name == "False":
+                    values.append(False)
+            elif isinstance(item, (NameExpr, MemberExpr)) and isinstance(item.node, Var):
+                if item.node.is_final:
+                    v = item.node.final_value
+                    if isinstance(v, (str, int, float, bool)):
+                        values.append(v)
+            elif isinstance(item, (StrExpr, BytesExpr, IntExpr, FloatExpr, ComplexExpr)):
+                values.append(item.value)
+            elif isinstance(item, TupleExpr):
+                t = _set_literal_final_values(item.items)
+                if t is not None:
+                    values.append(tuple(t))
+
+        if len(values) != len(items):
+            return None
+        return values
+
+    values = _set_literal_final_values(s.items)
+    if values is not None:
+        return builder.add(LoadLiteral(frozenset(values), set_rprimitive))
+    return None
+
+
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
@@ -653,6 +696,23 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             else:
                 return builder.true()
 
+    # x in {...}
+    # x not in {...}
+    if (
+        first_op in ("in", "not in")
+        and len(e.operators) == 1
+        and isinstance(e.operands[1], SetExpr)
+    ):
+        literal = precompute_set_literal(builder, e.operands[1])
+        if literal is not None:
+            lhs = e.operands[0]
+            v = builder.builder.call_c(
+                set_in_op, [builder.accept(lhs), literal], e.line, bool_rprimitive
+            )
+            if first_op == "not in":
+                return builder.unary_op(v, "not", e.line)
+            return v
+
     if len(e.operators) == 1:
         # Special some common simple cases
         if first_op in ("is", "is not"):
@@ -669,38 +729,6 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     left = builder.accept(left_expr, can_borrow=borrow_left)
                     right = builder.accept(right_expr, can_borrow=True)
                     return builder.compare_tagged(left, right, first_op, e.line)
-
-    # x in {...}
-    # x not in {...}
-    if (e.operators[0] in ['in', 'not in']
-            and len(e.operators) == 1
-            and isinstance(e.operands[1], SetExpr)):
-        negated = e.operators[0] == 'not in'
-        items = e.operands[1].items
-        if items:
-            # Precalculate a frozenset at module top level and use that instead
-            # of always rebuilding the set literal every evaluation.
-            # NOTE: this only supports set literals which only contain items
-            # which can be literals and aren't containers or sequences.
-            literal_safe = True
-            literal_values: List[Union[str, complex, bytes, int, float, None]] = []
-            for item in items:
-                if isinstance(item, NameExpr) and item.name == 'None':
-                    literal_safe = literal_safe and True
-                    literal_values.append(None)
-                elif isinstance(item, (BytesExpr, StrExpr, IntExpr, FloatExpr, ComplexExpr)):
-                    literal_safe = literal_safe and True
-                    literal_values.append(item.value)
-                else:
-                    literal_safe = False
-            if literal_safe:
-                left_operand = builder.accept(e.operands[0])
-                set_literal = builder.add(LoadLiteral(frozenset(literal_values), set_rprimitive))
-                value = builder.builder.call_c(set_in_op,
-                                               [left_operand, set_literal], e.line, bool_rprimitive)
-                if negated:
-                    value = builder.unary_op(value, 'not', e.line)
-                return value
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals

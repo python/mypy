@@ -606,7 +606,15 @@ class LoadLiteral(RegisterOp):
 
     def __init__(
         self,
-        value: None | str | bytes | bool | int | float | complex | tuple[object, ...] | frozenset[object],
+        value: None
+        | str
+        | bytes
+        | bool
+        | int
+        | float
+        | complex
+        | tuple[object, ...]
+        | frozenset[object],
         rtype: RType,
     ) -> None:
         self.value = value

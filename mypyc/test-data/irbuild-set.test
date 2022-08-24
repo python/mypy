@@ -655,3 +655,21 @@ L0:
     r12 = PySet_Add(r0, r11)
     r13 = r12 >= 0 :: signed
     return r0
+
+[case testOperatorInLiteral]
+def f(i: object) -> bool:
+    return i in {1, 2.7, "daylily", b"daylily", (None, (None,))}
+[out]
+def f(i):
+    i :: object
+    r0 :: set
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+L0:
+    r0 = frozenset({1, 2.7, (None, (None,)), 'daylily'})
+    r1 = PySet_Contains(r0, i)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    return r3
+
