@@ -2686,7 +2686,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
-                rvalue_type = self.expr_checker.accept(rvalue)
+                type_context = None
+                if inferred.info:
+                    for base in inferred.info.mro[1:]:
+                        base_type, base_node = self.lvalue_type_from_base(inferred, base)
+                        if base_type and isinstance(base_node, Var) and not base_node.is_inferred:
+                            # Use most derived supertype as type context if available.
+                            type_context = base_type
+                            break
+                rvalue_type = self.expr_checker.accept(rvalue, type_context=type_context)
                 if not (
                     inferred.is_final
                     or (isinstance(lvalue, NameExpr) and lvalue.name == "__match_args__")

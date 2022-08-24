@@ -2474,7 +2474,7 @@ class DesiredTarget:
     attr: int
 
 [case testNewAnalyzerFirstVarDefinitionWins]
-x = y
+x = y  # E: Cannot determine type of "y"
 x = 1
 
 # We want to check that the first definition creates the variable.

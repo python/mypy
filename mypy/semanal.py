@@ -88,7 +88,6 @@ from mypy.nodes import (
     AwaitExpr,
     Block,
     BreakStmt,
-    BytesExpr,
     CallExpr,
     CastExpr,
     ClassDef,
@@ -244,8 +243,6 @@ from mypy.types import (
     CallableType,
     FunctionLike,
     Instance,
-    LiteralType,
-    LiteralValue,
     NoneType,
     Overloaded,
     Parameters,
@@ -2776,7 +2773,6 @@ class SemanticAnalyzer(
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
-        # We cannot use s.type, because analyze_simple_literal_type() will set it.
         explicit = s.unanalyzed_type is not None
         if self.is_final_type(s.unanalyzed_type):
             # We need to exclude bare Final.
@@ -3006,10 +3002,6 @@ class SemanticAnalyzer(
                 and not self.is_func_scope()
             ):
                 self.fail("All protocol members must have explicitly declared types", s)
-            # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
-                if s.lvalues[0].is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -3023,43 +3015,6 @@ class SemanticAnalyzer(
             (isinstance(lv, NameExpr) and lv.name != "__slots__" and lv.is_inferred_def)
             for lv in s.lvalues
         )
-
-    def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Type | None:
-        """Return builtins.int if rvalue is an int literal, etc.
-
-        If this is a 'Final' context, we return "Literal[...]" instead."""
-        if self.options.semantic_analysis_only or self.function_stack:
-            # Skip this if we're only doing the semantic analysis pass.
-            # This is mostly to avoid breaking unit tests.
-            # Also skip inside a function; this is to avoid confusing
-            # the code that handles dead code due to isinstance()
-            # inside type variables with value restrictions (like
-            # AnyStr).
-            return None
-        if isinstance(rvalue, FloatExpr):
-            return self.named_type_or_none("builtins.float")
-
-        value: LiteralValue | None = None
-        type_name: str | None = None
-        if isinstance(rvalue, IntExpr):
-            value, type_name = rvalue.value, "builtins.int"
-        if isinstance(rvalue, StrExpr):
-            value, type_name = rvalue.value, "builtins.str"
-        if isinstance(rvalue, BytesExpr):
-            value, type_name = rvalue.value, "builtins.bytes"
-
-        if type_name is not None:
-            assert value is not None
-            typ = self.named_type_or_none(type_name)
-            if typ and is_final:
-                return typ.copy_modified(
-                    last_known_value=LiteralType(
-                        value=value, fallback=typ, line=typ.line, column=typ.column
-                    )
-                )
-            return typ
-
-        return None
 
     def analyze_alias(
         self, rvalue: Expression, allow_placeholder: bool = False
