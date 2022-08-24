@@ -5308,7 +5308,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # and create function that will try replaying the same lookup
             # operation against arbitrary types.
             if isinstance(expr, MemberExpr):
-                parent_expr = expr.expr
+                parent_expr = collapse_walrus(expr.expr)
                 parent_type = self.lookup_type_or_none(parent_expr)
                 member_name = expr.name
 
@@ -5332,7 +5332,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         return member_type
 
             elif isinstance(expr, IndexExpr):
-                parent_expr = expr.base
+                parent_expr = collapse_walrus(expr.base)
                 parent_type = self.lookup_type_or_none(parent_expr)
 
                 index_type = self.lookup_type_or_none(expr.index)
