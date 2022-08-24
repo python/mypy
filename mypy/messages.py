@@ -743,7 +743,9 @@ class MessageBuilder:
         context: Context,
         code: ErrorCode | None,
     ) -> None:
-        if isinstance(original_caller_type, (Instance, TupleType, TypedDictType)):
+        if isinstance(
+            original_caller_type, (Instance, TupleType, TypedDictType, TypeType, CallableType)
+        ):
             if isinstance(callee_type, Instance) and callee_type.type.is_protocol:
                 self.report_protocol_problems(
                     original_caller_type, callee_type, context, code=code
@@ -1791,7 +1793,7 @@ class MessageBuilder:
 
     def report_protocol_problems(
         self,
-        subtype: Instance | TupleType | TypedDictType,
+        subtype: Instance | TupleType | TypedDictType | TypeType | CallableType,
         supertype: Instance,
         context: Context,
         *,
@@ -1811,15 +1813,15 @@ class MessageBuilder:
         exclusions: dict[type, list[str]] = {
             TypedDictType: ["typing.Mapping"],
             TupleType: ["typing.Iterable", "typing.Sequence"],
-            Instance: [],
         }
-        if supertype.type.fullname in exclusions[type(subtype)]:
+        if supertype.type.fullname in exclusions.get(type(subtype), []):
             return
         if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
             # We don't want to add notes for failed inference (e.g. Iterable[<nothing>]).
             # This will be only confusing a user even more.
             return
 
+        class_obj = False
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1828,6 +1830,21 @@ class MessageBuilder:
             if not isinstance(subtype.fallback, Instance):
                 return
             subtype = subtype.fallback
+        elif isinstance(subtype, TypeType):
+            if not isinstance(subtype.item, Instance):
+                return
+            class_obj = True
+            subtype = subtype.item
+        elif isinstance(subtype, CallableType):
+            if not subtype.is_type_obj():
+                return
+            ret_type = get_proper_type(subtype.ret_type)
+            if isinstance(ret_type, TupleType):
+                ret_type = ret_type.partial_fallback
+            if not isinstance(ret_type, Instance):
+                return
+            class_obj = True
+            subtype = ret_type
 
         # Report missing members
         missing = get_missing_protocol_members(subtype, supertype)
@@ -1836,20 +1853,29 @@ class MessageBuilder:
             and len(missing) < len(supertype.type.protocol_members)
             and len(missing) <= MAX_ITEMS
         ):
-            self.note(
-                '"{}" is missing following "{}" protocol member{}:'.format(
-                    subtype.type.name, supertype.type.name, plural_s(missing)
-                ),
-                context,
-                code=code,
-            )
-            self.note(", ".join(missing), context, offset=OFFSET, code=code)
+            if missing == ["__call__"] and class_obj:
+                self.note(
+                    '"{}" has constructor incompatible with "__call__" of "{}"'.format(
+                        subtype.type.name, supertype.type.name
+                    ),
+                    context,
+                    code=code,
+                )
+            else:
+                self.note(
+                    '"{}" is missing following "{}" protocol member{}:'.format(
+                        subtype.type.name, supertype.type.name, plural_s(missing)
+                    ),
+                    context,
+                    code=code,
+                )
+                self.note(", ".join(missing), context, offset=OFFSET, code=code)
         elif len(missing) > MAX_ITEMS or len(missing) == len(supertype.type.protocol_members):
             # This is an obviously wrong type: too many missing members
             return
 
         # Report member type conflicts
-        conflict_types = get_conflict_protocol_types(subtype, supertype)
+        conflict_types = get_conflict_protocol_types(subtype, supertype, class_obj=class_obj)
         if conflict_types and (
             not is_subtype(subtype, erase_type(supertype))
             or not subtype.type.defn.type_vars
@@ -1875,16 +1901,30 @@ class MessageBuilder:
                 else:
                     self.note("Expected:", context, offset=OFFSET, code=code)
                     if isinstance(exp, CallableType):
-                        self.note(pretty_callable(exp), context, offset=2 * OFFSET, code=code)
+                        self.note(
+                            pretty_callable(exp, skip_self=class_obj),
+                            context,
+                            offset=2 * OFFSET,
+                            code=code,
+                        )
                     else:
                         assert isinstance(exp, Overloaded)
-                        self.pretty_overload(exp, context, 2 * OFFSET, code=code)
+                        self.pretty_overload(
+                            exp, context, 2 * OFFSET, code=code, skip_self=class_obj
+                        )
                     self.note("Got:", context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
-                        self.note(pretty_callable(got), context, offset=2 * OFFSET, code=code)
+                        self.note(
+                            pretty_callable(got, skip_self=class_obj),
+                            context,
+                            offset=2 * OFFSET,
+                            code=code,
+                        )
                     else:
                         assert isinstance(got, Overloaded)
-                        self.pretty_overload(got, context, 2 * OFFSET, code=code)
+                        self.pretty_overload(
+                            got, context, 2 * OFFSET, code=code, skip_self=class_obj
+                        )
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
@@ -1930,6 +1970,7 @@ class MessageBuilder:
         add_class_or_static_decorator: bool = False,
         allow_dups: bool = False,
         code: ErrorCode | None = None,
+        skip_self: bool = False,
     ) -> None:
         for item in tp.items:
             self.note("@overload", context, offset=offset, allow_dups=allow_dups, code=code)
@@ -1940,7 +1981,11 @@ class MessageBuilder:
                     self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
 
             self.note(
-                pretty_callable(item), context, offset=offset, allow_dups=allow_dups, code=code
+                pretty_callable(item, skip_self=skip_self),
+                context,
+                offset=offset,
+                allow_dups=allow_dups,
+                code=code,
             )
 
     def print_more(
@@ -2373,10 +2418,14 @@ def pretty_class_or_static_decorator(tp: CallableType) -> str | None:
     return None
 
 
-def pretty_callable(tp: CallableType) -> str:
+def pretty_callable(tp: CallableType, skip_self: bool = False) -> str:
     """Return a nice easily-readable representation of a callable type.
     For example:
         def [T <: int] f(self, x: int, y: T) -> None
+
+    If skip_self is True, print an actual callable type, as it would appear
+    when bound on an instance/class, rather than how it would appear in the
+    defining statement.
     """
     s = ""
     asterisk = False
@@ -2420,7 +2469,11 @@ def pretty_callable(tp: CallableType) -> str:
         and hasattr(tp.definition, "arguments")
     ):
         definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
-        if len(definition_arg_names) > len(tp.arg_names) and definition_arg_names[0]:
+        if (
+            len(definition_arg_names) > len(tp.arg_names)
+            and definition_arg_names[0]
+            and not skip_self
+        ):
             if s:
                 s = ", " + s
             s = definition_arg_names[0] + s
@@ -2487,7 +2540,9 @@ def get_missing_protocol_members(left: Instance, right: Instance) -> list[str]:
     return missing
 
 
-def get_conflict_protocol_types(left: Instance, right: Instance) -> list[tuple[str, Type, Type]]:
+def get_conflict_protocol_types(
+    left: Instance, right: Instance, class_obj: bool = False
+) -> list[tuple[str, Type, Type]]:
     """Find members that are defined in 'left' but have incompatible types.
     Return them as a list of ('member', 'got', 'expected').
     """
@@ -2498,7 +2553,7 @@ def get_conflict_protocol_types(left: Instance, right: Instance) -> list[tuple[s
             continue
         supertype = find_member(member, right, left)
         assert supertype is not None
-        subtype = find_member(member, left, left)
+        subtype = find_member(member, left, left, class_obj=class_obj)
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
