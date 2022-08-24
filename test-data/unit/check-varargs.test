@@ -82,6 +82,7 @@ class C: pass
 [builtins fixtures/list.pyi]
 
 [case testCallingVarArgsFunctionWithDefaultArgs]
+# flags: --implicit-optional
 
 a = None # type: A
 b = None # type: B
@@ -388,6 +389,7 @@ class B(A): pass
 [builtins fixtures/list.pyi]
 
 [case testCallerVarArgsAndDefaultArgs]
+# flags: --implicit-optional
 
 a, b = None, None # type: (A, B)
 f(*())        # Fail
