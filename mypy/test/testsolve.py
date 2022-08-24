@@ -1,6 +1,6 @@
 """Test cases for the constraint solver used in type inference."""
 
-from typing import List, Optional, Tuple, Union
+from __future__ import annotations
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint
 from mypy.solve import solve_constraints
@@ -124,11 +124,11 @@ class SolveSuite(Suite):
 
     def assert_solve(
         self,
-        vars: List[TypeVarId],
-        constraints: List[Constraint],
-        results: List[Union[None, Type, Tuple[Type, Type]]],
+        vars: list[TypeVarId],
+        constraints: list[Constraint],
+        results: list[None | Type | tuple[Type, Type]],
     ) -> None:
-        res: List[Optional[Type]] = []
+        res: list[Type | None] = []
         for r in results:
             if isinstance(r, tuple):
                 res.append(r[0])
@@ -138,7 +138,7 @@ class SolveSuite(Suite):
         assert_equal(str(actual), str(res))
 
     def supc(self, type_var: TypeVarType, bound: Type) -> Constraint:
-        return Constraint(type_var.id, SUPERTYPE_OF, bound)
+        return Constraint(type_var, SUPERTYPE_OF, bound)
 
     def subc(self, type_var: TypeVarType, bound: Type) -> Constraint:
-        return Constraint(type_var.id, SUBTYPE_OF, bound)
+        return Constraint(type_var, SUBTYPE_OF, bound)

@@ -1,5 +1,7 @@
 """Test cases for inferring always defined attributes in classes."""
 
+from __future__ import annotations
+
 import os.path
 
 from mypy.errors import CompileError

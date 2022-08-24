@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import os
 from collections import defaultdict
 from functools import cmp_to_key
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Callable
 
 from mypy.build import State
 from mypy.find_sources import InvalidSourceList, SourceFinder
@@ -56,7 +58,7 @@ def expr_span(expr: Expression) -> str:
     return f"{expr.line}:{expr.column + 1}:{expr.end_line}:{expr.end_column}"
 
 
-def get_instance_fallback(typ: ProperType) -> List[Instance]:
+def get_instance_fallback(typ: ProperType) -> list[Instance]:
     """Returns the Instance fallback for this type if one exists or None."""
     if isinstance(typ, Instance):
         return [typ]
@@ -83,7 +85,7 @@ def get_instance_fallback(typ: ProperType) -> List[Instance]:
     return []
 
 
-def find_node(name: str, info: TypeInfo) -> Optional[Union[Var, FuncBase]]:
+def find_node(name: str, info: TypeInfo) -> Var | FuncBase | None:
     """Find the node defining member 'name' in given TypeInfo."""
     # TODO: this code shares some logic with checkmember.py
     method = info.get_method(name)
@@ -105,7 +107,7 @@ def find_node(name: str, info: TypeInfo) -> Optional[Union[Var, FuncBase]]:
     return None
 
 
-def find_module_by_fullname(fullname: str, modules: Dict[str, State]) -> Optional[State]:
+def find_module_by_fullname(fullname: str, modules: dict[str, State]) -> State | None:
     """Find module by a node fullname.
 
     This logic mimics the one we use in fixup, so should be good enough.
@@ -132,7 +134,7 @@ class SearchVisitor(ExtendedTraverserVisitor):
         self.column = column
         self.end_line = end_line
         self.end_column = end_column
-        self.result: Optional[Expression] = None
+        self.result: Expression | None = None
 
     def visit(self, o: Node) -> bool:
         if node_starts_after(o, self.line, self.column):
@@ -152,7 +154,7 @@ class SearchVisitor(ExtendedTraverserVisitor):
 
 def find_by_location(
     tree: MypyFile, line: int, column: int, end_line: int, end_column: int
-) -> Optional[Expression]:
+) -> Expression | None:
     """Find an expression matching given span, or None if not found."""
     if end_line < line:
         raise ValueError('"end_line" must not be before "line"')
@@ -169,7 +171,7 @@ class SearchAllVisitor(ExtendedTraverserVisitor):
     def __init__(self, line: int, column: int) -> None:
         self.line = line
         self.column = column
-        self.result: List[Expression] = []
+        self.result: list[Expression] = []
 
     def visit(self, o: Node) -> bool:
         if node_starts_after(o, self.line, self.column):
@@ -181,7 +183,7 @@ class SearchAllVisitor(ExtendedTraverserVisitor):
         return True
 
 
-def find_all_by_location(tree: MypyFile, line: int, column: int) -> List[Expression]:
+def find_all_by_location(tree: MypyFile, line: int, column: int) -> list[Expression]:
     """Find all expressions enclosing given position starting from innermost."""
     visitor = SearchAllVisitor(line, column)
     tree.accept(visitor)
@@ -215,9 +217,9 @@ class InspectionEngine:
         self.union_attrs = union_attrs
         self.force_reload = force_reload
         # Module for which inspection was requested.
-        self.module: Optional[State] = None
+        self.module: State | None = None
 
-    def parse_location(self, location: str) -> Tuple[str, List[int]]:
+    def parse_location(self, location: str) -> tuple[str, list[int]]:
         if location.count(":") not in [2, 4]:
             raise ValueError("Format should be file:line:column[:end_line:end_column]")
         parts = location.split(":")
@@ -235,7 +237,7 @@ class InspectionEngine:
         finally:
             self.fg_manager.manager.options.export_types = old
 
-    def expr_type(self, expression: Expression) -> Tuple[str, bool]:
+    def expr_type(self, expression: Expression) -> tuple[str, bool]:
         """Format type for an expression using current options.
 
         If type is known, second item returned is True. If type is not known, an error
@@ -255,10 +257,10 @@ class InspectionEngine:
         assert isinstance(object_node, TypeInfo)
         return Instance(object_node, [])
 
-    def collect_attrs(self, instances: List[Instance]) -> Dict[TypeInfo, List[str]]:
+    def collect_attrs(self, instances: list[Instance]) -> dict[TypeInfo, list[str]]:
         """Collect attributes from all union/typevar variants."""
 
-        def item_attrs(attr_dict: Dict[TypeInfo, List[str]]) -> Set[str]:
+        def item_attrs(attr_dict: dict[TypeInfo, list[str]]) -> set[str]:
             attrs = set()
             for base in attr_dict:
                 attrs |= set(attr_dict[base])
@@ -310,14 +312,14 @@ class InspectionEngine:
         return result
 
     def _fill_from_dict(
-        self, attrs_strs: List[str], attrs_dict: Dict[TypeInfo, List[str]]
+        self, attrs_strs: list[str], attrs_dict: dict[TypeInfo, list[str]]
     ) -> None:
         for base in attrs_dict:
             cls_name = base.name if self.verbosity < 1 else base.fullname
             attrs = [f'"{attr}"' for attr in attrs_dict[base]]
             attrs_strs.append(f'"{cls_name}": [{", ".join(attrs)}]')
 
-    def expr_attrs(self, expression: Expression) -> Tuple[str, bool]:
+    def expr_attrs(self, expression: Expression) -> tuple[str, bool]:
         """Format attributes that are valid for a given expression.
 
         If expression type is not an Instance, try using fallback. Attributes are
@@ -365,16 +367,16 @@ class InspectionEngine:
         self._fill_from_dict(base_attrs, attrs_dict)
         return self.add_prefixes(f'{{{", ".join(base_attrs)}}}', expression), True
 
-    def format_node(self, module: State, node: Union[FuncBase, SymbolNode]) -> str:
+    def format_node(self, module: State, node: FuncBase | SymbolNode) -> str:
         return f"{module.path}:{node.line}:{node.column + 1}:{node.name}"
 
-    def collect_nodes(self, expression: RefExpr) -> List[Union[FuncBase, SymbolNode]]:
+    def collect_nodes(self, expression: RefExpr) -> list[FuncBase | SymbolNode]:
         """Collect nodes that can be referred to by an expression.
 
         Note: it can be more than one for example in case of a union attribute.
         """
-        node: Optional[Union[FuncBase, SymbolNode]] = expression.node
-        nodes: List[Union[FuncBase, SymbolNode]]
+        node: FuncBase | SymbolNode | None = expression.node
+        nodes: list[FuncBase | SymbolNode]
         if node is None:
             # Tricky case: instance attribute
             if isinstance(expression, MemberExpr) and expression.kind is None:
@@ -411,8 +413,8 @@ class InspectionEngine:
         return nodes
 
     def modules_for_nodes(
-        self, nodes: List[Union[FuncBase, SymbolNode]], expression: RefExpr
-    ) -> Tuple[Dict[Union[FuncBase, SymbolNode], State], bool]:
+        self, nodes: list[FuncBase | SymbolNode], expression: RefExpr
+    ) -> tuple[dict[FuncBase | SymbolNode, State], bool]:
         """Gather modules where given nodes where defined.
 
         Also check if they need to be refreshed (cached nodes may have
@@ -433,7 +435,7 @@ class InspectionEngine:
                 self.reload_module(module)
         return modules, reload_needed
 
-    def expression_def(self, expression: Expression) -> Tuple[str, bool]:
+    def expression_def(self, expression: Expression) -> tuple[str, bool]:
         """Find and format definition location for an expression.
 
         If it is not a RefExpr, it is effectively skipped by returning an
@@ -499,8 +501,8 @@ class InspectionEngine:
         column: int,
         end_line: int,
         end_column: int,
-        method: Callable[[Expression], Tuple[str, bool]],
-    ) -> Dict[str, object]:
+        method: Callable[[Expression], tuple[str, bool]],
+    ) -> dict[str, object]:
         """Get type of an expression matching a span.
 
         Type or error is returned as a standard daemon response dict.
@@ -522,8 +524,8 @@ class InspectionEngine:
         tree: MypyFile,
         line: int,
         column: int,
-        method: Callable[[Expression], Tuple[str, bool]],
-    ) -> Dict[str, object]:
+        method: Callable[[Expression], tuple[str, bool]],
+    ) -> dict[str, object]:
         """Get types of all expressions enclosing a position.
 
         Types and/or errors are returned as a standard daemon response dict.
@@ -549,7 +551,7 @@ class InspectionEngine:
             inspection_strs = inspection_strs[: self.limit]
         return {"out": "\n".join(inspection_strs), "err": "", "status": status}
 
-    def find_module(self, file: str) -> Tuple[Optional[State], Dict[str, object]]:
+    def find_module(self, file: str) -> tuple[State | None, dict[str, object]]:
         """Find module by path, or return a suitable error message.
 
         Note we don't use exceptions to simplify handling 1 vs 2 statuses.
@@ -570,8 +572,8 @@ class InspectionEngine:
         )
 
     def run_inspection(
-        self, location: str, method: Callable[[Expression], Tuple[str, bool]]
-    ) -> Dict[str, object]:
+        self, location: str, method: Callable[[Expression], tuple[str, bool]]
+    ) -> dict[str, object]:
         """Top-level logic to inspect expression(s) at a location.
 
         This can be re-used by various simple inspections.
@@ -602,15 +604,15 @@ class InspectionEngine:
         line, column = pos
         return self.run_inspection_by_position(state.tree, line, column, method)
 
-    def get_type(self, location: str) -> Dict[str, object]:
+    def get_type(self, location: str) -> dict[str, object]:
         """Get types of expression(s) at a location."""
         return self.run_inspection(location, self.expr_type)
 
-    def get_attrs(self, location: str) -> Dict[str, object]:
+    def get_attrs(self, location: str) -> dict[str, object]:
         """Get attributes of expression(s) at a location."""
         return self.run_inspection(location, self.expr_attrs)
 
-    def get_definition(self, location: str) -> Dict[str, object]:
+    def get_definition(self, location: str) -> dict[str, object]:
         """Get symbol definitions of expression(s) at a location."""
         result = self.run_inspection(location, self.expression_def)
         if "out" in result and not result["out"]:

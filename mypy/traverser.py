@@ -1,6 +1,6 @@
 """Generic node traverser visitor"""
 
-from typing import List, Tuple
+from __future__ import annotations
 
 from mypy_extensions import mypyc_attr
 
@@ -889,13 +889,13 @@ def has_await_expression(expr: Expression) -> bool:
 class ReturnCollector(FuncCollectorBase):
     def __init__(self) -> None:
         super().__init__()
-        self.return_statements: List[ReturnStmt] = []
+        self.return_statements: list[ReturnStmt] = []
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         self.return_statements.append(stmt)
 
 
-def all_return_statements(node: Node) -> List[ReturnStmt]:
+def all_return_statements(node: Node) -> list[ReturnStmt]:
     v = ReturnCollector()
     node.accept(v)
     return v.return_statements
@@ -905,7 +905,7 @@ class YieldCollector(FuncCollectorBase):
     def __init__(self) -> None:
         super().__init__()
         self.in_assignment = False
-        self.yield_expressions: List[Tuple[YieldExpr, bool]] = []
+        self.yield_expressions: list[tuple[YieldExpr, bool]] = []
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
         self.in_assignment = True
@@ -916,7 +916,7 @@ class YieldCollector(FuncCollectorBase):
         self.yield_expressions.append((expr, self.in_assignment))
 
 
-def all_yield_expressions(node: Node) -> List[Tuple[YieldExpr, bool]]:
+def all_yield_expressions(node: Node) -> list[tuple[YieldExpr, bool]]:
     v = YieldCollector()
     node.accept(v)
     return v.yield_expressions

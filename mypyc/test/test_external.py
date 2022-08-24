@@ -1,10 +1,11 @@
 """Test cases that run tests as subprocesses."""
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
 import unittest
-from typing import List
 
 base_dir = os.path.join(os.path.dirname(__file__), "..", "..")
 
@@ -17,7 +18,7 @@ class TestExternal(unittest.TestCase):
         """Run C unit tests in a subprocess."""
         # Build Google Test, the C++ framework we use for testing C code.
         # The source code for Google Test is copied to this repository.
-        cppflags: List[str] = []
+        cppflags: list[str] = []
         env = os.environ.copy()
         if sys.platform == "darwin":
             cppflags += ["-mmacosx-version-min=10.10", "-stdlib=libc++"]

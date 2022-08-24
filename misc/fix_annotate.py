@@ -27,6 +27,7 @@ first argument:
 Finally, it knows that __init__() is supposed to return None.
 """
 
+from __future__ import annotations
 
 import os
 import re

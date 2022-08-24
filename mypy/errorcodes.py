@@ -3,10 +3,11 @@
 These can be used for filtering specific errors.
 """
 
-from typing import Dict
+from __future__ import annotations
+
 from typing_extensions import Final
 
-error_codes: Dict[str, "ErrorCode"] = {}
+error_codes: dict[str, ErrorCode] = {}
 
 
 class ErrorCode:

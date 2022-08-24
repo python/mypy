@@ -25,6 +25,7 @@ class tuple(Sequence[Tco], Generic[Tco]):
     def count(self, obj: object) -> int: pass
 class function: pass
 class ellipsis: pass
+class classmethod: pass
 
 # We need int and slice for indexing tuples.
 class int:

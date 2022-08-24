@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Tuple, Union, cast
+from __future__ import annotations
+
+from typing import Any, Tuple, Union, cast
 from typing_extensions import Final
 
 # Supported Python literal types. All tuple items must have supported
@@ -15,12 +17,12 @@ class Literals:
 
     def __init__(self) -> None:
         # Each dict maps value to literal index (0, 1, ...)
-        self.str_literals: Dict[str, int] = {}
-        self.bytes_literals: Dict[bytes, int] = {}
-        self.int_literals: Dict[int, int] = {}
-        self.float_literals: Dict[float, int] = {}
-        self.complex_literals: Dict[complex, int] = {}
-        self.tuple_literals: Dict[Tuple[object, ...], int] = {}
+        self.str_literals: dict[str, int] = {}
+        self.bytes_literals: dict[bytes, int] = {}
+        self.int_literals: dict[int, int] = {}
+        self.float_literals: dict[float, int] = {}
+        self.complex_literals: dict[complex, int] = {}
+        self.tuple_literals: dict[tuple[object, ...], int] = {}
 
     def record_literal(self, value: LiteralValue) -> None:
         """Ensure that the literal value is available in generated code."""
@@ -101,22 +103,22 @@ class Literals:
     # The following methods return the C encodings of literal values
     # of different types
 
-    def encoded_str_values(self) -> List[bytes]:
+    def encoded_str_values(self) -> list[bytes]:
         return _encode_str_values(self.str_literals)
 
-    def encoded_int_values(self) -> List[bytes]:
+    def encoded_int_values(self) -> list[bytes]:
         return _encode_int_values(self.int_literals)
 
-    def encoded_bytes_values(self) -> List[bytes]:
+    def encoded_bytes_values(self) -> list[bytes]:
         return _encode_bytes_values(self.bytes_literals)
 
-    def encoded_float_values(self) -> List[str]:
+    def encoded_float_values(self) -> list[str]:
         return _encode_float_values(self.float_literals)
 
-    def encoded_complex_values(self) -> List[str]:
+    def encoded_complex_values(self) -> list[str]:
         return _encode_complex_values(self.complex_literals)
 
-    def encoded_tuple_values(self) -> List[str]:
+    def encoded_tuple_values(self) -> list[str]:
         """Encode tuple values into a C array.
 
         The format of the result is like this:
@@ -143,10 +145,10 @@ class Literals:
         return result
 
 
-def _encode_str_values(values: Dict[str, int]) -> List[bytes]:
+def _encode_str_values(values: dict[str, int]) -> list[bytes]:
     value_by_index = {index: value for value, index in values.items()}
     result = []
-    line: List[bytes] = []
+    line: list[bytes] = []
     line_len = 0
     for i in range(len(values)):
         value = value_by_index[i]
@@ -164,10 +166,10 @@ def _encode_str_values(values: Dict[str, int]) -> List[bytes]:
     return result
 
 
-def _encode_bytes_values(values: Dict[bytes, int]) -> List[bytes]:
+def _encode_bytes_values(values: dict[bytes, int]) -> list[bytes]:
     value_by_index = {index: value for value, index in values.items()}
     result = []
-    line: List[bytes] = []
+    line: list[bytes] = []
     line_len = 0
     for i in range(len(values)):
         value = value_by_index[i]
@@ -205,14 +207,14 @@ def format_str_literal(s: str) -> bytes:
     return format_int(len(utf8)) + utf8
 
 
-def _encode_int_values(values: Dict[int, int]) -> List[bytes]:
+def _encode_int_values(values: dict[int, int]) -> list[bytes]:
     """Encode int values into C strings.
 
     Values are stored in base 10 and separated by 0 bytes.
     """
     value_by_index = {index: value for value, index in values.items()}
     result = []
-    line: List[bytes] = []
+    line: list[bytes] = []
     line_len = 0
     for i in range(len(values)):
         value = value_by_index[i]
@@ -239,7 +241,7 @@ def float_to_c(x: float) -> str:
     return s
 
 
-def _encode_float_values(values: Dict[float, int]) -> List[str]:
+def _encode_float_values(values: dict[float, int]) -> list[str]:
     """Encode float values into a C array values.
 
     The result contains the number of values followed by individual values.
@@ -254,7 +256,7 @@ def _encode_float_values(values: Dict[float, int]) -> List[str]:
     return result
 
 
-def _encode_complex_values(values: Dict[complex, int]) -> List[str]:
+def _encode_complex_values(values: dict[complex, int]) -> list[str]:
     """Encode float values into a C array values.
 
     The result contains the number of values followed by pairs of doubles

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os.path
 
 pytest_plugins = ["mypy.test.data"]

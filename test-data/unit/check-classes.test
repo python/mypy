@@ -1897,12 +1897,12 @@ class B(A):
 [out]
 tmp/foo.pyi:5: error: Signature of "__add__" incompatible with supertype "A"
 tmp/foo.pyi:5: note:      Superclass:
-tmp/foo.pyi:5: note:          def __add__(self, int) -> int
+tmp/foo.pyi:5: note:          def __add__(self, int, /) -> int
 tmp/foo.pyi:5: note:      Subclass:
 tmp/foo.pyi:5: note:          @overload
-tmp/foo.pyi:5: note:          def __add__(self, int) -> int
+tmp/foo.pyi:5: note:          def __add__(self, int, /) -> int
 tmp/foo.pyi:5: note:          @overload
-tmp/foo.pyi:5: note:          def __add__(self, str) -> str
+tmp/foo.pyi:5: note:          def __add__(self, str, /) -> str
 tmp/foo.pyi:5: note: Overloaded operator methods cannot have wider argument types in overrides
 
 [case testOperatorMethodOverrideWideningArgumentType]
@@ -2012,16 +2012,16 @@ class B(A):
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
 tmp/foo.pyi:8: note:      Superclass:
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, int) -> A
+tmp/foo.pyi:8: note:          def __add__(self, int, /) -> A
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, str) -> A
+tmp/foo.pyi:8: note:          def __add__(self, str, /) -> A
 tmp/foo.pyi:8: note:      Subclass:
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, int) -> A
+tmp/foo.pyi:8: note:          def __add__(self, int, /) -> A
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, str) -> A
+tmp/foo.pyi:8: note:          def __add__(self, str, /) -> A
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, type) -> A
+tmp/foo.pyi:8: note:          def __add__(self, type, /) -> A
 tmp/foo.pyi:8: note: Overloaded operator methods cannot have wider argument types in overrides
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
@@ -7007,8 +7007,8 @@ class A:
     def y(self) -> int: ...
     @y.setter
     def y(self, value: int) -> None: ...
-    @dec
-    def y(self) -> None: ...  # TODO: This should generate an error
+    @dec  # E: Only supported top decorator is @y.setter
+    def y(self) -> None: ...
 
 reveal_type(A().y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
@@ -7045,7 +7045,7 @@ reveal_type(D1() + 0.5)  # N: Revealed type is "__main__.D1"
 [builtins fixtures/primitives.pyi]
 
 [case testRefMethodWithDecorator]
-from typing import Type
+from typing import Type, final
 
 class A:
     pass
@@ -7059,7 +7059,7 @@ class B:
         return A
 
 class C:
-    @property
+    @final
     @staticmethod
     def A() -> Type[A]:
         return A
@@ -7136,6 +7136,16 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 [case testUndefinedBaseclassInNestedClass]
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
+
+[case testArgsKwargsInheritance]
+from typing import Any
+
+class A(object):
+    def f(self, *args: Any, **kwargs: Any) -> int: ...
+
+class B(A):
+    def f(self, x: int) -> int: ...
+[builtins fixtures/dict.pyi]
 
 [case testClassScopeImports]
 class Foo:
@@ -7287,6 +7297,74 @@ def meth1(self: Any, y: str) -> str: ...
 T = TypeVar("T")
 def meth2(self: Any, y: T) -> T: ...
 
+[case testNewAndInitNoReturn]
+from typing import NoReturn
+
+class A:
+    def __new__(cls) -> NoReturn: ...
+
+class B:
+    def __init__(self) -> NoReturn: ...
+
+class C:
+    def __new__(cls) -> "C": ...
+    def __init__(self) -> NoReturn: ...
+
+class D:
+    def __new__(cls) -> NoReturn: ...
+    def __init__(self) -> NoReturn: ...
+
+reveal_type(A())  # N: Revealed type is "<nothing>"
+reveal_type(B())  # N: Revealed type is "<nothing>"
+reveal_type(C())  # N: Revealed type is "<nothing>"
+reveal_type(D())  # N: Revealed type is "<nothing>"
+
+[case testOverloadedNewAndInitNoReturn]
+from typing import NoReturn, overload
+
+class A:
+    @overload
+    def __new__(cls) -> NoReturn: ...
+    @overload
+    def __new__(cls, a: int) -> "A": ...
+    def __new__(cls, a: int = ...) -> "A": ...
+
+class B:
+    @overload
+    def __init__(self) -> NoReturn: ...
+    @overload
+    def __init__(self, a: int) -> None: ...
+    def __init__(self, a: int = ...) -> None: ...
+
+class C:
+    def __new__(cls, a: int = ...) -> "C": ...
+    @overload
+    def __init__(self) -> NoReturn: ...
+    @overload
+    def __init__(self, a: int) -> None: ...
+    def __init__(self, a: int = ...) -> None: ...
+
+class D:
+    @overload
+    def __new__(cls) -> NoReturn: ...
+    @overload
+    def __new__(cls, a: int) -> "D": ...
+    def __new__(cls, a: int = ...) -> "D": ...
+    @overload
+    def __init__(self) -> NoReturn: ...
+    @overload
+    def __init__(self, a: int) -> None: ...
+    def __init__(self, a: int = ...) -> None: ...
+
+reveal_type(A())  # N: Revealed type is "<nothing>"
+reveal_type(A(1))  # N: Revealed type is "__main__.A"
+reveal_type(B())  # N: Revealed type is "<nothing>"
+reveal_type(B(1))  # N: Revealed type is "__main__.B"
+reveal_type(C())  # N: Revealed type is "<nothing>"
+reveal_type(C(1))  # N: Revealed type is "__main__.C"
+reveal_type(D())  # N: Revealed type is "<nothing>"
+reveal_type(D(1))  # N: Revealed type is "__main__.D"
+
 [case testClassScopeImportWithWrapperAndError]
 class Foo:
     from mod import foo # E: Unsupported class scoped import
@@ -7330,3 +7408,53 @@ a: int = child.foo(1)
 b: str = child.bar("abc")
 c: float = child.baz(3.4)
 d: bool = child.foobar()
+
+[case testGenericTupleTypeCreation]
+from typing import Generic, Tuple, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+class C(Tuple[T, S]):
+    def __init__(self, x: T, y: S) -> None: ...
+    def foo(self, arg: T) -> S: ...
+
+cis: C[int, str]
+reveal_type(cis)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.C[builtins.int, builtins.str]]"
+cii = C(0, 1)
+reveal_type(cii)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.C[builtins.int, builtins.int]]"
+reveal_type(cis.foo)  # N: Revealed type is "def (arg: builtins.int) -> builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testGenericTupleTypeSubclassing]
+from typing import Generic, Tuple, TypeVar, List
+
+T = TypeVar("T")
+class C(Tuple[T, T]): ...
+class D(C[List[T]]): ...
+
+di: D[int]
+reveal_type(di)  # N: Revealed type is "Tuple[builtins.list[builtins.int], builtins.list[builtins.int], fallback=__main__.D[builtins.int]]"
+[builtins fixtures/tuple.pyi]
+
+[case testOverrideAttrWithSettableProperty]
+class Foo:
+    def __init__(self) -> None:
+        self.x = 42
+
+class Bar(Foo):
+    @property
+    def x(self) -> int: ...
+    @x.setter
+    def x(self, value: int) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testOverrideAttrWithSettablePropertyAnnotation]
+class Foo:
+    x: int
+
+class Bar(Foo):
+    @property
+    def x(self) -> int: ...
+    @x.setter
+    def x(self, value: int) -> None: ...
+[builtins fixtures/property.pyi]
