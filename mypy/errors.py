@@ -8,7 +8,7 @@ from typing import Callable, NoReturn, Optional, TextIO, Tuple, TypeVar
 from typing_extensions import Final, Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
-from mypy.errorcodes import IMPORT, ErrorCode, error_codes
+from mypy.errorcodes import IMPORT, ErrorCode
 from mypy.message_registry import ErrorMessage
 from mypy.options import Options
 from mypy.scope import Scope
