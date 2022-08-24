@@ -1073,6 +1073,10 @@ a = A()
 del a.x, a.y # E: "A" has no attribute "y"
 [builtins fixtures/tuple.pyi]
 
+[case testDelStmtWithTypeInfo]
+class Foo: ...
+del Foo
+Foo + 1  # E: Trying to read deleted variable "Foo"
 
 [case testDelStatementWithAssignmentSimple]
 a = 1
