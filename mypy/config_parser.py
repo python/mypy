@@ -274,6 +274,13 @@ def parse_config_file(
                     file=stderr,
                 )
                 updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
+
+            # These two flags act as per-module overrides, so store the empty defaults.
+            if "disable_error_code" not in updates:
+                updates["disable_error_code"] = []
+            if "enable_error_code" not in updates:
+                updates["enable_error_code"] = []
+
             globs = name[5:]
             for glob in globs.split(","):
                 # For backwards compatibility, replace (back)slashes with dots.

@@ -235,8 +235,6 @@ def _build(
         options.show_error_end,
         lambda path: read_py_file(path, cached_read),
         options.show_absolute_path,
-        options.enabled_error_codes,
-        options.disabled_error_codes,
         options.many_errors_threshold,
         options,
     )

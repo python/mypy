@@ -262,8 +262,6 @@ class Errors:
         show_error_end: bool = False,
         read_source: Callable[[str], list[str] | None] | None = None,
         show_absolute_path: bool = False,
-        enabled_error_codes: set[ErrorCode] | None = None,
-        disabled_error_codes: set[ErrorCode] | None = None,
         many_errors_threshold: int = -1,
         options: Options | None = None,
     ) -> None:
@@ -277,8 +275,6 @@ class Errors:
             assert show_column_numbers, "Inconsistent formatting, must be prevented by argparse"
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.enabled_error_codes = enabled_error_codes or set()
-        self.disabled_error_codes = disabled_error_codes or set()
         self.many_errors_threshold = many_errors_threshold
         self.options = options
         self.initialize()
@@ -588,25 +584,15 @@ class Errors:
         return False
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
-        # Start with globally disabled/enabled codes.
-        current_mod_disabled = self.disabled_error_codes
-        current_mod_enabled = self.enabled_error_codes
-
         module = self.current_module()
         if self.options and module is not None:
             # Clone is cached, so it is OK to call this often.
             current_mod_options = self.options.clone_for_module(module)
-
-            # Similar to global codes enabling overrides disabling, so we start from latter.
-            for code_str in current_mod_options.disable_error_code:
-                code = error_codes[code_str]
-                current_mod_disabled.add(code)
-                current_mod_enabled.discard(code)
-
-            for code_str in current_mod_options.enable_error_code:
-                code = error_codes[code_str]
-                current_mod_enabled.add(code)
-                current_mod_disabled.discard(code)
+            current_mod_disabled = current_mod_options.disabled_error_codes
+            current_mod_enabled = current_mod_options.enabled_error_codes
+        else:
+            current_mod_disabled = set()
+            current_mod_enabled = set()
 
         if error_code in current_mod_disabled:
             return False
