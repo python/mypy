@@ -1010,14 +1010,19 @@ def is_protocol_implementation(
             if isinstance(subtype, NoneType) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
-            subflags = get_member_flags(member, left.type)
+            subflags = get_member_flags(member, left.type, class_obj=class_obj)
             superflags = get_member_flags(member, right.type)
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
                 if not is_subtype(supertype, subtype):
                     return False
-            if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
-                return False
+            if not class_obj:
+                if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
+                    return False
+            else:
+                if IS_SETTABLE in superflags and IS_CLASSVAR not in subflags:
+                    # Only class variables are allowed for class object access.
+                    return False
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 return False
             # This rule is copied from nominal check in checker.py
@@ -1093,7 +1098,7 @@ def find_member(
     return None
 
 
-def get_member_flags(name: str, info: TypeInfo) -> set[int]:
+def get_member_flags(name: str, info: TypeInfo, class_obj: bool = False) -> set[int]:
     """Detect whether a member 'name' is settable, whether it is an
     instance or class variable, and whether it is class or static method.
 
@@ -1127,6 +1132,8 @@ def get_member_flags(name: str, info: TypeInfo) -> set[int]:
     if isinstance(v, Var) and not v.is_property:
         flags = {IS_SETTABLE}
         if v.is_classvar:
+            flags.add(IS_CLASSVAR)
+        if class_obj and v.is_inferred:
             flags.add(IS_CLASSVAR)
         return flags
     return set()

@@ -1928,16 +1928,16 @@ class MessageBuilder:
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
-        conflict_flags = get_bad_protocol_flags(subtype, supertype)
+        conflict_flags = get_bad_protocol_flags(subtype, supertype, class_obj=class_obj)
         for name, subflags, superflags in conflict_flags[:MAX_ITEMS]:
-            if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
+            if not class_obj and IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note(
                     "Protocol member {}.{} expected instance variable,"
                     " got class variable".format(supertype.type.name, name),
                     context,
                     code=code,
                 )
-            if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
+            if not class_obj and IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
                 self.note(
                     "Protocol member {}.{} expected class variable,"
                     " got instance variable".format(supertype.type.name, name),
@@ -1956,6 +1956,13 @@ class MessageBuilder:
                     "Protocol member {}.{} expected class or static method".format(
                         supertype.type.name, name
                     ),
+                    context,
+                    code=code,
+                )
+            if class_obj and IS_SETTABLE in superflags and IS_CLASSVAR not in subflags:
+                self.note(
+                    "Only class variables allowed for class object access on protocols,"
+                    ' {} is an instance variable of "{}"'.format(name, subtype.type.name),
                     context,
                     code=code,
                 )
@@ -2565,7 +2572,7 @@ def get_conflict_protocol_types(
 
 
 def get_bad_protocol_flags(
-    left: Instance, right: Instance
+    left: Instance, right: Instance, class_obj: bool = False
 ) -> list[tuple[str, set[int], set[int]]]:
     """Return all incompatible attribute flags for members that are present in both
     'left' and 'right'.
@@ -2591,6 +2598,9 @@ def get_bad_protocol_flags(
             and IS_SETTABLE not in subflags
             or IS_CLASS_OR_STATIC in superflags
             and IS_CLASS_OR_STATIC not in subflags
+            or class_obj
+            and IS_SETTABLE in superflags
+            and IS_CLASSVAR not in subflags
         ):
             bad_flags.append((name, subflags, superflags))
     return bad_flags
