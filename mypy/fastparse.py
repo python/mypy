@@ -267,6 +267,8 @@ def parse(
     is_stub_file = fnam.endswith(".pyi")
     if is_stub_file:
         feature_version = defaults.PYTHON3_VERSION[1]
+        if options.python_version[0] == 3 and options.python_version[1] > feature_version:
+            feature_version = options.python_version[1]
     else:
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
