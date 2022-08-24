@@ -237,7 +237,7 @@ class B: pass
 [builtins fixtures/list.pyi]
 
 [case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
-# flags: --implicit-optional
+# flags: --implicit-optional --no-strict-optional
 from typing import List
 def f(*a: 'A', b: 'B' = None) -> None: pass
 a = None # type: List[A]
