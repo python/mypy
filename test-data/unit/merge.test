@@ -594,17 +594,19 @@ MypyFile:1<0>(
 MypyFile:1<1>(
   tmp/target.py
   AssignmentStmt:1<2>(
-    NameExpr(x* [target.x<3>])
-    IntExpr(1)))
+    NameExpr(x [target.x<3>])
+    IntExpr(1)
+    builtins.int<4>))
 ==>
 MypyFile:1<0>(
   tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
-  AssignmentStmt:1<4>(
-    NameExpr(x* [target.x<3>])
-    IntExpr(2)))
+  AssignmentStmt:1<5>(
+    NameExpr(x [target.x<3>])
+    IntExpr(2)
+    builtins.int<4>))
 
 [case testNestedClassMethod_typeinfo]
 import target
