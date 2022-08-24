@@ -8,7 +8,7 @@ from typing import Callable, NoReturn, Optional, TextIO, Tuple, TypeVar
 from typing_extensions import Final, Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
-from mypy.errorcodes import IMPORT, ErrorCode
+from mypy.errorcodes import IMPORT, ErrorCode, error_codes
 from mypy.message_registry import ErrorMessage
 from mypy.options import Options
 from mypy.scope import Scope
@@ -265,6 +265,7 @@ class Errors:
         enabled_error_codes: set[ErrorCode] | None = None,
         disabled_error_codes: set[ErrorCode] | None = None,
         many_errors_threshold: int = -1,
+        options: Options | None = None,
     ) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
@@ -279,6 +280,7 @@ class Errors:
         self.enabled_error_codes = enabled_error_codes or set()
         self.disabled_error_codes = disabled_error_codes or set()
         self.many_errors_threshold = many_errors_threshold
+        self.options = options
         self.initialize()
 
     def initialize(self) -> None:
@@ -586,9 +588,29 @@ class Errors:
         return False
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
-        if error_code in self.disabled_error_codes:
+        # Start with globally disabled/enabled codes.
+        current_mod_disabled = self.disabled_error_codes
+        current_mod_enabled = self.enabled_error_codes
+
+        module = self.current_module()
+        if self.options and module is not None:
+            # Clone is cached, so it is OK to call this often.
+            current_mod_options = self.options.clone_for_module(module)
+
+            # Similar to global codes enabling overrides disabling, so we start from latter.
+            for code_str in current_mod_options.disable_error_code:
+                code = error_codes[code_str]
+                current_mod_disabled.add(code)
+                current_mod_enabled.discard(code)
+
+            for code_str in current_mod_options.enable_error_code:
+                code = error_codes[code_str]
+                current_mod_enabled.add(code)
+                current_mod_disabled.discard(code)
+
+        if error_code in current_mod_disabled:
             return False
-        elif error_code in self.enabled_error_codes:
+        elif error_code in current_mod_enabled:
             return True
         else:
             return error_code.default_enabled

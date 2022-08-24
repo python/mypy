@@ -238,6 +238,7 @@ def _build(
         options.enabled_error_codes,
         options.disabled_error_codes,
         options.many_errors_threshold,
+        options,
     )
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
