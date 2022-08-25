@@ -2309,9 +2309,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # we don't need to check supertype compatibility for them.
             return AnyType(TypeOfAny.special_form)
         if isinstance(sym.node, TypeAlias):
-            return self.expr_checker.alias_type_in_runtime_context(
-                sym.node, sym.node.no_args, sym.node
-            )
+            with self.chk.msg.filter_errors():
+                # Suppress any errors, they will be given when analyzing the corresponding node.
+                # Here we may have incorrect options and location context.
+                return self.expr_checker.alias_type_in_runtime_context(
+                    sym.node, sym.node.no_args, sym.node
+                )
         # TODO: handle more node kinds here.
         return None
 
