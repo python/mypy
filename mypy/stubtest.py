@@ -1270,16 +1270,13 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
         and left.value in (0, 1)
-        and isinstance(right, mypy.types.Instance)
-        and right.type.fullname == "builtins.bool"
+        and mypy.types.is_named_instance(right, "builtins.bool")
     ):
         # Pretend Literal[0, 1] is a subtype of bool to avoid unhelpful errors.
         return True
 
-    if (
-        isinstance(right, mypy.types.TypedDictType)
-        and isinstance(left, mypy.types.Instance)
-        and left.type.fullname == "builtins.dict"
+    if isinstance(right, mypy.types.TypedDictType) and mypy.types.is_named_instance(
+        left, "builtins.dict"
     ):
         # Special case checks against TypedDicts
         return True
