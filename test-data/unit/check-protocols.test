@@ -3619,3 +3619,69 @@ one_flag = True
 other_flag = False
 def update() -> str: ...
 [builtins fixtures/module.pyi]
+
+[case testModuleAsProtocolImplementationClassObject]
+import runner
+import bad_runner
+from typing import Callable, Protocol
+
+class Runner(Protocol):
+    @property
+    def Run(self) -> Callable[[int], Result]: ...
+
+class Result(Protocol):
+    value: int
+
+def run(x: Runner) -> None: ...
+run(runner)  # OK
+run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected "Runner" \
+                 # N: Following member(s) of "Module bad_runner" have conflicts: \
+                 # N:     Expected: \
+                 # N:         def (int, /) -> Result \
+                 # N:     Got: \
+                 # N:         def __init__(arg: str) -> Run
+
+[file runner.py]
+class Run:
+    value: int
+    def __init__(self, arg: int) -> None: ...
+
+[file bad_runner.py]
+class Run:
+    value: int
+    def __init__(self, arg: str) -> None: ...
+[builtins fixtures/module.pyi]
+
+[case testModuleAsProtocolImplementationTypeAlias]
+import runner
+import bad_runner
+from typing import Callable, Protocol
+
+class Runner(Protocol):
+    @property
+    def run(self) -> Callable[[int], Result]: ...
+
+class Result(Protocol):
+    value: int
+
+def run(x: Runner) -> None: ...
+run(runner)  # OK
+run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected "Runner" \
+                 # N: Following member(s) of "Module bad_runner" have conflicts: \
+                 # N:     Expected: \
+                 # N:         def (int, /) -> Result \
+                 # N:     Got: \
+                 # N:         def __init__(arg: str) -> Run
+
+[file runner.py]
+class Run:
+    value: int
+    def __init__(self, arg: int) -> None: ...
+run = Run
+
+[file bad_runner.py]
+class Run:
+    value: int
+    def __init__(self, arg: str) -> None: ...
+run = Run
+[builtins fixtures/module.pyi]

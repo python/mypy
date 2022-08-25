@@ -376,10 +376,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Fall back to a dummy 'object' type instead to
             # avoid a crash.
             result = self.named_type("builtins.object")
-        result.extra_attrs = {
-            name: n.type if n.type else AnyType(TypeOfAny.special_form)
-            for name, n in node.names.items()
-        }
+        module_attrs: dict[str, Type | str] = {}
+        for name, n in node.names.items():
+            typ = self.chk.determine_type_of_member(n)
+            if typ:
+                module_attrs[name] = typ
+            else:
+                # TODO: what to do about nested module references?
+                # They are non-trivial because there may be import cycles.
+                module_attrs[name] = AnyType(TypeOfAny.special_form)
+        result.extra_attrs = module_attrs
         result.extra_attrs["@module"] = node.fullname
         return result
 
