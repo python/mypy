@@ -328,7 +328,8 @@ class Errors:
         self.file = file
         self.target_module = module
         self.scope = scope
-        self.options = options
+        if options:
+            self.options = options
 
     def set_file_ignored_lines(
         self, file: str, ignored_lines: dict[int, list[str]], ignore_all: bool = False

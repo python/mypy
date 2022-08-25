@@ -2716,7 +2716,7 @@ def module_not_found(
     errors = manager.errors
     save_import_context = errors.import_context()
     errors.set_import_context(caller_state.import_context)
-    errors.set_file(caller_state.xpath, caller_state.id)
+    errors.set_file(caller_state.xpath, caller_state.id, options=caller_state.options)
     if target == "builtins":
         errors.report(
             line, 0, "Cannot find 'builtins' module. Typeshed appears broken!", blocker=True
