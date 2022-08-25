@@ -2091,4 +2091,3 @@ enable_error_code = ignore-without-code, truthy-bool
 
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
-[builtins fixtures/async_await.pyi]

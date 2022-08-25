@@ -311,7 +311,13 @@ class Errors:
             file = os.path.normpath(file)
             return remove_path_prefix(file, self.ignore_prefix)
 
-    def set_file(self, file: str, module: str | None, scope: Scope | None = None) -> None:
+    def set_file(
+        self,
+        file: str,
+        module: str | None,
+        scope: Scope | None = None,
+        options: Options | None = None,
+    ) -> None:
         """Set the path and module id of the current file."""
         # The path will be simplified later, in render_messages. That way
         #  * 'file' is always a key that uniquely identifies a source file
@@ -322,6 +328,7 @@ class Errors:
         self.file = file
         self.target_module = module
         self.scope = scope
+        self.options = options
 
     def set_file_ignored_lines(
         self, file: str, ignored_lines: dict[int, list[str]], ignore_all: bool = False
@@ -584,12 +591,9 @@ class Errors:
         return False
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
-        module = self.current_module()
-        if self.options and module is not None:
-            # Clone is cached, so it is OK to call this often.
-            current_mod_options = self.options.clone_for_module(module)
-            current_mod_disabled = current_mod_options.disabled_error_codes
-            current_mod_enabled = current_mod_options.enabled_error_codes
+        if self.options:
+            current_mod_disabled = self.options.disabled_error_codes
+            current_mod_enabled = self.options.enabled_error_codes
         else:
             current_mod_disabled = set()
             current_mod_enabled = set()

@@ -732,7 +732,7 @@ class SemanticAnalyzer(
         """
         scope = self.scope
         self.options = options
-        self.errors.set_file(file_node.path, file_node.fullname, scope=scope)
+        self.errors.set_file(file_node.path, file_node.fullname, scope=scope, options=options)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname
         with scope.module_scope(self.cur_mod_id):
