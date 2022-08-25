@@ -386,7 +386,7 @@ reveal_type(z2)  # E: Name "z2" is not defined  # N: Revealed type is "Any"
 
 [case testWalrusConditionalTypeBinder]
 # flags: --python-version 3.8
-from typing import Union
+from typing import Tuple, Union
 from typing_extensions import Literal
 
 class Good:
@@ -403,7 +403,14 @@ if (thing := get_thing()).is_good:
     reveal_type(thing)  # N: Revealed type is "__main__.Good"
 else:
     reveal_type(thing)  # N: Revealed type is "__main__.Bad"
-[builtins fixtures/property.pyi]
+
+def get_things() -> Union[Tuple[Good], Tuple[Bad]]: ...
+
+if (things := get_things())[0].is_good:
+    reveal_type(things)  # N: Revealed type is "Tuple[__main__.Good]"
+else:
+    reveal_type(things)  # N: Revealed type is "Tuple[__main__.Bad]"
+[builtins fixtures/list.pyi]
 
 [case testWalrusConditionalTypeCheck]
 # flags: --strict-optional --python-version 3.8

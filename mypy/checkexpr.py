@@ -2032,8 +2032,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
-            if self.chk.should_suppress_optional_error([caller_type, callee_type]):
-                return
             code = self.msg.incompatible_argument(
                 n,
                 m,
@@ -2155,13 +2153,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # There was no plausible match: give up
             target = AnyType(TypeOfAny.from_error)
-
-            if not self.chk.should_suppress_optional_error(arg_types):
-                if not is_operator_method(callable_name):
-                    code = None
-                else:
-                    code = codes.OPERATOR
-                self.msg.no_variant_matches_arguments(callee, arg_types, context, code=code)
+            if not is_operator_method(callable_name):
+                code = None
+            else:
+                code = codes.OPERATOR
+            self.msg.no_variant_matches_arguments(callee, arg_types, context, code=code)
 
         result = self.check_call(
             target,

@@ -8,6 +8,8 @@ import re
 import sys
 from io import StringIO
 
+from mypy.errorcodes import error_codes
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -67,6 +69,15 @@ def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
         return [p.strip() for p in re.split(split_regex, v)]
 
     return [p.strip() for p in v]
+
+
+def validate_codes(codes: list[str]) -> list[str]:
+    invalid_codes = set(codes) - set(error_codes.keys())
+    if invalid_codes:
+        raise argparse.ArgumentTypeError(
+            f"Invalid error code(s): {', '.join(sorted(invalid_codes))}"
+        )
+    return codes
 
 
 def expand_path(path: str) -> str:
@@ -132,7 +143,6 @@ def check_follow_imports(choice: str) -> str:
 # types.
 ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "python_version": parse_version,
-    "strict_optional_whitelist": lambda s: s.split(),
     "custom_typing_module": str,
     "custom_typeshed_dir": expand_path,
     "mypy_path": lambda s: [expand_path(p.strip()) for p in re.split("[,:]", s)],
@@ -147,8 +157,8 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "plugins": lambda s: [p.strip() for p in s.split(",")],
     "always_true": lambda s: [p.strip() for p in s.split(",")],
     "always_false": lambda s: [p.strip() for p in s.split(",")],
-    "disable_error_code": lambda s: [p.strip() for p in s.split(",")],
-    "enable_error_code": lambda s: [p.strip() for p in s.split(",")],
+    "disable_error_code": lambda s: validate_codes([p.strip() for p in s.split(",")]),
+    "enable_error_code": lambda s: validate_codes([p.strip() for p in s.split(",")]),
     "package_root": lambda s: [p.strip() for p in s.split(",")],
     "cache_dir": expand_path,
     "python_executable": expand_path,
@@ -161,15 +171,14 @@ toml_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.cop
 toml_config_types.update(
     {
         "python_version": parse_version,
-        "strict_optional_whitelist": try_split,
         "mypy_path": lambda s: [expand_path(p) for p in try_split(s, "[,:]")],
         "files": lambda s: split_and_match_files_list(try_split(s)),
         "follow_imports": lambda s: check_follow_imports(str(s)),
         "plugins": try_split,
         "always_true": try_split,
         "always_false": try_split,
-        "disable_error_code": try_split,
-        "enable_error_code": try_split,
+        "disable_error_code": lambda s: validate_codes(try_split(s)),
+        "enable_error_code": lambda s: validate_codes(try_split(s)),
         "package_root": try_split,
         "exclude": str_or_array_as_list,
     }
@@ -263,6 +272,7 @@ def parse_config_file(
                     file=stderr,
                 )
                 updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
+
             globs = name[5:]
             for glob in globs.split(","):
                 # For backwards compatibility, replace (back)slashes with dots.
@@ -481,6 +491,13 @@ def parse_section(
                 if "follow_imports" not in results:
                     results["follow_imports"] = "error"
         results[options_key] = v
+
+    # These two flags act as per-module overrides, so store the empty defaults.
+    if "disable_error_code" not in results:
+        results["disable_error_code"] = []
+    if "enable_error_code" not in results:
+        results["enable_error_code"] = []
+
     return results, report_dirs
 
 

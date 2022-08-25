@@ -4318,7 +4318,7 @@ class C(B):
     x = object()
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:6: error: Incompatible types in assignment (expression has type "object", base class "B" defined the type as "str")
+main:6: error: Incompatible types in assignment (expression has type "object", base class "A" defined the type as "int")
 
 [case testClassOneErrorPerLine]
 class A:
@@ -4328,7 +4328,7 @@ class B(A):
   x = 1.0
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+main:5: error: Incompatible types in assignment (expression has type "float", base class "A" defined the type as "int")
 
 [case testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored]
 class A:
@@ -4336,7 +4336,7 @@ class A:
 class B(A):
     x = ''  # type: ignore
 class C(B):
-    x = ''
+    x = ''  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 [out]
 
 [case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
@@ -7457,4 +7457,24 @@ class Bar(Foo):
     def x(self) -> int: ...
     @x.setter
     def x(self, value: int) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testOverrideMethodProperty]
+class B:
+    def foo(self) -> int:
+        ...
+class C(B):
+    @property
+    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B"
+        ...
+[builtins fixtures/property.pyi]
+
+[case testOverridePropertyMethod]
+class B:
+    @property
+    def foo(self) -> int:
+        ...
+class C(B):
+    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B"
+        ...
 [builtins fixtures/property.pyi]

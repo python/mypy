@@ -232,8 +232,6 @@ def _analyze_member_access(
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
         return AnyType(TypeOfAny.from_error)
-    if mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     return report_missing_attribute(mx.original_type, typ, name, mx)
 
 
@@ -427,8 +425,6 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
             ret_type=literal_false,
             fallback=mx.named_type("builtins.function"),
         )
-    elif mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     else:
         return _analyze_member_access(name, mx.named_type("builtins.object"), mx)
 
@@ -545,8 +541,6 @@ def analyze_member_var_access(
         mx.msg.undefined_in_superclass(name, mx.context)
         return AnyType(TypeOfAny.from_error)
     else:
-        if mx.chk and mx.chk.should_suppress_optional_error([itype]):
-            return AnyType(TypeOfAny.from_error)
         return report_missing_attribute(mx.original_type, itype, name, mx)
 
 

@@ -8,16 +8,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.join import join_simple
 from mypy.literals import Key, literal, literal_hash, subkeys
-from mypy.nodes import (
-    AssignmentExpr,
-    Expression,
-    IndexExpr,
-    MemberExpr,
-    NameExpr,
-    RefExpr,
-    TypeInfo,
-    Var,
-)
+from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
@@ -31,7 +22,7 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars_with_any
 
-BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
+BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, NameExpr]
 
 
 class Frame:
@@ -152,7 +143,7 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        if not isinstance(expr, (IndexExpr, MemberExpr, AssignmentExpr, NameExpr)):
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
             return
