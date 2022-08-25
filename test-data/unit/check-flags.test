@@ -2053,3 +2053,41 @@ def f(x):
 y = 1
 f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
                   # N: Revealed type is "builtins.int"
+
+[case testPerModuleErrorCodes]
+# flags: --config-file tmp/mypy.ini
+import tests.foo
+import bar
+[file bar.py]
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+[file tests/__init__.py]
+[file tests/foo.py]
+x = []  # OK
+[file mypy.ini]
+\[mypy]
+strict = True
+
+\[mypy-tests.*]
+allow_untyped_defs = True
+allow_untyped_calls = True
+disable_error_code = var-annotated
+
+[case testPerModuleErrorCodesOverride]
+# flags: --config-file tmp/mypy.ini
+import tests.foo
+import bar
+[file bar.py]
+def foo() -> int: ...
+if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+[file tests/__init__.py]
+[file tests/foo.py]
+def foo() -> int: ...
+if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+42 + "no"  # type: ignore
+[file mypy.ini]
+\[mypy]
+enable_error_code = ignore-without-code, truthy-bool
+
+\[mypy-tests.*]
+disable_error_code = ignore-without-code

@@ -263,7 +263,7 @@ def parse(
         raise_on_error = True
     if options is None:
         options = Options()
-    errors.set_file(fnam, module)
+    errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")
     if is_stub_file:
         feature_version = defaults.PYTHON3_VERSION[1]

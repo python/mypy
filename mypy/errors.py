@@ -262,9 +262,8 @@ class Errors:
         show_error_end: bool = False,
         read_source: Callable[[str], list[str] | None] | None = None,
         show_absolute_path: bool = False,
-        enabled_error_codes: set[ErrorCode] | None = None,
-        disabled_error_codes: set[ErrorCode] | None = None,
         many_errors_threshold: int = -1,
+        options: Options | None = None,
     ) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
@@ -276,9 +275,8 @@ class Errors:
             assert show_column_numbers, "Inconsistent formatting, must be prevented by argparse"
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.enabled_error_codes = enabled_error_codes or set()
-        self.disabled_error_codes = disabled_error_codes or set()
         self.many_errors_threshold = many_errors_threshold
+        self.options = options
         self.initialize()
 
     def initialize(self) -> None:
@@ -313,7 +311,9 @@ class Errors:
             file = os.path.normpath(file)
             return remove_path_prefix(file, self.ignore_prefix)
 
-    def set_file(self, file: str, module: str | None, scope: Scope | None = None) -> None:
+    def set_file(
+        self, file: str, module: str | None, options: Options, scope: Scope | None = None
+    ) -> None:
         """Set the path and module id of the current file."""
         # The path will be simplified later, in render_messages. That way
         #  * 'file' is always a key that uniquely identifies a source file
@@ -324,6 +324,7 @@ class Errors:
         self.file = file
         self.target_module = module
         self.scope = scope
+        self.options = options
 
     def set_file_ignored_lines(
         self, file: str, ignored_lines: dict[int, list[str]], ignore_all: bool = False
@@ -586,9 +587,16 @@ class Errors:
         return False
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
-        if error_code in self.disabled_error_codes:
+        if self.options:
+            current_mod_disabled = self.options.disabled_error_codes
+            current_mod_enabled = self.options.enabled_error_codes
+        else:
+            current_mod_disabled = set()
+            current_mod_enabled = set()
+
+        if error_code in current_mod_disabled:
             return False
-        elif error_code in self.enabled_error_codes:
+        elif error_code in current_mod_enabled:
             return True
         else:
             return error_code.default_enabled

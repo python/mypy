@@ -236,9 +236,8 @@ def _build(
         options.show_error_end,
         lambda path: read_py_file(path, cached_read),
         options.show_absolute_path,
-        options.enabled_error_codes,
-        options.disabled_error_codes,
         options.many_errors_threshold,
+        options,
     )
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
@@ -422,7 +421,7 @@ def load_plugins_from_config(
         errors.raise_error(use_stdout=False)
 
     custom_plugins: list[Plugin] = []
-    errors.set_file(options.config_file, None)
+    errors.set_file(options.config_file, None, options)
     for plugin_path in options.plugins:
         func_name = "plugin"
         plugin_dir: str | None = None
@@ -773,7 +772,7 @@ class BuildManager:
             new_id = file_id + "." + imp.id if imp.id else file_id
 
             if not new_id:
-                self.errors.set_file(file.path, file.name)
+                self.errors.set_file(file.path, file.name, self.options)
                 self.errors.report(
                     imp.line, 0, "No parent module -- cannot perform relative import", blocker=True
                 )
@@ -984,7 +983,7 @@ def write_deps_cache(
         error = True
 
     if error:
-        manager.errors.set_file(_cache_dir_prefix(manager.options), None)
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None, manager.options)
         manager.errors.report(0, 0, "Error writing fine-grained dependencies cache", blocker=True)
 
 
@@ -1048,7 +1047,7 @@ PLUGIN_SNAPSHOT_FILE: Final = "@plugins_snapshot.json"
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
     if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, json.dumps(manager.plugins_snapshot)):
-        manager.errors.set_file(_cache_dir_prefix(manager.options), None)
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None, manager.options)
         manager.errors.report(0, 0, "Error writing plugins snapshot", blocker=True)
 
 
@@ -1151,7 +1150,7 @@ def _load_json_file(
         result = json.loads(data)
         manager.add_stats(data_json_load_time=time.time() - t1)
     except json.JSONDecodeError:
-        manager.errors.set_file(file, None)
+        manager.errors.set_file(file, None, manager.options)
         manager.errors.report(
             -1,
             -1,
@@ -2200,7 +2199,7 @@ class State:
         if flags:
             changes, config_errors = parse_mypy_comments(flags, self.options)
             self.options = self.options.apply_changes(changes)
-            self.manager.errors.set_file(self.xpath, self.id)
+            self.manager.errors.set_file(self.xpath, self.id, self.options)
             for lineno, error in config_errors:
                 self.manager.errors.report(lineno, 0, error)
 
@@ -2711,7 +2710,7 @@ def module_not_found(
     errors = manager.errors
     save_import_context = errors.import_context()
     errors.set_import_context(caller_state.import_context)
-    errors.set_file(caller_state.xpath, caller_state.id)
+    errors.set_file(caller_state.xpath, caller_state.id, caller_state.options)
     if target == "builtins":
         errors.report(
             line, 0, "Cannot find 'builtins' module. Typeshed appears broken!", blocker=True
@@ -2741,7 +2740,7 @@ def skipping_module(
     assert caller_state, (id, path)
     save_import_context = manager.errors.import_context()
     manager.errors.set_import_context(caller_state.import_context)
-    manager.errors.set_file(caller_state.xpath, caller_state.id)
+    manager.errors.set_file(caller_state.xpath, caller_state.id, manager.options)
     manager.errors.report(line, 0, f'Import of "{id}" ignored', severity="error")
     manager.errors.report(
         line,
@@ -2760,7 +2759,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
     # But beware, some package may be the ancestor of many modules,
     # so we'd need to cache the decision.
     manager.errors.set_import_context([])
-    manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
+    manager.errors.set_file(ancestor_for.xpath, ancestor_for.id, manager.options)
     manager.errors.report(
         -1, -1, f'Ancestor package "{id}" ignored', severity="error", only_once=True
     )
@@ -2994,7 +2993,7 @@ def load_graph(
         except ModuleNotFound:
             continue
         if st.id in graph:
-            manager.errors.set_file(st.xpath, st.id)
+            manager.errors.set_file(st.xpath, st.id, manager.options)
             manager.errors.report(
                 -1,
                 -1,
