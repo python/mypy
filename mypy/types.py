@@ -1256,7 +1256,7 @@ class Instance(ProperType):
         # Additional attributes defined per instance of this type. For example modules
         # have different attributes per instance of types.ModuleType. This is intended
         # to be "short lived", we don't serialize it, and even don't store as variable type.
-        self.extra_attrs: dict[str, Type] = {}
+        self.extra_attrs: dict[str, Type | str] = {}
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_instance(self)

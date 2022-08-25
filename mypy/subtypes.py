@@ -1096,7 +1096,9 @@ def find_member(
             # to do something meaningful (at least we should not crash).
             return TypeType(fill_typevars_with_any(v))
     if name in itype.extra_attrs:
-        return itype.extra_attrs[name]
+        typ = itype.extra_attrs[name]
+        assert isinstance(typ, Type)
+        return typ
     return None
 
 

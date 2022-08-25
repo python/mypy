@@ -332,17 +332,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            try:
-                result = self.named_type("types.ModuleType")
-            except KeyError:
-                # In test cases might 'types' may not be available.
-                # Fall back to a dummy 'object' type instead to
-                # avoid a crash.
-                result = self.named_type("builtins.object")
-            result.extra_attrs = {
-                name: n.type if n.type else AnyType(TypeOfAny.special_form)
-                for name, n in node.names.items()
-            }
+            result = self.module_type(node)
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
@@ -377,6 +367,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.handle_cannot_determine_type(var.name, context)
             # Implicit 'Any' type.
             return AnyType(TypeOfAny.special_form)
+
+    def module_type(self, node: MypyFile) -> Instance:
+        try:
+            result = self.named_type("types.ModuleType")
+        except KeyError:
+            # In test cases might 'types' may not be available.
+            # Fall back to a dummy 'object' type instead to
+            # avoid a crash.
+            result = self.named_type("builtins.object")
+        result.extra_attrs = {
+            name: n.type if n.type else AnyType(TypeOfAny.special_form)
+            for name, n in node.names.items()
+        }
+        result.extra_attrs["@module"] = node.fullname
+        return result
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""

@@ -9945,7 +9945,7 @@ class Options(Protocol):
     def update(self) -> bool: ...
 
 def setup(options: Options) -> None: ...
-setup(C.config)
+setup(C().config)
 
 [file lib.py]
 import default_config
@@ -9960,11 +9960,12 @@ def update() -> bool: ...
 [file default_config.py.2]
 timeout = 100
 def update() -> str: ...
+[builtins fixtures/module.pyi]
 [out]
 ==
-tmp/m.py:9: error: Argument 1 to "setup" has incompatible type "object"; expected "Options"
-tmp/m.py:9: note: Following member(s) of "object" have conflicts:
-tmp/m.py:9: note:     Expected:
-tmp/m.py:9: note:         def update() -> bool
-tmp/m.py:9: note:     Got:
-tmp/m.py:9: note:         def update() -> str
+m.py:9: error: Argument 1 to "setup" has incompatible type "Module default_config"; expected "Options"
+m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+m.py:9: note:     Expected:
+m.py:9: note:         def update() -> bool
+m.py:9: note:     Got:
+m.py:9: note:         def update() -> str
