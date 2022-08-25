@@ -326,7 +326,9 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 return None
 
-        if self.chk.type_is_iterable(t) and isinstance(t, Instance):
+        if self.chk.type_is_iterable(t) and isinstance(t, (Instance, TupleType)):
+            if isinstance(t, TupleType):
+                t = tuple_fallback(t)
             return self.chk.iterable_item_type(t)
         else:
             return None
