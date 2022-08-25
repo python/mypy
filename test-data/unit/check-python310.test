@@ -1600,3 +1600,31 @@ def foo(x: NoneType): # E: NoneType should not be used as a type, please use Non
     reveal_type(x) # N: Revealed type is "None"
 
 [builtins fixtures/tuple.pyi]
+
+[case testMatchTupleInstanceUnionNoCrash]
+from typing import Union
+
+def func(e: Union[str, tuple[str]]) -> None:
+    match e:
+        case (a,) if isinstance(a, str):
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleOptionalNoCrash]
+# flags: --strict-optional
+foo: tuple[int] | None
+match foo:
+    case x,:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchUnionTwoTuplesNoCrash]
+var: tuple[int, int] | tuple[str, str]
+
+# TODO: we can infer better here.
+match var:
+    case (42, a):
+        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    case ("yes", b):
+        reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
