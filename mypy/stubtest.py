@@ -407,7 +407,7 @@ def _verify_metaclass(
                 stub,
                 runtime,
                 stub_desc=f"{stub.metaclass_type.type.fullname}",
-                runtime_desc=f"N/A",
+                runtime_desc="N/A",
             )
 
 
