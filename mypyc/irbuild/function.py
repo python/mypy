@@ -13,7 +13,7 @@ instance of the callable class.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict, NamedTuple, Sequence
+from typing import NamedTuple, Sequence
 
 from mypy.nodes import (
     ArgKind,
@@ -933,7 +933,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
     line = fitem.line
     is_singledispatch_main_func = fitem in builder.singledispatch_impls
     # dict of singledispatch_func to list of register_types (fitem is the function to register)
-    to_register: DefaultDict[FuncDef, list[TypeInfo]] = defaultdict(list)
+    to_register: defaultdict[FuncDef, list[TypeInfo]] = defaultdict(list)
     for main_func, impls in builder.singledispatch_impls.items():
         for dispatch_type, impl in impls:
             if fitem == impl:

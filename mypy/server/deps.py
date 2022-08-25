@@ -81,7 +81,8 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 
 from __future__ import annotations
 
-from typing import DefaultDict, List
+from collections import defaultdict
+from typing import List
 
 from mypy.nodes import (
     GDEF,
@@ -220,7 +221,7 @@ class DependencyVisitor(TraverserVisitor):
         self,
         type_map: dict[Expression, Type],
         python_version: tuple[int, int],
-        alias_deps: DefaultDict[str, set[str]],
+        alias_deps: defaultdict[str, set[str]],
         options: Options | None = None,
     ) -> None:
         self.scope = Scope()

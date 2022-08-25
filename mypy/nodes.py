@@ -10,7 +10,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    DefaultDict,
     Dict,
     Iterator,
     Optional,
@@ -306,7 +305,7 @@ class MypyFile(SymbolNode):
     # Top-level definitions and statements
     defs: list[Statement]
     # Type alias dependencies as mapping from target to set of alias full names
-    alias_deps: DefaultDict[str, set[str]]
+    alias_deps: defaultdict[str, set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom: bool
     names: SymbolTable
@@ -940,6 +939,7 @@ VAR_FLAGS: Final = [
     "explicit_self_type",
     "is_ready",
     "is_inferred",
+    "invalid_partial_type",
     "from_module_getattr",
     "has_explicit_value",
     "allow_incompatible_override",
@@ -976,6 +976,7 @@ class Var(SymbolNode):
         "from_module_getattr",
         "has_explicit_value",
         "allow_incompatible_override",
+        "invalid_partial_type",
     )
 
     def __init__(self, name: str, type: mypy.types.Type | None = None) -> None:
@@ -1025,6 +1026,9 @@ class Var(SymbolNode):
         self.has_explicit_value = False
         # If True, subclasses can override this with an incompatible type.
         self.allow_incompatible_override = False
+        # If True, this means we didn't manage to infer full type and fall back to
+        # something like list[Any]. We may decide to not use such types as context.
+        self.invalid_partial_type = False
 
     @property
     def name(self) -> str:

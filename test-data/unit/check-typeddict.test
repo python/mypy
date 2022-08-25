@@ -478,9 +478,9 @@ fun2(a) # Error
 main:17: error: Argument 1 to "fun2" has incompatible type "A"; expected "StrIntMap"
 main:17: note: Following member(s) of "A" have conflicts:
 main:17: note:     Expected:
-main:17: note:         def __getitem__(self, str) -> int
+main:17: note:         def __getitem__(self, str, /) -> int
 main:17: note:     Got:
-main:17: note:         def __getitem__(self, str) -> object
+main:17: note:         def __getitem__(self, str, /) -> object
 
 [case testTypedDictWithSimpleProtocolInference]
 from typing_extensions import Protocol, TypedDict

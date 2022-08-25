@@ -380,3 +380,32 @@ class A:
 class B(A):
     def h(self, t: Type[None]) -> None:
         super(t, self).f # E: Unsupported argument 1 for "super"
+
+[case testSuperSelfTypeInstanceMethod]
+from typing import TypeVar, Type
+
+T = TypeVar("T", bound="A")
+
+class A:
+    def foo(self: T) -> T: ...
+
+class B(A):
+    def foo(self: T) -> T:
+        reveal_type(super().foo())  # N: Revealed type is "T`-1"
+        return super().foo()
+
+[case testSuperSelfTypeClassMethod]
+from typing import TypeVar, Type
+
+T = TypeVar("T", bound="A")
+
+class A:
+    @classmethod
+    def foo(cls: Type[T]) -> T: ...
+
+class B(A):
+    @classmethod
+    def foo(cls: Type[T]) -> T:
+        reveal_type(super().foo())  # N: Revealed type is "T`-1"
+        return super().foo()
+[builtins fixtures/classmethod.pyi]

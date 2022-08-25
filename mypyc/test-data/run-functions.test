@@ -1235,3 +1235,18 @@ def g() -> None:
         a.pop()
 
 g()
+
+[case testIncompleteFeatureUnpackKwargsCompiled]
+from typing_extensions import Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+def foo(**kwargs: Unpack[Person]) -> None:
+    print(kwargs["name"])
+
+# This is not really supported yet, just test that we behave reasonably.
+foo(name='Jennifer', age=38)
+[out]
+Jennifer

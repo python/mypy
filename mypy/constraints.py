@@ -34,6 +34,7 @@ from mypy.types import (
     TypeQuery,
     TypeType,
     TypeVarId,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
@@ -73,10 +74,11 @@ class Constraint:
     op = 0  # SUBTYPE_OF or SUPERTYPE_OF
     target: Type
 
-    def __init__(self, type_var: TypeVarId, op: int, target: Type) -> None:
-        self.type_var = type_var
+    def __init__(self, type_var: TypeVarLikeType, op: int, target: Type) -> None:
+        self.type_var = type_var.id
         self.op = op
         self.target = target
+        self.origin_type_var = type_var
 
     def __repr__(self) -> str:
         op_str = "<:"
@@ -190,7 +192,7 @@ def _infer_constraints(template: Type, actual: Type, direction: int) -> list[Con
     #     T :> U2", but they are not equivalent to the constraint solver,
     #     which never introduces new Union types (it uses join() instead).
     if isinstance(template, TypeVarType):
-        return [Constraint(template.id, direction, actual)]
+        return [Constraint(template, direction, actual)]
 
     # Now handle the case of either template or actual being a Union.
     # For a Union to be a subtype of another type, every item of the Union
@@ -286,7 +288,7 @@ def merge_with_any(constraint: Constraint) -> Constraint:
     # TODO: if we will support multiple sources Any, use this here instead.
     any_type = AnyType(TypeOfAny.implementation_artifact)
     return Constraint(
-        constraint.type_var,
+        constraint.origin_type_var,
         constraint.op,
         UnionType.make_union([target, any_type], target.line, target.column),
     )
@@ -345,9 +347,35 @@ def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list
                     merged_option = None
                 merged_options.append(merged_option)
             return any_constraints(list(merged_options), eager)
+
+    # If normal logic didn't work, try excluding trivially unsatisfiable constraint (due to
+    # upper bounds) from each option, and comparing them again.
+    filtered_options = [filter_satisfiable(o) for o in options]
+    if filtered_options != options:
+        return any_constraints(filtered_options, eager=eager)
+
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
     return []
+
+
+def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | None:
+    """Keep only constraints that can possibly be satisfied.
+
+    Currently, we filter out constraints where target is not a subtype of the upper bound.
+    Since those can be never satisfied. We may add more cases in future if it improves type
+    inference.
+    """
+    if not option:
+        return option
+    satisfiable = []
+    for c in option:
+        # TODO: add similar logic for TypeVar values (also in various other places)?
+        if mypy.subtypes.is_subtype(c.target, c.origin_type_var.upper_bound):
+            satisfiable.append(c)
+    if not satisfiable:
+        return None
+    return satisfiable
 
 
 def is_same_constraints(x: list[Constraint], y: list[Constraint]) -> bool:
@@ -513,7 +541,33 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     template.type.inferring.pop()
                     return res
         if isinstance(actual, CallableType) and actual.fallback is not None:
+            if actual.is_type_obj() and template.type.is_protocol:
+                ret_type = get_proper_type(actual.ret_type)
+                if isinstance(ret_type, TupleType):
+                    ret_type = mypy.typeops.tuple_fallback(ret_type)
+                if isinstance(ret_type, Instance):
+                    if self.direction == SUBTYPE_OF:
+                        subtype = template
+                    else:
+                        subtype = ret_type
+                    res.extend(
+                        self.infer_constraints_from_protocol_members(
+                            ret_type, template, subtype, template, class_obj=True
+                        )
+                    )
             actual = actual.fallback
+        if isinstance(actual, TypeType) and template.type.is_protocol:
+            if isinstance(actual.item, Instance):
+                if self.direction == SUBTYPE_OF:
+                    subtype = template
+                else:
+                    subtype = actual.item
+                res.extend(
+                    self.infer_constraints_from_protocol_members(
+                        actual.item, template, subtype, template, class_obj=True
+                    )
+                )
+
         if isinstance(actual, Overloaded) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, TypedDictType):
@@ -560,9 +614,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 suffix.arg_kinds[len(prefix.arg_kinds) :],
                                 suffix.arg_names[len(prefix.arg_names) :],
                             )
-                            res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
                     elif isinstance(tvar, TypeVarTupleType):
                         raise NotImplementedError
 
@@ -583,7 +637,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(template_unpack, TypeVarTupleType):
                             res.append(
                                 Constraint(
-                                    template_unpack.id, SUPERTYPE_OF, TypeList(list(mapped_middle))
+                                    template_unpack, SUPERTYPE_OF, TypeList(list(mapped_middle))
                                 )
                             )
                         elif (
@@ -644,9 +698,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 suffix.arg_kinds[len(prefix.arg_kinds) :],
                                 suffix.arg_names[len(prefix.arg_names) :],
                             )
-                            res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                 return res
             if (
                 template.type.is_protocol
@@ -687,6 +741,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 )
                 instance.type.inferring.pop()
                 return res
+        if res:
+            return res
+
         if isinstance(actual, AnyType):
             return self.infer_against_any(template.args, actual)
         if (
@@ -712,7 +769,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return []
 
     def infer_constraints_from_protocol_members(
-        self, instance: Instance, template: Instance, subtype: Type, protocol: Instance
+        self,
+        instance: Instance,
+        template: Instance,
+        subtype: Type,
+        protocol: Instance,
+        class_obj: bool = False,
     ) -> list[Constraint]:
         """Infer constraints for situations where either 'template' or 'instance' is a protocol.
 
@@ -722,7 +784,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         """
         res = []
         for member in protocol.type.protocol_members:
-            inst = mypy.subtypes.find_member(member, instance, subtype)
+            inst = mypy.subtypes.find_member(member, instance, subtype, class_obj=class_obj)
             temp = mypy.subtypes.find_member(member, template, subtype)
             if inst is None or temp is None:
                 return []  # See #11020
@@ -735,9 +797,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return res
 
     def visit_callable_type(self, template: CallableType) -> list[Constraint]:
+        # Normalize callables before matching against each other.
+        # Note that non-normalized callables can be created in annotations
+        # using e.g. callback protocols.
+        template = template.with_unpacked_kwargs()
         if isinstance(self.actual, CallableType):
             res: list[Constraint] = []
-            cactual = self.actual
+            cactual = self.actual.with_unpacked_kwargs()
             param_spec = template.param_spec()
             if param_spec is None:
                 # FIX verify argument counts
@@ -763,7 +829,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     prefix_len = min(prefix_len, max_prefix_len)
                     res.append(
                         Constraint(
-                            param_spec.id,
+                            param_spec,
                             SUBTYPE_OF,
                             cactual.copy_modified(
                                 arg_types=cactual.arg_types[prefix_len:],
@@ -774,7 +840,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         )
                     )
                 else:
-                    res.append(Constraint(param_spec.id, SUBTYPE_OF, cactual_ps))
+                    res.append(Constraint(param_spec, SUBTYPE_OF, cactual_ps))
 
                 # compare prefixes
                 cactual_prefix = cactual.copy_modified(
@@ -805,7 +871,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             else:
                 res = [
                     Constraint(
-                        param_spec.id,
+                        param_spec,
                         SUBTYPE_OF,
                         callable_with_ellipsis(any_type, any_type, template.fallback),
                     )
@@ -877,7 +943,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         modified_actual = actual.copy_modified(items=list(actual_items))
                     return [
                         Constraint(
-                            type_var=unpacked_type.id, op=self.direction, target=modified_actual
+                            type_var=unpacked_type, op=self.direction, target=modified_actual
                         )
                     ]
 

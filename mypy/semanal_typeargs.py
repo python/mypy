@@ -46,7 +46,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.seen_aliases: set[TypeAliasType] = set()
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        self.errors.set_file(o.path, o.fullname, scope=self.scope)
+        self.errors.set_file(o.path, o.fullname, scope=self.scope, options=self.options)
         with self.scope.module_scope(o.fullname):
             super().visit_mypy_file(o)
 

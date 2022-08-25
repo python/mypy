@@ -1,7 +1,7 @@
 #!/bin/bash -eux
 
 # Build a debug build of python, install it, and create a venv for it
-# This is mainly intended for use in our travis builds but it can work
+# This is mainly intended for use in our github actions builds but it can work
 # locally. (Though it unfortunately uses brew on OS X to deal with openssl
 # nonsense.)
 # Usage: build-debug-python.sh <version> <install prefix> <venv location>

@@ -1272,6 +1272,69 @@ class StubtestUnit(unittest.TestCase):
             yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
 
     @collect_cases
+    def test_metaclass_match(self) -> Iterator[Case]:
+        yield Case(stub="class Meta(type): ...", runtime="class Meta(type): ...", error=None)
+        yield Case(stub="class A0: ...", runtime="class A0: ...", error=None)
+        yield Case(
+            stub="class A1(metaclass=Meta): ...",
+            runtime="class A1(metaclass=Meta): ...",
+            error=None,
+        )
+        yield Case(stub="class A2: ...", runtime="class A2(metaclass=Meta): ...", error="A2")
+        yield Case(stub="class A3(metaclass=Meta): ...", runtime="class A3: ...", error="A3")
+
+        # Explicit `type` metaclass can always be added in any part:
+        yield Case(
+            stub="class T1(metaclass=type): ...",
+            runtime="class T1(metaclass=type): ...",
+            error=None,
+        )
+        yield Case(stub="class T2: ...", runtime="class T2(metaclass=type): ...", error=None)
+        yield Case(stub="class T3(metaclass=type): ...", runtime="class T3: ...", error=None)
+
+        # Explicit check that `_protected` names are also supported:
+        yield Case(stub="class _P1(type): ...", runtime="class _P1(type): ...", error=None)
+        yield Case(stub="class P2: ...", runtime="class P2(metaclass=_P1): ...", error="P2")
+
+        # With inheritance:
+        yield Case(
+            stub="""
+            class I1(metaclass=Meta): ...
+            class S1(I1): ...
+            """,
+            runtime="""
+            class I1(metaclass=Meta): ...
+            class S1(I1): ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class I2(metaclass=Meta): ...
+            class S2: ...  # missing inheritance
+            """,
+            runtime="""
+            class I2(metaclass=Meta): ...
+            class S2(I2): ...
+            """,
+            error="S2",
+        )
+
+    @collect_cases
+    def test_metaclass_abcmeta(self) -> Iterator[Case]:
+        # Handling abstract metaclasses is special:
+        yield Case(stub="from abc import ABCMeta", runtime="from abc import ABCMeta", error=None)
+        yield Case(
+            stub="class A1(metaclass=ABCMeta): ...",
+            runtime="class A1(metaclass=ABCMeta): ...",
+            error=None,
+        )
+        # Stubs cannot miss abstract metaclass:
+        yield Case(stub="class A2: ...", runtime="class A2(metaclass=ABCMeta): ...", error="A2")
+        # But, stubs can add extra abstract metaclass, this might be a typing hack:
+        yield Case(stub="class A3(metaclass=ABCMeta): ...", runtime="class A3: ...", error=None)
+
+    @collect_cases
     def test_abstract_methods(self) -> Iterator[Case]:
         yield Case(
             stub="from abc import abstractmethod",

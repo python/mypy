@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict
-from typing import DefaultDict
 
 from mypy import build
 from mypy.errors import CompileError
@@ -40,7 +39,7 @@ class GetDependenciesSuite(DataSuite):
             if not a:
                 a = ["Unknown compile error (likely syntax error in test case or fixture)"]
         else:
-            deps: DefaultDict[str, set[str]] = defaultdict(set)
+            deps: defaultdict[str, set[str]] = defaultdict(set)
             for module in files:
                 if (
                     module in dumped_modules

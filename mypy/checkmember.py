@@ -232,8 +232,6 @@ def _analyze_member_access(
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
         return AnyType(TypeOfAny.from_error)
-    if mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     return report_missing_attribute(mx.original_type, typ, name, mx)
 
 
@@ -302,7 +300,7 @@ def analyze_instance_member_access(
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type("builtins.function"))
         signature = freshen_function_type_vars(signature)
-        if name == "__new__":
+        if name == "__new__" or method.is_static:
             # __new__ is special and behaves like a static method -- don't strip
             # the first argument.
             pass
@@ -315,6 +313,8 @@ def analyze_instance_member_access(
                     signature, dispatched_type, method.is_class, mx.context, name, mx.msg
                 )
             signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
+        # TODO: should we skip these steps for static methods as well?
+        # Since generic static methods should not be allowed.
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
         freeze_type_vars(member_type)
@@ -425,8 +425,6 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
             ret_type=literal_false,
             fallback=mx.named_type("builtins.function"),
         )
-    elif mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     else:
         return _analyze_member_access(name, mx.named_type("builtins.object"), mx)
 
@@ -543,8 +541,6 @@ def analyze_member_var_access(
         mx.msg.undefined_in_superclass(name, mx.context)
         return AnyType(TypeOfAny.from_error)
     else:
-        if mx.chk and mx.chk.should_suppress_optional_error([itype]):
-            return AnyType(TypeOfAny.from_error)
         return report_missing_attribute(mx.original_type, itype, name, mx)
 
 

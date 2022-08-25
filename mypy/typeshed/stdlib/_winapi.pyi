@@ -106,7 +106,7 @@ if sys.platform == "win32":
     WAIT_OBJECT_0: Literal[0]
     WAIT_TIMEOUT: Literal[258]
 
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 10):
         LOCALE_NAME_INVARIANT: str
         LOCALE_NAME_MAX_LENGTH: int
         LOCALE_NAME_SYSTEM_DEFAULT: str
@@ -181,7 +181,7 @@ if sys.platform == "win32":
     def GetVersion() -> int: ...
     def OpenProcess(__desired_access: int, __inherit_handle: bool, __process_id: int) -> int: ...
     def PeekNamedPipe(__handle: int, __size: int = ...) -> tuple[int, int] | tuple[bytes, int, int]: ...
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 10):
         def LCMapStringEx(locale: str, flags: int, src: str) -> str: ...
 
     @overload

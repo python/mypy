@@ -13,10 +13,12 @@ from mypy.nodes import (
     FuncDef,
     MypyFile,
     OverloadedFuncDef,
+    ParamSpecExpr,
     SymbolTable,
     TypeAlias,
     TypeInfo,
     TypeVarExpr,
+    TypeVarTupleExpr,
     Var,
 )
 from mypy.types import (
@@ -162,6 +164,12 @@ class NodeFixer(NodeVisitor[None]):
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
             value.accept(self.type_fixer)
+        tv.upper_bound.accept(self.type_fixer)
+
+    def visit_paramspec_expr(self, p: ParamSpecExpr) -> None:
+        p.upper_bound.accept(self.type_fixer)
+
+    def visit_type_var_tuple_expr(self, tv: TypeVarTupleExpr) -> None:
         tv.upper_bound.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:
