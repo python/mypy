@@ -3518,6 +3518,35 @@ test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P"
          # N:     Got: \
          # N:         def [T] foo(self: T) -> Union[T, int]
 
+[case testProtocolClassObjectInference]
+from typing import Any, Protocol, TypeVar
+
+T = TypeVar("T", contravariant=True)
+class P(Protocol[T]):
+    def foo(self, obj: T) -> int: ...
+
+class B:
+    def foo(self) -> int: ...
+
+S = TypeVar("S")
+def test(arg: P[S]) -> S: ...
+reveal_type(test(B))  # N: Revealed type is "__main__.B"
+
+[case testProtocolTypeTypeInference]
+from typing import Any, Protocol, TypeVar, Type
+
+T = TypeVar("T", contravariant=True)
+class P(Protocol[T]):
+    def foo(self, obj: T) -> int: ...
+
+class B:
+    def foo(self) -> int: ...
+
+S = TypeVar("S")
+def test(arg: P[S]) -> S: ...
+b: Type[B]
+reveal_type(test(b))  # N: Revealed type is "__main__.B"
+
 [case testModuleAsProtocolImplementation]
 import default_config
 import bad_config_1
