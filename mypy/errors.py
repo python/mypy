@@ -312,11 +312,7 @@ class Errors:
             return remove_path_prefix(file, self.ignore_prefix)
 
     def set_file(
-        self,
-        file: str,
-        module: str | None,
-        scope: Scope | None = None,
-        options: Options | None = None,
+        self, file: str, module: str | None, options: Options, scope: Scope | None = None
     ) -> None:
         """Set the path and module id of the current file."""
         # The path will be simplified later, in render_messages. That way
@@ -328,8 +324,7 @@ class Errors:
         self.file = file
         self.target_module = module
         self.scope = scope
-        if options:
-            self.options = options
+        self.options = options
 
     def set_file_ignored_lines(
         self, file: str, ignored_lines: dict[int, list[str]], ignore_all: bool = False

@@ -419,7 +419,9 @@ def compile_modules_to_c(
 
     # Sometimes when we call back into mypy, there might be errors.
     # We don't want to crash when that happens.
-    result.manager.errors.set_file("<mypyc>", module=None, scope=None)
+    result.manager.errors.set_file(
+        "<mypyc>", module=None, scope=None, options=result.manager.options
+    )
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
