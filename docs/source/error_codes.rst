@@ -101,4 +101,15 @@ module if you have them in global config section. For example:
    disable_error_code = unused-awaitable
 
 The above config will allow unused awaitables in extension modules, but will
-still keep the other two error codes enabled.
+still keep the other two error codes enabled. The overall logic is following:
+
+* Command line and/or config main section set global error codes
+
+* Individual config sections *adjust* them per glob/module
+
+* Inline ``# mypy: ...`` comments can further *adjust* them for a specific
+  module
+
+So one can e.g. enable some code globally, disable it for all tests in
+the corresponding config section, and then re-enable it with an inline
+comment in some specific test.
