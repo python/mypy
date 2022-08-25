@@ -550,8 +550,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         subtype = template
                     else:
                         subtype = ret_type
-                    return self.infer_constraints_from_protocol_members(
-                        ret_type, template, subtype, template, class_obj=True
+                    res.extend(
+                        self.infer_constraints_from_protocol_members(
+                            ret_type, template, subtype, template, class_obj=True
+                        )
                     )
             actual = actual.fallback
         if isinstance(actual, TypeType) and template.type.is_protocol:
@@ -560,8 +562,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     subtype = template
                 else:
                     subtype = actual.item
-                return self.infer_constraints_from_protocol_members(
-                    actual.item, template, subtype, template, class_obj=True
+                res.extend(
+                    self.infer_constraints_from_protocol_members(
+                        actual.item, template, subtype, template, class_obj=True
+                    )
                 )
 
         if isinstance(actual, Overloaded) and actual.fallback is not None:
@@ -737,6 +741,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 )
                 instance.type.inferring.pop()
                 return res
+        if res:
+            return res
+
         if isinstance(actual, AnyType):
             return self.infer_against_any(template.args, actual)
         if (
