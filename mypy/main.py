@@ -733,9 +733,6 @@ def process_options(
         dest="strict_optional",
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
-    none_group.add_argument(
-        "--strict-optional-whitelist", metavar="GLOB", nargs="*", help=argparse.SUPPRESS
-    )
 
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
@@ -1268,9 +1265,6 @@ def process_options(
     options.disabled_error_codes -= options.enabled_error_codes
 
     # Set build flags.
-    if options.strict_optional_whitelist is not None:
-        # TODO: Deprecate, then kill this flag
-        options.strict_optional = True
     if special_opts.find_occurrences:
         state.find_occurrences = special_opts.find_occurrences.split(".")
         assert state.find_occurrences is not None
