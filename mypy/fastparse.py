@@ -830,7 +830,7 @@ class ASTConverter:
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
-                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
+                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body, self.imports, False, self.type_ignores)
 
