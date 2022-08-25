@@ -1882,11 +1882,8 @@ class MessageBuilder:
             or not subtype.type.defn.type_vars
             or not supertype.type.defn.type_vars
         ):
-            self.note(
-                f"Following member(s) of {format_type(subtype)} have conflicts:",
-                context,
-                code=code,
-            )
+            type_name = format_type(subtype, module_names=True)
+            self.note(f"Following member(s) of {type_name} have conflicts:", context, code=code)
             for name, got, exp in conflict_types[:MAX_ITEMS]:
                 exp = get_proper_type(exp)
                 got = get_proper_type(got)
@@ -2148,7 +2145,9 @@ def format_callable_args(
     return ", ".join(arg_strings)
 
 
-def format_type_inner(typ: Type, verbosity: int, fullnames: set[str] | None) -> str:
+def format_type_inner(
+    typ: Type, verbosity: int, fullnames: set[str] | None, module_names: bool = False
+) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2189,7 +2188,7 @@ def format_type_inner(typ: Type, verbosity: int, fullnames: set[str] | None) -> 
         if itype.type.fullname in ("types.ModuleType", "_importlib_modulespec.ModuleType"):
             # Make some common error messages simpler and tidier.
             base_str = "Module"
-            if "@module" in itype.extra_attrs:
+            if "@module" in itype.extra_attrs and module_names:
                 return f"{base_str} {itype.extra_attrs['@module']}"
             return base_str
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
@@ -2365,7 +2364,7 @@ def find_type_overlaps(*types: Type) -> set[str]:
     return overlaps
 
 
-def format_type(typ: Type, verbosity: int = 0) -> str:
+def format_type(typ: Type, verbosity: int = 0, module_names: bool = False) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2376,10 +2375,10 @@ def format_type(typ: Type, verbosity: int = 0) -> str:
     modification of the formatted string is required, callers should use
     format_type_bare.
     """
-    return quote_type_string(format_type_bare(typ, verbosity))
+    return quote_type_string(format_type_bare(typ, verbosity, module_names))
 
 
-def format_type_bare(typ: Type, verbosity: int = 0) -> str:
+def format_type_bare(typ: Type, verbosity: int = 0, module_names: bool = False) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2391,7 +2390,7 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
     instead.  (The caller may want to use quote_type_string after
     processing has happened, to maintain consistent quoting in messages.)
     """
-    return format_type_inner(typ, verbosity, find_type_overlaps(typ))
+    return format_type_inner(typ, verbosity, find_type_overlaps(typ), module_names)
 
 
 def format_type_distinctly(*types: Type, bare: bool = False) -> tuple[str, ...]:
