@@ -3449,7 +3449,6 @@ f(a.x)
 ==
 
 [case testNamedTupleUpdate5]
-# flags: --enable-recursive-aliases
 import b
 [file a.py]
 from typing import NamedTuple, Optional
@@ -3503,7 +3502,7 @@ def foo() -> None:
 b.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNamedTupleUpdateNonRecursiveToRecursiveFine]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -3546,7 +3545,7 @@ c.py:5: error: Incompatible types in assignment (expression has type "Optional[N
 c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveFine]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -3579,7 +3578,7 @@ c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveFine]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -3668,7 +3667,6 @@ def foo(x: Point) -> int:
 b.py:3: error: Unsupported operand types for + ("int" and "str")
 
 [case testTypedDictUpdate3]
-# flags: --enable-recursive-aliases
 import b
 [file a.py]
 from mypy_extensions import TypedDict

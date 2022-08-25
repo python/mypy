@@ -975,9 +975,9 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--enable-recursive-aliases",
+        "--disable-recursive-aliases",
         action="store_true",
-        help="Experimental support for recursive type aliases",
+        help="Disable experimental support for recursive type aliases",
     )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"

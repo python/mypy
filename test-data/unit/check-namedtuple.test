@@ -617,7 +617,7 @@ tmp/b.py:4: note: Revealed type is "Tuple[Any, fallback=a.N]"
 tmp/b.py:7: note: Revealed type is "Tuple[Any, fallback=a.N]"
 
 [case testSimpleSelfReferentialNamedTuple]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple
 class MyNamedTuple(NamedTuple):
     parent: 'MyNamedTuple' # E: Cannot resolve name "MyNamedTuple" (possible cyclic definition)
@@ -655,7 +655,7 @@ class B:
 [out]
 
 [case testSelfRefNT1]
-
+# flags: --disable-recursive-aliases
 from typing import Tuple, NamedTuple
 
 Node = NamedTuple('Node', [
@@ -667,7 +667,7 @@ reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ..
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT2]
-
+# flags: --disable-recursive-aliases
 from typing import Tuple, NamedTuple
 
 A = NamedTuple('A', [
@@ -683,7 +683,7 @@ reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ..
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT3]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple, Tuple
 
 class B(NamedTuple):
@@ -703,7 +703,7 @@ reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.objec
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT4]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
 class B(NamedTuple):
@@ -719,7 +719,7 @@ reveal_type(n.y[0]) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT5]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
 B = NamedTuple('B', [
@@ -737,7 +737,7 @@ reveal_type(f) # N: Revealed type is "def (m: Tuple[Any, builtins.int, fallback=
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveNamedTupleInBases]
-
+# flags: --disable-recursive-aliases
 from typing import List, NamedTuple, Union
 
 Exp = Union['A', 'B']  # E: Cannot resolve name "Exp" (possible cyclic definition) \
@@ -781,7 +781,7 @@ tp = NamedTuple('tp', [('x', int)])
 [out]
 
 [case testSubclassOfRecursiveNamedTuple]
-
+# flags: --disable-recursive-aliases
 from typing import List, NamedTuple
 
 class Command(NamedTuple):
