@@ -1822,7 +1822,7 @@ class MessageBuilder:
             return
 
         class_obj = False
-        is_module = isinstance(subtype, Instance) and subtype.extra_attrs
+        is_module = isinstance(subtype, Instance) and "@module" in subtype.extra_attrs
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
