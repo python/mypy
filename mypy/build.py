@@ -2203,7 +2203,6 @@ class State:
         flags = get_mypy_comments(source)
         if flags:
             changes, config_errors = parse_mypy_comments(flags, self.options)
-            print(self.id, changes)
             self.options = self.options.apply_changes(changes)
             self.manager.errors.set_file(self.xpath, self.id, self.options)
             for lineno, error in config_errors:
