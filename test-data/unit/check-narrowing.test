@@ -1249,3 +1249,14 @@ def two_type_vars(x: Union[str, Dict[str, int], Dict[bool, object], int]) -> Non
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+
+
+[case testNarrowingWithDef]
+from typing import Callable, Optional
+
+def g() -> None:
+    foo: Optional[Callable[[], None]] = None
+    if foo is None:
+        def foo(): ...
+    foo()
+[builtins fixtures/dict.pyi]
