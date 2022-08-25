@@ -7457,3 +7457,23 @@ class Bar(Foo):
     @x.setter
     def x(self, value: int) -> None: ...
 [builtins fixtures/property.pyi]
+
+[case testOverrideMethodProperty]
+class B:
+    def foo(self) -> int:
+        ...
+class C(B):
+    @property
+    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B"
+        ...
+[builtins fixtures/property.pyi]
+
+[case testOverridePropertyMethod]
+class B:
+    @property
+    def foo(self) -> int:
+        ...
+class C(B):
+    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B"
+        ...
+[builtins fixtures/property.pyi]
