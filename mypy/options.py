@@ -3,14 +3,12 @@ from __future__ import annotations
 import pprint
 import re
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Pattern
+from typing import Any, Callable, Dict, Mapping, Pattern
 from typing_extensions import Final
 
 from mypy import defaults
+from mypy.errorcodes import ErrorCode, error_codes
 from mypy.util import get_class_descriptors, replace_object_state
-
-if TYPE_CHECKING:
-    from mypy.errorcodes import ErrorCode
 
 
 class BuildType:
@@ -27,6 +25,8 @@ PER_MODULE_OPTIONS: Final = {
     "always_true",
     "check_untyped_defs",
     "debug_cache",
+    "disable_error_code",
+    "disabled_error_codes",
     "disallow_any_decorated",
     "disallow_any_explicit",
     "disallow_any_expr",
@@ -37,6 +37,8 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_calls",
     "disallow_untyped_decorators",
     "disallow_untyped_defs",
+    "enable_error_code",
+    "enabled_error_codes",
     "follow_imports",
     "follow_imports_for_stubs",
     "ignore_errors",
@@ -347,6 +349,20 @@ class Options:
             # This is the only option for which a per-module and a global
             # option sometimes beheave differently.
             new_options.ignore_missing_imports_per_module = True
+
+        # These two act as overrides, so apply them when cloning.
+        # Similar to global codes enabling overrides disabling, so we start from latter.
+        new_options.disabled_error_codes = self.disabled_error_codes.copy()
+        new_options.enabled_error_codes = self.enabled_error_codes.copy()
+        for code_str in new_options.disable_error_code:
+            code = error_codes[code_str]
+            new_options.disabled_error_codes.add(code)
+            new_options.enabled_error_codes.discard(code)
+        for code_str in new_options.enable_error_code:
+            code = error_codes[code_str]
+            new_options.enabled_error_codes.add(code)
+            new_options.disabled_error_codes.discard(code)
+
         return new_options
 
     def build_per_module_cache(self) -> None:
@@ -446,4 +462,10 @@ class Options:
         return re.compile(expr + "\\Z")
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        return {opt: getattr(self, opt) for opt in OPTIONS_AFFECTING_CACHE}
+        result: Dict[str, object] = {}
+        for opt in OPTIONS_AFFECTING_CACHE:
+            val = getattr(self, opt)
+            if isinstance(val, set):
+                val = sorted(val)
+            result[opt] = val
+        return result
