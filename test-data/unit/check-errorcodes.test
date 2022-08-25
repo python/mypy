@@ -919,5 +919,5 @@ def f(d: D, s: str) -> None:
 
 
 [case testRecommendErrorCode]
-# type: ignore[whatever]  # E: type ignore with error code is not supported at module level; use `# mypy: disable-error-code=...`  [syntax]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code=...`  [syntax]
 1 + "asdf"

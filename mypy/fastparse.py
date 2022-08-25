@@ -485,7 +485,7 @@ class ASTConverter:
             if self.type_ignores[min(self.type_ignores)]:
                 self.fail(
                     (
-                        "type ignore with error code is not supported at module level; "
+                        "type ignore with error code is not supported for modules; "
                         "use `# mypy: disable-error-code=...`"
                     ),
                     line=min(self.type_ignores),
