@@ -339,6 +339,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Fall back to a dummy 'object' type instead to
                 # avoid a crash.
                 result = self.named_type("builtins.object")
+            result.extra_attrs = {
+                name: n.type if n.type else AnyType(TypeOfAny.special_form)
+                for name, n in node.names.items()
+            }
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):

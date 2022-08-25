@@ -1010,8 +1010,8 @@ def is_protocol_implementation(
             if isinstance(subtype, NoneType) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
-            subflags = get_member_flags(member, left.type, class_obj=class_obj)
-            superflags = get_member_flags(member, right.type)
+            subflags = get_member_flags(member, left, class_obj=class_obj)
+            superflags = get_member_flags(member, right)
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
                 if not is_subtype(supertype, subtype):
@@ -1095,10 +1095,12 @@ def find_member(
             # PEP 544 doesn't specify anything about such use cases. So we just try
             # to do something meaningful (at least we should not crash).
             return TypeType(fill_typevars_with_any(v))
+    if name in itype.extra_attrs:
+        return itype.extra_attrs[name]
     return None
 
 
-def get_member_flags(name: str, info: TypeInfo, class_obj: bool = False) -> set[int]:
+def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set[int]:
     """Detect whether a member 'name' is settable, whether it is an
     instance or class variable, and whether it is class or static method.
 
@@ -1109,6 +1111,7 @@ def get_member_flags(name: str, info: TypeInfo, class_obj: bool = False) -> set[
     * IS_CLASS_OR_STATIC: set for methods decorated with @classmethod or
       with @staticmethod.
     """
+    info = itype.type
     method = info.get_method(name)
     setattr_meth = info.get_method("__setattr__")
     if method:
@@ -1125,6 +1128,8 @@ def get_member_flags(name: str, info: TypeInfo, class_obj: bool = False) -> set[
     node = info.get(name)
     if not node:
         if setattr_meth:
+            return {IS_SETTABLE}
+        if name in itype.extra_attrs:
             return {IS_SETTABLE}
         return set()
     v = node.node

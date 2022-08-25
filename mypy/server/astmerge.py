@@ -418,6 +418,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
             arg.accept(self)
         if typ.last_known_value:
             typ.last_known_value.accept(self)
+        if typ.extra_attrs:
+            typ.extra_attrs.accept(self)
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> None:
         assert typ.alias is not None

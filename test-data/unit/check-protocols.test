@@ -3517,3 +3517,76 @@ test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P"
          # N:         def [T] foo(arg: T) -> T \
          # N:     Got: \
          # N:         def [T] foo(self: T) -> Union[T, int]
+
+[case testModuleAsProtocolImplementation]
+import default_config
+import bad_config_1
+import bad_config_2
+import bad_config_3
+from typing import Protocol
+
+class Options(Protocol):
+    timeout: int
+    one_flag: bool
+    other_flag: bool
+    def update(self) -> bool: ...
+
+def setup(options: Options) -> None: ...
+setup(default_config)  # OK
+setup(bad_config_1)  # E: Argument 1 to "setup" has incompatible type Module; expected "Options" \
+                     # N: "ModuleType" is missing following "Options" protocol member: \
+                     # N:     timeout
+setup(bad_config_2)  # E: Argument 1 to "setup" has incompatible type Module; expected "Options" \
+                     # N: Following member(s) of Module have conflicts: \
+                     # N:     one_flag: expected "bool", got "int"
+setup(bad_config_3)  # E: Argument 1 to "setup" has incompatible type Module; expected "Options" \
+                     # N: Following member(s) of Module have conflicts: \
+                     # N:     Expected: \
+                     # N:         def update() -> bool \
+                     # N:     Got: \
+                     # N:         def update(obj: Any) -> bool
+
+[file default_config.py]
+timeout = 100
+one_flag = True
+other_flag = False
+def update() -> bool: ...
+
+[file bad_config_1.py]
+one_flag = True
+other_flag = False
+def update() -> bool: ...
+
+[file bad_config_2.py]
+timeout = 100
+one_flag = 42
+other_flag = False
+def update() -> bool: ...
+
+[file bad_config_3.py]
+timeout = 100
+one_flag = True
+other_flag = False
+def update(obj) -> bool: ...
+[builtins fixtures/module.pyi]
+
+[case testModuleAsProtocolImplementationInference]
+import default_config
+from typing import Protocol, TypeVar
+
+T = TypeVar("T", covariant=True)
+class Options(Protocol[T]):
+    timeout: int
+    one_flag: bool
+    other_flag: bool
+    def update(self) -> T: ...
+
+def setup(options: Options[T]) -> T: ...
+reveal_type(setup(default_config))  # N: Revealed type is "builtins.str"
+
+[file default_config.py]
+timeout = 100
+one_flag = True
+other_flag = False
+def update() -> str: ...
+[builtins fixtures/module.pyi]

@@ -1822,6 +1822,7 @@ class MessageBuilder:
             return
 
         class_obj = False
+        is_module = isinstance(subtype, Instance) and subtype.extra_attrs
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1902,7 +1903,7 @@ class MessageBuilder:
                     self.note("Expected:", context, offset=OFFSET, code=code)
                     if isinstance(exp, CallableType):
                         self.note(
-                            pretty_callable(exp, skip_self=class_obj),
+                            pretty_callable(exp, skip_self=class_obj or is_module),
                             context,
                             offset=2 * OFFSET,
                             code=code,
@@ -1910,12 +1911,12 @@ class MessageBuilder:
                     else:
                         assert isinstance(exp, Overloaded)
                         self.pretty_overload(
-                            exp, context, 2 * OFFSET, code=code, skip_self=class_obj
+                            exp, context, 2 * OFFSET, code=code, skip_self=class_obj or is_module
                         )
                     self.note("Got:", context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
                         self.note(
-                            pretty_callable(got, skip_self=class_obj),
+                            pretty_callable(got, skip_self=class_obj or is_module),
                             context,
                             offset=2 * OFFSET,
                             code=code,
@@ -1923,7 +1924,7 @@ class MessageBuilder:
                     else:
                         assert isinstance(got, Overloaded)
                         self.pretty_overload(
-                            got, context, 2 * OFFSET, code=code, skip_self=class_obj
+                            got, context, 2 * OFFSET, code=code, skip_self=class_obj or is_module
                         )
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
@@ -2564,7 +2565,7 @@ def get_conflict_protocol_types(
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
-        if IS_SETTABLE in get_member_flags(member, right.type):
+        if IS_SETTABLE in get_member_flags(member, right):
             is_compat = is_compat and is_subtype(supertype, subtype)
         if not is_compat:
             conflicts.append((member, subtype, supertype))
@@ -2581,11 +2582,7 @@ def get_bad_protocol_flags(
     all_flags: list[tuple[str, set[int], set[int]]] = []
     for member in right.type.protocol_members:
         if find_member(member, left, left):
-            item = (
-                member,
-                get_member_flags(member, left.type),
-                get_member_flags(member, right.type),
-            )
+            item = (member, get_member_flags(member, left), get_member_flags(member, right))
             all_flags.append(item)
     bad_flags = []
     for name, subflags, superflags in all_flags:

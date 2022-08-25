@@ -1186,7 +1186,7 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ("type", "args", "invalid", "type_ref", "last_known_value", "_hash")
+    __slots__ = ("type", "args", "invalid", "type_ref", "last_known_value", "_hash", "extra_attrs")
 
     def __init__(
         self,
@@ -1253,12 +1253,19 @@ class Instance(ProperType):
         # Cached hash value
         self._hash = -1
 
+        # Additional attributes defined per instance of this type. For example modules
+        # have different attributes per instance of types.ModuleType. This is intended
+        # to be "short lived", we don't serialize it, and even don't store as variable type.
+        self.extra_attrs: dict[str, Type] = {}
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
         if self._hash == -1:
-            self._hash = hash((self.type, self.args, self.last_known_value))
+            self._hash = hash(
+                (self.type, self.args, self.last_known_value, tuple(self.extra_attrs.items()))
+            )
         return self._hash
 
     def __eq__(self, other: object) -> bool:
@@ -1268,6 +1275,7 @@ class Instance(ProperType):
             self.type == other.type
             and self.args == other.args
             and self.last_known_value == other.last_known_value
+            and self.extra_attrs == other.extra_attrs
         )
 
     def serialize(self) -> JsonDict | str:
@@ -1315,6 +1323,7 @@ class Instance(ProperType):
             if last_known_value is not _dummy
             else self.last_known_value,
         )
+        # We intentionally don't copy the extra_attrs here.
         new.can_be_true = self.can_be_true
         new.can_be_false = self.can_be_false
         return new
