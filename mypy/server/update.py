@@ -116,7 +116,6 @@ import os
 import sys
 import time
 from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
-
 from typing_extensions import Final
 
 from mypy.build import (

@@ -4,7 +4,6 @@ import types
 import weakref
 from collections.abc import Iterable
 from typing import Dict, Iterator, List, Mapping, Tuple
-
 from typing_extensions import Final
 
 method_descriptor_type: Final = type(object.__dir__)

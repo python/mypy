@@ -1,7 +1,6 @@
 """Fix up various things after deserialization."""
 
 from typing import Any, Dict, Optional
-
 from typing_extensions import Final
 
 from mypy.lookup import lookup_fully_qualified

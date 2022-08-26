@@ -1,7 +1,6 @@
 """Check for duplicate AST nodes after merge."""
 
 from typing import Dict, List, Tuple
-
 from typing_extensions import Final
 
 from mypy.nodes import Decorator, FakeInfo, FuncDef, SymbolNode, Var
@@ -51,9 +50,7 @@ def check_consistency(o: object) -> None:
         path2 = get_path(sym2, seen, parents)
 
         if fn in m:
-            print(
-                "\nDuplicate {!r} nodes with fullname {!r} found:".format(type(sym).__name__, fn)
-            )
+            print(f"\nDuplicate {type(sym).__name__!r} nodes with fullname {fn!r} found:")
             print("[1] %d: %s" % (id(sym1), path_to_str(path1)))
             print("[2] %d: %s" % (id(sym2), path_to_str(path2)))
 

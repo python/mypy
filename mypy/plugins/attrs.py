@@ -1,7 +1,6 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
 from typing import Dict, Iterable, List, Optional, Tuple, cast
-
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.

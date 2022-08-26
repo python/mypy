@@ -20,7 +20,6 @@ else:
     import tomli as tomllib
 
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
-
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import pyinfo
@@ -884,6 +883,6 @@ def parse_version(version: str) -> Tuple[int, int]:
 
 def typeshed_py_version(options: Options) -> Tuple[int, int]:
     """Return Python version used for checking whether module supports typeshed."""
-    # Typeshed no longer covers Python 3.x versions before 3.6, so 3.6 is
+    # Typeshed no longer covers Python 3.x versions before 3.7, so 3.7 is
     # the earliest we can support.
-    return max(options.python_version, (3, 6))
+    return max(options.python_version, (3, 7))

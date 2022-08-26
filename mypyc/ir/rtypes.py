@@ -22,7 +22,6 @@ RTypes.
 
 from abc import abstractmethod
 from typing import Dict, Generic, List, Optional, Tuple, TypeVar, Union
-
 from typing_extensions import TYPE_CHECKING, ClassVar, Final
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name

@@ -1,8 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import Callable, Optional, Sequence, Union, cast
-
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional, Sequence, Union, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
@@ -836,7 +834,7 @@ def analyze_class_attribute_access(
     if override_info:
         info = override_info
 
-    fullname = "{}.{}".format(info.fullname, name)
+    fullname = f"{info.fullname}.{name}"
     hook = mx.chk.plugin.get_class_attribute_hook(fullname)
 
     node = info.get(name)

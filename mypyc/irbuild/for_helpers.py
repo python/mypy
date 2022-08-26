@@ -6,7 +6,6 @@ such special case.
 """
 
 from typing import Callable, List, Optional, Tuple, Union
-
 from typing_extensions import ClassVar, Type
 
 from mypy.nodes import (

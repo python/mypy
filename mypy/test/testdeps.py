@@ -2,9 +2,7 @@
 
 import os
 from collections import defaultdict
-from typing import Dict, List, Optional, Set, Tuple
-
-from typing_extensions import DefaultDict
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 from mypy import build
 from mypy.errors import CompileError

@@ -17,14 +17,26 @@ import sys
 import traceback
 import types
 import typing
+import typing_extensions
 import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
-
-import typing_extensions
-from typing_extensions import Type, get_origin
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
+from typing_extensions import get_origin
 
 import mypy.build
 import mypy.modulefinder
@@ -90,6 +102,7 @@ class Error:
         :param runtime_desc: Specialised description for the runtime object, should you wish
 
         """
+        self.object_path = object_path
         self.object_desc = ".".join(object_path)
         self.message = message
         self.stub_object = stub_object
@@ -116,10 +129,12 @@ class Error:
             return _style(self.object_desc, bold=True) + " " + self.message
 
         stub_line = None
-        stub_file: None = None
+        stub_file = None
         if not isinstance(self.stub_object, Missing):
             stub_line = self.stub_object.line
-        # TODO: Find a way of getting the stub file
+        stub_node = get_stub(self.object_path[0])
+        if stub_node is not None:
+            stub_file = stub_node.path or None
 
         stub_loc_str = ""
         if stub_line:
@@ -982,7 +997,7 @@ def verify_paramspecexpr(
         getattr(typing, "ParamSpec", None),
         getattr(typing_extensions, "ParamSpec", None),
     )
-    paramspec_types = tuple([t for t in maybe_paramspec_types if t is not None])
+    paramspec_types = tuple(t for t in maybe_paramspec_types if t is not None)
     if not paramspec_types or not isinstance(runtime, paramspec_types):
         yield Error(object_path, "is not a ParamSpec", stub, runtime)
         return
@@ -1451,9 +1466,9 @@ def get_typeshed_stdlib_modules(
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
         version_info = sys.version_info[0:2]
-    # Typeshed's minimum supported Python 3 is Python 3.6
-    if sys.version_info < (3, 6):
-        version_info = (3, 6)
+    # Typeshed's minimum supported Python 3 is Python 3.7
+    if sys.version_info < (3, 7):
+        version_info = (3, 7)
 
     def exists_in_version(module: str) -> bool:
         assert version_info is not None

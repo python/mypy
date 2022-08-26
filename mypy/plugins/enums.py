@@ -11,7 +11,6 @@ we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
 from typing import Iterable, Optional, Sequence, TypeVar, cast
-
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.

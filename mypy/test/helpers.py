@@ -346,9 +346,7 @@ def typename(t: type) -> str:
 def assert_type(typ: type, value: object) -> None:
     __tracebackhide__ = True
     if type(value) != typ:
-        raise AssertionError(
-            "Invalid type {}, expected {}".format(typename(type(value)), typename(typ))
-        )
+        raise AssertionError(f"Invalid type {typename(type(value))}, expected {typename(typ)}")
 
 
 def parse_options(

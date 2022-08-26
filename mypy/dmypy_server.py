@@ -16,7 +16,6 @@ import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
-
 from typing_extensions import Final
 
 import mypy.build

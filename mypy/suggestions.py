@@ -38,7 +38,6 @@ from typing import (
     Union,
     cast,
 )
-
 from typing_extensions import TypedDict
 
 from mypy.argmap import map_actuals_to_formals
@@ -592,12 +591,12 @@ class SuggestionEngine:
         for i, component in enumerate(components[:-1]):
             if component not in names:
                 raise SuggestionFailure(
-                    "Unknown class %s.%s" % (modname, ".".join(components[: i + 1]))
+                    "Unknown class {}.{}".format(modname, ".".join(components[: i + 1]))
                 )
             node: Optional[SymbolNode] = names[component].node
             if not isinstance(node, TypeInfo):
                 raise SuggestionFailure(
-                    "Object %s.%s is not a class" % (modname, ".".join(components[: i + 1]))
+                    "Object {}.{} is not a class".format(modname, ".".join(components[: i + 1]))
                 )
             names = node.names
 
@@ -606,7 +605,7 @@ class SuggestionEngine:
         if funcname not in names:
             key = modname + "." + tail
             raise SuggestionFailure(
-                "Unknown %s %s" % ("method" if len(components) > 1 else "function", key)
+                "Unknown {} {}".format("method" if len(components) > 1 else "function", key)
             )
         return names[funcname].node
 

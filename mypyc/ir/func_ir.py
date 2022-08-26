@@ -1,7 +1,6 @@
 """Intermediate representation of functions."""
 
 from typing import List, Optional, Sequence
-
 from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef

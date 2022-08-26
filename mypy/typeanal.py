@@ -4,7 +4,6 @@ import itertools
 from contextlib import contextmanager
 from itertools import chain
 from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, TypeVar
-
 from typing_extensions import Final, Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
@@ -83,8 +82,8 @@ from mypy.types import (
     UnpackType,
     bad_type_type_item,
     callable_with_ellipsis,
+    flatten_nested_unions,
     get_proper_type,
-    union_items,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 
@@ -1130,9 +1129,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
                     if arg.name is not None and kind.is_star():
-                        self.fail(
-                            "{} arguments should not have names".format(arg.constructor), arg
-                        )
+                        self.fail(f"{arg.constructor} arguments should not have names", arg)
                         return None
             else:
                 args.append(arg)
@@ -1540,10 +1537,7 @@ def expand_type_alias(
         tp.column = ctx.column
         return tp
     if act_len != exp_len:
-        fail(
-            "Bad number of arguments for type alias, expected: %s, given: %s" % (exp_len, act_len),
-            ctx,
-        )
+        fail(f"Bad number of arguments for type alias, expected: {exp_len}, given: {act_len}", ctx)
         return set_any_tvars(node, ctx.line, ctx.column, from_error=True)
     typ = TypeAliasType(node, args, ctx.line, ctx.column)
     assert typ.alias is not None
@@ -1739,11 +1733,16 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
-    t = get_proper_type(t)
-    if isinstance(t, NoneType):
+    p_t = get_proper_type(t)
+    if isinstance(p_t, NoneType):
         return t
-    elif isinstance(t, UnionType):
-        items = [item for item in union_items(t) if not isinstance(item, NoneType)]
+    elif isinstance(p_t, UnionType):
+        # Eagerly expanding aliases is not safe during semantic analysis.
+        items = [
+            item
+            for item in flatten_nested_unions(p_t.items, handle_type_alias_type=False)
+            if not isinstance(get_proper_type(item), NoneType)
+        ]
         return UnionType(items + [NoneType()], t.line, t.column)
     else:
         return UnionType([t, NoneType()], t.line, t.column)
