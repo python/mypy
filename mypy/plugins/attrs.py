@@ -12,7 +12,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
     is_class_var, TempNode, Decorator, MemberExpr, Expression,
     SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
-    TypeVarExpr, PlaceholderNode
+    TypeVarExpr, PlaceholderNode, LambdaExpr
 )
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
@@ -60,19 +60,16 @@ class Converter:
     """Holds information about a `converter=` argument"""
 
     def __init__(self,
-                 type: Optional[Type] = None,
-                 is_attr_converters_optional: bool = False,
-                 is_invalid_converter: bool = False) -> None:
-        self.type = type
-        self.is_attr_converters_optional = is_attr_converters_optional
-        self.is_invalid_converter = is_invalid_converter
+                 init_type: Optional[Type] = None,
+                 ) -> None:
+        self.init_type = init_type
 
 
 class Attribute:
     """The value of an attr.ib() call."""
 
     def __init__(self, name: str, info: TypeInfo,
-                 has_default: bool, init: bool, kw_only: bool, converter: Converter,
+                 has_default: bool, init: bool, kw_only: bool, converter: Optional[Converter],
                  context: Context,
                  init_type: Optional[Type]) -> None:
         self.name = name
@@ -88,54 +85,35 @@ class Attribute:
         """Return this attribute as an argument to __init__."""
         assert self.init
 
-        init_type = self.init_type or self.info[self.name].type
-
-        if self.converter.type and not self.converter.is_invalid_converter:
-            # When a converter is set the init_type is overridden by the first argument
-            # of the converter method.
-            converter_type = self.converter.type
-            init_type = None
-            converter_type = get_proper_type(converter_type)
-            if isinstance(converter_type, CallableType) and converter_type.arg_types:
-                init_type = converter_type.arg_types[0]
-            elif isinstance(converter_type, Overloaded):
-                types: List[Type] = []
-                for item in converter_type.items:
-                    # Walk the overloads looking for methods that can accept one argument.
-                    num_arg_types = len(item.arg_types)
-                    if not num_arg_types:
-                        continue
-                    if num_arg_types > 1 and any(kind == ARG_POS for kind in item.arg_kinds[1:]):
-                        continue
-                    types.append(item.arg_types[0])
-                # Make a union of all the valid types.
-                if types:
-                    init_type = make_simplified_union(types)
-
-            if self.converter.is_attr_converters_optional and init_type:
-                # If the converter was attr.converter.optional(type) then add None to
-                # the allowed init_type.
-                init_type = UnionType.make_union([init_type, NoneType()])
-
-            if not init_type:
+        init_type: Optional[Type] = None
+        if self.converter:
+            if self.converter.init_type:
+                init_type = self.converter.init_type
+            else:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
-        elif self.converter.is_invalid_converter:
-            # This means we had a converter but it's not of a type we can infer.
-            init_type = AnyType(TypeOfAny.from_error)
+        else:  # There is no converter, the init type is the normal type.
+            init_type = self.init_type or self.info[self.name].type
 
+        unannotated = False
         if init_type is None:
-            if ctx.api.options.disallow_untyped_defs:
-                # This is a compromise.  If you don't have a type here then the
-                # __init__ will be untyped. But since the __init__ is added it's
-                # pointing at the decorator. So instead we also show the error in the
-                # assignment, which is where you would fix the issue.
-                node = self.info[self.name].node
-                assert node is not None
-                ctx.api.msg.need_annotation_for_var(node, self.context)
-
+            unannotated = True
             # Convert type not set to Any.
             init_type = AnyType(TypeOfAny.unannotated)
+        else:
+            proper_type = get_proper_type(init_type)
+            if isinstance(proper_type, AnyType):
+                if proper_type.type_of_any == TypeOfAny.unannotated:
+                    unannotated = True
+
+        if unannotated and ctx.api.options.disallow_untyped_defs:
+            # This is a compromise.  If you don't have a type here then the
+            # __init__ will be untyped. But since the __init__ is added it's
+            # pointing at the decorator. So instead we also show the error in the
+            # assignment, which is where you would fix the issue.
+            node = self.info[self.name].node
+            assert node is not None
+            ctx.api.msg.need_annotation_for_var(node, self.context)
 
         if self.kw_only:
             arg_kind = ARG_NAMED_OPT if self.has_default else ARG_NAMED
@@ -154,9 +132,9 @@ class Attribute:
             'has_default': self.has_default,
             'init': self.init,
             'kw_only': self.kw_only,
-            'converter_type': self.converter.type.serialize() if self.converter.type else None,
-            'converter_is_attr_converters_optional': self.converter.is_attr_converters_optional,
-            'converter_is_invalid_converter': self.converter.is_invalid_converter,
+            'has_converter': self.converter is not None,
+            'converter_init_type': self.converter.init_type.serialize()
+            if self.converter and self.converter.init_type else None,
             'context_line': self.context.line,
             'context_column': self.context.column,
             'init_type': self.init_type.serialize() if self.init_type else None,
@@ -169,17 +147,16 @@ class Attribute:
         """Return the Attribute that was serialized."""
         raw_init_type = data['init_type']
         init_type = deserialize_and_fixup_type(raw_init_type, api) if raw_init_type else None
+        raw_converter_init_type = data['converter_init_type']
+        converter_init_type = (deserialize_and_fixup_type(raw_converter_init_type, api)
+                               if raw_converter_init_type else None)
 
-        converter_type = None
-        if data['converter_type']:
-            converter_type = deserialize_and_fixup_type(data['converter_type'], api)
         return Attribute(data['name'],
             info,
             data['has_default'],
             data['init'],
             data['kw_only'],
-            Converter(converter_type, data['converter_is_attr_converters_optional'],
-                      data['converter_is_invalid_converter']),
+            Converter(converter_init_type) if data['has_converter'] else None,
             Context(line=data['context_line'], column=data['context_column']),
             init_type)
 
@@ -542,7 +519,7 @@ def _attribute_from_auto_attrib(ctx: 'mypy.plugin.ClassDefContext',
     has_rhs = not isinstance(rvalue, TempNode)
     sym = ctx.cls.info.names.get(name)
     init_type = sym.type if sym else None
-    return Attribute(name, ctx.cls.info, has_rhs, True, kw_only, Converter(), stmt, init_type)
+    return Attribute(name, ctx.cls.info, has_rhs, True, kw_only, None, stmt, init_type)
 
 
 def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
@@ -613,40 +590,76 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
 
 
 def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
-                     converter: Optional[Expression]) -> Converter:
+                     converter_expr: Optional[Expression]) -> Optional[Converter]:
     """Return the Converter object from an Expression."""
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
-    if converter:
-        if isinstance(converter, RefExpr) and converter.node:
-            if (isinstance(converter.node, FuncDef)
-                    and converter.node.type
-                    and isinstance(converter.node.type, FunctionLike)):
-                return Converter(converter.node.type)
-            elif (isinstance(converter.node, OverloadedFuncDef)
-                    and is_valid_overloaded_converter(converter.node)):
-                return Converter(converter.node.type)
-            elif isinstance(converter.node, TypeInfo):
-                from mypy.checkmember import type_object_type  # To avoid import cycle.
-                return Converter(type_object_type(converter.node, ctx.api.named_type))
+    if not converter_expr:
+        return None
+    converter_info = Converter()
+    if (isinstance(converter_expr, CallExpr)
+            and isinstance(converter_expr.callee, RefExpr)
+            and converter_expr.callee.fullname in attr_optional_converters
+            and converter_expr.args
+            and converter_expr.args[0]):
+        # Special handling for attr.converters.optional(type)
+        # We extract the type and add make the init_args Optional in Attribute.argument
+        converter_expr = converter_expr.args[0]
+        is_attr_converters_optional = True
+    else:
+        is_attr_converters_optional = False
 
-        if (isinstance(converter, CallExpr)
-                and isinstance(converter.callee, RefExpr)
-                and converter.callee.fullname in attr_optional_converters
-                and converter.args
-                and converter.args[0]):
-            # Special handling for attr.converters.optional(type)
-            # We extract the type and add make the init_args Optional in Attribute.argument
-            argument = _parse_converter(ctx, converter.args[0])
-            argument.is_attr_converters_optional = True
-            return argument
+    converter_type: Optional[Type] = None
+    if isinstance(converter_expr, RefExpr) and converter_expr.node:
+        if isinstance(converter_expr.node, FuncDef):
+            if converter_expr.node.type and isinstance(converter_expr.node.type, FunctionLike):
+                converter_type = converter_expr.node.type
+            else:  # The converter is an unannotated function.
+                converter_info.init_type = AnyType(TypeOfAny.unannotated)
+                return converter_info
+        elif (isinstance(converter_expr.node, OverloadedFuncDef)
+              and is_valid_overloaded_converter(converter_expr.node)):
+            converter_type = converter_expr.node.type
+        elif isinstance(converter_expr.node, TypeInfo):
+            from mypy.checkmember import type_object_type  # To avoid import cycle.
+            converter_type = type_object_type(converter_expr.node, ctx.api.named_type)
+    if isinstance(converter_expr, LambdaExpr):
+        # TODO: should we send a fail if converter_expr.min_args > 1?
+        converter_info.init_type = AnyType(TypeOfAny.unannotated)
+        return converter_info
 
+    if not converter_type:
         # Signal that we have an unsupported converter.
         ctx.api.fail(
-            "Unsupported converter, only named functions and types are currently supported",
-            converter
+            "Unsupported converter, only named functions, types and lambdas are currently "
+            "supported",
+            converter_expr
         )
-        return Converter(None, is_invalid_converter=True)
-    return Converter(None)
+        converter_info.init_type = AnyType(TypeOfAny.from_error)
+        return converter_info
+
+    converter_type = get_proper_type(converter_type)
+    if isinstance(converter_type, CallableType) and converter_type.arg_types:
+        converter_info.init_type = converter_type.arg_types[0]
+    elif isinstance(converter_type, Overloaded):
+        types: List[Type] = []
+        for item in converter_type.items:
+            # Walk the overloads looking for methods that can accept one argument.
+            num_arg_types = len(item.arg_types)
+            if not num_arg_types:
+                continue
+            if num_arg_types > 1 and any(kind == ARG_POS for kind in item.arg_kinds[1:]):
+                continue
+            types.append(item.arg_types[0])
+        # Make a union of all the valid types.
+        if types:
+            converter_info.init_type = make_simplified_union(types)
+
+    if is_attr_converters_optional and converter_info.init_type:
+        # If the converter was attr.converter.optional(type) then add None to
+        # the allowed init_type.
+        converter_info.init_type = UnionType.make_union([converter_info.init_type, NoneType()])
+
+    return converter_info
 
 
 def is_valid_overloaded_converter(defn: OverloadedFuncDef) -> bool:

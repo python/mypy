@@ -32,7 +32,7 @@ if sys.version_info >= (3, 7):
     def _worker(
         executor_reference: ref[Any],
         work_queue: queue.SimpleQueue[Any],
-        initializer: Callable[..., None],
+        initializer: Callable[..., object],
         initargs: tuple[Any, ...],
     ) -> None: ...
 
@@ -63,7 +63,7 @@ class ThreadPoolExecutor(Executor):
             self,
             max_workers: int | None = ...,
             thread_name_prefix: str = ...,
-            initializer: Callable[..., None] | None = ...,
+            initializer: Callable[..., object] | None = ...,
             initargs: tuple[Any, ...] = ...,
         ) -> None: ...
     else:

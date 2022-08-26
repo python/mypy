@@ -30,15 +30,11 @@ from mypy import pyinfo
 
 
 # Paths to be searched in find_module().
-SearchPaths = NamedTuple(
-    'SearchPaths',
-    [
-        ('python_path', Tuple[str, ...]),  # where user code is found
-        ('mypy_path', Tuple[str, ...]),  # from $MYPYPATH or config variable
-        ('package_path', Tuple[str, ...]),  # from get_site_packages_dirs()
-        ('typeshed_path', Tuple[str, ...]),  # paths in typeshed
-    ]
-)
+class SearchPaths(NamedTuple):
+    python_path: Tuple[str, ...]  # where user code is found
+    mypy_path: Tuple[str, ...]  # from $MYPYPATH or config variable
+    package_path: Tuple[str, ...]  # from get_site_packages_dirs()
+    typeshed_path: Tuple[str, ...]  # paths in typeshed
 
 
 # Package dirs are a two-tuple of path to search and whether to verify the module

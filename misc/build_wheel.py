@@ -38,7 +38,7 @@ def create_environ(python_version: str) -> Dict[str, str]:
     env['CIBW_BUILD'] = f"cp{python_version}-*"
 
     # Don't build 32-bit wheels
-    env['CIBW_SKIP'] = "*-manylinux_i686 *-win32"
+    env['CIBW_SKIP'] = "*-manylinux_i686 *-win32 *-musllinux_*"
 
     # Apple Silicon support
     # When cross-compiling on Intel, it is not possible to test arm64 and
@@ -89,7 +89,6 @@ def create_environ(python_version: str) -> Dict[str, str]:
     # pytest looks for configuration files in the parent directories of where the tests live.
     # since we are trying to run the tests from their installed location, we copy those into
     # the venv. Ew ew ew.
-    # We don't run tests that need lxml since we don't install lxml
     # We don't run external mypyc tests since there's some issue with compilation on the
     # manylinux image we use.
     env['CIBW_TEST_COMMAND'] = """
@@ -98,7 +97,7 @@ def create_environ(python_version: str) -> Dict[str, str]:
       && cp '{project}/mypy/pytest.ini' '{project}/mypy/conftest.py' $DIR
 
       && MYPY_TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])')
-      && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPY_TEST_DIR -k 'not (reports.test or testreports)'
+      && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPY_TEST_DIR
 
       && MYPYC_TEST_DIR=$(python -c 'import mypyc.test; print(mypyc.test.__path__[0])')
       && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPYC_TEST_DIR -k 'not test_external'
@@ -111,9 +110,10 @@ def create_environ(python_version: str) -> Dict[str, str]:
       bash -c "
       (
       DIR=$(python -c 'import mypy, os; dn = os.path.dirname; print(dn(dn(mypy.__path__[0])))')
-      && TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])')
       && cp '{project}/mypy/pytest.ini' '{project}/mypy/conftest.py' $DIR
-      && MYPY_TEST_PREFIX='{project}/mypy' pytest $TEST_DIR/testcheck.py
+
+      && MYPY_TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])')
+      && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPY_TEST_DIR/testcheck.py
       )
       "
     """.replace('\n', ' ')

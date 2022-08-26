@@ -1,97 +1,42 @@
 import sys
+from _typeshed import ProfileFunction, TraceFunction
 from collections.abc import Callable, Iterable, Mapping
-from types import FrameType, TracebackType
+from types import TracebackType
 from typing import Any, TypeVar
-from typing_extensions import TypeAlias
 
-# TODO recursive type
-_TF: TypeAlias = Callable[[FrameType, str, Any], Callable[..., Any] | None]
-
-_PF: TypeAlias = Callable[[FrameType, str, Any], None]
 _T = TypeVar("_T")
 
-if sys.version_info >= (3, 10):
-    __all__ = [
-        "get_ident",
-        "active_count",
-        "Condition",
-        "current_thread",
-        "enumerate",
-        "main_thread",
-        "TIMEOUT_MAX",
-        "Event",
-        "Lock",
-        "RLock",
-        "Semaphore",
-        "BoundedSemaphore",
-        "Thread",
-        "Barrier",
-        "BrokenBarrierError",
-        "Timer",
-        "ThreadError",
-        "setprofile",
-        "settrace",
-        "local",
-        "stack_size",
-        "excepthook",
-        "ExceptHookArgs",
-        "gettrace",
-        "getprofile",
-        "get_native_id",
-    ]
-elif sys.version_info >= (3, 8):
-    __all__ = [
-        "get_ident",
-        "active_count",
-        "Condition",
-        "current_thread",
-        "enumerate",
-        "main_thread",
-        "TIMEOUT_MAX",
-        "Event",
-        "Lock",
-        "RLock",
-        "Semaphore",
-        "BoundedSemaphore",
-        "Thread",
-        "Barrier",
-        "BrokenBarrierError",
-        "Timer",
-        "ThreadError",
-        "setprofile",
-        "settrace",
-        "local",
-        "stack_size",
-        "excepthook",
-        "ExceptHookArgs",
-        "get_native_id",
-    ]
-else:
-    __all__ = [
-        "get_ident",
-        "active_count",
-        "Condition",
-        "current_thread",
-        "enumerate",
-        "main_thread",
-        "TIMEOUT_MAX",
-        "Event",
-        "Lock",
-        "RLock",
-        "Semaphore",
-        "BoundedSemaphore",
-        "Thread",
-        "Barrier",
-        "BrokenBarrierError",
-        "Timer",
-        "ThreadError",
-        "setprofile",
-        "settrace",
-        "local",
-        "stack_size",
-    ]
+__all__ = [
+    "get_ident",
+    "active_count",
+    "Condition",
+    "current_thread",
+    "enumerate",
+    "main_thread",
+    "TIMEOUT_MAX",
+    "Event",
+    "Lock",
+    "RLock",
+    "Semaphore",
+    "BoundedSemaphore",
+    "Thread",
+    "Barrier",
+    "BrokenBarrierError",
+    "Timer",
+    "ThreadError",
+    "setprofile",
+    "settrace",
+    "local",
+    "stack_size",
+]
 
-_profile_hook: _PF | None
+if sys.version_info >= (3, 8):
+    __all__ += ["ExceptHookArgs", "excepthook", "get_native_id"]
+
+if sys.version_info >= (3, 10):
+    __all__ += ["getprofile", "gettrace"]
+
+_profile_hook: ProfileFunction | None
 
 def active_count() -> int: ...
 def activeCount() -> int: ...  # deprecated alias for active_count()
@@ -104,12 +49,12 @@ def main_thread() -> Thread: ...
 if sys.version_info >= (3, 8):
     from _thread import get_native_id as get_native_id
 
-def settrace(func: _TF) -> None: ...
-def setprofile(func: _PF | None) -> None: ...
+def settrace(func: TraceFunction) -> None: ...
+def setprofile(func: ProfileFunction | None) -> None: ...
 
 if sys.version_info >= (3, 10):
-    def gettrace() -> _TF | None: ...
-    def getprofile() -> _PF | None: ...
+    def gettrace() -> TraceFunction | None: ...
+    def getprofile() -> ProfileFunction | None: ...
 
 def stack_size(size: int = ...) -> int: ...
 
@@ -190,6 +135,7 @@ class Condition:
     def notifyAll(self) -> None: ...  # deprecated alias for notify_all()
 
 class Semaphore:
+    _value: int
     def __init__(self, value: int = ...) -> None: ...
     def __exit__(self, t: type[BaseException] | None, v: BaseException | None, tb: TracebackType | None) -> None: ...
     def acquire(self, blocking: bool = ..., timeout: float | None = ...) -> bool: ...
@@ -216,6 +162,12 @@ if sys.version_info >= (3, 8):
     ExceptHookArgs = _ExceptHookArgs
 
 class Timer(Thread):
+    args: Iterable[Any]  # undocumented
+    finished: Event  # undocumented
+    function: Callable[..., Any]  # undocumented
+    interval: float  # undocumented
+    kwargs: Mapping[str, Any]  # undocumented
+
     def __init__(
         self,
         interval: float,

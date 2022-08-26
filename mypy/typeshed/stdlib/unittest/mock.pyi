@@ -65,8 +65,6 @@ __version__: str
 
 FILTER_DIR: Any
 
-class _slotted: ...
-
 class _SentinelObject:
     name: Any
     def __init__(self, name: Any) -> None: ...
@@ -440,7 +438,13 @@ class _SpecState:
 
 def mock_open(mock: Any | None = ..., read_data: Any = ...) -> Any: ...
 
-PropertyMock = Any
+class PropertyMock(Mock):
+    if sys.version_info >= (3, 8):
+        def __get__(self: Self, obj: _T, obj_type: type[_T] | None = ...) -> Self: ...
+    else:
+        def __get__(self: Self, obj: _T, obj_type: type[_T] | None) -> Self: ...
+
+    def __set__(self, obj: Any, value: Any) -> None: ...
 
 if sys.version_info >= (3, 7):
     def seal(mock: Any) -> None: ...

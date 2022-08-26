@@ -269,7 +269,7 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
                 else:
                     merged_option = None
                 merged_options.append(merged_option)
-            return any_constraints([option for option in merged_options], eager)
+            return any_constraints(list(merged_options), eager)
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
     return []

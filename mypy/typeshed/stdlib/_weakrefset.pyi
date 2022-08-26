@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self
 from collections.abc import Iterable, Iterator, MutableSet
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, overload
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -12,7 +12,10 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 
 class WeakSet(MutableSet[_T], Generic[_T]):
-    def __init__(self, data: Iterable[_T] | None = ...) -> None: ...
+    @overload
+    def __init__(self, data: None = ...) -> None: ...
+    @overload
+    def __init__(self, data: Iterable[_T]) -> None: ...
     def add(self, item: _T) -> None: ...
     def clear(self) -> None: ...
     def discard(self, item: _T) -> None: ...

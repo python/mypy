@@ -1579,7 +1579,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # it can be checked for compatibility.
             original_type = get_proper_type(base_attr.type)
             original_node = base_attr.node
-            if original_type is None:
+            # `original_type` can be partial if (e.g.) it is originally an
+            # instance variable from an `__init__` block that becomes deferred.
+            if original_type is None or isinstance(original_type, PartialType):
                 if self.pass_num < self.last_pass:
                     # If there are passes left, defer this node until next pass,
                     # otherwise try reconstructing the method type from available information.
@@ -1600,7 +1602,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     else:
                         original_type = NoneType()
                 else:
-                    assert False, str(base_attr.node)
+                    # Will always fail to typecheck below, since we know the node is a method
+                    original_type = NoneType()
             if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                 original_class_or_static = original_node.is_class or original_node.is_static
             elif isinstance(original_node, Decorator):
@@ -1964,14 +1967,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return False
 
     def check_enum_bases(self, defn: ClassDef) -> None:
+        """
+        Non-enum mixins cannot appear after enum bases; this is disallowed at runtime:
+
+            class Foo: ...
+            class Bar(enum.Enum, Foo): ...
+
+        But any number of enum mixins can appear in a class definition
+        (even if multiple enum bases define __new__). So this is fine:
+
+            class Foo(enum.Enum):
+                def __new__(cls, val): ...
+            class Bar(enum.Enum):
+                def __new__(cls, val): ...
+            class Baz(int, Foo, Bar, enum.Flag): ...
+        """
         enum_base: Optional[Instance] = None
         for base in defn.info.bases:
             if enum_base is None and base.type.is_enum:
                 enum_base = base
                 continue
-            elif enum_base is not None:
+            elif enum_base is not None and not base.type.is_enum:
                 self.fail(
-                    f'No base classes are allowed after "{enum_base}"',
+                    f'No non-enum mixin classes are allowed after "{enum_base}"',
                     defn,
                 )
                 break

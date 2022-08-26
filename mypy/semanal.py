@@ -1900,10 +1900,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 fullname: str,
                                 module_public: bool,
                                 context: ImportBase) -> None:
-        module_hidden = not module_public and not (
-            # `from package import module` should work regardless of whether package
-            # re-exports module
-            isinstance(node.node, MypyFile) and fullname in self.modules
+        module_hidden = not module_public and (
+            # `from package import submodule` should work regardless of whether package
+            # re-exports submodule, so we shouldn't hide it
+            not isinstance(node.node, MypyFile)
+            or fullname not in self.modules
+            # but given `from somewhere import random_unrelated_module` we should hide
+            # random_unrelated_module
+            or not fullname.startswith(self.cur_mod_id + ".")
         )
 
         if isinstance(node.node, PlaceholderNode):
@@ -3803,7 +3807,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_nonlocal_decl(self, d: NonlocalDecl) -> None:
         self.statement = d
-        if not self.is_func_scope():
+        if self.is_module_scope():
             self.fail("nonlocal declaration not allowed at module level", d)
         else:
             for name in d.names:

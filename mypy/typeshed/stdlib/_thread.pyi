@@ -9,9 +9,6 @@ from typing_extensions import Final, final
 error = RuntimeError
 
 def _count() -> int: ...
-
-_dangling: Any
-
 @final
 class LockType:
     def acquire(self, blocking: bool = ..., timeout: float = ...) -> bool: ...

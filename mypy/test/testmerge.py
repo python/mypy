@@ -7,7 +7,6 @@ from typing import List, Tuple, Dict, Optional
 from mypy import build
 from mypy.build import BuildResult
 from mypy.modulefinder import BuildSource
-from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
@@ -107,7 +106,6 @@ class ASTMergeSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.export_types = True
         options.show_traceback = True
-        options.python_version = PYTHON3_VERSION
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w', encoding='utf8') as f:
             f.write(source)

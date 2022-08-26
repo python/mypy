@@ -322,6 +322,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         fields['tp_vectorcall_offset'] = 'offsetof({}, vectorcall)'.format(
             cl.struct_name(emitter.names))
         flags.append('_Py_TPFLAGS_HAVE_VECTORCALL')
+        if not fields.get('tp_vectorcall'):
+            # This is just a placeholder to please CPython. It will be
+            # overriden during setup.
+            fields['tp_call'] = 'PyVectorcall_Call'
     fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
@@ -345,11 +349,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
 
 def getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, f'{cl.name}_get{attribute}')
+    return names.private_name(cl.module_name, f'{cl.name}_get_{attribute}')
 
 
 def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, f'{cl.name}_set{attribute}')
+    return names.private_name(cl.module_name, f'{cl.name}_set_{attribute}')
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:

@@ -508,6 +508,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # Create a named TypedDictType
             return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
                                     fallback=instance)
+
+        if info.fullname == 'types.NoneType':
+            self.fail("NoneType should not be used as a type, please use None instead", ctx)
+            return NoneType(ctx.line, ctx.column)
+
         return instance
 
     def analyze_unbound_type_without_type_info(self, t: UnboundType, sym: SymbolTableNode,

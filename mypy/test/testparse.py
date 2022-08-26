@@ -5,7 +5,7 @@ import sys
 from pytest import skip
 
 from mypy import defaults
-from mypy.test.helpers import assert_string_arrays_equal, parse_options
+from mypy.test.helpers import assert_string_arrays_equal, parse_options, find_test_files
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.parse import parse
 from mypy.errors import CompileError
@@ -15,11 +15,10 @@ from mypy.options import Options
 class ParserSuite(DataSuite):
     required_out_section = True
     base_path = '.'
-    files = ['parse.test',
-             'parse-python2.test']
+    files = find_test_files(pattern="parse*.test", exclude=["parse-errors.test"])
 
-    if sys.version_info >= (3, 10):
-        files.append('parse-python310.test')
+    if sys.version_info < (3, 10):
+        files.remove('parse-python310.test')
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)

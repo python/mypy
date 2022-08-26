@@ -373,6 +373,8 @@ class ASTConverter:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
+        node.end_column = getattr(n, "end_col_offset", None) if isinstance(n, ast3.expr) else None
+
         return node
 
     def translate_opt_expr_list(self, l: Sequence[Optional[AST]]) -> List[Optional[Expression]]:

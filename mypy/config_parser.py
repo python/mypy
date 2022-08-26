@@ -11,8 +11,8 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,  Optional, Sequence,
-                    TextIO, Tuple, Union)
+from typing import (Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence,
+                    TextIO, Tuple, Union, Iterable)
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import defaults
@@ -179,7 +179,8 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
     if filename is not None:
         config_files: Tuple[str, ...] = (filename,)
     else:
-        config_files = tuple(map(os.path.expanduser, defaults.CONFIG_FILES))
+        config_files_iter: Iterable[str] = map(os.path.expanduser, defaults.CONFIG_FILES)
+        config_files = tuple(config_files_iter)
 
     config_parser = configparser.RawConfigParser()
 

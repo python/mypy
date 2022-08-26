@@ -4,7 +4,6 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from multiprocessing.context import BaseContext
 from types import TracebackType
-from typing import Any
 from typing_extensions import TypeAlias
 
 __all__ = ["Lock", "RLock", "Semaphore", "BoundedSemaphore", "Condition", "Event"]
@@ -13,7 +12,7 @@ _LockLike: TypeAlias = Lock | RLock
 
 class Barrier(threading.Barrier):
     def __init__(
-        self, parties: int, action: Callable[..., Any] | None = ..., timeout: float | None = ..., *ctx: BaseContext
+        self, parties: int, action: Callable[[], object] | None = ..., timeout: float | None = ..., *ctx: BaseContext
     ) -> None: ...
 
 class BoundedSemaphore(Semaphore):

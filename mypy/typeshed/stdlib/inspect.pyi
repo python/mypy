@@ -261,12 +261,14 @@ def getsource(object: _SourceObjectType) -> str: ...
 def cleandoc(doc: str) -> str: ...
 def indentsize(line: str) -> int: ...
 
+_IntrospectableCallable: TypeAlias = Callable[..., Any]
+
 #
 # Introspecting callables with the Signature object
 #
 if sys.version_info >= (3, 10):
     def signature(
-        obj: Callable[..., Any],
+        obj: _IntrospectableCallable,
         *,
         follow_wrapped: bool = ...,
         globals: Mapping[str, Any] | None = ...,
@@ -275,7 +277,7 @@ if sys.version_info >= (3, 10):
     ) -> Signature: ...
 
 else:
-    def signature(obj: Callable[..., Any], *, follow_wrapped: bool = ...) -> Signature: ...
+    def signature(obj: _IntrospectableCallable, *, follow_wrapped: bool = ...) -> Signature: ...
 
 class _void: ...
 class _empty: ...
@@ -298,7 +300,7 @@ class Signature:
         @classmethod
         def from_callable(
             cls: type[Self],
-            obj: Callable[..., Any],
+            obj: _IntrospectableCallable,
             *,
             follow_wrapped: bool = ...,
             globals: Mapping[str, Any] | None = ...,
@@ -307,13 +309,13 @@ class Signature:
         ) -> Self: ...
     else:
         @classmethod
-        def from_callable(cls: type[Self], obj: Callable[..., Any], *, follow_wrapped: bool = ...) -> Self: ...
+        def from_callable(cls: type[Self], obj: _IntrospectableCallable, *, follow_wrapped: bool = ...) -> Self: ...
 
     def __eq__(self, other: object) -> bool: ...
 
 if sys.version_info >= (3, 10):
     def get_annotations(
-        obj: Callable[..., Any] | type[Any] | ModuleType,
+        obj: Callable[..., object] | type[Any] | ModuleType,
         *,
         globals: Mapping[str, Any] | None = ...,
         locals: Mapping[str, Any] | None = ...,
@@ -453,8 +455,8 @@ class ClosureVars(NamedTuple):
     builtins: Mapping[str, Any]
     unbound: AbstractSet[str]
 
-def getclosurevars(func: Callable[..., Any]) -> ClosureVars: ...
-def unwrap(func: Callable[..., Any], *, stop: Callable[[Any], Any] | None = ...) -> Any: ...
+def getclosurevars(func: _IntrospectableCallable) -> ClosureVars: ...
+def unwrap(func: Callable[..., Any], *, stop: Callable[[Callable[..., Any]], Any] | None = ...) -> Any: ...
 
 #
 # The interpreter stack

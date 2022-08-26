@@ -101,6 +101,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         for (left, temp) in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
+        builder.flush_keep_alives()
         return
 
     line = stmt.rvalue.line
@@ -136,6 +137,7 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
     builder.assign(target, res, res.line)
+    builder.flush_keep_alives()
 
 
 def transform_import(builder: IRBuilder, node: Import) -> None:

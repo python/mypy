@@ -3,47 +3,28 @@ from collections.abc import Callable, Generator, Iterable, Sequence
 from typing import IO, Any, Generic, NewType, NoReturn, Pattern, Protocol, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
+__all__ = [
+    "ArgumentParser",
+    "ArgumentError",
+    "ArgumentTypeError",
+    "FileType",
+    "HelpFormatter",
+    "ArgumentDefaultsHelpFormatter",
+    "RawDescriptionHelpFormatter",
+    "RawTextHelpFormatter",
+    "MetavarTypeHelpFormatter",
+    "Namespace",
+    "Action",
+    "ONE_OR_MORE",
+    "OPTIONAL",
+    "PARSER",
+    "REMAINDER",
+    "SUPPRESS",
+    "ZERO_OR_MORE",
+]
+
 if sys.version_info >= (3, 9):
-    __all__ = [
-        "ArgumentParser",
-        "ArgumentError",
-        "ArgumentTypeError",
-        "BooleanOptionalAction",
-        "FileType",
-        "HelpFormatter",
-        "ArgumentDefaultsHelpFormatter",
-        "RawDescriptionHelpFormatter",
-        "RawTextHelpFormatter",
-        "MetavarTypeHelpFormatter",
-        "Namespace",
-        "Action",
-        "ONE_OR_MORE",
-        "OPTIONAL",
-        "PARSER",
-        "REMAINDER",
-        "SUPPRESS",
-        "ZERO_OR_MORE",
-    ]
-else:
-    __all__ = [
-        "ArgumentParser",
-        "ArgumentError",
-        "ArgumentTypeError",
-        "FileType",
-        "HelpFormatter",
-        "ArgumentDefaultsHelpFormatter",
-        "RawDescriptionHelpFormatter",
-        "RawTextHelpFormatter",
-        "MetavarTypeHelpFormatter",
-        "Namespace",
-        "Action",
-        "ONE_OR_MORE",
-        "OPTIONAL",
-        "PARSER",
-        "REMAINDER",
-        "SUPPRESS",
-        "ZERO_OR_MORE",
-    ]
+    __all__ += ["BooleanOptionalAction"]
 
 _T = TypeVar("_T")
 _ActionT = TypeVar("_ActionT", bound=Action)
@@ -212,7 +193,7 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
             title: str = ...,
             description: str | None = ...,
             prog: str = ...,
-            parser_class: type[_ArgumentParserT] = ...,
+            parser_class: type[_ArgumentParserT],
             action: type[Action] = ...,
             option_string: str = ...,
             dest: str | None = ...,
@@ -241,7 +222,7 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
             title: str = ...,
             description: str | None = ...,
             prog: str = ...,
-            parser_class: type[_ArgumentParserT] = ...,
+            parser_class: type[_ArgumentParserT],
             action: type[Action] = ...,
             option_string: str = ...,
             dest: str | None = ...,
@@ -309,7 +290,7 @@ class HelpFormatter:
     def format_help(self) -> str: ...
     def _join_parts(self, part_strings: Iterable[str]) -> str: ...
     def _format_usage(
-        self, usage: str, actions: Iterable[Action], groups: Iterable[_ArgumentGroup], prefix: str | None
+        self, usage: str | None, actions: Iterable[Action], groups: Iterable[_ArgumentGroup], prefix: str | None
     ) -> str: ...
     def _format_actions_usage(self, actions: Iterable[Action], groups: Iterable[_ArgumentGroup]) -> str: ...
     def _format_text(self, text: str) -> str: ...
@@ -409,16 +390,28 @@ class _StoreAction(Action): ...
 
 # undocumented
 class _StoreConstAction(Action):
-    def __init__(
-        self,
-        option_strings: Sequence[str],
-        dest: str,
-        const: Any,
-        default: Any = ...,
-        required: bool = ...,
-        help: str | None = ...,
-        metavar: str | tuple[str, ...] | None = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            const: Any | None = ...,
+            default: Any = ...,
+            required: bool = ...,
+            help: str | None = ...,
+            metavar: str | tuple[str, ...] | None = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            const: Any,
+            default: Any = ...,
+            required: bool = ...,
+            help: str | None = ...,
+            metavar: str | tuple[str, ...] | None = ...,
+        ) -> None: ...
 
 # undocumented
 class _StoreTrueAction(_StoreConstAction):
@@ -437,16 +430,28 @@ class _AppendAction(Action): ...
 
 # undocumented
 class _AppendConstAction(Action):
-    def __init__(
-        self,
-        option_strings: Sequence[str],
-        dest: str,
-        const: Any,
-        default: Any = ...,
-        required: bool = ...,
-        help: str | None = ...,
-        metavar: str | tuple[str, ...] | None = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            const: Any | None = ...,
+            default: Any = ...,
+            required: bool = ...,
+            help: str | None = ...,
+            metavar: str | tuple[str, ...] | None = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            const: Any,
+            default: Any = ...,
+            required: bool = ...,
+            help: str | None = ...,
+            metavar: str | tuple[str, ...] | None = ...,
+        ) -> None: ...
 
 # undocumented
 class _CountAction(Action):

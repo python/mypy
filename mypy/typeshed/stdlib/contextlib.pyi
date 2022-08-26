@@ -5,65 +5,25 @@ from types import TracebackType
 from typing import IO, Any, ContextManager, Generic, Protocol, TypeVar, overload  # noqa: Y027
 from typing_extensions import ParamSpec, TypeAlias
 
+__all__ = [
+    "contextmanager",
+    "closing",
+    "AbstractContextManager",
+    "ContextDecorator",
+    "ExitStack",
+    "redirect_stdout",
+    "redirect_stderr",
+    "suppress",
+]
+
+if sys.version_info >= (3, 7):
+    __all__ += ["AbstractAsyncContextManager", "AsyncExitStack", "asynccontextmanager", "nullcontext"]
+
+if sys.version_info >= (3, 10):
+    __all__ += ["aclosing"]
+
 if sys.version_info >= (3, 11):
-    __all__ = [
-        "asynccontextmanager",
-        "contextmanager",
-        "closing",
-        "nullcontext",
-        "AbstractContextManager",
-        "AbstractAsyncContextManager",
-        "AsyncExitStack",
-        "ContextDecorator",
-        "ExitStack",
-        "redirect_stdout",
-        "redirect_stderr",
-        "suppress",
-        "aclosing",
-        "chdir",
-    ]
-elif sys.version_info >= (3, 10):
-    __all__ = [
-        "asynccontextmanager",
-        "contextmanager",
-        "closing",
-        "nullcontext",
-        "AbstractContextManager",
-        "AbstractAsyncContextManager",
-        "AsyncExitStack",
-        "ContextDecorator",
-        "ExitStack",
-        "redirect_stdout",
-        "redirect_stderr",
-        "suppress",
-        "aclosing",
-    ]
-elif sys.version_info >= (3, 7):
-    __all__ = [
-        "asynccontextmanager",
-        "contextmanager",
-        "closing",
-        "nullcontext",
-        "AbstractContextManager",
-        "AbstractAsyncContextManager",
-        "AsyncExitStack",
-        "ContextDecorator",
-        "ExitStack",
-        "redirect_stdout",
-        "redirect_stderr",
-        "suppress",
-    ]
-else:
-    __all__ = [
-        "contextmanager",
-        "closing",
-        "AbstractContextManager",
-        "ContextDecorator",
-        "ExitStack",
-        "redirect_stdout",
-        "redirect_stderr",
-        "suppress",
-    ]
+    __all__ += ["chdir"]
 
 AbstractContextManager = ContextManager
 if sys.version_info >= (3, 7):
@@ -163,7 +123,7 @@ class _RedirectStream(AbstractContextManager[_T_io]):
 class redirect_stdout(_RedirectStream[_T_io]): ...
 class redirect_stderr(_RedirectStream[_T_io]): ...
 
-class ExitStack(AbstractContextManager[ExitStack]):
+class ExitStack:
     def __init__(self) -> None: ...
     def enter_context(self, cm: AbstractContextManager[_T]) -> _T: ...
     def push(self, exit: _CM_EF) -> _CM_EF: ...
@@ -179,7 +139,7 @@ if sys.version_info >= (3, 7):
     _ExitCoroFunc: TypeAlias = Callable[[type[BaseException] | None, BaseException | None, TracebackType | None], Awaitable[bool]]
     _ACM_EF = TypeVar("_ACM_EF", bound=AbstractAsyncContextManager[Any] | _ExitCoroFunc)
 
-    class AsyncExitStack(AbstractAsyncContextManager[AsyncExitStack]):
+    class AsyncExitStack:
         def __init__(self) -> None: ...
         def enter_context(self, cm: AbstractContextManager[_T]) -> _T: ...
         async def enter_async_context(self, cm: AbstractAsyncContextManager[_T]) -> _T: ...

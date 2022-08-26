@@ -15,7 +15,7 @@ class BaseProcess:
     def __init__(
         self,
         group: None = ...,
-        target: Callable[..., Any] | None = ...,
+        target: Callable[..., object] | None = ...,
         name: str | None = ...,
         args: Iterable[Any] = ...,
         kwargs: Mapping[str, Any] = ...,
