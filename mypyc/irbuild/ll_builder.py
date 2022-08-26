@@ -1809,9 +1809,7 @@ class LowLevelIRBuilder:
         res = Register(type)
         div = self.int_op(type, lhs, rhs, IntOp.DIV, line)
         self.add(Assign(res, div))
-        neg1 = self.add(ComparisonOp(lhs, Integer(0, type), ComparisonOp.SLT, line))
-        neg2 = self.add(ComparisonOp(rhs, Integer(0, type), ComparisonOp.SLT, line))
-        diff_signs = self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
+        diff_signs = self.is_different_native_int_signs(type, lhs, rhs, line)
         tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
         self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
         self.activate_block(tricky)
@@ -1831,9 +1829,7 @@ class LowLevelIRBuilder:
         res = Register(type)
         mod = self.int_op(type, lhs, rhs, IntOp.MOD, line)
         self.add(Assign(res, mod))
-        neg1 = self.add(ComparisonOp(lhs, Integer(0, type), ComparisonOp.SLT, line))
-        neg2 = self.add(ComparisonOp(rhs, Integer(0, type), ComparisonOp.SLT, line))
-        diff_signs = self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
+        diff_signs = self.is_different_native_int_signs(type, lhs, rhs, line)
         tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
         self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
         self.activate_block(tricky)
@@ -1846,6 +1842,11 @@ class LowLevelIRBuilder:
         self.add(Goto(done))
         self.activate_block(done)
         return res
+
+    def is_different_native_int_signs(self, type: RType, a: Value, b: Value, line: int) -> Value:
+        neg1 = self.add(ComparisonOp(a, Integer(0, type), ComparisonOp.SLT, line))
+        neg2 = self.add(ComparisonOp(b, Integer(0, type), ComparisonOp.SLT, line))
+        return self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
 
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))
