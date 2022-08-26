@@ -1368,3 +1368,27 @@ L1:
     return 1
 L2:
     return 0
+
+[case testOptionalI64_64bit]
+from typing import Optional
+from mypy_extensions import i64
+
+def f(x: Optional[i64]) -> i64:
+    if x is None:
+        return 1
+    return x
+[out]
+def f(x):
+    x :: union[int64, None]
+    r0 :: object
+    r1 :: bit
+    r2 :: int64
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = x == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    r2 = unbox(int64, x)
+    return r2
