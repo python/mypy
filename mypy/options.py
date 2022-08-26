@@ -467,7 +467,7 @@ class Options:
         result: Dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)
-            if isinstance(val, set):
-                val = sorted(val)
+            if opt in ("disabled_error_codes", "enabled_error_codes"):
+                val = sorted([code.code for code in val])
             result[opt] = val
         return result
