@@ -29,7 +29,6 @@ _NON_BINARY_MAGIC_METHODS: Final = {
     "__long__",
     "__neg__",
     "__new__",
-    "__nonzero__",
     "__oct__",
     "__pos__",
     "__repr__",
@@ -37,7 +36,6 @@ _NON_BINARY_MAGIC_METHODS: Final = {
     "__setattr__",
     "__setitem__",
     "__str__",
-    "__unicode__",
 }
 
 MAGIC_METHODS_ALLOWING_KWARGS: Final = {
@@ -51,9 +49,7 @@ MAGIC_METHODS_ALLOWING_KWARGS: Final = {
 BINARY_MAGIC_METHODS: Final = {
     "__add__",
     "__and__",
-    "__cmp__",
     "__divmod__",
-    "__div__",
     "__eq__",
     "__floordiv__",
     "__ge__",

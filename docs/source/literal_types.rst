@@ -52,8 +52,8 @@ precise type signature for this function using ``Literal[...]`` and overloads:
 
     The examples in this page import ``Literal`` as well as ``Final`` and
     ``TypedDict`` from the ``typing`` module. These types were added to
-    ``typing`` in Python 3.8, but are also available for use in Python 2.7
-    and 3.4 - 3.7 via the ``typing_extensions`` package.
+    ``typing`` in Python 3.8, but are also available for use in Python
+    3.4 - 3.7 via the ``typing_extensions`` package.
 
 Parameterizing Literals
 ***********************
@@ -446,7 +446,7 @@ Let's start with a definition:
 
   def assert_never(value: NoReturn) -> NoReturn:
       # This also works in runtime as well:
-      assert False, 'This code should never be reached, got: {0}'.format(value)
+      assert False, f'This code should never be reached, got: {value}'
 
   class Direction(Enum):
       up = 'up'

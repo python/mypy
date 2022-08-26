@@ -2,7 +2,8 @@ import sys
 from _typeshed import StrPath
 from collections.abc import Iterable, Iterator, Sequence
 from http.client import HTTPResponse
-from typing import ClassVar, Pattern, TypeVar, overload
+from re import Pattern
+from typing import ClassVar, TypeVar, overload
 from urllib.request import Request
 
 __all__ = [

@@ -23,26 +23,6 @@ from mypy.types import (
 )
 
 
-def _get_bytes_type(api: "mypy.plugin.CheckerPluginInterface") -> Instance:
-    """Return the type corresponding to bytes on the current Python version.
-
-    This is bytes in Python 3, and str in Python 2.
-    """
-    return api.named_generic_type(
-        "builtins.bytes" if api.options.python_version >= (3,) else "builtins.str", []
-    )
-
-
-def _get_text_type(api: "mypy.plugin.CheckerPluginInterface") -> Instance:
-    """Return the type corresponding to Text on the current Python version.
-
-    This is str in Python 3, and unicode in Python 2.
-    """
-    return api.named_generic_type(
-        "builtins.str" if api.options.python_version >= (3,) else "builtins.unicode", []
-    )
-
-
 def _find_simplecdata_base_arg(
     tp: Instance, api: "mypy.plugin.CheckerPluginInterface"
 ) -> Optional[ProperType]:
@@ -221,9 +201,9 @@ def array_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
             if isinstance(tp, AnyType):
                 types.append(AnyType(TypeOfAny.from_another_any, source_any=tp))
             elif isinstance(tp, Instance) and tp.type.fullname == "ctypes.c_char":
-                types.append(_get_bytes_type(ctx.api))
+                types.append(ctx.api.named_generic_type("builtins.bytes", []))
             elif isinstance(tp, Instance) and tp.type.fullname == "ctypes.c_wchar":
-                types.append(_get_text_type(ctx.api))
+                types.append(ctx.api.named_generic_type("builtins.str", []))
             else:
                 ctx.api.msg.fail(
                     'Array attribute "value" is only available'
@@ -245,7 +225,7 @@ def array_raw_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
                 or isinstance(tp, Instance)
                 and tp.type.fullname == "ctypes.c_char"
             ):
-                types.append(_get_bytes_type(ctx.api))
+                types.append(ctx.api.named_generic_type("builtins.bytes", []))
             else:
                 ctx.api.msg.fail(
                     'Array attribute "raw" is only available'

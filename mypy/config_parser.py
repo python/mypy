@@ -42,9 +42,8 @@ def parse_version(v: Union[str, float]) -> Tuple[int, int]:
     if not m:
         raise argparse.ArgumentTypeError(f"Invalid python version '{v}' (expected format: 'x.y')")
     major, minor = int(m.group(1)), int(m.group(2))
-    if major == 2:
-        if minor != 7:
-            raise argparse.ArgumentTypeError(f"Python 2.{minor} is not supported (must be 2.7)")
+    if major == 2 and minor == 7:
+        pass  # Error raised elsewhere
     elif major == 3:
         if minor < defaults.PYTHON3_VERSION_MIN[1]:
             msg = "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(
@@ -57,7 +56,7 @@ def parse_version(v: Union[str, float]) -> Tuple[int, int]:
             raise argparse.ArgumentTypeError(msg)
     else:
         raise argparse.ArgumentTypeError(
-            f"Python major version '{major}' out of range (must be 2 or 3)"
+            f"Python major version '{major}' out of range (must be 3)"
         )
     return major, minor
 

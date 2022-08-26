@@ -14,35 +14,6 @@ else:
 
 __all__ = ["ChainMap", "Counter", "OrderedDict", "UserDict", "UserList", "UserString", "defaultdict", "deque", "namedtuple"]
 
-if sys.version_info < (3, 7):
-    __all__ += [
-        "Awaitable",
-        "Coroutine",
-        "AsyncIterable",
-        "AsyncIterator",
-        "AsyncGenerator",
-        "Hashable",
-        "Iterable",
-        "Iterator",
-        "Generator",
-        "Reversible",
-        "Sized",
-        "Container",
-        "Callable",
-        "Collection",
-        "Set",
-        "MutableSet",
-        "Mapping",
-        "MutableMapping",
-        "MappingView",
-        "KeysView",
-        "ItemsView",
-        "ValuesView",
-        "Sequence",
-        "MutableSequence",
-        "ByteString",
-    ]
-
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _T1 = TypeVar("_T1")
@@ -53,20 +24,14 @@ _KT_co = TypeVar("_KT_co", covariant=True)
 _VT_co = TypeVar("_VT_co", covariant=True)
 
 # namedtuple is special-cased in the type checker; the initializer is ignored.
-if sys.version_info >= (3, 7):
-    def namedtuple(
-        typename: str,
-        field_names: str | Iterable[str],
-        *,
-        rename: bool = ...,
-        module: str | None = ...,
-        defaults: Iterable[Any] | None = ...,
-    ) -> type[tuple[Any, ...]]: ...
-
-else:
-    def namedtuple(
-        typename: str, field_names: str | Iterable[str], *, verbose: bool = ..., rename: bool = ..., module: str | None = ...
-    ) -> type[tuple[Any, ...]]: ...
+def namedtuple(
+    typename: str,
+    field_names: str | Iterable[str],
+    *,
+    rename: bool = ...,
+    module: str | None = ...,
+    defaults: Iterable[Any] | None = ...,
+) -> type[tuple[Any, ...]]: ...
 
 class UserDict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     data: dict[_KT, _VT]
@@ -88,8 +53,7 @@ class UserDict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def __iter__(self) -> Iterator[_KT]: ...
     def __contains__(self, key: object) -> bool: ...
     def copy(self: Self) -> Self: ...
-    if sys.version_info >= (3, 7):
-        def __copy__(self: Self) -> Self: ...
+    def __copy__(self: Self) -> Self: ...
 
     # `UserDict.fromkeys` has the same semantics as `dict.fromkeys`, so should be kept in line with `dict.fromkeys`.
     # TODO: Much like `dict.fromkeys`, the true signature of `UserDict.fromkeys` is inexpressible in the current type system.
@@ -142,9 +106,7 @@ class UserList(MutableSequence[_T]):
     def pop(self, i: int = ...) -> _T: ...
     def remove(self, item: _T) -> None: ...
     def copy(self: Self) -> Self: ...
-    if sys.version_info >= (3, 7):
-        def __copy__(self: Self) -> Self: ...
-
+    def __copy__(self: Self) -> Self: ...
     def count(self, item: _T) -> int: ...
     # All arguments are passed to `list.index` at runtime, so the signature should be kept in line with `list.index`.
     def index(self, item: _T, __start: SupportsIndex = ..., __stop: SupportsIndex = ...) -> int: ...
@@ -208,9 +170,7 @@ class UserString(Sequence[UserString]):
     def isspace(self) -> bool: ...
     def istitle(self) -> bool: ...
     def isupper(self) -> bool: ...
-    if sys.version_info >= (3, 7):
-        def isascii(self) -> bool: ...
-
+    def isascii(self) -> bool: ...
     def join(self, seq: Iterable[str]) -> str: ...
     def ljust(self: Self, width: int, *args: Any) -> Self: ...
     def lower(self: Self) -> Self: ...

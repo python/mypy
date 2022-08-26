@@ -6,9 +6,14 @@ import os
 import pathlib
 import re
 import shutil
-import subprocess
 import sys
 import time
+
+try:
+    from importlib import resources as importlib_resources  # type: ignore[attr-defined]
+except ImportError:  # <python3.7
+    import importlib_resources  # type: ignore
+
 from typing import (
     IO,
     Callable,
@@ -37,6 +42,13 @@ except ImportError:
 
 T = TypeVar("T")
 
+with importlib_resources.path(
+    "mypy",  # mypy-c doesn't support __package__
+    "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
+) as _resource:
+    TYPESHED_DIR: Final = str(_resource.parent / "typeshed")
+
+
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
 DEFAULT_SOURCE_OFFSET: Final = 4
@@ -52,13 +64,6 @@ MINIMUM_WIDTH: Final = 20
 # supported, but are either going out of support, or make up only a few % of the market.
 MINIMUM_WINDOWS_MAJOR_VT100: Final = 10
 MINIMUM_WINDOWS_BUILD_VT100: Final = 10586
-
-default_python2_interpreter: Final = [
-    "python2",
-    "python",
-    "/usr/bin/python",
-    "C:\\Python27\\python.exe",
-]
 
 SPECIAL_DUNDERS: Final = frozenset(
     ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
@@ -124,7 +129,7 @@ def short_type(obj: object) -> str:
     return t.split(".")[-1].rstrip("'>")
 
 
-def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, int]:
+def find_python_encoding(text: bytes) -> Tuple[str, int]:
     """PEP-263 for detecting Python file encoding"""
     result = ENCODING_RE.match(text)
     if result:
@@ -135,7 +140,7 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
             encoding = "latin-1"
         return encoding, line
     else:
-        default_encoding = "utf8" if pyversion[0] >= 3 else "ascii"
+        default_encoding = "utf8"
         return default_encoding, -1
 
 
@@ -160,7 +165,7 @@ class DecodeError(Exception):
     """
 
 
-def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
+def decode_python_encoding(source: bytes) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection.
 
     Returns the source as a string.
@@ -171,7 +176,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
         source = source[3:]
     else:
         # look at first two lines and check if PEP-263 coding is present
-        encoding, _ = find_python_encoding(source, pyversion)
+        encoding, _ = find_python_encoding(source)
 
     try:
         source_text = source.decode(encoding)
@@ -180,9 +185,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     return source_text
 
 
-def read_py_file(
-    path: str, read: Callable[[str], bytes], pyversion: Tuple[int, int]
-) -> Optional[List[str]]:
+def read_py_file(path: str, read: Callable[[str], bytes]) -> Optional[List[str]]:
     """Try reading a Python file as list of source lines.
 
     Return None if something goes wrong.
@@ -193,7 +196,7 @@ def read_py_file(
         return None
     else:
         try:
-            source_lines = decode_python_encoding(source, pyversion).splitlines()
+            source_lines = decode_python_encoding(source).splitlines()
         except DecodeError:
             return None
         return source_lines
@@ -243,26 +246,6 @@ def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
             results.append((i + 1, line[len(PREFIX) :]))
 
     return results
-
-
-_python2_interpreter: Optional[str] = None
-
-
-def try_find_python2_interpreter() -> Optional[str]:
-    global _python2_interpreter
-    if _python2_interpreter:
-        return _python2_interpreter
-    for interpreter in default_python2_interpreter:
-        try:
-            retcode = subprocess.Popen(
-                [interpreter, "-c", "import sys, typing; assert sys.version_info[:2] == (2, 7)"]
-            ).wait()
-            if not retcode:
-                _python2_interpreter = interpreter
-                return interpreter
-        except OSError:
-            pass
-    return None
 
 
 PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
@@ -542,7 +525,7 @@ def parse_gray_color(cup: bytes) -> str:
     if sys.platform == "win32":
         assert False, "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
-    gray = curses.tparm(set_color.encode("utf-8"), 1, 89).decode()
+    gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
 
 
@@ -800,15 +783,17 @@ class FancyFormatter:
 
 
 def is_typeshed_file(file: str) -> bool:
-    # gross, but no other clear way to tell
-    return "typeshed" in os.path.abspath(file).split(os.sep)
+    try:
+        return os.path.commonpath((TYPESHED_DIR, os.path.abspath(file))) == TYPESHED_DIR
+    except ValueError:  # Different drives on Windows
+        return False
 
 
 def is_stub_package_file(file: str) -> bool:
     # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
     if not file.endswith(".pyi"):
         return False
-    return any(component.endswith("-stubs") for component in os.path.abspath(file).split(os.sep))
+    return any(component.endswith("-stubs") for component in os.path.split(os.path.abspath(file)))
 
 
 def unnamed_function(name: Optional[str]) -> bool:

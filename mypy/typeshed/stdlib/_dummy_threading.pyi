@@ -60,7 +60,7 @@ class Thread:
     def __init__(
         self,
         group: None = ...,
-        target: Callable[..., Any] | None = ...,
+        target: Callable[..., object] | None = ...,
         name: str | None = ...,
         args: Iterable[Any] = ...,
         kwargs: Mapping[str, Any] | None = ...,
@@ -151,7 +151,7 @@ class Timer(Thread):
     def __init__(
         self,
         interval: float,
-        function: Callable[..., Any],
+        function: Callable[..., object],
         args: Iterable[Any] | None = ...,
         kwargs: Mapping[str, Any] | None = ...,
     ) -> None: ...

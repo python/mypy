@@ -9,7 +9,9 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Patt
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
-from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
+from unittest import TestCase
+
+Suite = TestCase  # re-exporting
 
 import pytest
 
@@ -284,14 +286,6 @@ def testfile_pyversion(path: str) -> Tuple[int, int]:
         return defaults.PYTHON3_VERSION
 
 
-def testcase_pyversion(path: str, testcase_name: str) -> Tuple[int, int]:
-    if testcase_name.endswith("python2"):
-        raise ValueError(testcase_name)
-        return defaults.PYTHON2_VERSION
-    else:
-        return testfile_pyversion(path)
-
-
 def normalize_error_messages(messages: List[str]) -> List[str]:
     """Translate an array of error messages to use / as path separator."""
 
@@ -382,9 +376,9 @@ def parse_options(
         options.strict_optional = False
         options.error_summary = False
 
-    # Allow custom python version to override testcase_pyversion.
+    # Allow custom python version to override testfile_pyversion.
     if all(flag.split("=")[0] not in ["--python-version", "-2", "--py2"] for flag in flag_list):
-        options.python_version = testcase_pyversion(testcase.file, testcase.name)
+        options.python_version = testfile_pyversion(testcase.file)
 
     if testcase.config.getoption("--mypy-verbose"):
         options.verbosity = testcase.config.getoption("--mypy-verbose")

@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Pattern
+from re import Pattern
 
 __all__ = ["TextWrapper", "wrap", "fill", "dedent", "indent", "shorten"]
 

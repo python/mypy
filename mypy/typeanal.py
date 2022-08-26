@@ -8,7 +8,6 @@ from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Set, 
 from typing_extensions import Final, Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
-from mypy.backports import OrderedDict
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder, format_type_bare, quote_type_string
@@ -82,6 +81,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    bad_type_type_item,
     callable_with_ellipsis,
     get_proper_type,
     union_items,
@@ -374,7 +374,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         unexpanded_type=t,
                     )
                 if node.eager:
-                    # TODO: Generate error if recursive (once we have recursive types)
                     res = get_proper_type(res)
                 return res
             elif isinstance(node, TypeInfo):
@@ -487,7 +486,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 type_str = "Type[...]" if fullname == "typing.Type" else "type[...]"
                 self.fail(type_str + " must have exactly one type argument", t)
             item = self.anal_type(t.args[0])
-            return TypeType.make_normalized(item, line=t.line)
+            if bad_type_type_item(item):
+                self.fail("Type[...] can't contain another Type[...]", t)
+                item = AnyType(TypeOfAny.from_error)
+            return TypeType.make_normalized(item, line=t.line, column=t.column)
         elif fullname == "typing.ClassVar":
             if self.nesting_level > 0:
                 self.fail("Invalid type: ClassVar nested inside other type", t)
@@ -907,9 +909,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = OrderedDict(
-            [(item_name, self.anal_type(item_type)) for (item_name, item_type) in t.items.items()]
-        )
+        items = {
+            item_name: self.anal_type(item_type) for (item_name, item_type) in t.items.items()
+        }
         return TypedDictType(items, set(t.required_keys), t.fallback)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
@@ -1162,7 +1164,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return [
                 LiteralType(
                     value=arg.original_str_expr,
-                    fallback=self.named_type_with_normalized_str(arg.original_str_fallback),
+                    fallback=self.named_type(arg.original_str_fallback),
                     line=arg.line,
                     column=arg.column,
                 )
@@ -1210,7 +1212,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return None
 
             # Remap bytes and unicode into the appropriate type for the correct Python version
-            fallback = self.named_type_with_normalized_str(arg.base_type_name)
+            fallback = self.named_type(arg.base_type_name)
             assert isinstance(fallback, Instance)
             return [LiteralType(arg.literal_value, fallback, line=arg.line, column=arg.column)]
         elif isinstance(arg, (NoneType, LiteralType)):
@@ -1356,17 +1358,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def anal_var_defs(self, var_defs: Sequence[TypeVarLikeType]) -> List[TypeVarLikeType]:
         return [self.anal_var_def(vd) for vd in var_defs]
-
-    def named_type_with_normalized_str(self, fully_qualified_name: str) -> Instance:
-        """Does almost the same thing as `named_type`, except that we immediately
-        unalias `builtins.bytes` and `builtins.unicode` to `builtins.str` as appropriate.
-        """
-        python_version = self.options.python_version
-        if python_version[0] == 2 and fully_qualified_name == "builtins.bytes":
-            fully_qualified_name = "builtins.str"
-        if python_version[0] >= 3 and fully_qualified_name == "builtins.unicode":
-            fully_qualified_name = "builtins.str"
-        return self.named_type(fully_qualified_name)
 
     def named_type(
         self,

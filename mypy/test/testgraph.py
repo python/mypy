@@ -41,6 +41,7 @@ class GraphSuite(Suite):
     def _make_manager(self) -> BuildManager:
         errors = Errors()
         options = Options()
+        options.use_builtins_fixtures = True
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(

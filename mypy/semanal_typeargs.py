@@ -14,9 +14,8 @@ from mypy.messages import format_type
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile, TypeInfo
 from mypy.options import Options
-from mypy.sametypes import is_same_type
 from mypy.scope import Scope
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
     Instance,
@@ -27,9 +26,11 @@ from mypy.types import (
     TypeOfAny,
     TypeVarTupleType,
     TypeVarType,
+    UnboundType,
     UnpackType,
     get_proper_type,
     get_proper_types,
+    invalid_recursive_alias,
 )
 
 
@@ -68,10 +69,16 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         super().visit_type_alias_type(t)
         if t in self.seen_aliases:
             # Avoid infinite recursion on recursive type aliases.
-            # Note: it is fine to skip the aliases we have already seen in non-recursive types,
-            # since errors there have already already reported.
+            # Note: it is fine to skip the aliases we have already seen in non-recursive
+            # types, since errors there have already been reported.
             return
         self.seen_aliases.add(t)
+        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
+        if invalid_recursive_alias({t.alias}, t.alias.target):
+            # Fix type arguments for invalid aliases (error is already reported).
+            t.args = []
+            t.alias.target = AnyType(TypeOfAny.from_error)
+            return
         get_proper_type(t).accept(self)
 
     def visit_instance(self, t: Instance) -> None:
@@ -136,7 +143,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         context: Context,
     ) -> None:
         for actual in get_proper_types(actuals):
-            if not isinstance(actual, AnyType) and not any(
+            # TODO: bind type variables in class bases/alias targets
+            # so we can safely check this, currently we miss some errors.
+            if not isinstance(actual, (AnyType, UnboundType)) and not any(
                 is_same_type(actual, value) for value in valids
             ):
                 if len(actuals) > 1 or not isinstance(actual, Instance):

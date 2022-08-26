@@ -251,22 +251,12 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 
     This flag will make mypy type check your code as if it were
     run under Python version X.Y. Without this option, mypy will default to using
-    whatever version of Python is running mypy. Note that the :option:`-2` and
-    :option:`--py2` flags are aliases for :option:`--python-version 2.7 <--python-version>`.
+    whatever version of Python is running mypy.
 
     This flag will attempt to find a Python executable of the corresponding
     version to search for :pep:`561` compliant packages. If you'd like to
     disable this, use the :option:`--no-site-packages` flag (see
     :ref:`import-discovery` for more details).
-
-.. option:: -2, --py2
-
-    Equivalent to running :option:`--python-version 2.7 <--python-version>`.
-
-    .. note::
-
-        To check Python 2 code with mypy, you'll need to install mypy with
-        ``pip install 'mypy[python2]'``.
 
 .. option:: --platform PLATFORM
 

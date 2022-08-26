@@ -12,6 +12,8 @@ import tempfile
 import unittest
 from typing import List, Tuple
 
+import pytest
+
 from mypy.dmypy_server import filter_out_missing_top_level_packages
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import SearchPaths
@@ -27,6 +29,8 @@ class DaemonSuite(DataSuite):
     files = daemon_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if testcase.name.endswith("_python38") and sys.version_info < (3, 8):
+            pytest.skip("Not supported on this version of Python")
         try:
             test_daemon(testcase)
         finally:
@@ -106,9 +110,9 @@ class DaemonUtilitySuite(unittest.TestCase):
             self.make_file(td, "base/c.pyi")
             self.make_file(td, "base/missing.txt")
             self.make_file(td, "typeshed/d.pyi")
-            self.make_file(td, "typeshed/@python2/e")
+            self.make_file(td, "typeshed/@python2/e")  # outdated
             self.make_file(td, "pkg1/f-stubs")
-            self.make_file(td, "pkg2/g-python2-stubs")
+            self.make_file(td, "pkg2/g-python2-stubs")  # outdated
             self.make_file(td, "mpath/sub/long_name/")
 
             def makepath(p: str) -> str:
@@ -124,7 +128,7 @@ class DaemonUtilitySuite(unittest.TestCase):
             res = filter_out_missing_top_level_packages(
                 {"a", "b", "c", "d", "e", "f", "g", "long_name", "ff", "missing"}, search, fscache
             )
-            assert res == {"a", "b", "c", "d", "e", "f", "g", "long_name"}
+            assert res == {"a", "b", "c", "d", "f", "long_name"}
 
     def make_file(self, base: str, path: str) -> None:
         fullpath = os.path.join(base, path)

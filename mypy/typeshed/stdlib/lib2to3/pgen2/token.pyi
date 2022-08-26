@@ -1,5 +1,3 @@
-import sys
-
 ENDMARKER: int
 NAME: int
 NUMBER: int
@@ -59,8 +57,7 @@ ATEQUAL: int
 AWAIT: int
 ASYNC: int
 ERRORTOKEN: int
-if sys.version_info >= (3, 7):
-    COLONEQUAL: int
+COLONEQUAL: int
 N_TOKENS: int
 NT_OFFSET: int
 tok_name: dict[int, str]

@@ -621,8 +621,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                 # Some built in types are not defined in all test cases
                 if not name.startswith("builtins."):
                     raise e
-                pass
-
         return types
 
     def update_type_map(

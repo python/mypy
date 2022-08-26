@@ -31,10 +31,6 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_unicode_expr(self, o: "mypy.nodes.UnicodeExpr") -> T:
-        pass
-
-    @abstractmethod
     def visit_float_expr(self, o: "mypy.nodes.FloatExpr") -> T:
         pass
 
@@ -152,10 +148,6 @@ class ExpressionVisitor(Generic[T]):
 
     @abstractmethod
     def visit_conditional_expr(self, o: "mypy.nodes.ConditionalExpr") -> T:
-        pass
-
-    @abstractmethod
-    def visit_backquote_expr(self, o: "mypy.nodes.BackquoteExpr") -> T:
         pass
 
     @abstractmethod
@@ -313,14 +305,6 @@ class StatementVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_print_stmt(self, o: "mypy.nodes.PrintStmt") -> T:
-        pass
-
-    @abstractmethod
-    def visit_exec_stmt(self, o: "mypy.nodes.ExecStmt") -> T:
-        pass
-
-    @abstractmethod
     def visit_match_stmt(self, o: "mypy.nodes.MatchStmt") -> T:
         pass
 
@@ -471,12 +455,6 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     def visit_with_stmt(self, o: "mypy.nodes.WithStmt") -> T:
         pass
 
-    def visit_print_stmt(self, o: "mypy.nodes.PrintStmt") -> T:
-        pass
-
-    def visit_exec_stmt(self, o: "mypy.nodes.ExecStmt") -> T:
-        pass
-
     def visit_match_stmt(self, o: "mypy.nodes.MatchStmt") -> T:
         pass
 
@@ -489,9 +467,6 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
         pass
 
     def visit_bytes_expr(self, o: "mypy.nodes.BytesExpr") -> T:
-        pass
-
-    def visit_unicode_expr(self, o: "mypy.nodes.UnicodeExpr") -> T:
         pass
 
     def visit_float_expr(self, o: "mypy.nodes.FloatExpr") -> T:
@@ -582,9 +557,6 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
         pass
 
     def visit_conditional_expr(self, o: "mypy.nodes.ConditionalExpr") -> T:
-        pass
-
-    def visit_backquote_expr(self, o: "mypy.nodes.BackquoteExpr") -> T:
         pass
 
     def visit_type_var_expr(self, o: "mypy.nodes.TypeVarExpr") -> T:

@@ -40,7 +40,6 @@ from mypy.nodes import (
     StrExpr,
     TypeApplication,
     UnaryExpr,
-    UnicodeExpr,
     YieldFromExpr,
 )
 from mypy.traverser import TraverserVisitor
@@ -218,7 +217,7 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_assignment_stmt(o)
 
     def visit_expression_stmt(self, o: ExpressionStmt) -> None:
-        if isinstance(o.expr, (StrExpr, UnicodeExpr, BytesExpr)):
+        if isinstance(o.expr, (StrExpr, BytesExpr)):
             # Docstring
             self.record_line(o.line, TYPE_EMPTY)
         else:
@@ -315,9 +314,6 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_unary_expr(o)
 
     def visit_str_expr(self, o: StrExpr) -> None:
-        self.record_precise_if_checked_scope(o)
-
-    def visit_unicode_expr(self, o: UnicodeExpr) -> None:
         self.record_precise_if_checked_scope(o)
 
     def visit_bytes_expr(self, o: BytesExpr) -> None:

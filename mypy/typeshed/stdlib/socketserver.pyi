@@ -108,8 +108,7 @@ if sys.platform != "win32":
         timeout: float | None  # undocumented
         active_children: set[int] | None  # undocumented
         max_children: int  # undocumented
-        if sys.version_info >= (3, 7):
-            block_on_close: bool
+        block_on_close: bool
         def collect_children(self, *, blocking: bool = ...) -> None: ...  # undocumented
         def handle_timeout(self) -> None: ...  # undocumented
         def service_actions(self) -> None: ...  # undocumented
@@ -118,8 +117,7 @@ if sys.platform != "win32":
 
 class ThreadingMixIn:
     daemon_threads: bool
-    if sys.version_info >= (3, 7):
-        block_on_close: bool
+    block_on_close: bool
     def process_request_thread(self, request: _RequestType, client_address: _AddressType) -> None: ...  # undocumented
     def process_request(self, request: _RequestType, client_address: _AddressType) -> None: ...
     def server_close(self) -> None: ...
@@ -155,7 +153,7 @@ class StreamRequestHandler(BaseRequestHandler):
     wbufsize: ClassVar[int]  # undocumented
     timeout: ClassVar[float | None]  # undocumented
     disable_nagle_algorithm: ClassVar[bool]  # undocumented
-    connection: _socket  # undocumented
+    connection: Any  # undocumented
     rfile: BinaryIO
     wfile: BinaryIO
 

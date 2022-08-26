@@ -86,11 +86,6 @@ __all__ = [
     "commonpath",
 ]
 
-if sys.version_info < (3, 7):
-    __all__ += ["splitunc"]
-
-    def splitunc(p: AnyStr) -> tuple[AnyStr, AnyStr]: ...  # deprecated
-
 altsep: LiteralString
 
 # First parameter is not actually pos-only,

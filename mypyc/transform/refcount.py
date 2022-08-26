@@ -119,8 +119,8 @@ def transform_block(
 
         # Incref any references that are being stolen that stay live, were borrowed,
         # or are stolen more than once by this operation.
-        for i, src in enumerate(stolen):
-            if src in post_live[key] or src in pre_borrow[key] or src in stolen[:i]:
+        for j, src in enumerate(stolen):
+            if src in post_live[key] or src in pre_borrow[key] or src in stolen[:j]:
                 maybe_append_inc_ref(ops, src)
                 # For assignments to registers that were already live,
                 # decref the old value.

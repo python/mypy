@@ -2540,3 +2540,19 @@ class Whatever(Generic[T]):
 class WhateverPartTwo(Whatever[A], Generic[V]):
     def something(self: S) -> S:
         return self
+
+
+[case testConstrainedGenericSuper]
+from typing import Generic, TypeVar
+
+AnyStr = TypeVar("AnyStr", str, bytes)
+
+class Foo(Generic[AnyStr]):
+    def method1(self, s: AnyStr, t: AnyStr) -> None: ...
+
+class Bar(Foo[AnyStr]):
+    def method1(self, s: AnyStr, t: AnyStr) -> None:
+        super().method1('x', b'y')  # Should be an error
+[out]
+main:10: error: Argument 1 to "method1" of "Foo" has incompatible type "str"; expected "AnyStr"
+main:10: error: Argument 2 to "method1" of "Foo" has incompatible type "bytes"; expected "AnyStr"

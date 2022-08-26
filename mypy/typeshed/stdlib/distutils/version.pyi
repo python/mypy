@@ -1,6 +1,6 @@
 from _typeshed import Self
 from abc import abstractmethod
-from typing import Pattern
+from re import Pattern
 
 class Version:
     def __eq__(self, other: object) -> bool: ...

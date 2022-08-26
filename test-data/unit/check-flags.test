@@ -410,6 +410,44 @@ async def h() -> NoReturn:  # E: Implicit return in function which does not retu
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testNoWarnNoReturn]
+# flags: --no-warn-no-return --strict-optional
+import typing
+
+def implicit_optional_return(arg) -> typing.Optional[str]:
+    if arg:
+        return "false"
+
+def unsound_implicit_return(arg) -> str:  # E: Incompatible return value type (implicitly returns "None", expected "str")
+    if arg:
+        return "false"
+
+def implicit_return_gen(arg) -> typing.Generator[int, None, typing.Optional[str]]:
+    yield 1
+
+def unsound_implicit_return_gen(arg) -> typing.Generator[int, None, str]:  # E: Incompatible return value type (implicitly returns "None", expected "str")
+    yield 1
+[builtins fixtures/dict.pyi]
+
+[case testNoWarnNoReturnNoStrictOptional]
+# flags: --no-warn-no-return --no-strict-optional
+import typing
+
+def implicit_optional_return(arg) -> typing.Optional[str]:
+    if arg:
+        return "false"
+
+def unsound_implicit_return(arg) -> str:
+    if arg:
+        return "false"
+
+def implicit_return_gen(arg) -> typing.Generator[int, None, typing.Optional[str]]:
+    yield 1
+
+def unsound_implicit_return_gen(arg) -> typing.Generator[int, None, str]:
+    yield 1
+[builtins fixtures/dict.pyi]
+
 [case testNoReturnImportFromTyping]
 from typing import NoReturn
 

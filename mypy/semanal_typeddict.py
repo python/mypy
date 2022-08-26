@@ -5,7 +5,6 @@ from typing import List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
-from mypy.backports import OrderedDict
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
@@ -13,7 +12,6 @@ from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
     AssignmentStmt,
-    BytesExpr,
     CallExpr,
     ClassDef,
     Context,
@@ -28,7 +26,6 @@ from mypy.nodes import (
     TempNode,
     TypedDictExpr,
     TypeInfo,
-    UnicodeExpr,
 )
 from mypy.options import Options
 from mypy.semanal_shared import SemanticAnalyzerInterface
@@ -270,7 +267,7 @@ class TypedDictAnalyzer:
         if var_name:
             self.api.add_symbol(var_name, info, node)
         call.analyzed = TypedDictExpr(info)
-        call.analyzed.set_line(call.line, call.column)
+        call.analyzed.set_line(call)
         return True, info
 
     def parse_typeddict_args(
@@ -294,7 +291,7 @@ class TypedDictAnalyzer:
             return self.fail_typeddict_arg(
                 f'Unexpected keyword argument "{call.arg_names[2]}" for "TypedDict"', call
             )
-        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+        if not isinstance(args[0], StrExpr):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a string literal as the first argument", call
             )
@@ -338,7 +335,7 @@ class TypedDictAnalyzer:
         items: List[str] = []
         types: List[Type] = []
         for (field_name_expr, field_type_expr) in dict_items:
-            if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
+            if isinstance(field_name_expr, StrExpr):
                 key = field_name_expr.value
                 items.append(key)
                 if key in seen_keys:
@@ -388,9 +385,7 @@ class TypedDictAnalyzer:
         )
         assert fallback is not None
         info = self.api.basic_new_typeinfo(name, fallback, line)
-        info.typeddict_type = TypedDictType(
-            OrderedDict(zip(items, types)), required_keys, fallback
-        )
+        info.typeddict_type = TypedDictType(dict(zip(items, types)), required_keys, fallback)
         return info
 
     # Helpers

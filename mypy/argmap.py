@@ -184,6 +184,7 @@ class ArgTypeExpander:
         This is supposed to be called for each formal, in order. Call multiple times per
         formal if multiple actuals map to a formal.
         """
+        original_actual = actual_type
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
             if isinstance(actual_type, Instance) and actual_type.args:
@@ -241,4 +242,4 @@ class ArgTypeExpander:
                 return AnyType(TypeOfAny.from_error)
         else:
             # No translation for other kinds -- 1:1 mapping.
-            return actual_type
+            return original_actual
