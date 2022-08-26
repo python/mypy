@@ -1,7 +1,9 @@
 """Data-flow analyses."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Dict, Generic, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar, Union
+from typing import Dict, Generic, Iterable, Iterator, Set, Tuple, TypeVar
 
 from mypyc.ir.func_ir import all_values
 from mypyc.ir.ops import (
@@ -55,9 +57,9 @@ class CFG:
 
     def __init__(
         self,
-        succ: Dict[BasicBlock, List[BasicBlock]],
-        pred: Dict[BasicBlock, List[BasicBlock]],
-        exits: Set[BasicBlock],
+        succ: dict[BasicBlock, list[BasicBlock]],
+        pred: dict[BasicBlock, list[BasicBlock]],
+        exits: set[BasicBlock],
     ) -> None:
         assert exits
         self.succ = succ
@@ -66,13 +68,13 @@ class CFG:
 
     def __str__(self) -> str:
         lines = []
-        lines.append("exits: %s" % sorted(self.exits, key=lambda e: e.label))
+        lines.append("exits: %s" % sorted(self.exits, key=lambda e: int(e.label)))
         lines.append("succ: %s" % self.succ)
         lines.append("pred: %s" % self.pred)
         return "\n".join(lines)
 
 
-def get_cfg(blocks: List[BasicBlock]) -> CFG:
+def get_cfg(blocks: list[BasicBlock]) -> CFG:
     """Calculate basic block control-flow graph.
 
     The result is a dictionary like this:
@@ -80,7 +82,7 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
          basic block index -> (successors blocks, predecesssor blocks)
     """
     succ_map = {}
-    pred_map: Dict[BasicBlock, List[BasicBlock]] = {}
+    pred_map: dict[BasicBlock, list[BasicBlock]] = {}
     exits = set()
     for block in blocks:
 
@@ -122,7 +124,7 @@ def get_real_target(label: BasicBlock) -> BasicBlock:
     return label
 
 
-def cleanup_cfg(blocks: List[BasicBlock]) -> None:
+def cleanup_cfg(blocks: list[BasicBlock]) -> None:
     """Cleanup the control flow graph.
 
     This eliminates obviously dead basic blocks and eliminates blocks that contain
@@ -155,7 +157,7 @@ AnalysisDict = Dict[Tuple[BasicBlock, int], Set[T]]
 
 
 class AnalysisResult(Generic[T]):
-    def __init__(self, before: "AnalysisDict[T]", after: "AnalysisDict[T]") -> None:
+    def __init__(self, before: AnalysisDict[T], after: AnalysisDict[T]) -> None:
         self.before = before
         self.after = after
 
@@ -306,7 +308,7 @@ class DefinedVisitor(BaseAnalysisVisitor[Value]):
 
 
 def analyze_maybe_defined_regs(
-    blocks: List[BasicBlock], cfg: CFG, initial_defined: Set[Value]
+    blocks: list[BasicBlock], cfg: CFG, initial_defined: set[Value]
 ) -> AnalysisResult[Value]:
     """Calculate potentially defined registers at each CFG location.
 
@@ -323,9 +325,9 @@ def analyze_maybe_defined_regs(
 
 
 def analyze_must_defined_regs(
-    blocks: List[BasicBlock],
+    blocks: list[BasicBlock],
     cfg: CFG,
-    initial_defined: Set[Value],
+    initial_defined: set[Value],
     regs: Iterable[Value],
     strict_errors: bool = False,
 ) -> AnalysisResult[Value]:
@@ -350,7 +352,7 @@ def analyze_must_defined_regs(
 
 
 class BorrowedArgumentsVisitor(BaseAnalysisVisitor[Value]):
-    def __init__(self, args: Set[Value]) -> None:
+    def __init__(self, args: set[Value]) -> None:
         self.args = args
 
     def visit_branch(self, op: Branch) -> GenAndKill[Value]:
@@ -378,7 +380,7 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor[Value]):
 
 
 def analyze_borrowed_arguments(
-    blocks: List[BasicBlock], cfg: CFG, borrowed: Set[Value]
+    blocks: list[BasicBlock], cfg: CFG, borrowed: set[Value]
 ) -> AnalysisResult[Value]:
     """Calculate arguments that can use references borrowed from the caller.
 
@@ -419,7 +421,7 @@ class UndefinedVisitor(BaseAnalysisVisitor[Value]):
 
 
 def analyze_undefined_regs(
-    blocks: List[BasicBlock], cfg: CFG, initial_defined: Set[Value]
+    blocks: list[BasicBlock], cfg: CFG, initial_defined: set[Value]
 ) -> AnalysisResult[Value]:
     """Calculate potentially undefined registers at each CFG location.
 
@@ -439,7 +441,7 @@ def analyze_undefined_regs(
     )
 
 
-def non_trivial_sources(op: Op) -> Set[Value]:
+def non_trivial_sources(op: Op) -> set[Value]:
     result = set()
     for source in op.sources():
         if not isinstance(source, Integer):
@@ -477,7 +479,7 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         return non_trivial_sources(op), set()
 
 
-def analyze_live_regs(blocks: List[BasicBlock], cfg: CFG) -> AnalysisResult[Value]:
+def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Value]:
     """Calculate live registers at each CFG location.
 
     A register is live at a location if it can be read along some CFG path starting
@@ -499,13 +501,13 @@ MAYBE_ANALYSIS = 1
 
 
 def run_analysis(
-    blocks: List[BasicBlock],
+    blocks: list[BasicBlock],
     cfg: CFG,
     gen_and_kill: OpVisitor[GenAndKill[T]],
-    initial: Set[T],
+    initial: set[T],
     kind: int,
     backward: bool,
-    universe: Optional[Set[T]] = None,
+    universe: set[T] | None = None,
 ) -> AnalysisResult[T]:
     """Run a general set-based data flow analysis.
 
@@ -529,8 +531,8 @@ def run_analysis(
 
     # Calculate kill and gen sets for entire basic blocks.
     for block in blocks:
-        gen: Set[T] = set()
-        kill: Set[T] = set()
+        gen: set[T] = set()
+        kill: set[T] = set()
         ops = block.ops
         if backward:
             ops = list(reversed(ops))
@@ -546,8 +548,8 @@ def run_analysis(
     if not backward:
         worklist = worklist[::-1]  # Reverse for a small performance improvement
     workset = set(worklist)
-    before: Dict[BasicBlock, Set[T]] = {}
-    after: Dict[BasicBlock, Set[T]] = {}
+    before: dict[BasicBlock, set[T]] = {}
+    after: dict[BasicBlock, set[T]] = {}
     for block in blocks:
         if kind == MAYBE_ANALYSIS:
             before[block] = set()
@@ -569,7 +571,7 @@ def run_analysis(
         label = worklist.pop()
         workset.remove(label)
         if pred_map[label]:
-            new_before: Union[Set[T], None] = None
+            new_before: set[T] | None = None
             for pred in pred_map[label]:
                 if new_before is None:
                     new_before = set(after[pred])
@@ -590,12 +592,12 @@ def run_analysis(
         after[label] = new_after
 
     # Run algorithm for each basic block to generate opcode-level sets.
-    op_before: Dict[Tuple[BasicBlock, int], Set[T]] = {}
-    op_after: Dict[Tuple[BasicBlock, int], Set[T]] = {}
+    op_before: dict[tuple[BasicBlock, int], set[T]] = {}
+    op_after: dict[tuple[BasicBlock, int], set[T]] = {}
     for block in blocks:
         label = block
         cur = before[label]
-        ops_enum: Iterator[Tuple[int, Op]] = enumerate(block.ops)
+        ops_enum: Iterator[tuple[int, Op]] = enumerate(block.ops)
         if backward:
             ops_enum = reversed(list(ops_enum))
         for idx, op in ops_enum:

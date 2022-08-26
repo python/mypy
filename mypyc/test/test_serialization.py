@@ -3,8 +3,10 @@
 # This file is named test_serialization.py even though it doesn't
 # contain its own tests so that pytest will rewrite the asserts...
 
+from __future__ import annotations
+
 from collections.abc import Iterable
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
@@ -14,14 +16,14 @@ from mypyc.ir.rtypes import RType
 from mypyc.sametype import is_same_signature, is_same_type
 
 
-def get_dict(x: Any) -> Dict[str, Any]:
+def get_dict(x: Any) -> dict[str, Any]:
     if hasattr(x, "__mypyc_attrs__"):
         return {k: getattr(x, k) for k in x.__mypyc_attrs__ if hasattr(x, k)}
     else:
         return dict(x.__dict__)
 
 
-def get_function_dict(x: FuncIR) -> Dict[str, Any]:
+def get_function_dict(x: FuncIR) -> dict[str, Any]:
     """Get a dict of function attributes safe to compare across serialization"""
     d = get_dict(x)
     d.pop("blocks", None)
@@ -29,7 +31,7 @@ def get_function_dict(x: FuncIR) -> Dict[str, Any]:
     return d
 
 
-def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
+def assert_blobs_same(x: Any, y: Any, trail: tuple[Any, ...]) -> None:
     """Compare two blobs of IR as best we can.
 
     FuncDecls, FuncIRs, and ClassIRs are compared by fullname to avoid
@@ -94,7 +96,7 @@ def assert_modules_same(ir1: ModuleIR, ir2: ModuleIR) -> None:
     assert_blobs_same(ir1.final_names, ir2.final_names, (ir1.fullname, "final_names"))
 
 
-def check_serialization_roundtrip(irs: Dict[str, ModuleIR]) -> None:
+def check_serialization_roundtrip(irs: dict[str, ModuleIR]) -> None:
     """Check that we can serialize modules out and deserialize them to the same thing."""
     serialized = {k: ir.serialize() for k, ir in irs.items()}
 

@@ -1,5 +1,7 @@
 """Test cases for IR generation."""
 
+from __future__ import annotations
+
 import os.path
 
 from mypy.errors import CompileError

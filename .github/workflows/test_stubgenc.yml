@@ -1,6 +1,7 @@
 name: Test stubgenc on pybind11-mypy-demo
 
 on:
+  workflow_dispatch:
   push:
     branches: [master, 'release*']
     tags: ['*']

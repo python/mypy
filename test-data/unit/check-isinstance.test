@@ -1792,6 +1792,37 @@ issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testIssubclassWithMetaclasses]
+class FooMetaclass(type): ...
+class Foo(metaclass=FooMetaclass): ...
+class Bar: ...
+
+fm: FooMetaclass
+reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
+if issubclass(fm, Foo):
+    reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
+if issubclass(fm, Bar):
+    reveal_type(fm)  # N: Revealed type is "None"
+[builtins fixtures/isinstance.pyi]
+
+[case testIssubclassWithMetaclassesStrictOptional]
+# flags: --strict-optional
+class FooMetaclass(type): ...
+class BarMetaclass(type): ...
+class Foo(metaclass=FooMetaclass): ...
+class Bar(metaclass=BarMetaclass): ...
+class Baz: ...
+
+fm: FooMetaclass
+reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
+if issubclass(fm, Foo):
+    reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
+if issubclass(fm, Bar):
+    reveal_type(fm)  # N: Revealed type is "<nothing>"
+if issubclass(fm, Baz):
+    reveal_type(fm)  # N: Revealed type is "<nothing>"
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceAndNarrowTypeVariable]
 from typing import TypeVar
 

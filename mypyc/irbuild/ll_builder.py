@@ -8,7 +8,9 @@ of its facilities operate solely on the IR level and not the AST
 level---it has *no knowledge* of mypy types or expressions.
 """
 
-from typing import Callable, List, Optional, Sequence, Tuple
+from __future__ import annotations
+
+from typing import Callable, Optional, Sequence, Tuple
 from typing_extensions import Final
 
 from mypy.argmap import map_actuals_to_formals
@@ -182,13 +184,13 @@ class LowLevelIRBuilder:
         self.current_module = current_module
         self.mapper = mapper
         self.options = options
-        self.args: List[Register] = []
-        self.blocks: List[BasicBlock] = []
+        self.args: list[Register] = []
+        self.blocks: list[BasicBlock] = []
         # Stack of except handler entry blocks
-        self.error_handlers: List[Optional[BasicBlock]] = [None]
+        self.error_handlers: list[BasicBlock | None] = [None]
         # Values that we need to keep alive as long as we have borrowed
         # temporaries. Use flush_keep_alives() to mark the end of the live range.
-        self.keep_alives: List[Value] = []
+        self.keep_alives: list[Value] = []
 
     # Basic operations
 
@@ -216,10 +218,10 @@ class LowLevelIRBuilder:
         self.goto(block)
         self.activate_block(block)
 
-    def push_error_handler(self, handler: Optional[BasicBlock]) -> None:
+    def push_error_handler(self, handler: BasicBlock | None) -> None:
         self.error_handlers.append(handler)
 
-    def pop_error_handler(self) -> Optional[BasicBlock]:
+    def pop_error_handler(self) -> BasicBlock | None:
         return self.error_handlers.pop()
 
     def self(self) -> Register:
@@ -512,7 +514,7 @@ class LowLevelIRBuilder:
 
     # isinstance() checks
 
-    def isinstance_helper(self, obj: Value, class_irs: List[ClassIR], line: int) -> Value:
+    def isinstance_helper(self, obj: Value, class_irs: list[ClassIR], line: int) -> Value:
         """Fast path for isinstance() that checks against a list of native classes."""
         if not class_irs:
             return self.false()
@@ -562,12 +564,12 @@ class LowLevelIRBuilder:
 
     def _construct_varargs(
         self,
-        args: Sequence[Tuple[Value, ArgKind, Optional[str]]],
+        args: Sequence[tuple[Value, ArgKind, str | None]],
         line: int,
         *,
         has_star: bool,
         has_star2: bool,
-    ) -> Tuple[Optional[Value], Optional[Value]]:
+    ) -> tuple[Value | None, Value | None]:
         """Construct *args and **kwargs from a collection of arguments
 
         This is pretty complicated, and almost all of the complication here stems from
@@ -632,17 +634,17 @@ class LowLevelIRBuilder:
         on the actual target signature for a native call.)
         """
 
-        star_result: Optional[Value] = None
-        star2_result: Optional[Value] = None
+        star_result: Value | None = None
+        star2_result: Value | None = None
         # We aggregate values that need to go into *args and **kwargs
         # in these lists. Once all arguments are processed (in the
         # happiest case), or we encounter an ARG_STAR/ARG_STAR2 or a
         # nullable arg, then we create the list and/or dict.
-        star_values: List[Value] = []
-        star2_keys: List[Value] = []
-        star2_values: List[Value] = []
+        star_values: list[Value] = []
+        star2_keys: list[Value] = []
+        star2_values: list[Value] = []
 
-        seen_empty_reg: Optional[Register] = None
+        seen_empty_reg: Register | None = None
 
         for value, kind, name in args:
             if kind == ARG_STAR:
@@ -754,10 +756,10 @@ class LowLevelIRBuilder:
     def py_call(
         self,
         function: Value,
-        arg_values: List[Value],
+        arg_values: list[Value],
         line: int,
-        arg_kinds: Optional[List[ArgKind]] = None,
-        arg_names: Optional[Sequence[Optional[str]]] = None,
+        arg_kinds: list[ArgKind] | None = None,
+        arg_names: Sequence[str | None] | None = None,
     ) -> Value:
         """Call a Python function (non-native and slow).
 
@@ -786,11 +788,11 @@ class LowLevelIRBuilder:
     def _py_vector_call(
         self,
         function: Value,
-        arg_values: List[Value],
+        arg_values: list[Value],
         line: int,
-        arg_kinds: Optional[List[ArgKind]] = None,
-        arg_names: Optional[Sequence[Optional[str]]] = None,
-    ) -> Optional[Value]:
+        arg_kinds: list[ArgKind] | None = None,
+        arg_names: Sequence[str | None] | None = None,
+    ) -> Value | None:
         """Call function using the vectorcall API if possible.
 
         Return the return value if successful. Return None if a non-vectorcall
@@ -823,7 +825,7 @@ class LowLevelIRBuilder:
             return value
         return None
 
-    def _vectorcall_keywords(self, arg_names: Optional[Sequence[Optional[str]]]) -> Value:
+    def _vectorcall_keywords(self, arg_names: Sequence[str | None] | None) -> Value:
         """Return a reference to a tuple literal with keyword argument names.
 
         Return null pointer if there are no keyword arguments.
@@ -838,10 +840,10 @@ class LowLevelIRBuilder:
         self,
         obj: Value,
         method_name: str,
-        arg_values: List[Value],
+        arg_values: list[Value],
         line: int,
-        arg_kinds: Optional[List[ArgKind]],
-        arg_names: Optional[Sequence[Optional[str]]],
+        arg_kinds: list[ArgKind] | None,
+        arg_names: Sequence[str | None] | None,
     ) -> Value:
         """Call a Python method (non-native and slow)."""
         if use_method_vectorcall(self.options.capi_version):
@@ -865,11 +867,11 @@ class LowLevelIRBuilder:
         self,
         obj: Value,
         method_name: str,
-        arg_values: List[Value],
+        arg_values: list[Value],
         line: int,
-        arg_kinds: Optional[List[ArgKind]],
-        arg_names: Optional[Sequence[Optional[str]]],
-    ) -> Optional[Value]:
+        arg_kinds: list[ArgKind] | None,
+        arg_names: Sequence[str | None] | None,
+    ) -> Value | None:
         """Call method using the vectorcall API if possible.
 
         Return the return value if successful. Return None if a non-vectorcall
@@ -909,8 +911,8 @@ class LowLevelIRBuilder:
         self,
         decl: FuncDecl,
         args: Sequence[Value],
-        arg_kinds: List[ArgKind],
-        arg_names: Sequence[Optional[str]],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None],
         line: int,
     ) -> Value:
         """Call a native function."""
@@ -921,11 +923,11 @@ class LowLevelIRBuilder:
     def native_args_to_positional(
         self,
         args: Sequence[Value],
-        arg_kinds: List[ArgKind],
-        arg_names: Sequence[Optional[str]],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None],
         sig: FuncSignature,
         line: int,
-    ) -> List[Value]:
+    ) -> list[Value]:
         """Prepare arguments for a native call.
 
         Given args/kinds/names and a target signature for a native call, map
@@ -988,11 +990,11 @@ class LowLevelIRBuilder:
         self,
         base: Value,
         name: str,
-        arg_values: List[Value],
-        result_type: Optional[RType],
+        arg_values: list[Value],
+        result_type: RType | None,
         line: int,
-        arg_kinds: Optional[List[ArgKind]] = None,
-        arg_names: Optional[List[Optional[str]]] = None,
+        arg_kinds: list[ArgKind] | None = None,
+        arg_names: list[str | None] | None = None,
         can_borrow: bool = False,
     ) -> Value:
         """Generate either a native or Python method call."""
@@ -1048,11 +1050,11 @@ class LowLevelIRBuilder:
         base: Value,
         obj_type: RUnion,
         name: str,
-        arg_values: List[Value],
-        return_rtype: Optional[RType],
+        arg_values: list[Value],
+        return_rtype: RType | None,
         line: int,
-        arg_kinds: Optional[List[ArgKind]],
-        arg_names: Optional[List[Optional[str]]],
+        arg_kinds: list[ArgKind] | None,
+        arg_names: list[str | None] | None,
     ) -> Value:
         """Generate a method call with a union type for the object."""
         # Union method call needs a return_rtype for the type of the output register.
@@ -1115,10 +1117,10 @@ class LowLevelIRBuilder:
         self,
         typ: RType,
         identifier: str,
-        module_name: Optional[str] = None,
+        module_name: str | None = None,
         namespace: str = NAMESPACE_STATIC,
         line: int = -1,
-        error_msg: Optional[str] = None,
+        error_msg: str | None = None,
     ) -> Value:
         if error_msg is None:
             error_msg = f'name "{identifier}" is not defined'
@@ -1477,9 +1479,9 @@ class LowLevelIRBuilder:
         return target
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
-        result: Optional[Value] = None
-        keys: List[Value] = []
-        values: List[Value] = []
+        result: Value | None = None
+        keys: list[Value] = []
+        values: list[Value] = []
         for key, value in key_value_pairs:
             if key is not None:
                 # key:value
@@ -1517,8 +1519,8 @@ class LowLevelIRBuilder:
         """
         return self.call_c(new_list_op, [length], line)
 
-    def new_list_op(self, values: List[Value], line: int) -> Value:
-        length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
+    def new_list_op(self, values: list[Value], line: int) -> Value:
+        length: list[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
         if len(values) >= LIST_BUILDING_EXPANSION_THRESHOLD:
             return self.call_c(list_build_op, length + values, line)
 
@@ -1544,7 +1546,7 @@ class LowLevelIRBuilder:
         self.add(KeepAlive([result_list]))
         return result_list
 
-    def new_set_op(self, values: List[Value], line: int) -> Value:
+    def new_set_op(self, values: list[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)
 
     def shortcircuit_helper(
@@ -1634,9 +1636,9 @@ class LowLevelIRBuilder:
     def call_c(
         self,
         desc: CFunctionDescription,
-        args: List[Value],
+        args: list[Value],
         line: int,
-        result_type: Optional[RType] = None,
+        result_type: RType | None = None,
     ) -> Value:
         """Call function using C/native calling convention (not a Python callable)."""
         # Handle void function via singleton RVoid instance
@@ -1708,13 +1710,13 @@ class LowLevelIRBuilder:
 
     def matching_call_c(
         self,
-        candidates: List[CFunctionDescription],
-        args: List[Value],
+        candidates: list[CFunctionDescription],
+        args: list[Value],
         line: int,
-        result_type: Optional[RType] = None,
+        result_type: RType | None = None,
         can_borrow: bool = False,
-    ) -> Optional[Value]:
-        matching: Optional[CFunctionDescription] = None
+    ) -> Value | None:
+        matching: CFunctionDescription | None = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
@@ -1879,7 +1881,7 @@ class LowLevelIRBuilder:
         else:
             return self.call_c(generic_len_op, [val], line)
 
-    def new_tuple(self, items: List[Value], line: int) -> Value:
+    def new_tuple(self, items: list[Value], line: int) -> Value:
         size: Value = Integer(len(items), c_pyssize_t_rprimitive)
         return self.call_c(new_tuple_op, [size] + items, line)
 
@@ -1966,11 +1968,11 @@ class LowLevelIRBuilder:
         self,
         base_reg: Value,
         name: str,
-        args: List[Value],
-        result_type: Optional[RType],
+        args: list[Value],
+        result_type: RType | None,
         line: int,
         can_borrow: bool = False,
-    ) -> Optional[Value]:
+    ) -> Value | None:
         """Translate a method call which is handled nongenerically.
 
         These are special in the sense that we have code generated specifically for them.
@@ -1985,9 +1987,7 @@ class LowLevelIRBuilder:
         )
         return call_c_op
 
-    def translate_eq_cmp(
-        self, lreg: Value, rreg: Value, expr_op: str, line: int
-    ) -> Optional[Value]:
+    def translate_eq_cmp(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value | None:
         """Add a equality comparison operation.
 
         Args:
@@ -2032,7 +2032,7 @@ class LowLevelIRBuilder:
         rhs = self.coerce(rreg, object_rprimitive, line)
         return self.add(ComparisonOp(lhs, rhs, op, line))
 
-    def _create_dict(self, keys: List[Value], values: List[Value], line: int) -> Value:
+    def _create_dict(self, keys: list[Value], values: list[Value], line: int) -> Value:
         """Create a dictionary(possibly empty) using keys and values"""
         # keys and values should have the same number of items
         size = len(keys)
@@ -2045,7 +2045,7 @@ class LowLevelIRBuilder:
             return self.call_c(dict_new_op, [], line)
 
 
-def num_positional_args(arg_values: List[Value], arg_kinds: Optional[List[ArgKind]]) -> int:
+def num_positional_args(arg_values: list[Value], arg_kinds: list[ArgKind] | None) -> int:
     if arg_kinds is None:
         return len(arg_values)
     num_pos = 0

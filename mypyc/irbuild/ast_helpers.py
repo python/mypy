@@ -4,6 +4,8 @@ Shared code that is tightly coupled to mypy ASTs can be put here instead of
 making mypyc.irbuild.builder larger.
 """
 
+from __future__ import annotations
+
 from mypy.nodes import (
     LDEF,
     BytesExpr,

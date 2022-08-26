@@ -1,3 +1,4 @@
+import abc
 import builtins
 import codecs
 import sys
@@ -47,7 +48,7 @@ BlockingIOError = builtins.BlockingIOError
 
 class UnsupportedOperation(OSError, ValueError): ...
 
-class IOBase:
+class IOBase(metaclass=abc.ABCMeta):
     def __iter__(self) -> Iterator[bytes]: ...
     def __next__(self) -> bytes: ...
     def __enter__(self: Self) -> Self: ...

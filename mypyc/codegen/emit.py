@@ -1,7 +1,9 @@
 """Utilities for emitting C code."""
 
+from __future__ import annotations
+
 import sys
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Callable
 from typing_extensions import Final
 
 from mypyc.codegen.literals import Literals
@@ -71,10 +73,10 @@ class HeaderDeclaration:
 
     def __init__(
         self,
-        decl: Union[str, List[str]],
-        defn: Optional[List[str]] = None,
+        decl: str | list[str],
+        defn: list[str] | None = None,
         *,
-        dependencies: Optional[Set[str]] = None,
+        dependencies: set[str] | None = None,
         is_type: bool = False,
         needs_export: bool = False,
     ) -> None:
@@ -91,8 +93,8 @@ class EmitterContext:
     def __init__(
         self,
         names: NameGenerator,
-        group_name: Optional[str] = None,
-        group_map: Optional[Dict[str, Optional[str]]] = None,
+        group_name: str | None = None,
+        group_map: dict[str, str | None] | None = None,
     ) -> None:
         """Setup shared emitter state.
 
@@ -106,7 +108,7 @@ class EmitterContext:
         self.group_name = group_name
         self.group_map = group_map or {}
         # Groups that this group depends on
-        self.group_deps: Set[str] = set()
+        self.group_deps: set[str] = set()
 
         # The map below is used for generating declarations and
         # definitions at the top of the C file. The main idea is that they can
@@ -115,7 +117,7 @@ class EmitterContext:
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
-        self.declarations: Dict[str, HeaderDeclaration] = {}
+        self.declarations: dict[str, HeaderDeclaration] = {}
 
         self.literals = Literals()
 
@@ -139,7 +141,7 @@ class TracebackAndGotoHandler(ErrorHandler):
     """Add traceback item and goto label on error."""
 
     def __init__(
-        self, label: str, source_path: str, module_name: str, traceback_entry: Tuple[str, int]
+        self, label: str, source_path: str, module_name: str, traceback_entry: tuple[str, int]
     ) -> None:
         self.label = label
         self.source_path = source_path
@@ -160,14 +162,14 @@ class Emitter:
     def __init__(
         self,
         context: EmitterContext,
-        value_names: Optional[Dict[Value, str]] = None,
-        capi_version: Optional[Tuple[int, int]] = None,
+        value_names: dict[Value, str] | None = None,
+        capi_version: tuple[int, int] | None = None,
     ) -> None:
         self.context = context
         self.capi_version = capi_version or sys.version_info[:2]
         self.names = context.names
         self.value_names = value_names or {}
-        self.fragments: List[str] = []
+        self.fragments: list[str] = []
         self._indent = 0
 
     # Low-level operations
@@ -199,7 +201,7 @@ class Emitter:
         for line in lines:
             self.emit_line(line)
 
-    def emit_label(self, label: Union[BasicBlock, str]) -> None:
+    def emit_label(self, label: BasicBlock | str) -> None:
         if isinstance(label, str):
             text = label
         else:
@@ -207,7 +209,7 @@ class Emitter:
         # Extra semicolon prevents an error when the next line declares a tempvar
         self.fragments.append(f"{text}: ;\n")
 
-    def emit_from_emitter(self, emitter: "Emitter") -> None:
+    def emit_from_emitter(self, emitter: Emitter) -> None:
         self.fragments.extend(emitter.fragments)
 
     def emit_printf(self, fmt: str, *args: str) -> None:
@@ -249,12 +251,12 @@ class Emitter:
         else:
             return ""
 
-    def get_group_prefix(self, obj: Union[ClassIR, FuncDecl]) -> str:
+    def get_group_prefix(self, obj: ClassIR | FuncDecl) -> str:
         """Get the group prefix for an object."""
         # See docs above
         return self.get_module_group_prefix(obj.module_name)
 
-    def static_name(self, id: str, module: Optional[str], prefix: str = STATIC_PREFIX) -> str:
+    def static_name(self, id: str, module: str | None, prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
 
         These are used for literals and imported modules, among other
@@ -300,7 +302,7 @@ class Emitter:
     def native_function_name(self, fn: FuncDecl) -> str:
         return f"{NATIVE_PREFIX}{fn.cname(self.names)}"
 
-    def tuple_c_declaration(self, rtuple: RTuple) -> List[str]:
+    def tuple_c_declaration(self, rtuple: RTuple) -> list[str]:
         result = [
             f"#ifndef MYPYC_DECLARED_{rtuple.struct_name}",
             f"#define MYPYC_DECLARED_{rtuple.struct_name}",
@@ -338,7 +340,7 @@ class Emitter:
                 self.tuple_undefined_check_cond(rtype, attr_expr, self.c_undefined_value, compare)
             )
         else:
-            check = "({} {} {})".format(attr_expr, compare, self.c_undefined_value(rtype))
+            check = f"({attr_expr} {compare} {self.c_undefined_value(rtype)})"
         if unlikely:
             check = f"(unlikely{check})"
         self.emit_line(f"if {check} {{")
@@ -361,12 +363,12 @@ class Emitter:
                 item_type, tuple_expr_in_c + ".f0", c_type_compare_val, compare
             )
         else:
-            return "{}.f0 {} {}".format(tuple_expr_in_c, compare, c_type_compare_val(item_type))
+            return f"{tuple_expr_in_c}.f0 {compare} {c_type_compare_val(item_type)}"
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
         return "tuple_undefined_" + rtuple.unique_id
 
-    def tuple_undefined_value_helper(self, rtuple: RTuple) -> List[str]:
+    def tuple_undefined_value_helper(self, rtuple: RTuple) -> list[str]:
         res = []
         # see tuple_c_declaration()
         if len(rtuple.types) == 0:
@@ -458,10 +460,10 @@ class Emitter:
         typ: RType,
         *,
         declare_dest: bool = False,
-        error: Optional[ErrorHandler] = None,
+        error: ErrorHandler | None = None,
         raise_exception: bool = True,
         optional: bool = False,
-        src_type: Optional[RType] = None,
+        src_type: RType | None = None,
         likely: bool = True,
     ) -> None:
         """Emit code for casting a value of given type.
@@ -629,7 +631,7 @@ class Emitter:
                 )
                 self.emit_line("goto %s;" % error.label)
                 return
-            self.emit_line('CPy_TypeError("{}", {}); '.format(self.pretty_name(typ), src))
+            self.emit_line(f'CPy_TypeError("{self.pretty_name(typ)}", {src}); ')
         if isinstance(error, AssignHandler):
             self.emit_line("%s = NULL;" % dest)
         elif isinstance(error, GotoHandler):
@@ -650,7 +652,7 @@ class Emitter:
         declare_dest: bool,
         error: ErrorHandler,
         optional: bool,
-        src_type: Optional[RType],
+        src_type: RType | None,
         raise_exception: bool,
     ) -> None:
         """Emit cast to a union type.
@@ -687,7 +689,7 @@ class Emitter:
         typ: RTuple,
         declare_dest: bool,
         error: ErrorHandler,
-        src_type: Optional[RType],
+        src_type: RType | None,
     ) -> None:
         """Emit cast to a tuple type.
 
@@ -738,7 +740,7 @@ class Emitter:
         typ: RType,
         *,
         declare_dest: bool = False,
-        error: Optional[ErrorHandler] = None,
+        error: ErrorHandler | None = None,
         raise_exception: bool = True,
         optional: bool = False,
         borrow: bool = False,
@@ -811,8 +813,8 @@ class Emitter:
         elif is_int32_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
-                self.emit_line("int32_t {};".format(dest))
-            self.emit_line("{} = CPyLong_AsInt32({});".format(dest, src))
+                self.emit_line(f"int32_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
             # TODO: Handle 'optional'
             # TODO: Handle 'failure'
         elif isinstance(typ, RTuple):
@@ -980,7 +982,7 @@ class Emitter:
             assert False, "emit_gc_clear() not implemented for %s" % repr(rtype)
 
     def emit_traceback(
-        self, source_path: str, module_name: str, traceback_entry: Tuple[str, int]
+        self, source_path: str, module_name: str, traceback_entry: tuple[str, int]
     ) -> None:
         return self._emit_traceback("CPy_AddTraceback", source_path, module_name, traceback_entry)
 
@@ -988,7 +990,7 @@ class Emitter:
         self,
         source_path: str,
         module_name: str,
-        traceback_entry: Tuple[str, int],
+        traceback_entry: tuple[str, int],
         *,
         typ: RType,
         src: str,
@@ -1004,7 +1006,7 @@ class Emitter:
         func: str,
         source_path: str,
         module_name: str,
-        traceback_entry: Tuple[str, int],
+        traceback_entry: tuple[str, int],
         type_str: str = "",
         src: str = "",
     ) -> None:

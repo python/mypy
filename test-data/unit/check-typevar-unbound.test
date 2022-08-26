@@ -58,3 +58,9 @@ def h(a: List[Union[Callable[..., T]]]) -> T:
 def j(a: List[Union[Callable[..., Tuple[T, T]], int]]) -> T:
     ...
 [builtins fixtures/tuple.pyi]
+
+[case testUnboundedTypevarUnpacking]
+from typing import TypeVar
+T = TypeVar("T")
+def f(t: T) -> None:
+    a, *b = t  # E: "object" object is not iterable

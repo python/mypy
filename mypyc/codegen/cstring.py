@@ -18,6 +18,8 @@ suffer from the same issue as they are defined to parse at most three
 octal digits.
 """
 
+from __future__ import annotations
+
 import string
 from typing_extensions import Final
 

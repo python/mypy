@@ -1,4 +1,6 @@
-from typing import List, Set, Tuple
+from __future__ import annotations
+
+from typing import Set, Tuple
 
 from mypyc.analysis.dataflow import CFG, MAYBE_ANALYSIS, AnalysisResult, run_analysis
 from mypyc.ir.ops import (
@@ -177,7 +179,7 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
 
 
 def analyze_self_leaks(
-    blocks: List[BasicBlock], self_reg: Register, cfg: CFG
+    blocks: list[BasicBlock], self_reg: Register, cfg: CFG
 ) -> AnalysisResult[None]:
     return run_analysis(
         blocks=blocks,

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import time
 from multiprocessing import Process, Queue
@@ -10,7 +12,7 @@ from mypy.ipc import IPCClient, IPCServer
 CONNECTION_NAME = "dmypy-test-ipc"
 
 
-def server(msg: str, q: "Queue[str]") -> None:
+def server(msg: str, q: Queue[str]) -> None:
     server = IPCServer(CONNECTION_NAME)
     q.put(server.connection_name)
     data = b""

@@ -906,8 +906,8 @@ B() < B()
 A() < object() # E: Unsupported operand types for < ("A" and "object")
 B() < object() # E: No overload variant of "__lt__" of "B" matches argument type "object" \
                # N: Possible overload variants: \
-               # N:     def __lt__(self, B) -> int \
-               # N:     def __lt__(self, A) -> int
+               # N:     def __lt__(self, B, /) -> int \
+               # N:     def __lt__(self, A, /) -> int
 
 [case testOverloadedForwardMethodAndCallingReverseMethod]
 from foo import *
@@ -925,8 +925,8 @@ A() + 1
 A() + B()
 A() + '' # E: No overload variant of "__add__" of "A" matches argument type "str" \
          # N: Possible overload variants: \
-         # N:     def __add__(self, A) -> int \
-         # N:     def __add__(self, int) -> int
+         # N:     def __add__(self, A, /) -> int \
+         # N:     def __add__(self, int, /) -> int
 
 [case testOverrideOverloadSwapped]
 from foo import *
@@ -4738,12 +4738,12 @@ reveal_type(actually_b + Other())               # Note
 [out]
 main:12: error: Signature of "__add__" incompatible with supertype "A"
 main:12: note:      Superclass:
-main:12: note:          def __add__(self, A) -> A
+main:12: note:          def __add__(self, A, /) -> A
 main:12: note:      Subclass:
 main:12: note:          @overload
-main:12: note:          def __add__(self, Other) -> B
+main:12: note:          def __add__(self, Other, /) -> B
 main:12: note:          @overload
-main:12: note:          def __add__(self, A) -> A
+main:12: note:          def __add__(self, A, /) -> A
 main:12: note: Overloaded operator methods cannot have wider argument types in overrides
 main:32: note: Revealed type is "__main__.Other"
 
@@ -5986,10 +5986,10 @@ reveal_type(f2(A()))  # E: No overload variant of "f2" matches argument type "A"
 if True:
     @overload  # E: Single overload definition, multiple required
     def f3(x: A) -> A: ...
+    def f3(x): ...
     if maybe_true:  # E: Name "maybe_true" is not defined
         @overload  # E: Single overload definition, multiple required
         def g3(x: B) -> B: ...
-    def f3(x): ...
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 
 if True:
@@ -6467,3 +6467,80 @@ spam: Callable[..., str] = lambda x, y: 'baz'
 reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
 
 [builtins fixtures/paramspec.pyi]
+
+[case testGenericOverloadOverlapWithType]
+import m
+
+[file m.pyi]
+from typing import TypeVar, Type, overload, Callable
+
+T = TypeVar("T", bound=str)
+@overload
+def foo(x: Type[T] | int) -> int: ...
+@overload
+def foo(x: Callable[[int], bool]) -> str: ...
+
+[case testGenericOverloadOverlapWithCollection]
+import m
+
+[file m.pyi]
+from typing import TypeVar, Sequence, overload, List
+
+T = TypeVar("T", bound=str)
+
+@overload
+def foo(x: List[T]) -> str: ...
+@overload
+def foo(x: Sequence[int]) -> int: ...
+[builtins fixtures/list.pyi]
+
+# Also see `check-python38.test` for similar tests with `/` args:
+[case testOverloadPositionalOnlyErrorMessageOldStyle]
+from typing import overload
+
+@overload
+def foo(__a: int): ...
+@overload
+def foo(a: str): ...
+def foo(a): ...
+
+foo(a=1)
+[out]
+main:9: error: No overload variant of "foo" matches argument type "int"
+main:9: note: Possible overload variants:
+main:9: note:     def foo(int, /) -> Any
+main:9: note:     def foo(a: str) -> Any
+
+[case testOverloadUnionGenericBounds]
+from typing import overload, TypeVar, Sequence, Union
+
+class Entity: ...
+class Assoc: ...
+
+E = TypeVar("E", bound=Entity)
+A = TypeVar("A", bound=Assoc)
+
+class Test:
+    @overload
+    def foo(self, arg: Sequence[E]) -> None: ...
+    @overload
+    def foo(self, arg: Sequence[A]) -> None: ...
+    def foo(self, arg: Union[Sequence[E], Sequence[A]]) -> None:
+        ...
+
+[case testOverloadedStaticMethodOnInstance]
+from typing import overload
+
+class Snafu(object):
+    @overload
+    @staticmethod
+    def snafu(value: bytes) -> bytes: ...
+    @overload
+    @staticmethod
+    def snafu(value: str) -> str: ...
+    @staticmethod
+    def snafu(value):
+        ...
+reveal_type(Snafu().snafu('123'))  # N: Revealed type is "builtins.str"
+reveal_type(Snafu.snafu('123'))  # N: Revealed type is "builtins.str"
+[builtins fixtures/staticmethod.pyi]

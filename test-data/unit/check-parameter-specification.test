@@ -1092,3 +1092,73 @@ def func(callback: Callable[P, str]) -> Callable[P, str]:
         return 'baz'
     return inner
 [builtins fixtures/paramspec.pyi]
+
+[case testUnpackingParamsSpecArgsAndKwargs]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+def func(callback: Callable[P, str]) -> Callable[P, str]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> str:
+        a, *b = args
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.object]"
+        c, *d = kwargs
+        reveal_type(c)  # N: Revealed type is "builtins.str"
+        reveal_type(d)  # N: Revealed type is "builtins.list[builtins.str]"
+        e = {**kwargs}
+        reveal_type(e)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+        return "foo"
+    return inner
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecArgsAndKwargsMissmatch]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P1 = ParamSpec("P1")
+
+def func(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(
+        *args: P1.kwargs,   # E: Use "P1.args" for variadic "*" parameter
+        **kwargs: P1.args,  # E: Use "P1.kwargs" for variadic "**" parameter
+    ) -> str:
+        return "foo"
+    return inner
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecTestPropAccess]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P1 = ParamSpec("P1")
+
+def func1(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(
+        *args: P1.typo,  # E: Use "P1.args" for variadic "*" parameter \
+                         # E: Name "P1.typo" is not defined
+        **kwargs: P1.kwargs,
+    ) -> str:
+        return "foo"
+    return inner
+
+def func2(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(
+        *args: P1.args,
+        **kwargs: P1.__bound__,  # E: Use "P1.kwargs" for variadic "**" parameter \
+                                 # E: Name "P1.__bound__" is not defined
+    ) -> str:
+        return "foo"
+    return inner
+
+def func3(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(
+        *args: P1.__bound__,   # E: Use "P1.args" for variadic "*" parameter \
+                               # E: Name "P1.__bound__" is not defined
+        **kwargs: P1.invalid,  # E: Use "P1.kwargs" for variadic "**" parameter \
+                               # E: Name "P1.invalid" is not defined
+    ) -> str:
+        return "foo"
+    return inner
+[builtins fixtures/paramspec.pyi]

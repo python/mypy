@@ -1,5 +1,7 @@
 """Miscellaneous primitive ops."""
 
+from __future__ import annotations
+
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
@@ -30,6 +32,11 @@ ellipsis_op = load_address_op(name="...", type=object_rprimitive, src="_Py_Ellip
 # Get the boxed NotImplemented object
 not_implemented_op = load_address_op(
     name="builtins.NotImplemented", type=object_rprimitive, src="_Py_NotImplementedStruct"
+)
+
+# Get the boxed StopAsyncIteration object
+stop_async_iteration_op = load_address_op(
+    name="builtins.StopAsyncIteration", type=object_rprimitive, src="PyExc_StopAsyncIteration"
 )
 
 # id(obj)
