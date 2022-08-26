@@ -3546,3 +3546,34 @@ S = TypeVar("S")
 def test(arg: P[S]) -> S: ...
 b: Type[B]
 reveal_type(test(b))  # N: Revealed type is "__main__.B"
+
+[case testTypeAliasInProtocolBody]
+from typing import Protocol, List
+
+class P(Protocol):
+    x = List[str]  # E: Type aliases are prohibited in protocol bodies \
+                   # N: Use variable annotation syntax to define protocol members
+
+class C:
+    x: int
+def foo(x: P) -> None: ...
+foo(C())  # No extra error here
+[builtins fixtures/list.pyi]
+
+[case testTypeVarInProtocolBody]
+from typing import Protocol, TypeVar
+
+class C(Protocol):
+    T = TypeVar('T')
+    def __call__(self, t: T) -> T: ...
+
+def f_bad(t: int) -> int:
+    return t
+
+S = TypeVar("S")
+def f_good(t: S) -> S:
+    return t
+
+g: C = f_bad  # E: Incompatible types in assignment (expression has type "Callable[[int], int]", variable has type "C") \
+              # N: "C.__call__" has type "Callable[[Arg(T, 't')], T]"
+g = f_good  # OK

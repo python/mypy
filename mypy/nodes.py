@@ -2906,7 +2906,10 @@ class TypeInfo(SymbolNode):
         assert self.mro, "This property can be only accessed after MRO is (re-)calculated"
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
-                for name in base.names:
+                for name, node in base.names.items():
+                    if isinstance(node.node, (TypeAlias, TypeVarExpr)):
+                        # These are auxiliary definitions (and type aliases are prohibited).
+                        continue
                     members.add(name)
         return sorted(list(members))
 

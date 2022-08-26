@@ -3269,6 +3269,12 @@ class SemanticAnalyzer(
         current_node = existing.node if existing else alias_node
         assert isinstance(current_node, TypeAlias)
         self.disable_invalid_recursive_aliases(s, current_node)
+        if self.is_class_scope():
+            assert self.type is not None
+            if self.type.is_protocol:
+                self.fail("Type aliases are prohibited in protocol bodies", s)
+                if not lvalue.name[0].isupper():
+                    self.note("Use variable annotation syntax to define protocol members", s)
         return True
 
     def disable_invalid_recursive_aliases(
