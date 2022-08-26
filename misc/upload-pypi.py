@@ -32,12 +32,14 @@ def is_whl_or_tar(name: str) -> bool:
 def get_release_for_tag(tag: str) -> dict[str, Any]:
     with urlopen(f"{BASE}/{REPO}/releases/tags/{tag}") as f:
         data = json.load(f)
+    assert isinstance(data, dict)
     assert data["tag_name"] == tag
     return data
 
 
 def download_asset(asset: dict[str, Any], dst: Path) -> Path:
     name = asset["name"]
+    assert isinstance(name, str)
     download_url = asset["browser_download_url"]
     assert is_whl_or_tar(name)
     with urlopen(download_url) as src_file:

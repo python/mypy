@@ -869,7 +869,7 @@ class CallableArgument(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_callable_argument(self)
+        return cast(T, visitor.visit_callable_argument(self))
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -894,7 +894,7 @@ class TypeList(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_type_list(self)
+        return cast(T, visitor.visit_type_list(self))
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2365,7 +2365,7 @@ class RawExpressionType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_raw_expression_type(self)
+        return cast(T, visitor.visit_raw_expression_type(self))
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2488,7 +2488,7 @@ class StarType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_star_type(self)
+        return cast(T, visitor.visit_star_type(self))
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2630,7 +2630,7 @@ class EllipsisType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_ellipsis_type(self)
+        return cast(T, visitor.visit_ellipsis_type(self))
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2739,7 +2739,7 @@ class PlaceholderType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_placeholder_type(self)
+        return cast(T, visitor.visit_placeholder_type(self))
 
     def serialize(self) -> str:
         # We should never get here since all placeholders should be replaced
