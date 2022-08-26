@@ -368,7 +368,7 @@ class DataclassTransformer:
 
             if isinstance(node, TypeAlias):
                 ctx.api.fail(
-                    ("Type aliases inside dataclass definitions " "are not supported at runtime"),
+                    ("Type aliases inside dataclass definitions are not supported at runtime"),
                     node,
                 )
                 # Skip processing this node. This doesn't match the runtime behaviour,
@@ -426,6 +426,23 @@ class DataclassTransformer:
                 is_kw_only = bool(ctx.api.parse_bool(field_kw_only_param))
 
             known_attrs.add(lhs.name)
+
+            if sym.type is None and node.is_final and node.is_inferred:
+                # This is a special case, assignment like x: Final = 42 is classified
+                # annotated above, but mypy strips the `Final` turning it into x = 42.
+                # We do not support inferred types in dataclasses, so we can try inferring
+                # type for simple literals, and otherwise require an explicit type
+                # argument for Final[...].
+                typ = ctx.api.analyze_simple_literal_type(stmt.rvalue, is_final=True)
+                if typ:
+                    node.type = typ
+                else:
+                    ctx.api.fail(
+                        "Need type argument for Final[...] with non-literal default in dataclass",
+                        stmt,
+                    )
+                    node.type = AnyType(TypeOfAny.from_error)
+
             attrs.append(
                 DataclassAttribute(
                     name=lhs.name,
