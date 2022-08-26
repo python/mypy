@@ -4,7 +4,11 @@ import unittest
 
 from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.rtypes import (
-    RArray, int_rprimitive, bool_rprimitive, compute_rtype_alignment, compute_rtype_size
+    RArray,
+    bool_rprimitive,
+    compute_rtype_alignment,
+    compute_rtype_size,
+    int_rprimitive,
 )
 
 
@@ -16,8 +20,8 @@ class TestRArray(unittest.TestCase):
 
     def test_str_conversion(self) -> None:
         a = RArray(int_rprimitive, 10)
-        assert str(a) == 'int[10]'
-        assert repr(a) == '<RArray <RPrimitive builtins.int>[10]>'
+        assert str(a) == "int[10]"
+        assert repr(a) == "<RArray <RPrimitive builtins.int>[10]>"
 
     def test_eq(self) -> None:
         a = RArray(int_rprimitive, 10)

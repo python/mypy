@@ -9,7 +9,7 @@ code.
 
 from typing import Set
 
-from mypyc.ir.ops import BasicBlock, Goto, Branch
+from mypyc.ir.ops import BasicBlock, Branch, Goto
 
 
 def frequently_executed_blocks(entry_point: BasicBlock) -> Set[BasicBlock]:

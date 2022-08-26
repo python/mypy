@@ -6,37 +6,76 @@ and mypyc.irbuild.builder.
 A few statements are transformed in mypyc.irbuild.function (yield, for example).
 """
 
-from typing import Optional, List, Tuple, Sequence, Callable
 import importlib.util
+from typing import Callable, List, Optional, Sequence, Tuple
 
 from mypy.nodes import (
-    Block, ExpressionStmt, ReturnStmt, AssignmentStmt, OperatorAssignmentStmt, IfStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, RaiseStmt, TryStmt, WithStmt, AssertStmt, DelStmt,
-    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr, ListExpr,
-    StarExpr
+    AssertStmt,
+    AssignmentStmt,
+    Block,
+    BreakStmt,
+    ContinueStmt,
+    DelStmt,
+    Expression,
+    ExpressionStmt,
+    ForStmt,
+    IfStmt,
+    Import,
+    ImportAll,
+    ImportFrom,
+    ListExpr,
+    Lvalue,
+    OperatorAssignmentStmt,
+    RaiseStmt,
+    ReturnStmt,
+    StarExpr,
+    StrExpr,
+    TempNode,
+    TryStmt,
+    TupleExpr,
+    WhileStmt,
+    WithStmt,
 )
-
 from mypyc.ir.ops import (
-    Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
-    Branch, NO_TRACEBACK_LINE_NO
+    NO_TRACEBACK_LINE_NO,
+    Assign,
+    BasicBlock,
+    Branch,
+    LoadErrorValue,
+    RaiseStandardError,
+    Register,
+    TupleGet,
+    Unreachable,
+    Value,
 )
 from mypyc.ir.rtypes import RInstance, exc_rtuple, is_tagged
-from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import type_op, import_from_op
-from mypyc.primitives.exc_ops import (
-    raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
-    get_exc_value_op, keep_propagating_op, get_exc_info_op
+from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
+from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.for_helpers import for_loop_helper
+from mypyc.irbuild.nonlocalcontrol import (
+    ExceptNonlocalControl,
+    FinallyNonlocalControl,
+    TryFinallyNonlocalControl,
 )
 from mypyc.irbuild.targets import (
-    AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex, AssignmentTargetAttr,
-    AssignmentTargetTuple
+    AssignmentTarget,
+    AssignmentTargetAttr,
+    AssignmentTargetIndex,
+    AssignmentTargetRegister,
+    AssignmentTargetTuple,
 )
-from mypyc.irbuild.nonlocalcontrol import (
-    ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
+from mypyc.primitives.exc_ops import (
+    error_catch_op,
+    exc_matches_op,
+    get_exc_info_op,
+    get_exc_value_op,
+    keep_propagating_op,
+    raise_exception_op,
+    reraise_exception_op,
+    restore_exc_info_op,
 )
-from mypyc.irbuild.for_helpers import for_loop_helper
-from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
-from mypyc.irbuild.ast_helpers import process_conditional, is_borrow_friendly_expr
+from mypyc.primitives.generic_ops import py_delattr_op
+from mypyc.primitives.misc_ops import import_from_op, type_op
 
 GenFunc = Callable[[], None]
 
@@ -49,9 +88,11 @@ def transform_block(builder: IRBuilder, block: Block) -> None:
     # Don't complain about empty unreachable blocks, since mypy inserts
     # those after `if MYPY`.
     elif block.body:
-        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
-                                       'Reached allegedly unreachable code!',
-                                       block.line))
+        builder.add(
+            RaiseStandardError(
+                RaiseStandardError.RUNTIME_ERROR, "Reached allegedly unreachable code!", block.line
+            )
+        )
         builder.add(Unreachable())
 
 
@@ -87,11 +128,13 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         return
 
     # Special case multiple assignments like 'x, y = e1, e2'.
-    if (isinstance(first_lvalue, (TupleExpr, ListExpr))
-            and isinstance(stmt.rvalue, (TupleExpr, ListExpr))
-            and len(first_lvalue.items) == len(stmt.rvalue.items)
-            and all(is_simple_lvalue(item) for item in first_lvalue.items)
-            and len(lvalues) == 1):
+    if (
+        isinstance(first_lvalue, (TupleExpr, ListExpr))
+        and isinstance(stmt.rvalue, (TupleExpr, ListExpr))
+        and len(first_lvalue.items) == len(stmt.rvalue.items)
+        and all(is_simple_lvalue(item) for item in first_lvalue.items)
+        and len(lvalues) == 1
+    ):
         temps = []
         for right in stmt.rvalue.items:
             rvalue_reg = builder.accept(right)
@@ -121,18 +164,21 @@ def is_simple_lvalue(expr: Expression) -> bool:
 def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignmentStmt) -> None:
     """Operator assignment statement such as x += 1"""
     builder.disallow_class_assignments([stmt.lvalue], stmt.line)
-    if (is_tagged(builder.node_type(stmt.lvalue))
-            and is_tagged(builder.node_type(stmt.rvalue))
-            and stmt.op in int_borrow_friendly_op):
-        can_borrow = (is_borrow_friendly_expr(builder, stmt.rvalue)
-                      and is_borrow_friendly_expr(builder, stmt.lvalue))
+    if (
+        is_tagged(builder.node_type(stmt.lvalue))
+        and is_tagged(builder.node_type(stmt.rvalue))
+        and stmt.op in int_borrow_friendly_op
+    ):
+        can_borrow = is_borrow_friendly_expr(builder, stmt.rvalue) and is_borrow_friendly_expr(
+            builder, stmt.lvalue
+        )
     else:
         can_borrow = False
     target = builder.get_assignment_target(stmt.lvalue)
     target_value = builder.read(target, stmt.line, can_borrow=can_borrow)
     rreg = builder.accept(stmt.rvalue, can_borrow=can_borrow)
     # the Python parser strips the '=' from operator assignment statements, so re-add it
-    op = stmt.op + '='
+    op = stmt.op + "="
     res = builder.binary_op(target_value, rreg, op, stmt.line)
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
@@ -162,13 +208,13 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
             name = as_name
             base = node_id
         else:
-            base = name = node_id.split('.')[0]
+            base = name = node_id.split(".")[0]
 
         obj = builder.get_module(base, node.line)
 
         builder.gen_method_call(
-            globals, '__setitem__', [builder.load_str(name), obj],
-            result_type=None, line=node.line)
+            globals, "__setitem__", [builder.load_str(name), obj], result_type=None, line=node.line
+        )
 
 
 def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
@@ -181,9 +227,9 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     elif builder.module_path.endswith("__init__.py"):
         module_package = builder.module_name
     else:
-        module_package = ''
+        module_package = ""
 
-    id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
+    id = importlib.util.resolve_name("." * node.relative + node.id, module_package)
 
     globals = builder.load_globals_dict()
     imported_names = [name for name, _ in node.names]
@@ -195,13 +241,18 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     # This probably doesn't matter much and the code runs basically right.
     for name, maybe_as_name in node.names:
         as_name = maybe_as_name or name
-        obj = builder.call_c(import_from_op,
-                             [module, builder.load_str(id),
-                              builder.load_str(name), builder.load_str(as_name)],
-                             node.line)
+        obj = builder.call_c(
+            import_from_op,
+            [module, builder.load_str(id), builder.load_str(name), builder.load_str(as_name)],
+            node.line,
+        )
         builder.gen_method_call(
-            globals, '__setitem__', [builder.load_str(as_name), obj],
-            result_type=None, line=node.line)
+            globals,
+            "__setitem__",
+            [builder.load_str(as_name), obj],
+            result_type=None,
+            line=node.line,
+        )
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:
@@ -255,7 +306,7 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
 def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
     if s.is_async:
-        builder.error('async for is unimplemented', s.line)
+        builder.error("async for is unimplemented", s.line)
 
     def body() -> None:
         builder.accept(s.body)
@@ -264,8 +315,7 @@ def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
         assert s.else_body is not None
         builder.accept(s.else_body)
 
-    for_loop_helper(builder, s.index, s.expr, body,
-                    else_block if s.else_body else None, s.line)
+    for_loop_helper(builder, s.index, s.expr, body, else_block if s.else_body else None, s.line)
 
 
 def transform_break_stmt(builder: IRBuilder, node: BreakStmt) -> None:
@@ -287,12 +337,13 @@ def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
     builder.add(Unreachable())
 
 
-def transform_try_except(builder: IRBuilder,
-                         body: GenFunc,
-                         handlers: Sequence[
-                             Tuple[Optional[Expression], Optional[Expression], GenFunc]],
-                         else_body: Optional[GenFunc],
-                         line: int) -> None:
+def transform_try_except(
+    builder: IRBuilder,
+    body: GenFunc,
+    handlers: Sequence[Tuple[Optional[Expression], Optional[Expression], GenFunc]],
+    else_body: Optional[GenFunc],
+    line: int,
+) -> None:
     """Generalized try/except/else handling that takes functions to gen the bodies.
 
     The point of this is to also be able to support with."""
@@ -320,26 +371,19 @@ def transform_try_except(builder: IRBuilder,
     builder.activate_block(except_entry)
     old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
     # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
-    builder.nonlocal_control.append(
-        ExceptNonlocalControl(builder.nonlocal_control[-1], old_exc))
+    builder.nonlocal_control.append(ExceptNonlocalControl(builder.nonlocal_control[-1], old_exc))
 
     # Process the bodies
     for type, var, handler_body in handlers:
         next_block = None
         if type:
             next_block, body_block = BasicBlock(), BasicBlock()
-            matches = builder.call_c(
-                exc_matches_op, [builder.accept(type)], type.line
-            )
+            matches = builder.call_c(exc_matches_op, [builder.accept(type)], type.line)
             builder.add(Branch(matches, body_block, next_block, Branch.BOOL))
             builder.activate_block(body_block)
         if var:
             target = builder.get_assignment_target(var)
-            builder.assign(
-                target,
-                builder.call_c(get_exc_value_op, [], var.line),
-                var.line
-            )
+            builder.assign(target, builder.call_c(get_exc_value_op, [], var.line), var.line)
         handler_body()
         builder.goto(cleanup_block)
         if next_block:
@@ -385,17 +429,20 @@ def transform_try_except_stmt(builder: IRBuilder, t: TryStmt) -> None:
     def make_handler(body: Block) -> GenFunc:
         return lambda: builder.accept(body)
 
-    handlers = [(type, var, make_handler(body))
-                for type, var, body in zip(t.types, t.vars, t.handlers)]
+    handlers = [
+        (type, var, make_handler(body)) for type, var, body in zip(t.types, t.vars, t.handlers)
+    ]
     else_body = (lambda: builder.accept(t.else_body)) if t.else_body else None
     transform_try_except(builder, body, handlers, else_body, t.line)
 
 
-def try_finally_try(builder: IRBuilder,
-                    err_handler: BasicBlock,
-                    return_entry: BasicBlock,
-                    main_entry: BasicBlock,
-                    try_body: GenFunc) -> Optional[Register]:
+def try_finally_try(
+    builder: IRBuilder,
+    err_handler: BasicBlock,
+    return_entry: BasicBlock,
+    main_entry: BasicBlock,
+    try_body: GenFunc,
+) -> Optional[Register]:
     # Compile the try block with an error handler
     control = TryFinallyNonlocalControl(return_entry)
     builder.builder.push_error_handler(err_handler)
@@ -410,23 +457,20 @@ def try_finally_try(builder: IRBuilder,
     return control.ret_reg
 
 
-def try_finally_entry_blocks(builder: IRBuilder,
-                             err_handler: BasicBlock,
-                             return_entry: BasicBlock,
-                             main_entry: BasicBlock,
-                             finally_block: BasicBlock,
-                             ret_reg: Optional[Register]) -> Value:
+def try_finally_entry_blocks(
+    builder: IRBuilder,
+    err_handler: BasicBlock,
+    return_entry: BasicBlock,
+    main_entry: BasicBlock,
+    finally_block: BasicBlock,
+    ret_reg: Optional[Register],
+) -> Value:
     old_exc = Register(exc_rtuple)
 
     # Entry block for non-exceptional flow
     builder.activate_block(main_entry)
     if ret_reg:
-        builder.add(
-            Assign(
-                ret_reg,
-                builder.add(LoadErrorValue(builder.ret_types[-1]))
-            )
-        )
+        builder.add(Assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1]))))
     builder.goto(return_entry)
 
     builder.activate_block(return_entry)
@@ -436,12 +480,7 @@ def try_finally_entry_blocks(builder: IRBuilder,
     # Entry block for errors
     builder.activate_block(err_handler)
     if ret_reg:
-        builder.add(
-            Assign(
-                ret_reg,
-                builder.add(LoadErrorValue(builder.ret_types[-1]))
-            )
-        )
+        builder.add(Assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1]))))
     builder.add(Assign(old_exc, builder.call_c(error_catch_op, [], -1)))
     builder.goto(finally_block)
 
@@ -449,16 +488,16 @@ def try_finally_entry_blocks(builder: IRBuilder,
 
 
 def try_finally_body(
-        builder: IRBuilder,
-        finally_block: BasicBlock,
-        finally_body: GenFunc,
-        ret_reg: Optional[Value],
-        old_exc: Value) -> Tuple[BasicBlock, FinallyNonlocalControl]:
+    builder: IRBuilder,
+    finally_block: BasicBlock,
+    finally_body: GenFunc,
+    ret_reg: Optional[Value],
+    old_exc: Value,
+) -> Tuple[BasicBlock, FinallyNonlocalControl]:
     cleanup_block = BasicBlock()
     # Compile the finally block with the nonlocal control flow overridden to restore exc_info
     builder.builder.push_error_handler(cleanup_block)
-    finally_control = FinallyNonlocalControl(
-        builder.nonlocal_control[-1], ret_reg, old_exc)
+    finally_control = FinallyNonlocalControl(builder.nonlocal_control[-1], ret_reg, old_exc)
     builder.nonlocal_control.append(finally_control)
     builder.activate_block(finally_block)
     finally_body()
@@ -467,11 +506,13 @@ def try_finally_body(
     return cleanup_block, finally_control
 
 
-def try_finally_resolve_control(builder: IRBuilder,
-                                cleanup_block: BasicBlock,
-                                finally_control: FinallyNonlocalControl,
-                                old_exc: Value,
-                                ret_reg: Optional[Value]) -> BasicBlock:
+def try_finally_resolve_control(
+    builder: IRBuilder,
+    cleanup_block: BasicBlock,
+    finally_control: FinallyNonlocalControl,
+    old_exc: Value,
+    ret_reg: Optional[Value],
+) -> BasicBlock:
     """Resolve the control flow out of a finally block.
 
     This means returning if there was a return, propagating
@@ -509,9 +550,9 @@ def try_finally_resolve_control(builder: IRBuilder,
     return out_block
 
 
-def transform_try_finally_stmt(builder: IRBuilder,
-                               try_body: GenFunc,
-                               finally_body: GenFunc) -> None:
+def transform_try_finally_stmt(
+    builder: IRBuilder, try_body: GenFunc, finally_body: GenFunc
+) -> None:
     """Generalized try/finally handling that takes functions to gen the bodies.
 
     The point of this is to also be able to support with."""
@@ -519,23 +560,29 @@ def transform_try_finally_stmt(builder: IRBuilder,
     # exits can occur. We emit 10+ basic blocks for every finally!
 
     err_handler, main_entry, return_entry, finally_block = (
-        BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock())
+        BasicBlock(),
+        BasicBlock(),
+        BasicBlock(),
+        BasicBlock(),
+    )
 
     # Compile the body of the try
-    ret_reg = try_finally_try(
-        builder, err_handler, return_entry, main_entry, try_body)
+    ret_reg = try_finally_try(builder, err_handler, return_entry, main_entry, try_body)
 
     # Set up the entry blocks for the finally statement
     old_exc = try_finally_entry_blocks(
-        builder, err_handler, return_entry, main_entry, finally_block, ret_reg)
+        builder, err_handler, return_entry, main_entry, finally_block, ret_reg
+    )
 
     # Compile the body of the finally
     cleanup_block, finally_control = try_finally_body(
-        builder, finally_block, finally_body, ret_reg, old_exc)
+        builder, finally_block, finally_body, ret_reg, old_exc
+    )
 
     # Resolve the control flow out of the finally block
     out_block = try_finally_resolve_control(
-        builder, cleanup_block, finally_control, old_exc, ret_reg)
+        builder, cleanup_block, finally_control, old_exc, ret_reg
+    )
 
     builder.activate_block(out_block)
 
@@ -547,11 +594,13 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
     # try/except/else/finally, we treat the try/except/else as the
     # body of a try/finally block.
     if t.finally_body:
+
         def transform_try_body() -> None:
             if t.handlers:
                 transform_try_except_stmt(builder, t)
             else:
                 builder.accept(t.body)
+
         body = t.finally_body
 
         transform_try_finally_stmt(builder, transform_try_body, lambda: builder.accept(body))
@@ -564,21 +613,17 @@ def get_sys_exc_info(builder: IRBuilder) -> List[Value]:
     return [builder.add(TupleGet(exc_info, i, -1)) for i in range(3)]
 
 
-def transform_with(builder: IRBuilder,
-                   expr: Expression,
-                   target: Optional[Lvalue],
-                   body: GenFunc,
-                   line: int) -> None:
+def transform_with(
+    builder: IRBuilder, expr: Expression, target: Optional[Lvalue], body: GenFunc, line: int
+) -> None:
     # This is basically a straight transcription of the Python code in PEP 343.
     # I don't actually understand why a bunch of it is the way it is.
     # We could probably optimize the case where the manager is compiled by us,
     # but that is not our common case at all, so.
     mgr_v = builder.accept(expr)
     typ = builder.call_c(type_op, [mgr_v], line)
-    exit_ = builder.maybe_spill(builder.py_get_attr(typ, '__exit__', line))
-    value = builder.py_call(
-        builder.py_get_attr(typ, '__enter__', line), [mgr_v], line
-    )
+    exit_ = builder.maybe_spill(builder.py_get_attr(typ, "__exit__", line))
+    value = builder.py_call(builder.py_get_attr(typ, "__enter__", line), [mgr_v], line)
     mgr = builder.maybe_spill(mgr_v)
     exc = builder.maybe_spill_assignable(builder.true())
 
@@ -591,10 +636,11 @@ def transform_with(builder: IRBuilder,
         builder.assign(exc, builder.false(), line)
         out_block, reraise_block = BasicBlock(), BasicBlock()
         builder.add_bool_branch(
-            builder.py_call(builder.read(exit_),
-                            [builder.read(mgr)] + get_sys_exc_info(builder), line),
+            builder.py_call(
+                builder.read(exit_), [builder.read(mgr)] + get_sys_exc_info(builder), line
+            ),
             out_block,
-            reraise_block
+            reraise_block,
         )
         builder.activate_block(reraise_block)
         builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
@@ -603,30 +649,22 @@ def transform_with(builder: IRBuilder,
 
     def finally_body() -> None:
         out_block, exit_block = BasicBlock(), BasicBlock()
-        builder.add(
-            Branch(builder.read(exc), exit_block, out_block, Branch.BOOL)
-        )
+        builder.add(Branch(builder.read(exc), exit_block, out_block, Branch.BOOL))
         builder.activate_block(exit_block)
         none = builder.none_object()
-        builder.py_call(
-            builder.read(exit_), [builder.read(mgr), none, none, none], line
-        )
+        builder.py_call(builder.read(exit_), [builder.read(mgr), none, none, none], line)
         builder.goto_and_activate(out_block)
 
     transform_try_finally_stmt(
         builder,
-        lambda: transform_try_except(builder,
-                                     try_body,
-                                     [(None, None, except_body)],
-                                     None,
-                                     line),
-        finally_body
+        lambda: transform_try_except(builder, try_body, [(None, None, except_body)], None, line),
+        finally_body,
     )
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
     if o.is_async:
-        builder.error('async with is unimplemented', o.line)
+        builder.error("async with is unimplemented", o.line)
 
     # Generate separate logic for each expr in it, left to right
     def generate(i: int) -> None:
@@ -650,12 +688,11 @@ def transform_assert_stmt(builder: IRBuilder, a: AssertStmt) -> None:
         builder.add(RaiseStandardError(RaiseStandardError.ASSERTION_ERROR, None, a.line))
     elif isinstance(a.msg, StrExpr):
         # Another special case
-        builder.add(RaiseStandardError(RaiseStandardError.ASSERTION_ERROR, a.msg.value,
-                                       a.line))
+        builder.add(RaiseStandardError(RaiseStandardError.ASSERTION_ERROR, a.msg.value, a.line))
     else:
         # The general case -- explicitly construct an exception instance
         message = builder.accept(a.msg)
-        exc_type = builder.load_module_attr_by_fullname('builtins.AssertionError', a.line)
+        exc_type = builder.load_module_attr_by_fullname("builtins.AssertionError", a.line)
         exc = builder.py_call(exc_type, [message], a.line)
         builder.call_c(raise_exception_op, [exc], a.line)
     builder.add(Unreachable())
@@ -669,11 +706,7 @@ def transform_del_stmt(builder: IRBuilder, o: DelStmt) -> None:
 def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) -> None:
     if isinstance(target, AssignmentTargetIndex):
         builder.gen_method_call(
-            target.base,
-            '__delitem__',
-            [target.index],
-            result_type=None,
-            line=line
+            target.base, "__delitem__", [target.index], result_type=None, line=line
         )
     elif isinstance(target, AssignmentTargetAttr):
         if isinstance(target.obj_type, RInstance):
@@ -681,15 +714,18 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
             if not cl.is_deletable(target.attr):
                 builder.error(f'"{target.attr}" cannot be deleted', line)
                 builder.note(
-                    'Using "__deletable__ = ' +
-                    '[\'<attr>\']" in the class body enables "del obj.<attr>"', line)
+                    'Using "__deletable__ = '
+                    + '[\'<attr>\']" in the class body enables "del obj.<attr>"',
+                    line,
+                )
         key = builder.load_str(target.attr)
         builder.call_c(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.
-        builder.add(Assign(target.register,
-                           builder.add(LoadErrorValue(target.type, undefines=True))))
+        builder.add(
+            Assign(target.register, builder.add(LoadErrorValue(target.type, undefines=True)))
+        )
     elif isinstance(target, AssignmentTargetTuple):
         for subtarget in target.items:
             transform_del_item(builder, subtarget, line)
