@@ -143,7 +143,6 @@ def check_follow_imports(choice: str) -> str:
 # types.
 ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "python_version": parse_version,
-    "strict_optional_whitelist": lambda s: s.split(),
     "custom_typing_module": str,
     "custom_typeshed_dir": expand_path,
     "mypy_path": lambda s: [expand_path(p.strip()) for p in re.split("[,:]", s)],
@@ -172,7 +171,6 @@ toml_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.cop
 toml_config_types.update(
     {
         "python_version": parse_version,
-        "strict_optional_whitelist": try_split,
         "mypy_path": lambda s: [expand_path(p) for p in try_split(s, "[,:]")],
         "files": lambda s: split_and_match_files_list(try_split(s)),
         "follow_imports": lambda s: check_follow_imports(str(s)),

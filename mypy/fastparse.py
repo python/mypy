@@ -305,6 +305,7 @@ def parse(
     if raise_on_error and errors.is_errors():
         errors.raise_error()
 
+    assert isinstance(tree, MypyFile)
     return tree
 
 
@@ -1632,7 +1633,9 @@ class ASTConverter:
     # Index(expr value)
     def visit_Index(self, n: Index) -> Node:
         # cast for mypyc's benefit on Python 3.9
-        return self.visit(cast(Any, n).value)
+        value = self.visit(cast(Any, n).value)
+        assert isinstance(value, Node)
+        return value
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
     def visit_Match(self, n: Match) -> MatchStmt:
@@ -1762,7 +1765,9 @@ class TypeConverter:
             method = "visit_" + node.__class__.__name__
             visitor = getattr(self, method, None)
             if visitor is not None:
-                return visitor(node)
+                typ = visitor(node)
+                assert isinstance(typ, ProperType)
+                return typ
             else:
                 return self.invalid_type(node)
         finally:
@@ -1949,7 +1954,9 @@ class TypeConverter:
 
     def visit_Index(self, n: ast3.Index) -> Type:
         # cast for mypyc's benefit on Python 3.9
-        return self.visit(cast(Any, n).value)
+        value = self.visit(cast(Any, n).value)
+        assert isinstance(value, Type)
+        return value
 
     def visit_Slice(self, n: ast3.Slice) -> Type:
         return self.invalid_type(n, note="did you mean to use ',' instead of ':' ?")

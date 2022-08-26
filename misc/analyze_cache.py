@@ -89,7 +89,7 @@ def compress(chunk: JsonDict) -> JsonDict:
     cache: dict[int, JsonDict] = {}
     counter = 0
 
-    def helper(chunk: Any) -> Any:
+    def helper(chunk: JsonDict) -> JsonDict:
         nonlocal counter
         if not isinstance(chunk, dict):
             return chunk
@@ -121,7 +121,7 @@ def compress(chunk: JsonDict) -> JsonDict:
 def decompress(chunk: JsonDict) -> JsonDict:
     cache: dict[int, JsonDict] = {}
 
-    def helper(chunk: Any) -> Any:
+    def helper(chunk: JsonDict) -> JsonDict:
         if not isinstance(chunk, dict):
             return chunk
         if ".id" in chunk:

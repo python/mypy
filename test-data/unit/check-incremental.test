@@ -6013,6 +6013,16 @@ foo(name='Jennifer', age="38")
 [out2]
 tmp/m.py:2: error: Argument "age" to "foo" has incompatible type "str"; expected "int"
 
+[case testDisableEnableErrorCodesIncremental]
+# flags: --disable-error-code truthy-bool
+# flags2: --enable-error-code truthy-bool
+def foo() -> int: ...
+if foo:
+    ...
+[out]
+[out2]
+main:4: error: Function "Callable[[], int]" could always be true in boolean context
+
 [case testModuleAsProtocolImplementationSerialize]
 import m
 [file m.py]

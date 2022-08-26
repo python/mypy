@@ -43,6 +43,8 @@ IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_inf
 
 # Maximum value for a short tagged integer.
 MAX_SHORT_INT: Final = sys.maxsize >> 1
+# Minimum value for a short tagged integer.
+MIN_SHORT_INT: Final = -(sys.maxsize >> 1) - 1
 
 # Maximum value for a short tagged integer represented as a C integer literal.
 #

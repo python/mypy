@@ -1123,6 +1123,7 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
         return None
 
     module_deps_metas = deps_meta["deps_meta"]
+    assert isinstance(module_deps_metas, dict)
     if not manager.options.skip_cache_mtime_checks:
         for id, meta in module_deps_metas.items():
             try:
@@ -1167,6 +1168,7 @@ def _load_json_file(
         )
         return None
     else:
+        assert isinstance(result, dict)
         return result
 
 

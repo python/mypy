@@ -574,14 +574,6 @@ Suppressing errors
 Note: these configuration options are available in the config file only. There is
 no analog available via the command line options.
 
-.. confval:: show_none_errors
-
-    :type: boolean
-    :default: True
-
-    Shows errors related to strict ``None`` checking, if the global :confval:`strict_optional`
-    flag is enabled.
-
 .. confval:: ignore_errors
 
     :type: boolean
