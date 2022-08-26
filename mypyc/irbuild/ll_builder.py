@@ -19,8 +19,8 @@ from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES,
-    MAX_SHORT_INT,
     MAX_LITERAL_SHORT_INT,
+    MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
     MIN_SHORT_INT,
     PLATFORM_SIZE,
@@ -44,6 +44,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    Extend,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -65,6 +66,7 @@ from mypyc.ir.ops import (
     Unbox,
     Unreachable,
     Value,
+    int_op_to_id,
 )
 from mypyc.ir.rtypes import (
     PyListObject,
@@ -73,6 +75,7 @@ from mypyc.ir.rtypes import (
     PyVarObject,
     RArray,
     RInstance,
+    RPrimitive,
     RTuple,
     RType,
     RUnion,
@@ -80,6 +83,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     bytes_rprimitive,
     c_int_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     dict_rprimitive,
@@ -89,6 +93,10 @@ from mypyc.ir.rtypes import (
     is_bool_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
+    is_fixed_width_rtype,
+    is_int32_rprimitive,
+    is_int64_rprimitive,
+    is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
     is_set_rprimitive,
@@ -126,7 +134,18 @@ from mypyc.primitives.generic_ops import (
     py_vectorcall_method_op,
     py_vectorcall_op,
 )
-from mypyc.primitives.int_ops import int_comparison_op_mapping
+from mypyc.primitives.int_ops import (
+    int32_divide_op,
+    int32_mod_op,
+    int32_overflow,
+    int64_divide_op,
+    int64_mod_op,
+    int64_to_int_op,
+    int_comparison_op_mapping,
+    int_to_int32_op,
+    int_to_int64_op,
+    ssize_t_to_int_op,
+)
 from mypyc.primitives.list_ops import list_build_op, list_extend_op, new_list_op
 from mypyc.primitives.misc_ops import bool_op, fast_isinstance_op, none_object_op
 from mypyc.primitives.registry import (
