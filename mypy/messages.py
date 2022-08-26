@@ -1822,7 +1822,7 @@ class MessageBuilder:
             return
 
         class_obj = False
-        is_module = isinstance(subtype, Instance) and "@module" in subtype.extra_attrs
+        is_module = False
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1846,6 +1846,8 @@ class MessageBuilder:
                 return
             class_obj = True
             subtype = ret_type
+        if subtype.extra_attrs and subtype.extra_attrs.mod_name:
+            is_module = True
 
         # Report missing members
         missing = get_missing_protocol_members(subtype, supertype)
@@ -2188,8 +2190,8 @@ def format_type_inner(
         if itype.type.fullname in ("types.ModuleType", "_importlib_modulespec.ModuleType"):
             # Make some common error messages simpler and tidier.
             base_str = "Module"
-            if "@module" in itype.extra_attrs and module_names:
-                return f"{base_str} {itype.extra_attrs['@module']}"
+            if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
+                return f"{base_str} {itype.extra_attrs.mod_name}"
             return base_str
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname

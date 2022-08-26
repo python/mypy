@@ -1190,6 +1190,25 @@ z4 = y4 # E: Incompatible types in assignment (expression has type "PP", variabl
         # N: Protocol member PPS.attr expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 
+[case testFinalAttributeProtocol]
+from typing import Protocol, Final
+
+class P(Protocol):
+    x: int
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class CF:
+    def __init__(self, x: int) -> None:
+        self.x: Final = x
+
+x: P
+y: P
+x = C(42)
+y = CF(42)  # E: Incompatible types in assignment (expression has type "CF", variable has type "P") \
+            # N: Protocol member P.x expected settable variable, got read-only attribute
+
 [case testStaticAndClassMethodsInProtocols]
 from typing import Protocol, Type, TypeVar
 
@@ -3684,4 +3703,35 @@ class Run:
     value: int
     def __init__(self, arg: str) -> None: ...
 run = Run
+[builtins fixtures/module.pyi]
+
+[case testModuleAsProtocolImplementationClassVar]
+from typing import ClassVar, Protocol
+import mod
+
+class My(Protocol):
+    x: ClassVar[int]
+
+def test(mod: My) -> None: ...
+test(mod=mod)  # E: Argument "mod" to "test" has incompatible type Module; expected "My" \
+               # N: Protocol member My.x expected class variable, got instance variable
+[file mod.py]
+x: int
+[builtins fixtures/module.pyi]
+
+[case testModuleAsProtocolImplementationFinal]
+from typing import Protocol
+import some_module
+
+class My(Protocol):
+   a: int
+
+def func(arg: My) -> None: ...
+func(some_module)  # E: Argument 1 to "func" has incompatible type Module; expected "My" \
+                   # N: Protocol member My.a expected settable variable, got read-only attribute
+
+[file some_module.py]
+from typing_extensions import Final
+
+a: Final = 1
 [builtins fixtures/module.pyi]

@@ -969,11 +969,9 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             triggers.extend(self.get_type_triggers(arg))
         if typ.last_known_value:
             triggers.extend(self.get_type_triggers(typ.last_known_value))
-        if "@module" in typ.extra_attrs:
-            mod_name = typ.extra_attrs["@module"]
-            assert isinstance(mod_name, str)
+        if typ.extra_attrs and typ.extra_attrs.mod_name:
             # Module as type effectively depends on all module attributes, use wildcard.
-            triggers.append(make_wildcard_trigger(mod_name))
+            triggers.append(make_wildcard_trigger(typ.extra_attrs.mod_name))
         return triggers
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> list[str]:

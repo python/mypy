@@ -127,6 +127,7 @@ from mypy.types import (
     CallableType,
     DeletedType,
     ErasedType,
+    ExtraAttrs,
     FunctionLike,
     Instance,
     LiteralType,
@@ -376,8 +377,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Fall back to a dummy 'object' type instead to
             # avoid a crash.
             result = self.named_type("builtins.object")
-        module_attrs: dict[str, Type | str] = {}
+        module_attrs = {}
+        immutable = set()
         for name, n in node.names.items():
+            if isinstance(n.node, Var) and n.node.is_final:
+                immutable.add(name)
             typ = self.chk.determine_type_of_member(n)
             if typ:
                 module_attrs[name] = typ
@@ -385,8 +389,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: what to do about nested module references?
                 # They are non-trivial because there may be import cycles.
                 module_attrs[name] = AnyType(TypeOfAny.special_form)
-        result.extra_attrs = module_attrs
-        result.extra_attrs["@module"] = node.fullname
+        result.extra_attrs = ExtraAttrs(module_attrs, immutable, node.fullname)
         return result
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:

@@ -1095,10 +1095,8 @@ def find_member(
             # PEP 544 doesn't specify anything about such use cases. So we just try
             # to do something meaningful (at least we should not crash).
             return TypeType(fill_typevars_with_any(v))
-    if name in itype.extra_attrs:
-        typ = itype.extra_attrs[name]
-        assert isinstance(typ, Type)
-        return typ
+    if itype.extra_attrs and name in itype.extra_attrs.attrs:
+        return itype.extra_attrs.attrs[name]
     return None
 
 
@@ -1131,13 +1129,18 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
     if not node:
         if setattr_meth:
             return {IS_SETTABLE}
-        if name in itype.extra_attrs:
-            return {IS_SETTABLE}
+        if itype.extra_attrs and name in itype.extra_attrs.attrs:
+            flags = set()
+            if name not in itype.extra_attrs.immutable:
+                flags.add(IS_SETTABLE)
+            return flags
         return set()
     v = node.node
     # just a variable
     if isinstance(v, Var) and not v.is_property:
-        flags = {IS_SETTABLE}
+        flags = set()
+        if not v.is_final:
+            flags.add(IS_SETTABLE)
         if v.is_classvar:
             flags.add(IS_CLASSVAR)
         if class_obj and v.is_inferred:
