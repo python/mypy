@@ -54,7 +54,7 @@ correctly. With mypy, add type hints ([PEP 484](https://www.python.org/dev/peps/
 to your Python programs, and mypy will warn you when you use those types
 incorrectly.
 
-Python is a dynamic language, so usually you'll only see errors in your code
+Python is a dynamic language, so usually, you'll only see errors in your code
 when you attempt to run it. Mypy is a *static* checker, so it finds bugs
 in your programs without even running them!
 
