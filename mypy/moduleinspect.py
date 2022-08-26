@@ -1,25 +1,27 @@
 """Basic introspection of modules."""
 
-from typing import List, Optional, Union
-from types import ModuleType
-from multiprocessing import Process, Queue
 import importlib
 import inspect
 import os
 import pkgutil
 import queue
 import sys
+from multiprocessing import Process, Queue
+from types import ModuleType
+from typing import List, Optional, Union
 
 
 class ModuleProperties:
     # Note that all __init__ args must have default values
-    def __init__(self,
-                 name: str = "",
-                 file: Optional[str] = None,
-                 path: Optional[List[str]] = None,
-                 all: Optional[List[str]] = None,
-                 is_c_module: bool = False,
-                 subpackages: Optional[List[str]] = None) -> None:
+    def __init__(
+        self,
+        name: str = "",
+        file: Optional[str] = None,
+        path: Optional[List[str]] = None,
+        all: Optional[List[str]] = None,
+        is_c_module: bool = False,
+        subpackages: Optional[List[str]] = None,
+    ) -> None:
         self.name = name  # __name__ attribute
         self.file = file  # __file__ attribute
         self.path = path  # __path__ attribute
@@ -29,11 +31,11 @@ class ModuleProperties:
 
 
 def is_c_module(module: ModuleType) -> bool:
-    if module.__dict__.get('__file__') is None:
+    if module.__dict__.get("__file__") is None:
         # Could be a namespace package. These must be handled through
         # introspection, since there is no source file.
         return True
-    return os.path.splitext(module.__dict__['__file__'])[-1] in ['.so', '.pyd']
+    return os.path.splitext(module.__dict__["__file__"])[-1] in [".so", ".pyd"]
 
 
 class InspectError(Exception):
@@ -51,7 +53,7 @@ def get_package_properties(package_id: str) -> ModuleProperties:
     path: Optional[List[str]] = getattr(package, "__path__", None)
     if not isinstance(path, list):
         path = None
-    pkg_all = getattr(package, '__all__', None)
+    pkg_all = getattr(package, "__all__", None)
     if pkg_all is not None:
         try:
             pkg_all = list(pkg_all)
@@ -65,28 +67,27 @@ def get_package_properties(package_id: str) -> ModuleProperties:
         if is_c:
             # This is a C extension module, now get the list of all sub-packages
             # using the inspect module
-            subpackages = [package.__name__ + "." + name
-                           for name, val in inspect.getmembers(package)
-                           if inspect.ismodule(val)
-                           and val.__name__ == package.__name__ + "." + name]
+            subpackages = [
+                package.__name__ + "." + name
+                for name, val in inspect.getmembers(package)
+                if inspect.ismodule(val) and val.__name__ == package.__name__ + "." + name
+            ]
         else:
             # It's a module inside a package.  There's nothing else to walk/yield.
             subpackages = []
     else:
-        all_packages = pkgutil.walk_packages(path, prefix=package.__name__ + ".",
-                                             onerror=lambda r: None)
+        all_packages = pkgutil.walk_packages(
+            path, prefix=package.__name__ + ".", onerror=lambda r: None
+        )
         subpackages = [qualified_name for importer, qualified_name, ispkg in all_packages]
-    return ModuleProperties(name=name,
-                            file=file,
-                            path=path,
-                            all=pkg_all,
-                            is_c_module=is_c,
-                            subpackages=subpackages)
+    return ModuleProperties(
+        name=name, file=file, path=path, all=pkg_all, is_c_module=is_c, subpackages=subpackages
+    )
 
 
-def worker(tasks: 'Queue[str]',
-           results: 'Queue[Union[str, ModuleProperties]]',
-           sys_path: List[str]) -> None:
+def worker(
+    tasks: "Queue[str]", results: "Queue[Union[str, ModuleProperties]]", sys_path: List[str]
+) -> None:
     """The main loop of a worker introspection process."""
     sys.path = sys_path
     while True:
@@ -139,7 +140,7 @@ class ModuleInspect:
         if res is None:
             # The process died; recover and report error.
             self._start()
-            raise InspectError(f'Process died when importing {package_id!r}')
+            raise InspectError(f"Process died when importing {package_id!r}")
         if isinstance(res, str):
             # Error importing module
             if self.counter > 0:
@@ -161,7 +162,7 @@ class ModuleInspect:
         n = 0
         while True:
             if n == max_iter:
-                raise RuntimeError('Timeout waiting for subprocess')
+                raise RuntimeError("Timeout waiting for subprocess")
             try:
                 return self.results.get(timeout=0.05)
             except queue.Empty:
@@ -169,7 +170,7 @@ class ModuleInspect:
                     return None
             n += 1
 
-    def __enter__(self) -> 'ModuleInspect':
+    def __enter__(self) -> "ModuleInspect":
         return self
 
     def __exit__(self, *args: object) -> None:

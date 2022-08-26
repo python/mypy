@@ -1,28 +1,64 @@
 """Utilities for calculating and reporting statistics about types."""
 
 import os
+import typing
 from collections import Counter
 from contextlib import contextmanager
+from typing import Dict, Iterator, List, Optional, Union, cast
 
-import typing
-from typing import Dict, List, cast, Optional, Union, Iterator
 from typing_extensions import Final
 
+from mypy import nodes
+from mypy.argmap import map_formals_to_actuals
+from mypy.nodes import (
+    AssignmentExpr,
+    AssignmentStmt,
+    BreakStmt,
+    BytesExpr,
+    CallExpr,
+    ClassDef,
+    ComparisonExpr,
+    ComplexExpr,
+    ContinueStmt,
+    EllipsisExpr,
+    Expression,
+    ExpressionStmt,
+    FloatExpr,
+    FuncDef,
+    Import,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    IntExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    OpExpr,
+    PassStmt,
+    RefExpr,
+    StrExpr,
+    TypeApplication,
+    UnaryExpr,
+    UnicodeExpr,
+    YieldFromExpr,
+)
 from mypy.traverser import TraverserVisitor
 from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
-    Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType,
-    TypeOfAny, get_proper_type, get_proper_types
-)
-from mypy import nodes
-from mypy.nodes import (
-    Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
-    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
-    AssignmentExpr, ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt, StrExpr,
-    BytesExpr, UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
+    AnyType,
+    CallableType,
+    FunctionLike,
+    Instance,
+    TupleType,
+    Type,
+    TypeOfAny,
+    TypeQuery,
+    TypeVarType,
+    get_proper_type,
+    get_proper_types,
 )
 from mypy.util import correct_relative_import
-from mypy.argmap import map_formals_to_actuals
 
 TYPE_EMPTY: Final = 0
 TYPE_UNANALYZED: Final = 1  # type of non-typechecked code
@@ -30,23 +66,19 @@ TYPE_PRECISE: Final = 2
 TYPE_IMPRECISE: Final = 3
 TYPE_ANY: Final = 4
 
-precision_names: Final = [
-    'empty',
-    'unanalyzed',
-    'precise',
-    'imprecise',
-    'any',
-]
+precision_names: Final = ["empty", "unanalyzed", "precise", "imprecise", "any"]
 
 
 class StatisticsVisitor(TraverserVisitor):
-    def __init__(self,
-                 inferred: bool,
-                 filename: str,
-                 modules: Dict[str, MypyFile],
-                 typemap: Optional[Dict[Expression, Type]] = None,
-                 all_nodes: bool = False,
-                 visit_untyped_defs: bool = True) -> None:
+    def __init__(
+        self,
+        inferred: bool,
+        filename: str,
+        modules: Dict[str, MypyFile],
+        typemap: Optional[Dict[Expression, Type]] = None,
+        all_nodes: bool = False,
+        visit_untyped_defs: bool = True,
+    ) -> None:
         self.inferred = inferred
         self.filename = filename
         self.modules = modules
@@ -95,10 +127,9 @@ class StatisticsVisitor(TraverserVisitor):
         self.process_import(imp)
 
     def process_import(self, imp: Union[ImportFrom, ImportAll]) -> None:
-        import_id, ok = correct_relative_import(self.cur_mod_id,
-                                                imp.relative,
-                                                imp.id,
-                                                self.cur_mod_node.is_package_init_file())
+        import_id, ok = correct_relative_import(
+            self.cur_mod_id, imp.relative, imp.id, self.cur_mod_node.is_package_init_file()
+        )
         if ok and import_id in self.modules:
             kind = TYPE_PRECISE
         else:
@@ -117,9 +148,11 @@ class StatisticsVisitor(TraverserVisitor):
             self.line = o.line
             if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
                 if o in o.expanded:
-                    print('{}:{}: ERROR: cycle in function expansion; skipping'.format(
-                        self.filename,
-                        o.get_line()))
+                    print(
+                        "{}:{}: ERROR: cycle in function expansion; skipping".format(
+                            self.filename, o.get_line()
+                        )
+                    )
                     return
                 for defn in o.expanded:
                     self.visit_func_def(cast(FuncDef, defn))
@@ -127,8 +160,7 @@ class StatisticsVisitor(TraverserVisitor):
                 if o.type:
                     sig = cast(CallableType, o.type)
                     arg_types = sig.arg_types
-                    if (sig.arg_names and sig.arg_names[0] == 'self' and
-                            not self.inferred):
+                    if sig.arg_names and sig.arg_names[0] == "self" and not self.inferred:
                         arg_types = arg_types[1:]
                     for arg in arg_types:
                         self.type(arg)
@@ -165,8 +197,9 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         self.line = o.line
-        if (isinstance(o.rvalue, nodes.CallExpr) and
-                isinstance(o.rvalue.analyzed, nodes.TypeVarExpr)):
+        if isinstance(o.rvalue, nodes.CallExpr) and isinstance(
+            o.rvalue.analyzed, nodes.TypeVarExpr
+        ):
             # Type variable definition -- not a real assignment.
             return
         if o.type:
@@ -201,10 +234,7 @@ class StatisticsVisitor(TraverserVisitor):
         self.record_precise_if_checked_scope(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
-        if o.fullname in ('builtins.None',
-                          'builtins.True',
-                          'builtins.False',
-                          'builtins.Ellipsis'):
+        if o.fullname in ("builtins.None", "builtins.True", "builtins.False", "builtins.Ellipsis"):
             self.record_precise_if_checked_scope(o)
         else:
             self.process_node(o)
@@ -250,7 +280,8 @@ class StatisticsVisitor(TraverserVisitor):
             o.arg_names,
             callee.arg_kinds,
             callee.arg_names,
-            lambda n: typemap[o.args[n]])
+            lambda n: typemap[o.args[n]],
+        )
         for formals in actual_to_formal:
             for n in formals:
                 formal = get_proper_type(callee.arg_types[n])
@@ -337,12 +368,11 @@ class StatisticsVisitor(TraverserVisitor):
             return
 
         if isinstance(t, AnyType):
-            self.log('  !! Any type around line %d' % self.line)
+            self.log("  !! Any type around line %d" % self.line)
             self.num_any_exprs += 1
             self.record_line(self.line, TYPE_ANY)
-        elif ((not self.all_nodes and is_imprecise(t)) or
-              (self.all_nodes and is_imprecise2(t))):
-            self.log('  !! Imprecise type around line %d' % self.line)
+        elif (not self.all_nodes and is_imprecise(t)) or (self.all_nodes and is_imprecise2(t)):
+            self.log("  !! Imprecise type around line %d" % self.line)
             self.num_imprecise_exprs += 1
             self.record_line(self.line, TYPE_IMPRECISE)
         else:
@@ -382,41 +412,39 @@ class StatisticsVisitor(TraverserVisitor):
         self.output.append(string)
 
     def record_line(self, line: int, precision: int) -> None:
-        self.line_map[line] = max(precision,
-                                  self.line_map.get(line, TYPE_EMPTY))
+        self.line_map[line] = max(precision, self.line_map.get(line, TYPE_EMPTY))
 
 
-def dump_type_stats(tree: MypyFile,
-                    path: str,
-                    modules: Dict[str, MypyFile],
-                    inferred: bool = False,
-                    typemap: Optional[Dict[Expression, Type]] = None) -> None:
+def dump_type_stats(
+    tree: MypyFile,
+    path: str,
+    modules: Dict[str, MypyFile],
+    inferred: bool = False,
+    typemap: Optional[Dict[Expression, Type]] = None,
+) -> None:
     if is_special_module(path):
         return
     print(path)
-    visitor = StatisticsVisitor(inferred,
-                                filename=tree.fullname,
-                                modules=modules,
-                                typemap=typemap)
+    visitor = StatisticsVisitor(inferred, filename=tree.fullname, modules=modules, typemap=typemap)
     tree.accept(visitor)
     for line in visitor.output:
         print(line)
-    print('  ** precision **')
-    print('  precise  ', visitor.num_precise_exprs)
-    print('  imprecise', visitor.num_imprecise_exprs)
-    print('  any      ', visitor.num_any_exprs)
-    print('  ** kinds **')
-    print('  simple   ', visitor.num_simple_types)
-    print('  generic  ', visitor.num_generic_types)
-    print('  function ', visitor.num_function_types)
-    print('  tuple    ', visitor.num_tuple_types)
-    print('  TypeVar  ', visitor.num_typevar_types)
-    print('  complex  ', visitor.num_complex_types)
-    print('  any      ', visitor.num_any_types)
+    print("  ** precision **")
+    print("  precise  ", visitor.num_precise_exprs)
+    print("  imprecise", visitor.num_imprecise_exprs)
+    print("  any      ", visitor.num_any_exprs)
+    print("  ** kinds **")
+    print("  simple   ", visitor.num_simple_types)
+    print("  generic  ", visitor.num_generic_types)
+    print("  function ", visitor.num_function_types)
+    print("  tuple    ", visitor.num_tuple_types)
+    print("  TypeVar  ", visitor.num_typevar_types)
+    print("  complex  ", visitor.num_complex_types)
+    print("  any      ", visitor.num_any_types)
 
 
 def is_special_module(path: str) -> bool:
-    return os.path.basename(path) in ('abc.pyi', 'typing.pyi', 'builtins.pyi')
+    return os.path.basename(path) in ("abc.pyi", "typing.pyi", "builtins.pyi")
 
 
 def is_imprecise(t: Type) -> bool:
@@ -449,8 +477,7 @@ def is_generic(t: Type) -> bool:
 
 def is_complex(t: Type) -> bool:
     t = get_proper_type(t)
-    return is_generic(t) or isinstance(t, (FunctionLike, TupleType,
-                                           TypeVarType))
+    return is_generic(t) or isinstance(t, (FunctionLike, TupleType, TypeVarType))
 
 
 def ensure_dir_exists(dir: str) -> None:

@@ -24,9 +24,7 @@ def main() -> None:
     parser.add_argument(
         "--typeshed-dir", help="location of typeshed", metavar="dir", required=True
     )
-    parser.add_argument(
-        "commit", help="typeshed commit hash to cherry-pick"
-    )
+    parser.add_argument("commit", help="typeshed commit hash to cherry-pick")
     args = parser.parse_args()
     typeshed_dir = args.typeshed_dir
     commit = args.commit
@@ -41,20 +39,22 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory() as d:
         diff_file = os.path.join(d, "diff")
-        out = subprocess.run(["git", "show", commit],
-                             capture_output=True,
-                             text=True,
-                             check=True,
-                             cwd=typeshed_dir)
+        out = subprocess.run(
+            ["git", "show", commit], capture_output=True, text=True, check=True, cwd=typeshed_dir
+        )
         with open(diff_file, "w") as f:
             f.write(out.stdout)
-        subprocess.run(["git",
-                        "apply",
-                        "--index",
-                        "--directory=mypy/typeshed",
-                        "--exclude=**/tests/**",
-                        diff_file],
-                       check=True)
+        subprocess.run(
+            [
+                "git",
+                "apply",
+                "--index",
+                "--directory=mypy/typeshed",
+                "--exclude=**/tests/**",
+                diff_file,
+            ],
+            check=True,
+        )
 
         title = parse_commit_title(out.stdout)
         subprocess.run(["git", "commit", "-m", f"Typeshed cherry-pick: {title}"], check=True)
@@ -63,5 +63,5 @@ def main() -> None:
     print(f"Cherry-picked commit {commit} from {typeshed_dir}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

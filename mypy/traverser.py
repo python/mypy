@@ -1,25 +1,78 @@
 """Generic node traverser visitor"""
 
 from typing import List, Tuple
+
 from mypy_extensions import mypyc_attr
 
+from mypy.nodes import (
+    REVEAL_TYPE,
+    AssertStmt,
+    AssertTypeExpr,
+    AssignmentExpr,
+    AssignmentStmt,
+    AwaitExpr,
+    BackquoteExpr,
+    Block,
+    CallExpr,
+    CastExpr,
+    ClassDef,
+    ComparisonExpr,
+    ConditionalExpr,
+    Decorator,
+    DelStmt,
+    DictExpr,
+    DictionaryComprehension,
+    ExecStmt,
+    Expression,
+    ExpressionStmt,
+    ForStmt,
+    FuncBase,
+    FuncDef,
+    FuncItem,
+    GeneratorExpr,
+    IfStmt,
+    Import,
+    ImportFrom,
+    IndexExpr,
+    LambdaExpr,
+    ListComprehension,
+    ListExpr,
+    MatchStmt,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    OperatorAssignmentStmt,
+    OpExpr,
+    OverloadedFuncDef,
+    PrintStmt,
+    RaiseStmt,
+    ReturnStmt,
+    RevealExpr,
+    SetComprehension,
+    SetExpr,
+    SliceExpr,
+    StarExpr,
+    SuperExpr,
+    TryStmt,
+    TupleExpr,
+    TypeApplication,
+    UnaryExpr,
+    WhileStmt,
+    WithStmt,
+    YieldExpr,
+    YieldFromExpr,
+)
 from mypy.patterns import (
-    AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
-    ClassPattern
+    AsPattern,
+    ClassPattern,
+    MappingPattern,
+    OrPattern,
+    SequencePattern,
+    StarredPattern,
+    ValuePattern,
 )
 from mypy.visitor import NodeVisitor
-from mypy.nodes import (
-    AssertTypeExpr, Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
-    ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, MatchStmt, NameExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
-    RevealExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr, AssignmentExpr,
-    GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
-    ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
-    LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, Node, REVEAL_TYPE,
-    Expression,
-)
 
 
 @mypyc_attr(allow_interpreted_subclasses=True)
@@ -249,8 +302,7 @@ class TraverserVisitor(NodeVisitor[None]):
             o.analyzed.accept(self)
 
     def visit_generator_expr(self, o: GeneratorExpr) -> None:
-        for index, sequence, conditions in zip(o.indices, o.sequences,
-                                               o.condlists):
+        for index, sequence, conditions in zip(o.indices, o.sequences, o.condlists):
             sequence.accept(self)
             index.accept(self)
             for cond in conditions:
@@ -258,8 +310,7 @@ class TraverserVisitor(NodeVisitor[None]):
         o.left_expr.accept(self)
 
     def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
-        for index, sequence, conditions in zip(o.indices, o.sequences,
-                                               o.condlists):
+        for index, sequence, conditions in zip(o.indices, o.sequences, o.condlists):
             sequence.accept(self)
             index.accept(self)
             for cond in conditions:
@@ -357,7 +408,7 @@ class ReturnSeeker(TraverserVisitor):
         self.found = False
 
     def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if (o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None'):
+        if o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == "None":
             return
         self.found = True
 

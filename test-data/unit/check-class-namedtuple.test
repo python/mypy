@@ -709,3 +709,21 @@ class HasStaticMethod(NamedTuple):
         return 4
 
 [builtins fixtures/property.pyi]
+
+[case testTypingExtensionsNamedTuple]
+from typing_extensions import NamedTuple
+
+class Point(NamedTuple):
+    x: int
+    y: int
+
+bad_point = Point('foo') # E: Missing positional argument "y" in call to "Point" \
+                         # E: Argument 1 to "Point" has incompatible type "str"; expected "int"
+point = Point(1, 2)
+x, y = point
+x = point.x
+reveal_type(x) # N: Revealed type is "builtins.int"
+reveal_type(y) # N: Revealed type is "builtins.int"
+point.y = 6 # E: Property "y" defined in "Point" is read-only
+
+[builtins fixtures/tuple.pyi]

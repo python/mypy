@@ -1,25 +1,38 @@
 from typing import List, Optional, Union
 
+from mypy.fixup import TypeFixer
 from mypy.nodes import (
-    ARG_POS, MDEF, Argument, Block, CallExpr, ClassDef, Expression, SYMBOL_FUNCBASE_TYPES,
-    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
+    ARG_POS,
+    MDEF,
+    SYMBOL_FUNCBASE_TYPES,
+    Argument,
+    Block,
+    CallExpr,
+    ClassDef,
+    Expression,
+    FuncDef,
+    JsonDict,
+    PassStmt,
+    RefExpr,
+    SymbolTableNode,
+    Var,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
-from mypy.semanal import set_callable_name, ALLOW_INCOMPATIBLE_OVERRIDE
+from mypy.semanal import ALLOW_INCOMPATIBLE_OVERRIDE, set_callable_name
+from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
 from mypy.types import (
-    CallableType, Overloaded, Type, TypeVarType, deserialize_type, get_proper_type,
+    CallableType,
+    Overloaded,
+    Type,
+    TypeVarType,
+    deserialize_type,
+    get_proper_type,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
-from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
-from mypy.fixup import TypeFixer
 
 
-def _get_decorator_bool_argument(
-        ctx: ClassDefContext,
-        name: str,
-        default: bool,
-) -> bool:
+def _get_decorator_bool_argument(ctx: ClassDefContext, name: str, default: bool) -> bool:
     """Return the bool argument for the decorator.
 
     This handles both @decorator(...) and @decorator.
@@ -30,8 +43,7 @@ def _get_decorator_bool_argument(
         return default
 
 
-def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr,
-                       name: str, default: bool) -> bool:
+def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr, name: str, default: bool) -> bool:
     """Return the boolean value for an argument to a call or the
     default if it's not found.
     """
@@ -57,8 +69,7 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
 
     callee_type = None
     callee_node = call.callee.node
-    if (isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES))
-            and callee_node.type):
+    if isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES)) and callee_node.type:
         callee_node_type = get_proper_type(callee_node.type)
         if isinstance(callee_node_type, Overloaded):
             # We take the last overload.
@@ -83,33 +94,36 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
 
 
 def add_method(
-        ctx: ClassDefContext,
-        name: str,
-        args: List[Argument],
-        return_type: Type,
-        self_type: Optional[Type] = None,
-        tvar_def: Optional[TypeVarType] = None,
+    ctx: ClassDefContext,
+    name: str,
+    args: List[Argument],
+    return_type: Type,
+    self_type: Optional[Type] = None,
+    tvar_def: Optional[TypeVarType] = None,
 ) -> None:
     """
     Adds a new method to a class.
     Deprecated, use add_method_to_class() instead.
     """
-    add_method_to_class(ctx.api, ctx.cls,
-                        name=name,
-                        args=args,
-                        return_type=return_type,
-                        self_type=self_type,
-                        tvar_def=tvar_def)
+    add_method_to_class(
+        ctx.api,
+        ctx.cls,
+        name=name,
+        args=args,
+        return_type=return_type,
+        self_type=self_type,
+        tvar_def=tvar_def,
+    )
 
 
 def add_method_to_class(
-        api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],
-        cls: ClassDef,
-        name: str,
-        args: List[Argument],
-        return_type: Type,
-        self_type: Optional[Type] = None,
-        tvar_def: Optional[TypeVarType] = None,
+    api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],
+    cls: ClassDef,
+    name: str,
+    args: List[Argument],
+    return_type: Type,
+    self_type: Optional[Type] = None,
+    tvar_def: Optional[TypeVarType] = None,
 ) -> None:
     """Adds a new method to a class definition."""
     info = cls.info
@@ -123,14 +137,14 @@ def add_method_to_class(
 
     self_type = self_type or fill_typevars(info)
     if isinstance(api, SemanticAnalyzerPluginInterface):
-        function_type = api.named_type('builtins.function')
+        function_type = api.named_type("builtins.function")
     else:
-        function_type = api.named_generic_type('builtins.function', [])
+        function_type = api.named_generic_type("builtins.function", [])
 
-    args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
+    args = [Argument(Var("self"), self_type, None, ARG_POS)] + args
     arg_types, arg_names, arg_kinds = [], [], []
     for arg in args:
-        assert arg.type_annotation, 'All arguments must be fully typed.'
+        assert arg.type_annotation, "All arguments must be fully typed."
         arg_types.append(arg.type_annotation)
         arg_names.append(arg.variable.name)
         arg_kinds.append(arg.kind)
@@ -142,7 +156,7 @@ def add_method_to_class(
     func = FuncDef(name, args, Block([PassStmt()]))
     func.info = info
     func.type = set_callable_name(signature, func)
-    func._fullname = info.fullname + '.' + name
+    func._fullname = info.fullname + "." + name
     func.line = info.line
 
     # NOTE: we would like the plugin generated node to dominate, but we still
@@ -157,13 +171,13 @@ def add_method_to_class(
 
 
 def add_attribute_to_class(
-        api: SemanticAnalyzerPluginInterface,
-        cls: ClassDef,
-        name: str,
-        typ: Type,
-        final: bool = False,
-        no_serialize: bool = False,
-        override_allow_incompatible: bool = False,
+    api: SemanticAnalyzerPluginInterface,
+    cls: ClassDef,
+    name: str,
+    typ: Type,
+    final: bool = False,
+    no_serialize: bool = False,
+    override_allow_incompatible: bool = False,
 ) -> None:
     """
     Adds a new attribute to a class definition.
@@ -185,12 +199,9 @@ def add_attribute_to_class(
         node.allow_incompatible_override = True
     else:
         node.allow_incompatible_override = override_allow_incompatible
-    node._fullname = info.fullname + '.' + name
+    node._fullname = info.fullname + "." + name
     info.names[name] = SymbolTableNode(
-        MDEF,
-        node,
-        plugin_generated=True,
-        no_serialize=no_serialize,
+        MDEF, node, plugin_generated=True, no_serialize=no_serialize
     )
 
 

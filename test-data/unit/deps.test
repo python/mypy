@@ -1122,29 +1122,6 @@ def f() -> None:
 <m.B> -> <m.A.__iter__>, <m.B.__iter__>, m.A.__iter__, m.B, m.B.__iter__
 <m.C> -> <m.B.__next__>, m.B.__next__, m.C
 
-[case testCustomIterator_python2]
-class A:
-    def __iter__(self): # type: () -> B
-        pass
-class B:
-    def __iter__(self): # type: () -> B
-        pass
-    def next(self): # type: () -> C
-        pass
-class C:
-    pass
-def f(): # type: () -> None
-    for x in A(): pass
-[out]
-<m.A.__getitem__> -> m.f
-<m.A.__init__> -> m.f
-<m.A.__iter__> -> m.f
-<m.A.__new__> -> m.f
-<m.A> -> m.A, m.f
-<m.B.next> -> m.f
-<m.B> -> <m.A.__iter__>, <m.B.__iter__>, m.A.__iter__, m.B, m.B.__iter__
-<m.C> -> <m.B.next>, m.B.next, m.C
-
 [case testDepsLiskovClass]
 from mod import A, C
 class D(C):
@@ -1385,40 +1362,6 @@ def h() -> None:
 <m.D.__init__> -> m.h
 <m.D.__new__> -> m.h
 <m.D> -> m.D, m.h
-
-[case testLogicalSuperPython2]
-# flags: --logical-deps --py2
-class A:
-    def __init__(self):
-        pass
-    def m(self):
-        pass
-class B(A):
-    def m(self):
-        pass
-class C(B):
-    pass
-class D(C):
-    def __init__(self):
-        # type: () -> None
-        super(B, self).__init__()
-    def mm(self):
-        # type: () -> None
-        super(B, self).m()
-[out]
-<m.A.__init__> -> m.D.__init__
-<m.A.m> -> <m.B.m>, m.B.m
-<m.A.mm> -> m.D.mm
-<m.A> -> m, m.A, m.B
-<m.B.__init__> -> m.D.__init__
-<m.B.m> -> m.D.mm
-<m.B.mm> -> m.D.mm
-<m.B> -> m, m.B, m.C
-<m.C.__init__> -> m.D.__init__
-<m.C.m> -> m.D.mm
-<m.C.mm> -> m.D.mm
-<m.C> -> m, m.C, m.D
-<m.D> -> m.D
 
 [case testDataclassDepsOldVersion]
 # flags: --python-version 3.7

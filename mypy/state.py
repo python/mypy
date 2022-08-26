@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Optional, Tuple, Iterator
+from typing import Iterator, Optional, Tuple
 
 from typing_extensions import Final
 

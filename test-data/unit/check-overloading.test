@@ -171,30 +171,6 @@ class A: pass
 class B: pass
 [builtins fixtures/isinstance.pyi]
 
-[case testTypeCheckOverloadWithImplementationPy2]
-# flags: --python-version 2.7
-
-from typing import overload
-@overload
-def f(x):
-    # type: (A) -> B
-    pass
-
-@overload
-def f(x):
-    # type: (B) -> A
-    pass
-
-def f(x):
-    pass
-
-reveal_type(f(A()))  # N: Revealed type is "__main__.B"
-reveal_type(f(B()))  # N: Revealed type is "__main__.A"
-
-class A: pass
-class B: pass
-[builtins fixtures/isinstance.pyi]
-
 [case testTypeCheckOverloadWithImplementationError]
 from typing import overload, Any
 
@@ -4017,35 +3993,6 @@ class FakeAttribute(Generic[T]):
     def dummy(self, instance: T, owner: Type[T]) -> int: ...
     def dummy(self, instance: Optional[T], owner: Type[T]) -> Union['FakeAttribute[T]', int]: ...
 
-[case testOverloadLambdaUnpackingInference]
-# flags: --py2
-from typing import Callable, TypeVar, overload
-
-T = TypeVar('T')
-S = TypeVar('S')
-
-@overload
-def foo(func, item):
-    # type: (Callable[[T], S], T) -> S
-    pass
-
-@overload
-def foo():
-    # type: () -> None
-    pass
-
-def foo(*args):
-    pass
-
-def add_proxy(x, y):
-    # type: (int, str) -> str
-    pass
-
-# The lambda definition is a syntax error in Python 3
-tup = (1, '2')
-reveal_type(foo(lambda (x, y): add_proxy(x, y), tup))  # N: Revealed type is "builtins.str"
-[builtins fixtures/primitives.pyi]
-
 [case testOverloadWithClassMethods]
 from typing import overload
 
@@ -4608,22 +4555,6 @@ def rp(x):
 
 x: Optional[C]
 reveal_type(rp(x))  # N: Revealed type is "__main__.C"
-[out]
-
-[case testOptionalIsNotAUnionIfNoStrictOverloadStr]
-# flags: -2 --no-strict-optional
-
-from typing import Optional
-from m import relpath
-a = '' # type: Optional[str]
-reveal_type(relpath(a))  # N: Revealed type is "builtins.str"
-
-[file m.pyi]
-from typing import overload
-@overload
-def relpath(path: str) -> str: ...
-@overload
-def relpath(path: unicode) -> unicode: ...
 [out]
 
 [case testUnionMathTrickyOverload1]

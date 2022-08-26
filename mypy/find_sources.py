@@ -2,12 +2,12 @@
 
 import functools
 import os
+from typing import List, Optional, Sequence, Set, Tuple
 
-from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches_exclude
 from mypy.fscache import FileSystemCache
+from mypy.modulefinder import PYTHON_EXTENSIONS, BuildSource, matches_exclude, mypy_path
 from mypy.options import Options
 
 PY_EXTENSIONS: Final = tuple(PYTHON_EXTENSIONS)
@@ -17,9 +17,12 @@ class InvalidSourceList(Exception):
     """Exception indicating a problem in the list of sources given to mypy."""
 
 
-def create_source_list(paths: Sequence[str], options: Options,
-                       fscache: Optional[FileSystemCache] = None,
-                       allow_empty_dir: bool = False) -> List[BuildSource]:
+def create_source_list(
+    paths: Sequence[str],
+    options: Options,
+    fscache: Optional[FileSystemCache] = None,
+    allow_empty_dir: bool = False,
+) -> List[BuildSource]:
     """From a list of source files/directories, makes a list of BuildSources.
 
     Raises InvalidSourceList on errors.
@@ -37,9 +40,7 @@ def create_source_list(paths: Sequence[str], options: Options,
         elif fscache.isdir(path):
             sub_sources = finder.find_sources_in_dir(path)
             if not sub_sources and not allow_empty_dir:
-                raise InvalidSourceList(
-                    f"There are no .py[i] files in directory '{path}'"
-                )
+                raise InvalidSourceList(f"There are no .py[i] files in directory '{path}'")
             sources.extend(sub_sources)
         else:
             mod = os.path.basename(path) if options.scripts_are_modules else None
@@ -109,9 +110,7 @@ class SourceFinder:
                 continue
             subpath = os.path.join(path, name)
 
-            if matches_exclude(
-                subpath, self.exclude, self.fscache, self.verbosity >= 2
-            ):
+            if matches_exclude(subpath, self.exclude, self.fscache, self.verbosity >= 2):
                 continue
 
             if self.fscache.isdir(subpath):
@@ -176,7 +175,7 @@ class SourceFinder:
             return "", dir
 
         parent, name = os.path.split(dir)
-        if name.endswith('-stubs'):
+        if name.endswith("-stubs"):
             name = name[:-6]  # PEP-561 stub-only directory
 
         # recurse if there's an __init__.py
@@ -218,10 +217,10 @@ class SourceFinder:
         This prefers .pyi over .py (because of the ordering of PY_EXTENSIONS).
         """
         for ext in PY_EXTENSIONS:
-            f = os.path.join(dir, '__init__' + ext)
+            f = os.path.join(dir, "__init__" + ext)
             if self.fscache.isfile(f):
                 return f
-            if ext == '.py' and self.fscache.init_under_package_root(f):
+            if ext == ".py" and self.fscache.init_under_package_root(f):
                 return f
         return None
 
@@ -229,7 +228,7 @@ class SourceFinder:
 def module_join(parent: str, child: str) -> str:
     """Join module ids, accounting for a possibly empty parent."""
     if parent:
-        return parent + '.' + child
+        return parent + "." + child
     return child
 
 
@@ -240,5 +239,5 @@ def strip_py(arg: str) -> Optional[str]:
     """
     for ext in PY_EXTENSIONS:
         if arg.endswith(ext):
-            return arg[:-len(ext)]
+            return arg[: -len(ext)]
     return None

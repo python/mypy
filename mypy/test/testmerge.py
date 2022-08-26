@@ -2,15 +2,22 @@
 
 import os
 import shutil
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 from mypy import build
 from mypy.build import BuildResult
-from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
+from mypy.modulefinder import BuildSource
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
-    UNBOUND_IMPORTED
+    UNBOUND_IMPORTED,
+    Expression,
+    MypyFile,
+    Node,
+    SymbolTable,
+    SymbolTableNode,
+    TypeInfo,
+    TypeVarExpr,
+    Var,
 )
 from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
@@ -18,31 +25,30 @@ from mypy.strconv import StrConv
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages, parse_options
-from mypy.types import TypeStrVisitor, Type
-from mypy.util import short_type, IdMapper
-
+from mypy.types import Type, TypeStrVisitor
+from mypy.util import IdMapper, short_type
 
 # Which data structures to dump in a test case?
-SYMTABLE = 'SYMTABLE'
-TYPEINFO = ' TYPEINFO'
-TYPES = 'TYPES'
-AST = 'AST'
+SYMTABLE = "SYMTABLE"
+TYPEINFO = " TYPEINFO"
+TYPES = "TYPES"
+AST = "AST"
 
 
 NOT_DUMPED_MODULES = (
-    'builtins',
-    'typing',
-    'abc',
-    'contextlib',
-    'sys',
-    'mypy_extensions',
-    'typing_extensions',
-    'enum',
+    "builtins",
+    "typing",
+    "abc",
+    "contextlib",
+    "sys",
+    "mypy_extensions",
+    "typing_extensions",
+    "enum",
 )
 
 
 class ASTMergeSuite(DataSuite):
-    files = ['merge.test']
+    files = ["merge.test"]
 
     def setup(self) -> None:
         super().setup()
@@ -55,18 +61,18 @@ class ASTMergeSuite(DataSuite):
         name = testcase.name
         # We use the test case name to decide which data structures to dump.
         # Dumping everything would result in very verbose test cases.
-        if name.endswith('_symtable'):
+        if name.endswith("_symtable"):
             kind = SYMTABLE
-        elif name.endswith('_typeinfo'):
+        elif name.endswith("_typeinfo"):
             kind = TYPEINFO
-        elif name.endswith('_types'):
+        elif name.endswith("_types"):
             kind = TYPES
         else:
             kind = AST
 
-        main_src = '\n'.join(testcase.input)
+        main_src = "\n".join(testcase.input)
         result = self.build(main_src, testcase)
-        assert result is not None, 'cases where CompileError occurred should not be run'
+        assert result is not None, "cases where CompileError occurred should not be run"
         result.manager.fscache.flush()
         fine_grained_manager = FineGrainedBuildManager(result)
 
@@ -74,15 +80,15 @@ class ASTMergeSuite(DataSuite):
         if result.errors:
             a.extend(result.errors)
 
-        target_path = os.path.join(test_temp_dir, 'target.py')
-        shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
+        target_path = os.path.join(test_temp_dir, "target.py")
+        shutil.copy(os.path.join(test_temp_dir, "target.py.next"), target_path)
 
         a.extend(self.dump(fine_grained_manager, kind))
-        old_subexpr = get_subexpressions(result.manager.modules['target'])
+        old_subexpr = get_subexpressions(result.manager.modules["target"])
 
-        a.append('==>')
+        a.append("==>")
 
-        new_file, new_types = self.build_increment(fine_grained_manager, 'target', target_path)
+        new_file, new_types = self.build_increment(fine_grained_manager, "target", target_path)
         a.extend(self.dump(fine_grained_manager, kind))
 
         for expr in old_subexpr:
@@ -96,8 +102,8 @@ class ASTMergeSuite(DataSuite):
             a = normalize_error_messages(a)
 
         assert_string_arrays_equal(
-            testcase.output, a,
-            f'Invalid output ({testcase.file}, line {testcase.line})')
+            testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
+        )
 
     def build(self, source: str, testcase: DataDrivenTestCase) -> Optional[BuildResult]:
         options = parse_options(source, testcase, incremental_step=1)
@@ -106,30 +112,30 @@ class ASTMergeSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.export_types = True
         options.show_traceback = True
-        main_path = os.path.join(test_temp_dir, 'main')
-        with open(main_path, 'w', encoding='utf8') as f:
+        main_path = os.path.join(test_temp_dir, "main")
+        with open(main_path, "w", encoding="utf8") as f:
             f.write(source)
         try:
-            result = build.build(sources=[BuildSource(main_path, None, None)],
-                                 options=options,
-                                 alt_lib_path=test_temp_dir)
+            result = build.build(
+                sources=[BuildSource(main_path, None, None)],
+                options=options,
+                alt_lib_path=test_temp_dir,
+            )
         except CompileError:
             # TODO: Is it okay to return None?
             return None
         return result
 
-    def build_increment(self, manager: FineGrainedBuildManager,
-                        module_id: str, path: str) -> Tuple[MypyFile,
-                                                            Dict[Expression, Type]]:
+    def build_increment(
+        self, manager: FineGrainedBuildManager, module_id: str, path: str
+    ) -> Tuple[MypyFile, Dict[Expression, Type]]:
         manager.flush_cache()
         manager.update([(module_id, path)], [])
         module = manager.manager.modules[module_id]
         type_map = manager.graph[module_id].type_map()
         return module, type_map
 
-    def dump(self,
-             manager: FineGrainedBuildManager,
-             kind: str) -> List[str]:
+    def dump(self, manager: FineGrainedBuildManager, kind: str) -> List[str]:
         modules = manager.manager.modules
         if kind == AST:
             return self.dump_asts(modules)
@@ -139,7 +145,7 @@ class ASTMergeSuite(DataSuite):
             return self.dump_symbol_tables(modules)
         elif kind == TYPES:
             return self.dump_types(manager)
-        assert False, f'Invalid kind {kind}'
+        assert False, f"Invalid kind {kind}"
 
     def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
@@ -161,26 +167,29 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def dump_symbol_table(self, module_id: str, symtable: SymbolTable) -> List[str]:
-        a = [f'{module_id}:']
+        a = [f"{module_id}:"]
         for name in sorted(symtable):
-            if name.startswith('__'):
+            if name.startswith("__"):
                 continue
-            a.append(f'    {name}: {self.format_symbol_table_node(symtable[name])}')
+            a.append(f"    {name}: {self.format_symbol_table_node(symtable[name])}")
         return a
 
     def format_symbol_table_node(self, node: SymbolTableNode) -> str:
         if node.node is None:
             if node.kind == UNBOUND_IMPORTED:
-                return 'UNBOUND_IMPORTED'
-            return 'None'
+                return "UNBOUND_IMPORTED"
+            return "None"
         if isinstance(node.node, Node):
-            s = f'{str(type(node.node).__name__)}<{self.id_mapper.id(node.node)}>'
+            s = f"{str(type(node.node).__name__)}<{self.id_mapper.id(node.node)}>"
         else:
-            s = f'? ({type(node.node)})'
-        if (isinstance(node.node, Var) and node.node.type and
-                not node.node.fullname.startswith('typing.')):
+            s = f"? ({type(node.node)})"
+        if (
+            isinstance(node.node, Var)
+            and node.node.type
+            and not node.node.fullname.startswith("typing.")
+        ):
             typestr = self.format_type(node.node.type)
-            s += f'({typestr})'
+            s += f"({typestr})"
         return s
 
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
@@ -200,11 +209,10 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def dump_typeinfo(self, info: TypeInfo) -> List[str]:
-        if info.fullname == 'enum.Enum':
+        if info.fullname == "enum.Enum":
             # Avoid noise
             return []
-        s = info.dump(str_conv=self.str_conv,
-                      type_str_conv=self.type_str_conv)
+        s = info.dump(str_conv=self.str_conv, type_str_conv=self.type_str_conv)
         return s.splitlines()
 
     def dump_types(self, manager: FineGrainedBuildManager) -> List[str]:
@@ -218,15 +226,16 @@ class ASTMergeSuite(DataSuite):
             # Compute a module type map from the global type map
             tree = manager.graph[module_id].tree
             assert tree is not None
-            type_map = {node: all_types[node]
-                        for node in get_subexpressions(tree)
-                        if node in all_types}
+            type_map = {
+                node: all_types[node] for node in get_subexpressions(tree) if node in all_types
+            }
             if type_map:
-                a.append(f'## {module_id}')
-                for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),
-                                                            str(n) + str(type_map[n]))):
+                a.append(f"## {module_id}")
+                for expr in sorted(
+                    type_map, key=lambda n: (n.line, short_type(n), str(n) + str(type_map[n]))
+                ):
                     typ = type_map[expr]
-                    a.append(f'{short_type(expr)}:{expr.line}: {self.format_type(typ)}')
+                    a.append(f"{short_type(expr)}:{expr.line}: {self.format_type(typ)}")
         return a
 
     def format_type(self, typ: Type) -> str:
@@ -234,4 +243,4 @@ class ASTMergeSuite(DataSuite):
 
 
 def is_dumped_module(id: str) -> bool:
-    return id not in NOT_DUMPED_MODULES and (not id.startswith('_') or id == '__main__')
+    return id not in NOT_DUMPED_MODULES and (not id.startswith("_") or id == "__main__")

@@ -2731,6 +2731,20 @@ class EmptyProto(Protocol): ...
 
 def hh(h: EmptyProto) -> None: pass
 hh(None)
+
+# See https://github.com/python/mypy/issues/13081
+class SupportsStr(Protocol):
+    def __str__(self) -> str: ...
+
+def ss(s: SupportsStr) -> None: pass
+ss(None)
+
+class HashableStr(Protocol):
+    def __str__(self) -> str: ...
+    def __hash__(self) -> int: ...
+
+def hs(n: HashableStr) -> None: pass
+hs(None)
 [builtins fixtures/tuple.pyi]
 
 
