@@ -1990,9 +1990,10 @@ class TypeConverter:
             for s in dims:
                 if getattr(s, "col_offset", None) is None:
                     if isinstance(s, ast3.Index):
-                        s.col_offset = s.value.col_offset  # type: ignore
+                        s.col_offset = s.value.col_offset  # type: ignore[attr-defined]
                     elif isinstance(s, ast3.Slice):
-                        s.col_offset = s.lower.col_offset  # type: ignore
+                        assert s.lower is not None
+                        s.col_offset = s.lower.col_offset  # type: ignore[attr-defined]
             sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
