@@ -82,12 +82,6 @@ flake8
 black . && isort .
 ```
 
-To run tests with coverage:
-
-```bash
-python -m pytest --durations 100 --cov mypy --cov-config setup.cfg  --cov-report=term-missing:skip-covered --cov-report=html
-```
-
 For an in-depth guide on running and writing tests,
 see [the README in the test-data directory](test-data/unit/README.md).
 
