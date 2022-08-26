@@ -103,7 +103,11 @@ def split_blocks_at_errors(
                     new_block2 = BasicBlock()
                     new_blocks.append(new_block2)
                     branch = Branch(
-                        comp, true_label=new_block2, false_label=new_block, op=Branch.BOOL
+                        comp,
+                        true_label=new_block2,
+                        false_label=new_block,
+                        op=Branch.BOOL,
+                        rare=True,
                     )
                     cur_block.ops.append(branch)
                     cur_block = new_block2
