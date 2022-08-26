@@ -483,6 +483,16 @@ class ASTConverter:
             and self.type_ignores
             and min(self.type_ignores) < self.get_lineno(stmts[0])
         ):
+            if self.type_ignores[min(self.type_ignores)]:
+                self.fail(
+                    (
+                        "type ignore with error code is not supported for modules; "
+                        "use `# mypy: disable-error-code=...`"
+                    ),
+                    line=min(self.type_ignores),
+                    column=0,
+                    blocker=False,
+                )
             self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
                 codes.FILE.code
             )
