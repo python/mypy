@@ -2017,10 +2017,9 @@ class MessageBuilder:
         subtype: ProperType,
         supertype: ProperType,
         context: Context,
-        msg: str = message_registry.INCOMPATIBLE_TYPES,
+        msg: message_registry.ErrorMessage,
         subtype_label: str | None = None,
         supertype_label: str | None = None,
-        code: ErrorCode | None = None,
     ) -> bool:
         """Try to generate meaningful error message for very long tuple assignment
 
@@ -2035,9 +2034,7 @@ class MessageBuilder:
             ):
                 lhs_type = supertype.args[0]
                 lhs_types = [lhs_type] * len(subtype.items)
-                self.generate_incompatible_tuple_error(
-                    lhs_types, subtype.items, context, msg, code
-                )
+                self.generate_incompatible_tuple_error(lhs_types, subtype.items, context, msg)
                 return True
             elif isinstance(supertype, TupleType) and (
                 len(subtype.items) > 10 or len(supertype.items) > 10
@@ -2051,10 +2048,10 @@ class MessageBuilder:
                             supertype_label,
                             self.format_long_tuple_type(supertype),
                         )
-                        self.fail(error_msg, context, code=code)
+                        self.fail(error_msg, context, code=msg.code)
                         return True
                 self.generate_incompatible_tuple_error(
-                    supertype.items, subtype.items, context, msg, code
+                    supertype.items, subtype.items, context, msg
                 )
                 return True
         return False
@@ -2074,8 +2071,7 @@ class MessageBuilder:
         lhs_types: list[Type],
         rhs_types: list[Type],
         context: Context,
-        msg: str = message_registry.INCOMPATIBLE_TYPES,
-        code: ErrorCode | None = None,
+        msg: message_registry.ErrorMessage,
     ) -> None:
         """Generate error message for individual incompatible tuple pairs"""
         error_cnt = 0
@@ -2090,14 +2086,15 @@ class MessageBuilder:
                     )
                 error_cnt += 1
 
-        error_msg = msg + f" ({str(error_cnt)} tuple items are incompatible"
+        info = f" ({str(error_cnt)} tuple items are incompatible"
         if error_cnt - 3 > 0:
-            error_msg += f"; {str(error_cnt - 3)} items are omitted)"
+            info += f"; {str(error_cnt - 3)} items are omitted)"
         else:
-            error_msg += ")"
-        self.fail(error_msg, context, code=code)
+            info += ")"
+        msg = msg.with_additional_msg(info)
+        self.fail(msg.value, context, code=msg.code)
         for note in notes:
-            self.note(note, context, code=code)
+            self.note(note, context, code=msg.code)
 
     def add_fixture_note(self, fullname: str, ctx: Context) -> None:
         self.note(f'Maybe your test fixture does not define "{fullname}"?', ctx)
