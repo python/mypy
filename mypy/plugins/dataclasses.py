@@ -244,10 +244,20 @@ class DataclassTransformer:
                     tvar_def=order_tvar_def,
                 )
 
+        parent_decorator_arguments = []
+        for parent in info.mro[1:-1]:
+            parent_args = parent.metadata.get("dataclass")
+            if parent_args:
+                parent_decorator_arguments.append(parent_args)
+
         if decorator_arguments["frozen"]:
+            if any(not parent["frozen"] for parent in parent_decorator_arguments):
+                ctx.api.fail("Cannot inherit frozen dataclass from a non-frozen one", info)
             self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
+            if any(parent["frozen"] for parent in parent_decorator_arguments):
+                ctx.api.fail("Cannot inherit non-frozen dataclass from a frozen one", info)
             self._propertize_callables(attributes)
 
         if decorator_arguments["slots"]:
@@ -463,6 +473,7 @@ class DataclassTransformer:
         # copy() because we potentially modify all_attrs below and if this code requires debugging
         # we'll have unmodified attrs laying around.
         all_attrs = attrs.copy()
+        known_super_attrs = set()
         for info in cls.info.mro[1:-1]:
             if "dataclass_tag" in info.metadata and "dataclass" not in info.metadata:
                 # We haven't processed the base class yet. Need another pass.
@@ -484,6 +495,7 @@ class DataclassTransformer:
                     with state.strict_optional_set(ctx.api.options.strict_optional):
                         attr.expand_typevar_from_subtype(ctx.cls.info)
                     known_attrs.add(name)
+                    known_super_attrs.add(name)
                     super_attrs.append(attr)
                 elif all_attrs:
                     # How early in the attribute list an attribute appears is determined by the
@@ -497,6 +509,14 @@ class DataclassTransformer:
                             break
             all_attrs = super_attrs + all_attrs
             all_attrs.sort(key=lambda a: a.kw_only)
+
+        for known_super_attr_name in known_super_attrs:
+            sym_node = cls.info.names.get(known_super_attr_name)
+            if sym_node and sym_node.node and not isinstance(sym_node.node, Var):
+                ctx.api.fail(
+                    "Dataclass attribute may only be overridden by another attribute",
+                    sym_node.node,
+                )
 
         # Ensure that arguments without a default don't follow
         # arguments that have a default.
@@ -532,8 +552,8 @@ class DataclassTransformer:
             sym_node = info.names.get(attr.name)
             if sym_node is not None:
                 var = sym_node.node
-                assert isinstance(var, Var)
-                var.is_property = True
+                if isinstance(var, Var):
+                    var.is_property = True
             else:
                 var = attr.to_var()
                 var.info = info
