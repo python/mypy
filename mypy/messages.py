@@ -2041,14 +2041,15 @@ class MessageBuilder:
             ):
                 if len(subtype.items) != len(supertype.items):
                     if supertype_label is not None and subtype_label is not None:
-                        error_msg = "{} ({} {}, {} {})".format(
-                            msg,
-                            subtype_label,
-                            self.format_long_tuple_type(subtype),
-                            supertype_label,
-                            self.format_long_tuple_type(supertype),
+                        msg = msg.with_additional_msg(
+                            " ({} {}, {} {})".format(
+                                subtype_label,
+                                self.format_long_tuple_type(subtype),
+                                supertype_label,
+                                self.format_long_tuple_type(supertype),
+                            )
                         )
-                        self.fail(error_msg, context, code=msg.code)
+                        self.fail(msg.value, context, code=msg.code)
                         return True
                 self.generate_incompatible_tuple_error(
                     supertype.items, subtype.items, context, msg
