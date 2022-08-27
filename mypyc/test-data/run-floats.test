@@ -163,6 +163,17 @@ def test_exception() -> None:
         a()
 
 def test_undefined_local_var() -> None:
+    if not int():
+        x = -113.0
+    assert x == -113.0
     if int():
-        x = 1.0
-    todo # TODO incomplete
+        y = -113.0
+    with assertRaises(UnboundLocalError, 'local variable "y" referenced before assignment'):
+        print(y)
+    if not int():
+        x2 = -1.0
+    assert x2 == -1.0
+    if int():
+        y2 = -1.0
+    with assertRaises(UnboundLocalError, 'local variable "y2" referenced before assignment'):
+        print(y2)

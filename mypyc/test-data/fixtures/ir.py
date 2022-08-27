@@ -296,6 +296,7 @@ class ValueError(Exception): pass
 class AttributeError(Exception): pass
 class ImportError(Exception): pass
 class NameError(Exception): pass
+class UnboundLocalError(NameError): pass
 class LookupError(Exception): pass
 class KeyError(LookupError): pass
 class IndexError(LookupError): pass
