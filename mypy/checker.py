@@ -5600,7 +5600,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         subtype: Type,
         supertype: Type,
         context: Context,
-        msg: ErrorMessage = message_registry.INCOMPATIBLE_TYPES,
+        msg: ErrorMessage,
         subtype_label: str | None = None,
         supertype_label: str | None = None,
         *,
@@ -5613,7 +5613,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         subtype: Type,
         supertype: Type,
         context: Context,
-        msg: str | ErrorMessage = message_registry.INCOMPATIBLE_TYPES,
+        msg: str | ErrorMessage,
         subtype_label: str | None = None,
         supertype_label: str | None = None,
         *,
@@ -5626,7 +5626,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(msg, str):
             msg = ErrorMessage(msg, code=code)
-            del code
 
         orig_subtype = subtype
         subtype = get_proper_type(subtype)
@@ -5718,7 +5717,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             aw_type = self.get_precise_awaitable_type(subtype, local_errors)
             if aw_type is None:
                 return
-            if not self.check_subtype(aw_type, supertype, context):
+            if not self.check_subtype(
+                aw_type, supertype, context, msg=message_registry.INCOMPATIBLE_TYPES
+            ):
                 return
         self.msg.possible_missing_await(context)
 
