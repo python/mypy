@@ -49,7 +49,7 @@ def download_asset(asset: dict[str, Any], dst: Path) -> Path:
 
 
 def download_all_release_assets(release: dict[str, Any], dst: Path) -> None:
-    print(f"Downloading assets...")
+    print("Downloading assets...")
     with ThreadPoolExecutor() as e:
         for asset in e.map(lambda asset: download_asset(asset, dst), release["assets"]):
             print(f"Downloaded {asset}")
