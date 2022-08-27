@@ -2711,7 +2711,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 base_type, base_node = self.lvalue_type_from_base(inferred, base)
                 if base_type and not (
                     isinstance(base_node, Var) and base_node.invalid_partial_type
-                ):
+                ) and not isinstance(base_type, PartialType):
                     type_contexts.append(base_type)
         # Use most derived supertype as type context if available.
         if not type_contexts:
@@ -2813,6 +2813,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     continue
 
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
+                if isinstance(base_type, PartialType):
+                    base_type = None
 
                 if base_type:
                     assert base_node is not None
