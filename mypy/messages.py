@@ -1822,6 +1822,7 @@ class MessageBuilder:
             return
 
         class_obj = False
+        is_module = False
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1845,6 +1846,8 @@ class MessageBuilder:
                 return
             class_obj = True
             subtype = ret_type
+        if subtype.extra_attrs and subtype.extra_attrs.mod_name:
+            is_module = True
 
         # Report missing members
         missing = get_missing_protocol_members(subtype, supertype)
@@ -1881,11 +1884,8 @@ class MessageBuilder:
             or not subtype.type.defn.type_vars
             or not supertype.type.defn.type_vars
         ):
-            self.note(
-                f"Following member(s) of {format_type(subtype)} have conflicts:",
-                context,
-                code=code,
-            )
+            type_name = format_type(subtype, module_names=True)
+            self.note(f"Following member(s) of {type_name} have conflicts:", context, code=code)
             for name, got, exp in conflict_types[:MAX_ITEMS]:
                 exp = get_proper_type(exp)
                 got = get_proper_type(got)
@@ -1902,7 +1902,7 @@ class MessageBuilder:
                     self.note("Expected:", context, offset=OFFSET, code=code)
                     if isinstance(exp, CallableType):
                         self.note(
-                            pretty_callable(exp, skip_self=class_obj),
+                            pretty_callable(exp, skip_self=class_obj or is_module),
                             context,
                             offset=2 * OFFSET,
                             code=code,
@@ -1910,12 +1910,12 @@ class MessageBuilder:
                     else:
                         assert isinstance(exp, Overloaded)
                         self.pretty_overload(
-                            exp, context, 2 * OFFSET, code=code, skip_self=class_obj
+                            exp, context, 2 * OFFSET, code=code, skip_self=class_obj or is_module
                         )
                     self.note("Got:", context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
                         self.note(
-                            pretty_callable(got, skip_self=class_obj),
+                            pretty_callable(got, skip_self=class_obj or is_module),
                             context,
                             offset=2 * OFFSET,
                             code=code,
@@ -1923,7 +1923,7 @@ class MessageBuilder:
                     else:
                         assert isinstance(got, Overloaded)
                         self.pretty_overload(
-                            got, context, 2 * OFFSET, code=code, skip_self=class_obj
+                            got, context, 2 * OFFSET, code=code, skip_self=class_obj or is_module
                         )
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
@@ -2147,7 +2147,9 @@ def format_callable_args(
     return ", ".join(arg_strings)
 
 
-def format_type_inner(typ: Type, verbosity: int, fullnames: set[str] | None) -> str:
+def format_type_inner(
+    typ: Type, verbosity: int, fullnames: set[str] | None, module_names: bool = False
+) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2187,7 +2189,10 @@ def format_type_inner(typ: Type, verbosity: int, fullnames: set[str] | None) -> 
         # Get the short name of the type.
         if itype.type.fullname in ("types.ModuleType", "_importlib_modulespec.ModuleType"):
             # Make some common error messages simpler and tidier.
-            return "Module"
+            base_str = "Module"
+            if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
+                return f"{base_str} {itype.extra_attrs.mod_name}"
+            return base_str
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname
         else:
@@ -2361,7 +2366,7 @@ def find_type_overlaps(*types: Type) -> set[str]:
     return overlaps
 
 
-def format_type(typ: Type, verbosity: int = 0) -> str:
+def format_type(typ: Type, verbosity: int = 0, module_names: bool = False) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2372,10 +2377,10 @@ def format_type(typ: Type, verbosity: int = 0) -> str:
     modification of the formatted string is required, callers should use
     format_type_bare.
     """
-    return quote_type_string(format_type_bare(typ, verbosity))
+    return quote_type_string(format_type_bare(typ, verbosity, module_names))
 
 
-def format_type_bare(typ: Type, verbosity: int = 0) -> str:
+def format_type_bare(typ: Type, verbosity: int = 0, module_names: bool = False) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2387,7 +2392,7 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
     instead.  (The caller may want to use quote_type_string after
     processing has happened, to maintain consistent quoting in messages.)
     """
-    return format_type_inner(typ, verbosity, find_type_overlaps(typ))
+    return format_type_inner(typ, verbosity, find_type_overlaps(typ), module_names)
 
 
 def format_type_distinctly(*types: Type, bare: bool = False) -> tuple[str, ...]:
@@ -2564,7 +2569,7 @@ def get_conflict_protocol_types(
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
-        if IS_SETTABLE in get_member_flags(member, right.type):
+        if IS_SETTABLE in get_member_flags(member, right):
             is_compat = is_compat and is_subtype(supertype, subtype)
         if not is_compat:
             conflicts.append((member, subtype, supertype))
@@ -2581,11 +2586,7 @@ def get_bad_protocol_flags(
     all_flags: list[tuple[str, set[int], set[int]]] = []
     for member in right.type.protocol_members:
         if find_member(member, left, left):
-            item = (
-                member,
-                get_member_flags(member, left.type),
-                get_member_flags(member, right.type),
-            )
+            item = (member, get_member_flags(member, left), get_member_flags(member, right))
             all_flags.append(item)
     bad_flags = []
     for name, subflags, superflags in all_flags:

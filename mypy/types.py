@@ -1155,6 +1155,34 @@ class DeletedType(ProperType):
 NOT_READY: Final = mypy.nodes.FakeInfo("De-serialization failure: TypeInfo not fixed")
 
 
+class ExtraAttrs:
+    """Summary of module attributes and types.
+
+    This is used for instances of types.ModuleType, because they can have different
+    attributes per instance.
+    """
+
+    def __init__(
+        self,
+        attrs: dict[str, Type],
+        immutable: set[str] | None = None,
+        mod_name: str | None = None,
+    ) -> None:
+        self.attrs = attrs
+        if immutable is None:
+            immutable = set()
+        self.immutable = immutable
+        self.mod_name = mod_name
+
+    def __hash__(self) -> int:
+        return hash((tuple(self.attrs.items()), tuple(sorted(self.immutable))))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ExtraAttrs):
+            return NotImplemented
+        return self.attrs == other.attrs and self.immutable == other.immutable
+
+
 class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
 
@@ -1186,7 +1214,7 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ("type", "args", "invalid", "type_ref", "last_known_value", "_hash")
+    __slots__ = ("type", "args", "invalid", "type_ref", "last_known_value", "_hash", "extra_attrs")
 
     def __init__(
         self,
@@ -1253,12 +1281,17 @@ class Instance(ProperType):
         # Cached hash value
         self._hash = -1
 
+        # Additional attributes defined per instance of this type. For example modules
+        # have different attributes per instance of types.ModuleType. This is intended
+        # to be "short lived", we don't serialize it, and even don't store as variable type.
+        self.extra_attrs: ExtraAttrs | None = None
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
         if self._hash == -1:
-            self._hash = hash((self.type, self.args, self.last_known_value))
+            self._hash = hash((self.type, self.args, self.last_known_value, self.extra_attrs))
         return self._hash
 
     def __eq__(self, other: object) -> bool:
@@ -1268,6 +1301,7 @@ class Instance(ProperType):
             self.type == other.type
             and self.args == other.args
             and self.last_known_value == other.last_known_value
+            and self.extra_attrs == other.extra_attrs
         )
 
     def serialize(self) -> JsonDict | str:
@@ -1315,6 +1349,7 @@ class Instance(ProperType):
             if last_known_value is not _dummy
             else self.last_known_value,
         )
+        # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true
         new.can_be_false = self.can_be_false
         return new

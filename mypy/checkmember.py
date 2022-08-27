@@ -475,6 +475,9 @@ def analyze_member_var_access(
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
+    elif isinstance(v, MypyFile):
+        mx.chk.module_refs.add(v.fullname)
+        return mx.chk.expr_checker.module_type(v)
     elif (
         not v
         and name not in ["__getattr__", "__setattr__", "__getattribute__"]

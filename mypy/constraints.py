@@ -791,7 +791,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             # The above is safe since at this point we know that 'instance' is a subtype
             # of (erased) 'template', therefore it defines all protocol members
             res.extend(infer_constraints(temp, inst, self.direction))
-            if mypy.subtypes.IS_SETTABLE in mypy.subtypes.get_member_flags(member, protocol.type):
+            if mypy.subtypes.IS_SETTABLE in mypy.subtypes.get_member_flags(member, protocol):
                 # Settable members are invariant, add opposite constraints
                 res.extend(infer_constraints(temp, inst, neg_op(self.direction)))
         return res

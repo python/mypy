@@ -6022,3 +6022,39 @@ if foo:
 [out]
 [out2]
 main:4: error: Function "Callable[[], int]" could always be true in boolean context
+
+[case testModuleAsProtocolImplementationSerialize]
+import m
+[file m.py]
+from typing import Protocol
+from lib import C
+
+class Options(Protocol):
+    timeout: int
+    def update(self) -> bool: ...
+
+def setup(options: Options) -> None: ...
+setup(C().config)
+
+[file lib.py]
+import default_config
+
+class C:
+    config = default_config
+
+[file default_config.py]
+timeout = 100
+def update() -> bool: ...
+
+[file default_config.py.2]
+timeout = 100
+def update() -> str: ...
+[builtins fixtures/module.pyi]
+[out]
+[out2]
+tmp/m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
+tmp/m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+tmp/m.py:9: note:     Expected:
+tmp/m.py:9: note:         def update() -> bool
+tmp/m.py:9: note:     Got:
+tmp/m.py:9: note:         def update() -> str

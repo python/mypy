@@ -2285,18 +2285,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
 
-    def determine_type_of_class_member(self, sym: SymbolTableNode) -> Type | None:
+    def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
         if sym.type is not None:
             return sym.type
         if isinstance(sym.node, FuncBase):
             return self.function_type(sym.node)
         if isinstance(sym.node, TypeInfo):
-            # nested class
-            return type_object_type(sym.node, self.named_type)
+            if sym.node.typeddict_type:
+                # We special-case TypedDict, because they don't define any constructor.
+                return self.expr_checker.typeddict_callable(sym.node)
+            else:
+                return type_object_type(sym.node, self.named_type)
         if isinstance(sym.node, TypeVarExpr):
             # Use of TypeVars is rejected in an expression/runtime context, so
             # we don't need to check supertype compatibility for them.
             return AnyType(TypeOfAny.special_form)
+        if isinstance(sym.node, TypeAlias):
+            with self.msg.filter_errors():
+                # Suppress any errors, they will be given when analyzing the corresponding node.
+                # Here we may have incorrect options and location context.
+                return self.expr_checker.alias_type_in_runtime_context(
+                    sym.node, sym.node.no_args, sym.node
+                )
+        # TODO: handle more node kinds here.
         return None
 
     def check_compatibility(
@@ -2327,8 +2338,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         first = base1.names[name]
         second = base2.names[name]
-        first_type = get_proper_type(self.determine_type_of_class_member(first))
-        second_type = get_proper_type(self.determine_type_of_class_member(second))
+        first_type = get_proper_type(self.determine_type_of_member(first))
+        second_type = get_proper_type(self.determine_type_of_member(second))
 
         if isinstance(first_type, FunctionLike) and isinstance(second_type, FunctionLike):
             if first_type.is_type_obj() and second_type.is_type_obj():
