@@ -1796,3 +1796,21 @@ t: Two
 reveal_type(t.__match_args__)  # E: "Two" has no attribute "__match_args__" \
                                # N: Revealed type is "Any"
 [builtins fixtures/dataclasses.pyi]
+
+[case testFinalInDataclass]
+from dataclasses import dataclass
+from typing import Final
+
+@dataclass
+class FirstClass:
+    FIRST_CONST: Final = 3  # OK
+
+@dataclass
+class SecondClass:
+    SECOND_CONST: Final = FirstClass.FIRST_CONST  # E: Need type argument for Final[...] with non-literal default in dataclass
+
+reveal_type(FirstClass().FIRST_CONST)  # N: Revealed type is "Literal[3]?"
+FirstClass().FIRST_CONST = 42  # E: Cannot assign to final attribute "FIRST_CONST"
+reveal_type(SecondClass().SECOND_CONST)  # N: Revealed type is "Literal[3]?"
+SecondClass().SECOND_CONST = 42  # E: Cannot assign to final attribute "SECOND_CONST"
+[builtins fixtures/dataclasses.pyi]
