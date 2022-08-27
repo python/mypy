@@ -44,7 +44,7 @@ from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.join import join_types
 from mypy.literals import Key, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
-from mypy.meet import is_overlapping_erased_types, is_overlapping_types
+from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
 from mypy.message_registry import ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
@@ -114,6 +114,7 @@ from mypy.nodes import (
     ReturnStmt,
     StarExpr,
     Statement,
+    StrExpr,
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
@@ -175,6 +176,7 @@ from mypy.types import (
     AnyType,
     CallableType,
     DeletedType,
+    ExtraAttrs,
     FunctionLike,
     Instance,
     LiteralType,
@@ -4697,7 +4699,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return None
 
         curr_module.names[full_name] = SymbolTableNode(GDEF, info)
-        return Instance(info, [])
+        return Instance(info, [], extra_attrs=merge_extra_attrs(*instances))
 
     def intersect_instance_callable(self, typ: Instance, callable_type: CallableType) -> Instance:
         """Creates a fake type that represents the intersection of an Instance and a CallableType.
@@ -4724,7 +4726,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         cur_module.names[gen_name] = SymbolTableNode(GDEF, info)
 
-        return Instance(info, [])
+        return Instance(info, [], extra_attrs=typ.extra_attrs)
 
     def make_fake_callable(self, typ: Instance) -> Instance:
         """Produce a new type that makes type Callable with a generic callable type."""
@@ -5028,6 +5030,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE:
                     vartype = self.lookup_type(expr)
                     return self.conditional_callable_type_map(expr, vartype)
+            elif refers_to_fullname(node.callee, "builtins.hasattr"):
+                if len(node.args) != 2:  # the error will be reported elsewhere
+                    return {}, {}
+                if literal(expr) == LITERAL_TYPE and isinstance(node.args[1], StrExpr):
+                    return self.hasattr_type_maps(expr, self.lookup_type(expr), node.args[1].value)
             elif isinstance(node.callee, RefExpr):
                 if node.callee.type_guard is not None:
                     # TODO: Follow keyword args or *args, **kwargs
@@ -6207,6 +6214,52 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and member_type.fallback.type == parent_type.type_object()
         )
 
+    def hasattr_type_maps(
+        self, expr: Expression, source_type: Type, name: str
+    ) -> tuple[TypeMap, TypeMap]:
+        if self.has_valid_attribute(source_type, name):
+            return {expr: source_type}, None
+        p_source_type = get_proper_type(source_type)
+        if isinstance(p_source_type, Instance):
+            return {
+                expr: p_source_type.copy_with_extra_attr(name, AnyType(TypeOfAny.unannotated))
+            }, {}
+        if isinstance(p_source_type, TupleType):
+            fallback = p_source_type.partial_fallback.copy_with_extra_attr(
+                name, AnyType(TypeOfAny.unannotated)
+            )
+            return {expr: p_source_type.copy_modified(fallback=fallback)}, {}
+        if isinstance(p_source_type, CallableType):
+            fallback = p_source_type.fallback.copy_with_extra_attr(
+                name, AnyType(TypeOfAny.unannotated)
+            )
+            return {expr: p_source_type.copy_modified(fallback=fallback)}, {}
+        if isinstance(p_source_type, TypeType) and isinstance(p_source_type.item, Instance):
+            return {
+                expr: TypeType.make_normalized(
+                    p_source_type.item.copy_with_extra_attr(name, AnyType(TypeOfAny.unannotated))
+                )
+            }, {}
+
+        if not isinstance(p_source_type, UnionType):
+            return {}, {}
+        return {}, {}
+
+    def has_valid_attribute(self, typ: Type, name: str) -> bool:
+        with self.msg.filter_errors() as watcher:
+            analyze_member_access(
+                name,
+                typ,
+                TempNode(AnyType(TypeOfAny.special_form)),
+                False,
+                False,
+                False,
+                self.msg,
+                original_type=typ,
+                chk=self,
+            )
+        return not watcher.has_new_errors()
+
 
 class CollectArgTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
@@ -7093,3 +7146,23 @@ def collapse_walrus(e: Expression) -> Expression:
     if isinstance(e, AssignmentExpr):
         return e.target
     return e
+
+
+def merge_extra_attrs(l: Instance, r: Instance) -> ExtraAttrs | None:
+    if not l.extra_attrs and not r.extra_attrs:
+        return None
+    if l.extra_attrs:
+        l_attrs = l.extra_attrs.attrs.copy()
+    else:
+        l_attrs = {}
+    if r.extra_attrs:
+        r_attrs = r.extra_attrs.attrs.copy()
+    else:
+        r_attrs = {}
+    for name, typ in l_attrs.items():
+        if name not in r_attrs:
+            r_attrs[name] = typ
+        else:
+            existing = r_attrs[name]
+            r_attrs[name] = meet_types(existing, typ)
+    return ExtraAttrs(r_attrs, set(), None)

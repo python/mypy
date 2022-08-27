@@ -1182,6 +1182,9 @@ class ExtraAttrs:
             return NotImplemented
         return self.attrs == other.attrs and self.immutable == other.immutable
 
+    def copy(self) -> ExtraAttrs:
+        return ExtraAttrs(self.attrs.copy(), self.immutable.copy(), self.mod_name)
+
 
 class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
@@ -1224,6 +1227,7 @@ class Instance(ProperType):
         column: int = -1,
         *,
         last_known_value: LiteralType | None = None,
+        extra_attrs: ExtraAttrs | None = None,
     ) -> None:
         super().__init__(line, column)
         self.type = typ
@@ -1284,7 +1288,7 @@ class Instance(ProperType):
         # Additional attributes defined per instance of this type. For example modules
         # have different attributes per instance of types.ModuleType. This is intended
         # to be "short lived", we don't serialize it, and even don't store as variable type.
-        self.extra_attrs: ExtraAttrs | None = None
+        self.extra_attrs = extra_attrs
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_instance(self)
@@ -1352,6 +1356,16 @@ class Instance(ProperType):
         # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true
         new.can_be_false = self.can_be_false
+        return new
+
+    def copy_with_extra_attr(self, name: str, typ: Type) -> Instance:
+        if self.extra_attrs:
+            existing_attrs = self.extra_attrs.copy()
+        else:
+            existing_attrs = ExtraAttrs({}, set(), None)
+        existing_attrs.attrs[name] = typ
+        new = self.copy_modified()
+        new.extra_attrs = existing_attrs
         return new
 
     def has_readable_member(self, name: str) -> bool:

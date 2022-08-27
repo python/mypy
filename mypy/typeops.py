@@ -104,7 +104,7 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    return Instance(info, [join_type_list(items)])
+    return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
 
 
 def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:

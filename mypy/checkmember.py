@@ -540,6 +540,11 @@ def analyze_member_var_access(
         return AnyType(TypeOfAny.special_form)
 
     # Could not find the member.
+
+    if itype.extra_attrs and name in itype.extra_attrs.attrs:
+        if not itype.extra_attrs.mod_name:
+            return itype.extra_attrs.attrs[name]
+
     if mx.is_super:
         mx.msg.undefined_in_superclass(name, mx.context)
         return AnyType(TypeOfAny.from_error)
@@ -858,6 +863,9 @@ def analyze_class_attribute_access(
 
     node = info.get(name)
     if not node:
+        if itype.extra_attrs and name in itype.extra_attrs.attrs:
+            if not itype.extra_attrs.mod_name:
+                return itype.extra_attrs.attrs[name]
         if info.fallback_to_any:
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         return None

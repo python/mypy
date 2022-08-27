@@ -2729,3 +2729,82 @@ if type(x) is not C:
     reveal_type(x)  # N: Revealed type is "__main__.D"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.C"
+
+[case testHasAttrExistingAttribute]
+class C:
+    x: int
+c: C
+if hasattr(c, "x"):
+    reveal_type(c.x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(c.x)  # unreachable
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeInstance]
+class B: ...
+b: B
+if hasattr(b, "x"):
+    reveal_type(b.x)  # N: Revealed type is "Any"
+else:
+    b.x  # E: "B" has no attribute "x"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeFunction]
+
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeClassObject]
+
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeTypeType]
+
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeTypeVar]
+
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeChained]
+class B: ...
+b: B
+if hasattr(b, "x"):
+    b.x
+elif hasattr(b, "y"):
+    b.y
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeNested]
+class A: ...
+class B: ...
+
+x: A
+if hasattr(x, "x"):
+    if isinstance(x, B):
+        x.x
+
+if hasattr(x, "x") and hasattr(x, "y"):
+    x.x
+    x.y
+
+if hasattr(x, "x"):
+    if hasattr(x, "y"):
+        x.x
+        x.y
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeUnion]
+from typing import Union
+
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeOuterUnion]
+from typing import Union
+
+class A: ...
+class B: ...
+xu: Union[A, B]
+if isinstance(xu, B):
+    if hasattr(xu, "x"):
+        xu.x
+[builtins fixtures/isinstance.pyi]
