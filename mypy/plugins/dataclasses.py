@@ -244,13 +244,19 @@ class DataclassTransformer:
                     tvar_def=order_tvar_def,
                 )
 
+        parent_decorator_arguments = []
+        for parent in info.mro[1:-1]:
+            parent_args = parent.metadata.get("dataclass")
+            if parent_args:
+                parent_decorator_arguments.append(parent_args)
+
         if decorator_arguments["frozen"]:
-            if any(not sub_info.metadata["dataclass"]["frozen"] for sub_info in info.mro[1:-1]):
+            if any(not parent["frozen"] for parent in parent_decorator_arguments):
                 ctx.api.fail("Cannot inherit frozen dataclass from a non-frozen one", info)
             self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
-            if any(sub_info.metadata["dataclass"]["frozen"] for sub_info in info.mro[1:-1]):
+            if any(parent["frozen"] for parent in parent_decorator_arguments):
                 ctx.api.fail("Cannot inherit non-frozen dataclass from a frozen one", info)
             self._propertize_callables(attributes)
 

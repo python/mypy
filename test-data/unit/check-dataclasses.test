@@ -212,6 +212,26 @@ class BadDerived3(Base):
     class foo: pass  # E: Dataclass attribute may only be overridden by another attribute
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassMultipleInheritance]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+class Unrelated:
+    foo: str
+
+@dataclass
+class Base:
+    bar: int
+
+@dataclass
+class Derived(Base, Unrelated):
+    pass
+
+d = Derived(3)
+reveal_type(d.foo)  # N: Revealed type is "builtins.str"
+reveal_type(d.bar)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassIncompatibleFrozenOverride]
 # flags: --python-version 3.7
 from dataclasses import dataclass
