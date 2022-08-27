@@ -691,6 +691,16 @@ def f(fn: Callable[Concatenate[P, int], None]): ...  # E: The last parameter to 
 reveal_type(f)  # N: Revealed type is "def [P] (fn: def (*Any, **Any) -> Any) -> Any"
 [builtins fixtures/paramspec.pyi]
 
+[case testUnboundParamSpecInConcatenateWithAlias]
+from typing import Callable
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec('P')
+
+X = Callable[Concatenate[int, P], None]  # E: The last parameter to Concatenate needs to be a ParamSpec \
+                                         # E: ParamSpec "P" is unbound
+[builtins fixtures/paramspec.pyi]
+
 [case testParamSpecLiteralsTypeApplication]
 from typing_extensions import ParamSpec
 from typing import Generic, Callable
