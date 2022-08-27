@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Callable
 
+from mypy.checker import TypeChecker
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin
 from mypy.subtypes import is_proper_subtype
@@ -153,7 +154,9 @@ def proper_types_hook(ctx: FunctionContext) -> Type:
 
 
 def get_proper_type_instance(ctx: FunctionContext) -> Instance:
-    types = ctx.api.modules["mypy.types"]  # type: ignore
+    checker = ctx.api
+    assert isinstance(checker, TypeChecker)
+    types = checker.modules["mypy.types"]
     proper_type_info = types.names["ProperType"]
     assert isinstance(proper_type_info.node, TypeInfo)
     return Instance(proper_type_info.node, [])
