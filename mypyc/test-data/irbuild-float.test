@@ -200,3 +200,20 @@ L0:
     a = 123.0
     r0 = a + -1.0
     return r0
+
+[case testFloatDefaultArg]
+def f(x: float = 1.5) -> float:
+    return x
+[out]
+def f(x, __bitmap):
+    x :: float
+    __bitmap, r0 :: uint32
+    r1 :: bit
+L0:
+    r0 = __bitmap & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    x = 1.5
+L2:
+    return x

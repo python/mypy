@@ -1037,6 +1037,8 @@ class LowLevelIRBuilder:
             elif not lst:
                 if is_fixed_width_rtype(arg.type):
                     output_arg = Integer(0, arg.type)
+                elif is_float_rprimitive(arg.type):
+                    output_arg = Float(0.0)
                 else:
                     output_arg = self.add(LoadErrorValue(arg.type, is_borrowed=True))
             else:

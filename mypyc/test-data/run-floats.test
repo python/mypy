@@ -83,12 +83,21 @@ def test_float_min_max() -> None:
     assert max(x, y) == 30.0
     assert max(y, x) == 30.0
 
-def default(x: float = 0) -> float:
-    return x
+def default(x: float = 2) -> float:
+    return x + 1
 
 def test_float_default_value() -> None:
-    assert default(1.2) == 1.2
-    assert default() == 0.0
+    assert default(1.2) == 2.2
+    for i in range(-200, 200):
+        assert default(float(i)) == i + 1
+    assert default() == 3.0
+
+def test_float_default_value_wrapper() -> None:
+    f: Any = default
+    assert f(1.2) == 2.2
+    for i in range(-200, 200):
+        assert f(float(i)) == i + 1
+    assert f() == 3.0
 
 class C:
     def __init__(self, x: float) -> None:
