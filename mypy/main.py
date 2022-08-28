@@ -872,7 +872,7 @@ def process_options(
     )
     add_invertible_flag(
         "--show-error-codes",
-        default=False,
+        default=True,
         help="Show error codes in error messages",
         group=error_group,
     )
