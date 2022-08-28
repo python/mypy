@@ -190,6 +190,8 @@ class Options:
         # Variable names considered False
         self.always_false: list[str] = []
 
+        self.strict_error_codes = False
+
         # Error codes to disable
         self.disable_error_code: list[str] = []
         self.disabled_error_codes: set[ErrorCode] = set()

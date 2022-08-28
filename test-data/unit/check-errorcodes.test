@@ -925,3 +925,7 @@ def f(d: D, s: str) -> None:
 [case testRecommendErrorCode]
 # type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code=...`  [syntax]
 1 + "asdf"
+
+[case testStrictErrorCodes]
+# flags: --strict-error-codes
+var: bool = 1  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[assignment]" instead)  [ignore-without-code]

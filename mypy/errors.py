@@ -590,13 +590,17 @@ class Errors:
         if self.options:
             current_mod_disabled = self.options.disabled_error_codes
             current_mod_enabled = self.options.enabled_error_codes
+            strict_error_codes = self.options.strict_error_codes
         else:
             current_mod_disabled = set()
             current_mod_enabled = set()
+            strict_error_codes = False
 
         if error_code in current_mod_disabled:
             return False
         elif error_code in current_mod_enabled:
+            return True
+        elif strict_error_codes and error_code.strict_enabled:
             return True
         else:
             return error_code.default_enabled

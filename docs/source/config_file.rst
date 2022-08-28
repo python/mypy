@@ -679,6 +679,17 @@ section of the command line docs.
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+.. confval:: strict_error_codes
+
+    :type: boolean
+    :default: False
+
+   Enable additional error codes, disabled by default. You can see the list
+   of codes enabled by this flag in the full :option:`mypy --help` output.
+
+   Note: the exact list of codes enabled by running :confval:`strict_error_codes`
+   may change over time.
+
 .. confval:: strict
 
     :type: boolean

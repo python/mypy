@@ -12,12 +12,19 @@ error_codes: dict[str, ErrorCode] = {}
 
 class ErrorCode:
     def __init__(
-        self, code: str, description: str, category: str, default_enabled: bool = True
+        self,
+        code: str,
+        description: str,
+        category: str,
+        default_enabled: bool = True,
+        *,
+        strict_enabled: bool = False,
     ) -> None:
         self.code = code
         self.description = description
         self.category = category
         self.default_enabled = default_enabled
+        self.strict_enabled = strict_enabled
         error_codes[code] = self
 
     def __str__(self) -> str:
@@ -144,6 +151,7 @@ IGNORE_WITHOUT_CODE: Final = ErrorCode(
     "Warn about '# type: ignore' comments which do not have error codes",
     "General",
     default_enabled=False,
+    strict_enabled=True,
 )
 UNUSED_AWAITABLE: Final = ErrorCode(
     "unused-awaitable",

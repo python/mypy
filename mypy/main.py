@@ -824,6 +824,20 @@ def process_options(
         group=strictness_group,
     )
 
+    strict_error_code_names = [name for name, code in error_codes.items() if code.strict_enabled]
+    strict_error_codes_help = (
+        "Enable additional error codes, disabled by default; "
+        f"enables the following codes: {', '.join(strict_error_code_names)}"
+    )
+
+    add_invertible_flag(
+        "--strict-error-codes",
+        default=False,
+        strict_flag=True,
+        help=strict_error_codes_help,
+        group=strictness_group,
+    )
+
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names)
     )

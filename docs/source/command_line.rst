@@ -618,6 +618,14 @@ of the above sections.
 
        assert text is not None  # OK, check against None is allowed as a special case.
 
+.. option:: --strict-error-codes
+
+    Enable additional error codes, disabled by default. You can see the list
+    of codes enabled by this flag in the full :option:`mypy --help` output.
+
+    Note: the exact list of codes enabled by running :option:`--strict-error-codes`
+    may change over time.
+
 .. option:: --strict
 
     This flag mode enables all optional error checking flags.  You can see the
