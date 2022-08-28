@@ -4246,7 +4246,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
-        elif isinstance(typ, Instance) and is_named_instance(typ, "builtins.tuple"):
+        elif is_named_instance(typ, "builtins.tuple"):
             # variadic tuple
             return [typ.args[0]]
         else:
