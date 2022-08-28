@@ -972,7 +972,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Trying to redefine something like partial empty list as function.
                         self.fail(message_registry.INCOMPATIBLE_REDEFINITION, defn)
                 else:
-                    # TODO: Update conditional type binder.
+                    name_expr = NameExpr(defn.name)
+                    name_expr.node = defn.original_def
+                    self.binder.assign_type(name_expr, new_type, orig_type)
                     self.check_subtype(
                         new_type,
                         orig_type,
