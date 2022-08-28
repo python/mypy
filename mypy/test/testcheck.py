@@ -26,7 +26,7 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore
+    import lxml  # type: ignore[import]
 except ImportError:
     lxml = None
 

@@ -732,7 +732,7 @@ class SemanticAnalyzer(
         """
         scope = self.scope
         self.options = options
-        self.errors.set_file(file_node.path, file_node.fullname, scope=scope)
+        self.errors.set_file(file_node.path, file_node.fullname, scope=scope, options=options)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname
         with scope.module_scope(self.cur_mod_id):
@@ -3007,7 +3007,10 @@ class SemanticAnalyzer(
             ):
                 self.fail("All protocol members must have explicitly declared types", s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
+            # We skip this step for type scope because it messes up with class attribute
+            # inference for literal types (also annotated and non-annotated variables at class
+            # scope are semantically different, so we should not souch statement type).
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr) and not self.type:
                 if s.lvalues[0].is_inferred_def:
                     s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
         if s.type:
@@ -3026,7 +3029,6 @@ class SemanticAnalyzer(
 
     def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Type | None:
         """Return builtins.int if rvalue is an int literal, etc.
-
         If this is a 'Final' context, we return "Literal[...]" instead."""
         if self.options.semantic_analysis_only or self.function_stack:
             # Skip this if we're only doing the semantic analysis pass.
@@ -3267,6 +3269,12 @@ class SemanticAnalyzer(
         current_node = existing.node if existing else alias_node
         assert isinstance(current_node, TypeAlias)
         self.disable_invalid_recursive_aliases(s, current_node)
+        if self.is_class_scope():
+            assert self.type is not None
+            if self.type.is_protocol:
+                self.fail("Type aliases are prohibited in protocol bodies", s)
+                if not lvalue.name[0].isupper():
+                    self.note("Use variable annotation syntax to define protocol members", s)
         return True
 
     def disable_invalid_recursive_aliases(
@@ -5283,7 +5291,7 @@ class SemanticAnalyzer(
             return None
         node = sym.node
         if isinstance(node, TypeAlias):
-            assert isinstance(node.target, Instance)  # type: ignore
+            assert isinstance(node.target, Instance)  # type: ignore[misc]
             node = node.target.type
         assert isinstance(node, TypeInfo), node
         if args is not None:

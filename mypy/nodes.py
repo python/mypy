@@ -939,6 +939,7 @@ VAR_FLAGS: Final = [
     "explicit_self_type",
     "is_ready",
     "is_inferred",
+    "invalid_partial_type",
     "from_module_getattr",
     "has_explicit_value",
     "allow_incompatible_override",
@@ -975,6 +976,7 @@ class Var(SymbolNode):
         "from_module_getattr",
         "has_explicit_value",
         "allow_incompatible_override",
+        "invalid_partial_type",
     )
 
     def __init__(self, name: str, type: mypy.types.Type | None = None) -> None:
@@ -1024,6 +1026,9 @@ class Var(SymbolNode):
         self.has_explicit_value = False
         # If True, subclasses can override this with an incompatible type.
         self.allow_incompatible_override = False
+        # If True, this means we didn't manage to infer full type and fall back to
+        # something like list[Any]. We may decide to not use such types as context.
+        self.invalid_partial_type = False
 
     @property
     def name(self) -> str:
@@ -1108,7 +1113,7 @@ class ClassDef(Statement):
     ) -> None:
         super().__init__()
         self.name = name
-        self.fullname = None  # type: ignore
+        self.fullname = None  # type: ignore[assignment]
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
@@ -2901,7 +2906,10 @@ class TypeInfo(SymbolNode):
         assert self.mro, "This property can be only accessed after MRO is (re-)calculated"
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
-                for name in base.names:
+                for name, node in base.names.items():
+                    if isinstance(node.node, (TypeAlias, TypeVarExpr)):
+                        # These are auxiliary definitions (and type aliases are prohibited).
+                        continue
                     members.add(name)
         return sorted(list(members))
 
@@ -3145,10 +3153,10 @@ class FakeInfo(TypeInfo):
     def __init__(self, msg: str) -> None:
         self.msg = msg
 
-    def __getattribute__(self, attr: str) -> None:
+    def __getattribute__(self, attr: str) -> type:
         # Handle __class__ so that isinstance still works...
         if attr == "__class__":
-            return object.__getattribute__(self, attr)
+            return object.__getattribute__(self, attr)  # type: ignore[no-any-return]
         raise AssertionError(object.__getattribute__(self, "msg"))
 
 

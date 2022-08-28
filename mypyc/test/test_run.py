@@ -38,6 +38,8 @@ files = [
     "run-misc.test",
     "run-functions.test",
     "run-integers.test",
+    "run-i64.test",
+    "run-i32.test",
     "run-floats.test",
     "run-bools.test",
     "run-strings.test",

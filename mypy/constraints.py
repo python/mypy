@@ -541,7 +541,33 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     template.type.inferring.pop()
                     return res
         if isinstance(actual, CallableType) and actual.fallback is not None:
+            if actual.is_type_obj() and template.type.is_protocol:
+                ret_type = get_proper_type(actual.ret_type)
+                if isinstance(ret_type, TupleType):
+                    ret_type = mypy.typeops.tuple_fallback(ret_type)
+                if isinstance(ret_type, Instance):
+                    if self.direction == SUBTYPE_OF:
+                        subtype = template
+                    else:
+                        subtype = ret_type
+                    res.extend(
+                        self.infer_constraints_from_protocol_members(
+                            ret_type, template, subtype, template, class_obj=True
+                        )
+                    )
             actual = actual.fallback
+        if isinstance(actual, TypeType) and template.type.is_protocol:
+            if isinstance(actual.item, Instance):
+                if self.direction == SUBTYPE_OF:
+                    subtype = template
+                else:
+                    subtype = actual.item
+                res.extend(
+                    self.infer_constraints_from_protocol_members(
+                        actual.item, template, subtype, template, class_obj=True
+                    )
+                )
+
         if isinstance(actual, Overloaded) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, TypedDictType):
@@ -551,7 +577,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, Instance):
             instance = actual
             erased = erase_typevars(template)
-            assert isinstance(erased, Instance)  # type: ignore
+            assert isinstance(erased, Instance)  # type: ignore[misc]
             # We always try nominal inference if possible,
             # it is much faster than the structural one.
             if self.direction == SUBTYPE_OF and template.type.has_base(instance.type.fullname):
@@ -715,6 +741,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 )
                 instance.type.inferring.pop()
                 return res
+        if res:
+            return res
+
         if isinstance(actual, AnyType):
             return self.infer_against_any(template.args, actual)
         if (
@@ -740,7 +769,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return []
 
     def infer_constraints_from_protocol_members(
-        self, instance: Instance, template: Instance, subtype: Type, protocol: Instance
+        self,
+        instance: Instance,
+        template: Instance,
+        subtype: Type,
+        protocol: Instance,
+        class_obj: bool = False,
     ) -> list[Constraint]:
         """Infer constraints for situations where either 'template' or 'instance' is a protocol.
 
@@ -750,13 +784,18 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         """
         res = []
         for member in protocol.type.protocol_members:
-            inst, temp = mypy.subtypes.find_members(member, instance, template, subtype)
+            if member == "__iter__":
+                inst, temp = mypy.subtypes.iter_special_member(member, instance, template, subtype)
+            else:
+                inst = mypy.subtypes.find_member(member, instance, subtype, class_obj=class_obj)
+                temp = mypy.subtypes.find_member(member, template, subtype)
+
             if inst is None or temp is None:
                 return []  # See #11020
             # The above is safe since at this point we know that 'instance' is a subtype
             # of (erased) 'template', therefore it defines all protocol members
             res.extend(infer_constraints(temp, inst, self.direction))
-            if mypy.subtypes.IS_SETTABLE in mypy.subtypes.get_member_flags(member, protocol.type):
+            if mypy.subtypes.IS_SETTABLE in mypy.subtypes.get_member_flags(member, protocol):
                 # Settable members are invariant, add opposite constraints
                 res.extend(infer_constraints(temp, inst, neg_op(self.direction)))
         return res
