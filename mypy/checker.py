@@ -6224,7 +6224,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = get_proper_type(typ)
         any_type = AnyType(TypeOfAny.unannotated)
         if isinstance(typ, Instance):
-            return typ.copy_with_extra_attr(name, any_type)
+            result = typ.copy_with_extra_attr(name, any_type)
+            # For instances, we erase the possible module name, so that restrictions
+            # become anonymous types.ModuleType instances, allowing hasattr() to
+            # have effect on modules.
+            assert result.extra_attrs is not None
+            result.extra_attrs.mod_name = None
+            return result
         if isinstance(typ, TupleType):
             fallback = typ.partial_fallback.copy_with_extra_attr(name, any_type)
             return typ.copy_modified(fallback=fallback)

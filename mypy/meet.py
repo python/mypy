@@ -74,9 +74,14 @@ def meet_types(s: Type, t: Type) -> ProperType:
 
     if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
         # Code in checker.py should merge any extra_items where possible, so we
-        # should have only one instance with extra_items here. We check this before
+        # should have only compatible extra_items here. We check this before
         # the below subtype check, so that extra_attrs will not get erased.
         if is_same_type(s, t) and (s.extra_attrs or t.extra_attrs):
+            if s.extra_attrs and t.extra_attrs:
+                if len(s.extra_attrs.attrs) > len(t.extra_attrs.attrs):
+                    # Return the one that has more precise information.
+                    return s
+                return t
             if s.extra_attrs:
                 return s
             return t

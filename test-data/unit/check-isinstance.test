@@ -2867,3 +2867,17 @@ class Test:
             self._body = foo()
         return self._body
 [builtins fixtures/isinstance.pyi]
+
+[case testHasAttrModule]
+import mod
+
+if hasattr(mod, "y"):
+    reveal_type(mod.y)  # N: Revealed type is "Any"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+else:
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+x: int
+[builtins fixtures/module.pyi]
