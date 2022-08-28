@@ -17,7 +17,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias, overload
+from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard, overload
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -3172,7 +3172,7 @@ def strip_type(typ: Type) -> Type:
         return orig_typ
 
 
-def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> bool:
+def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[Instance]:
     if not isinstance(fullnames, tuple):
         fullnames = (fullnames,)
 
