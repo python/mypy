@@ -6,20 +6,13 @@ from mypy import join
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
-from mypy.subtypes import (
-    is_callable_compatible,
-    is_equivalent,
-    is_proper_subtype,
-    is_same_type,
-    is_subtype,
-)
+from mypy.subtypes import is_callable_compatible, is_equivalent, is_proper_subtype, is_subtype
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
     AnyType,
     CallableType,
     DeletedType,
     ErasedType,
-    ExtraAttrs,
     FunctionLike,
     Instance,
     LiteralType,
@@ -108,7 +101,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return original_declared
 
     if is_proper_subtype(narrowed, declared, ignore_promotions=True):
-        return remove_instance_last_known_values(original_narrowed)
+        return remove_instance_last_known_values(original_narrowed, keep_extra_attrs=True)
 
     if isinstance(declared, UnionType):
         return make_simplified_union(

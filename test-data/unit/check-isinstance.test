@@ -2750,28 +2750,44 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeFunction]
-
+def foo(x: int) -> None: ...
+if hasattr(foo, "x"):
+    reveal_type(foo.x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeClassObject]
-
+class C: ...
+if hasattr(C, "x"):
+    reveal_type(C.x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeTypeType]
-
+from typing import Type
+class C: ...
+c: Type[C]
+if hasattr(c, "x"):
+    reveal_type(c.x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeTypeVar]
+from typing import TypeVar
 
+T = TypeVar("T")
+def foo(x: T) -> T:
+    if hasattr(x, "x"):
+        reveal_type(x.x)  # N: Revealed type is "Any"
+        return x
+    else:
+        return x
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeChained]
 class B: ...
 b: B
 if hasattr(b, "x"):
-    b.x
+    reveal_type(b.x)  # N: Revealed type is "Any"
 elif hasattr(b, "y"):
-    b.y
+    reveal_type(b.y)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeNested]
@@ -2781,21 +2797,31 @@ class B: ...
 x: A
 if hasattr(x, "x"):
     if isinstance(x, B):
-        x.x
+        reveal_type(x.x)  # N: Revealed type is "Any"
 
 if hasattr(x, "x") and hasattr(x, "y"):
-    x.x
-    x.y
+    reveal_type(x.x)  # N: Revealed type is "Any"
+    reveal_type(x.y)  # N: Revealed type is "Any"
 
 if hasattr(x, "x"):
     if hasattr(x, "y"):
-        x.x
-        x.y
+        reveal_type(x.x)  # N: Revealed type is "Any"
+        reveal_type(x.y)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeUnion]
 from typing import Union
 
+class A: ...
+class B:
+    x: int
+
+xu: Union[A, B]
+if hasattr(xu, "x"):
+    reveal_type(xu)  # N: Revealed type is "Union[__main__.B, __main__.A]"
+    reveal_type(xu.x)  # N: Revealed type is "Union[builtins.int, Any]"
+else:
+    reveal_type(xu)  # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeOuterUnion]
@@ -2806,5 +2832,16 @@ class B: ...
 xu: Union[A, B]
 if isinstance(xu, B):
     if hasattr(xu, "x"):
-        xu.x
+        reveal_type(xu.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeLiteral]
+from typing import Final
+class B: ...
+b: B
+ATTR: Final = "x"
+if hasattr(b, ATTR):
+    reveal_type(b.x)  # N: Revealed type is "Any"
+else:
+    b.x  # E: "B" has no attribute "x"
 [builtins fixtures/isinstance.pyi]

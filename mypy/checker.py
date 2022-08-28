@@ -114,7 +114,6 @@ from mypy.nodes import (
     ReturnStmt,
     StarExpr,
     Statement,
-    StrExpr,
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
@@ -168,6 +167,7 @@ from mypy.typeops import (
     true_only,
     try_expanding_sum_type_to_union,
     try_getting_int_literals_from_type,
+    try_getting_str_literals,
     try_getting_str_literals_from_type,
     tuple_fallback,
 )
@@ -5033,8 +5033,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif refers_to_fullname(node.callee, "builtins.hasattr"):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
-                if literal(expr) == LITERAL_TYPE and isinstance(node.args[1], StrExpr):
-                    return self.hasattr_type_maps(expr, self.lookup_type(expr), node.args[1].value)
+                attr = try_getting_str_literals(node.args[1], self.lookup_type(node.args[1]))
+                if literal(expr) == LITERAL_TYPE and attr and len(attr) == 1:
+                    return self.hasattr_type_maps(expr, self.lookup_type(expr), attr[0])
             elif isinstance(node.callee, RefExpr):
                 if node.callee.type_guard is not None:
                     # TODO: Follow keyword args or *args, **kwargs
@@ -6214,36 +6215,60 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and member_type.fallback.type == parent_type.type_object()
         )
 
+    def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
+        orig_typ = typ
+        typ = get_proper_type(typ)
+        any_type = AnyType(TypeOfAny.unannotated)
+        if isinstance(typ, Instance):
+            return typ.copy_with_extra_attr(name, any_type)
+        if isinstance(typ, TupleType):
+            fallback = typ.partial_fallback.copy_with_extra_attr(name, any_type)
+            return typ.copy_modified(fallback=fallback)
+        if isinstance(typ, CallableType):
+            fallback = typ.fallback.copy_with_extra_attr(name, any_type)
+            return typ.copy_modified(fallback=fallback)
+        if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+            return TypeType.make_normalized(self.add_any_attribute_to_type(typ.item, name))
+        if isinstance(typ, TypeVarType):
+            return typ.copy_modified(
+                upper_bound=self.add_any_attribute_to_type(typ.upper_bound, name),
+                values=[self.add_any_attribute_to_type(v, name) for v in typ.values],
+            )
+        if isinstance(typ, UnionType):
+            with_attr, without_attr = self.partition_union_by_attr(typ, name)
+            return make_simplified_union(
+                with_attr + [self.add_any_attribute_to_type(typ, name) for typ in without_attr]
+            )
+        return orig_typ
+
     def hasattr_type_maps(
         self, expr: Expression, source_type: Type, name: str
     ) -> tuple[TypeMap, TypeMap]:
         if self.has_valid_attribute(source_type, name):
             return {expr: source_type}, None
-        p_source_type = get_proper_type(source_type)
-        if isinstance(p_source_type, Instance):
-            return {
-                expr: p_source_type.copy_with_extra_attr(name, AnyType(TypeOfAny.unannotated))
-            }, {}
-        if isinstance(p_source_type, TupleType):
-            fallback = p_source_type.partial_fallback.copy_with_extra_attr(
-                name, AnyType(TypeOfAny.unannotated)
-            )
-            return {expr: p_source_type.copy_modified(fallback=fallback)}, {}
-        if isinstance(p_source_type, CallableType):
-            fallback = p_source_type.fallback.copy_with_extra_attr(
-                name, AnyType(TypeOfAny.unannotated)
-            )
-            return {expr: p_source_type.copy_modified(fallback=fallback)}, {}
-        if isinstance(p_source_type, TypeType) and isinstance(p_source_type.item, Instance):
-            return {
-                expr: TypeType.make_normalized(
-                    p_source_type.item.copy_with_extra_attr(name, AnyType(TypeOfAny.unannotated))
-                )
-            }, {}
 
-        if not isinstance(p_source_type, UnionType):
-            return {}, {}
+        source_type = get_proper_type(source_type)
+        if isinstance(source_type, UnionType):
+            _, without_attr = self.partition_union_by_attr(source_type, name)
+            yes_map = {expr: self.add_any_attribute_to_type(source_type, name)}
+            return yes_map, {expr: make_simplified_union(without_attr)}
+
+        type_with_attr = self.add_any_attribute_to_type(source_type, name)
+        if type_with_attr != source_type:
+            return {expr: type_with_attr}, {}
         return {}, {}
+
+    def partition_union_by_attr(
+        self, source_type: UnionType, name: str
+    ) -> tuple[list[Type], list[Type]]:
+        with_attr = []
+        without_attr = []
+        for item in source_type.items:
+            if self.has_valid_attribute(item, name):
+                with_attr.append(item)
+            else:
+                without_attr.append(item)
+        return with_attr, without_attr
 
     def has_valid_attribute(self, typ: Type, name: str) -> bool:
         with self.msg.filter_errors() as watcher:

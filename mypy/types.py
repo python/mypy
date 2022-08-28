@@ -528,16 +528,30 @@ class TypeVarType(TypeVarLikeType):
             old.column,
         )
 
+    def copy_modified(
+        self, values: Bogus[list[Type]] = _dummy, upper_bound: Bogus[Type] = _dummy
+    ) -> TypeVarType:
+        return TypeVarType(
+            self.name,
+            self.fullname,
+            self.id,
+            self.values if values is _dummy else values,
+            self.upper_bound if upper_bound is _dummy else upper_bound,
+            self.variance,
+            self.line,
+            self.column,
+        )
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var(self)
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return hash((self.id, self.upper_bound))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarType):
             return NotImplemented
-        return self.id == other.id
+        return self.id == other.id and self.upper_bound == other.upper_bound
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -1985,6 +1999,7 @@ class CallableType(FunctionLike):
                 tuple(self.arg_types),
                 tuple(self.arg_names),
                 tuple(self.arg_kinds),
+                self.fallback,
             )
         )
 
@@ -1998,6 +2013,7 @@ class CallableType(FunctionLike):
                 and self.name == other.name
                 and self.is_type_obj() == other.is_type_obj()
                 and self.is_ellipsis_args == other.is_ellipsis_args
+                and self.fallback == other.fallback
             )
         else:
             return NotImplemented
