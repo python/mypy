@@ -100,9 +100,6 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if declared == narrowed:
         return original_declared
 
-    if is_proper_subtype(narrowed, declared, ignore_promotions=True):
-        return remove_instance_last_known_values(original_narrowed, keep_extra_attrs=True)
-
     if isinstance(declared, UnionType):
         return make_simplified_union(
             [narrow_declared_type(x, narrowed) for x in declared.relevant_items()]
@@ -118,6 +115,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return make_simplified_union(
             [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
         )
+    elif is_proper_subtype(narrowed, declared, ignore_promotions=True):
+        return remove_instance_last_known_values(original_narrowed, keep_extra_attrs=True)
     elif isinstance(narrowed, AnyType):
         return original_narrowed
     elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
