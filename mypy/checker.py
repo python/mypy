@@ -1218,7 +1218,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         supertype=return_type,
                         context=defn,
                         msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
-                        code=codes.RETURN_VALUE,
                     )
 
             self.return_types.pop()
@@ -4008,7 +4007,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         context=s.expr,
                         outer_context=s,
                         msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
-                        code=codes.RETURN_VALUE,
                     )
             else:
                 # Empty returns are valid in Generators with Any typed returns, but not in
@@ -5581,6 +5579,34 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     #
     # Helpers
     #
+    @overload
+    def check_subtype(
+        self,
+        subtype: Type,
+        supertype: Type,
+        context: Context,
+        msg: str,
+        subtype_label: str | None = None,
+        supertype_label: str | None = None,
+        *,
+        code: ErrorCode | None = None,
+        outer_context: Context | None = None,
+    ) -> bool:
+        ...
+
+    @overload
+    def check_subtype(
+        self,
+        subtype: Type,
+        supertype: Type,
+        context: Context,
+        msg: ErrorMessage = message_registry.INCOMPATIBLE_TYPES,
+        subtype_label: str | None = None,
+        supertype_label: str | None = None,
+        *,
+        outer_context: Context | None = None,
+    ) -> bool:
+        ...
 
     def check_subtype(
         self,
@@ -5598,17 +5624,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_subtype(subtype, supertype, options=self.options):
             return True
 
-        if isinstance(msg, ErrorMessage):
-            msg_text = msg.value
-            code = msg.code
-        else:
-            msg_text = msg
+        if isinstance(msg, str):
+            msg = ErrorMessage(msg, code=code)
+            del code
+
         orig_subtype = subtype
         subtype = get_proper_type(subtype)
         orig_supertype = supertype
         supertype = get_proper_type(supertype)
         if self.msg.try_report_long_tuple_assignment_error(
-            subtype, supertype, context, msg_text, subtype_label, supertype_label, code=code
+            subtype, supertype, context, msg, subtype_label, supertype_label
         ):
             return False
         extra_info: list[str] = []
@@ -5626,29 +5651,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes([], subtype, supertype)
         if extra_info:
-            msg_text += " (" + ", ".join(extra_info) + ")"
+            msg = msg.with_additional_msg(" (" + ", ".join(extra_info) + ")")
 
-        self.fail(ErrorMessage(msg_text, code=code), context)
+        self.fail(msg, context)
         for note in notes:
-            self.msg.note(note, context, code=code)
+            self.msg.note(note, context, code=msg.code)
         if note_msg:
-            self.note(note_msg, context, code=code)
-        self.msg.maybe_note_concatenate_pos_args(subtype, supertype, context, code=code)
+            self.note(note_msg, context, code=msg.code)
+        self.msg.maybe_note_concatenate_pos_args(subtype, supertype, context, code=msg.code)
         if (
             isinstance(supertype, Instance)
             and supertype.type.is_protocol
             and isinstance(subtype, (Instance, TupleType, TypedDictType))
         ):
-            self.msg.report_protocol_problems(subtype, supertype, context, code=code)
+            self.msg.report_protocol_problems(subtype, supertype, context, code=msg.code)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
             call = find_member("__call__", subtype, subtype, is_operator=True)
             if call:
-                self.msg.note_call(subtype, call, context, code=code)
+                self.msg.note_call(subtype, call, context, code=msg.code)
         if isinstance(subtype, (CallableType, Overloaded)) and isinstance(supertype, Instance):
             if supertype.type.is_protocol and supertype.type.protocol_members == ["__call__"]:
                 call = find_member("__call__", supertype, subtype, is_operator=True)
                 assert call is not None
-                self.msg.note_call(supertype, call, context, code=code)
+                self.msg.note_call(supertype, call, context, code=msg.code)
         self.check_possible_missing_await(subtype, supertype, context)
         return False
 
