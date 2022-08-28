@@ -6257,7 +6257,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
               while keeping the rest.
         """
         if self.has_valid_attribute(source_type, name):
-            return {expr: source_type}, None
+            return {expr: source_type}, {}
 
         source_type = get_proper_type(source_type)
         if isinstance(source_type, UnionType):
@@ -6283,6 +6283,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return with_attr, without_attr
 
     def has_valid_attribute(self, typ: Type, name: str) -> bool:
+        if isinstance(get_proper_type(typ), AnyType):
+            return False
         with self.msg.filter_errors() as watcher:
             analyze_member_access(
                 name,

@@ -48,6 +48,7 @@ from mypy.nodes import (
 from mypy.types import (
     AnyType,
     Instance,
+    ProperType,
     TupleType,
     Type,
     TypeOfAny,
@@ -877,7 +878,7 @@ class IRBuilder:
         # This logic is copied from mypy's TypeChecker.analyze_iterable_item_type.
         if expr not in self.types:
             # Mypy thinks this is unreachable.
-            iterable = AnyType(TypeOfAny.from_error)
+            iterable: ProperType = AnyType(TypeOfAny.from_error)
         else:
             iterable = get_proper_type(self.types[expr])
         echk = self.graph[self.module_name].type_checker().expr_checker

@@ -2737,7 +2737,8 @@ c: C
 if hasattr(c, "x"):
     reveal_type(c.x)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(c.x)  # unreachable
+    # We don't mark this unreachable since people may check for deleted attributes
+    reveal_type(c.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeInstance]
