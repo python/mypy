@@ -1939,7 +1939,7 @@ class CallableType(FunctionLike):
         if not self.unpack_kwargs:
             return NormalizedCallableType(self.copy_modified())
         last_type = get_proper_type(self.arg_types[-1])
-        assert isinstance(last_type, ProperType) and isinstance(last_type, TypedDictType)
+        assert isinstance(last_type, TypedDictType)
         extra_kinds = [
             ArgKind.ARG_NAMED if name in last_type.required_keys else ArgKind.ARG_NAMED_OPT
             for name in last_type.items

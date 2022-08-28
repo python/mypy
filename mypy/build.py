@@ -1292,13 +1292,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     )
 
     # Don't check for path match, that is dealt with in validate_meta().
-    if (
-        m.id != id
-        or m.mtime is None
-        or m.size is None
-        or m.dependencies is None
-        or m.data_mtime is None
-    ):
+    if m.id != id or m.data_mtime is None:
         manager.log(f"Metadata abandoned for {id}: attributes are missing")
         return None
 

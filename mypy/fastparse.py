@@ -744,7 +744,7 @@ class ASTConverter:
         if stmt.else_body is None:
             return overload_name
 
-        if isinstance(stmt.else_body, Block) and len(stmt.else_body.body) == 1:
+        if len(stmt.else_body.body) == 1:
             # For elif: else_body contains an IfStmt itself -> do a recursive check.
             if (
                 isinstance(stmt.else_body.body[0], (Decorator, FuncDef, OverloadedFuncDef))
@@ -905,7 +905,7 @@ class ASTConverter:
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
                     arg_types = [
-                        a if a is not None else AnyType(TypeOfAny.unannotated)
+                        a if a is not None else AnyType(TypeOfAny.unannotated)  # type: ignore[redundant-expr]
                         for a in translated_args
                     ]
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
@@ -1042,7 +1042,7 @@ class ASTConverter:
         for a, kd in zip(args.kwonlyargs, args.kw_defaults):
             new_args.append(
                 self.make_argument(
-                    a, kd, ARG_NAMED if kd is None else ARG_NAMED_OPT, no_type_check
+                    a, kd, ARG_NAMED if kd is None else ARG_NAMED_OPT, no_type_check  # type: ignore[redundant-expr]
                 )
             )
             names.append(a)
