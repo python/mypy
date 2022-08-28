@@ -68,6 +68,7 @@ from mypy.typevartuples import extract_unpack, split_with_instance
 IS_SETTABLE: Final = 1
 IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
+IS_VAR: Final = 4
 
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
@@ -1020,8 +1021,11 @@ def is_protocol_implementation(
                 if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
                     return False
             else:
-                if IS_SETTABLE in superflags and IS_CLASSVAR not in subflags:
+                if IS_VAR in superflags and IS_CLASSVAR not in subflags:
                     # Only class variables are allowed for class object access.
+                    return False
+                if IS_CLASSVAR in superflags:
+                    # This can be never matched by a class object.
                     return False
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 return False
@@ -1118,13 +1122,17 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
         if isinstance(method, Decorator):
             if method.var.is_staticmethod or method.var.is_classmethod:
                 return {IS_CLASS_OR_STATIC}
+            elif method.var.is_property:
+                return {IS_VAR}
         elif method.is_property:  # this could be settable property
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
             if dec.var.is_settable_property or setattr_meth:
-                return {IS_SETTABLE}
-        return set()
+                return {IS_VAR, IS_SETTABLE}
+            else:
+                return {IS_VAR}
+        return set()  # Just a regular method
     node = info.get(name)
     if not node:
         if setattr_meth:
@@ -1137,8 +1145,10 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
         return set()
     v = node.node
     # just a variable
-    if isinstance(v, Var) and not v.is_property:
-        flags = set()
+    if isinstance(v, Var):
+        if v.is_property:
+            return {IS_VAR}
+        flags = {IS_VAR}
         if not v.is_final:
             flags.add(IS_SETTABLE)
         if v.is_classvar:
