@@ -2710,8 +2710,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if inferred.info:
             for base in inferred.info.mro[1:]:
                 base_type, base_node = self.lvalue_type_from_base(inferred, base)
-                if base_type and not (
-                    isinstance(base_node, Var) and base_node.invalid_partial_type
+                if (
+                    base_type
+                    and not (isinstance(base_node, Var) and base_node.invalid_partial_type)
+                    and not isinstance(base_type, PartialType)
                 ):
                     type_contexts.append(base_type)
         # Use most derived supertype as type context if available.
@@ -2814,6 +2816,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     continue
 
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
+                if isinstance(base_type, PartialType):
+                    base_type = None
 
                 if base_type:
                     assert base_node is not None
@@ -5722,7 +5726,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         sym = self.lookup_qualified(name)
         node = sym.node
         if isinstance(node, TypeAlias):
-            assert isinstance(node.target, Instance)  # type: ignore
+            assert isinstance(node.target, Instance)  # type: ignore[misc]
             node = node.target.type
         assert isinstance(node, TypeInfo)
         any_type = AnyType(TypeOfAny.from_omitted_generics)

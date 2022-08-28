@@ -470,8 +470,10 @@ def make_simplified_union(
         item = try_getting_instance_fallback(item)
         if item and item.extra_attrs:
             extra_attrs_set.add(item.extra_attrs)
-    if len(extra_attrs_set) > 1 and isinstance(result, Instance):
-        result = result.copy_modified()
+
+    fallback = try_getting_instance_fallback(result)
+    if len(extra_attrs_set) > 1 and fallback:
+        fallback.extra_attrs = None
 
     return result
 

@@ -320,7 +320,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = self.typeddict_callable(node)
             else:
                 result = type_object_type(node, self.named_type)
-            if isinstance(result, CallableType) and isinstance(  # type: ignore
+            if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
                 result.ret_type, Instance
             ):
                 # We need to set correct line and column
@@ -3823,7 +3823,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
-        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore
+        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore[misc]
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
         # If this is a generic alias, we set all variables to `Any`.

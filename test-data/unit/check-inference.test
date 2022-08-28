@@ -3328,3 +3328,12 @@ class C(P, M):
     x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 reveal_type(C.x)  # N: Revealed type is "builtins.list[Any]"
 [builtins fixtures/list.pyi]
+
+[case testNoPartialInSupertypeAsContext]
+class A:
+    args = {}  # E: Need type annotation for "args" (hint: "args: Dict[<type>, <type>] = ...")
+    def f(self) -> None:
+        value = {1: "Hello"}
+        class B(A):
+            args = value
+[builtins fixtures/dict.pyi]
