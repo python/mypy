@@ -589,11 +589,11 @@ class MessageBuilder:
                         f" (expression has type {arg_type_str}, "
                         f"target has type {callee_type_str})"
                     )
-                    msg = message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT.with_additional_msg(
-                        info
+                    error_msg = (
+                        message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT.with_additional_msg(info)
                     )
-                    self.fail(msg.value, context, code=msg.code)
-                    return msg.code
+                    self.fail(error_msg.value, context, code=error_msg.code)
+                    return error_msg.code
 
             target = f"to {name} "
 
