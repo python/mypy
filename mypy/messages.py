@@ -54,6 +54,7 @@ from mypy.subtypes import (
     IS_CLASS_OR_STATIC,
     IS_CLASSVAR,
     IS_SETTABLE,
+    IS_VAR,
     find_member,
     get_member_flags,
     is_same_type,
@@ -1959,10 +1960,22 @@ class MessageBuilder:
                     context,
                     code=code,
                 )
-            if class_obj and IS_SETTABLE in superflags and IS_CLASSVAR not in subflags:
+            if (
+                class_obj
+                and IS_VAR in superflags
+                and (IS_VAR in subflags and IS_CLASSVAR not in subflags)
+            ):
                 self.note(
                     "Only class variables allowed for class object access on protocols,"
                     ' {} is an instance variable of "{}"'.format(name, subtype.type.name),
+                    context,
+                    code=code,
+                )
+            if class_obj and IS_CLASSVAR in superflags:
+                self.note(
+                    "ClassVar protocol member {}.{} can never be matched by a class object".format(
+                        supertype.type.name, name
+                    ),
                     context,
                     code=code,
                 )
@@ -2600,8 +2613,10 @@ def get_bad_protocol_flags(
             or IS_CLASS_OR_STATIC in superflags
             and IS_CLASS_OR_STATIC not in subflags
             or class_obj
-            and IS_SETTABLE in superflags
+            and IS_VAR in superflags
             and IS_CLASSVAR not in subflags
+            or class_obj
+            and IS_CLASSVAR in superflags
         ):
             bad_flags.append((name, subflags, superflags))
     return bad_flags

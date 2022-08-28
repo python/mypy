@@ -3182,8 +3182,21 @@ test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P"
 test(D)  # E: Argument 1 to "test" has incompatible type "Type[D]"; expected "P" \
          # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "D"
 
+[case testProtocolClassObjectClassVarRejected]
+from typing import ClassVar, Protocol
+
+class P(Protocol):
+    foo: ClassVar[int]
+
+class B:
+    foo: ClassVar[int]
+
+def test(arg: P) -> None: ...
+test(B)  # E: Argument 1 to "test" has incompatible type "Type[B]"; expected "P" \
+         # N: ClassVar protocol member P.foo can never be matched by a class object
+
 [case testProtocolClassObjectPropertyRejected]
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 class P(Protocol):
     @property
@@ -3192,12 +3205,20 @@ class P(Protocol):
 class B:
     @property
     def foo(self) -> int: ...
+class C:
+    foo: int
+class D:
+    foo: ClassVar[int]
 
 def test(arg: P) -> None: ...
-# TODO: give better diagnostics in this case.
+# TODO: skip type mismatch diagnostics in this case.
 test(B)  # E: Argument 1 to "test" has incompatible type "Type[B]"; expected "P" \
          # N: Following member(s) of "B" have conflicts: \
-         # N:     foo: expected "int", got "Callable[[B], int]"
+         # N:     foo: expected "int", got "Callable[[B], int]" \
+         # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "B"
+test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+         # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "C"
+test(D)  # OK
 [builtins fixtures/property.pyi]
 
 [case testProtocolClassObjectInstanceMethod]
