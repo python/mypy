@@ -44,7 +44,7 @@ from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.join import join_types
 from mypy.literals import Key, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
-from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
+from mypy.meet import is_overlapping_erased_types, is_overlapping_types
 from mypy.message_registry import ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,

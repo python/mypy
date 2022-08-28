@@ -45,6 +45,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeQuery,
     TypeType,
@@ -56,7 +57,7 @@ from mypy.types import (
     UnpackType,
     flatten_nested_unions,
     get_proper_type,
-    get_proper_types, TypedDictType,
+    get_proper_types,
 )
 from mypy.typevars import fill_typevars
 
@@ -467,9 +468,9 @@ def make_simplified_union(
     # Step 4: At last, we erase any (inconsistent) extra attributes on instances.
     extra_attrs_set = set()
     for item in items:
-        item = try_getting_instance_fallback(item)
-        if item and item.extra_attrs:
-            extra_attrs_set.add(item.extra_attrs)
+        instance = try_getting_instance_fallback(item)
+        if instance and instance.extra_attrs:
+            extra_attrs_set.add(instance.extra_attrs)
 
     fallback = try_getting_instance_fallback(result)
     if len(extra_attrs_set) > 1 and fallback:
