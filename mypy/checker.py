@@ -176,7 +176,6 @@ from mypy.types import (
     AnyType,
     CallableType,
     DeletedType,
-    ExtraAttrs,
     FunctionLike,
     Instance,
     LiteralType,
@@ -4699,7 +4698,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return None
 
         curr_module.names[full_name] = SymbolTableNode(GDEF, info)
-        return Instance(info, [], extra_attrs=merge_extra_attrs(*instances))
+        return Instance(info, [], extra_attrs=instances[0].extra_attrs or instances[1].extra_attrs)
 
     def intersect_instance_callable(self, typ: Instance, callable_type: CallableType) -> Instance:
         """Creates a fake type that represents the intersection of an Instance and a CallableType.
@@ -7171,23 +7170,3 @@ def collapse_walrus(e: Expression) -> Expression:
     if isinstance(e, AssignmentExpr):
         return e.target
     return e
-
-
-def merge_extra_attrs(l: Instance, r: Instance) -> ExtraAttrs | None:
-    if not l.extra_attrs and not r.extra_attrs:
-        return None
-    if l.extra_attrs:
-        l_attrs = l.extra_attrs.attrs.copy()
-    else:
-        l_attrs = {}
-    if r.extra_attrs:
-        r_attrs = r.extra_attrs.attrs.copy()
-    else:
-        r_attrs = {}
-    for name, typ in l_attrs.items():
-        if name not in r_attrs:
-            r_attrs[name] = typ
-        else:
-            existing = r_attrs[name]
-            r_attrs[name] = meet_types(existing, typ)
-    return ExtraAttrs(r_attrs, set(), None)

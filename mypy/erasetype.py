@@ -181,24 +181,18 @@ class TypeVarEraser(TypeTranslator):
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
-def remove_instance_last_known_values(t: Type, *, keep_extra_attrs: bool = False) -> Type:
-    return t.accept(LastKnownValueEraser(keep_extra_attrs=keep_extra_attrs))
+def remove_instance_last_known_values(t: Type) -> Type:
+    return t.accept(LastKnownValueEraser())
 
 
 class LastKnownValueEraser(TypeTranslator):
     """Removes the Literal[...] type that may be associated with any
     Instance types."""
 
-    def __init__(self, keep_extra_attrs: bool) -> None:
-        self.keep_extra_attrs = keep_extra_attrs
-
     def visit_instance(self, t: Instance) -> Type:
         if not t.last_known_value and not t.args:
             return t
-        new = t.copy_modified(args=[a.accept(self) for a in t.args], last_known_value=None)
-        if self.keep_extra_attrs:
-            new.extra_attrs = t.extra_attrs
-        return new
+        return t.copy_modified(args=[a.accept(self) for a in t.args], last_known_value=None)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Type aliases can't contain literal values, because they are

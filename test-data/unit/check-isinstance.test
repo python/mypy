@@ -2807,6 +2807,10 @@ if hasattr(x, "x"):
     if hasattr(x, "y"):
         reveal_type(x.x)  # N: Revealed type is "Any"
         reveal_type(x.y)  # N: Revealed type is "Any"
+
+if hasattr(x, "x") or hasattr(x, "y"):
+    x.x  # E: "A" has no attribute "x"
+    x.y  # E: "A" has no attribute "y"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeUnion]
@@ -2818,8 +2822,8 @@ class B:
 
 xu: Union[A, B]
 if hasattr(xu, "x"):
-    reveal_type(xu)  # N: Revealed type is "Union[__main__.B, __main__.A]"
-    reveal_type(xu.x)  # N: Revealed type is "Union[builtins.int, Any]"
+    reveal_type(xu)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+    reveal_type(xu.x)  # N: Revealed type is "Union[Any, builtins.int]"
 else:
     reveal_type(xu)  # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
@@ -2832,6 +2836,9 @@ class B: ...
 xu: Union[A, B]
 if isinstance(xu, B):
     if hasattr(xu, "x"):
+        reveal_type(xu.x)  # N: Revealed type is "Any"
+
+if isinstance(xu, B) and hasattr(xu, "x"):
         reveal_type(xu.x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
 

@@ -1205,30 +1205,9 @@ class Instance(ProperType):
 
     The list of type variables may be empty.
 
-    Several types has fallbacks to `Instance`. Why?
-    Because, for example `TupleTuple` is related to `builtins.tuple` instance.
-    And `FunctionLike` has `builtins.function` fallback.
-    This allows us to use types defined
-    in typeshed for our "special" and more precise types.
-
-    We used to have this helper function to get a fallback from different types.
-    Note, that it might be incomplete, since it is not used and not updated.
-    It just illustrates the concept:
-
-        def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
-            '''Returns the Instance fallback for this type if one exists or None.'''
-            if isinstance(typ, Instance):
-                return typ
-            elif isinstance(typ, TupleType):
-                return tuple_fallback(typ)
-            elif isinstance(typ, TypedDictType):
-                return typ.fallback
-            elif isinstance(typ, FunctionLike):
-                return typ.fallback
-            elif isinstance(typ, LiteralType):
-                return typ.fallback
-            return None
-
+    Several types has fallbacks to `Instance`, because in Python everything is an object
+    and this concept is impossible to express without intersection types. We therefore use
+    fallbacks for all "non-special" (like UninhabitedType, ErasedType etc) types.
     """
 
     __slots__ = ("type", "args", "invalid", "type_ref", "last_known_value", "_hash", "extra_attrs")

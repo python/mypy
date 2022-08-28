@@ -56,7 +56,7 @@ from mypy.types import (
     UnpackType,
     flatten_nested_unions,
     get_proper_type,
-    get_proper_types,
+    get_proper_types, TypedDictType,
 )
 from mypy.typevars import fill_typevars
 
@@ -462,7 +462,18 @@ def make_simplified_union(
     ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return get_proper_type(UnionType.make_union(simplified_set, line, column))
+    result = get_proper_type(UnionType.make_union(simplified_set, line, column))
+
+    # Step 4: At last, we erase any (inconsistent) extra attributes on instances.
+    extra_attrs_set = set()
+    for item in items:
+        item = try_getting_instance_fallback(item)
+        if item and item.extra_attrs:
+            extra_attrs_set.add(item.extra_attrs)
+    if len(extra_attrs_set) > 1 and isinstance(result, Instance):
+        result = result.copy_modified()
+
+    return result
 
 
 def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
@@ -984,3 +995,21 @@ def separate_union_literals(t: UnionType) -> tuple[Sequence[LiteralType], Sequen
             union_items.append(item)
 
     return literal_items, union_items
+
+
+def try_getting_instance_fallback(typ: Type) -> Instance | None:
+    """Returns the Instance fallback for this type if one exists or None."""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return typ
+    elif isinstance(typ, TupleType):
+        return tuple_fallback(typ)
+    elif isinstance(typ, TypedDictType):
+        return typ.fallback
+    elif isinstance(typ, FunctionLike):
+        return typ.fallback
+    elif isinstance(typ, LiteralType):
+        return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
+    return None

@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Callable
 
 from mypy import join
-from mypy.erasetype import erase_type, remove_instance_last_known_values
+from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
-from mypy.subtypes import is_callable_compatible, is_equivalent, is_proper_subtype, is_subtype
+from mypy.subtypes import is_callable_compatible, is_equivalent, is_proper_subtype, is_subtype, is_same_type
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
     AnyType,
@@ -61,10 +61,18 @@ def meet_types(s: Type, t: Type) -> ProperType:
     """Return the greatest lower bound of two types."""
     if is_recursive_pair(s, t):
         # This case can trigger an infinite recursion, general support for this will be
-        # tricky so we use a trivial meet (like for protocols).
+        # tricky, so we use a trivial meet (like for protocols).
         return trivial_meet(s, t)
     s = get_proper_type(s)
     t = get_proper_type(t)
+
+    if isinstance(s, Instance) and isinstance(t, Instance) and is_same_type(s, t):
+        # Code in checker.py should merge any extra_items where possible, so we
+        # should have only one instance with extra_items here. We check this before
+        # the below subtype check, so that extra_attrs will not get erased.
+        if s.extra_attrs:
+            return s
+        return t
 
     if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
         if is_proper_subtype(s, t, ignore_promotions=True):
@@ -115,8 +123,6 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return make_simplified_union(
             [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
         )
-    elif is_proper_subtype(narrowed, declared, ignore_promotions=True):
-        return remove_instance_last_known_values(original_narrowed, keep_extra_attrs=True)
     elif isinstance(narrowed, AnyType):
         return original_narrowed
     elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
