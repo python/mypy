@@ -72,13 +72,14 @@ def meet_types(s: Type, t: Type) -> ProperType:
     s = get_proper_type(s)
     t = get_proper_type(t)
 
-    if isinstance(s, Instance) and isinstance(t, Instance) and is_same_type(s, t):
+    if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
         # Code in checker.py should merge any extra_items where possible, so we
         # should have only one instance with extra_items here. We check this before
         # the below subtype check, so that extra_attrs will not get erased.
-        if s.extra_attrs:
-            return s
-        return t
+        if is_same_type(s, t) and (s.extra_attrs or t.extra_attrs):
+            if s.extra_attrs:
+                return s
+            return t
 
     if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
         if is_proper_subtype(s, t, ignore_promotions=True):
@@ -113,7 +114,6 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
 
     if declared == narrowed:
         return original_declared
-
     if isinstance(declared, UnionType):
         return make_simplified_union(
             [narrow_declared_type(x, narrowed) for x in declared.relevant_items()]

@@ -1006,7 +1006,7 @@ def try_getting_instance_fallback(typ: Type) -> Instance | None:
     if isinstance(typ, Instance):
         return typ
     elif isinstance(typ, TupleType):
-        return tuple_fallback(typ)
+        return typ.partial_fallback
     elif isinstance(typ, TypedDictType):
         return typ.fallback
     elif isinstance(typ, FunctionLike):

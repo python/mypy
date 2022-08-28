@@ -1173,7 +1173,7 @@ class ExtraAttrs:
     """Summary of module attributes and types.
 
     This is used for instances of types.ModuleType, because they can have different
-    attributes per instance.
+    attributes per instance, and for type narrowing with hasattr() checks.
     """
 
     def __init__(
@@ -1205,7 +1205,7 @@ class Instance(ProperType):
 
     The list of type variables may be empty.
 
-    Several types has fallbacks to `Instance`, because in Python everything is an object
+    Several types have fallbacks to `Instance`, because in Python everything is an object
     and this concept is impossible to express without intersection types. We therefore use
     fallbacks for all "non-special" (like UninhabitedType, ErasedType etc) types.
     """
@@ -1280,7 +1280,7 @@ class Instance(ProperType):
 
         # Additional attributes defined per instance of this type. For example modules
         # have different attributes per instance of types.ModuleType. This is intended
-        # to be "short lived", we don't serialize it, and even don't store as variable type.
+        # to be "short-lived", we don't serialize it, and even don't store as variable type.
         self.extra_attrs = extra_attrs
 
     def accept(self, visitor: TypeVisitor[T]) -> T:

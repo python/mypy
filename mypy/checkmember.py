@@ -542,6 +542,7 @@ def analyze_member_var_access(
     # Could not find the member.
 
     if itype.extra_attrs and name in itype.extra_attrs.attrs:
+        # For modules use direct symbol table lookup.
         if not itype.extra_attrs.mod_name:
             return itype.extra_attrs.attrs[name]
 
@@ -864,6 +865,7 @@ def analyze_class_attribute_access(
     node = info.get(name)
     if not node:
         if itype.extra_attrs and name in itype.extra_attrs.attrs:
+            # For modules use direct symbol table lookup.
             if not itype.extra_attrs.mod_name:
                 return itype.extra_attrs.attrs[name]
         if info.fallback_to_any:

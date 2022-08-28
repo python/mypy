@@ -6219,6 +6219,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
+        """Inject an extra attribute with Any type using fallbacks."""
         orig_typ = typ
         typ = get_proper_type(typ)
         any_type = AnyType(TypeOfAny.unannotated)
@@ -6247,6 +6248,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def hasattr_type_maps(
         self, expr: Expression, source_type: Type, name: str
     ) -> tuple[TypeMap, TypeMap]:
+        """Simple support for hasattr() checks.
+
+        Essentially the logic is following:
+            * In the if branch, keep types that already has a valid attribute as is,
+              for other inject an attribute with `Any` type.
+            * In the else branch, remove types that already have a valid attribute,
+              while keeping the rest.
+        """
         if self.has_valid_attribute(source_type, name):
             return {expr: source_type}, None
 
