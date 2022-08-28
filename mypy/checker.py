@@ -6296,6 +6296,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg,
                 original_type=typ,
                 chk=self,
+                # This is not a real attribute lookup so don't mess with deferring nodes.
+                no_deferral=True,
             )
         return not watcher.has_new_errors()
 

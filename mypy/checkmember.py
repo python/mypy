@@ -90,6 +90,7 @@ class MemberContext:
         chk: mypy.checker.TypeChecker,
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
+        no_deferral: bool = False,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -100,6 +101,7 @@ class MemberContext:
         self.msg = msg
         self.chk = chk
         self.module_symbol_table = module_symbol_table
+        self.no_deferral = no_deferral
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -124,6 +126,7 @@ class MemberContext:
             self.chk,
             self.self_type,
             self.module_symbol_table,
+            self.no_deferral,
         )
         if messages is not None:
             mx.msg = messages
@@ -149,6 +152,7 @@ def analyze_member_access(
     in_literal_context: bool = False,
     self_type: Type | None = None,
     module_symbol_table: SymbolTable | None = None,
+    no_deferral: bool = False,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -183,6 +187,7 @@ def analyze_member_access(
         chk=chk,
         self_type=self_type,
         module_symbol_table=module_symbol_table,
+        no_deferral=no_deferral,
     )
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
@@ -540,7 +545,6 @@ def analyze_member_var_access(
         return AnyType(TypeOfAny.special_form)
 
     # Could not find the member.
-
     if itype.extra_attrs and name in itype.extra_attrs.attrs:
         # For modules use direct symbol table lookup.
         if not itype.extra_attrs.mod_name:
@@ -750,7 +754,7 @@ def analyze_var(
                 else:
                     result = expanded_signature
     else:
-        if not var.is_ready:
+        if not var.is_ready and not mx.no_deferral:
             mx.not_ready_callback(var.name, mx.context)
         # Implicit 'Any' type.
         result = AnyType(TypeOfAny.special_form)

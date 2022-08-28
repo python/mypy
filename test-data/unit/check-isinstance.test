@@ -2853,3 +2853,17 @@ if hasattr(b, ATTR):
 else:
     b.x  # E: "B" has no attribute "x"
 [builtins fixtures/isinstance.pyi]
+
+[case testHasAttrDeferred]
+def foo() -> str: ...
+
+class Test:
+    def stream(self) -> None:
+        if hasattr(self, "_body"):
+            reveal_type(self._body)  # E: Revealed type is "builtins.str"
+
+    def body(self) -> str:
+        if not hasattr(self, "_body"):
+            self._body = foo()
+        return self._body
+[builtins fixtures/isinstance.pyi]
