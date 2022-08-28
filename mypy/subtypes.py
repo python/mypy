@@ -1059,20 +1059,20 @@ def iter_special_member(
     ) -> Tuple[Type | None, Type | None]:
         iterable_method = get_proper_type(find_member("__iter__", iterable, context))
         candidate_method = get_proper_type(find_member("__getitem__", candidate, context))
-        if isinstance(iterable_method, CallableType) and isinstance(
-            (ret := get_proper_type(iterable_method.ret_type)), Instance
-        ):
-            # We need to transform
-            # `__iter__() -> Iterable[ret]` into
-            # `__getitem__(Any) -> ret`
-            iterable_method = iterable_method.copy_modified(
-                arg_names=[None],
-                arg_types=[AnyType(TypeOfAny.implementation_artifact)],
-                arg_kinds=[ARG_POS],
-                ret_type=ret.args[0],
-                name="__getitem__",
-            )
-            return (iterable_method, candidate_method)
+        if isinstance(iterable_method, CallableType):
+            ret = get_proper_type(iterable_method.ret_type)
+            if isinstance(ret, Instance):
+                # We need to transform
+                # `__iter__() -> Iterable[ret]` into
+                # `__getitem__(Any) -> ret`
+                iterable_method = iterable_method.copy_modified(
+                    arg_names=[None],
+                    arg_types=[AnyType(TypeOfAny.implementation_artifact)],
+                    arg_kinds=[ARG_POS],
+                    ret_type=ret.args[0],
+                    name="__getitem__",
+                )
+                return (iterable_method, candidate_method)
         return None, None
 
     # First, we need to find which is one actually `Iterable`:
