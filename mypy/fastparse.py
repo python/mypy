@@ -901,13 +901,10 @@ class ASTConverter:
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
-                    translated_args = TypeConverter(
+                    translated_args: Sequence[Type | None] = TypeConverter(
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
-                    arg_types = [
-                        a if a is not None else AnyType(TypeOfAny.unannotated)  # type: ignore[redundant-expr]
-                        for a in translated_args
-                    ]
+                    arg_types = list(translated_args)
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
