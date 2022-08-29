@@ -3337,3 +3337,19 @@ class A:
         class B(A):
             args = value
 [builtins fixtures/dict.pyi]
+
+[case testInferSimpleLiteralInClassBodyCycle]
+import a
+[file a.py]
+import b
+reveal_type(b.B.x)
+class A:
+    x = 42
+[file b.py]
+import a
+reveal_type(a.A.x)
+class B:
+    x = 42
+[out]
+tmp/b.py:2: note: Revealed type is "builtins.int"
+tmp/a.py:2: note: Revealed type is "builtins.int"
