@@ -796,6 +796,7 @@ def _add_attrs_magic_attribute(
     ti = ctx.api.basic_new_typeinfo(attr_name, fallback_type, 0)
     for (name, _), attr_type in zip(attrs, attributes_types):
         var = Var(name, attr_type)
+        var._fullname = name
         var.is_property = True
         proper_type = get_proper_type(attr_type)
         if isinstance(proper_type, Instance):

@@ -217,7 +217,7 @@ def add_attribute_to_class(
     final: bool = False,
     no_serialize: bool = False,
     override_allow_incompatible: bool = False,
-    fullname: Optional[str] = None,
+    fullname: str | None = None,
     is_classvar: bool = False,
 ) -> None:
     """

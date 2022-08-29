@@ -1495,8 +1495,7 @@ takes_attrs_cls(A)
 takes_attrs_instance(A(1, ""))
 
 takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible type "A"; expected "Type[AttrsInstance]"
-takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance"
-
+takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
 [builtins fixtures/attr.pyi]
 
 [case testAttrsClassWithSlots]
