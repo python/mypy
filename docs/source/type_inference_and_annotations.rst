@@ -230,8 +230,7 @@ short explanation of the bug. To do that, use this format:
     app.run(8000)  # type: ignore  # `run()` now accepts an `int`, as a port
 
 
-Mypy displays an error code for each error if you use
-:option:`--show-error-codes <mypy --show-error-codes>`:
+By default, mypy displays an error code for each error:
 
 .. code-block:: text
 
