@@ -3013,13 +3013,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             method,
             base_type,
             context,
-            False,
-            False,
-            True,
-            self.msg,
+            is_lvalue=False,
+            is_super=False,
+            is_operator=True,
+            msg=self.msg,
             original_type=original_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
+            suggest_awaitable=False,
         )
         return self.check_method_call(method, base_type, method_type, args, arg_kinds, context)
 
@@ -4834,13 +4835,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if is_async_def(subexpr_type) and not has_coroutine_decorator(return_type):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
 
-            any_type = AnyType(TypeOfAny.special_form)
-            generic_generator_type = self.chk.named_generic_type(
-                "typing.Generator", [any_type, any_type, any_type]
-            )
-            iter_type, _ = self.check_method_call_by_name(
-                "__iter__", subexpr_type, [], [], context=generic_generator_type
-            )
+            iter_type, _ = self.chk.analyze_iterable_item_type(TempNode(subexpr_type))
+            iter_type = get_proper_type(iter_type)
         else:
             if not (is_async_def(subexpr_type) and has_coroutine_decorator(return_type)):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)

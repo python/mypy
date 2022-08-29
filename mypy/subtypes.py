@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, List, TypeVar, cast
+from typing import Any, Callable, Iterator, List, Tuple, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.applytype
@@ -14,6 +14,7 @@ from mypy.maptype import map_instance_to_supertype
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy.nodes import (
+    ARG_POS,
     ARG_STAR,
     ARG_STAR2,
     CONTRAVARIANT,
@@ -970,21 +971,20 @@ def is_protocol_implementation(
             ignore_names = member != "__call__"  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
-            supertype = get_proper_type(find_member(member, right, left))
-            assert supertype is not None
+
+            # TODO: refactor this and `constraints.py` into something more readable
             if member == "__call__" and class_obj:
-                # Special case: class objects always have __call__ that is just the constructor.
-                # TODO: move this helper function to typeops.py?
-                import mypy.checkmember
-
-                def named_type(fullname: str) -> Instance:
-                    return Instance(left.type.mro[-1], [])
-
-                subtype: ProperType | None = mypy.checkmember.type_object_type(
-                    left.type, named_type
-                )
+                supertype, subtype = call_special_member(left, right, left)
+            elif member == "__iter__":
+                supertype, subtype = iter_special_member(member, right, left, left)
             else:
-                subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
+                supertype = find_member(member, right, left)
+                subtype = find_member(member, left, left, class_obj=class_obj)
+
+            supertype = get_proper_type(supertype)
+            assert supertype is not None
+            subtype = get_proper_type(subtype)
+
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1044,6 +1044,68 @@ def is_protocol_implementation(
     )
     TypeState.record_subtype_cache_entry(subtype_kind, left, right)
     return True
+
+
+def iter_special_member(
+    name: str, supertype: Instance, subtype: Instance, context: Type
+) -> Tuple[Type | None, Type | None]:
+    """Find types of member by name for two instances.
+
+    We do it with respect to some special cases, like `Iterable` and `__geitem__`.
+    """
+    # So, this is a special case: old-style iterbale protocol
+    # must be supported even without explicit `__iter__` method.
+    # Because all types with `__geitem__` defined have default `__iter__`
+    # implementation. See #2220
+
+    def _find_iter(
+        iterable: Instance, candidate: Instance, context: Type
+    ) -> Tuple[Type | None, Type | None]:
+        iterable_method = get_proper_type(find_member("__iter__", iterable, context))
+        candidate_method = get_proper_type(find_member("__getitem__", candidate, context))
+        if isinstance(iterable_method, CallableType):
+            ret = get_proper_type(iterable_method.ret_type)
+            if isinstance(ret, Instance):
+                # We need to transform
+                # `__iter__() -> Iterable[ret]` into
+                # `__getitem__(Any) -> ret`
+                iterable_method = iterable_method.copy_modified(
+                    arg_names=[None],
+                    arg_types=[AnyType(TypeOfAny.implementation_artifact)],
+                    arg_kinds=[ARG_POS],
+                    ret_type=ret.args[0],
+                    name="__getitem__",
+                )
+                return (iterable_method, candidate_method)
+        return None, None
+
+    # First, we need to find which is one actually `Iterable`:
+    if is_named_instance(supertype, "typing.Iterable"):
+        left, right = _find_iter(supertype, subtype, context)
+        if left is not None and right is not None:
+            return left, right
+    elif is_named_instance(subtype, "typing.Iterable"):
+        left, right = _find_iter(subtype, supertype, context)
+        if left is not None and right is not None:
+            return right, left
+
+    # This is not a special case.
+    # Falling back to regular `find_member` call:
+    return (find_member(name, supertype, context), find_member(name, subtype, context))
+
+
+def call_special_member(
+    left: Instance, right: Instance, context: Instance
+) -> Tuple[Type | None, Type | None]:
+    """Special case: class objects always have __call__ that is just the constructor."""
+    # TODO: move this helper function to typeops.py?
+    import mypy.checkmember
+
+    def named_type(fullname: str) -> Instance:
+        return Instance(left.type.mro[-1], [])
+
+    subtype = mypy.checkmember.type_object_type(left.type, named_type)
+    return find_member("__call__", right, context), subtype
 
 
 def find_member(

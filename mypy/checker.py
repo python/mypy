@@ -3461,9 +3461,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         type = get_proper_type(type)
         if isinstance(type, CallableType) and type.is_type_obj():
             type = type.fallback
-        return is_subtype(
-            type, self.named_generic_type("typing.Iterable", [AnyType(TypeOfAny.special_form)])
-        )
+        with self.msg.filter_errors() as iter_errors:
+            self.analyze_iterable_item_type(TempNode(type))
+        return not iter_errors.has_new_errors()
 
     def check_multi_assignment_from_iterable(
         self,
@@ -4278,15 +4278,36 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Analyse iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = get_proper_type(echk.accept(expr))
-        iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], expr)[0]
 
+        # We first try to find `__iter__` magic method.
+        # If it is present, we go on with it.
+        # But, python also support iterables with just `__getitem__(index) -> Any` defined.
+        # So, we check it in case `__iter__` is missing.
+        with self.msg.filter_errors(save_filtered_errors=True) as iter_errors:
+            # We save original error to show it later if `__getitem__` is also missing.
+            iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], expr)[0]
+        if iter_errors.has_new_errors():
+            # `__iter__` is missing, try `__getattr__`:
+            arg = self.temp_node(AnyType(TypeOfAny.implementation_artifact), expr)
+            with self.msg.filter_errors() as getitem_errors:
+                getitem_type = echk.check_method_call_by_name(
+                    "__getitem__", iterable, [arg], [nodes.ARG_POS], expr
+                )[0]
+            if getitem_errors.has_new_errors():  # Both are missing.
+                self.msg.add_errors(iter_errors.filtered_errors())
+                return AnyType(TypeOfAny.from_error), AnyType(TypeOfAny.from_error)
+            else:
+                # We found just `__getitem__`, it does not follow the same
+                # semantics as `__iter__`, so: just return what we found.
+                return self.named_generic_type("typing.Iterator", [getitem_type]), getitem_type
+
+        # We found `__iter__`, let's analyze its return type:
         if isinstance(iterable, TupleType):
             joined: Type = UninhabitedType()
             for item in iterable.items:
                 joined = join_types(joined, item)
             return iterator, joined
-        else:
-            # Non-tuple iterable.
+        else:  # Non-tuple iterable.
             return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
 
     def analyze_container_item_type(self, typ: Type) -> Type | None:
@@ -6042,15 +6063,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # This relies on 'map_instance_to_supertype' returning 'Iterable[Any]'
             # in case there is no explicit base class.
             return item_type
-        # Try also structural typing.
-        iter_type = get_proper_type(find_member("__iter__", instance, instance, is_operator=True))
-        if iter_type and isinstance(iter_type, CallableType):
-            ret_type = get_proper_type(iter_type.ret_type)
-            if isinstance(ret_type, Instance):
-                iterator = map_instance_to_supertype(
-                    ret_type, self.lookup_typeinfo("typing.Iterator")
-                )
-                item_type = iterator.args[0]
+
+        # Try also structural typing: including `__iter__` and `__getitem__`.
+        _, item_type = self.analyze_iterable_item_type(TempNode(instance))
         return item_type
 
     def function_type(self, func: FuncBase) -> FunctionLike:

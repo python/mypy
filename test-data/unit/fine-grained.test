@@ -6956,6 +6956,51 @@ class B:
 ==
 main:3: error: "A" has no attribute "__iter__" (not iterable)
 
+[case testWeAreCarefulWithOldIterProtocol]
+import a
+x: a.A
+for i in x:
+    pass
+[file a.py]
+class A:
+    def __getitem__(self, arg: int) -> str:
+        pass
+[file a.py.2]
+class A:
+    pass
+[out]
+==
+main:3: error: "A" has no attribute "__iter__" (not iterable)
+
+[case testWeAreCarefulWithIterProtocolSwitches]
+import a
+x: a.A
+for i in x:
+    reveal_type(i)
+
+y: a.B
+for j in y:
+    reveal_type(j)
+[file a.py]
+from typing import Iterator
+class A:
+    def __iter__(self) ->  Iterator[int]: pass
+class B:
+    def __getitem__(self, arg: int) -> str: pass
+[file a.py.2]
+from typing import Iterator
+class A:
+    def __getitem__(self, arg: int) -> str: pass
+class B:
+    def __iter__(self) ->  Iterator[int]: pass
+[out]
+main:4: note: Revealed type is "builtins.int"
+main:8: note: Revealed type is "builtins.str"
+==
+main:4: note: Revealed type is "builtins.str"
+main:8: note: Revealed type is "builtins.int"
+
+
 [case testOverloadsSimpleFrom]
 import a
 [file a.py]

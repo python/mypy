@@ -784,8 +784,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         """
         res = []
         for member in protocol.type.protocol_members:
-            inst = mypy.subtypes.find_member(member, instance, subtype, class_obj=class_obj)
-            temp = mypy.subtypes.find_member(member, template, subtype)
+            if member == "__iter__":
+                inst, temp = mypy.subtypes.iter_special_member(member, instance, template, subtype)
+            else:
+                inst = mypy.subtypes.find_member(member, instance, subtype, class_obj=class_obj)
+                temp = mypy.subtypes.find_member(member, template, subtype)
+
             if inst is None or temp is None:
                 return []  # See #11020
             # The above is safe since at this point we know that 'instance' is a subtype
