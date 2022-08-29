@@ -517,15 +517,23 @@ class TypeVarType(TypeVarLikeType):
     @staticmethod
     def new_unification_variable(old: TypeVarType) -> TypeVarType:
         new_id = TypeVarId.new(meta_level=1)
+        return old.copy_modified(id=new_id)
+
+    def copy_modified(
+        self,
+        values: Bogus[list[Type]] = _dummy,
+        upper_bound: Bogus[Type] = _dummy,
+        id: Bogus[TypeVarId | int] = _dummy,
+    ) -> TypeVarType:
         return TypeVarType(
-            old.name,
-            old.fullname,
-            new_id,
-            old.values,
-            old.upper_bound,
-            old.variance,
-            old.line,
-            old.column,
+            self.name,
+            self.fullname,
+            self.id if id is _dummy else id,
+            self.values if values is _dummy else values,
+            self.upper_bound if upper_bound is _dummy else upper_bound,
+            self.variance,
+            self.line,
+            self.column,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -616,16 +624,7 @@ class ParamSpecType(TypeVarLikeType):
     @staticmethod
     def new_unification_variable(old: ParamSpecType) -> ParamSpecType:
         new_id = TypeVarId.new(meta_level=1)
-        return ParamSpecType(
-            old.name,
-            old.fullname,
-            new_id,
-            old.flavor,
-            old.upper_bound,
-            line=old.line,
-            column=old.column,
-            prefix=old.prefix,
-        )
+        return old.copy_modified(id=new_id)
 
     def with_flavor(self, flavor: int) -> ParamSpecType:
         return ParamSpecType(
@@ -737,8 +736,16 @@ class TypeVarTupleType(TypeVarLikeType):
     @staticmethod
     def new_unification_variable(old: TypeVarTupleType) -> TypeVarTupleType:
         new_id = TypeVarId.new(meta_level=1)
+        return old.copy_modified(id=new_id)
+
+    def copy_modified(self, id: Bogus[TypeVarId | int] = _dummy) -> TypeVarTupleType:
         return TypeVarTupleType(
-            old.name, old.fullname, new_id, old.upper_bound, line=old.line, column=old.column
+            self.name,
+            self.fullname,
+            self.id if id is _dummy else id,
+            self.upper_bound,
+            line=self.line,
+            column=self.column,
         )
 
 
