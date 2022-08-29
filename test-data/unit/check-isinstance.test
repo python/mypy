@@ -2814,6 +2814,14 @@ if hasattr(x, "x") or hasattr(x, "y"):
     x.y  # E: "A" has no attribute "y"
 [builtins fixtures/isinstance.pyi]
 
+[case testHasAttrPreciseType]
+class A: ...
+
+x: A
+if hasattr(x, "a") and isinstance(x.a, int):
+    reveal_type(x.a)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstance.pyi]
+
 [case testHasAttrMissingAttributeUnion]
 from typing import Union
 
@@ -2841,6 +2849,15 @@ if isinstance(xu, B):
 
 if isinstance(xu, B) and hasattr(xu, "x"):
         reveal_type(xu.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrDoesntInterfereGetAttr]
+class C:
+    def __getattr__(self, attr: str) -> str: ...
+
+c: C
+if hasattr(c, "foo"):
+    reveal_type(c.foo)  # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
 
 [case testHasAttrMissingAttributeLiteral]
@@ -2880,4 +2897,14 @@ else:
 
 [file mod.py]
 x: int
+[builtins fixtures/module.pyi]
+
+[case testHasAttrDoesntInterfereModuleGetAttr]
+import mod
+
+if hasattr(mod, "y"):
+    reveal_type(mod.y)  # N: Revealed type is "builtins.str"
+
+[file mod.py]
+def __getattr__(attr: str) -> str: ...
 [builtins fixtures/module.pyi]
