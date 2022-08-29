@@ -536,20 +536,6 @@ class TypeVarType(TypeVarLikeType):
             self.column,
         )
 
-    def copy_modified(
-        self, values: Bogus[list[Type]] = _dummy, upper_bound: Bogus[Type] = _dummy
-    ) -> TypeVarType:
-        return TypeVarType(
-            self.name,
-            self.fullname,
-            self.id,
-            self.values if values is _dummy else values,
-            self.upper_bound if upper_bound is _dummy else upper_bound,
-            self.variance,
-            self.line,
-            self.column,
-        )
-
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var(self)
 
