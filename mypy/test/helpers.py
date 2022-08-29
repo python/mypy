@@ -363,7 +363,7 @@ def parse_options(
             flags = flags2
 
     if flags:
-        flag_list = flags.group(1).split()
+        flag_list = ["--hide-error-codes", *flags.group(1).split()]
         flag_list.append("--no-site-packages")  # the tests shouldn't need an installed Python
         targets, options = process_options(flag_list, require_targets=False)
         if targets:
@@ -375,6 +375,7 @@ def parse_options(
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
         options.error_summary = False
+        options.hide_error_codes = True
 
     # Allow custom python version to override testfile_pyversion.
     if all(flag.split("=")[0] not in ["--python-version", "-2", "--py2"] for flag in flag_list):
