@@ -258,11 +258,11 @@ def parse(
     on failure. Otherwise, use the errors object to report parse errors.
     """
     raise_on_error = False
-    if errors is None:
-        errors = Errors()
-        raise_on_error = True
     if options is None:
         options = Options()
+    if errors is None:
+        errors = Errors(hide_error_codes=options.hide_error_codes)
+        raise_on_error = True
     errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")
     if is_stub_file:
