@@ -57,6 +57,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     args.append("--show-traceback")
     if "--error-summary" not in args:
         args.append("--no-error-summary")
+    if "--show-error-codes" not in args:
+        args.append("--hide-error-codes")
     # Type check the program.
     fixed = [python3_path, "-m", "mypy"]
     env = os.environ.copy()
