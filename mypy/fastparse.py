@@ -5,7 +5,7 @@ import re
 import sys
 import warnings
 from typing import Any, Callable, List, Optional, Sequence, TypeVar, Union, cast
-from typing_extensions import Final, Literal, overload
+from typing_extensions import Final, Literal, assert_type, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
@@ -901,10 +901,12 @@ class ASTConverter:
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
-                    translated_args: Sequence[Type | None] = TypeConverter(
+                    translated_args = TypeConverter(
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
-                    arg_types = list(translated_args)
+                    assert_type(translated_args, List[Type])
+                    # Use a cast to work around `list` invariance
+                    arg_types = cast(List[Optional[Type]], translated_args)
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
