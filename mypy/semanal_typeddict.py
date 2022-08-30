@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing_extensions import Final
 
-from mypy import errorcodes as codes
+from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
@@ -79,6 +79,9 @@ class TypedDictAnalyzer:
                 self.api.accept(base_expr)
                 if base_expr.fullname in TPDICT_NAMES or self.is_typeddict(base_expr):
                     possible = True
+                    if isinstance(base_expr.node, TypeInfo) and base_expr.node.is_final:
+                        err = message_registry.CANNOT_INHERIT_FROM_FINAL
+                        self.fail(err.format(base_expr.node.name).value, defn, code=err.code)
         if not possible:
             return False, None
         existing_info = None
