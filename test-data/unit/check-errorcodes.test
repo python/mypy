@@ -180,7 +180,9 @@ import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
 [case testErrorCodeBadIgnore]
-import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
+                                  # E: Cannot find implementation or library stub for module named "nostub"  [import] \
+                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
@@ -207,6 +209,8 @@ def f(x,  # type: int  # type: ignore[
     pass
 [out]
 main:2: error: Invalid "type: ignore" comment  [syntax]
+main:2: error: Cannot find implementation or library stub for module named "nostub"  [import]
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
@@ -916,3 +920,8 @@ def f(d: D, s: str) -> None:
     d[s]  # type: ignore[literal-required]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+
+[case testRecommendErrorCode]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code=...`  [syntax]
+1 + "asdf"

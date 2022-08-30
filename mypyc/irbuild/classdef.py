@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, List, Optional, Set, Tuple
+from typing import Callable
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -163,7 +163,7 @@ class ClassBuilder:
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         self.builder = builder
         self.cdef = cdef
-        self.attrs_to_cache: List[Tuple[Lvalue, RType]] = []
+        self.attrs_to_cache: list[tuple[Lvalue, RType]] = []
 
     @abstractmethod
     def add_method(self, fdef: FuncDef) -> None:
@@ -233,7 +233,7 @@ class ExtClassBuilder(ClassBuilder):
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         super().__init__(builder, cdef)
         # If the class is not decorated, generate an extension class for it.
-        self.type_obj: Optional[Value] = allocate_class(builder, cdef)
+        self.type_obj: Value | None = allocate_class(builder, cdef)
 
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         """Controls whether to skip generating a default for an attribute."""
@@ -293,7 +293,7 @@ class DataClassBuilder(ExtClassBuilder):
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         return stmt.type is not None
 
-    def get_type_annotation(self, stmt: AssignmentStmt) -> Optional[TypeInfo]:
+    def get_type_annotation(self, stmt: AssignmentStmt) -> TypeInfo | None:
         # We populate __annotations__ because dataclasses uses it to determine
         # which attributes to compute on.
         ann_type = get_proper_type(stmt.type)
@@ -357,7 +357,7 @@ class AttrsClassBuilder(DataClassBuilder):
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         return True
 
-    def get_type_annotation(self, stmt: AssignmentStmt) -> Optional[TypeInfo]:
+    def get_type_annotation(self, stmt: AssignmentStmt) -> TypeInfo | None:
         if isinstance(stmt.rvalue, CallExpr):
             # find the type arg in `attr.ib(type=str)`
             callee = stmt.rvalue.callee
@@ -428,7 +428,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
 # Mypy uses these internally as base classes of TypedDict classes. These are
 # lies and don't have any runtime equivalent.
-MAGIC_TYPED_DICT_CLASSES: Final[Tuple[str, ...]] = (
+MAGIC_TYPED_DICT_CLASSES: Final[tuple[str, ...]] = (
     "typing._TypedDict",
     "typing_extensions._TypedDict",
 )
@@ -548,10 +548,10 @@ def add_non_ext_class_attr_ann(
     non_ext: NonExtClassInfo,
     lvalue: NameExpr,
     stmt: AssignmentStmt,
-    get_type_info: Optional[Callable[[AssignmentStmt], Optional[TypeInfo]]] = None,
+    get_type_info: Callable[[AssignmentStmt], TypeInfo | None] | None = None,
 ) -> None:
     """Add a class attribute to __annotations__ of a non-extension class."""
-    typ: Optional[Value] = None
+    typ: Value | None = None
     if get_type_info is not None:
         type_info = get_type_info(stmt)
         if type_info:
@@ -575,7 +575,7 @@ def add_non_ext_class_attr(
     lvalue: NameExpr,
     stmt: AssignmentStmt,
     cdef: ClassDef,
-    attr_to_cache: List[Tuple[Lvalue, RType]],
+    attr_to_cache: list[tuple[Lvalue, RType]],
 ) -> None:
     """Add a class attribute to __dict__ of a non-extension class."""
     # Only add the attribute to the __dict__ if the assignment is of the form:
@@ -596,10 +596,8 @@ def add_non_ext_class_attr(
 
 
 def find_attr_initializers(
-    builder: IRBuilder,
-    cdef: ClassDef,
-    skip: Optional[Callable[[str, AssignmentStmt], bool]] = None,
-) -> Tuple[Set[str], List[AssignmentStmt]]:
+    builder: IRBuilder, cdef: ClassDef, skip: Callable[[str, AssignmentStmt], bool] | None = None
+) -> tuple[set[str], list[AssignmentStmt]]:
     """Find initializers of attributes in a class body.
 
     If provided, the skip arg should be a callable which will return whether
@@ -655,7 +653,7 @@ def find_attr_initializers(
 
 
 def generate_attr_defaults_init(
-    builder: IRBuilder, cdef: ClassDef, default_assignments: List[AssignmentStmt]
+    builder: IRBuilder, cdef: ClassDef, default_assignments: list[AssignmentStmt]
 ) -> None:
     """Generate an initialization method for default attr values (from class vars)."""
     if not default_assignments:
@@ -768,7 +766,7 @@ def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) ->
 
 
 def cache_class_attrs(
-    builder: IRBuilder, attrs_to_cache: List[Tuple[Lvalue, RType]], cdef: ClassDef
+    builder: IRBuilder, attrs_to_cache: list[tuple[Lvalue, RType]], cdef: ClassDef
 ) -> None:
     """Add class attributes to be cached to the global cache."""
     typ = builder.load_native_type_object(cdef.info.fullname)

@@ -3,8 +3,10 @@
 TODO: Use everywhere where we track targets, including in mypy.errors.
 """
 
+from __future__ import annotations
+
 from contextlib import contextmanager, nullcontext
-from typing import Iterator, List, Optional, Tuple
+from typing import Iterator, Optional, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import FuncBase, TypeInfo
@@ -16,9 +18,9 @@ class Scope:
     """Track which target we are processing at any given time."""
 
     def __init__(self) -> None:
-        self.module: Optional[str] = None
-        self.classes: List[TypeInfo] = []
-        self.function: Optional[FuncBase] = None
+        self.module: str | None = None
+        self.classes: list[TypeInfo] = []
+        self.function: FuncBase | None = None
         # Number of nested scopes ignored (that don't get their own separate targets)
         self.ignored = 0
 
@@ -43,11 +45,11 @@ class Scope:
             return self.classes[-1].fullname
         return self.module
 
-    def current_type_name(self) -> Optional[str]:
+    def current_type_name(self) -> str | None:
         """Return the current type's short name if it exists"""
         return self.classes[-1].name if self.classes else None
 
-    def current_function_name(self) -> Optional[str]:
+    def current_function_name(self) -> str | None:
         """Return the current function's short name if it exists"""
         return self.function.name if self.function else None
 

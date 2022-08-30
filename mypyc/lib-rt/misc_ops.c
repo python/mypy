@@ -783,3 +783,93 @@ fail:
     return NULL;
 
 }
+
+// Adapated from ceval.c GET_AITER
+PyObject *CPy_GetAIter(PyObject *obj)
+{
+    unaryfunc getter = NULL;
+    PyTypeObject *type = Py_TYPE(obj);
+
+    if (type->tp_as_async != NULL) {
+        getter = type->tp_as_async->am_aiter;
+    }
+
+    if (getter == NULL) {
+        PyErr_Format(PyExc_TypeError,
+                     "'async for' requires an object with "
+                     "__aiter__ method, got %.100s",
+                     type->tp_name);
+        Py_DECREF(obj);
+        return NULL;
+    }
+
+    PyObject *iter = (*getter)(obj);
+    if (!iter) {
+        return NULL;
+    }
+
+    if (Py_TYPE(iter)->tp_as_async == NULL ||
+        Py_TYPE(iter)->tp_as_async->am_anext == NULL) {
+
+        PyErr_Format(PyExc_TypeError,
+                     "'async for' received an object from __aiter__ "
+                     "that does not implement __anext__: %.100s",
+                     Py_TYPE(iter)->tp_name);
+        Py_DECREF(iter);
+        return NULL;
+    }
+
+    return iter;
+}
+
+// Adapated from ceval.c GET_ANEXT
+PyObject *CPy_GetANext(PyObject *aiter)
+{
+    unaryfunc getter = NULL;
+    PyObject *next_iter = NULL;
+    PyObject *awaitable = NULL;
+    PyTypeObject *type = Py_TYPE(aiter);
+
+    if (PyAsyncGen_CheckExact(aiter)) {
+        awaitable = type->tp_as_async->am_anext(aiter);
+        if (awaitable == NULL) {
+            goto error;
+        }
+    } else {
+        if (type->tp_as_async != NULL){
+            getter = type->tp_as_async->am_anext;
+        }
+
+        if (getter != NULL) {
+            next_iter = (*getter)(aiter);
+            if (next_iter == NULL) {
+                goto error;
+            }
+        }
+        else {
+            PyErr_Format(PyExc_TypeError,
+                         "'async for' requires an iterator with "
+                         "__anext__ method, got %.100s",
+                         type->tp_name);
+            goto error;
+        }
+
+        awaitable = CPyCoro_GetAwaitableIter(next_iter);
+        if (awaitable == NULL) {
+            _PyErr_FormatFromCause(
+                PyExc_TypeError,
+                "'async for' received an invalid object "
+                "from __anext__: %.100s",
+                Py_TYPE(next_iter)->tp_name);
+
+            Py_DECREF(next_iter);
+            goto error;
+        } else {
+            Py_DECREF(next_iter);
+        }
+    }
+
+    return awaitable;
+error:
+    return NULL;
+}

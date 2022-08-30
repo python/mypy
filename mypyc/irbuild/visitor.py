@@ -112,17 +112,15 @@ from mypyc.irbuild.expression import (
     transform_unary_expr,
 )
 from mypyc.irbuild.function import (
-    transform_await_expr,
     transform_decorator,
     transform_func_def,
     transform_lambda_expr,
     transform_overloaded_func_def,
-    transform_yield_expr,
-    transform_yield_from_expr,
 )
 from mypyc.irbuild.statement import (
     transform_assert_stmt,
     transform_assignment_stmt,
+    transform_await_expr,
     transform_block,
     transform_break_stmt,
     transform_continue_stmt,
@@ -139,6 +137,8 @@ from mypyc.irbuild.statement import (
     transform_try_stmt,
     transform_while_stmt,
     transform_with_stmt,
+    transform_yield_expr,
+    transform_yield_from_expr,
 )
 
 

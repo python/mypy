@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import shutil
-from typing import Dict, List, Optional, Tuple
 
 from mypy import build
 from mypy.build import BuildResult
@@ -107,7 +106,7 @@ class ASTMergeSuite(DataSuite):
             testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
         )
 
-    def build(self, source: str, testcase: DataDrivenTestCase) -> Optional[BuildResult]:
+    def build(self, source: str, testcase: DataDrivenTestCase) -> BuildResult | None:
         options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.fine_grained_incremental = True
@@ -130,14 +129,14 @@ class ASTMergeSuite(DataSuite):
 
     def build_increment(
         self, manager: FineGrainedBuildManager, module_id: str, path: str
-    ) -> Tuple[MypyFile, Dict[Expression, Type]]:
+    ) -> tuple[MypyFile, dict[Expression, Type]]:
         manager.flush_cache()
         manager.update([(module_id, path)], [])
         module = manager.manager.modules[module_id]
         type_map = manager.graph[module_id].type_map()
         return module, type_map
 
-    def dump(self, manager: FineGrainedBuildManager, kind: str) -> List[str]:
+    def dump(self, manager: FineGrainedBuildManager, kind: str) -> list[str]:
         modules = manager.manager.modules
         if kind == AST:
             return self.dump_asts(modules)
@@ -149,7 +148,7 @@ class ASTMergeSuite(DataSuite):
             return self.dump_types(manager)
         assert False, f"Invalid kind {kind}"
 
-    def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
+    def dump_asts(self, modules: dict[str, MypyFile]) -> list[str]:
         a = []
         for m in sorted(modules):
             if m in NOT_DUMPED_MODULES:
@@ -159,7 +158,7 @@ class ASTMergeSuite(DataSuite):
             a.extend(s.splitlines())
         return a
 
-    def dump_symbol_tables(self, modules: Dict[str, MypyFile]) -> List[str]:
+    def dump_symbol_tables(self, modules: dict[str, MypyFile]) -> list[str]:
         a = []
         for id in sorted(modules):
             if not is_dumped_module(id):
@@ -168,7 +167,7 @@ class ASTMergeSuite(DataSuite):
             a.extend(self.dump_symbol_table(id, modules[id].names))
         return a
 
-    def dump_symbol_table(self, module_id: str, symtable: SymbolTable) -> List[str]:
+    def dump_symbol_table(self, module_id: str, symtable: SymbolTable) -> list[str]:
         a = [f"{module_id}:"]
         for name in sorted(symtable):
             if name.startswith("__"):
@@ -194,7 +193,7 @@ class ASTMergeSuite(DataSuite):
             s += f"({typestr})"
         return s
 
-    def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
+    def dump_typeinfos(self, modules: dict[str, MypyFile]) -> list[str]:
         a = []
         for id in sorted(modules):
             if not is_dumped_module(id):
@@ -202,7 +201,7 @@ class ASTMergeSuite(DataSuite):
             a.extend(self.dump_typeinfos_recursive(modules[id].names))
         return a
 
-    def dump_typeinfos_recursive(self, names: SymbolTable) -> List[str]:
+    def dump_typeinfos_recursive(self, names: SymbolTable) -> list[str]:
         a = []
         for name, node in sorted(names.items(), key=lambda x: x[0]):
             if isinstance(node.node, TypeInfo):
@@ -210,14 +209,14 @@ class ASTMergeSuite(DataSuite):
                 a.extend(self.dump_typeinfos_recursive(node.node.names))
         return a
 
-    def dump_typeinfo(self, info: TypeInfo) -> List[str]:
+    def dump_typeinfo(self, info: TypeInfo) -> list[str]:
         if info.fullname == "enum.Enum":
             # Avoid noise
             return []
         s = info.dump(str_conv=self.str_conv, type_str_conv=self.type_str_conv)
         return s.splitlines()
 
-    def dump_types(self, manager: FineGrainedBuildManager) -> List[str]:
+    def dump_types(self, manager: FineGrainedBuildManager) -> list[str]:
         a = []
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.

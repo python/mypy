@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 
+from __future__ import annotations
+
 import json
 import os
 import os.path
 from collections import Counter
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
-ROOT = ".mypy_cache/3.5"
+ROOT: Final = ".mypy_cache/3.5"
 
-JsonDict = Dict[str, Any]
+JsonDict: _TypeAlias = Dict[str, Any]
 
 
 class CacheData:
@@ -27,7 +30,7 @@ class CacheData:
         self.meta_size = meta_size
 
     @property
-    def total_size(self):
+    def total_size(self) -> int:
         return self.data_size + self.meta_size
 
 
@@ -72,21 +75,21 @@ def pluck(name: str, chunks: Iterable[JsonDict]) -> Iterable[JsonDict]:
     return (chunk for chunk in chunks if chunk[".class"] == name)
 
 
-def report_counter(counter: Counter, amount: Optional[int] = None) -> None:
+def report_counter(counter: Counter[str], amount: int | None = None) -> None:
     for name, count in counter.most_common(amount):
         print(f"    {count: <8} {name}")
     print()
 
 
-def report_most_common(chunks: List[JsonDict], amount: Optional[int] = None) -> None:
+def report_most_common(chunks: list[JsonDict], amount: int | None = None) -> None:
     report_counter(Counter(str(chunk) for chunk in chunks), amount)
 
 
 def compress(chunk: JsonDict) -> JsonDict:
-    cache = {}  # type: Dict[int, JsonDict]
+    cache: dict[int, JsonDict] = {}
     counter = 0
 
-    def helper(chunk: Any) -> Any:
+    def helper(chunk: JsonDict) -> JsonDict:
         nonlocal counter
         if not isinstance(chunk, dict):
             return chunk
@@ -116,9 +119,9 @@ def compress(chunk: JsonDict) -> JsonDict:
 
 
 def decompress(chunk: JsonDict) -> JsonDict:
-    cache = {}  # type: Dict[int, JsonDict]
+    cache: dict[int, JsonDict] = {}
 
-    def helper(chunk: Any) -> Any:
+    def helper(chunk: JsonDict) -> JsonDict:
         if not isinstance(chunk, dict):
             return chunk
         if ".id" in chunk:
@@ -164,6 +167,7 @@ def main() -> None:
         if "build.*.json" in chunk.filename:
             build = chunk
             break
+    assert build is not None
     original = json.dumps(build.data, sort_keys=True)
     print(f"Size of build.data.json, in kilobytes: {len(original) / 1024:.3f}")
 

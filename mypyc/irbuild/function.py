@@ -13,11 +13,10 @@ instance of the callable class.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import NamedTuple, Sequence
 
 from mypy.nodes import (
     ArgKind,
-    AwaitExpr,
     ClassDef,
     Decorator,
     FuncDef,
@@ -27,8 +26,6 @@ from mypy.nodes import (
     SymbolNode,
     TypeInfo,
     Var,
-    YieldExpr,
-    YieldFromExpr,
 )
 from mypy.types import CallableType, get_proper_type
 from mypyc.common import LAMBDA_NAME, SELF_NAME
@@ -44,7 +41,6 @@ from mypyc.ir.func_ir import (
 )
 from mypyc.ir.ops import (
     BasicBlock,
-    Branch,
     GetAttr,
     InitStatic,
     Integer,
@@ -62,7 +58,6 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     dict_rprimitive,
     int_rprimitive,
-    object_pointer_rprimitive,
     object_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget, gen_arg_defaults
@@ -88,18 +83,11 @@ from mypyc.irbuild.generator import (
     populate_switch_for_generator_class,
     setup_env_for_generator_class,
 )
-from mypyc.irbuild.statement import transform_try_except
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.util import is_constant
 from mypyc.primitives.dict_ops import dict_get_method_with_none, dict_new_op, dict_set_item_op
-from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_setattr_op
-from mypyc.primitives.misc_ops import (
-    check_stop_op,
-    coro_op,
-    register_function,
-    send_op,
-    yield_from_except_op,
-)
+from mypyc.primitives.generic_ops import py_setattr_op
+from mypyc.primitives.misc_ops import register_function
 from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_method_signature
 
@@ -127,7 +115,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     func_ir, func_reg = gen_func_item(
         builder, dec.func, dec.func.name, builder.mapper.fdef_to_sig(dec.func)
     )
-    decorated_func: Optional[Value] = None
+    decorated_func: Value | None = None
     if func_reg:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
         builder.assign(get_func_target(builder, dec.func), decorated_func, dec.func.line)
@@ -178,25 +166,6 @@ def transform_lambda_expr(builder: IRBuilder, expr: LambdaExpr) -> Value:
     return func_reg
 
 
-def transform_yield_expr(builder: IRBuilder, expr: YieldExpr) -> Value:
-    if builder.fn_info.is_coroutine:
-        builder.error("async generators are unimplemented", expr.line)
-
-    if expr.expr:
-        retval = builder.accept(expr.expr)
-    else:
-        retval = builder.builder.none()
-    return emit_yield(builder, retval, expr.line)
-
-
-def transform_yield_from_expr(builder: IRBuilder, o: YieldFromExpr) -> Value:
-    return handle_yield_from_and_await(builder, o)
-
-
-def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
-    return handle_yield_from_and_await(builder, o)
-
-
 # Internal functions
 
 
@@ -205,8 +174,8 @@ def gen_func_item(
     fitem: FuncItem,
     name: str,
     sig: FuncSignature,
-    cdef: Optional[ClassDef] = None,
-) -> Tuple[FuncIR, Optional[Value]]:
+    cdef: ClassDef | None = None,
+) -> tuple[FuncIR, Value | None]:
     """Generate and return the FuncIR for a given FuncDef.
 
     If the given FuncItem is a nested function, then we generate a
@@ -243,7 +212,7 @@ def gen_func_item(
 
     # TODO: do something about abstract methods.
 
-    func_reg: Optional[Value] = None
+    func_reg: Value | None = None
 
     # We treat lambdas as always being nested because we always generate
     # a class for lambdas, no matter where they are. (It would probably also
@@ -317,7 +286,7 @@ def gen_func_item(
     # them even if they are declared after the nested function's definition.
     # Note that this is done before visiting the body of this function.
 
-    env_for_func: Union[FuncInfo, ImplicitClass] = builder.fn_info
+    env_for_func: FuncInfo | ImplicitClass = builder.fn_info
     if builder.fn_info.is_generator:
         env_for_func = builder.fn_info.generator_class
     elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
@@ -377,13 +346,13 @@ def gen_func_item(
 
 def gen_func_ir(
     builder: IRBuilder,
-    args: List[Register],
-    blocks: List[BasicBlock],
+    args: list[Register],
+    blocks: list[BasicBlock],
     sig: FuncSignature,
     fn_info: FuncInfo,
-    cdef: Optional[ClassDef],
+    cdef: ClassDef | None,
     is_singledispatch_main_func: bool = False,
-) -> Tuple[FuncIR, Optional[Value]]:
+) -> tuple[FuncIR, Value | None]:
     """Generate the FuncIR for a function.
 
     This takes the basic blocks and function info of a particular
@@ -391,7 +360,7 @@ def gen_func_ir(
     also returns the register containing the instance of the
     corresponding callable class.
     """
-    func_reg: Optional[Value] = None
+    func_reg: Value | None = None
     if fn_info.is_nested or fn_info.in_non_ext:
         func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
         add_get_to_callable_class(builder, fn_info)
@@ -518,8 +487,8 @@ def handle_non_ext_method(
 def calculate_arg_defaults(
     builder: IRBuilder,
     fn_info: FuncInfo,
-    func_reg: Optional[Value],
-    symtable: Dict[SymbolNode, SymbolTarget],
+    func_reg: Value | None,
+    symtable: dict[SymbolNode, SymbolTarget],
 ) -> None:
     """Calculate default argument values and store them.
 
@@ -549,112 +518,6 @@ def gen_func_ns(builder: IRBuilder) -> str:
         for info in builder.fn_infos
         if info.name and info.name != "<top level>"
     )
-
-
-def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
-    retval = builder.coerce(val, builder.ret_types[-1], line)
-
-    cls = builder.fn_info.generator_class
-    # Create a new block for the instructions immediately following the yield expression, and
-    # set the next label so that the next time '__next__' is called on the generator object,
-    # the function continues at the new block.
-    next_block = BasicBlock()
-    next_label = len(cls.continuation_blocks)
-    cls.continuation_blocks.append(next_block)
-    builder.assign(cls.next_label_target, Integer(next_label), line)
-    builder.add(Return(retval))
-    builder.activate_block(next_block)
-
-    add_raise_exception_blocks_to_generator_class(builder, line)
-
-    assert cls.send_arg_reg is not None
-    return cls.send_arg_reg
-
-
-def handle_yield_from_and_await(builder: IRBuilder, o: Union[YieldFromExpr, AwaitExpr]) -> Value:
-    # This is basically an implementation of the code in PEP 380.
-
-    # TODO: do we want to use the right types here?
-    result = Register(object_rprimitive)
-    to_yield_reg = Register(object_rprimitive)
-    received_reg = Register(object_rprimitive)
-
-    if isinstance(o, YieldFromExpr):
-        iter_val = builder.call_c(iter_op, [builder.accept(o.expr)], o.line)
-    else:
-        iter_val = builder.call_c(coro_op, [builder.accept(o.expr)], o.line)
-
-    iter_reg = builder.maybe_spill_assignable(iter_val)
-
-    stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
-    _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], o.line)
-    builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
-
-    # Try extracting a return value from a StopIteration and return it.
-    # If it wasn't, this reraises the exception.
-    builder.activate_block(stop_block)
-    builder.assign(result, builder.call_c(check_stop_op, [], o.line), o.line)
-    builder.goto(done_block)
-
-    builder.activate_block(main_block)
-    builder.assign(to_yield_reg, _y_init, o.line)
-
-    # OK Now the main loop!
-    loop_block = BasicBlock()
-    builder.goto_and_activate(loop_block)
-
-    def try_body() -> None:
-        builder.assign(
-            received_reg, emit_yield(builder, builder.read(to_yield_reg), o.line), o.line
-        )
-
-    def except_body() -> None:
-        # The body of the except is all implemented in a C function to
-        # reduce how much code we need to generate. It returns a value
-        # indicating whether to break or yield (or raise an exception).
-        val = Register(object_rprimitive)
-        val_address = builder.add(LoadAddress(object_pointer_rprimitive, val))
-        to_stop = builder.call_c(
-            yield_from_except_op, [builder.read(iter_reg), val_address], o.line
-        )
-
-        ok, stop = BasicBlock(), BasicBlock()
-        builder.add(Branch(to_stop, stop, ok, Branch.BOOL))
-
-        # The exception got swallowed. Continue, yielding the returned value
-        builder.activate_block(ok)
-        builder.assign(to_yield_reg, val, o.line)
-        builder.nonlocal_control[-1].gen_continue(builder, o.line)
-
-        # The exception was a StopIteration. Stop iterating.
-        builder.activate_block(stop)
-        builder.assign(result, val, o.line)
-        builder.nonlocal_control[-1].gen_break(builder, o.line)
-
-    def else_body() -> None:
-        # Do a next() or a .send(). It will return NULL on exception
-        # but it won't automatically propagate.
-        _y = builder.call_c(send_op, [builder.read(iter_reg), builder.read(received_reg)], o.line)
-        ok, stop = BasicBlock(), BasicBlock()
-        builder.add(Branch(_y, stop, ok, Branch.IS_ERROR))
-
-        # Everything's fine. Yield it.
-        builder.activate_block(ok)
-        builder.assign(to_yield_reg, _y, o.line)
-        builder.nonlocal_control[-1].gen_continue(builder, o.line)
-
-        # Try extracting a return value from a StopIteration and return it.
-        # If it wasn't, this rereaises the exception.
-        builder.activate_block(stop)
-        builder.assign(result, builder.call_c(check_stop_op, [], o.line), o.line)
-        builder.nonlocal_control[-1].gen_break(builder, o.line)
-
-    builder.push_loop_stack(loop_block, done_block)
-    transform_try_except(builder, try_body, [(None, None, except_body)], else_body, o.line)
-    builder.pop_loop_stack()
-
-    builder.goto_and_activate(done_block)
-    return builder.read(result)
 
 
 def load_decorated_func(builder: IRBuilder, fdef: FuncDef, orig_func_reg: Value) -> Value:
@@ -709,9 +572,9 @@ def gen_glue(
 
 
 class ArgInfo(NamedTuple):
-    args: List[Value]
-    arg_names: List[Optional[str]]
-    arg_kinds: List[ArgKind]
+    args: list[Value]
+    arg_names: list[str | None]
+    arg_kinds: list[ArgKind]
 
 
 def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> ArgInfo:
@@ -883,7 +746,7 @@ def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
     return class_obj
 
 
-def load_func(builder: IRBuilder, func_name: str, fullname: Optional[str], line: int) -> Value:
+def load_func(builder: IRBuilder, func_name: str, fullname: str | None, line: int) -> Value:
     if fullname is not None and not fullname.startswith(builder.current_module):
         # we're calling a function in a different module
 
@@ -985,7 +848,7 @@ def gen_calls_to_correct_impl(
 
 def gen_dispatch_func_ir(
     builder: IRBuilder, fitem: FuncDef, main_func_name: str, dispatch_name: str, sig: FuncSignature
-) -> Tuple[FuncIR, Value]:
+) -> tuple[FuncIR, Value]:
     """Create a dispatch function (a function that checks the first argument type and dispatches
     to the correct implementation)
     """
@@ -1070,7 +933,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
     line = fitem.line
     is_singledispatch_main_func = fitem in builder.singledispatch_impls
     # dict of singledispatch_func to list of register_types (fitem is the function to register)
-    to_register: DefaultDict[FuncDef, List[TypeInfo]] = defaultdict(list)
+    to_register: defaultdict[FuncDef, list[TypeInfo]] = defaultdict(list)
     for main_func, impls in builder.singledispatch_impls.items():
         for dispatch_type, impl in impls:
             if fitem == impl:
@@ -1115,7 +978,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         builder.gen_method_call(dispatch_cache, "clear", [], None, line)
 
 
-def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> Dict[FuncDef, int]:
+def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> dict[FuncDef, int]:
     """Return a dict of registered implementation to native implementation ID for all
     implementations
     """

@@ -5,6 +5,8 @@ This was used to cross-check the errors in the test case
 testFullCoroutineMatrix in test-data/unit/check-async-await.test.
 """
 
+from __future__ import annotations
+
 import sys
 from types import coroutine
 from typing import Any, Awaitable, Generator, Iterator
@@ -35,7 +37,7 @@ async def decorated_coroutine() -> int:
 class It(Iterator[str]):
     stop = False
 
-    def __iter__(self) -> "It":
+    def __iter__(self) -> It:
         return self
 
     def __next__(self) -> str:
@@ -68,7 +70,7 @@ def plain_host_generator(func) -> Generator[str, None, None]:
     x = 0
     f = func()
     try:
-        x = yield from f
+        x = yield from f  # noqa: F841
     finally:
         try:
             f.close()
@@ -78,7 +80,7 @@ def plain_host_generator(func) -> Generator[str, None, None]:
 
 async def plain_host_coroutine(func) -> None:
     x = 0
-    x = await func()
+    x = await func()  # noqa: F841
 
 
 @coroutine
@@ -87,7 +89,7 @@ def decorated_host_generator(func) -> Generator[str, None, None]:
     x = 0
     f = func()
     try:
-        x = yield from f
+        x = yield from f  # noqa: F841
     finally:
         try:
             f.close()
@@ -98,13 +100,13 @@ def decorated_host_generator(func) -> Generator[str, None, None]:
 @coroutine
 async def decorated_host_coroutine(func) -> None:
     x = 0
-    x = await func()
+    x = await func()  # noqa: F841
 
 
 # Main driver.
 
 
-def main():
+def main() -> None:
     verbose = "-v" in sys.argv
     for host in [
         plain_host_generator,

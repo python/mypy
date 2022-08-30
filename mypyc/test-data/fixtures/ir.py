@@ -164,6 +164,7 @@ class list(Generic[T], Sequence[T], Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
     def __contains__(self, item: object) -> int: ...
+    def __add__(self, x: List[T]) -> List[T]: ...
     def append(self, x: T) -> None: pass
     def pop(self, i: int = -1) -> T: pass
     def count(self, T) -> int: pass
@@ -248,39 +249,26 @@ class Exception(BaseException):
     def __init__(self, message: Optional[str] = None) -> None: pass
 
 class Warning(Exception): pass
-
 class UserWarning(Warning): pass
-
 class TypeError(Exception): pass
-
 class ValueError(Exception): pass
-
 class AttributeError(Exception): pass
-
 class ImportError(Exception): pass
-
 class NameError(Exception): pass
-
 class LookupError(Exception): pass
-
 class KeyError(LookupError): pass
-
 class IndexError(LookupError): pass
-
 class RuntimeError(Exception): pass
-
 class UnicodeEncodeError(RuntimeError): pass
-
 class UnicodeDecodeError(RuntimeError): pass
-
 class NotImplementedError(RuntimeError): pass
 
 class StopIteration(Exception):
     value: Any
 
 class ArithmeticError(Exception): pass
-
-class ZeroDivisionError(Exception): pass
+class ZeroDivisionError(ArithmeticError): pass
+class OverflowError(ArithmeticError): pass
 
 class GeneratorExit(BaseException): pass
 

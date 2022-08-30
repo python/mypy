@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, List, Optional
+from typing import Callable
 
 from mypy import message_registry
 from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
@@ -36,7 +36,7 @@ from mypy.types import (
 class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
-    def get_function_hook(self, fullname: str) -> Optional[Callable[[FunctionContext], Type]]:
+    def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         from mypy.plugins import ctypes, singledispatch
 
         if fullname in ("contextlib.contextmanager", "contextlib.asynccontextmanager"):
@@ -49,7 +49,7 @@ class DefaultPlugin(Plugin):
 
     def get_method_signature_hook(
         self, fullname: str
-    ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
+    ) -> Callable[[MethodSigContext], FunctionLike] | None:
         from mypy.plugins import ctypes, singledispatch
 
         if fullname == "typing.Mapping.get":
@@ -66,7 +66,7 @@ class DefaultPlugin(Plugin):
             return singledispatch.call_singledispatch_function_callback
         return None
 
-    def get_method_hook(self, fullname: str) -> Optional[Callable[[MethodContext], Type]]:
+    def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
         from mypy.plugins import ctypes, singledispatch
 
         if fullname == "typing.Mapping.get":
@@ -93,7 +93,7 @@ class DefaultPlugin(Plugin):
             return singledispatch.call_singledispatch_function_after_register_argument
         return None
 
-    def get_attribute_hook(self, fullname: str) -> Optional[Callable[[AttributeContext], Type]]:
+    def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         from mypy.plugins import ctypes, enums
 
         if fullname == "ctypes.Array.value":
@@ -106,9 +106,7 @@ class DefaultPlugin(Plugin):
             return enums.enum_value_callback
         return None
 
-    def get_class_decorator_hook(
-        self, fullname: str
-    ) -> Optional[Callable[[ClassDefContext], None]]:
+    def get_class_decorator_hook(self, fullname: str) -> Callable[[ClassDefContext], None] | None:
         from mypy.plugins import attrs, dataclasses
 
         # These dataclass and attrs hooks run in the main semantic analysis pass
@@ -129,7 +127,7 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook_2(
         self, fullname: str
-    ) -> Optional[Callable[[ClassDefContext], bool]]:
+    ) -> Callable[[ClassDefContext], bool] | None:
         from mypy.plugins import attrs, dataclasses, functools
 
         if fullname in dataclasses.dataclass_makers:
@@ -220,7 +218,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if keys is None:
             return ctx.default_return_type
 
-        output_types: List[Type] = []
+        output_types: list[Type] = []
         for key in keys:
             value_type = get_proper_type(ctx.type.items.get(key))
             if value_type is None:

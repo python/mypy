@@ -187,7 +187,13 @@ Ignoring a whole file
 ---------------------
 
 A ``# type: ignore`` comment at the top of a module (before any statements,
-including imports or docstrings) has the effect of ignoring the *entire* module.
+including imports or docstrings) has the effect of ignoring the entire contents of the module.
+
+To only ignore errors, use a top-level ``# mypy: ignore-errors`` comment instead.
+To only ignore errors with a specific error code, use a top-level
+``# mypy: disable-error-code=...`` comment.
+To replace the contents of the module with ``Any``, use a per-module ``follow_imports = skip``.
+See :ref:`Following imports <follow-imports>` for details.
 
 .. code-block:: python
 
@@ -196,19 +202,6 @@ including imports or docstrings) has the effect of ignoring the *entire* module.
     import foo
 
     foo.bar()
-
-Unexpected errors about 'None' and/or 'Optional' types
-------------------------------------------------------
-
-Starting from mypy 0.600, mypy uses
-:ref:`strict optional checking <strict_optional>` by default,
-and the ``None`` value is not compatible with non-optional types.
-It's easy to switch back to the older behavior where ``None`` was
-compatible with arbitrary types (see :ref:`no_strict_optional`).
-You can also fall back to this behavior if strict optional
-checking would require a large number of ``assert foo is not None``
-checks to be inserted, and you want to minimize the number
-of code changes required to get a clean mypy run.
 
 Issues with code at runtime
 ---------------------------

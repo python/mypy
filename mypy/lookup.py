@@ -3,7 +3,7 @@ This is a module for various lookup functions:
 functions that will find a semantic node by its name.
 """
 
-from typing import Dict, Optional
+from __future__ import annotations
 
 from mypy.nodes import MypyFile, SymbolTableNode, TypeInfo
 
@@ -11,8 +11,8 @@ from mypy.nodes import MypyFile, SymbolTableNode, TypeInfo
 
 
 def lookup_fully_qualified(
-    name: str, modules: Dict[str, MypyFile], *, raise_on_missing: bool = False
-) -> Optional[SymbolTableNode]:
+    name: str, modules: dict[str, MypyFile], *, raise_on_missing: bool = False
+) -> SymbolTableNode | None:
     """Find a symbol using it fully qualified name.
 
     The algorithm has two steps: first we try splitting the name on '.' to find

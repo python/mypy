@@ -346,10 +346,10 @@ static digit *GetIntDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
             val = -val;
         }
         buf[0] = val & PyLong_MASK;
-        if (val > PyLong_MASK) {
+        if (val > (Py_ssize_t)PyLong_MASK) {
             val >>= PyLong_SHIFT;
             buf[1] = val & PyLong_MASK;
-            if (val > PyLong_MASK) {
+            if (val > (Py_ssize_t)PyLong_MASK) {
                 buf[2] = val >> PyLong_SHIFT;
                 len = 3;
             } else {

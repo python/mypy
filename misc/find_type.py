@@ -17,18 +17,19 @@
 #   " Convert to 0-based column offsets
 #   let startcol = startcol - 1
 #   " Change this line to point to the find_type.py script.
-#   execute '!python3 /path/to/mypy/scripts/find_type.py % ' . startline . ' ' . startcol . ' ' . endline . ' ' . endcol . ' ' . mypycmd
+#   execute '!python3 /path/to/mypy/misc/find_type.py % ' . startline . ' ' . startcol . ' ' . endline . ' ' . endcol . ' ' . mypycmd
 # endfunction
 # vnoremap <Leader>t :call RevealType()<CR>
 #
 # For an Emacs example, see misc/macs.el.
+
+from __future__ import annotations
 
 import os.path
 import re
 import subprocess
 import sys
 import tempfile
-from typing import List, Optional, Tuple
 
 REVEAL_TYPE_START = "reveal_type("
 REVEAL_TYPE_END = ")"
@@ -38,7 +39,7 @@ def update_line(line: str, s: str, pos: int) -> str:
     return line[:pos] + s + line[pos:]
 
 
-def run_mypy(mypy_and_args: List[str], filename: str, tmp_name: str) -> str:
+def run_mypy(mypy_and_args: list[str], filename: str, tmp_name: str) -> str:
     proc = subprocess.run(
         mypy_and_args + ["--shadow-file", filename, tmp_name], stdout=subprocess.PIPE
     )
@@ -48,7 +49,7 @@ def run_mypy(mypy_and_args: List[str], filename: str, tmp_name: str) -> str:
     return proc.stdout.decode(encoding="utf-8")
 
 
-def get_revealed_type(line: str, relevant_file: str, relevant_line: int) -> Optional[str]:
+def get_revealed_type(line: str, relevant_file: str, relevant_line: int) -> str | None:
     m = re.match(r'(.+?):(\d+): note: Revealed type is "(.*)"$', line)
     if m and int(m.group(2)) == relevant_line and os.path.samefile(relevant_file, m.group(1)):
         return m.group(3)
@@ -56,7 +57,7 @@ def get_revealed_type(line: str, relevant_file: str, relevant_line: int) -> Opti
         return None
 
 
-def process_output(output: str, filename: str, start_line: int) -> Tuple[Optional[str], bool]:
+def process_output(output: str, filename: str, start_line: int) -> tuple[str | None, bool]:
     error_found = False
     for line in output.splitlines():
         t = get_revealed_type(line, filename, start_line)
@@ -67,7 +68,7 @@ def process_output(output: str, filename: str, start_line: int) -> Tuple[Optiona
     return None, True  # finding no reveal_type is an error
 
 
-def main():
+def main() -> None:
     filename, start_line_str, start_col_str, end_line_str, end_col_str, *mypy_and_args = sys.argv[
         1:
     ]

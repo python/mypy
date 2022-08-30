@@ -1475,9 +1475,8 @@ class A:
         self.x = [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 class B(A):
-    # TODO?: This error is kind of a false positive, unfortunately
     @property
-    def x(self) -> List[int]:  # E: Signature of "x" incompatible with supertype "A"
+    def x(self) -> List[int]:  # E: Cannot override writeable attribute with read-only property
         return [123]
 [builtins fixtures/list.pyi]
 
@@ -3248,3 +3247,109 @@ reveal_type(x)  # N: Revealed type is "builtins.bytes"
 if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/dict.pyi]
+
+[case testTupleContextFromIterable]
+from typing import TypeVar, Iterable, List, Union
+
+T = TypeVar("T")
+
+def foo(x: List[T]) -> List[T]: ...
+x: Iterable[List[Union[int, str]]] = (foo([1]), foo(["a"]))
+[builtins fixtures/tuple.pyi]
+
+[case testTupleContextFromIterable2]
+from typing import Dict, Iterable, Tuple, Union
+
+def foo(x: Union[Tuple[str, Dict[str, int], str], Iterable[object]]) -> None: ...
+foo(("a", {"a": "b"}, "b"))
+[builtins fixtures/dict.pyi]
+
+[case testUseSupertypeAsInferenceContext]
+# flags: --strict-optional
+from typing import List, Optional
+
+class B:
+    x: List[Optional[int]]
+
+class C(B):
+    x = [1]
+
+reveal_type(C().x)  # N: Revealed type is "builtins.list[Union[builtins.int, None]]"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextInvalidType]
+from typing import List
+class P:
+    x: List[int]
+class C(P):
+    x = ['a']  # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartial]
+from typing import List
+
+class A:
+    x: List[str]
+
+class B(A):
+    x = []
+
+reveal_type(B().x)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartialError]
+class A:
+    x = ['a', 'b']
+
+class B(A):
+    x = []
+    x.append(2)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "str"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartialErrorProperty]
+from typing import List
+
+class P:
+    @property
+    def x(self) -> List[int]: ...
+class C(P):
+    x = []
+
+C.x.append("no")  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextConflict]
+from typing import List
+class P:
+    x: List[int]
+class M:
+    x: List[str]
+class C(P, M):
+    x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+reveal_type(C.x)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/list.pyi]
+
+[case testNoPartialInSupertypeAsContext]
+class A:
+    args = {}  # E: Need type annotation for "args" (hint: "args: Dict[<type>, <type>] = ...")
+    def f(self) -> None:
+        value = {1: "Hello"}
+        class B(A):
+            args = value
+[builtins fixtures/dict.pyi]
+
+[case testInferSimpleLiteralInClassBodyCycle]
+import a
+[file a.py]
+import b
+reveal_type(b.B.x)
+class A:
+    x = 42
+[file b.py]
+import a
+reveal_type(a.A.x)
+class B:
+    x = 42
+[out]
+tmp/b.py:2: note: Revealed type is "builtins.int"
+tmp/a.py:2: note: Revealed type is "builtins.int"

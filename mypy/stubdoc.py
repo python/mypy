@@ -3,24 +3,18 @@
 This module provides several functions to generate better stubs using
 docstrings and Sphinx docs (.rst files).
 """
+
+from __future__ import annotations
+
 import contextlib
 import io
 import re
 import tokenize
-from typing import (
-    Any,
-    List,
-    MutableMapping,
-    MutableSequence,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-)
-from typing_extensions import Final
+from typing import Any, MutableMapping, MutableSequence, NamedTuple, Sequence, Tuple
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').
-Sig = Tuple[str, str]
+Sig: _TypeAlias = Tuple[str, str]
 
 
 _TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$")
@@ -39,7 +33,7 @@ def is_valid_type(s: str) -> bool:
 class ArgSig:
     """Signature info for a single argument."""
 
-    def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
+    def __init__(self, name: str, type: str | None = None, default: bool = False):
         self.name = name
         if type and not is_valid_type(type):
             raise ValueError("Invalid type: " + type)
@@ -64,7 +58,7 @@ class ArgSig:
 
 class FunctionSig(NamedTuple):
     name: str
-    args: List[ArgSig]
+    args: list[ArgSig]
     ret_type: str
 
 
@@ -86,14 +80,14 @@ class DocStringParser:
         self.function_name = function_name
         self.state = [STATE_INIT]
         self.accumulator = ""
-        self.arg_type: Optional[str] = None
+        self.arg_type: str | None = None
         self.arg_name = ""
-        self.arg_default: Optional[str] = None
+        self.arg_default: str | None = None
         self.ret_type = "Any"
         self.found = False
-        self.args: List[ArgSig] = []
+        self.args: list[ArgSig] = []
         # Valid signatures found so far.
-        self.signatures: List[FunctionSig] = []
+        self.signatures: list[FunctionSig] = []
 
     def add_token(self, token: tokenize.TokenInfo) -> None:
         """Process next token from the token stream."""
@@ -232,7 +226,7 @@ class DocStringParser:
         self.found = False
         self.accumulator = ""
 
-    def get_signatures(self) -> List[FunctionSig]:
+    def get_signatures(self) -> list[FunctionSig]:
         """Return sorted copy of the list of signatures found so far."""
 
         def has_arg(name: str, signature: FunctionSig) -> bool:
@@ -245,7 +239,7 @@ class DocStringParser:
         return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
 
 
-def infer_sig_from_docstring(docstr: Optional[str], name: str) -> Optional[List[FunctionSig]]:
+def infer_sig_from_docstring(docstr: str | None, name: str) -> list[FunctionSig] | None:
     """Convert function signature to list of TypedFunctionSig
 
     Look for function signatures of function in docstring. Signature is a string of
@@ -282,7 +276,7 @@ def infer_sig_from_docstring(docstr: Optional[str], name: str) -> Optional[List[
     return [sig for sig in sigs if is_unique_args(sig)]
 
 
-def infer_arg_sig_from_anon_docstring(docstr: str) -> List[ArgSig]:
+def infer_arg_sig_from_anon_docstring(docstr: str) -> list[ArgSig]:
     """Convert signature in form of "(self: TestClass, arg0: str='ada')" to List[TypedArgList]."""
     ret = infer_sig_from_docstring("stub" + docstr, "stub")
     if ret:
@@ -290,7 +284,7 @@ def infer_arg_sig_from_anon_docstring(docstr: str) -> List[ArgSig]:
     return []
 
 
-def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> Optional[str]:
+def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> str | None:
     """Convert signature in form of "func(self: TestClass, arg0) -> int" to their return type."""
     ret = infer_sig_from_docstring(docstr, name)
     if ret:
@@ -298,12 +292,12 @@ def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> Optional[str]:
     return None
 
 
-def infer_ret_type_sig_from_anon_docstring(docstr: str) -> Optional[str]:
+def infer_ret_type_sig_from_anon_docstring(docstr: str) -> str | None:
     """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
     return infer_ret_type_sig_from_docstring("stub" + docstr.strip(), "stub")
 
 
-def parse_signature(sig: str) -> Optional[Tuple[str, List[str], List[str]]]:
+def parse_signature(sig: str) -> tuple[str, list[str], list[str]] | None:
     """Split function signature into its name, positional an optional arguments.
 
     The expected format is "func_name(arg, opt_arg=False)". Return the name of function
@@ -355,7 +349,7 @@ def build_signature(positional: Sequence[str], optional: Sequence[str]) -> str:
     return sig
 
 
-def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig], List[Sig]]:
+def parse_all_signatures(lines: Sequence[str]) -> tuple[list[Sig], list[Sig]]:
     """Parse all signatures in a given reST document.
 
     Return lists of found signatures for functions and classes.
@@ -378,9 +372,9 @@ def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig], List[Sig]]:
     return sorted(sigs), sorted(class_sigs)
 
 
-def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
+def find_unique_signatures(sigs: Sequence[Sig]) -> list[Sig]:
     """Remove names with duplicate found signatures."""
-    sig_map: MutableMapping[str, List[str]] = {}
+    sig_map: MutableMapping[str, list[str]] = {}
     for name, sig in sigs:
         sig_map.setdefault(name, []).append(sig)
 
@@ -391,7 +385,7 @@ def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
     return sorted(result)
 
 
-def infer_prop_type_from_docstring(docstr: Optional[str]) -> Optional[str]:
+def infer_prop_type_from_docstring(docstr: str | None) -> str | None:
     """Check for Google/Numpy style docstring type annotation for a property.
 
     The docstring has the format "<type>: <descriptions>".

@@ -10,7 +10,6 @@ import os
 import re
 import subprocess
 import sys
-from typing import List, Optional
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -21,7 +20,7 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore
+    import lxml  # type: ignore[import]
 except ImportError:
     lxml = None
 
@@ -115,7 +114,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         )
 
 
-def parse_args(line: str) -> List[str]:
+def parse_args(line: str) -> list[str]:
     """Parse the first line of the program for the command line.
 
     This should have the form
@@ -132,7 +131,7 @@ def parse_args(line: str) -> List[str]:
     return m.group(1).split()
 
 
-def parse_cwd(line: str) -> Optional[str]:
+def parse_cwd(line: str) -> str | None:
     """Parse the second line of the program for the command line.
 
     This should have the form

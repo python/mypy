@@ -13,11 +13,10 @@ from collections.abc import (
     MutableSequence,
     ValuesView,
 )
-from importlib.abc import _LoaderProtocol
 from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Generic, Mapping, TypeVar, overload  # noqa: Y027
+from typing import Any, ClassVar, Generic, Mapping, Protocol, TypeVar, overload  # noqa: Y027
 from typing_extensions import Literal, ParamSpec, final
 
 __all__ = [
@@ -324,6 +323,9 @@ class SimpleNamespace:
     def __getattribute__(self, __name: str) -> Any: ...
     def __setattr__(self, __name: str, __value: Any) -> None: ...
     def __delattr__(self, __name: str) -> None: ...
+
+class _LoaderProtocol(Protocol):
+    def load_module(self, fullname: str) -> ModuleType: ...
 
 class ModuleType:
     __name__: str

@@ -3,9 +3,10 @@
 Parse source files and print the abstract syntax trees.
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
-from typing import Tuple
 
 from mypy import defaults
 from mypy.errors import CompileError
@@ -13,7 +14,7 @@ from mypy.options import Options
 from mypy.parse import parse
 
 
-def dump(fname: str, python_version: Tuple[int, int], quiet: bool = False) -> None:
+def dump(fname: str, python_version: tuple[int, int], quiet: bool = False) -> None:
     options = Options()
     options.python_version = python_version
     with open(fname, "rb") as f:
