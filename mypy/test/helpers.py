@@ -363,12 +363,14 @@ def parse_options(
             flags = flags2
 
     if flags:
-        flag_list = ["--hide-error-codes", *flags.group(1).split()]
+        flag_list = flags.group(1).split()
         flag_list.append("--no-site-packages")  # the tests shouldn't need an installed Python
         targets, options = process_options(flag_list, require_targets=False)
         if targets:
             # TODO: support specifying targets via the flags pragma
             raise RuntimeError("Specifying targets via the flags pragma is not supported.")
+        if "--show-error-codes" not in flag_list:
+            options.hide_error_codes = True
     else:
         flag_list = []
         options = Options()
