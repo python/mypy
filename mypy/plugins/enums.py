@@ -12,7 +12,7 @@ semanal_enum.py).
 """
 from __future__ import annotations
 
-from typing import Iterable, Optional, Sequence, TypeVar, cast
+from typing import Optional, Sequence, TypeVar, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
@@ -20,7 +20,7 @@ from mypy.nodes import TypeInfo
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
 from mypy.typeops import make_simplified_union
-from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type
+from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type, SelfType
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
     f"{prefix}._name_" for prefix in ENUM_BASES
@@ -57,16 +57,6 @@ def enum_name_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
 _T = TypeVar("_T")
 
 
-def _first(it: Iterable[_T]) -> Optional[_T]:
-    """Return the first value from any iterable.
-
-    Returns ``None`` if the iterable is empty.
-    """
-    for val in it:
-        return val
-    return None
-
-
 def _infer_value_type_with_auto_fallback(
     ctx: "mypy.plugin.AttributeContext", proper_type: Optional[ProperType]
 ) -> Optional[Type]:
@@ -86,7 +76,7 @@ def _infer_value_type_with_auto_fallback(
     # `_generate_next_value_` is `Any`.  In reality the default `auto()`
     # returns an `int` (presumably the `Any` in typeshed is to make it
     # easier to subclass and change the returned type).
-    type_with_gnv = _first(ti for ti in info.mro if ti.names.get("_generate_next_value_"))
+    type_with_gnv = next((ti for ti in info.mro if ti.names.get("_generate_next_value_")), None)
     if type_with_gnv is None:
         return ctx.default_attr_type
 
@@ -107,10 +97,13 @@ def _implements_new(info: TypeInfo) -> bool:
     subclass. In the latter case, we must infer Any as long as mypy can't infer
     the type of _value_ from assignments in __new__.
     """
-    type_with_new = _first(
-        ti
-        for ti in info.mro
-        if ti.names.get("__new__") and not ti.fullname.startswith("builtins.")
+    type_with_new = next(
+        (
+            ti
+            for ti in info.mro
+            if ti.names.get("__new__") and not ti.fullname.startswith("builtins.")
+        ),
+        None,
     )
     if type_with_new is None:
         return False
@@ -147,8 +140,11 @@ def enum_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
         # however, if we can prove that the all of the enum members have the
         # same value-type, then it doesn't matter which member was passed in.
         # The value-type is still known.
-        if isinstance(ctx.type, Instance):
-            info = ctx.type.type
+        ctx_type = ctx.type
+        if isinstance(ctx_type, SelfType):
+            ctx_type = ctx_type.upper_bound
+        if isinstance(ctx_type, Instance):
+            info = ctx_type.type
 
             # As long as mypy doesn't understand attribute creation in __new__,
             # there is no way to predict the value type if the enum class has a
@@ -171,7 +167,7 @@ def enum_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
                 for t in node_types
                 if t is None or not isinstance(t, CallableType)
             )
-            underlying_type = _first(proper_types)
+            underlying_type = next(iter(proper_types), None)
             if underlying_type is None:
                 return ctx.default_attr_type
 

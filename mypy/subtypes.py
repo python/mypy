@@ -574,8 +574,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_self_type(self, left: SelfType) -> bool:
         right = self.right
-        if isinstance(self.right, SelfType):
-            right = self.right.upper_bound
+        if isinstance(right, SelfType):
+            right = right.upper_bound
         return self._is_subtype(left.upper_bound, right)
 
     def visit_param_spec(self, left: ParamSpecType) -> bool:
