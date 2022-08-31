@@ -2029,6 +2029,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
+
+        if typ.metaclass_type is None:
+            # This might be because of import cycle when metaclass is a placeholder node.
+            # See https://github.com/python/mypy/pull/13565
+            typ.metaclass_type = typ.calculate_metaclass_type()
+
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
