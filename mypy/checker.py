@@ -2386,6 +2386,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_metaclass_compatibility(self, typ: TypeInfo) -> None:
         """Ensures that metaclasses of all parent types are compatible."""
+        if (
+            typ.is_metaclass()
+            or typ.is_protocol
+            or typ.is_named_tuple
+            or typ.typeddict_type is not None
+        ):
+            return  # Reasonable exceptions from this check
+
         metaclasses = [
             entry.metaclass_type
             for entry in typ.mro[1:-1]
