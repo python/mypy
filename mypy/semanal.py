@@ -2105,6 +2105,7 @@ class SemanticAnalyzer(
             inst = fill_typevars(metaclass_info)
             assert isinstance(inst, Instance)
             declared_metaclass = inst
+        # We check metaclass conflicts in `checker.py`
         return declared_metaclass, False
 
     def recalculate_metaclass(self, defn: ClassDef, declared_metaclass: Instance | None) -> None:
@@ -2119,9 +2120,8 @@ class SemanticAnalyzer(
                 # TODO: add a metaclass conflict check if there is another metaclass.
                 abc_meta = self.named_type_or_none("abc.ABCMeta", [])
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
-                    # We check metaclass correctness in `checker.py`
                     defn.info.metaclass_type = abc_meta
-        elif defn.info.metaclass_type and defn.info.metaclass_type.type.has_base(
+        if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base(
             "enum.EnumMeta"
         ):
             defn.info.is_enum = True
