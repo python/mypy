@@ -217,3 +217,11 @@ L1:
     x = 1.5
 L2:
     return x
+
+[case testFloatMixedOperations]
+def f(x: float, y: int) -> None:
+    if x < y:
+        z = x + y
+        x += y
+[out]
+x
