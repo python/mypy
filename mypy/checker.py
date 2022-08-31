@@ -413,6 +413,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_context(self) -> list[Type | None]:
         return self.expr_checker.type_context
 
+    @contextmanager
+    def temp_binder(self) -> Iterator[None]:
+        old_binder = self.binder
+        self.binder = ConditionalTypeBinder()
+        yield
+        self.binder = old_binder
+
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
 
@@ -1022,9 +1029,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Expand type variables with value restrictions to ordinary types.
         expanded = self.expand_typevars(defn, typ)
         for item, typ in expanded:
-            old_binder = self.binder
-            self.binder = ConditionalTypeBinder()
-            with self.binder.top_frame_context():
+            with self.temp_binder(), self.binder.top_frame_context():
                 defn.expanded.append(item)
 
                 # We may be checking a function definition or an anonymous
@@ -1224,8 +1229,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
 
             self.return_types.pop()
-
-            self.binder = old_binder
 
     def check_unbound_return_typevar(self, typ: CallableType) -> None:
         """Fails when the return typevar is not defined in arguments."""
@@ -2030,12 +2033,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
-            old_binder = self.binder
-            self.binder = ConditionalTypeBinder()
-            with self.binder.top_frame_context():
+            with self.temp_binder(), self.binder.top_frame_context():
                 with self.scope.push_class(defn.info):
                     self.accept(defn.defs)
-            self.binder = old_binder
             if not (defn.info.typeddict_type or defn.info.tuple_type or defn.info.is_enum):
                 # If it is not a normal class (not a special form) check class keywords.
                 self.check_init_subclass(defn)
