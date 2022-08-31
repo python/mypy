@@ -5497,6 +5497,13 @@ class E(Protocol):  # OK, is a protocol
 class F(E, Protocol):  # OK, is a protocol
     pass
 
+# Custom metaclass subclassing `ABCMeta`, see #13561
+class CustomMeta(ABCMeta):
+    pass
+
+class G(A, metaclass=CustomMeta):  # Ok, has CustomMeta as a metaclass
+    pass
+
 [file b.py]
 # All of these are OK because this is not a stub file.
 from abc import ABCMeta, abstractmethod
@@ -5523,6 +5530,12 @@ class E(Protocol):
         pass
 
 class F(E, Protocol):
+    pass
+
+class CustomMeta(ABCMeta):
+    pass
+
+class G(A, metaclass=CustomMeta):
     pass
 
 [case testClassMethodOverride]
