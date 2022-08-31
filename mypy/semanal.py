@@ -2047,6 +2047,7 @@ class SemanticAnalyzer(
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
+        # We check metaclass conflicts in `checker.py`
         if defn.metaclass:
             metaclass_name = None
             if isinstance(defn.metaclass, NameExpr):
@@ -2103,13 +2104,11 @@ class SemanticAnalyzer(
                 # TODO: add a metaclass conflict check if there is another metaclass.
                 abc_meta = self.named_type_or_none("abc.ABCMeta", [])
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
-                    # We check metaclass correctness in `checker.py`
                     defn.info.metaclass_type = abc_meta
-        else:
-            if defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
-                defn.info.is_enum = True
-                if defn.type_vars:
-                    self.fail("Enum class cannot be generic", defn)
+        if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
+            defn.info.is_enum = True
+            if defn.type_vars:
+                self.fail("Enum class cannot be generic", defn)
 
     #
     # Imports
