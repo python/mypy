@@ -2390,6 +2390,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             typ.is_metaclass()
             or typ.is_protocol
             or typ.is_named_tuple
+            or typ.is_enum
             or typ.typeddict_type is not None
         ):
             return  # Reasonable exceptions from this check

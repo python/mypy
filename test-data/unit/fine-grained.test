@@ -2968,7 +2968,6 @@ class M(type):
     pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for "D"
 
 [case testFineMetaclassDeclaredUpdate]
 import a
@@ -2984,7 +2983,6 @@ class M(type): pass
 class M2(type): pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for "D"
 
 [case testFineMetaclassRemoveFromClass]
 import a
