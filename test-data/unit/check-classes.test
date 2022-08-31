@@ -4351,7 +4351,7 @@ class C(B):
 class X(type): pass
 class Y(type): pass
 class A(metaclass=X): pass
-class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for "B"
+class B(A, metaclass=Y): pass
 
 [case testMetaclassNoTypeReveal]
 class M:
@@ -5213,8 +5213,8 @@ class CD(six.with_metaclass(M)): pass  # E: Multiple metaclass definitions
 class M1(type): pass
 class Q1(metaclass=M1): pass
 @six.add_metaclass(M)
-class CQA(Q1): pass  # E: Inconsistent metaclass structure for "CQA"
-class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
+class CQA(Q1): pass
+class CQW(six.with_metaclass(M, Q1)): pass
 [builtins fixtures/tuple.pyi]
 
 [case testSixMetaclassAny]
@@ -5319,7 +5319,7 @@ class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not sup
 
 class M1(type): pass
 class Q1(metaclass=M1): pass
-class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
+class CQW(future.utils.with_metaclass(M, Q1)): pass
 [builtins fixtures/tuple.pyi]
 
 [case testFutureMetaclassAny]
@@ -6691,11 +6691,9 @@ class ChildOfConflict1(Conflict3): ...  # E: Metaclass conflict: the metaclass o
 class ChildOfConflict2(Conflict3, metaclass=CorrectMeta): ...
 
 class ConflictingMeta(MyMeta1, MyMeta3): ...
-class Conflict4(A1, B, E, metaclass=ConflictingMeta): ...  # E: Inconsistent metaclass structure for "Conflict4" \
-                                                           # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class Conflict4(A1, B, E, metaclass=ConflictingMeta): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
-class ChildOfCorrectButWrongMeta(CorrectSubclass1, metaclass=ConflictingMeta):  # E: Inconsistent metaclass structure for "ChildOfCorrectButWrongMeta" \
-                                                           # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class ChildOfCorrectButWrongMeta(CorrectSubclass1, metaclass=ConflictingMeta):  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
     ...
 
 [case testGenericOverride]

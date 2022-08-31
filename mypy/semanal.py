@@ -2103,12 +2103,8 @@ class SemanticAnalyzer(
                 # TODO: add a metaclass conflict check if there is another metaclass.
                 abc_meta = self.named_type_or_none("abc.ABCMeta", [])
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
+                    # We check metaclass correctness in `checker.py`
                     defn.info.metaclass_type = abc_meta
-        if defn.info.metaclass_type is None:
-            # Inconsistency may happen due to multiple baseclasses even in classes that
-            # do not declare explicit metaclass, but it's harder to catch at this stage
-            if defn.metaclass is not None:
-                self.fail(f'Inconsistent metaclass structure for "{defn.name}"', defn)
         else:
             if defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
                 defn.info.is_enum = True
