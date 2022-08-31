@@ -9,6 +9,7 @@ from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
+    ERR_NEVER,
     Assign,
     AssignMulti,
     BasicBlock,
@@ -103,7 +104,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "tt", RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive])
         )
         ir = ClassIR("A", "mod")
-        ir.attributes = {"x": bool_rprimitive, "y": int_rprimitive}
+        ir.attributes = {
+            "x": bool_rprimitive,
+            "y": int_rprimitive,
+            "i1": int64_rprimitive,
+            "i2": int32_rprimitive,
+        }
+        ir.bitmap_attrs = ["i1", "i2"]
         compute_vtable(ir)
         ir.mro = [ir]
         self.r = add_local("r", RInstance(ir))
@@ -397,6 +404,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             skip_next=True,
         )
 
+    def test_get_attr_with_bitmap(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, "i1", 1),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_i1;
+               if (unlikely(cpy_r_r0 == -113) && !(((mod___AObject *)cpy_r_r)->bitmap & 1)) {
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'i1' of 'A' undefined");
+               }
+            """,
+        )
+
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, "y", self.m, 1),
@@ -412,6 +429,62 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             SetAttr(self.r, "x", self.b, 1),
             """((mod___AObject *)cpy_r_r)->_x = cpy_r_b;
+               cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_no_error(self) -> None:
+        op = SetAttr(self.r, "y", self.m, 1)
+        op.error_kind = ERR_NEVER
+        self.assert_emit(
+            op,
+            """if (((mod___AObject *)cpy_r_r)->_y != CPY_INT_TAG) {
+                   CPyTagged_DECREF(((mod___AObject *)cpy_r_r)->_y);
+               }
+               ((mod___AObject *)cpy_r_r)->_y = cpy_r_m;
+            """,
+        )
+
+    def test_set_attr_non_refcounted_no_error(self) -> None:
+        op = SetAttr(self.r, "x", self.b, 1)
+        op.error_kind = ERR_NEVER
+        self.assert_emit(
+            op,
+            """((mod___AObject *)cpy_r_r)->_x = cpy_r_b;
+            """,
+        )
+
+    def test_set_attr_with_bitmap(self) -> None:
+        # For some rtypes the error value overlaps a valid value, so we need
+        # to use a separate bitmap to track defined attributes.
+        self.assert_emit(
+            SetAttr(self.r, "i1", self.i64, 1),
+            """if (unlikely(cpy_r_i64 == -113)) {
+                   ((mod___AObject *)cpy_r_r)->bitmap |= 1;
+               }
+               ((mod___AObject *)cpy_r_r)->_i1 = cpy_r_i64;
+               cpy_r_r0 = 1;
+            """,
+        )
+        self.assert_emit(
+            SetAttr(self.r, "i2", self.i32, 1),
+            """if (unlikely(cpy_r_i32 == -113)) {
+                   ((mod___AObject *)cpy_r_r)->bitmap |= 2;
+               }
+               ((mod___AObject *)cpy_r_r)->_i2 = cpy_r_i32;
+               cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_init_with_bitmap(self) -> None:
+        op = SetAttr(self.r, "i1", self.i64, 1)
+        op.is_init = True
+        self.assert_emit(
+            op,
+            """if (unlikely(cpy_r_i64 == -113)) {
+                   ((mod___AObject *)cpy_r_r)->bitmap |= 1;
+               }
+               ((mod___AObject *)cpy_r_r)->_i1 = cpy_r_i64;
                cpy_r_r0 = 1;
             """,
         )
