@@ -660,8 +660,8 @@ a + 1
 [out]
 _testMapStr.py:4: error: No overload variant of "__add__" of "list" matches argument type "int"
 _testMapStr.py:4: note: Possible overload variants:
-_testMapStr.py:4: note:     def __add__(self, List[str]) -> List[str]
-_testMapStr.py:4: note:     def [_S] __add__(self, List[_S]) -> List[Union[_S, str]]
+_testMapStr.py:4: note:     def __add__(self, List[str], /) -> List[str]
+_testMapStr.py:4: note:     def [_S] __add__(self, List[_S], /) -> List[Union[_S, str]]
 
 [case testRelativeImport]
 import typing
@@ -805,8 +805,8 @@ t + 1
 [out]
 _program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
 _program.py:3: note: Possible overload variants:
-_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
-_program.py:3: note:     def [_T] __add__(self, Tuple[_T, ...]) -> Tuple[Union[str, _T], ...]
+_program.py:3: note:     def __add__(self, Tuple[str, ...], /) -> Tuple[str, ...]
+_program.py:3: note:     def [_T] __add__(self, Tuple[_T, ...], /) -> Tuple[Union[str, _T], ...]
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
@@ -815,8 +815,8 @@ t + 1
 [out]
 _program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
 _program.py:3: note: Possible overload variants:
-_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
-_program.py:3: note:     def [_T] __add__(self, Tuple[_T, ...]) -> Tuple[Union[str, _T], ...]
+_program.py:3: note:     def __add__(self, Tuple[str, ...], /) -> Tuple[str, ...]
+_program.py:3: note:     def [_T] __add__(self, Tuple[_T, ...], /) -> Tuple[Union[str, _T], ...]
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
@@ -1099,8 +1099,8 @@ _testTypedDictGet.py:8: note: Revealed type is "builtins.str"
 _testTypedDictGet.py:9: note: Revealed type is "builtins.object"
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
-_testTypedDictGet.py:10: note:     def get(self, str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, str, default: object) -> object
+_testTypedDictGet.py:10: note:     def get(self, str, /) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, str, /, default: object) -> object
 _testTypedDictGet.py:12: note: Revealed type is "builtins.object"
 
 [case testTypedDictMappingMethods]
@@ -1130,9 +1130,9 @@ _testTypedDictMappingMethods.py:5: note: Revealed type is "builtins.str"
 _testTypedDictMappingMethods.py:6: note: Revealed type is "typing.Iterator[builtins.str]"
 _testTypedDictMappingMethods.py:7: note: Revealed type is "builtins.int"
 _testTypedDictMappingMethods.py:8: note: Revealed type is "builtins.bool"
-_testTypedDictMappingMethods.py:9: note: Revealed type is "typing.KeysView[builtins.str]"
-_testTypedDictMappingMethods.py:10: note: Revealed type is "typing.ItemsView[builtins.str, builtins.object]"
-_testTypedDictMappingMethods.py:11: note: Revealed type is "typing.ValuesView[builtins.object]"
+_testTypedDictMappingMethods.py:9: note: Revealed type is "_collections_abc.dict_keys[builtins.str, builtins.object]"
+_testTypedDictMappingMethods.py:10: note: Revealed type is "_collections_abc.dict_items[builtins.str, builtins.object]"
+_testTypedDictMappingMethods.py:11: note: Revealed type is "_collections_abc.dict_values[builtins.str, builtins.object]"
 _testTypedDictMappingMethods.py:12: note: Revealed type is "TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})"
 _testTypedDictMappingMethods.py:13: note: Revealed type is "builtins.int"
 _testTypedDictMappingMethods.py:15: error: Unexpected TypedDict key "invalid"

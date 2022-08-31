@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
@@ -57,7 +56,7 @@ class TypedDictAnalyzer:
         self.api = api
         self.msg = msg
 
-    def analyze_typeddict_classdef(self, defn: ClassDef) -> Tuple[bool, Optional[TypeInfo]]:
+    def analyze_typeddict_classdef(self, defn: ClassDef) -> tuple[bool, TypeInfo | None]:
         """Analyze a class that may define a TypedDict.
 
         Assume that base classes have been analyzed already.
@@ -103,7 +102,7 @@ class TypedDictAnalyzer:
             return True, info
 
         # Extending/merging existing TypedDicts
-        typeddict_bases: List[Expression] = []
+        typeddict_bases: list[Expression] = []
         typeddict_bases_set = set()
         for expr in defn.base_type_exprs:
             if isinstance(expr, RefExpr) and expr.fullname in TPDICT_NAMES:
@@ -131,7 +130,7 @@ class TypedDictAnalyzer:
             else:
                 self.fail("All bases of a new TypedDict must be TypedDict types", defn)
 
-        keys: List[str] = []
+        keys: list[str] = []
         types = []
         required_keys = set()
         # Iterate over bases in reverse order so that leftmost base class' keys take precedence
@@ -154,15 +153,15 @@ class TypedDictAnalyzer:
     def add_keys_and_types_from_base(
         self,
         base: Expression,
-        keys: List[str],
-        types: List[Type],
-        required_keys: Set[str],
+        keys: list[str],
+        types: list[Type],
+        required_keys: set[str],
         ctx: Context,
     ) -> None:
         if isinstance(base, RefExpr):
             assert isinstance(base.node, TypeInfo)
             info = base.node
-            base_args: List[Type] = []
+            base_args: list[Type] = []
         else:
             assert isinstance(base, IndexExpr)
             assert isinstance(base.base, RefExpr)
@@ -195,7 +194,7 @@ class TypedDictAnalyzer:
         types.extend(valid_items.values())
         required_keys.update(base_typed_dict.required_keys)
 
-    def analyze_base_args(self, base: IndexExpr, ctx: Context) -> Optional[List[Type]]:
+    def analyze_base_args(self, base: IndexExpr, ctx: Context) -> list[Type] | None:
         """Analyze arguments of base type expressions as types.
 
         We need to do this, because normal base class processing happens after
@@ -225,8 +224,8 @@ class TypedDictAnalyzer:
         return base_args
 
     def map_items_to_base(
-        self, valid_items: Dict[str, Type], tvars: List[str], base_args: List[Type]
-    ) -> Dict[str, Type]:
+        self, valid_items: dict[str, Type], tvars: list[str], base_args: list[Type]
+    ) -> dict[str, Type]:
         """Map item types to how they would look in their base with type arguments applied.
 
         We would normally use expand_type() for such task, but we can't use it during
@@ -247,8 +246,8 @@ class TypedDictAnalyzer:
         return mapped_items
 
     def analyze_typeddict_classdef_fields(
-        self, defn: ClassDef, oldfields: Optional[List[str]] = None
-    ) -> Tuple[Optional[List[str]], List[Type], Set[str]]:
+        self, defn: ClassDef, oldfields: list[str] | None = None
+    ) -> tuple[list[str] | None, list[Type], set[str]]:
         """Analyze fields defined in a TypedDict class definition.
 
         This doesn't consider inherited fields (if any). Also consider totality,
@@ -259,8 +258,8 @@ class TypedDictAnalyzer:
          * List of types for each key
          * Set of required keys
         """
-        fields: List[str] = []
-        types: List[Type] = []
+        fields: list[str] = []
+        types: list[Type] = []
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty TypedDict's).
@@ -299,7 +298,7 @@ class TypedDictAnalyzer:
                 elif not isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
                     self.fail("Right hand side values are not supported in TypedDict", stmt)
-        total: Optional[bool] = True
+        total: bool | None = True
         if "total" in defn.keywords:
             total = self.api.parse_bool(defn.keywords["total"])
             if total is None:
@@ -318,8 +317,8 @@ class TypedDictAnalyzer:
         return fields, types, required_keys
 
     def check_typeddict(
-        self, node: Expression, var_name: Optional[str], is_func_scope: bool
-    ) -> Tuple[bool, Optional[TypeInfo], List[TypeVarLikeType]]:
+        self, node: Expression, var_name: str | None, is_func_scope: bool
+    ) -> tuple[bool, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a TypedDict.
 
         The optional var_name argument is the name of the variable to
@@ -388,7 +387,7 @@ class TypedDictAnalyzer:
 
     def parse_typeddict_args(
         self, call: CallExpr
-    ) -> Optional[Tuple[str, List[str], List[Type], bool, List[TypeVarLikeType], bool]]:
+    ) -> tuple[str, list[str], list[Type], bool, list[TypeVarLikeType], bool] | None:
         """Parse typed dict call expression.
 
         Return names, types, totality, was there an error during parsing.
@@ -415,7 +414,7 @@ class TypedDictAnalyzer:
             return self.fail_typeddict_arg(
                 "TypedDict() expects a dictionary literal as the second argument", call
             )
-        total: Optional[bool] = True
+        total: bool | None = True
         if len(args) == 3:
             total = self.api.parse_bool(call.args[2])
             if total is None:
@@ -442,15 +441,15 @@ class TypedDictAnalyzer:
         return args[0].value, items, types, total, tvar_defs, ok
 
     def parse_typeddict_fields_with_types(
-        self, dict_items: List[Tuple[Optional[Expression], Expression]], context: Context
-    ) -> Optional[Tuple[List[str], List[Type], bool]]:
+        self, dict_items: list[tuple[Expression | None, Expression]], context: Context
+    ) -> tuple[list[str], list[Type], bool] | None:
         """Parse typed dict items passed as pairs (name expression, type expression).
 
         Return names, types, was there an error. If some type is not ready, return None.
         """
         seen_keys = set()
-        items: List[str] = []
-        types: List[Type] = []
+        items: list[str] = []
+        types: list[Type] = []
         for (field_name_expr, field_type_expr) in dict_items:
             if isinstance(field_name_expr, StrExpr):
                 key = field_name_expr.value
@@ -492,18 +491,18 @@ class TypedDictAnalyzer:
 
     def fail_typeddict_arg(
         self, message: str, context: Context
-    ) -> Tuple[str, List[str], List[Type], bool, List[TypeVarLikeType], bool]:
+    ) -> tuple[str, list[str], list[Type], bool, list[TypeVarLikeType], bool]:
         self.fail(message, context)
         return "", [], [], True, [], False
 
     def build_typeddict_typeinfo(
         self,
         name: str,
-        items: List[str],
-        types: List[Type],
-        required_keys: Set[str],
+        items: list[str],
+        types: list[Type],
+        required_keys: set[str],
         line: int,
-        existing_info: Optional[TypeInfo],
+        existing_info: TypeInfo | None,
     ) -> TypeInfo:
         # Prefer typing then typing_extensions if available.
         fallback = (
@@ -528,7 +527,7 @@ class TypedDictAnalyzer:
             and expr.node.typeddict_type is not None
         )
 
-    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
         self.api.fail(msg, ctx, code=code)
 
     def note(self, msg: str, ctx: Context) -> None:

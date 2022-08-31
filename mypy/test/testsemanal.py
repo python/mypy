@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os.path
 import sys
-from typing import Dict, List
+from typing import Dict
 
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
@@ -218,7 +218,7 @@ class SemAnalTypeInfoSuite(DataSuite):
 
 class TypeInfoMap(Dict[str, TypeInfo]):
     def __str__(self) -> str:
-        a: List[str] = ["TypeInfoMap("]
+        a: list[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):
             if isinstance(x, str) and (
                 not x.startswith("builtins.")

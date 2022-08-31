@@ -789,7 +789,7 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
 class B(A):
     @property
-    def x(self) -> str: pass # E: Return type "str" of "x" incompatible with return type "int" in supertype "A"
+    def x(self) -> str: pass # E: Signature of "x" incompatible with supertype "A"
 b = B()
 b.x() # E: "str" not callable
 [builtins fixtures/property.pyi]

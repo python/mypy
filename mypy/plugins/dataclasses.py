@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -70,7 +69,7 @@ class DataclassAttribute:
         has_default: bool,
         line: int,
         column: int,
-        type: Optional[Type],
+        type: Type | None,
         info: TypeInfo,
         kw_only: bool,
     ) -> None:
@@ -245,10 +244,20 @@ class DataclassTransformer:
                     tvar_def=order_tvar_def,
                 )
 
+        parent_decorator_arguments = []
+        for parent in info.mro[1:-1]:
+            parent_args = parent.metadata.get("dataclass")
+            if parent_args:
+                parent_decorator_arguments.append(parent_args)
+
         if decorator_arguments["frozen"]:
+            if any(not parent["frozen"] for parent in parent_decorator_arguments):
+                ctx.api.fail("Cannot inherit frozen dataclass from a non-frozen one", info)
             self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
+            if any(parent["frozen"] for parent in parent_decorator_arguments):
+                ctx.api.fail("Cannot inherit non-frozen dataclass from a frozen one", info)
             self._propertize_callables(attributes)
 
         if decorator_arguments["slots"]:
@@ -265,7 +274,7 @@ class DataclassTransformer:
             and py_version >= (3, 10)
         ):
             str_type = ctx.api.named_type("builtins.str")
-            literals: List[Type] = [
+            literals: list[Type] = [
                 LiteralType(attr.name, str_type) for attr in attributes if attr.is_in_init
             ]
             match_args_type = TupleType(literals, ctx.api.named_type("builtins.tuple"))
@@ -281,7 +290,7 @@ class DataclassTransformer:
         return True
 
     def add_slots(
-        self, info: TypeInfo, attributes: List[DataclassAttribute], *, correct_version: bool
+        self, info: TypeInfo, attributes: list[DataclassAttribute], *, correct_version: bool
     ) -> None:
         if not correct_version:
             # This means that version is lower than `3.10`,
@@ -311,7 +320,7 @@ class DataclassTransformer:
 
         info.slots = generated_slots
 
-    def reset_init_only_vars(self, info: TypeInfo, attributes: List[DataclassAttribute]) -> None:
+    def reset_init_only_vars(self, info: TypeInfo, attributes: list[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
         for attr in attributes:
             if attr.is_init_var:
@@ -328,7 +337,7 @@ class DataclassTransformer:
                             # recreate a symbol node for this attribute.
                             lvalue.node = None
 
-    def collect_attributes(self) -> Optional[List[DataclassAttribute]]:
+    def collect_attributes(self) -> list[DataclassAttribute] | None:
         """Collect all attributes declared in the dataclass and its parents.
 
         All assignments of the form
@@ -344,8 +353,8 @@ class DataclassTransformer:
         # First, collect attributes belonging to the current class.
         ctx = self._ctx
         cls = self._ctx.cls
-        attrs: List[DataclassAttribute] = []
-        known_attrs: Set[str] = set()
+        attrs: list[DataclassAttribute] = []
+        known_attrs: set[str] = set()
         kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
         for stmt in cls.defs.body:
             # Any assignment that doesn't use the new type declaration
@@ -369,7 +378,7 @@ class DataclassTransformer:
 
             if isinstance(node, TypeAlias):
                 ctx.api.fail(
-                    ("Type aliases inside dataclass definitions " "are not supported at runtime"),
+                    ("Type aliases inside dataclass definitions are not supported at runtime"),
                     node,
                 )
                 # Skip processing this node. This doesn't match the runtime behaviour,
@@ -427,6 +436,23 @@ class DataclassTransformer:
                 is_kw_only = bool(ctx.api.parse_bool(field_kw_only_param))
 
             known_attrs.add(lhs.name)
+
+            if sym.type is None and node.is_final and node.is_inferred:
+                # This is a special case, assignment like x: Final = 42 is classified
+                # annotated above, but mypy strips the `Final` turning it into x = 42.
+                # We do not support inferred types in dataclasses, so we can try inferring
+                # type for simple literals, and otherwise require an explicit type
+                # argument for Final[...].
+                typ = ctx.api.analyze_simple_literal_type(stmt.rvalue, is_final=True)
+                if typ:
+                    node.type = typ
+                else:
+                    ctx.api.fail(
+                        "Need type argument for Final[...] with non-literal default in dataclass",
+                        stmt,
+                    )
+                    node.type = AnyType(TypeOfAny.from_error)
+
             attrs.append(
                 DataclassAttribute(
                     name=lhs.name,
@@ -447,6 +473,7 @@ class DataclassTransformer:
         # copy() because we potentially modify all_attrs below and if this code requires debugging
         # we'll have unmodified attrs laying around.
         all_attrs = attrs.copy()
+        known_super_attrs = set()
         for info in cls.info.mro[1:-1]:
             if "dataclass_tag" in info.metadata and "dataclass" not in info.metadata:
                 # We haven't processed the base class yet. Need another pass.
@@ -468,6 +495,7 @@ class DataclassTransformer:
                     with state.strict_optional_set(ctx.api.options.strict_optional):
                         attr.expand_typevar_from_subtype(ctx.cls.info)
                     known_attrs.add(name)
+                    known_super_attrs.add(name)
                     super_attrs.append(attr)
                 elif all_attrs:
                     # How early in the attribute list an attribute appears is determined by the
@@ -481,6 +509,14 @@ class DataclassTransformer:
                             break
             all_attrs = super_attrs + all_attrs
             all_attrs.sort(key=lambda a: a.kw_only)
+
+        for known_super_attr_name in known_super_attrs:
+            sym_node = cls.info.names.get(known_super_attr_name)
+            if sym_node and sym_node.node and not isinstance(sym_node.node, Var):
+                ctx.api.fail(
+                    "Dataclass attribute may only be overridden by another attribute",
+                    sym_node.node,
+                )
 
         # Ensure that arguments without a default don't follow
         # arguments that have a default.
@@ -507,7 +543,7 @@ class DataclassTransformer:
 
         return all_attrs
 
-    def _freeze(self, attributes: List[DataclassAttribute]) -> None:
+    def _freeze(self, attributes: list[DataclassAttribute]) -> None:
         """Converts all attributes to @property methods in order to
         emulate frozen classes.
         """
@@ -516,8 +552,8 @@ class DataclassTransformer:
             sym_node = info.names.get(attr.name)
             if sym_node is not None:
                 var = sym_node.node
-                assert isinstance(var, Var)
-                var.is_property = True
+                if isinstance(var, Var):
+                    var.is_property = True
             else:
                 var = attr.to_var()
                 var.info = info
@@ -526,7 +562,7 @@ class DataclassTransformer:
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 
     def _propertize_callables(
-        self, attributes: List[DataclassAttribute], settable: bool = True
+        self, attributes: list[DataclassAttribute], settable: bool = True
     ) -> None:
         """Converts all attributes with callable types to @property methods.
 
@@ -545,7 +581,7 @@ class DataclassTransformer:
                 var._fullname = info.fullname + "." + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 
-    def _is_kw_only_type(self, node: Optional[Type]) -> bool:
+    def _is_kw_only_type(self, node: Type | None) -> bool:
         """Checks if the type of the node is the KW_ONLY sentinel value."""
         if node is None:
             return False
@@ -587,7 +623,7 @@ def dataclass_class_maker_callback(ctx: ClassDefContext) -> bool:
 
 def _collect_field_args(
     expr: Expression, ctx: ClassDefContext
-) -> Tuple[bool, Dict[str, Expression]]:
+) -> tuple[bool, dict[str, Expression]]:
     """Returns a tuple where the first value represents whether or not
     the expression is a call to dataclass.field and the second is a
     dictionary of the keyword arguments that field() was called with.

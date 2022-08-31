@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
-from typing import Any, Iterator, List, cast
+from typing import Any, Iterator, cast
 
 from mypy import build
 from mypy.errors import CompileError
@@ -38,6 +38,8 @@ files = [
     "run-misc.test",
     "run-functions.test",
     "run-integers.test",
+    "run-i64.test",
+    "run-i32.test",
     "run-floats.test",
     "run-bools.test",
     "run-strings.test",
@@ -78,7 +80,7 @@ setup(name='test_run_output',
 WORKDIR = "build"
 
 
-def run_setup(script_name: str, script_args: List[str]) -> bool:
+def run_setup(script_name: str, script_args: list[str]) -> bool:
     """Run a setup script in a somewhat controlled environment.
 
     This is adapted from code in distutils and our goal here is that is
@@ -184,6 +186,8 @@ class TestRun(MypycDataSuite):
         options.export_types = True
         options.preserve_asts = True
         options.incremental = self.separate
+        if "IncompleteFeature" in testcase.name:
+            options.enable_incomplete_features = True
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.

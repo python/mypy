@@ -127,6 +127,7 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     _optionals: _ArgumentGroup
     _subparsers: _ArgumentGroup | None
 
+    # Note: the constructor arguments are also used in _SubParsersAction.add_parser.
     if sys.version_info >= (3, 9):
         def __init__(
             self,
@@ -458,8 +459,53 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
         help: str | None = ...,
         metavar: str | tuple[str, ...] | None = ...,
     ) -> None: ...
-    # TODO: Type keyword args properly.
-    def add_parser(self, name: str, **kwargs: Any) -> _ArgumentParserT: ...
+
+    # Note: `add_parser` accepts all kwargs of `ArgumentParser.__init__`. It also
+    # accepts its own `help` and `aliases` kwargs.
+    if sys.version_info >= (3, 9):
+        def add_parser(
+            self,
+            name: str,
+            *,
+            help: str | None = ...,
+            aliases: Sequence[str] = ...,
+            # Kwargs from ArgumentParser constructor
+            prog: str | None = ...,
+            usage: str | None = ...,
+            description: str | None = ...,
+            epilog: str | None = ...,
+            parents: Sequence[_ArgumentParserT] = ...,
+            formatter_class: _FormatterClass = ...,
+            prefix_chars: str = ...,
+            fromfile_prefix_chars: str | None = ...,
+            argument_default: Any = ...,
+            conflict_handler: str = ...,
+            add_help: bool = ...,
+            allow_abbrev: bool = ...,
+            exit_on_error: bool = ...,
+        ) -> _ArgumentParserT: ...
+    else:
+        def add_parser(
+            self,
+            name: str,
+            *,
+            help: str | None = ...,
+            aliases: Sequence[str] = ...,
+            # Kwargs from ArgumentParser constructor
+            prog: str | None = ...,
+            usage: str | None = ...,
+            description: str | None = ...,
+            epilog: str | None = ...,
+            parents: Sequence[_ArgumentParserT] = ...,
+            formatter_class: _FormatterClass = ...,
+            prefix_chars: str = ...,
+            fromfile_prefix_chars: str | None = ...,
+            argument_default: Any = ...,
+            conflict_handler: str = ...,
+            add_help: bool = ...,
+            allow_abbrev: bool = ...,
+        ) -> _ArgumentParserT: ...
+
     def _get_subactions(self) -> list[Action]: ...
 
 # undocumented

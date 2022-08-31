@@ -23,7 +23,7 @@ RTypes.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Dict, Generic, List, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 from typing_extensions import Final
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
@@ -75,11 +75,11 @@ class RType:
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
 
-    def serialize(self) -> Union[JsonDict, str]:
+    def serialize(self) -> JsonDict | str:
         raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
 
 
-def deserialize_type(data: Union[JsonDict, str], ctx: DeserMaps) -> RType:
+def deserialize_type(data: JsonDict | str, ctx: DeserMaps) -> RType:
     """Deserialize a JSON-serialized RType.
 
     Arguments:
@@ -180,7 +180,7 @@ class RPrimitive(RType):
     """
 
     # Map from primitive names to primitive types and is used by deserialization
-    primitive_map: ClassVar[Dict[str, RPrimitive]] = {}
+    primitive_map: ClassVar[dict[str, RPrimitive]] = {}
 
     def __init__(
         self,
@@ -558,7 +558,7 @@ class RTuple(RType):
 
     is_unboxed = True
 
-    def __init__(self, types: List[RType]) -> None:
+    def __init__(self, types: list[RType]) -> None:
         self.name = "tuple"
         self.types = tuple(types)
         self.is_refcounted = any(t.is_refcounted for t in self.types)
@@ -649,7 +649,7 @@ def compute_rtype_size(typ: RType) -> int:
         assert False, "invalid rtype for computing size"
 
 
-def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int]:
+def compute_aligned_offsets_and_size(types: list[RType]) -> tuple[list[int], int]:
     """Compute offsets and total size of a list of types after alignment
 
     Note that the types argument are types of values that are stored
@@ -680,7 +680,7 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
 class RStruct(RType):
     """C struct type"""
 
-    def __init__(self, name: str, names: List[str], types: List[RType]) -> None:
+    def __init__(self, name: str, names: list[str], types: list[RType]) -> None:
         self.name = name
         self.names = names
         self.types = types
@@ -787,7 +787,7 @@ class RUnion(RType):
 
     is_unboxed = False
 
-    def __init__(self, items: List[RType]) -> None:
+    def __init__(self, items: list[RType]) -> None:
         self.name = "union"
         self.items = items
         self.items_set = frozenset(items)
@@ -819,7 +819,7 @@ class RUnion(RType):
         return RUnion(types)
 
 
-def optional_value_type(rtype: RType) -> Optional[RType]:
+def optional_value_type(rtype: RType) -> RType | None:
     """If rtype is the union of none_rprimitive and another type X, return X.
 
     Otherwise return None.

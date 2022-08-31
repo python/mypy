@@ -9,13 +9,11 @@ code.
 
 from __future__ import annotations
 
-from typing import Set
-
 from mypyc.ir.ops import BasicBlock, Branch, Goto
 
 
-def frequently_executed_blocks(entry_point: BasicBlock) -> Set[BasicBlock]:
-    result: Set[BasicBlock] = set()
+def frequently_executed_blocks(entry_point: BasicBlock) -> set[BasicBlock]:
+    result: set[BasicBlock] = set()
     worklist = [entry_point]
     while worklist:
         block = worklist.pop()

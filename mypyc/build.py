@@ -25,20 +25,7 @@ import os.path
 import re
 import sys
 import time
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    List,
-    NoReturn,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -66,7 +53,7 @@ except ImportError:
 from distutils import ccompiler, sysconfig
 
 
-def get_extension() -> Type[Extension]:
+def get_extension() -> type[Extension]:
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
@@ -99,11 +86,11 @@ def fail(message: str) -> NoReturn:
 
 
 def get_mypy_config(
-    mypy_options: List[str],
-    only_compile_paths: Optional[Iterable[str]],
+    mypy_options: list[str],
+    only_compile_paths: Iterable[str] | None,
     compiler_options: CompilerOptions,
-    fscache: Optional[FileSystemCache],
-) -> Tuple[List[BuildSource], List[BuildSource], Options]:
+    fscache: FileSystemCache | None,
+) -> tuple[list[BuildSource], list[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
     all_sources, options = process_options(mypy_options, fscache=fscache)
     if only_compile_paths is not None:
@@ -172,7 +159,7 @@ def generate_c_extension_shim(
     return cpath
 
 
-def group_name(modules: List[str]) -> str:
+def group_name(modules: list[str]) -> str:
     """Produce a probably unique name for a group from a list of module names."""
     if len(modules) == 1:
         return modules[0]
@@ -188,12 +175,12 @@ def include_dir() -> str:
 
 
 def generate_c(
-    sources: List[BuildSource],
+    sources: list[BuildSource],
     options: Options,
     groups: emitmodule.Groups,
     fscache: FileSystemCache,
     compiler_options: CompilerOptions,
-) -> Tuple[List[List[Tuple[str, str]]], str]:
+) -> tuple[list[list[tuple[str, str]]], str]:
     """Drive the actual core compilation step.
 
     The groups argument describes how modules are assigned to C
@@ -249,13 +236,13 @@ def generate_c(
 
 
 def build_using_shared_lib(
-    sources: List[BuildSource],
+    sources: list[BuildSource],
     group_name: str,
-    cfiles: List[str],
-    deps: List[str],
+    cfiles: list[str],
+    deps: list[str],
     build_dir: str,
-    extra_compile_args: List[str],
-) -> List[Extension]:
+    extra_compile_args: list[str],
+) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
     This creates one shared library extension module that all of the
@@ -297,8 +284,8 @@ def build_using_shared_lib(
 
 
 def build_single_module(
-    sources: List[BuildSource], cfiles: List[str], extra_compile_args: List[str]
-) -> List[Extension]:
+    sources: list[BuildSource], cfiles: list[str], extra_compile_args: list[str]
+) -> list[Extension]:
     """Produce the list of extension modules for a standalone extension.
 
     This contains just one module, since there is no need for a shared module.
@@ -325,7 +312,7 @@ def write_file(path: str, contents: str) -> None:
     encoded_contents = contents.encode("utf-8")
     try:
         with open(path, "rb") as f:
-            old_contents: Optional[bytes] = f.read()
+            old_contents: bytes | None = f.read()
     except OSError:
         old_contents = None
     if old_contents != encoded_contents:
@@ -342,8 +329,8 @@ def write_file(path: str, contents: str) -> None:
 
 
 def construct_groups(
-    sources: List[BuildSource],
-    separate: Union[bool, List[Tuple[List[str], Optional[str]]]],
+    sources: list[BuildSource],
+    separate: bool | list[tuple[list[str], str | None]],
     use_shared_lib: bool,
 ) -> emitmodule.Groups:
     """Compute Groups given the input source list and separate configs.
@@ -380,7 +367,7 @@ def construct_groups(
     return groups
 
 
-def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
+def get_header_deps(cfiles: list[tuple[str, str]]) -> list[str]:
     """Find all the headers used by a group of cfiles.
 
     We do this by just regexping the source, which is a bit simpler than
@@ -389,7 +376,7 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
     Arguments:
         cfiles: A list of (file name, file contents) pairs.
     """
-    headers: Set[str] = set()
+    headers: set[str] = set()
     for _, contents in cfiles:
         headers.update(re.findall(r'#include "(.*)"', contents))
 
@@ -397,14 +384,14 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
 
 
 def mypyc_build(
-    paths: List[str],
+    paths: list[str],
     compiler_options: CompilerOptions,
     *,
-    separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
-    only_compile_paths: Optional[Iterable[str]] = None,
-    skip_cgen_input: Optional[Any] = None,
+    separate: bool | list[tuple[list[str], str | None]] = False,
+    only_compile_paths: Iterable[str] | None = None,
+    skip_cgen_input: Any | None = None,
     always_use_shared_lib: bool = False,
-) -> Tuple[emitmodule.Groups, List[Tuple[List[str], List[str]]]]:
+) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]]]:
     """Do the front and middle end of mypyc building, producing and writing out C source."""
     fscache = FileSystemCache()
     mypyc_sources, all_sources, options = get_mypy_config(
@@ -435,7 +422,7 @@ def mypyc_build(
 
     # Write out the generated C and collect the files for each group
     # Should this be here??
-    group_cfilenames: List[Tuple[List[str], List[str]]] = []
+    group_cfilenames: list[tuple[list[str], list[str]]] = []
     for cfiles in group_cfiles:
         cfilenames = []
         for cfile, ctext in cfiles:
@@ -451,19 +438,19 @@ def mypyc_build(
 
 
 def mypycify(
-    paths: List[str],
+    paths: list[str],
     *,
-    only_compile_paths: Optional[Iterable[str]] = None,
+    only_compile_paths: Iterable[str] | None = None,
     verbose: bool = False,
     opt_level: str = "3",
     debug_level: str = "1",
     strip_asserts: bool = False,
     multi_file: bool = False,
-    separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
-    skip_cgen_input: Optional[Any] = None,
-    target_dir: Optional[str] = None,
-    include_runtime_files: Optional[bool] = None,
-) -> List[Extension]:
+    separate: bool | list[tuple[list[str], str | None]] = False,
+    skip_cgen_input: Any | None = None,
+    target_dir: str | None = None,
+    include_runtime_files: bool | None = None,
+) -> list[Extension]:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the
@@ -534,7 +521,7 @@ def mypycify(
 
     build_dir = compiler_options.target_dir
 
-    cflags: List[str] = []
+    cflags: list[str] = []
     if compiler.compiler_type == "unix":
         cflags += [
             f"-O{opt_level}",

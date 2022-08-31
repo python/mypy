@@ -412,4 +412,68 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
 #endif
 
+// Copied from genobject.c in Python 3.10
+static int
+gen_is_coroutine(PyObject *o)
+{
+    if (PyGen_CheckExact(o)) {
+        PyCodeObject *code = (PyCodeObject *)((PyGenObject*)o)->gi_code;
+        if (code->co_flags & CO_ITERABLE_COROUTINE) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/*
+ *   This helper function returns an awaitable for `o`:
+ *     - `o` if `o` is a coroutine-object;
+ *     - `type(o)->tp_as_async->am_await(o)`
+ *
+ *   Raises a TypeError if it's not possible to return
+ *   an awaitable and returns NULL.
+ */
+static PyObject *
+CPyCoro_GetAwaitableIter(PyObject *o)
+{
+    unaryfunc getter = NULL;
+    PyTypeObject *ot;
+
+    if (PyCoro_CheckExact(o) || gen_is_coroutine(o)) {
+        /* 'o' is a coroutine. */
+        Py_INCREF(o);
+        return o;
+    }
+
+    ot = Py_TYPE(o);
+    if (ot->tp_as_async != NULL) {
+        getter = ot->tp_as_async->am_await;
+    }
+    if (getter != NULL) {
+        PyObject *res = (*getter)(o);
+        if (res != NULL) {
+            if (PyCoro_CheckExact(res) || gen_is_coroutine(res)) {
+                /* __await__ must return an *iterator*, not
+                   a coroutine or another awaitable (see PEP 492) */
+                PyErr_SetString(PyExc_TypeError,
+                                "__await__() returned a coroutine");
+                Py_CLEAR(res);
+            } else if (!PyIter_Check(res)) {
+                PyErr_Format(PyExc_TypeError,
+                             "__await__() returned non-iterator "
+                             "of type '%.100s'",
+                             Py_TYPE(res)->tp_name);
+                Py_CLEAR(res);
+            }
+        }
+        return res;
+    }
+
+    PyErr_Format(PyExc_TypeError,
+                 "object %.100s can't be used in 'await' expression",
+                 ot->tp_name);
+    return NULL;
+}
+
+
 #endif

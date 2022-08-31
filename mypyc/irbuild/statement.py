@@ -9,7 +9,7 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from typing import Callable, List, Optional, Sequence, Tuple, Union
+from typing import Callable, Sequence
 
 from mypy.nodes import (
     AssertStmt,
@@ -100,6 +100,7 @@ from mypyc.primitives.misc_ops import (
 )
 
 GenFunc = Callable[[], None]
+ValueGenFunc = Callable[[], Value]
 
 
 def transform_block(builder: IRBuilder, block: Block) -> None:
@@ -327,9 +328,6 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
 
 def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
-    if s.is_async:
-        builder.error("async for is unimplemented", s.line)
-
     def body() -> None:
         builder.accept(s.body)
 
@@ -337,7 +335,9 @@ def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
         assert s.else_body is not None
         builder.accept(s.else_body)
 
-    for_loop_helper(builder, s.index, s.expr, body, else_block if s.else_body else None, s.line)
+    for_loop_helper(
+        builder, s.index, s.expr, body, else_block if s.else_body else None, s.is_async, s.line
+    )
 
 
 def transform_break_stmt(builder: IRBuilder, node: BreakStmt) -> None:
@@ -362,8 +362,8 @@ def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
 def transform_try_except(
     builder: IRBuilder,
     body: GenFunc,
-    handlers: Sequence[Tuple[Optional[Expression], Optional[Expression], GenFunc]],
-    else_body: Optional[GenFunc],
+    handlers: Sequence[tuple[tuple[ValueGenFunc, int] | None, Expression | None, GenFunc]],
+    else_body: GenFunc | None,
     line: int,
 ) -> None:
     """Generalized try/except/else handling that takes functions to gen the bodies.
@@ -399,8 +399,9 @@ def transform_try_except(
     for type, var, handler_body in handlers:
         next_block = None
         if type:
+            type_f, type_line = type
             next_block, body_block = BasicBlock(), BasicBlock()
-            matches = builder.call_c(exc_matches_op, [builder.accept(type)], type.line)
+            matches = builder.call_c(exc_matches_op, [type_f()], type_line)
             builder.add(Branch(matches, body_block, next_block, Branch.BOOL))
             builder.activate_block(body_block)
         if var:
@@ -451,8 +452,12 @@ def transform_try_except_stmt(builder: IRBuilder, t: TryStmt) -> None:
     def make_handler(body: Block) -> GenFunc:
         return lambda: builder.accept(body)
 
+    def make_entry(type: Expression) -> tuple[ValueGenFunc, int]:
+        return (lambda: builder.accept(type), type.line)
+
     handlers = [
-        (type, var, make_handler(body)) for type, var, body in zip(t.types, t.vars, t.handlers)
+        (make_entry(type) if type else None, var, make_handler(body))
+        for type, var, body in zip(t.types, t.vars, t.handlers)
     ]
     else_body = (lambda: builder.accept(t.else_body)) if t.else_body else None
     transform_try_except(builder, body, handlers, else_body, t.line)
@@ -464,7 +469,7 @@ def try_finally_try(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     try_body: GenFunc,
-) -> Union[Register, AssignmentTarget, None]:
+) -> Register | AssignmentTarget | None:
     # Compile the try block with an error handler
     control = TryFinallyNonlocalControl(return_entry)
     builder.builder.push_error_handler(err_handler)
@@ -485,7 +490,7 @@ def try_finally_entry_blocks(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     finally_block: BasicBlock,
-    ret_reg: Union[Register, AssignmentTarget, None],
+    ret_reg: Register | AssignmentTarget | None,
 ) -> Value:
     old_exc = Register(exc_rtuple)
 
@@ -511,7 +516,7 @@ def try_finally_entry_blocks(
 
 def try_finally_body(
     builder: IRBuilder, finally_block: BasicBlock, finally_body: GenFunc, old_exc: Value
-) -> Tuple[BasicBlock, FinallyNonlocalControl]:
+) -> tuple[BasicBlock, FinallyNonlocalControl]:
     cleanup_block = BasicBlock()
     # Compile the finally block with the nonlocal control flow overridden to restore exc_info
     builder.builder.push_error_handler(cleanup_block)
@@ -529,7 +534,7 @@ def try_finally_resolve_control(
     cleanup_block: BasicBlock,
     finally_control: FinallyNonlocalControl,
     old_exc: Value,
-    ret_reg: Union[Register, AssignmentTarget, None],
+    ret_reg: Register | AssignmentTarget | None,
 ) -> BasicBlock:
     """Resolve the control flow out of a finally block.
 
@@ -626,7 +631,7 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
         transform_try_except_stmt(builder, t)
 
 
-def get_sys_exc_info(builder: IRBuilder) -> List[Value]:
+def get_sys_exc_info(builder: IRBuilder) -> list[Value]:
     exc_info = builder.call_c(get_exc_info_op, [], -1)
     return [builder.add(TupleGet(exc_info, i, -1)) for i in range(3)]
 
@@ -634,7 +639,7 @@ def get_sys_exc_info(builder: IRBuilder) -> List[Value]:
 def transform_with(
     builder: IRBuilder,
     expr: Expression,
-    target: Optional[Lvalue],
+    target: Lvalue | None,
     body: GenFunc,
     is_async: bool,
     line: int,

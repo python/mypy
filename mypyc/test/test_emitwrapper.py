@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import List
 
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext, ReturnHandler
@@ -56,6 +55,6 @@ class TestArgCheck(unittest.TestCase):
             lines,
         )
 
-    def assert_lines(self, expected: List[str], actual: List[str]) -> None:
+    def assert_lines(self, expected: list[str], actual: list[str]) -> None:
         actual = [line.rstrip("\n") for line in actual]
         assert_string_arrays_equal(expected, actual, "Invalid output")

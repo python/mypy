@@ -21,7 +21,7 @@ from mypy.nodes import (
     Var,
 )
 from mypyc.ir.ops import BasicBlock
-from mypyc.ir.rtypes import is_tagged
+from mypyc.ir.rtypes import is_fixed_width_rtype, is_tagged
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 
@@ -70,7 +70,10 @@ def maybe_process_conditional_comparison(
         return False
     ltype = self.node_type(e.operands[0])
     rtype = self.node_type(e.operands[1])
-    if not is_tagged(ltype) or not is_tagged(rtype):
+    if not (
+        (is_tagged(ltype) or is_fixed_width_rtype(ltype))
+        and (is_tagged(rtype) or is_fixed_width_rtype(rtype))
+    ):
         return False
     op = e.operators[0]
     if op not in ("==", "!=", "<", "<=", ">", ">="):
@@ -80,8 +83,17 @@ def maybe_process_conditional_comparison(
     borrow_left = is_borrow_friendly_expr(self, right_expr)
     left = self.accept(left_expr, can_borrow=borrow_left)
     right = self.accept(right_expr, can_borrow=True)
-    # "left op right" for two tagged integers
-    self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
+    if is_fixed_width_rtype(ltype) or is_fixed_width_rtype(rtype):
+        if not is_fixed_width_rtype(ltype):
+            left = self.coerce(left, rtype, e.line)
+        elif not is_fixed_width_rtype(rtype):
+            right = self.coerce(right, ltype, e.line)
+        reg = self.binary_op(left, right, op, e.line)
+        self.builder.flush_keep_alives()
+        self.add_bool_branch(reg, true, false)
+    else:
+        # "left op right" for two tagged integers
+        self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
     return True
 
 
