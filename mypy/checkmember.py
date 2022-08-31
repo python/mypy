@@ -310,7 +310,7 @@ def analyze_instance_member_access(
             # the first argument.
             pass
         else:
-            if isinstance(signature, FunctionLike) and name != "__call__":
+            if name != "__call__":
                 # TODO: use proper treatment of special methods on unions instead
                 #       of this hack here and below (i.e. mx.self_type).
                 dispatched_type = meet.meet_types(mx.original_type, typ)

@@ -2486,11 +2486,7 @@ def pretty_callable(tp: CallableType, skip_self: bool = False) -> str:
             slash = True
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
-    if (
-        isinstance(tp.definition, FuncDef)
-        and tp.definition.name is not None
-        and hasattr(tp.definition, "arguments")
-    ):
+    if isinstance(tp.definition, FuncDef) and hasattr(tp.definition, "arguments"):
         definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
         if (
             len(definition_arg_names) > len(tp.arg_names)
@@ -2684,7 +2680,7 @@ def find_defining_module(modules: dict[str, MypyFile], typ: CallableType) -> Myp
     if not typ.definition:
         return None
     fullname = typ.definition.fullname
-    if fullname is not None and "." in fullname:
+    if "." in fullname:
         for i in range(fullname.count(".")):
             module_name = fullname.rsplit(".", i + 1)[0]
             try:

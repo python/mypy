@@ -5892,7 +5892,7 @@ class SemanticAnalyzer(
         current_index = len(self.function_stack) - 1
         while current_index >= 0:
             current_func = self.function_stack[current_index]
-            if isinstance(current_func, FuncItem) and not isinstance(current_func, LambdaExpr):
+            if not isinstance(current_func, LambdaExpr):
                 return not current_func.is_dynamic()
 
             # Special case, `lambda` inherits the "checked" state from its parent.
