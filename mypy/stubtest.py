@@ -315,7 +315,7 @@ def verify_mypyfile(
         except Exception:
             return False
         if obj_mod is not None:
-            return obj_mod == r.__name__
+            return bool(obj_mod == r.__name__)
         return not isinstance(obj, types.ModuleType)
 
     runtime_public_contents = (
@@ -354,7 +354,7 @@ def _verify_final(
 ) -> Iterator[Error]:
     try:
 
-        class SubClass(runtime):  # type: ignore
+        class SubClass(runtime):  # type: ignore[misc,valid-type]
             pass
 
     except TypeError:
@@ -614,7 +614,7 @@ class Signature(Generic[T]):
 
         def has_default(arg: Any) -> bool:
             if isinstance(arg, inspect.Parameter):
-                return arg.default != inspect.Parameter.empty
+                return bool(arg.default != inspect.Parameter.empty)
             if isinstance(arg, nodes.Argument):
                 return arg.kind.is_optional()
             raise AssertionError

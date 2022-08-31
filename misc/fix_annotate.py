@@ -72,12 +72,12 @@ class FixAnnotate(BaseFix):
         #
         # "Compact" functions (e.g. "def foo(x, y): return max(x, y)")
         # have a different structure that isn't matched by PATTERN.
-
-        ## print('-'*60)
-        ## print(node)
-        ## for i, ch in enumerate(children):
-        ##     print(i, repr(ch.prefix), repr(ch))
-
+        #
+        #   print('-'*60)
+        #   print(node)
+        #   for i, ch in enumerate(children):
+        #       print(i, repr(ch.prefix), repr(ch))
+        #
         # Check if there's already an annotation.
         for ch in children:
             if ch.prefix.lstrip().startswith("# type:"):

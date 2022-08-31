@@ -407,6 +407,10 @@ class SemanticAnalyzerPluginInterface:
     def is_stub_file(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Type | None:
+        raise NotImplementedError
+
 
 # A context for querying for configuration data about a module for
 # cache invalidation purposes.

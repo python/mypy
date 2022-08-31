@@ -23,10 +23,12 @@ from mypyc.ir.ops import (
     Branch,
     CallC,
     ComparisonOp,
+    GetAttr,
     Integer,
     LoadErrorValue,
     RegisterOp,
     Return,
+    SetAttr,
     Value,
 )
 from mypyc.ir.rtypes import bool_rprimitive
@@ -40,6 +42,7 @@ def insert_exception_handling(ir: FuncIR) -> None:
     # block. The block just returns an error value.
     error_label = None
     for block in ir.blocks:
+        adjust_error_kinds(block)
         can_raise = any(op.can_raise() for op in block.ops)
         if can_raise:
             error_label = add_handler_block(ir)
@@ -103,7 +106,11 @@ def split_blocks_at_errors(
                     new_block2 = BasicBlock()
                     new_blocks.append(new_block2)
                     branch = Branch(
-                        comp, true_label=new_block2, false_label=new_block, op=Branch.BOOL
+                        comp,
+                        true_label=new_block2,
+                        false_label=new_block,
+                        op=Branch.BOOL,
+                        rare=True,
                     )
                     cur_block.ops.append(branch)
                     cur_block = new_block2
@@ -141,3 +148,18 @@ def primitive_call(desc: CFunctionDescription, args: list[Value], line: int) -> 
         desc.error_kind,
         line,
     )
+
+
+def adjust_error_kinds(block: BasicBlock) -> None:
+    """Infer more precise error_kind attributes for ops.
+
+    We have access here to more information than what was available
+    when the IR was initially built.
+    """
+    for op in block.ops:
+        if isinstance(op, GetAttr):
+            if op.class_type.class_ir.is_always_defined(op.attr):
+                op.error_kind = ERR_NEVER
+        if isinstance(op, SetAttr):
+            if op.class_type.class_ir.is_always_defined(op.attr):
+                op.error_kind = ERR_NEVER

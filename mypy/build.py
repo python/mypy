@@ -1123,6 +1123,7 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
         return None
 
     module_deps_metas = deps_meta["deps_meta"]
+    assert isinstance(module_deps_metas, dict)
     if not manager.options.skip_cache_mtime_checks:
         for id, meta in module_deps_metas.items():
             try:
@@ -1167,6 +1168,7 @@ def _load_json_file(
         )
         return None
     else:
+        assert isinstance(result, dict)
         return result
 
 
@@ -1290,11 +1292,15 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     )
 
     # Don't check for path match, that is dealt with in validate_meta().
+    #
+    # TODO: these `type: ignore`s wouldn't be necessary
+    # if the type annotations for CacheMeta were more accurate
+    # (all of these attributes can be `None`)
     if (
         m.id != id
-        or m.mtime is None
-        or m.size is None
-        or m.dependencies is None
+        or m.mtime is None  # type: ignore[redundant-expr]
+        or m.size is None  # type: ignore[redundant-expr]
+        or m.dependencies is None  # type: ignore[redundant-expr]
         or m.data_mtime is None
     ):
         manager.log(f"Metadata abandoned for {id}: attributes are missing")

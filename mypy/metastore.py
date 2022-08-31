@@ -185,10 +185,14 @@ class SqliteMetadataStore(MetadataStore):
         return results[0][0]
 
     def getmtime(self, name: str) -> float:
-        return self._query(name, "mtime")
+        mtime = self._query(name, "mtime")
+        assert isinstance(mtime, float)
+        return mtime
 
     def read(self, name: str) -> str:
-        return self._query(name, "data")
+        data = self._query(name, "data")
+        assert isinstance(data, str)
+        return data
 
     def write(self, name: str, data: str, mtime: float | None = None) -> bool:
         import sqlite3

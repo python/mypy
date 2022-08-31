@@ -127,6 +127,7 @@ from mypy.types import (
     CallableType,
     DeletedType,
     ErasedType,
+    ExtraAttrs,
     FunctionLike,
     Instance,
     LiteralType,
@@ -319,7 +320,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = self.typeddict_callable(node)
             else:
                 result = type_object_type(node, self.named_type)
-            if isinstance(result, CallableType) and isinstance(  # type: ignore
+            if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
                 result.ret_type, Instance
             ):
                 # We need to set correct line and column
@@ -332,13 +333,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            try:
-                result = self.named_type("types.ModuleType")
-            except KeyError:
-                # In test cases might 'types' may not be available.
-                # Fall back to a dummy 'object' type instead to
-                # avoid a crash.
-                result = self.named_type("builtins.object")
+            result = self.module_type(node)
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
@@ -373,6 +368,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.handle_cannot_determine_type(var.name, context)
             # Implicit 'Any' type.
             return AnyType(TypeOfAny.special_form)
+
+    def module_type(self, node: MypyFile) -> Instance:
+        try:
+            result = self.named_type("types.ModuleType")
+        except KeyError:
+            # In test cases might 'types' may not be available.
+            # Fall back to a dummy 'object' type instead to
+            # avoid a crash.
+            result = self.named_type("builtins.object")
+        module_attrs = {}
+        immutable = set()
+        for name, n in node.names.items():
+            if not n.module_public:
+                continue
+            if isinstance(n.node, Var) and n.node.is_final:
+                immutable.add(name)
+            typ = self.chk.determine_type_of_member(n)
+            if typ:
+                module_attrs[name] = typ
+            else:
+                # TODO: what to do about nested module references?
+                # They are non-trivial because there may be import cycles.
+                module_attrs[name] = AnyType(TypeOfAny.special_form)
+        result.extra_attrs = ExtraAttrs(module_attrs, immutable, node.fullname)
+        return result
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
@@ -801,7 +821,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     lvalue_type=item_expected_type,
                     rvalue=item_value,
                     context=item_value,
-                    msg=message_registry.INCOMPATIBLE_TYPES,
+                    msg=message_registry.INCOMPATIBLE_TYPES.value,
                     lvalue_name=f'TypedDict item "{item_name}"',
                     rvalue_name="expression",
                     code=codes.TYPEDDICT_ITEM,
@@ -3805,7 +3825,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
-        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore
+        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore[misc]
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
         # If this is a generic alias, we set all variables to `Any`.

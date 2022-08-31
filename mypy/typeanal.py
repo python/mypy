@@ -1550,7 +1550,7 @@ def expand_type_alias(
     assert typ.alias is not None
     # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
     if (
-        isinstance(typ.alias.target, Instance)  # type: ignore
+        isinstance(typ.alias.target, Instance)  # type: ignore[misc]
         and typ.alias.target.type.fullname == "mypy_extensions.FlexibleAlias"
     ):
         exp = get_proper_type(typ)
