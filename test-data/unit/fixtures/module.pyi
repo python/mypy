@@ -19,4 +19,3 @@ class ellipsis: pass
 
 classmethod = object()
 staticmethod = object()
-property = object()

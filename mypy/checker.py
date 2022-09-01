@@ -972,9 +972,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Trying to redefine something like partial empty list as function.
                         self.fail(message_registry.INCOMPATIBLE_REDEFINITION, defn)
                 else:
-                    name_expr = NameExpr(defn.name)
-                    name_expr.node = defn.original_def
-                    self.binder.assign_type(name_expr, new_type, orig_type)
+                    # TODO: Update conditional type binder.
                     self.check_subtype(
                         new_type,
                         orig_type,
@@ -1220,6 +1218,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         supertype=return_type,
                         context=defn,
                         msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
+                        code=codes.RETURN_VALUE,
                     )
 
             self.return_types.pop()
@@ -2286,29 +2285,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
 
-    def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
+    def determine_type_of_class_member(self, sym: SymbolTableNode) -> Type | None:
         if sym.type is not None:
             return sym.type
         if isinstance(sym.node, FuncBase):
             return self.function_type(sym.node)
         if isinstance(sym.node, TypeInfo):
-            if sym.node.typeddict_type:
-                # We special-case TypedDict, because they don't define any constructor.
-                return self.expr_checker.typeddict_callable(sym.node)
-            else:
-                return type_object_type(sym.node, self.named_type)
+            # nested class
+            return type_object_type(sym.node, self.named_type)
         if isinstance(sym.node, TypeVarExpr):
             # Use of TypeVars is rejected in an expression/runtime context, so
             # we don't need to check supertype compatibility for them.
             return AnyType(TypeOfAny.special_form)
-        if isinstance(sym.node, TypeAlias):
-            with self.msg.filter_errors():
-                # Suppress any errors, they will be given when analyzing the corresponding node.
-                # Here we may have incorrect options and location context.
-                return self.expr_checker.alias_type_in_runtime_context(
-                    sym.node, sym.node.no_args, sym.node
-                )
-        # TODO: handle more node kinds here.
         return None
 
     def check_compatibility(
@@ -2339,8 +2327,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         first = base1.names[name]
         second = base2.names[name]
-        first_type = get_proper_type(self.determine_type_of_member(first))
-        second_type = get_proper_type(self.determine_type_of_member(second))
+        first_type = get_proper_type(self.determine_type_of_class_member(first))
+        second_type = get_proper_type(self.determine_type_of_class_member(second))
 
         if isinstance(first_type, FunctionLike) and isinstance(second_type, FunctionLike):
             if first_type.is_type_obj() and second_type.is_type_obj():
@@ -2710,10 +2698,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if inferred.info:
             for base in inferred.info.mro[1:]:
                 base_type, base_node = self.lvalue_type_from_base(inferred, base)
-                if (
-                    base_type
-                    and not (isinstance(base_node, Var) and base_node.invalid_partial_type)
-                    and not isinstance(base_type, PartialType)
+                if base_type and not (
+                    isinstance(base_node, Var) and base_node.invalid_partial_type
                 ):
                     type_contexts.append(base_type)
         # Use most derived supertype as type context if available.
@@ -2816,8 +2802,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     continue
 
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
-                if isinstance(base_type, PartialType):
-                    base_type = None
 
                 if base_type:
                     assert base_node is not None
@@ -4009,6 +3993,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         context=s.expr,
                         outer_context=s,
                         msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
+                        code=codes.RETURN_VALUE,
                     )
             else:
                 # Empty returns are valid in Generators with Any typed returns, but not in
@@ -4246,7 +4231,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
-        elif is_named_instance(typ, "builtins.tuple"):
+        elif isinstance(typ, Instance) and is_named_instance(typ, "builtins.tuple"):
             # variadic tuple
             return [typ.args[0]]
         else:
@@ -5581,41 +5566,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     #
     # Helpers
     #
-    @overload
-    def check_subtype(
-        self,
-        subtype: Type,
-        supertype: Type,
-        context: Context,
-        msg: str,
-        subtype_label: str | None = None,
-        supertype_label: str | None = None,
-        *,
-        code: ErrorCode | None = None,
-        outer_context: Context | None = None,
-    ) -> bool:
-        ...
-
-    @overload
-    def check_subtype(
-        self,
-        subtype: Type,
-        supertype: Type,
-        context: Context,
-        msg: ErrorMessage,
-        subtype_label: str | None = None,
-        supertype_label: str | None = None,
-        *,
-        outer_context: Context | None = None,
-    ) -> bool:
-        ...
 
     def check_subtype(
         self,
         subtype: Type,
         supertype: Type,
         context: Context,
-        msg: str | ErrorMessage,
+        msg: str | ErrorMessage = message_registry.INCOMPATIBLE_TYPES,
         subtype_label: str | None = None,
         supertype_label: str | None = None,
         *,
@@ -5626,15 +5583,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_subtype(subtype, supertype, options=self.options):
             return True
 
-        if isinstance(msg, str):
-            msg = ErrorMessage(msg, code=code)
-
+        if isinstance(msg, ErrorMessage):
+            msg_text = msg.value
+            code = msg.code
+        else:
+            msg_text = msg
         orig_subtype = subtype
         subtype = get_proper_type(subtype)
         orig_supertype = supertype
         supertype = get_proper_type(supertype)
         if self.msg.try_report_long_tuple_assignment_error(
-            subtype, supertype, context, msg, subtype_label, supertype_label
+            subtype, supertype, context, msg_text, subtype_label, supertype_label, code=code
         ):
             return False
         extra_info: list[str] = []
@@ -5652,29 +5611,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes([], subtype, supertype)
         if extra_info:
-            msg = msg.with_additional_msg(" (" + ", ".join(extra_info) + ")")
+            msg_text += " (" + ", ".join(extra_info) + ")"
 
-        self.fail(msg, context)
+        self.fail(ErrorMessage(msg_text, code=code), context)
         for note in notes:
-            self.msg.note(note, context, code=msg.code)
+            self.msg.note(note, context, code=code)
         if note_msg:
-            self.note(note_msg, context, code=msg.code)
-        self.msg.maybe_note_concatenate_pos_args(subtype, supertype, context, code=msg.code)
+            self.note(note_msg, context, code=code)
+        self.msg.maybe_note_concatenate_pos_args(subtype, supertype, context, code=code)
         if (
             isinstance(supertype, Instance)
             and supertype.type.is_protocol
             and isinstance(subtype, (Instance, TupleType, TypedDictType))
         ):
-            self.msg.report_protocol_problems(subtype, supertype, context, code=msg.code)
+            self.msg.report_protocol_problems(subtype, supertype, context, code=code)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
             call = find_member("__call__", subtype, subtype, is_operator=True)
             if call:
-                self.msg.note_call(subtype, call, context, code=msg.code)
+                self.msg.note_call(subtype, call, context, code=code)
         if isinstance(subtype, (CallableType, Overloaded)) and isinstance(supertype, Instance):
             if supertype.type.is_protocol and supertype.type.protocol_members == ["__call__"]:
                 call = find_member("__call__", supertype, subtype, is_operator=True)
                 assert call is not None
-                self.msg.note_call(supertype, call, context, code=msg.code)
+                self.msg.note_call(supertype, call, context, code=code)
         self.check_possible_missing_await(subtype, supertype, context)
         return False
 
@@ -5719,9 +5678,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             aw_type = self.get_precise_awaitable_type(subtype, local_errors)
             if aw_type is None:
                 return
-            if not self.check_subtype(
-                aw_type, supertype, context, msg=message_registry.INCOMPATIBLE_TYPES
-            ):
+            if not self.check_subtype(aw_type, supertype, context):
                 return
         self.msg.possible_missing_await(context)
 
@@ -5747,7 +5704,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         sym = self.lookup_qualified(name)
         node = sym.node
         if isinstance(node, TypeAlias):
-            assert isinstance(node.target, Instance)  # type: ignore[misc]
+            assert isinstance(node.target, Instance)  # type: ignore
             node = node.target.type
         assert isinstance(node, TypeInfo)
         any_type = AnyType(TypeOfAny.from_omitted_generics)

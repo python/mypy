@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Callable
 
-from mypy.checker import TypeChecker
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin
 from mypy.subtypes import is_proper_subtype
@@ -51,8 +50,10 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
     right = get_proper_type(ctx.arg_types[1][0])
     for arg in ctx.arg_types[0]:
         if (
-            is_improper_type(arg) or isinstance(get_proper_type(arg), AnyType)
-        ) and is_dangerous_target(right):
+            is_improper_type(arg)
+            or isinstance(get_proper_type(arg), AnyType)
+            and is_dangerous_target(right)
+        ):
             if is_special_target(right):
                 return ctx.default_return_type
             ctx.api.fail(
@@ -154,9 +155,7 @@ def proper_types_hook(ctx: FunctionContext) -> Type:
 
 
 def get_proper_type_instance(ctx: FunctionContext) -> Instance:
-    checker = ctx.api
-    assert isinstance(checker, TypeChecker)
-    types = checker.modules["mypy.types"]
+    types = ctx.api.modules["mypy.types"]  # type: ignore
     proper_type_info = types.names["ProperType"]
     assert isinstance(proper_type_info.node, TypeInfo)
     return Instance(proper_type_info.node, [])

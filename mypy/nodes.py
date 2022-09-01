@@ -1113,7 +1113,7 @@ class ClassDef(Statement):
     ) -> None:
         super().__init__()
         self.name = name
-        self.fullname = None  # type: ignore[assignment]
+        self.fullname = None  # type: ignore
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []

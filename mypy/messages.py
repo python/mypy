@@ -54,7 +54,6 @@ from mypy.subtypes import (
     IS_CLASS_OR_STATIC,
     IS_CLASSVAR,
     IS_SETTABLE,
-    IS_VAR,
     find_member,
     get_member_flags,
     is_same_type,
@@ -1823,7 +1822,6 @@ class MessageBuilder:
             return
 
         class_obj = False
-        is_module = False
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1847,8 +1845,6 @@ class MessageBuilder:
                 return
             class_obj = True
             subtype = ret_type
-        if subtype.extra_attrs and subtype.extra_attrs.mod_name:
-            is_module = True
 
         # Report missing members
         missing = get_missing_protocol_members(subtype, supertype)
@@ -1885,8 +1881,11 @@ class MessageBuilder:
             or not subtype.type.defn.type_vars
             or not supertype.type.defn.type_vars
         ):
-            type_name = format_type(subtype, module_names=True)
-            self.note(f"Following member(s) of {type_name} have conflicts:", context, code=code)
+            self.note(
+                f"Following member(s) of {format_type(subtype)} have conflicts:",
+                context,
+                code=code,
+            )
             for name, got, exp in conflict_types[:MAX_ITEMS]:
                 exp = get_proper_type(exp)
                 got = get_proper_type(got)
@@ -1903,7 +1902,7 @@ class MessageBuilder:
                     self.note("Expected:", context, offset=OFFSET, code=code)
                     if isinstance(exp, CallableType):
                         self.note(
-                            pretty_callable(exp, skip_self=class_obj or is_module),
+                            pretty_callable(exp, skip_self=class_obj),
                             context,
                             offset=2 * OFFSET,
                             code=code,
@@ -1911,12 +1910,12 @@ class MessageBuilder:
                     else:
                         assert isinstance(exp, Overloaded)
                         self.pretty_overload(
-                            exp, context, 2 * OFFSET, code=code, skip_self=class_obj or is_module
+                            exp, context, 2 * OFFSET, code=code, skip_self=class_obj
                         )
                     self.note("Got:", context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
                         self.note(
-                            pretty_callable(got, skip_self=class_obj or is_module),
+                            pretty_callable(got, skip_self=class_obj),
                             context,
                             offset=2 * OFFSET,
                             code=code,
@@ -1924,7 +1923,7 @@ class MessageBuilder:
                     else:
                         assert isinstance(got, Overloaded)
                         self.pretty_overload(
-                            got, context, 2 * OFFSET, code=code, skip_self=class_obj or is_module
+                            got, context, 2 * OFFSET, code=code, skip_self=class_obj
                         )
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
@@ -1960,22 +1959,10 @@ class MessageBuilder:
                     context,
                     code=code,
                 )
-            if (
-                class_obj
-                and IS_VAR in superflags
-                and (IS_VAR in subflags and IS_CLASSVAR not in subflags)
-            ):
+            if class_obj and IS_SETTABLE in superflags and IS_CLASSVAR not in subflags:
                 self.note(
                     "Only class variables allowed for class object access on protocols,"
                     ' {} is an instance variable of "{}"'.format(name, subtype.type.name),
-                    context,
-                    code=code,
-                )
-            if class_obj and IS_CLASSVAR in superflags:
-                self.note(
-                    "ClassVar protocol member {}.{} can never be matched by a class object".format(
-                        supertype.type.name, name
-                    ),
                     context,
                     code=code,
                 )
@@ -2030,9 +2017,10 @@ class MessageBuilder:
         subtype: ProperType,
         supertype: ProperType,
         context: Context,
-        msg: message_registry.ErrorMessage,
+        msg: str = message_registry.INCOMPATIBLE_TYPES,
         subtype_label: str | None = None,
         supertype_label: str | None = None,
+        code: ErrorCode | None = None,
     ) -> bool:
         """Try to generate meaningful error message for very long tuple assignment
 
@@ -2047,25 +2035,26 @@ class MessageBuilder:
             ):
                 lhs_type = supertype.args[0]
                 lhs_types = [lhs_type] * len(subtype.items)
-                self.generate_incompatible_tuple_error(lhs_types, subtype.items, context, msg)
+                self.generate_incompatible_tuple_error(
+                    lhs_types, subtype.items, context, msg, code
+                )
                 return True
             elif isinstance(supertype, TupleType) and (
                 len(subtype.items) > 10 or len(supertype.items) > 10
             ):
                 if len(subtype.items) != len(supertype.items):
                     if supertype_label is not None and subtype_label is not None:
-                        msg = msg.with_additional_msg(
-                            " ({} {}, {} {})".format(
-                                subtype_label,
-                                self.format_long_tuple_type(subtype),
-                                supertype_label,
-                                self.format_long_tuple_type(supertype),
-                            )
+                        error_msg = "{} ({} {}, {} {})".format(
+                            msg,
+                            subtype_label,
+                            self.format_long_tuple_type(subtype),
+                            supertype_label,
+                            self.format_long_tuple_type(supertype),
                         )
-                        self.fail(msg.value, context, code=msg.code)
+                        self.fail(error_msg, context, code=code)
                         return True
                 self.generate_incompatible_tuple_error(
-                    supertype.items, subtype.items, context, msg
+                    supertype.items, subtype.items, context, msg, code
                 )
                 return True
         return False
@@ -2085,7 +2074,8 @@ class MessageBuilder:
         lhs_types: list[Type],
         rhs_types: list[Type],
         context: Context,
-        msg: message_registry.ErrorMessage,
+        msg: str = message_registry.INCOMPATIBLE_TYPES,
+        code: ErrorCode | None = None,
     ) -> None:
         """Generate error message for individual incompatible tuple pairs"""
         error_cnt = 0
@@ -2100,15 +2090,14 @@ class MessageBuilder:
                     )
                 error_cnt += 1
 
-        info = f" ({str(error_cnt)} tuple items are incompatible"
+        error_msg = msg + f" ({str(error_cnt)} tuple items are incompatible"
         if error_cnt - 3 > 0:
-            info += f"; {str(error_cnt - 3)} items are omitted)"
+            error_msg += f"; {str(error_cnt - 3)} items are omitted)"
         else:
-            info += ")"
-        msg = msg.with_additional_msg(info)
-        self.fail(msg.value, context, code=msg.code)
+            error_msg += ")"
+        self.fail(error_msg, context, code=code)
         for note in notes:
-            self.note(note, context, code=msg.code)
+            self.note(note, context, code=code)
 
     def add_fixture_note(self, fullname: str, ctx: Context) -> None:
         self.note(f'Maybe your test fixture does not define "{fullname}"?', ctx)
@@ -2158,9 +2147,7 @@ def format_callable_args(
     return ", ".join(arg_strings)
 
 
-def format_type_inner(
-    typ: Type, verbosity: int, fullnames: set[str] | None, module_names: bool = False
-) -> str:
+def format_type_inner(typ: Type, verbosity: int, fullnames: set[str] | None) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2200,10 +2187,7 @@ def format_type_inner(
         # Get the short name of the type.
         if itype.type.fullname in ("types.ModuleType", "_importlib_modulespec.ModuleType"):
             # Make some common error messages simpler and tidier.
-            base_str = "Module"
-            if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
-                return f"{base_str} {itype.extra_attrs.mod_name}"
-            return base_str
+            return "Module"
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname
         else:
@@ -2377,7 +2361,7 @@ def find_type_overlaps(*types: Type) -> set[str]:
     return overlaps
 
 
-def format_type(typ: Type, verbosity: int = 0, module_names: bool = False) -> str:
+def format_type(typ: Type, verbosity: int = 0) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2388,10 +2372,10 @@ def format_type(typ: Type, verbosity: int = 0, module_names: bool = False) -> st
     modification of the formatted string is required, callers should use
     format_type_bare.
     """
-    return quote_type_string(format_type_bare(typ, verbosity, module_names))
+    return quote_type_string(format_type_bare(typ, verbosity))
 
 
-def format_type_bare(typ: Type, verbosity: int = 0, module_names: bool = False) -> str:
+def format_type_bare(typ: Type, verbosity: int = 0) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2403,7 +2387,7 @@ def format_type_bare(typ: Type, verbosity: int = 0, module_names: bool = False) 
     instead.  (The caller may want to use quote_type_string after
     processing has happened, to maintain consistent quoting in messages.)
     """
-    return format_type_inner(typ, verbosity, find_type_overlaps(typ), module_names)
+    return format_type_inner(typ, verbosity, find_type_overlaps(typ))
 
 
 def format_type_distinctly(*types: Type, bare: bool = False) -> tuple[str, ...]:
@@ -2580,7 +2564,7 @@ def get_conflict_protocol_types(
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
-        if IS_SETTABLE in get_member_flags(member, right):
+        if IS_SETTABLE in get_member_flags(member, right.type):
             is_compat = is_compat and is_subtype(supertype, subtype)
         if not is_compat:
             conflicts.append((member, subtype, supertype))
@@ -2597,7 +2581,11 @@ def get_bad_protocol_flags(
     all_flags: list[tuple[str, set[int], set[int]]] = []
     for member in right.type.protocol_members:
         if find_member(member, left, left):
-            item = (member, get_member_flags(member, left), get_member_flags(member, right))
+            item = (
+                member,
+                get_member_flags(member, left.type),
+                get_member_flags(member, right.type),
+            )
             all_flags.append(item)
     bad_flags = []
     for name, subflags, superflags in all_flags:
@@ -2611,10 +2599,8 @@ def get_bad_protocol_flags(
             or IS_CLASS_OR_STATIC in superflags
             and IS_CLASS_OR_STATIC not in subflags
             or class_obj
-            and IS_VAR in superflags
+            and IS_SETTABLE in superflags
             and IS_CLASSVAR not in subflags
-            or class_obj
-            and IS_CLASSVAR in superflags
         ):
             bad_flags.append((name, subflags, superflags))
     return bad_flags
