@@ -1276,6 +1276,21 @@ class A:
 def h(x: Callable[[], int]) -> None:
     pass
 
+[case testLambdaJoinWithDynamicConstructor]
+from typing import Any, Union
+
+class Wrapper:
+    def __init__(self, x: Any) -> None: ...
+
+def f(cond: bool) -> Any:
+    f = Wrapper if cond else lambda x: x
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any"
+    return f(3)
+
+def g(cond: bool) -> Any:
+    f = lambda x: x if cond else Wrapper
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any"
+    return f(3)
 
 -- Boolean operators
 -- -----------------
