@@ -167,8 +167,8 @@ class TestRun(MypycDataSuite):
         for operations in steps:
             # To make sure that any new changes get picked up as being
             # new by distutils, shift the mtime of all of the
-            # generated artifacts back by a second.
-            fudge_dir_mtimes(WORKDIR, -1)
+            # generated artifacts back.
+            fudge_dir_mtimes(WORKDIR, -10)
 
             step += 1
             with chdir_manager(".."):
