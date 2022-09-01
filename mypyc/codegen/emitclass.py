@@ -68,11 +68,15 @@ AS_MAPPING_SLOT_DEFS: SlotTable = {
 AS_SEQUENCE_SLOT_DEFS: SlotTable = {"__contains__": ("sq_contains", generate_contains_wrapper)}
 
 AS_NUMBER_SLOT_DEFS: SlotTable = {
+    # Unary operations.
     "__bool__": ("nb_bool", generate_bool_wrapper),
-    "__neg__": ("nb_negative", generate_dunder_wrapper),
-    "__invert__": ("nb_invert", generate_dunder_wrapper),
     "__int__": ("nb_int", generate_dunder_wrapper),
     "__float__": ("nb_float", generate_dunder_wrapper),
+    "__neg__": ("nb_negative", generate_dunder_wrapper),
+    "__pos__": ("nb_positive", generate_dunder_wrapper),
+    "__abs__": ("nb_absolute", generate_dunder_wrapper),
+    "__invert__": ("nb_invert", generate_dunder_wrapper),
+    # Binary operations.
     "__add__": ("nb_add", generate_bin_op_wrapper),
     "__radd__": ("nb_add", generate_bin_op_wrapper),
     "__sub__": ("nb_subtract", generate_bin_op_wrapper),
@@ -97,6 +101,7 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rxor__": ("nb_xor", generate_bin_op_wrapper),
     "__matmul__": ("nb_matrix_multiply", generate_bin_op_wrapper),
     "__rmatmul__": ("nb_matrix_multiply", generate_bin_op_wrapper),
+    # In-place binary operations.
     "__iadd__": ("nb_inplace_add", generate_dunder_wrapper),
     "__isub__": ("nb_inplace_subtract", generate_dunder_wrapper),
     "__imul__": ("nb_inplace_multiply", generate_dunder_wrapper),

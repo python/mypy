@@ -1486,6 +1486,8 @@ class LowLevelIRBuilder:
         if isinstance(typ, RInstance):
             if expr_op == "-":
                 method = "__neg__"
+            elif expr_op == "+":
+                method = "__pos__"
             elif expr_op == "~":
                 method = "__invert__"
             else:
