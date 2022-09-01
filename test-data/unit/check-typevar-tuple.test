@@ -257,3 +257,50 @@ class Array(Generic[Unpack[Shape]]):
 
 x: Array[float, Height, Width] = Array()
 [builtins fixtures/tuple.pyi]
+
+[case testPep646TypeConcatenation]
+from typing import Generic, TypeVar, NewType
+from typing_extensions import TypeVarTuple, Unpack
+
+Shape = TypeVarTuple('Shape')
+
+Channels = NewType("Channels", int)
+Batch = NewType("Batch", int)
+Height = NewType('Height', int)
+Width = NewType('Width', int)
+
+class Array(Generic[Unpack[Shape]]):
+    pass
+
+
+def add_batch_axis(x: Array[Unpack[Shape]]) -> Array[Batch, Unpack[Shape]]: ...
+def del_batch_axis(x: Array[Batch, Unpack[Shape]]) -> Array[Unpack[Shape]]: ...
+def add_batch_channels(
+  x: Array[Unpack[Shape]]
+) -> Array[Batch, Unpack[Shape], Channels]: ...
+
+a: Array[Height, Width]
+b = add_batch_axis(a)
+reveal_type(b)  # N: Revealed type is "__main__.Array[__main__.Batch, __main__.Height, __main__.Width]"
+c = del_batch_axis(b)
+reveal_type(c)  # N: Revealed type is "__main__.Array[__main__.Height, __main__.Width]"
+d = add_batch_channels(a)
+reveal_type(d)  # N: Revealed type is "__main__.Array[__main__.Batch, __main__.Height, __main__.Width, __main__.Channels]"
+
+[builtins fixtures/tuple.pyi]
+[case testPep646TypeVarConcatenation]
+from typing import Generic, TypeVar, NewType, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar('T')
+Ts = TypeVarTuple('Ts')
+
+def prefix_tuple(
+    x: T,
+    y: Tuple[Unpack[Ts]],
+) -> Tuple[T, Unpack[Ts]]:
+    ...
+
+z = prefix_tuple(x=0, y=(True, 'a'))
+reveal_type(z)  # N: Revealed type is "Tuple[builtins.int, builtins.bool, builtins.str]"
+[builtins fixtures/tuple.pyi]

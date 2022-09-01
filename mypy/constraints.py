@@ -54,6 +54,7 @@ from mypy.typevartuples import (
     extract_unpack,
     find_unpack_in_list,
     split_with_instance,
+    split_with_mapped_and_template,
     split_with_prefix_and_suffix,
 )
 
@@ -677,10 +678,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 mapped = map_instance_to_supertype(instance, template.type)
                 tvars = template.type.defn.type_vars
                 if template.type.has_type_var_tuple_type:
-                    mapped_prefix, mapped_middle, mapped_suffix = split_with_instance(mapped)
-                    template_prefix, template_middle, template_suffix = split_with_instance(
-                        template
-                    )
+                    (
+                        mapped_prefix,
+                        mapped_middle,
+                        mapped_suffix,
+                        template_prefix,
+                        template_middle,
+                        template_suffix,
+                    ) = split_with_mapped_and_template(mapped, template)
 
                     # Add a constraint for the type var tuple, and then
                     # remove it for the case below.
