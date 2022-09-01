@@ -1040,7 +1040,7 @@ class ASTConverter:
         for a, kd in zip(args.kwonlyargs, args.kw_defaults):
             new_args.append(
                 self.make_argument(
-                    a, kd, ARG_NAMED if kd is None else ARG_NAMED_OPT, no_type_check
+                    a, kd, ARG_NAMED if kd is None else ARG_NAMED_OPT, no_type_check  # type: ignore[redundant-expr]
                 )
             )
             names.append(a)
