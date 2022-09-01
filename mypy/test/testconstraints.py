@@ -22,7 +22,6 @@ class ConstraintsSuite(Suite):
                 Constraint(type_var=fx.t, op=direction, target=fx.a)
             ]
 
-    @pytest.mark.xfail
     def test_basic_type_var_tuple_subtype(self) -> None:
         fx = self.fx
         assert infer_constraints(

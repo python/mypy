@@ -1684,10 +1684,16 @@ class SemanticAnalyzer(
         ):
             is_proto = sym.node.fullname != "typing.Generic"
             tvars: TypeVarLikeList = []
+            have_type_var_tuple = False
             for arg in unbound.args:
                 tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
+                    if isinstance(tvar[1], TypeVarTupleExpr):
+                        if have_type_var_tuple:
+                            self.fail("Can only use one type var tuple in a class def", base)
+                            continue
+                        have_type_var_tuple = True
                     tvars.append(tvar)
                 elif not self.found_incomplete_ref(tag):
                     self.fail("Free type variable expected in %s[...]" % sym.node.name, base)
@@ -1706,11 +1712,19 @@ class SemanticAnalyzer(
                 # It's bound by our type variable scope
                 return None
             return unbound.name, sym.node
-        if sym and isinstance(sym.node, TypeVarTupleExpr):
-            if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
-                # It's bound by our type variable scope
+        if sym and sym.fullname == "typing_extensions.Unpack":
+            inner_t = unbound.args[0]
+            if not isinstance(inner_t, UnboundType):
                 return None
-            return unbound.name, sym.node
+            inner_unbound = inner_t
+            inner_sym = self.lookup_qualified(inner_unbound.name, inner_unbound)
+            if inner_sym and isinstance(inner_sym.node, PlaceholderNode):
+                self.record_incomplete_ref()
+            if inner_sym and isinstance(inner_sym.node, TypeVarTupleExpr):
+                if inner_sym.fullname and not self.tvar_scope.allow_binding(inner_sym.fullname):
+                    # It's bound by our type variable scope
+                    return None
+                return inner_unbound.name, inner_sym.node
         if sym is None or not isinstance(sym.node, TypeVarExpr):
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):

@@ -96,18 +96,18 @@ reveal_type(h(args))  # N: Revealed type is "Tuple[builtins.str, builtins.str, b
 
 [case testTypeVarTupleGenericClassDefn]
 from typing import Generic, TypeVar, Tuple
-from typing_extensions import TypeVarTuple
+from typing_extensions import TypeVarTuple, Unpack
 
 T = TypeVar("T")
 Ts = TypeVarTuple("Ts")
 
-class Variadic(Generic[Ts]):
+class Variadic(Generic[Unpack[Ts]]):
     pass
 
-class Mixed1(Generic[T, Ts]):
+class Mixed1(Generic[T, Unpack[Ts]]):
     pass
 
-class Mixed2(Generic[Ts, T]):
+class Mixed2(Generic[Unpack[Ts], T]):
     pass
 
 variadic: Variadic[int, str]
@@ -133,7 +133,7 @@ Ts = TypeVarTuple("Ts")
 T = TypeVar("T")
 S = TypeVar("S")
 
-class Variadic(Generic[T, Ts, S]):
+class Variadic(Generic[T, Unpack[Ts], S]):
     pass
 
 def foo(t: Variadic[int, Unpack[Ts], object]) -> Tuple[int, Unpack[Ts]]:
@@ -152,7 +152,7 @@ Ts = TypeVarTuple("Ts")
 T = TypeVar("T")
 S = TypeVar("S")
 
-class Variadic(Generic[T, Ts, S]):
+class Variadic(Generic[T, Unpack[Ts], S]):
     def __init__(self, t: Tuple[Unpack[Ts]]) -> None:
         ...
 
@@ -169,4 +169,91 @@ from typing_extensions import TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
 B = Ts  # E: Type variable "__main__.Ts" is invalid as target for type alias
+[builtins fixtures/tuple.pyi]
+
+[case testPep646ArrayExample]
+from typing import Generic, Tuple, TypeVar, Protocol, NewType
+from typing_extensions import TypeVarTuple, Unpack
+
+Shape = TypeVarTuple('Shape')
+
+Height = NewType('Height', int)
+Width = NewType('Width', int)
+
+T_co = TypeVar("T_co", covariant=True)
+T = TypeVar("T")
+
+class SupportsAbs(Protocol[T_co]):
+    def __abs__(self) -> T_co: pass
+
+def abs(a: SupportsAbs[T]) -> T:
+    ...
+
+class Array(Generic[Unpack[Shape]]):
+    def __init__(self, shape: Tuple[Unpack[Shape]]):
+        self._shape: Tuple[Unpack[Shape]] = shape
+
+    def get_shape(self) -> Tuple[Unpack[Shape]]:
+        return self._shape
+    
+    def __abs__(self) -> Array[Unpack[Shape]]: ...
+
+    def __add__(self, other: Array[Unpack[Shape]]) -> Array[Unpack[Shape]]: ...
+
+shape = (Height(480), Width(640))
+x: Array[Height, Width] = Array(shape)
+reveal_type(abs(x))  # N: Revealed type is "__main__.Array[__main__.Height, __main__.Width]"
+reveal_type(x + x)  # N: Revealed type is "__main__.Array[__main__.Height, __main__.Width]"
+
+[builtins fixtures/tuple.pyi]
+[case testPep646ArrayExampleWithDType]
+from typing import Generic, Tuple, TypeVar, Protocol, NewType
+from typing_extensions import TypeVarTuple, Unpack
+
+DType = TypeVar("DType")
+Shape = TypeVarTuple('Shape')
+
+Height = NewType('Height', int)
+Width = NewType('Width', int)
+
+T_co = TypeVar("T_co", covariant=True)
+T = TypeVar("T")
+
+class SupportsAbs(Protocol[T_co]):
+    def __abs__(self) -> T_co: pass
+
+def abs(a: SupportsAbs[T]) -> T:
+    ...
+
+class Array(Generic[DType, Unpack[Shape]]):
+    def __init__(self, shape: Tuple[Unpack[Shape]]):
+        self._shape: Tuple[Unpack[Shape]] = shape
+
+    def get_shape(self) -> Tuple[Unpack[Shape]]:
+        return self._shape
+    
+    def __abs__(self) -> Array[DType, Unpack[Shape]]: ...
+
+    def __add__(self, other: Array[DType, Unpack[Shape]]) -> Array[DType, Unpack[Shape]]: ...
+
+shape = (Height(480), Width(640))
+x: Array[float, Height, Width] = Array(shape)
+reveal_type(abs(x))  # N: Revealed type is "__main__.Array[builtins.float, __main__.Height, __main__.Width]"
+reveal_type(x + x)  # N: Revealed type is "__main__.Array[builtins.float, __main__.Height, __main__.Width]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testPep646ArrayExampleInfer]
+from typing import Generic, Tuple, TypeVar, NewType
+from typing_extensions import TypeVarTuple, Unpack
+
+Shape = TypeVarTuple('Shape')
+
+Height = NewType('Height', int)
+Width = NewType('Width', int)
+
+class Array(Generic[Unpack[Shape]]):
+    pass
+
+x: Array[float, Height, Width] = Array()
 [builtins fixtures/tuple.pyi]
