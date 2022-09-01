@@ -15,7 +15,7 @@ on:
     - CREDITS
     - LICENSE
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
@@ -41,33 +41,33 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 1"
         - name: Test suite with py39-ubuntu
           python: '3.9'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 1"
         - name: Test suite with py37-ubuntu, mypyc-compiled
           python: '3.7'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 1"
           test_mypyc: true
         - name: Test suite with py310-ubuntu, mypyc-compiled
           python: '3.10'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 1"
           test_mypyc: true
         - name: Test suite with py310-ubuntu
           python: '3.10'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 1"
         - name: mypyc runtime tests with py37-macos
           python: '3.7'
           arch: x64
@@ -139,7 +139,7 @@ jobs:
     - name: Setup tox environment
       run: tox -e py --notest
     - name: Test
-      run: tox -e py --skip-pkg-install -- "-n 2"
+      run: tox -e py --skip-pkg-install -- "-n 1"
       continue-on-error: true
     - name: Mark as a success
       run: exit 0
