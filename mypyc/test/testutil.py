@@ -226,6 +226,8 @@ def show_c(cfiles: list[list[tuple[str, str]]]) -> None:
 
 
 def fudge_dir_mtimes(dir: str, delta: int) -> None:
+    if hasattr(os, "sync"):
+        os.sync()
     for dirpath, _, filenames in os.walk(dir):
         for name in filenames:
             path = os.path.join(dirpath, name)
