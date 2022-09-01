@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from typing import Any, Iterator, cast
 
 from mypy import build
@@ -28,7 +29,6 @@ from mypyc.test.testutil import (
     TESTUTIL_PATH,
     MypycDataSuite,
     assert_test_output,
-    fudge_dir_mtimes,
     show_c,
     use_custom_builtins,
 )
@@ -168,7 +168,8 @@ class TestRun(MypycDataSuite):
             # To make sure that any new changes get picked up as being
             # new by distutils, shift the mtime of all of the
             # generated artifacts back by a second.
-            fudge_dir_mtimes(WORKDIR, -1)
+            # fudge_dir_mtimes(WORKDIR, -1)
+            time.sleep(2.0)
 
             step += 1
             with chdir_manager(".."):
