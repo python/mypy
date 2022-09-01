@@ -231,6 +231,8 @@ def fudge_dir_mtimes(dir: str, delta: int) -> None:
             path = os.path.join(dirpath, name)
             new_mtime = os.stat(path).st_mtime + delta
             os.utime(path, times=(new_mtime, new_mtime))
+    if hasattr(os, "sync"):
+        os.sync()
 
 
 def replace_word_size(text: list[str]) -> list[str]:
