@@ -366,6 +366,22 @@ def f() -> NoReturn:  # E: Implicit return in function which does not return
   non_trivial_function = 1
 [builtins fixtures/dict.pyi]
 
+[case testNoReturnImplicitReturnCheckInDeferredNode]
+# flags: --warn-no-return
+from typing import NoReturn
+
+def exit() -> NoReturn: ...
+
+def force_forward_reference() -> int:
+    return 4
+
+def f() -> NoReturn:
+    x
+    exit()
+
+x = force_forward_reference()
+[builtins fixtures/exception.pyi]
+
 [case testNoReturnNoWarnNoReturn]
 # flags: --warn-no-return
 from mypy_extensions import NoReturn
