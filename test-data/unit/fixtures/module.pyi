@@ -20,4 +20,3 @@ class ellipsis: pass
 classmethod = object()
 staticmethod = object()
 property = object()
-def hasattr(x: object, name: str) -> bool: pass

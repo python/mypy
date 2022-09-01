@@ -3007,14 +3007,11 @@ class SemanticAnalyzer(
             ):
                 self.fail("All protocol members must have explicitly declared types", s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
-                ref_expr = s.lvalues[0]
-                safe_literal_inference = True
-                if self.type and isinstance(ref_expr, NameExpr) and len(self.type.mro) > 1:
-                    # Check if there is a definition in supertype. If yes, we can't safely
-                    # decide here what to infer: int or Literal[42].
-                    safe_literal_inference = self.type.mro[1].get(ref_expr.name) is None
-                if safe_literal_inference and ref_expr.is_inferred_def:
+            # We skip this step for type scope because it messes up with class attribute
+            # inference for literal types (also annotated and non-annotated variables at class
+            # scope are semantically different, so we should not souch statement type).
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr) and not self.type:
+                if s.lvalues[0].is_inferred_def:
                     s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
         if s.type:
             # Store type into nodes.
@@ -5892,7 +5889,7 @@ class SemanticAnalyzer(
         current_index = len(self.function_stack) - 1
         while current_index >= 0:
             current_func = self.function_stack[current_index]
-            if not isinstance(current_func, LambdaExpr):
+            if isinstance(current_func, FuncItem) and not isinstance(current_func, LambdaExpr):
                 return not current_func.is_dynamic()
 
             # Special case, `lambda` inherits the "checked" state from its parent.

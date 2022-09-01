@@ -57,11 +57,7 @@ def build_ir(
     options: CompilerOptions,
     errors: Errors,
 ) -> ModuleIRs:
-    """Build basic IR for a set of modules that have been type-checked by mypy.
-
-    The returned IR is not complete and requires additional
-    transformations, such as the insertion of refcount handling.
-    """
+    """Build IR for a set of modules that have been type-checked by mypy."""
 
     build_type_map(mapper, modules, graph, types, options, errors)
     singledispatch_info = find_singledispatch_register_impls(modules, errors)

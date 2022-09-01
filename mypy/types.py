@@ -517,35 +517,27 @@ class TypeVarType(TypeVarLikeType):
     @staticmethod
     def new_unification_variable(old: TypeVarType) -> TypeVarType:
         new_id = TypeVarId.new(meta_level=1)
-        return old.copy_modified(id=new_id)
-
-    def copy_modified(
-        self,
-        values: Bogus[list[Type]] = _dummy,
-        upper_bound: Bogus[Type] = _dummy,
-        id: Bogus[TypeVarId | int] = _dummy,
-    ) -> TypeVarType:
         return TypeVarType(
-            self.name,
-            self.fullname,
-            self.id if id is _dummy else id,
-            self.values if values is _dummy else values,
-            self.upper_bound if upper_bound is _dummy else upper_bound,
-            self.variance,
-            self.line,
-            self.column,
+            old.name,
+            old.fullname,
+            new_id,
+            old.values,
+            old.upper_bound,
+            old.variance,
+            old.line,
+            old.column,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var(self)
 
     def __hash__(self) -> int:
-        return hash((self.id, self.upper_bound))
+        return hash(self.id)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarType):
             return NotImplemented
-        return self.id == other.id and self.upper_bound == other.upper_bound
+        return self.id == other.id
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -624,7 +616,16 @@ class ParamSpecType(TypeVarLikeType):
     @staticmethod
     def new_unification_variable(old: ParamSpecType) -> ParamSpecType:
         new_id = TypeVarId.new(meta_level=1)
-        return old.copy_modified(id=new_id)
+        return ParamSpecType(
+            old.name,
+            old.fullname,
+            new_id,
+            old.flavor,
+            old.upper_bound,
+            line=old.line,
+            column=old.column,
+            prefix=old.prefix,
+        )
 
     def with_flavor(self, flavor: int) -> ParamSpecType:
         return ParamSpecType(
@@ -736,16 +737,8 @@ class TypeVarTupleType(TypeVarLikeType):
     @staticmethod
     def new_unification_variable(old: TypeVarTupleType) -> TypeVarTupleType:
         new_id = TypeVarId.new(meta_level=1)
-        return old.copy_modified(id=new_id)
-
-    def copy_modified(self, id: Bogus[TypeVarId | int] = _dummy) -> TypeVarTupleType:
         return TypeVarTupleType(
-            self.name,
-            self.fullname,
-            self.id if id is _dummy else id,
-            self.upper_bound,
-            line=self.line,
-            column=self.column,
+            old.name, old.fullname, new_id, old.upper_bound, line=old.line, column=old.column
         )
 
 
@@ -1166,7 +1159,7 @@ class ExtraAttrs:
     """Summary of module attributes and types.
 
     This is used for instances of types.ModuleType, because they can have different
-    attributes per instance, and for type narrowing with hasattr() checks.
+    attributes per instance.
     """
 
     def __init__(
@@ -1189,18 +1182,36 @@ class ExtraAttrs:
             return NotImplemented
         return self.attrs == other.attrs and self.immutable == other.immutable
 
-    def copy(self) -> ExtraAttrs:
-        return ExtraAttrs(self.attrs.copy(), self.immutable.copy(), self.mod_name)
-
 
 class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
 
     The list of type variables may be empty.
 
-    Several types have fallbacks to `Instance`, because in Python everything is an object
-    and this concept is impossible to express without intersection types. We therefore use
-    fallbacks for all "non-special" (like UninhabitedType, ErasedType etc) types.
+    Several types has fallbacks to `Instance`. Why?
+    Because, for example `TupleTuple` is related to `builtins.tuple` instance.
+    And `FunctionLike` has `builtins.function` fallback.
+    This allows us to use types defined
+    in typeshed for our "special" and more precise types.
+
+    We used to have this helper function to get a fallback from different types.
+    Note, that it might be incomplete, since it is not used and not updated.
+    It just illustrates the concept:
+
+        def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
+            '''Returns the Instance fallback for this type if one exists or None.'''
+            if isinstance(typ, Instance):
+                return typ
+            elif isinstance(typ, TupleType):
+                return tuple_fallback(typ)
+            elif isinstance(typ, TypedDictType):
+                return typ.fallback
+            elif isinstance(typ, FunctionLike):
+                return typ.fallback
+            elif isinstance(typ, LiteralType):
+                return typ.fallback
+            return None
+
     """
 
     __slots__ = ("type", "args", "invalid", "type_ref", "last_known_value", "_hash", "extra_attrs")
@@ -1213,7 +1224,6 @@ class Instance(ProperType):
         column: int = -1,
         *,
         last_known_value: LiteralType | None = None,
-        extra_attrs: ExtraAttrs | None = None,
     ) -> None:
         super().__init__(line, column)
         self.type = typ
@@ -1273,8 +1283,8 @@ class Instance(ProperType):
 
         # Additional attributes defined per instance of this type. For example modules
         # have different attributes per instance of types.ModuleType. This is intended
-        # to be "short-lived", we don't serialize it, and even don't store as variable type.
-        self.extra_attrs = extra_attrs
+        # to be "short lived", we don't serialize it, and even don't store as variable type.
+        self.extra_attrs: ExtraAttrs | None = None
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_instance(self)
@@ -1342,16 +1352,6 @@ class Instance(ProperType):
         # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true
         new.can_be_false = self.can_be_false
-        return new
-
-    def copy_with_extra_attr(self, name: str, typ: Type) -> Instance:
-        if self.extra_attrs:
-            existing_attrs = self.extra_attrs.copy()
-        else:
-            existing_attrs = ExtraAttrs({}, set(), None)
-        existing_attrs.attrs[name] = typ
-        new = self.copy_modified()
-        new.extra_attrs = existing_attrs
         return new
 
     def has_readable_member(self, name: str) -> bool:
@@ -1939,7 +1939,7 @@ class CallableType(FunctionLike):
         if not self.unpack_kwargs:
             return NormalizedCallableType(self.copy_modified())
         last_type = get_proper_type(self.arg_types[-1])
-        assert isinstance(last_type, TypedDictType)
+        assert isinstance(last_type, ProperType) and isinstance(last_type, TypedDictType)
         extra_kinds = [
             ArgKind.ARG_NAMED if name in last_type.required_keys else ArgKind.ARG_NAMED_OPT
             for name in last_type.items
@@ -1971,7 +1971,6 @@ class CallableType(FunctionLike):
                 tuple(self.arg_types),
                 tuple(self.arg_names),
                 tuple(self.arg_kinds),
-                self.fallback,
             )
         )
 
@@ -1985,7 +1984,6 @@ class CallableType(FunctionLike):
                 and self.name == other.name
                 and self.is_type_obj() == other.is_type_obj()
                 and self.is_ellipsis_args == other.is_ellipsis_args
-                and self.fallback == other.fallback
             )
         else:
             return NotImplemented
