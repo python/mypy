@@ -990,7 +990,7 @@ class LowLevelIRBuilder:
         # Flatten out the arguments, loading error values for default
         # arguments, constructing tuples/dicts for star args, and
         # coercing everything to the expected type.
-        output_args: List[Value] = []
+        output_args: list[Value] = []
         for lst, arg in zip(formal_to_actual, sig_args):
             if arg.kind == ARG_STAR:
                 assert star_arg
