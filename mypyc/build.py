@@ -1,5 +1,7 @@
 """Support for building extensions using mypyc with distutils or setuptools
 
+foobar
+
 The main entry point is mypycify, which produces a list of extension
 modules to be passed to setup. A trivial setup.py for a mypyc built
 project, then, looks like:
