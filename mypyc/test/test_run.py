@@ -169,6 +169,7 @@ class TestRun(MypycDataSuite):
             # new by distutils, shift the mtime of all of the
             # generated artifacts back by a second.
             # fudge_dir_mtimes(WORKDIR, -1)
+
             time.sleep(2.0)
 
             step += 1
