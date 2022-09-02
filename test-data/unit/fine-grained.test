@@ -4305,9 +4305,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType2]
 import a
@@ -4323,9 +4323,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType3]
 import a
@@ -4337,7 +4337,7 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 
 [case testNonePartialType4]
 import a
@@ -4353,7 +4353,7 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 ==
 
 [case testSkippedClass1]
@@ -9969,3 +9969,65 @@ m.py:9: note:     Expected:
 m.py:9: note:         def update() -> bool
 m.py:9: note:     Got:
 m.py:9: note:         def update() -> str
+
+[case testBoundGenericMethodFine]
+import main
+[file main.py]
+import lib
+[file main.py.3]
+import lib
+reveal_type(lib.foo(42))
+[file lib/__init__.pyi]
+from lib import context
+foo = context.test.foo
+[file lib/context.pyi]
+from typing import TypeVar
+import lib.other
+
+T = TypeVar("T")
+class Test:
+    def foo(self, x: T, n: lib.other.C = ...) -> T: ...
+test: Test
+
+[file lib/other.pyi]
+class C: ...
+[file lib/other.pyi.2]
+class B: ...
+class C(B): ...
+[out]
+==
+==
+main.py:2: note: Revealed type is "builtins.int"
+
+[case testBoundGenericMethodParamSpecFine]
+import main
+[file main.py]
+import lib
+[file main.py.3]
+from typing import Callable
+import lib
+f: Callable[[], int]
+reveal_type(lib.foo(f))
+[file lib/__init__.pyi]
+from lib import context
+foo = context.test.foo
+[file lib/context.pyi]
+from typing_extensions import ParamSpec
+from typing import Callable
+import lib.other
+
+P = ParamSpec("P")
+class Test:
+    def foo(self, x: Callable[P, int], n: lib.other.C = ...) -> Callable[P, str]: ...
+test: Test
+
+[file lib/other.pyi]
+class C: ...
+[file lib/other.pyi.2]
+class B: ...
+class C(B): ...
+[builtins fixtures/dict.pyi]
+[out]
+==
+==
+main.py:4: note: Revealed type is "def () -> builtins.str"

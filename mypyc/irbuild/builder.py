@@ -45,7 +45,16 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import Instance, TupleType, Type, UninhabitedType, get_proper_type
+from mypy.types import (
+    AnyType,
+    Instance,
+    ProperType,
+    TupleType,
+    Type,
+    TypeOfAny,
+    UninhabitedType,
+    get_proper_type,
+)
 from mypy.util import split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypyc.common import SELF_NAME, TEMP_ATTR_NAME
@@ -867,7 +876,11 @@ class IRBuilder:
     def _analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Return the item type given by 'expr' in an iterable context."""
         # This logic is copied from mypy's TypeChecker.analyze_iterable_item_type.
-        iterable = get_proper_type(self.types[expr])
+        if expr not in self.types:
+            # Mypy thinks this is unreachable.
+            iterable: ProperType = AnyType(TypeOfAny.from_error)
+        else:
+            iterable = get_proper_type(self.types[expr])
         echk = self.graph[self.module_name].type_checker().expr_checker
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], expr)[0]
 

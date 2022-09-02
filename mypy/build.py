@@ -1292,11 +1292,15 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     )
 
     # Don't check for path match, that is dealt with in validate_meta().
+    #
+    # TODO: these `type: ignore`s wouldn't be necessary
+    # if the type annotations for CacheMeta were more accurate
+    # (all of these attributes can be `None`)
     if (
         m.id != id
-        or m.mtime is None
-        or m.size is None
-        or m.dependencies is None
+        or m.mtime is None  # type: ignore[redundant-expr]
+        or m.size is None  # type: ignore[redundant-expr]
+        or m.dependencies is None  # type: ignore[redundant-expr]
         or m.data_mtime is None
     ):
         manager.log(f"Metadata abandoned for {id}: attributes are missing")
