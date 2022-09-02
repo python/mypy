@@ -335,9 +335,12 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
     with assertRaises(OverflowError):
         assert int_too_small & i64_3
 
-[case testI64ErrorValues]
+[case testI64ErrorValuesAndUndefined]
 from typing import Any
 import sys
+
+from mypy_extensions import mypyc_attr
+from typing_extensions import Final
 
 MYPY = False
 if MYPY:
@@ -390,3 +393,283 @@ def test_unbox_int_fails() -> None:
     o3: Any = -(1 << 63 + 1)
     with assertRaises(OverflowError, "int too large to convert to i64"):
         z: i64 = o3
+
+class Uninit:
+    x: i64
+    y: i64 = 0
+    z: i64
+
+class Derived(Uninit):
+    a: i64 = 1
+    b: i64
+    c: i64 = 2
+
+class Derived2(Derived):
+    h: i64
+
+def test_uninitialized_attr() -> None:
+    o = Uninit()
+    assert o.y == 0
+    with assertRaises(AttributeError):
+        o.x
+    with assertRaises(AttributeError):
+        o.z
+    o.x = 1
+    assert o.x == 1
+    with assertRaises(AttributeError):
+        o.z
+    o.z = 2
+    assert o.z == 2
+
+# This is the error value, but it's also a valid normal value
+MAGIC: Final = -113
+
+def test_magic_value() -> None:
+    o = Uninit()
+    o.x = MAGIC
+    assert o.x == MAGIC
+    with assertRaises(AttributeError):
+        o.z
+    o.z = MAGIC
+    assert o.x == MAGIC
+    assert o.z == MAGIC
+
+def test_magic_value_via_any() -> None:
+    o: Any = Uninit()
+    with assertRaises(AttributeError):
+        o.x
+    with assertRaises(AttributeError):
+        o.z
+    o.x = MAGIC
+    assert o.x == MAGIC
+    with assertRaises(AttributeError):
+        o.z
+    o.z = MAGIC
+    assert o.z == MAGIC
+
+def test_magic_value_and_inheritance() -> None:
+    o = Derived2()
+    o.x = MAGIC
+    assert o.x == MAGIC
+    with assertRaises(AttributeError):
+        o.z
+    with assertRaises(AttributeError):
+        o.b
+    with assertRaises(AttributeError):
+        o.h
+    o.z = MAGIC
+    assert o.z == MAGIC
+    with assertRaises(AttributeError):
+        o.b
+    with assertRaises(AttributeError):
+        o.h
+    o.h = MAGIC
+    assert o.h == MAGIC
+    with assertRaises(AttributeError):
+        o.b
+    o.b = MAGIC
+    assert o.b == MAGIC
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class MagicInit:
+    x: i64 = MAGIC
+
+def test_magic_value_as_initializer() -> None:
+    o = MagicInit()
+    assert o.x == MAGIC
+
+class ManyUninit:
+    a1: i64
+    a2: i64
+    a3: i64
+    a4: i64
+    a5: i64
+    a6: i64
+    a7: i64
+    a8: i64
+    a9: i64
+    a10: i64
+    a11: i64
+    a12: i64
+    a13: i64
+    a14: i64
+    a15: i64
+    a16: i64
+    a17: i64
+    a18: i64
+    a19: i64
+    a20: i64
+    a21: i64
+    a22: i64
+    a23: i64
+    a24: i64
+    a25: i64
+    a26: i64
+    a27: i64
+    a28: i64
+    a29: i64
+    a30: i64
+    a31: i64
+    a32: i64
+    a33: i64
+    a34: i64
+    a35: i64
+    a36: i64
+    a37: i64
+    a38: i64
+    a39: i64
+    a40: i64
+    a41: i64
+    a42: i64
+    a43: i64
+    a44: i64
+    a45: i64
+    a46: i64
+    a47: i64
+    a48: i64
+    a49: i64
+    a50: i64
+    a51: i64
+    a52: i64
+    a53: i64
+    a54: i64
+    a55: i64
+    a56: i64
+    a57: i64
+    a58: i64
+    a59: i64
+    a60: i64
+    a61: i64
+    a62: i64
+    a63: i64
+    a64: i64
+    a65: i64
+    a66: i64
+    a67: i64
+    a68: i64
+    a69: i64
+    a70: i64
+    a71: i64
+    a72: i64
+    a73: i64
+    a74: i64
+    a75: i64
+    a76: i64
+    a77: i64
+    a78: i64
+    a79: i64
+    a80: i64
+    a81: i64
+    a82: i64
+    a83: i64
+    a84: i64
+    a85: i64
+    a86: i64
+    a87: i64
+    a88: i64
+    a89: i64
+    a90: i64
+    a91: i64
+    a92: i64
+    a93: i64
+    a94: i64
+    a95: i64
+    a96: i64
+    a97: i64
+    a98: i64
+    a99: i64
+    a100: i64
+
+def test_many_uninitialized_attributes() -> None:
+    o = ManyUninit()
+    with assertRaises(AttributeError):
+        o.a1
+    with assertRaises(AttributeError):
+        o.a10
+    with assertRaises(AttributeError):
+        o.a20
+    with assertRaises(AttributeError):
+        o.a30
+    with assertRaises(AttributeError):
+        o.a31
+    with assertRaises(AttributeError):
+        o.a32
+    with assertRaises(AttributeError):
+        o.a33
+    with assertRaises(AttributeError):
+        o.a40
+    with assertRaises(AttributeError):
+        o.a50
+    with assertRaises(AttributeError):
+        o.a60
+    with assertRaises(AttributeError):
+        o.a62
+    with assertRaises(AttributeError):
+        o.a63
+    with assertRaises(AttributeError):
+        o.a64
+    with assertRaises(AttributeError):
+        o.a65
+    with assertRaises(AttributeError):
+        o.a80
+    with assertRaises(AttributeError):
+        o.a100
+    o.a30 = MAGIC
+    assert o.a30 == MAGIC
+    o.a31 = MAGIC
+    assert o.a31 == MAGIC
+    o.a32 = MAGIC
+    assert o.a32 == MAGIC
+    o.a33 = MAGIC
+    assert o.a33 == MAGIC
+    with assertRaises(AttributeError):
+        o.a34
+    o.a62 = MAGIC
+    assert o.a62 == MAGIC
+    o.a63 = MAGIC
+    assert o.a63 == MAGIC
+    o.a64 = MAGIC
+    assert o.a64 == MAGIC
+    o.a65 = MAGIC
+    assert o.a65 == MAGIC
+    with assertRaises(AttributeError):
+        o.a66
+
+class BaseNoBitmap:
+    x: int = 5
+
+class DerivedBitmap(BaseNoBitmap):
+    # Subclass needs a bitmap, but base class doesn't have it.
+    y: i64
+
+def test_derived_adds_bitmap() -> None:
+    d = DerivedBitmap()
+    d.x = 643
+    b: BaseNoBitmap = d
+    assert b.x == 643
+
+class Delete:
+    __deletable__ = ['x', 'y']
+    x: i64
+    y: i64
+
+def test_del() -> None:
+    o = Delete()
+    o.x = MAGIC
+    o.y = -1
+    assert o.x == MAGIC
+    assert o.y == -1
+    del o.x
+    with assertRaises(AttributeError):
+        o.x
+    assert o.y == -1
+    del o.y
+    with assertRaises(AttributeError):
+        o.y
+    o.x = 5
+    assert o.x == 5
+    with assertRaises(AttributeError):
+        o.y
+    del o.x
+    with assertRaises(AttributeError):
+        o.x

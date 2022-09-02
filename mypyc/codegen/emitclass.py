@@ -17,10 +17,17 @@ from mypyc.codegen.emitwrapper import (
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
+from mypyc.common import (
+    ATTR_BITMAP_BITS,
+    ATTR_BITMAP_TYPE,
+    NATIVE_PREFIX,
+    PREFIX,
+    REG_PREFIX,
+    use_fastcall,
+)
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
-from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
+from mypyc.ir.rtypes import RTuple, RType, is_fixed_width_rtype, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
@@ -61,11 +68,15 @@ AS_MAPPING_SLOT_DEFS: SlotTable = {
 AS_SEQUENCE_SLOT_DEFS: SlotTable = {"__contains__": ("sq_contains", generate_contains_wrapper)}
 
 AS_NUMBER_SLOT_DEFS: SlotTable = {
+    # Unary operations.
     "__bool__": ("nb_bool", generate_bool_wrapper),
-    "__neg__": ("nb_negative", generate_dunder_wrapper),
-    "__invert__": ("nb_invert", generate_dunder_wrapper),
     "__int__": ("nb_int", generate_dunder_wrapper),
     "__float__": ("nb_float", generate_dunder_wrapper),
+    "__neg__": ("nb_negative", generate_dunder_wrapper),
+    "__pos__": ("nb_positive", generate_dunder_wrapper),
+    "__abs__": ("nb_absolute", generate_dunder_wrapper),
+    "__invert__": ("nb_invert", generate_dunder_wrapper),
+    # Binary operations.
     "__add__": ("nb_add", generate_bin_op_wrapper),
     "__radd__": ("nb_add", generate_bin_op_wrapper),
     "__sub__": ("nb_subtract", generate_bin_op_wrapper),
@@ -90,6 +101,7 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rxor__": ("nb_xor", generate_bin_op_wrapper),
     "__matmul__": ("nb_matrix_multiply", generate_bin_op_wrapper),
     "__rmatmul__": ("nb_matrix_multiply", generate_bin_op_wrapper),
+    # In-place binary operations.
     "__iadd__": ("nb_inplace_add", generate_dunder_wrapper),
     "__isub__": ("nb_inplace_subtract", generate_dunder_wrapper),
     "__imul__": ("nb_inplace_multiply", generate_dunder_wrapper),
@@ -367,8 +379,17 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__") and emitter.use_vectorcall():
         lines.append("vectorcallfunc vectorcall;")
+    bitmap_attrs = []
     for base in reversed(cl.base_mro):
         if not base.is_trait:
+            if base.bitmap_attrs:
+                # Do we need another attribute bitmap field?
+                if emitter.bitmap_field(len(base.bitmap_attrs) - 1) not in bitmap_attrs:
+                    for i in range(0, len(base.bitmap_attrs), ATTR_BITMAP_BITS):
+                        attr = emitter.bitmap_field(i)
+                        if attr not in bitmap_attrs:
+                            lines.append(f"{ATTR_BITMAP_TYPE} {attr};")
+                            bitmap_attrs.append(attr)
             for attr, rtype in base.attributes.items():
                 if (attr, rtype) not in seen_attrs:
                     lines.append(f"{emitter.ctype_spaced(rtype)}{emitter.attr(attr)};")
@@ -546,6 +567,9 @@ def generate_setup_for_class(
         emitter.emit_line("}")
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
+    for i in range(0, len(cl.bitmap_attrs), ATTR_BITMAP_BITS):
+        field = emitter.bitmap_field(i)
+        emitter.emit_line(f"self->{field} = 0;")
 
     if cl.has_method("__call__") and emitter.use_vectorcall():
         name = cl.method_decl("__call__").cname(emitter.names)
@@ -887,7 +911,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
     if not always_defined:
-        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", unlikely=True)
+        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
         emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
         emitter.emit_line("return NULL;")
@@ -926,7 +950,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if rtype.is_refcounted:
         attr_expr = f"self->{attr_field}"
         if not always_defined:
-            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=")
+            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, cl)
         emitter.emit_dec_ref(f"self->{attr_field}", rtype)
         if not always_defined:
             emitter.emit_line("}")
@@ -943,9 +967,14 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_lines("if (!tmp)", "    return -1;")
     emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
+    if is_fixed_width_rtype(rtype) and not always_defined:
+        emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
+
     if deletable:
         emitter.emit_line("} else")
         emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
+        if is_fixed_width_rtype(rtype):
+            emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 

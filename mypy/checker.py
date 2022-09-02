@@ -1313,7 +1313,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         bound_type = bind_self(typ, self_type, is_classmethod=True)
         # Check that __new__ (after binding cls) returns an instance
         # type (or any).
-        if isinstance(fdef.info, TypeInfo) and fdef.info.is_metaclass():
+        if fdef.info.is_metaclass():
             # This is a metaclass, so it must return a new unrelated type.
             self.check_subtype(
                 bound_type.ret_type,
@@ -1901,7 +1901,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ):
                 fail = True
                 op_method_wider_note = True
-        if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
+        if isinstance(override, FunctionLike):
             if original_class_or_static and not override_class_or_static:
                 fail = True
             elif isinstance(original, CallableType) and isinstance(override, CallableType):
@@ -2804,12 +2804,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # The type of "__slots__" and some other attributes usually doesn't need to
                 # be compatible with a base class. We'll still check the type of "__slots__"
                 # against "object" as an exception.
-                if (
-                    isinstance(lvalue_node, Var)
-                    and lvalue_node.allow_incompatible_override
-                    and not (
-                        lvalue_node.name == "__slots__" and base.fullname == "builtins.object"
-                    )
+                if lvalue_node.allow_incompatible_override and not (
+                    lvalue_node.name == "__slots__" and base.fullname == "builtins.object"
                 ):
                     continue
 

@@ -643,7 +643,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.visit_func_def(item.func, is_abstract=is_abstract, is_overload=is_overload)
                 if is_overload:
                     overload_chain = True
-            elif overload_chain and is_overload:
+            elif is_overload:
                 self.visit_func_def(item.func, is_abstract=is_abstract, is_overload=is_overload)
             else:
                 # skip the overload implementation and clear the decorator we just processed
@@ -725,9 +725,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 retname = None  # implicit Any
             else:
                 retname = self.print_annotation(o.unanalyzed_type.ret_type)
-        elif isinstance(o, FuncDef) and (
-            o.abstract_status == IS_ABSTRACT or o.name in METHODS_WITH_RETURN_VALUE
-        ):
+        elif o.abstract_status == IS_ABSTRACT or o.name in METHODS_WITH_RETURN_VALUE:
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = None  # implicit Any
