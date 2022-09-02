@@ -2916,8 +2916,7 @@ reveal_type(typing.__name__)    # N: Revealed type is "builtins.str"
 [case testSpecialAttrsAreAvaliableInClasses]
 class Some:
     name = __name__
-
-reveal_type(Some.name)
+reveal_type(Some.name)  # N: Revealed type is "builtins.str"
 
 [case testReExportAllInStub]
 from m1 import C
