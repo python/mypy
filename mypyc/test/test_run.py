@@ -170,11 +170,11 @@ class TestRun(MypycDataSuite):
             # new by distutils, shift the mtime of all of the
             # generated artifacts back by a second.
             fudge_dir_mtimes(WORKDIR, -1)
-            # On GitHub actions, changing the mtime isn't effective on
-            # Linux. As a workaround, sleep.
+            # On Ubuntu, changing the mtime doesn't work reliably. As
+            # a workaround, sleep.
             #
             # TODO: Figure out a better approach, since this slows down tests.
-            if sys.platform == "linux" and "GITHUB_ACTION" in os.environ:
+            if sys.platform == "linux":
                 time.sleep(1.0)
 
             step += 1
