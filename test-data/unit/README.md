@@ -178,7 +178,7 @@ significantly decrease performance.
 
 To run tests with coverage:
 
-    python3 -m pytest --durations 100 --cov mypy --cov-config setup.cfg  --cov-report=term-missing:skip-covered --cov-report=html
+    python3 -m pytest --cov mypy --cov-config setup.cfg  --cov-report=term-missing:skip-covered --cov-report=html
 
 
 Debugging

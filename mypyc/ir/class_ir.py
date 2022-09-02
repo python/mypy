@@ -130,7 +130,7 @@ class ClassIR:
         self.builtin_base: str | None = None
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
-
+        # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
         # Deletable attributes
         self.deletable: list[str] = []
@@ -183,6 +183,13 @@ class ClassIR:
 
         # If True, __init__ can make 'self' visible to unanalyzed/arbitrary code
         self.init_self_leak = False
+
+        # Definedness of these attributes is backed by a bitmap. Index in the list
+        # indicates the bit number. Includes inherited attributes. We need the
+        # bitmap for types such as native ints that can't have a dedicated error
+        # value that doesn't overlap a valid value. The bitmap is used if the
+        # value of an attribute is the same as the error value.
+        self.bitmap_attrs: List[str] = []
 
     def __repr__(self) -> str:
         return (
