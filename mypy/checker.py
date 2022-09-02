@@ -1203,7 +1203,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return_type = get_proper_type(return_type)
 
                 if self.options.warn_no_return:
-                    if not isinstance(return_type, (NoneType, AnyType)):
+                    if not self.current_node_deferred and not isinstance(
+                        return_type, (NoneType, AnyType)
+                    ):
                         # Control flow fell off the end of a function that was
                         # declared to return a non-None type and is not
                         # entirely pass/Ellipsis/raise NotImplementedError.
@@ -2431,6 +2433,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return (
             self.in_checked_function()
             and self.options.warn_unreachable
+            and not self.current_node_deferred
             and not self.binder.is_unreachable_warning_suppressed()
         )
 
@@ -4179,14 +4182,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 # To support local variables, we make this a definition line,
                                 # causing assignment to set the variable's type.
                                 var.is_inferred_def = True
-                                # We also temporarily set current_node_deferred to False to
-                                # make sure the inference happens.
-                                # TODO: Use a better solution, e.g. a
-                                # separate Var for each except block.
-                                am_deferring = self.current_node_deferred
-                                self.current_node_deferred = False
                                 self.check_assignment(var, self.temp_node(t, var))
-                                self.current_node_deferred = am_deferring
                         self.accept(s.handlers[i])
                         var = s.vars[i]
                         if var:
