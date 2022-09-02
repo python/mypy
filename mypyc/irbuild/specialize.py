@@ -34,6 +34,7 @@ from mypy.nodes import (
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import BasicBlock, Integer, RaiseStandardError, Register, Unreachable, Value
 from mypyc.ir.rtypes import (
+    RInstance,
     RTuple,
     RType,
     bool_rprimitive,
@@ -135,6 +136,19 @@ def specialize_function(
 def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 0:
         return builder.load_globals_dict()
+    return None
+
+
+@specialize_function("builtins.abs")
+def translate_abs(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Specialize calls on native classes that implement __abs__."""
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg = expr.args[0]
+        arg_typ = builder.node_type(arg)
+        if isinstance(arg_typ, RInstance) and arg_typ.class_ir.has_method("__abs__"):
+            obj = builder.accept(arg)
+            return builder.gen_method_call(obj, "__abs__", [], None, expr.line)
+
     return None
 
 
