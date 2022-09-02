@@ -581,7 +581,8 @@ class SemanticAnalyzer(
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
-        self.add_implicit_module_attrs(file_node)
+        if not self.is_incomplete_namespace(file_node):
+            self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
             self.accept(d)
         if file_node.fullname == "typing":
@@ -1374,7 +1375,7 @@ class SemanticAnalyzer(
         defn.base_type_exprs.extend(defn.removed_base_type_exprs)
         defn.removed_base_type_exprs.clear()
 
-        self.update_metaclass(defn)
+        self.infer_metaclass_and_bases_from_compat_helpers(defn)
 
         bases = defn.base_type_exprs
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(
@@ -1405,6 +1406,7 @@ class SemanticAnalyzer(
 
         declared_metaclass, should_defer = self.get_declared_metaclass(defn.name, defn.metaclass)
         if should_defer or self.found_incomplete_ref(tag):
+            print(defn.name, declared_metaclass, defn.metaclass)
             # Metaclass was not ready. Defer current target.
             self.mark_incomplete(defn.name, defn)
             return
@@ -1973,7 +1975,7 @@ class SemanticAnalyzer(
             if hook:
                 hook(ClassDefContext(defn, FakeExpression(), self))
 
-    def update_metaclass(self, defn: ClassDef) -> None:
+    def infer_metaclass_and_bases_from_compat_helpers(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
 
         * six.with_metaclass(M, B1, B2, ...)
@@ -2077,7 +2079,7 @@ class SemanticAnalyzer(
                 #       attributes, similar to an 'Any' base class.
                 return None, False
             if isinstance(sym.node, PlaceholderNode):
-                return None, True  # defer later
+                return None, True  # defer later in the caller
 
             # Support type aliases, like `_Meta: TypeAlias = type`
             if (
@@ -2116,13 +2118,13 @@ class SemanticAnalyzer(
                 abc_meta = self.named_type_or_none("abc.ABCMeta", [])
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
                     defn.info.metaclass_type = abc_meta
-        if defn.info.metaclass_type is None:
+        if declared_metaclass is not None and defn.info.metaclass_type is None:
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage
             if defn.metaclass is not None:
                 self.fail(f'Inconsistent metaclass structure for "{defn.name}"', defn)
         else:
-            if defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
+            if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
                 defn.info.is_enum = True
                 if defn.type_vars:
                     self.fail("Enum class cannot be generic", defn)

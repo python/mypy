@@ -6695,6 +6695,15 @@ class Basic(metaclass=ManagedProperties): ...
 from sympy.basic import Basic
 class AssocOp(Basic): ...
 
+[case testMetaclassSubclassSelf]
+# This does not make much sense, but we must not crash:
+import a
+[file m.py]
+from a import A  # E: Module "a" has no attribute "A"
+class Meta(A): pass
+[file a.py]
+from m import Meta
+class A(metaclass=Meta): pass
 
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any
