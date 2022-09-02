@@ -2123,7 +2123,9 @@ class SemanticAnalyzer(
             if defn.metaclass is not None:
                 self.fail(f'Inconsistent metaclass structure for "{defn.name}"', defn)
         else:
-            if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
+            if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base(
+                "enum.EnumMeta"
+            ):
                 defn.info.is_enum = True
                 if defn.type_vars:
                     self.fail("Enum class cannot be generic", defn)
