@@ -145,6 +145,16 @@ unary_op(
     priority=0,
 )
 
+# abs(obj)
+function_op(
+    name="builtins.abs",
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyNumber_Absolute",
+    error_kind=ERR_MAGIC,
+    priority=0,
+)
+
 # obj1[obj2]
 method_op(
     name="__getitem__",

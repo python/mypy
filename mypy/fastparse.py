@@ -744,7 +744,7 @@ class ASTConverter:
         if stmt.else_body is None:
             return overload_name
 
-        if isinstance(stmt.else_body, Block) and len(stmt.else_body.body) == 1:
+        if len(stmt.else_body.body) == 1:
             # For elif: else_body contains an IfStmt itself -> do a recursive check.
             if (
                 isinstance(stmt.else_body.body[0], (Decorator, FuncDef, OverloadedFuncDef))
@@ -901,13 +901,11 @@ class ASTConverter:
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
-                    translated_args = TypeConverter(
+                    translated_args: list[Type] = TypeConverter(
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
-                    arg_types = [
-                        a if a is not None else AnyType(TypeOfAny.unannotated)
-                        for a in translated_args
-                    ]
+                    # Use a cast to work around `list` invariance
+                    arg_types = cast(List[Optional[Type]], translated_args)
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
