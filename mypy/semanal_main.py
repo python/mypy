@@ -222,6 +222,12 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
         worklist = list(reversed(all_deferred))
         final_iteration = not any_progress
 
+    # We do it in the very last order,
+    # because of `dict <-> Mapping <-> ABCMeta` cyclic imports.
+    if iteration <= MAX_ITERATIONS:
+        with analyzer.file_context(state.tree, state.options):
+            analyzer.add_implicit_module_attrs(state.tree)
+
 
 def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Process functions.
