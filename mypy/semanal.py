@@ -581,6 +581,11 @@ class SemanticAnalyzer(
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
+        # We do it in the very last order, because of
+        # `builtins.dict <-> typing.Mapping <-> abc.ABCMeta`
+        # cyclic imports.
+        if file_node.fullname not in ('typing', 'abc', 'builtins'):
+            self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
             self.accept(d)
         if file_node.fullname == "typing":
@@ -612,7 +617,7 @@ class SemanticAnalyzer(
                 if not sym:
                     continue
                 node = sym.node
-                assert isinstance(node, TypeInfo)
+                assert isinstance(node, TypeInfo), file_node.fullname
                 typ = Instance(node, [self.str_type(), AnyType(TypeOfAny.special_form)])
             else:
                 assert t is not None, f"type should be specified for {name}"
