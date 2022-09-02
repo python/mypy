@@ -1405,7 +1405,6 @@ class SemanticAnalyzer(
 
         declared_metaclass, should_defer = self.get_declared_metaclass(defn.name, defn.metaclass)
         if should_defer or self.found_incomplete_ref(tag):
-            print(defn.name, declared_metaclass, defn.metaclass)
             # Metaclass was not ready. Defer current target.
             self.mark_incomplete(defn.name, defn)
             return
