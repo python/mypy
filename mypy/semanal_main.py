@@ -222,7 +222,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
         worklist = list(reversed(all_deferred))
         final_iteration = not any_progress
 
-        if state.tree.fullname in ('typing', 'builtins', 'abc'):
+        if state.tree and state.tree.fullname in ('typing', 'builtins', 'abc'):
              with analyzer.file_context(state.tree, state.options):
                 # We do it in the very last order,
                 # because of `dict <-> Mapping <-> ABCMeta` cyclic imports.
