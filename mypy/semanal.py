@@ -581,8 +581,7 @@ class SemanticAnalyzer(
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
-        if not self.is_incomplete_namespace(file_node):
-            self.add_implicit_module_attrs(file_node)
+        self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
             self.accept(d)
         if file_node.fullname == "typing":
