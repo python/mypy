@@ -215,18 +215,16 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
             any_progress = any_progress or progress
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
+                # We do it in the very last order,
+                # because of `dict <-> Mapping <-> ABCMeta` cyclic imports.
+                with analyzer.file_context(state.tree, state.options):
+                    analyzer.add_implicit_module_attrs(state.tree)
         if final_iteration:
             assert not all_deferred, "Must not defer during final iteration"
         # Reverse to process the targets in the same order on every iteration. This avoids
         # processing the same target twice in a row, which is inefficient.
         worklist = list(reversed(all_deferred))
         final_iteration = not any_progress
-
-    # We do it in the very last order,
-    # because of `dict <-> Mapping <-> ABCMeta` cyclic imports.
-    if iteration <= MAX_ITERATIONS:
-        with analyzer.file_context(state.tree, state.options):
-            analyzer.add_implicit_module_attrs(state.tree)
 
 
 def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
