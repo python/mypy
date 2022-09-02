@@ -1,8 +1,10 @@
-from mypy.test.helpers import Suite, skip
-from mypy.nodes import CONTRAVARIANT, INVARIANT, COVARIANT
+from __future__ import annotations
+
+from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.subtypes import is_subtype
-from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
-from mypy.types import Type
+from mypy.test.helpers import Suite, skip
+from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
+from mypy.types import Instance, TupleType, Type, UnpackType
 
 
 class SubtypingSuite(Suite):
@@ -78,104 +80,263 @@ class SubtypingSuite(Suite):
         self.assert_equivalent(fx2.gfa, fx2.gfa)
 
     def test_basic_callable_subtyping(self) -> None:
-        self.assert_strict_subtype(self.fx.callable(self.fx.o, self.fx.d),
-                                   self.fx.callable(self.fx.a, self.fx.d))
-        self.assert_strict_subtype(self.fx.callable(self.fx.d, self.fx.b),
-                                   self.fx.callable(self.fx.d, self.fx.a))
+        self.assert_strict_subtype(
+            self.fx.callable(self.fx.o, self.fx.d), self.fx.callable(self.fx.a, self.fx.d)
+        )
+        self.assert_strict_subtype(
+            self.fx.callable(self.fx.d, self.fx.b), self.fx.callable(self.fx.d, self.fx.a)
+        )
 
-        self.assert_strict_subtype(self.fx.callable(self.fx.a, self.fx.nonet),
-                                   self.fx.callable(self.fx.a, self.fx.a))
+        self.assert_strict_subtype(
+            self.fx.callable(self.fx.a, self.fx.nonet), self.fx.callable(self.fx.a, self.fx.a)
+        )
 
         self.assert_unrelated(
             self.fx.callable(self.fx.a, self.fx.a, self.fx.a),
-            self.fx.callable(self.fx.a, self.fx.a))
+            self.fx.callable(self.fx.a, self.fx.a),
+        )
 
     def test_default_arg_callable_subtyping(self) -> None:
         self.assert_strict_subtype(
             self.fx.callable_default(1, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable(self.fx.a, self.fx.d, self.fx.a))
+            self.fx.callable(self.fx.a, self.fx.d, self.fx.a),
+        )
 
         self.assert_strict_subtype(
             self.fx.callable_default(1, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable(self.fx.a, self.fx.a))
+            self.fx.callable(self.fx.a, self.fx.a),
+        )
 
         self.assert_strict_subtype(
             self.fx.callable_default(0, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable_default(1, self.fx.a, self.fx.d, self.fx.a))
+            self.fx.callable_default(1, self.fx.a, self.fx.d, self.fx.a),
+        )
 
         self.assert_unrelated(
             self.fx.callable_default(1, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable(self.fx.d, self.fx.d, self.fx.a))
+            self.fx.callable(self.fx.d, self.fx.d, self.fx.a),
+        )
 
         self.assert_unrelated(
             self.fx.callable_default(0, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable_default(1, self.fx.a, self.fx.a, self.fx.a))
+            self.fx.callable_default(1, self.fx.a, self.fx.a, self.fx.a),
+        )
 
         self.assert_unrelated(
             self.fx.callable_default(1, self.fx.a, self.fx.a),
-            self.fx.callable(self.fx.a, self.fx.a, self.fx.a))
+            self.fx.callable(self.fx.a, self.fx.a, self.fx.a),
+        )
 
     def test_var_arg_callable_subtyping_1(self) -> None:
         self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.a),
-            self.fx.callable_var_arg(0, self.fx.b, self.fx.a))
+            self.fx.callable_var_arg(0, self.fx.b, self.fx.a),
+        )
 
     def test_var_arg_callable_subtyping_2(self) -> None:
         self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.a),
-            self.fx.callable(self.fx.b, self.fx.a))
+            self.fx.callable(self.fx.b, self.fx.a),
+        )
 
     def test_var_arg_callable_subtyping_3(self) -> None:
         self.assert_strict_subtype(
-            self.fx.callable_var_arg(0, self.fx.a, self.fx.a),
-            self.fx.callable(self.fx.a))
+            self.fx.callable_var_arg(0, self.fx.a, self.fx.a), self.fx.callable(self.fx.a)
+        )
 
     def test_var_arg_callable_subtyping_4(self) -> None:
         self.assert_strict_subtype(
             self.fx.callable_var_arg(1, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable(self.fx.b, self.fx.a))
+            self.fx.callable(self.fx.b, self.fx.a),
+        )
 
     def test_var_arg_callable_subtyping_5(self) -> None:
         self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable(self.fx.b, self.fx.a))
+            self.fx.callable(self.fx.b, self.fx.a),
+        )
 
     def test_var_arg_callable_subtyping_6(self) -> None:
         self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.f, self.fx.d),
-            self.fx.callable_var_arg(0, self.fx.b, self.fx.e, self.fx.d))
+            self.fx.callable_var_arg(0, self.fx.b, self.fx.e, self.fx.d),
+        )
 
     def test_var_arg_callable_subtyping_7(self) -> None:
         self.assert_not_subtype(
             self.fx.callable_var_arg(0, self.fx.b, self.fx.d),
-            self.fx.callable(self.fx.a, self.fx.d))
+            self.fx.callable(self.fx.a, self.fx.d),
+        )
 
     def test_var_arg_callable_subtyping_8(self) -> None:
         self.assert_not_subtype(
             self.fx.callable_var_arg(0, self.fx.b, self.fx.d),
-            self.fx.callable_var_arg(0, self.fx.a, self.fx.a, self.fx.d))
+            self.fx.callable_var_arg(0, self.fx.a, self.fx.a, self.fx.d),
+        )
         self.assert_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.d),
-            self.fx.callable_var_arg(0, self.fx.b, self.fx.b, self.fx.d))
+            self.fx.callable_var_arg(0, self.fx.b, self.fx.b, self.fx.d),
+        )
 
     def test_var_arg_callable_subtyping_9(self) -> None:
         self.assert_not_subtype(
             self.fx.callable_var_arg(0, self.fx.b, self.fx.b, self.fx.d),
-            self.fx.callable_var_arg(0, self.fx.a, self.fx.d))
+            self.fx.callable_var_arg(0, self.fx.a, self.fx.d),
+        )
         self.assert_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.a, self.fx.d),
-            self.fx.callable_var_arg(0, self.fx.b, self.fx.d))
+            self.fx.callable_var_arg(0, self.fx.b, self.fx.d),
+        )
 
     def test_type_callable_subtyping(self) -> None:
-        self.assert_subtype(
-            self.fx.callable_type(self.fx.d, self.fx.a), self.fx.type_type)
+        self.assert_subtype(self.fx.callable_type(self.fx.d, self.fx.a), self.fx.type_type)
 
         self.assert_strict_subtype(
-            self.fx.callable_type(self.fx.d, self.fx.b),
-            self.fx.callable(self.fx.d, self.fx.a))
+            self.fx.callable_type(self.fx.d, self.fx.b), self.fx.callable(self.fx.d, self.fx.a)
+        )
 
-        self.assert_strict_subtype(self.fx.callable_type(self.fx.a, self.fx.b),
-                                   self.fx.callable(self.fx.a, self.fx.b))
+        self.assert_strict_subtype(
+            self.fx.callable_type(self.fx.a, self.fx.b), self.fx.callable(self.fx.a, self.fx.b)
+        )
+
+    def test_type_var_tuple(self) -> None:
+        self.assert_subtype(Instance(self.fx.gvi, []), Instance(self.fx.gvi, []))
+        self.assert_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+            Instance(self.fx.gvi, [self.fx.b, self.fx.a]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]), Instance(self.fx.gvi, [self.fx.a])
+        )
+
+        self.assert_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [UnpackType(self.fx.us)]),
+        )
+
+        self.assert_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.anyt)]),
+            Instance(self.fx.gvi, [self.fx.anyt]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]), Instance(self.fx.gvi, [])
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]), Instance(self.fx.gvi, [self.fx.anyt])
+        )
+
+    def test_type_var_tuple_with_prefix_suffix(self) -> None:
+        self.assert_subtype(
+            Instance(self.fx.gvi, [self.fx.a, UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [self.fx.a, UnpackType(self.fx.ss)]),
+        )
+        self.assert_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b, UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b, UnpackType(self.fx.ss)]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [self.fx.a, UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [self.fx.b, UnpackType(self.fx.ss)]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [self.fx.a, UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b, UnpackType(self.fx.ss)]),
+        )
+
+        self.assert_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss), self.fx.a]),
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss), self.fx.a]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss), self.fx.a]),
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss), self.fx.b]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss), self.fx.a]),
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss), self.fx.a, self.fx.b]),
+        )
+
+        self.assert_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b, UnpackType(self.fx.ss), self.fx.c]),
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b, UnpackType(self.fx.ss), self.fx.c]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b, UnpackType(self.fx.ss), self.fx.c]),
+            Instance(self.fx.gvi, [self.fx.a, UnpackType(self.fx.ss), self.fx.b, self.fx.c]),
+        )
+
+    def test_type_var_tuple_unpacked_tuple(self) -> None:
+        self.assert_subtype(
+            Instance(
+                self.fx.gvi,
+                [
+                    UnpackType(
+                        TupleType(
+                            [self.fx.a, self.fx.b],
+                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
+                        )
+                    )
+                ],
+            ),
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+        )
+        self.assert_subtype(
+            Instance(
+                self.fx.gvi,
+                [
+                    UnpackType(
+                        TupleType(
+                            [self.fx.a, self.fx.b],
+                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
+                        )
+                    )
+                ],
+            ),
+            Instance(self.fx.gvi, [self.fx.anyt, self.fx.anyt]),
+        )
+        self.assert_not_subtype(
+            Instance(
+                self.fx.gvi,
+                [
+                    UnpackType(
+                        TupleType(
+                            [self.fx.a, self.fx.b],
+                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
+                        )
+                    )
+                ],
+            ),
+            Instance(self.fx.gvi, [self.fx.a]),
+        )
+        self.assert_not_subtype(
+            Instance(
+                self.fx.gvi,
+                [
+                    UnpackType(
+                        TupleType(
+                            [self.fx.a, self.fx.b],
+                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
+                        )
+                    )
+                ],
+            ),
+            # Order flipped here.
+            Instance(self.fx.gvi, [self.fx.b, self.fx.a]),
+        )
+
+    def test_type_var_tuple_unpacked_variable_length_tuple(self) -> None:
+        self.assert_strict_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.a]),
+            Instance(self.fx.gvi, [UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))]),
+        )
 
     # IDEA: Maybe add these test cases (they are tested pretty well in type
     #       checker tests already):
@@ -188,10 +349,10 @@ class SubtypingSuite(Suite):
     #  * generic function types
 
     def assert_subtype(self, s: Type, t: Type) -> None:
-        assert is_subtype(s, t), f'{s} not subtype of {t}'
+        assert is_subtype(s, t), f"{s} not subtype of {t}"
 
     def assert_not_subtype(self, s: Type, t: Type) -> None:
-        assert not is_subtype(s, t), f'{s} subtype of {t}'
+        assert not is_subtype(s, t), f"{s} subtype of {t}"
 
     def assert_strict_subtype(self, s: Type, t: Type) -> None:
         self.assert_subtype(s, t)

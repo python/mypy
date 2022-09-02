@@ -18,10 +18,10 @@ suffer from the same issue as they are defined to parse at most three
 octal digits.
 """
 
+from __future__ import annotations
+
 import string
-
 from typing_extensions import Final
-
 
 CHAR_MAP: Final = [f"\\{i:03o}" for i in range(256)]
 
@@ -31,18 +31,18 @@ for c in string.printable:
 
 # These assignments must come last because we prioritize simple escape
 # sequences over any other representation.
-for c in ('\'', '"', '\\', 'a', 'b', 'f', 'n', 'r', 't', 'v'):
-    escaped = f'\\{c}'
-    decoded = escaped.encode('ascii').decode('unicode_escape')
+for c in ("'", '"', "\\", "a", "b", "f", "n", "r", "t", "v"):
+    escaped = f"\\{c}"
+    decoded = escaped.encode("ascii").decode("unicode_escape")
     CHAR_MAP[ord(decoded)] = escaped
 
 # This escape sequence is invalid in Python.
-CHAR_MAP[ord('?')] = r'\?'
+CHAR_MAP[ord("?")] = r"\?"
 
 
 def encode_bytes_as_c_string(b: bytes) -> str:
     """Produce contents of a C string literal for a byte string, without quotes."""
-    escaped = ''.join([CHAR_MAP[i] for i in b])
+    escaped = "".join([CHAR_MAP[i] for i in b])
     return escaped
 
 

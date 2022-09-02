@@ -114,7 +114,6 @@ of your repo and run mypy.
     # Global options:
 
     [mypy]
-    python_version = 2.7
     warn_return_any = True
     warn_unused_configs = True
 
@@ -129,16 +128,13 @@ of your repo and run mypy.
     [mypy-somelibrary]
     ignore_missing_imports = True
 
-This config file specifies three global options in the ``[mypy]`` section. These three
+This config file specifies two global options in the ``[mypy]`` section. These two
 options will:
 
-1.  Type-check your entire project assuming it will be run using Python 2.7.
-    (This is equivalent to using the :option:`--python-version 2.7 <mypy --python-version>` or :option:`-2 <mypy -2>` flag).
-
-2.  Report an error whenever a function returns a value that is inferred
+1.  Report an error whenever a function returns a value that is inferred
     to have type ``Any``.
 
-3.  Report any config options that are unused by mypy. (This will help us catch typos
+2.  Report any config options that are unused by mypy. (This will help us catch typos
     when making changes to our config file).
 
 Next, this module specifies three per-module options. The first two options change how mypy
@@ -578,14 +574,6 @@ Suppressing errors
 Note: these configuration options are available in the config file only. There is
 no analog available via the command line options.
 
-.. confval:: show_none_errors
-
-    :type: boolean
-    :default: True
-
-    Shows errors related to strict ``None`` checking, if the global :confval:`strict_optional`
-    flag is enabled.
-
 .. confval:: ignore_errors
 
     :type: boolean
@@ -862,9 +850,16 @@ These options may only be set in the global section (``[mypy]``).
 
     :type: string
 
-    Specifies an alternative directory to look for stubs instead of the
-    default ``typeshed`` directory. User home directory and environment
-    variables will be expanded.
+    This specifies the directory where mypy looks for standard library typeshed
+    stubs, instead of the typeshed that ships with mypy.  This is
+    primarily intended to make it easier to test typeshed changes before
+    submitting them upstream, but also allows you to use a forked version of
+    typeshed.
+
+    User home directory and environment variables will be expanded.
+
+    Note that this doesn't affect third-party library stubs. To test third-party stubs,
+    for example try ``MYPYPATH=stubs/six mypy ...``.
 
 .. confval:: warn_incomplete_stub
 

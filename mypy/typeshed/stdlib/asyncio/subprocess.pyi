@@ -6,10 +6,7 @@ from collections.abc import Callable
 from typing import IO, Any
 from typing_extensions import Literal, TypeAlias
 
-if sys.version_info >= (3, 7):
-    __all__ = ("create_subprocess_exec", "create_subprocess_shell")
-else:
-    __all__ = ["create_subprocess_exec", "create_subprocess_shell"]
+__all__ = ("create_subprocess_exec", "create_subprocess_shell")
 
 if sys.version_info >= (3, 8):
     _ExecArg: TypeAlias = StrOrBytesPath
@@ -25,10 +22,7 @@ class SubprocessStreamProtocol(streams.FlowControlMixin, protocols.SubprocessPro
     stdout: streams.StreamReader | None
     stderr: streams.StreamReader | None
     def __init__(self, limit: int, loop: events.AbstractEventLoop) -> None: ...
-    def connection_made(self, transport: transports.BaseTransport) -> None: ...
     def pipe_data_received(self, fd: int, data: bytes | str) -> None: ...
-    def pipe_connection_lost(self, fd: int, exc: Exception | None) -> None: ...
-    def process_exited(self) -> None: ...
 
 class Process:
     stdin: streams.StreamWriter | None

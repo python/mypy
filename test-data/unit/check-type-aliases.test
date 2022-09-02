@@ -770,3 +770,29 @@ f(string, string)
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testForwardTypeVarRefWithRecursiveFlag]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from typing import TypeVar, List, Any, Generic
+from b import Alias
+
+T = TypeVar("T", bound=Alias[Any])
+def foo(x: T) -> T: ...
+
+[file b.py]
+from c import C
+from typing import TypeVar, List
+
+S = TypeVar("S")
+Alias = List[C[S]]
+
+[file c.py]
+from typing import TypeVar, List, Generic
+import a
+
+S = TypeVar("S")
+class C(Generic[S], List[Defer]): ...
+class Defer: ...
+[builtins fixtures/list.pyi]

@@ -1,10 +1,11 @@
 """Check for duplicate AST nodes after merge."""
 
-from typing import Dict, List, Tuple
+from __future__ import annotations
+
 from typing_extensions import Final
 
-from mypy.nodes import FakeInfo, SymbolNode, Var, Decorator, FuncDef
-from mypy.server.objgraph import get_reachable_graph, get_path
+from mypy.nodes import Decorator, FakeInfo, FuncDef, SymbolNode, Var
+from mypy.server.objgraph import get_path, get_reachable_graph
 
 # If True, print more verbose output on failure.
 DUMP_MISMATCH_NODES: Final = False
@@ -19,7 +20,7 @@ def check_consistency(o: object) -> None:
     reachable = list(seen.values())
     syms = [x for x in reachable if isinstance(x, SymbolNode)]
 
-    m: Dict[str, SymbolNode] = {}
+    m: dict[str, SymbolNode] = {}
     for sym in syms:
         if isinstance(sym, FakeInfo):
             continue
@@ -50,34 +51,33 @@ def check_consistency(o: object) -> None:
         path2 = get_path(sym2, seen, parents)
 
         if fn in m:
-            print('\nDuplicate {!r} nodes with fullname {!r} found:'.format(
-                type(sym).__name__, fn))
-            print('[1] %d: %s' % (id(sym1), path_to_str(path1)))
-            print('[2] %d: %s' % (id(sym2), path_to_str(path2)))
+            print(f"\nDuplicate {type(sym).__name__!r} nodes with fullname {fn!r} found:")
+            print("[1] %d: %s" % (id(sym1), path_to_str(path1)))
+            print("[2] %d: %s" % (id(sym2), path_to_str(path2)))
 
         if DUMP_MISMATCH_NODES and fn in m:
             # Add verbose output with full AST node contents.
-            print('---')
+            print("---")
             print(id(sym1), sym1)
-            print('---')
+            print("---")
             print(id(sym2), sym2)
 
         assert sym.fullname not in m
 
 
-def path_to_str(path: List[Tuple[object, object]]) -> str:
-    result = '<root>'
+def path_to_str(path: list[tuple[object, object]]) -> str:
+    result = "<root>"
     for attr, obj in path:
         t = type(obj).__name__
-        if t in ('dict', 'tuple', 'SymbolTable', 'list'):
-            result += f'[{repr(attr)}]'
+        if t in ("dict", "tuple", "SymbolTable", "list"):
+            result += f"[{repr(attr)}]"
         else:
             if isinstance(obj, Var):
-                result += f'.{attr}({t}:{obj.name})'
-            elif t in ('BuildManager', 'FineGrainedBuildManager'):
+                result += f".{attr}({t}:{obj.name})"
+            elif t in ("BuildManager", "FineGrainedBuildManager"):
                 # Omit class name for some classes that aren't part of a class
                 # hierarchy since there isn't much ambiguity.
-                result += f'.{attr}'
+                result += f".{attr}"
             else:
-                result += f'.{attr}({t})'
+                result += f".{attr}({t})"
     return result

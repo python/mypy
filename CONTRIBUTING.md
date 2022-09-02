@@ -17,48 +17,73 @@ articulated in the [Python Community Code of Conduct](https://www.python.org/psf
 
 ### Setup
 
-Run the following:
+#### (1) Clone the mypy repository and enter into it
 ```
-# Clone the mypy repository
 git clone https://github.com/python/mypy.git
-
-# Enter the repository
 cd mypy
+```
 
-# Create then activate a virtual environment
+#### (2) Create then activate a virtual environment
+```
+# On Windows, the commands may be slightly different. For more details, see
+# https://docs.python.org/3/library/venv.html#creating-virtual-environments
 python3 -m venv venv
 source venv/bin/activate
+```
 
-# Install the test requirements and the project
+#### (3) Install the test requirements and the project
+```
 python3 -m pip install -r test-requirements.txt
 python3 -m pip install -e .
-hash -r
+hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
 ### Running tests
 
-Once setup, you should be able to run tests:
+Running the full test suite can take a while, and usually isn't necessary when
+preparing a PR. Once you file a PR, the full test suite will run on GitHub.
+You'll then be able to see any test failures, and make any necessary changes to
+your PR.
+
+However, if you wish to do so, you can run the full test suite
+like this:
 ```
 python3 runtests.py
 ```
 
-To use mypy to check mypy's own code, run:
+You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
 ```
+tox -e py
+
+# Or some specific python version:
+tox -e py39
+
+# Or some specific command:
+tox -e lint
+```
+
+Some useful commands for running specific tests include:
+```bash
+# Use mypy to check mypy's own code
 python3 runtests.py self
 # or equivalently:
 python3 -m mypy --config-file mypy_self_check.ini -p mypy
-```
 
-You can also use `tox` to run tests, for instance:
-```
-tox -e py
-```
-
-The easiest way to run a single test is:
-```
+# Run a single test from the test suite
 pytest -n0 -k 'test_name'
+
+# Run all test cases in the "test-data/unit/check-dataclasses.test" file
+pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
+
+# Run the linter
+flake8
+
+# Run formatters
+black . && isort .
 ```
-There's more useful information on writing and running tests [here](test-data/unit/README.md)
+
+For an in-depth guide on running and writing tests,
+see [the README in the test-data directory](test-data/unit/README.md).
 
 ## First time contributors
 
@@ -115,10 +140,9 @@ advice about good pull requests for open-source projects applies; we
 have [our own writeup](https://github.com/python/mypy/wiki/Good-Pull-Request)
 of this advice.
 
-See also our [coding conventions](https://github.com/python/mypy/wiki/Code-Conventions) --
-which consist mainly of a reference to
-[PEP 8](https://www.python.org/dev/peps/pep-0008/) -- for the code you
-put in the pull request.
+We are using `black` and `isort` to enforce a consistent coding style.
+Run `black . && isort .` before your commits, otherwise you would receive
+a CI failure.
 
 Also, do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is merged.

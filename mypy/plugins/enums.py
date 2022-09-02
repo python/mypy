@@ -10,15 +10,17 @@ Note that this file does *not* contain all special-cased logic related to enums:
 we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
-from typing import Iterable, Optional, Sequence, TypeVar, cast
+from __future__ import annotations
+
+from typing import Iterable, Sequence, TypeVar, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.types import Type, Instance, LiteralType, CallableType, ProperType, get_proper_type
-from mypy.typeops import make_simplified_union
 from mypy.nodes import TypeInfo
-from mypy.subtypes import is_equivalent
 from mypy.semanal_enum import ENUM_BASES
+from mypy.subtypes import is_equivalent
+from mypy.typeops import make_simplified_union
+from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
     f"{prefix}._name_" for prefix in ENUM_BASES
@@ -28,7 +30,7 @@ ENUM_VALUE_ACCESS: Final = {f"{prefix}.value" for prefix in ENUM_BASES} | {
 }
 
 
-def enum_name_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
+def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """This plugin refines the 'name' attribute in enums to act as if
     they were declared to be final.
 
@@ -47,15 +49,15 @@ def enum_name_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     if enum_field_name is None:
         return ctx.default_attr_type
     else:
-        str_type = ctx.api.named_generic_type('builtins.str', [])
+        str_type = ctx.api.named_generic_type("builtins.str", [])
         literal_type = LiteralType(enum_field_name, fallback=str_type)
         return str_type.copy_modified(last_known_value=literal_type)
 
 
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 
 
-def _first(it: Iterable[_T]) -> Optional[_T]:
+def _first(it: Iterable[_T]) -> _T | None:
     """Return the first value from any iterable.
 
     Returns ``None`` if the iterable is empty.
@@ -66,8 +68,8 @@ def _first(it: Iterable[_T]) -> Optional[_T]:
 
 
 def _infer_value_type_with_auto_fallback(
-        ctx: 'mypy.plugin.AttributeContext',
-        proper_type: Optional[ProperType]) -> Optional[Type]:
+    ctx: mypy.plugin.AttributeContext, proper_type: ProperType | None
+) -> Type | None:
     """Figure out the type of an enum value accounting for `auto()`.
 
     This method is a no-op for a `None` proper_type and also in the case where
@@ -75,28 +77,26 @@ def _infer_value_type_with_auto_fallback(
     """
     if proper_type is None:
         return None
-    if not (isinstance(proper_type, Instance) and
-            proper_type.type.fullname == 'enum.auto'):
+    if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
         return proper_type
-    assert isinstance(ctx.type, Instance), 'An incorrect ctx.type was passed.'
+    assert isinstance(ctx.type, Instance), "An incorrect ctx.type was passed."
     info = ctx.type.type
     # Find the first _generate_next_value_ on the mro.  We need to know
     # if it is `Enum` because `Enum` types say that the return-value of
     # `_generate_next_value_` is `Any`.  In reality the default `auto()`
     # returns an `int` (presumably the `Any` in typeshed is to make it
     # easier to subclass and change the returned type).
-    type_with_gnv = _first(
-        ti for ti in info.mro if ti.names.get('_generate_next_value_'))
+    type_with_gnv = _first(ti for ti in info.mro if ti.names.get("_generate_next_value_"))
     if type_with_gnv is None:
         return ctx.default_attr_type
 
-    stnode = type_with_gnv.names['_generate_next_value_']
+    stnode = type_with_gnv.names["_generate_next_value_"]
 
     # This should be a `CallableType`
     node_type = get_proper_type(stnode.type)
     if isinstance(node_type, CallableType):
-        if type_with_gnv.fullname == 'enum.Enum':
-            int_type = ctx.api.named_generic_type('builtins.int', [])
+        if type_with_gnv.fullname == "enum.Enum":
+            int_type = ctx.api.named_generic_type("builtins.int", [])
             return int_type
         return get_proper_type(node_type.ret_type)
     return ctx.default_attr_type
@@ -110,14 +110,14 @@ def _implements_new(info: TypeInfo) -> bool:
     type_with_new = _first(
         ti
         for ti in info.mro
-        if ti.names.get('__new__') and not ti.fullname.startswith('builtins.')
+        if ti.names.get("__new__") and not ti.fullname.startswith("builtins.")
     )
     if type_with_new is None:
         return False
-    return type_with_new.fullname not in ('enum.Enum', 'enum.IntEnum', 'enum.StrEnum')
+    return type_with_new.fullname not in ("enum.Enum", "enum.IntEnum", "enum.StrEnum")
 
 
-def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
+def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     """This plugin refines the 'value' attribute in enums to refer to
     the original underlying value. For example, suppose we have the
     following:
@@ -164,11 +164,13 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             node_types = (
                 get_proper_type(n.type) if n else None
                 for n in stnodes
-                if n is None or not n.implicit)
+                if n is None or not n.implicit
+            )
             proper_types = list(
                 _infer_value_type_with_auto_fallback(ctx, t)
                 for t in node_types
-                if t is None or not isinstance(t, CallableType))
+                if t is None or not isinstance(t, CallableType)
+            )
             underlying_type = _first(proper_types)
             if underlying_type is None:
                 return ctx.default_attr_type
@@ -179,7 +181,8 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             # See https://github.com/python/mypy/pull/9443
             all_same_value_type = all(
                 proper_type is not None and proper_type == underlying_type
-                for proper_type in proper_types)
+                for proper_type in proper_types
+            )
             if all_same_value_type:
                 if underlying_type is not None:
                     return underlying_type
@@ -200,7 +203,8 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             # Result will be `Literal[1] | Literal[2] | Literal[3]` for this case.
             all_equivalent_types = all(
                 proper_type is not None and is_equivalent(proper_type, underlying_type)
-                for proper_type in proper_types)
+                for proper_type in proper_types
+            )
             if all_equivalent_types:
                 return make_simplified_union(cast(Sequence[Type], proper_types))
         return ctx.default_attr_type
@@ -218,15 +222,14 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     if stnode is None:
         return ctx.default_attr_type
 
-    underlying_type = _infer_value_type_with_auto_fallback(
-        ctx, get_proper_type(stnode.type))
+    underlying_type = _infer_value_type_with_auto_fallback(ctx, get_proper_type(stnode.type))
     if underlying_type is None:
         return ctx.default_attr_type
 
     return underlying_type
 
 
-def _extract_underlying_field_name(typ: Type) -> Optional[str]:
+def _extract_underlying_field_name(typ: Type) -> str | None:
     """If the given type corresponds to some Enum instance, returns the
     original name of that enum. For example, if we receive in the type
     corresponding to 'SomeEnum.FOO', we return the string "SomeEnum.Foo".

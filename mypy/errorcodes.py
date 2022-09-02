@@ -3,21 +3,17 @@
 These can be used for filtering specific errors.
 """
 
-from typing import Dict, List
+from __future__ import annotations
+
 from typing_extensions import Final
 
-
-# All created error codes are implicitly stored in this list.
-all_error_codes: List["ErrorCode"] = []
-
-error_codes: Dict[str, "ErrorCode"] = {}
+error_codes: dict[str, ErrorCode] = {}
 
 
 class ErrorCode:
-    def __init__(self, code: str,
-                 description: str,
-                 category: str,
-                 default_enabled: bool = True) -> None:
+    def __init__(
+        self, code: str, description: str, category: str, default_enabled: bool = True
+    ) -> None:
         self.code = code
         self.description = description
         self.category = category
@@ -25,7 +21,7 @@ class ErrorCode:
         error_codes[code] = self
 
     def __str__(self) -> str:
-        return f'<ErrorCode {self.code}>'
+        return f"<ErrorCode {self.code}>"
 
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
@@ -94,9 +90,7 @@ STR_BYTES_PY3: Final = ErrorCode(
 EXIT_RETURN: Final = ErrorCode(
     "exit-return", "Warn about too general return type for '__exit__'", "General"
 )
-LITERAL_REQ: Final = ErrorCode(
-    "literal-required", "Check that value is a literal", 'General'
-)
+LITERAL_REQ: Final = ErrorCode("literal-required", "Check that value is a literal", "General")
 UNUSED_COROUTINE: Final = ErrorCode(
     "unused-coroutine", "Ensure that all coroutines are used", "General"
 )
@@ -113,9 +107,7 @@ NO_UNTYPED_CALL: Final = ErrorCode(
 REDUNDANT_CAST: Final = ErrorCode(
     "redundant-cast", "Check that cast changes type of expression", "General"
 )
-ASSERT_TYPE: Final = ErrorCode(
-    "assert-type", "Check that assert_type() call succeeds", "General"
-)
+ASSERT_TYPE: Final = ErrorCode("assert-type", "Check that assert_type() call succeeds", "General")
 COMPARISON_OVERLAP: Final = ErrorCode(
     "comparison-overlap", "Check that types in comparisons and 'in' expressions overlap", "General"
 )

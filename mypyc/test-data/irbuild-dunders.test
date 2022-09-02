@@ -148,11 +148,19 @@ class C:
     def __float__(self) -> float:
         return 4.0
 
+    def __pos__(self) -> int:
+        return 5
+
+    def __abs__(self) -> int:
+        return 6
+
 def f(c: C) -> None:
     -c
     ~c
     int(c)
     float(c)
+    +c
+    abs(c)
 [out]
 def C.__neg__(self):
     self :: __main__.C
@@ -172,19 +180,27 @@ def C.__float__(self):
 L0:
     r0 = 4.0
     return r0
+def C.__pos__(self):
+    self :: __main__.C
+L0:
+    return 10
+def C.__abs__(self):
+    self :: __main__.C
+L0:
+    return 12
 def f(c):
     c :: __main__.C
     r0, r1 :: int
-    r2, r3, r4 :: object
-    r5 :: str
-    r6, r7 :: object
+    r2, r3, r4, r5 :: object
+    r6, r7 :: int
 L0:
     r0 = c.__neg__()
     r1 = c.__invert__()
     r2 = load_address PyLong_Type
     r3 = PyObject_CallFunctionObjArgs(r2, c, 0)
-    r4 = builtins :: module
-    r5 = 'float'
-    r6 = CPyObject_GetAttr(r4, r5)
-    r7 = PyObject_CallFunctionObjArgs(r6, c, 0)
+    r4 = load_address PyFloat_Type
+    r5 = PyObject_CallFunctionObjArgs(r4, c, 0)
+    r6 = c.__pos__()
+    r7 = c.__abs__()
     return 1
+

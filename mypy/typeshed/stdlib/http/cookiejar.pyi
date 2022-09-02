@@ -2,7 +2,8 @@ import sys
 from _typeshed import StrPath
 from collections.abc import Iterable, Iterator, Sequence
 from http.client import HTTPResponse
-from typing import ClassVar, Pattern, TypeVar, overload
+from re import Pattern
+from typing import ClassVar, TypeVar, overload
 from urllib.request import Request
 
 __all__ = [
@@ -53,7 +54,8 @@ class FileCookieJar(CookieJar):
     def revert(self, filename: str | None = ..., ignore_discard: bool = ..., ignore_expires: bool = ...) -> None: ...
 
 class MozillaCookieJar(FileCookieJar):
-    header: ClassVar[str]  # undocumented
+    if sys.version_info < (3, 10):
+        header: ClassVar[str]  # undocumented
 
 class LWPCookieJar(FileCookieJar):
     def as_lwp_str(self, ignore_discard: bool = ..., ignore_expires: bool = ...) -> str: ...  # undocumented

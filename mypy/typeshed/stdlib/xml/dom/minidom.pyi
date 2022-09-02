@@ -2,6 +2,7 @@ import sys
 import xml.dom
 from _typeshed import Self, SupportsRead
 from typing import Any
+from typing_extensions import Literal
 from xml.dom.xmlbuilder import DocumentLS, DOMImplementationLS
 from xml.sax.xmlreader import XMLReader
 
@@ -22,7 +23,7 @@ class Node(xml.dom.Node):
     def lastChild(self) -> Node | None: ...
     @property
     def localName(self) -> str | None: ...
-    def __bool__(self) -> bool: ...
+    def __bool__(self) -> Literal[True]: ...
     if sys.version_info >= (3, 9):
         def toxml(self, encoding: Any | None = ..., standalone: Any | None = ...): ...
         def toprettyxml(self, indent: str = ..., newl: str = ..., encoding: Any | None = ..., standalone: Any | None = ...): ...
@@ -48,7 +49,7 @@ class Node(xml.dom.Node):
     def __exit__(self, et, ev, tb) -> None: ...
 
 class DocumentFragment(Node):
-    nodeType: Any
+    nodeType: int
     nodeName: str
     nodeValue: Any
     attributes: Any
@@ -58,7 +59,7 @@ class DocumentFragment(Node):
 
 class Attr(Node):
     name: str
-    nodeType: Any
+    nodeType: int
     attributes: Any
     specified: bool
     ownerElement: Any
@@ -113,7 +114,7 @@ class TypeInfo:
     def __init__(self, namespace, name) -> None: ...
 
 class Element(Node):
-    nodeType: Any
+    nodeType: int
     nodeValue: Any
     schemaType: Any
     parentNode: Any
@@ -127,21 +128,21 @@ class Element(Node):
         self, tagName, namespaceURI: str | None = ..., prefix: Any | None = ..., localName: Any | None = ...
     ) -> None: ...
     def unlink(self) -> None: ...
-    def getAttribute(self, attname): ...
+    def getAttribute(self, attname: str) -> str: ...
     def getAttributeNS(self, namespaceURI: str, localName): ...
-    def setAttribute(self, attname, value) -> None: ...
+    def setAttribute(self, attname: str, value: str) -> None: ...
     def setAttributeNS(self, namespaceURI: str, qualifiedName: str, value) -> None: ...
-    def getAttributeNode(self, attrname): ...
+    def getAttributeNode(self, attrname: str): ...
     def getAttributeNodeNS(self, namespaceURI: str, localName): ...
     def setAttributeNode(self, attr): ...
     setAttributeNodeNS: Any
-    def removeAttribute(self, name) -> None: ...
+    def removeAttribute(self, name: str) -> None: ...
     def removeAttributeNS(self, namespaceURI: str, localName) -> None: ...
     def removeAttributeNode(self, node): ...
     removeAttributeNodeNS: Any
     def hasAttribute(self, name: str) -> bool: ...
     def hasAttributeNS(self, namespaceURI: str, localName) -> bool: ...
-    def getElementsByTagName(self, name): ...
+    def getElementsByTagName(self, name: str): ...
     def getElementsByTagNameNS(self, namespaceURI: str, localName): ...
     def writexml(self, writer, indent: str = ..., addindent: str = ..., newl: str = ...) -> None: ...
     def hasAttributes(self) -> bool: ...
@@ -164,7 +165,7 @@ class Childless:
     def replaceChild(self, newChild, oldChild) -> None: ...
 
 class ProcessingInstruction(Childless, Node):
-    nodeType: Any
+    nodeType: int
     target: Any
     data: Any
     def __init__(self, target, data) -> None: ...
@@ -188,7 +189,7 @@ class CharacterData(Childless, Node):
     def length(self) -> int: ...
 
 class Text(CharacterData):
-    nodeType: Any
+    nodeType: int
     nodeName: str
     attributes: Any
     data: Any
@@ -201,13 +202,13 @@ class Text(CharacterData):
     def wholeText(self) -> str: ...
 
 class Comment(CharacterData):
-    nodeType: Any
+    nodeType: int
     nodeName: str
     def __init__(self, data) -> None: ...
     def writexml(self, writer, indent: str = ..., addindent: str = ..., newl: str = ...) -> None: ...
 
 class CDATASection(Text):
-    nodeType: Any
+    nodeType: int
     nodeName: str
     def writexml(self, writer, indent: str = ..., addindent: str = ..., newl: str = ...) -> None: ...
 
@@ -230,7 +231,7 @@ class Identified:
     systemId: Any
 
 class DocumentType(Identified, Childless, Node):
-    nodeType: Any
+    nodeType: int
     nodeValue: Any
     name: Any
     internalSubset: Any
@@ -243,7 +244,7 @@ class DocumentType(Identified, Childless, Node):
 
 class Entity(Identified, Node):
     attributes: Any
-    nodeType: Any
+    nodeType: int
     nodeValue: Any
     actualEncoding: Any
     encoding: Any
@@ -258,7 +259,7 @@ class Entity(Identified, Node):
     def replaceChild(self, newChild, oldChild) -> None: ...
 
 class Notation(Identified, Childless, Node):
-    nodeType: Any
+    nodeType: int
     nodeValue: Any
     nodeName: Any
     def __init__(self, name, publicId, systemId) -> None: ...
@@ -281,7 +282,7 @@ class ElementInfo:
 
 class Document(Node, DocumentLS):
     implementation: Any
-    nodeType: Any
+    nodeType: int
     nodeName: str
     nodeValue: Any
     attributes: Any

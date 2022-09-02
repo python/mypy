@@ -4,16 +4,14 @@ from typing import Any, NoReturn, overload
 from typing_extensions import Literal, final
 
 if sys.platform == "win32":
-    if sys.version_info >= (3, 7):
-        ABOVE_NORMAL_PRIORITY_CLASS: Literal[32768]
-        BELOW_NORMAL_PRIORITY_CLASS: Literal[16384]
-        CREATE_BREAKAWAY_FROM_JOB: Literal[16777216]
-        CREATE_DEFAULT_ERROR_MODE: Literal[67108864]
-        CREATE_NO_WINDOW: Literal[134217728]
+    ABOVE_NORMAL_PRIORITY_CLASS: Literal[32768]
+    BELOW_NORMAL_PRIORITY_CLASS: Literal[16384]
+    CREATE_BREAKAWAY_FROM_JOB: Literal[16777216]
+    CREATE_DEFAULT_ERROR_MODE: Literal[67108864]
+    CREATE_NO_WINDOW: Literal[134217728]
     CREATE_NEW_CONSOLE: Literal[16]
     CREATE_NEW_PROCESS_GROUP: Literal[512]
-    if sys.version_info >= (3, 7):
-        DETACHED_PROCESS: Literal[8]
+    DETACHED_PROCESS: Literal[8]
     DUPLICATE_CLOSE_SOURCE: Literal[1]
     DUPLICATE_SAME_ACCESS: Literal[2]
 
@@ -39,24 +37,21 @@ if sys.platform == "win32":
         FILE_MAP_EXECUTE: Literal[32]
         FILE_MAP_READ: Literal[4]
         FILE_MAP_WRITE: Literal[2]
-    if sys.version_info >= (3, 7):
-        FILE_TYPE_CHAR: Literal[2]
-        FILE_TYPE_DISK: Literal[1]
-        FILE_TYPE_PIPE: Literal[3]
-        FILE_TYPE_REMOTE: Literal[32768]
-        FILE_TYPE_UNKNOWN: Literal[0]
+    FILE_TYPE_CHAR: Literal[2]
+    FILE_TYPE_DISK: Literal[1]
+    FILE_TYPE_PIPE: Literal[3]
+    FILE_TYPE_REMOTE: Literal[32768]
+    FILE_TYPE_UNKNOWN: Literal[0]
 
     GENERIC_READ: Literal[2147483648]
     GENERIC_WRITE: Literal[1073741824]
-    if sys.version_info >= (3, 7):
-        HIGH_PRIORITY_CLASS: Literal[128]
+    HIGH_PRIORITY_CLASS: Literal[128]
     INFINITE: Literal[4294967295]
     if sys.version_info >= (3, 8):
         INVALID_HANDLE_VALUE: int  # very large number
-    if sys.version_info >= (3, 7):
-        IDLE_PRIORITY_CLASS: Literal[64]
-        NORMAL_PRIORITY_CLASS: Literal[32]
-        REALTIME_PRIORITY_CLASS: Literal[256]
+    IDLE_PRIORITY_CLASS: Literal[64]
+    NORMAL_PRIORITY_CLASS: Literal[32]
+    REALTIME_PRIORITY_CLASS: Literal[256]
     NMPWAIT_WAIT_FOREVER: Literal[4294967295]
 
     if sys.version_info >= (3, 8):
@@ -110,6 +105,24 @@ if sys.platform == "win32":
     WAIT_ABANDONED_0: Literal[128]
     WAIT_OBJECT_0: Literal[0]
     WAIT_TIMEOUT: Literal[258]
+
+    if sys.version_info >= (3, 10):
+        LOCALE_NAME_INVARIANT: str
+        LOCALE_NAME_MAX_LENGTH: int
+        LOCALE_NAME_SYSTEM_DEFAULT: str
+        LOCALE_NAME_USER_DEFAULT: str | None
+
+        LCMAP_FULLWIDTH: int
+        LCMAP_HALFWIDTH: int
+        LCMAP_HIRAGANA: int
+        LCMAP_KATAKANA: int
+        LCMAP_LINGUISTIC_CASING: int
+        LCMAP_LOWERCASE: int
+        LCMAP_SIMPLIFIED_CHINESE: int
+        LCMAP_TITLECASE: int
+        LCMAP_TRADITIONAL_CHINESE: int
+        LCMAP_UPPERCASE: int
+
     def CloseHandle(__handle: int) -> None: ...
     @overload
     def ConnectNamedPipe(handle: int, overlapped: Literal[True]) -> Overlapped: ...
@@ -158,10 +171,8 @@ if sys.platform == "win32":
         __options: int = ...,
     ) -> int: ...
     def ExitProcess(__ExitCode: int) -> NoReturn: ...
-    if sys.version_info >= (3, 7):
-        def GetACP() -> int: ...
-        def GetFileType(handle: int) -> int: ...
-
+    def GetACP() -> int: ...
+    def GetFileType(handle: int) -> int: ...
     def GetCurrentProcess() -> int: ...
     def GetExitCodeProcess(__process: int) -> int: ...
     def GetLastError() -> int: ...
@@ -170,6 +181,9 @@ if sys.platform == "win32":
     def GetVersion() -> int: ...
     def OpenProcess(__desired_access: int, __inherit_handle: bool, __process_id: int) -> int: ...
     def PeekNamedPipe(__handle: int, __size: int = ...) -> tuple[int, int] | tuple[bytes, int, int]: ...
+    if sys.version_info >= (3, 10):
+        def LCMapStringEx(locale: str, flags: int, src: str) -> str: ...
+
     @overload
     def ReadFile(handle: int, size: int, overlapped: Literal[True]) -> tuple[Overlapped, int]: ...
     @overload

@@ -1,13 +1,21 @@
 """Intermediate representation of functions."""
 
-from typing import List, Optional, Sequence
+from __future__ import annotations
+
+from typing import Sequence
 from typing_extensions import Final
 
-from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS
-
+from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
 from mypyc.common import JsonDict, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
-    DeserMaps, BasicBlock, Value, Register, Assign, AssignMulti, ControlOp, LoadAddress
+    Assign,
+    AssignMulti,
+    BasicBlock,
+    ControlOp,
+    DeserMaps,
+    LoadAddress,
+    Register,
+    Value,
 )
 from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator
@@ -20,7 +28,8 @@ class RuntimeArg:
     """
 
     def __init__(
-            self, name: str, typ: RType, kind: ArgKind = ARG_POS, pos_only: bool = False) -> None:
+        self, name: str, typ: RType, kind: ArgKind = ARG_POS, pos_only: bool = False
+    ) -> None:
         self.name = name
         self.type = typ
         self.kind = kind
@@ -31,20 +40,25 @@ class RuntimeArg:
         return self.kind.is_optional()
 
     def __repr__(self) -> str:
-        return 'RuntimeArg(name={}, type={}, optional={!r}, pos_only={!r})'.format(
-            self.name, self.type, self.optional, self.pos_only)
+        return "RuntimeArg(name={}, type={}, optional={!r}, pos_only={!r})".format(
+            self.name, self.type, self.optional, self.pos_only
+        )
 
     def serialize(self) -> JsonDict:
-        return {'name': self.name, 'type': self.type.serialize(), 'kind': int(self.kind.value),
-                'pos_only': self.pos_only}
+        return {
+            "name": self.name,
+            "type": self.type.serialize(),
+            "kind": int(self.kind.value),
+            "pos_only": self.pos_only,
+        }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'RuntimeArg':
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RuntimeArg:
         return RuntimeArg(
-            data['name'],
-            deserialize_type(data['type'], ctx),
-            ArgKind(data['kind']),
-            data['pos_only'],
+            data["name"],
+            deserialize_type(data["type"], ctx),
+            ArgKind(data["kind"]),
+            data["pos_only"],
         )
 
 
@@ -58,16 +72,16 @@ class FuncSignature:
         self.ret_type = ret_type
 
     def __repr__(self) -> str:
-        return f'FuncSignature(args={self.args!r}, ret={self.ret_type!r})'
+        return f"FuncSignature(args={self.args!r}, ret={self.ret_type!r})"
 
     def serialize(self) -> JsonDict:
-        return {'args': [t.serialize() for t in self.args], 'ret_type': self.ret_type.serialize()}
+        return {"args": [t.serialize() for t in self.args], "ret_type": self.ret_type.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncSignature':
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncSignature:
         return FuncSignature(
-            [RuntimeArg.deserialize(arg, ctx) for arg in data['args']],
-            deserialize_type(data['ret_type'], ctx),
+            [RuntimeArg.deserialize(arg, ctx) for arg in data["args"]],
+            deserialize_type(data["ret_type"], ctx),
         )
 
 
@@ -83,14 +97,16 @@ class FuncDecl:
     static method, a class method, or a property getter/setter.
     """
 
-    def __init__(self,
-                 name: str,
-                 class_name: Optional[str],
-                 module_name: str,
-                 sig: FuncSignature,
-                 kind: int = FUNC_NORMAL,
-                 is_prop_setter: bool = False,
-                 is_prop_getter: bool = False) -> None:
+    def __init__(
+        self,
+        name: str,
+        class_name: str | None,
+        module_name: str,
+        sig: FuncSignature,
+        kind: int = FUNC_NORMAL,
+        is_prop_setter: bool = False,
+        is_prop_getter: bool = False,
+    ) -> None:
         self.name = name
         self.class_name = class_name
         self.module_name = module_name
@@ -99,7 +115,7 @@ class FuncDecl:
         self.is_prop_setter = is_prop_setter
         self.is_prop_getter = is_prop_getter
         if class_name is None:
-            self.bound_sig: Optional[FuncSignature] = None
+            self.bound_sig: FuncSignature | None = None
         else:
             if kind == FUNC_STATICMETHOD:
                 self.bound_sig = sig
@@ -108,7 +124,7 @@ class FuncDecl:
 
         # this is optional because this will be set to the line number when the corresponding
         # FuncIR is created
-        self._line: Optional[int] = None
+        self._line: int | None = None
 
     @property
     def line(self) -> int:
@@ -125,8 +141,8 @@ class FuncDecl:
         return get_id_from_name(self.name, self.fullname, self.line)
 
     @staticmethod
-    def compute_shortname(class_name: Optional[str], name: str) -> str:
-        return class_name + '.' + name if class_name else name
+    def compute_shortname(class_name: str | None, name: str) -> str:
+        return class_name + "." + name if class_name else name
 
     @property
     def shortname(self) -> str:
@@ -134,7 +150,7 @@ class FuncDecl:
 
     @property
     def fullname(self) -> str:
-        return self.module_name + '.' + self.shortname
+        return self.module_name + "." + self.shortname
 
     def cname(self, names: NameGenerator) -> str:
         partial_name = short_id_from_name(self.name, self.shortname, self._line)
@@ -142,34 +158,34 @@ class FuncDecl:
 
     def serialize(self) -> JsonDict:
         return {
-            'name': self.name,
-            'class_name': self.class_name,
-            'module_name': self.module_name,
-            'sig': self.sig.serialize(),
-            'kind': self.kind,
-            'is_prop_setter': self.is_prop_setter,
-            'is_prop_getter': self.is_prop_getter,
+            "name": self.name,
+            "class_name": self.class_name,
+            "module_name": self.module_name,
+            "sig": self.sig.serialize(),
+            "kind": self.kind,
+            "is_prop_setter": self.is_prop_setter,
+            "is_prop_getter": self.is_prop_getter,
         }
 
     # TODO: move this to FuncIR?
     @staticmethod
     def get_id_from_json(func_ir: JsonDict) -> str:
         """Get the id from the serialized FuncIR associated with this FuncDecl"""
-        decl = func_ir['decl']
-        shortname = FuncDecl.compute_shortname(decl['class_name'], decl['name'])
-        fullname = decl['module_name'] + '.' + shortname
-        return get_id_from_name(decl['name'], fullname, func_ir['line'])
+        decl = func_ir["decl"]
+        shortname = FuncDecl.compute_shortname(decl["class_name"], decl["name"])
+        fullname = decl["module_name"] + "." + shortname
+        return get_id_from_name(decl["name"], fullname, func_ir["line"])
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncDecl':
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncDecl:
         return FuncDecl(
-            data['name'],
-            data['class_name'],
-            data['module_name'],
-            FuncSignature.deserialize(data['sig'], ctx),
-            data['kind'],
-            data['is_prop_setter'],
-            data['is_prop_getter'],
+            data["name"],
+            data["class_name"],
+            data["module_name"],
+            FuncSignature.deserialize(data["sig"], ctx),
+            data["kind"],
+            data["is_prop_setter"],
+            data["is_prop_getter"],
         )
 
 
@@ -179,12 +195,14 @@ class FuncIR:
     Unlike FuncDecl, this includes the IR of the body (basic blocks).
     """
 
-    def __init__(self,
-                 decl: FuncDecl,
-                 arg_regs: List[Register],
-                 blocks: List[BasicBlock],
-                 line: int = -1,
-                 traceback_name: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        decl: FuncDecl,
+        arg_regs: list[Register],
+        blocks: list[BasicBlock],
+        line: int = -1,
+        traceback_name: str | None = None,
+    ) -> None:
         # Declaration of the function, including the signature
         self.decl = decl
         # Registers for all the arguments to the function
@@ -210,7 +228,7 @@ class FuncIR:
         return self.decl.sig.ret_type
 
     @property
-    def class_name(self) -> Optional[str]:
+    def class_name(self) -> str | None:
         return self.decl.class_name
 
     @property
@@ -234,38 +252,34 @@ class FuncIR:
 
     def __repr__(self) -> str:
         if self.class_name:
-            return f'<FuncIR {self.class_name}.{self.name}>'
+            return f"<FuncIR {self.class_name}.{self.name}>"
         else:
-            return f'<FuncIR {self.name}>'
+            return f"<FuncIR {self.name}>"
 
     def serialize(self) -> JsonDict:
         # We don't include blocks in the serialized version
         return {
-            'decl': self.decl.serialize(),
-            'line': self.line,
-            'traceback_name': self.traceback_name,
+            "decl": self.decl.serialize(),
+            "line": self.line,
+            "traceback_name": self.traceback_name,
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncIR':
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncIR:
         return FuncIR(
-            FuncDecl.deserialize(data['decl'], ctx),
-            [],
-            [],
-            data['line'],
-            data['traceback_name'],
+            FuncDecl.deserialize(data["decl"], ctx), [], [], data["line"], data["traceback_name"]
         )
 
 
 INVALID_FUNC_DEF: Final = FuncDef("<INVALID_FUNC_DEF>", [], Block([]))
 
 
-def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+def all_values(args: list[Register], blocks: list[BasicBlock]) -> list[Value]:
     """Return the set of all values that may be initialized in the blocks.
 
     This omits registers that are only read.
     """
-    values: List[Value] = list(args)
+    values: list[Value] = list(args)
     seen_registers = set(args)
 
     for block in blocks:
@@ -279,9 +293,11 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
                     continue
                 else:
                     # If we take the address of a register, it might get initialized.
-                    if (isinstance(op, LoadAddress)
-                            and isinstance(op.src, Register)
-                            and op.src not in seen_registers):
+                    if (
+                        isinstance(op, LoadAddress)
+                        and isinstance(op.src, Register)
+                        and op.src not in seen_registers
+                    ):
                         values.append(op.src)
                         seen_registers.add(op.src)
                     values.append(op)
@@ -289,9 +305,9 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
     return values
 
 
-def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+def all_values_full(args: list[Register], blocks: list[BasicBlock]) -> list[Value]:
     """Return set of all values that are initialized or accessed."""
-    values: List[Value] = list(args)
+    values: list[Value] = list(args)
     seen_registers = set(args)
 
     for block in blocks:

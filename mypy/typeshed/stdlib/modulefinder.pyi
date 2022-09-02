@@ -3,12 +3,13 @@ from collections.abc import Container, Iterable, Iterator, Sequence
 from types import CodeType
 from typing import IO, Any
 
-LOAD_CONST: int  # undocumented
-IMPORT_NAME: int  # undocumented
-STORE_NAME: int  # undocumented
-STORE_GLOBAL: int  # undocumented
-STORE_OPS: tuple[int, int]  # undocumented
-EXTENDED_ARG: int  # undocumented
+if sys.version_info < (3, 11):
+    LOAD_CONST: int  # undocumented
+    IMPORT_NAME: int  # undocumented
+    STORE_NAME: int  # undocumented
+    STORE_GLOBAL: int  # undocumented
+    STORE_OPS: tuple[int, int]  # undocumented
+    EXTENDED_ARG: int  # undocumented
 
 packagePathMap: dict[str, list[str]]  # undocumented
 

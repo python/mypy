@@ -4,13 +4,13 @@ The class defines __call__ for calling the function and allows access to
 non-local variables defined in outer scopes.
 """
 
-from typing import List
+from __future__ import annotations
 
-from mypyc.common import SELF_NAME, ENV_ATTR_NAME
-from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
-from mypyc.ir.rtypes import RInstance, object_rprimitive
-from mypyc.ir.func_ir import FuncIR, FuncSignature, RuntimeArg, FuncDecl
+from mypyc.common import ENV_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
+from mypyc.ir.ops import BasicBlock, Call, Register, Return, SetAttr, Value
+from mypyc.ir.rtypes import RInstance, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.primitives.misc_ops import method_new_op
@@ -45,10 +45,10 @@ def setup_callable_class(builder: IRBuilder) -> None:
     #     else:
     #         def foo():          ---->    foo_obj_0()
     #             return False
-    name = base_name = f'{builder.fn_info.namespaced_name()}_obj'
+    name = base_name = f"{builder.fn_info.namespaced_name()}_obj"
     count = 0
     while name in builder.callable_class_names:
-        name = base_name + '_' + str(count)
+        name = base_name + "_" + str(count)
         count += 1
     builder.callable_class_names.add(name)
 
@@ -67,9 +67,7 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # If the enclosing class doesn't contain nested (which will happen if
     # this is a toplevel lambda), don't set up an environment.
     if builder.fn_infos[-2].contains_nested:
-        callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(
-            builder.fn_infos[-2].env_class
-        )
+        callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
     callable_class_ir.mro = [callable_class_ir]
     builder.fn_info.callable_class = ImplicitClass(callable_class_ir)
     builder.classes.append(callable_class_ir)
@@ -80,11 +78,13 @@ def setup_callable_class(builder: IRBuilder) -> None:
     builder.fn_info.callable_class.self_reg = builder.read(self_target, builder.fn_info.fitem.line)
 
 
-def add_call_to_callable_class(builder: IRBuilder,
-                               args: List[Register],
-                               blocks: List[BasicBlock],
-                               sig: FuncSignature,
-                               fn_info: FuncInfo) -> FuncIR:
+def add_call_to_callable_class(
+    builder: IRBuilder,
+    args: list[Register],
+    blocks: list[BasicBlock],
+    sig: FuncSignature,
+    fn_info: FuncInfo,
+) -> FuncIR:
     """Generate a '__call__' method for a callable class representing a nested function.
 
     This takes the blocks and signature associated with a function
@@ -93,11 +93,12 @@ def add_call_to_callable_class(builder: IRBuilder,
     """
     # Since we create a method, we also add a 'self' parameter.
     sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args, sig.ret_type)
-    call_fn_decl = FuncDecl('__call__', fn_info.callable_class.ir.name, builder.module_name, sig)
-    call_fn_ir = FuncIR(call_fn_decl, args, blocks,
-                        fn_info.fitem.line, traceback_name=fn_info.fitem.name)
-    fn_info.callable_class.ir.methods['__call__'] = call_fn_ir
-    fn_info.callable_class.ir.method_decls['__call__'] = call_fn_decl
+    call_fn_decl = FuncDecl("__call__", fn_info.callable_class.ir.name, builder.module_name, sig)
+    call_fn_ir = FuncIR(
+        call_fn_decl, args, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name
+    )
+    fn_info.callable_class.ir.methods["__call__"] = call_fn_ir
+    fn_info.callable_class.ir.method_decls["__call__"] = call_fn_decl
     return call_fn_ir
 
 
@@ -105,17 +106,21 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generate the '__get__' method for a callable class."""
     line = fn_info.fitem.line
     with builder.enter_method(
-            fn_info.callable_class.ir, '__get__', object_rprimitive, fn_info,
-            self_type=object_rprimitive):
-        instance = builder.add_argument('instance', object_rprimitive)
-        builder.add_argument('owner', object_rprimitive)
+        fn_info.callable_class.ir,
+        "__get__",
+        object_rprimitive,
+        fn_info,
+        self_type=object_rprimitive,
+    ):
+        instance = builder.add_argument("instance", object_rprimitive)
+        builder.add_argument("owner", object_rprimitive)
 
         # If accessed through the class, just return the callable
         # object. If accessed through an object, create a new bound
         # instance method object.
         instance_block, class_block = BasicBlock(), BasicBlock()
         comparison = builder.translate_is_op(
-            builder.read(instance), builder.none_object(), 'is', line
+            builder.read(instance), builder.none_object(), "is", line
         )
         builder.add_bool_branch(comparison, class_block, instance_block)
 
@@ -123,8 +128,9 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
         builder.add(Return(builder.self()))
 
         builder.activate_block(instance_block)
-        builder.add(Return(builder.call_c(method_new_op,
-                                          [builder.self(), builder.read(instance)], line)))
+        builder.add(
+            Return(builder.call_c(method_new_op, [builder.self(), builder.read(instance)], line))
+        )
 
 
 def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:

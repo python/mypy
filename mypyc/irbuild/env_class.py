@@ -15,17 +15,16 @@ non-locals is via an instance of an environment class. Example:
         return g()
 """
 
-from typing import Dict, Optional, Union
+from __future__ import annotations
 
 from mypy.nodes import FuncDef, SymbolNode
-
-from mypyc.common import SELF_NAME, ENV_ATTR_NAME
+from mypyc.common import ENV_ATTR_NAME, SELF_NAME
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
 from mypyc.ir.rtypes import RInstance, object_rprimitive
-from mypyc.ir.class_ir import ClassIR
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
+from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
-from mypyc.irbuild.context import FuncInfo, ImplicitClass, GeneratorClass
 
 
 def setup_env_class(builder: IRBuilder) -> ClassIR:
@@ -43,8 +42,9 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     Return a ClassIR representing an environment for a function
     containing a nested function.
     """
-    env_class = ClassIR(f'{builder.fn_info.namespaced_name()}_env',
-                        builder.module_name, is_generated=True)
+    env_class = ClassIR(
+        f"{builder.fn_info.namespaced_name()}_env", builder.module_name, is_generated=True
+    )
     env_class.attributes[SELF_NAME] = RInstance(env_class)
     if builder.fn_info.is_nested:
         # If the function is nested, its environment class must contain an environment
@@ -77,10 +77,14 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
 
     if builder.fn_info.is_nested:
         builder.fn_info.callable_class._curr_env_reg = curr_env_reg
-        builder.add(SetAttr(curr_env_reg,
-                            ENV_ATTR_NAME,
-                            builder.fn_info.callable_class.prev_env_reg,
-                            builder.fn_info.fitem.line))
+        builder.add(
+            SetAttr(
+                curr_env_reg,
+                ENV_ATTR_NAME,
+                builder.fn_info.callable_class.prev_env_reg,
+                builder.fn_info.fitem.line,
+            )
+        )
     else:
         builder.fn_info._curr_env_reg = curr_env_reg
 
@@ -107,9 +111,9 @@ def load_env_registers(builder: IRBuilder) -> None:
             setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
 
 
-def load_outer_env(builder: IRBuilder,
-                   base: Value,
-                   outer_env: Dict[SymbolNode, SymbolTarget]) -> Value:
+def load_outer_env(
+    builder: IRBuilder, base: Value, outer_env: dict[SymbolNode, SymbolTarget]
+) -> Value:
     """Load the environment class for a given base into a register.
 
     Additionally, iterates through all of the SymbolNode and
@@ -122,7 +126,7 @@ def load_outer_env(builder: IRBuilder,
     Returns the register where the environment class was loaded.
     """
     env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line))
-    assert isinstance(env.type, RInstance), f'{env} must be of type RInstance'
+    assert isinstance(env.type, RInstance), f"{env} must be of type RInstance"
 
     for symbol, target in outer_env.items():
         env.type.class_ir.attributes[symbol.name] = target.type
@@ -155,10 +159,12 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
         index -= 1
 
 
-def add_args_to_env(builder: IRBuilder,
-                    local: bool = True,
-                    base: Optional[Union[FuncInfo, ImplicitClass]] = None,
-                    reassign: bool = True) -> None:
+def add_args_to_env(
+    builder: IRBuilder,
+    local: bool = True,
+    base: FuncInfo | ImplicitClass | None = None,
+    reassign: bool = True,
+) -> None:
     fn_info = builder.fn_info
     if local:
         for arg in fn_info.fitem.arguments:
@@ -168,7 +174,7 @@ def add_args_to_env(builder: IRBuilder,
         for arg in fn_info.fitem.arguments:
             if is_free_variable(builder, arg.variable) or fn_info.is_generator:
                 rtype = builder.type_to_rtype(arg.variable.type)
-                assert base is not None, 'base cannot be None for adding nonlocal args'
+                assert base is not None, "base cannot be None for adding nonlocal args"
                 builder.add_var_to_env_class(arg.variable, rtype, base, reassign=reassign)
 
 
@@ -201,7 +207,4 @@ def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: Impli
 
 def is_free_variable(builder: IRBuilder, symbol: SymbolNode) -> bool:
     fitem = builder.fn_info.fitem
-    return (
-        fitem in builder.free_variables
-        and symbol in builder.free_variables[fitem]
-    )
+    return fitem in builder.free_variables and symbol in builder.free_variables[fitem]

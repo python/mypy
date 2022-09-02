@@ -5,7 +5,7 @@ from threading import Lock, Semaphore, Thread
 from typing import Any, Generic, TypeVar
 from weakref import ref
 
-from ._base import Executor, Future
+from ._base import BrokenExecutor, Executor, Future
 
 _threads_queues: Mapping[Any, Any]
 _shutdown: bool
@@ -28,21 +28,14 @@ class _WorkItem(Generic[_S]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-if sys.version_info >= (3, 7):
-    def _worker(
-        executor_reference: ref[Any],
-        work_queue: queue.SimpleQueue[Any],
-        initializer: Callable[..., None],
-        initargs: tuple[Any, ...],
-    ) -> None: ...
+def _worker(
+    executor_reference: ref[Any],
+    work_queue: queue.SimpleQueue[Any],
+    initializer: Callable[..., object],
+    initargs: tuple[Any, ...],
+) -> None: ...
 
-else:
-    def _worker(executor_reference: ref[Any], work_queue: queue.Queue[Any]) -> None: ...
-
-if sys.version_info >= (3, 7):
-    from ._base import BrokenExecutor
-
-    class BrokenThreadPool(BrokenExecutor): ...
+class BrokenThreadPool(BrokenExecutor): ...
 
 class ThreadPoolExecutor(Executor):
     _max_workers: int
@@ -54,21 +47,13 @@ class ThreadPoolExecutor(Executor):
     _thread_name_prefix: str | None = ...
     _initializer: Callable[..., None] | None = ...
     _initargs: tuple[Any, ...] = ...
-    if sys.version_info >= (3, 7):
-        _work_queue: queue.SimpleQueue[_WorkItem[Any]]
-    else:
-        _work_queue: queue.Queue[_WorkItem[Any]]
-    if sys.version_info >= (3, 7):
-        def __init__(
-            self,
-            max_workers: int | None = ...,
-            thread_name_prefix: str = ...,
-            initializer: Callable[..., None] | None = ...,
-            initargs: tuple[Any, ...] = ...,
-        ) -> None: ...
-    else:
-        def __init__(self, max_workers: int | None = ..., thread_name_prefix: str = ...) -> None: ...
-
+    _work_queue: queue.SimpleQueue[_WorkItem[Any]]
+    def __init__(
+        self,
+        max_workers: int | None = ...,
+        thread_name_prefix: str = ...,
+        initializer: Callable[..., object] | None = ...,
+        initargs: tuple[Any, ...] = ...,
+    ) -> None: ...
     def _adjust_thread_count(self) -> None: ...
-    if sys.version_info >= (3, 7):
-        def _initializer_failed(self) -> None: ...
+    def _initializer_failed(self) -> None: ...

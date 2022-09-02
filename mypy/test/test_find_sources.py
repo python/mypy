@@ -1,18 +1,20 @@
+from __future__ import annotations
+
 import os
-import pytest
 import shutil
 import tempfile
 import unittest
-from typing import List, Optional, Set, Tuple
+
+import pytest
 
 from mypy.find_sources import InvalidSourceList, SourceFinder, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.options import Options
 from mypy.modulefinder import BuildSource
+from mypy.options import Options
 
 
 class FakeFSCache(FileSystemCache):
-    def __init__(self, files: Set[str]) -> None:
+    def __init__(self, files: set[str]) -> None:
         self.files = {os.path.abspath(f) for f in files}
 
     def isfile(self, file: str) -> bool:
@@ -23,10 +25,10 @@ class FakeFSCache(FileSystemCache):
             dir += os.sep
         return any(f.startswith(dir) for f in self.files)
 
-    def listdir(self, dir: str) -> List[str]:
+    def listdir(self, dir: str) -> list[str]:
         if not dir.endswith(os.sep):
             dir += os.sep
-        return list({f[len(dir):].split(os.sep)[0] for f in self.files if f.startswith(dir)})
+        return list({f[len(dir) :].split(os.sep)[0] for f in self.files if f.startswith(dir)})
 
     def init_under_package_root(self, file: str) -> bool:
         return False
@@ -38,25 +40,25 @@ def normalise_path(path: str) -> str:
     return path
 
 
-def normalise_build_source_list(sources: List[BuildSource]) -> List[Tuple[str, Optional[str]]]:
+def normalise_build_source_list(sources: list[BuildSource]) -> list[tuple[str, str | None]]:
     return sorted(
         (s.module, (normalise_path(s.base_dir) if s.base_dir is not None else None))
         for s in sources
     )
 
 
-def crawl(finder: SourceFinder, f: str) -> Tuple[str, str]:
+def crawl(finder: SourceFinder, f: str) -> tuple[str, str]:
     module, base_dir = finder.crawl_up(f)
     return module, normalise_path(base_dir)
 
 
-def find_sources_in_dir(finder: SourceFinder, f: str) -> List[Tuple[str, Optional[str]]]:
+def find_sources_in_dir(finder: SourceFinder, f: str) -> list[tuple[str, str | None]]:
     return normalise_build_source_list(finder.find_sources_in_dir(os.path.abspath(f)))
 
 
 def find_sources(
-    paths: List[str], options: Options, fscache: FileSystemCache
-) -> List[Tuple[str, Optional[str]]]:
+    paths: list[str], options: Options, fscache: FileSystemCache
+) -> list[tuple[str, str | None]]:
     paths = [os.path.abspath(p) for p in paths]
     return normalise_build_source_list(create_source_list(paths, options, fscache))
 
@@ -87,18 +89,14 @@ class SourceFinderSuite(unittest.TestCase):
         finder = SourceFinder(FakeFSCache({"/a/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/setup.py") == ("a.setup", "/")
 
-        finder = SourceFinder(
-            FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}),
-            options,
-        )
+        finder = SourceFinder(FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/b/setup.py") == ("setup", "/a/b")
 
         finder = SourceFinder(
-            FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}),
-            options,
+            FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}), options
         )
         assert crawl(finder, "/a/b/c/setup.py") == ("c.setup", "/a/b")
 
@@ -118,18 +116,14 @@ class SourceFinderSuite(unittest.TestCase):
         finder = SourceFinder(FakeFSCache({"/a/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/setup.py") == ("a.setup", "/")
 
-        finder = SourceFinder(
-            FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}),
-            options,
-        )
+        finder = SourceFinder(FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/b/setup.py") == ("a.b.setup", "/")
 
         finder = SourceFinder(
-            FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}),
-            options,
+            FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}), options
         )
         assert crawl(finder, "/a/b/c/setup.py") == ("a.b.c.setup", "/")
 
@@ -150,18 +144,14 @@ class SourceFinderSuite(unittest.TestCase):
         finder = SourceFinder(FakeFSCache({"/a/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/setup.py") == ("a.setup", "/")
 
-        finder = SourceFinder(
-            FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}),
-            options,
-        )
+        finder = SourceFinder(FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py", "/a/__init__.py"}), options)
         assert crawl(finder, "/a/b/setup.py") == ("a.b.setup", "/")
 
         finder = SourceFinder(
-            FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}),
-            options,
+            FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}), options
         )
         assert crawl(finder, "/a/b/c/setup.py") == ("a.b.c.setup", "/")
 
@@ -172,8 +162,7 @@ class SourceFinderSuite(unittest.TestCase):
         assert crawl(finder, "/a/b/c/setup.py") == ("c.setup", "/a/b")
 
         finder = SourceFinder(
-            FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}),
-            options,
+            FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}), options
         )
         assert crawl(finder, "/a/b/c/setup.py") == ("c.setup", "/a/b")
 
@@ -305,8 +294,8 @@ class SourceFinderSuite(unittest.TestCase):
             ("a2.b.c.d.e", "/pkg"),
             ("e", "/pkg/a1/b/c/d"),
         ]
-        assert find_sources(["/pkg/a1/b/f.py"], options, fscache) == [('f', '/pkg/a1/b')]
-        assert find_sources(["/pkg/a2/b/f.py"], options, fscache) == [('a2.b.f', '/pkg')]
+        assert find_sources(["/pkg/a1/b/f.py"], options, fscache) == [("f", "/pkg/a1/b")]
+        assert find_sources(["/pkg/a2/b/f.py"], options, fscache) == [("a2.b.f", "/pkg")]
 
         # directory name
         options.exclude = ["/a1/"]
@@ -325,7 +314,8 @@ class SourceFinderSuite(unittest.TestCase):
 
         options.exclude = ["/a1/$"]
         assert find_sources(["/pkg/a1"], options, fscache) == [
-            ('e', '/pkg/a1/b/c/d'), ('f', '/pkg/a1/b')
+            ("e", "/pkg/a1/b/c/d"),
+            ("f", "/pkg/a1/b"),
         ]
 
         # paths
@@ -359,8 +349,14 @@ class SourceFinderSuite(unittest.TestCase):
 
         # nothing should be ignored as a result of this
         big_exclude1 = [
-            "/pkg/a/", "/2", "/1", "/pk/", "/kg", "/g.py", "/bc", "/xxx/pkg/a2/b/f.py"
-            "xxx/pkg/a2/b/f.py",
+            "/pkg/a/",
+            "/2",
+            "/1",
+            "/pk/",
+            "/kg",
+            "/g.py",
+            "/bc",
+            "/xxx/pkg/a2/b/f.py" "xxx/pkg/a2/b/f.py",
         ]
         big_exclude2 = ["|".join(big_exclude1)]
         for big_exclude in [big_exclude1, big_exclude2]:

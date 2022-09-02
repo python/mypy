@@ -8,13 +8,11 @@ from .futures import *
 from .locks import *
 from .protocols import *
 from .queues import *
+from .runners import *
 from .streams import *
 from .subprocess import *
 from .tasks import *
 from .transports import *
-
-if sys.version_info >= (3, 7):
-    from .runners import *
 
 if sys.version_info >= (3, 8):
     from .exceptions import *
@@ -24,6 +22,7 @@ if sys.version_info >= (3, 9):
 
 if sys.version_info >= (3, 11):
     from .taskgroups import *
+    from .timeouts import *
 
 if sys.platform == "win32":
     from .windows_events import *

@@ -7,11 +7,13 @@ on:
     - 'docs/**'
     - '**/*.rst'
     - '**/*.md'
+    - 'misc/**'
     - 'mypyc/**'
     - 'mypy/stubtest.py'
     - 'mypy/stubgen.py'
     - 'mypy/stubgenc.py'
     - 'mypy/test/**'
+    - 'test-data/**'
 
 jobs:
   mypy_primer:
@@ -21,14 +23,14 @@ jobs:
       contents: read
     strategy:
       matrix:
-        shard-index: [0, 1, 2]
+        shard-index: [0, 1, 2, 3, 4]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           path: mypy_to_test
           fetch-depth: 0
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
       - name: Install dependencies
@@ -54,13 +56,13 @@ jobs:
             mypy_primer \
             --repo mypy_to_test \
             --new $GITHUB_SHA --old base_commit \
-            --num-shards 3 --shard-index ${{ matrix.shard-index }} \
+            --num-shards 5 --shard-index ${{ matrix.shard-index }} \
             --debug \
             --output concise \
             | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]
       - name: Upload mypy_primer diff
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: mypy_primer_diffs
           path: diff_${{ matrix.shard-index }}.txt
@@ -70,7 +72,7 @@ jobs:
           echo ${{ github.event.pull_request.number }} | tee pr_number.txt
       - if: ${{ matrix.shard-index }} == 0
         name: Upload PR number
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: mypy_primer_diffs
           path: pr_number.txt

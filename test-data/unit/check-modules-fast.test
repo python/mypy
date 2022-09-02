@@ -1,0 +1,136 @@
+-- Type checker test cases dealing with module lookup edge cases
+-- to ensure that --fast-module-lookup matches regular lookup behavior
+
+[case testModuleLookup]
+# flags: --fast-module-lookup
+import m
+reveal_type(m.a)  # N: Revealed type is "m.A"
+
+[file m.py]
+class A: pass
+a = A()
+
+[case testModuleLookupStub]
+# flags: --fast-module-lookup
+import m
+reveal_type(m.a)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A: pass
+a = A()
+
+[case testModuleLookupFromImport]
+# flags: --fast-module-lookup
+from m import a
+reveal_type(a)  # N: Revealed type is "m.A"
+
+[file m.py]
+class A: pass
+a = A()
+
+[case testModuleLookupStubFromImport]
+# flags: --fast-module-lookup
+from m import a
+reveal_type(a)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A: pass
+a = A()
+
+
+[case testModuleLookupWeird]
+# flags: --fast-module-lookup
+from m import a
+reveal_type(a)  # N: Revealed type is "builtins.object"
+reveal_type(a.b)  # N: Revealed type is "m.a.B"
+
+[file m.py]
+class A: pass
+a = A()
+
+[file m/__init__.py]
+[file m/a.py]
+class B: pass
+b = B()
+
+
+[case testModuleLookupWeird2]
+# flags: --fast-module-lookup
+from m.a import b
+reveal_type(b)  # N: Revealed type is "m.a.B"
+
+[file m.py]
+class A: pass
+a = A()
+
+[file m/__init__.py]
+[file m/a.py]
+class B: pass
+b = B()
+
+
+[case testModuleLookupWeird3]
+# flags: --fast-module-lookup
+from m.a import b
+reveal_type(b)  # N: Revealed type is "m.a.B"
+
+[file m.py]
+class A: pass
+a = A()
+[file m/__init__.py]
+class B: pass
+a = B()
+[file m/a.py]
+class B: pass
+b = B()
+
+
+[case testModuleLookupWeird4]
+# flags: --fast-module-lookup
+import m.a
+m.a.b  # E: "str" has no attribute "b"
+
+[file m.py]
+class A: pass
+a = A()
+[file m/__init__.py]
+class B: pass
+a = 'foo'
+b = B()
+[file m/a.py]
+class C: pass
+b = C()
+
+
+[case testModuleLookupWeird5]
+# flags: --fast-module-lookup
+import m.a as ma
+reveal_type(ma.b)  # N: Revealed type is "m.a.C"
+
+[file m.py]
+class A: pass
+a = A()
+[file m/__init__.py]
+class B: pass
+a = 'foo'
+b = B()
+[file m/a.py]
+class C: pass
+b = C()
+
+
+[case testModuleLookupWeird6]
+# flags: --fast-module-lookup
+from m.a import b
+reveal_type(b)  # N: Revealed type is "m.a.C"
+
+[file m.py]
+class A: pass
+a = A()
+[file m/__init__.py]
+class B: pass
+a = 'foo'
+b = B()
+[file m/a.py]
+class C: pass
+b = C()

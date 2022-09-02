@@ -5,39 +5,23 @@ from collections.abc import Iterable, Iterator, Mapping
 from types import TracebackType
 from typing import IO, Any, Protocol
 
-if sys.version_info >= (3, 8):
-    __all__ = [
-        "MiniFieldStorage",
-        "FieldStorage",
-        "parse",
-        "parse_multipart",
-        "parse_header",
-        "test",
-        "print_exception",
-        "print_environ",
-        "print_form",
-        "print_directory",
-        "print_arguments",
-        "print_environ_usage",
-    ]
-else:
-    __all__ = [
-        "MiniFieldStorage",
-        "FieldStorage",
-        "parse",
-        "parse_qs",
-        "parse_qsl",
-        "parse_multipart",
-        "parse_header",
-        "test",
-        "print_exception",
-        "print_environ",
-        "print_form",
-        "print_directory",
-        "print_arguments",
-        "print_environ_usage",
-        "escape",
-    ]
+__all__ = [
+    "MiniFieldStorage",
+    "FieldStorage",
+    "parse",
+    "parse_multipart",
+    "parse_header",
+    "test",
+    "print_exception",
+    "print_environ",
+    "print_form",
+    "print_directory",
+    "print_arguments",
+    "print_environ_usage",
+]
+
+if sys.version_info < (3, 8):
+    __all__ += ["parse_qs", "parse_qsl", "escape"]
 
 def parse(
     fp: IO[Any] | None = ...,
@@ -51,13 +35,9 @@ if sys.version_info < (3, 8):
     def parse_qs(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> dict[str, list[str]]: ...
     def parse_qsl(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> list[tuple[str, str]]: ...
 
-if sys.version_info >= (3, 7):
-    def parse_multipart(
-        fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = ..., errors: str = ..., separator: str = ...
-    ) -> dict[str, list[Any]]: ...
-
-else:
-    def parse_multipart(fp: IO[Any], pdict: SupportsGetItem[str, bytes]) -> dict[str, list[bytes]]: ...
+def parse_multipart(
+    fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = ..., errors: str = ..., separator: str = ...
+) -> dict[str, list[Any]]: ...
 
 class _Environ(Protocol):
     def __getitem__(self, __k: str) -> str: ...

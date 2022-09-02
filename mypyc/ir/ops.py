@@ -9,26 +9,41 @@ value has a type (RType). A value can hold various things, such as:
 - literals (integer literals, True, False, etc.)
 """
 
-from abc import abstractmethod
-from typing import (
-    List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union
-)
+from __future__ import annotations
 
-from typing_extensions import Final, TYPE_CHECKING
+from abc import abstractmethod
+from typing import TYPE_CHECKING, Dict, Generic, List, NamedTuple, Sequence, TypeVar, Union
+from typing_extensions import Final
+
 from mypy_extensions import trait
 
 from mypyc.ir.rtypes import (
-    RType, RInstance, RTuple, RArray, RVoid, is_bool_rprimitive, is_int_rprimitive,
-    is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
-    short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
-    bit_rprimitive, is_bit_rprimitive
+    RArray,
+    RInstance,
+    RTuple,
+    RType,
+    RVoid,
+    bit_rprimitive,
+    bool_rprimitive,
+    int_rprimitive,
+    is_bit_rprimitive,
+    is_bool_rprimitive,
+    is_fixed_width_rtype,
+    is_int_rprimitive,
+    is_none_rprimitive,
+    is_pointer_rprimitive,
+    is_short_int_rprimitive,
+    object_rprimitive,
+    pointer_rprimitive,
+    short_int_rprimitive,
+    void_rtype,
 )
 
 if TYPE_CHECKING:
-    from mypyc.ir.class_ir import ClassIR  # noqa
-    from mypyc.ir.func_ir import FuncIR, FuncDecl  # noqa
+    from mypyc.ir.class_ir import ClassIR
+    from mypyc.ir.func_ir import FuncDecl, FuncIR
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class BasicBlock:
@@ -63,8 +78,8 @@ class BasicBlock:
 
     def __init__(self, label: int = -1) -> None:
         self.label = label
-        self.ops: List[Op] = []
-        self.error_handler: Optional[BasicBlock] = None
+        self.ops: list[Op] = []
+        self.error_handler: BasicBlock | None = None
 
     @property
     def terminated(self) -> bool:
@@ -76,7 +91,7 @@ class BasicBlock:
         return bool(self.ops) and isinstance(self.ops[-1], ControlOp)
 
     @property
-    def terminator(self) -> 'ControlOp':
+    def terminator(self) -> ControlOp:
         """The terminator operation of the block."""
         assert bool(self.ops) and isinstance(self.ops[-1], ControlOp)
         return self.ops[-1]
@@ -90,6 +105,9 @@ ERR_MAGIC: Final = 1
 ERR_FALSE: Final = 2
 # Always fails
 ERR_ALWAYS: Final = 3
+# Like ERR_MAGIC, but the magic return overlaps with a possible return value, and
+# an extra PyErr_Occurred() check is also required
+ERR_MAGIC_OVERLAPPING: Final = 4
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -133,7 +151,7 @@ class Register(Value):
     to refer to arbitrary Values (for example, in RegisterOp).
     """
 
-    def __init__(self, type: RType, name: str = '', is_arg: bool = False, line: int = -1) -> None:
+    def __init__(self, type: RType, name: str = "", is_arg: bool = False, line: int = -1) -> None:
         self.type = type
         self.name = name
         self.is_arg = is_arg
@@ -145,7 +163,7 @@ class Register(Value):
         return False
 
     def __repr__(self) -> str:
-        return f'<Register {self.name!r} at {hex(id(self))}>'
+        return f"<Register {self.name!r} at {hex(id(self))}>"
 
 
 class Integer(Value):
@@ -194,28 +212,28 @@ class Op(Value):
         return False
 
     @abstractmethod
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         """All the values the op may read."""
-        pass
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         """Return arguments that have a reference count stolen by this op"""
         return []
 
-    def unique_sources(self) -> List[Value]:
-        result: List[Value] = []
+    def unique_sources(self) -> list[Value]:
+        result: list[Value] = []
         for reg in self.sources():
             if reg not in result:
                 result.append(reg)
         return result
 
     @abstractmethod
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         pass
 
 
 class BaseAssign(Op):
     """Base class for ops that assign to a register."""
+
     def __init__(self, dest: Register, line: int = -1) -> None:
         super().__init__(line)
         self.dest = dest
@@ -230,13 +248,13 @@ class Assign(BaseAssign):
         super().__init__(dest, line)
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_assign(self)
 
 
@@ -253,20 +271,20 @@ class AssignMulti(BaseAssign):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, src: List[Value], line: int = -1) -> None:
+    def __init__(self, dest: Register, src: list[Value], line: int = -1) -> None:
         super().__init__(dest, line)
         assert src
         assert isinstance(dest.type, RArray)
         assert dest.type.length == len(src)
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.src[:]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_assign_multi(self)
 
 
@@ -299,12 +317,12 @@ class Goto(ControlOp):
         self.label = new
 
     def __repr__(self) -> str:
-        return '<Goto %s>' % self.label.label
+        return "<Goto %s>" % self.label.label
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_goto(self)
 
 
@@ -324,14 +342,16 @@ class Branch(ControlOp):
     BOOL: Final = 100
     IS_ERROR: Final = 101
 
-    def __init__(self,
-                 value: Value,
-                 true_label: BasicBlock,
-                 false_label: BasicBlock,
-                 op: int,
-                 line: int = -1,
-                 *,
-                 rare: bool = False) -> None:
+    def __init__(
+        self,
+        value: Value,
+        true_label: BasicBlock,
+        false_label: BasicBlock,
+        op: int,
+        line: int = -1,
+        *,
+        rare: bool = False,
+    ) -> None:
         super().__init__(line)
         # Target value being checked
         self.value = value
@@ -344,7 +364,7 @@ class Branch(ControlOp):
         # If True, the condition is negated
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
-        self.traceback_entry: Optional[Tuple[str, int]] = None
+        self.traceback_entry: tuple[str, int] | None = None
         # If True, we expect to usually take the false branch (for optimization purposes);
         # this is implicitly treated as true if there is a traceback entry
         self.rare = rare
@@ -356,16 +376,16 @@ class Branch(ControlOp):
         assert i == 0 or i == 1
         if i == 0:
             self.true = new
-        elif i == 1:
+        else:
             self.false = new
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.value]
 
     def invert(self) -> None:
         self.negated = not self.negated
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_branch(self)
 
 
@@ -378,13 +398,13 @@ class Return(ControlOp):
         super().__init__(line)
         self.value = value
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.value]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.value]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_return(self)
 
 
@@ -409,10 +429,10 @@ class Unreachable(ControlOp):
     def __init__(self, line: int = -1) -> None:
         super().__init__(line)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_unreachable(self)
 
 
@@ -431,11 +451,11 @@ class RegisterOp(Op):
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
 
-    _type: Optional[RType] = None
+    _type: RType | None = None
 
     def __init__(self, line: int) -> None:
         super().__init__(line)
-        assert self.error_kind != -1, 'error_kind not defined'
+        assert self.error_kind != -1, "error_kind not defined"
 
     def can_raise(self) -> bool:
         return self.error_kind != ERR_NEVER
@@ -451,10 +471,10 @@ class IncRef(RegisterOp):
         super().__init__(line)
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_inc_ref(self)
 
 
@@ -474,12 +494,12 @@ class DecRef(RegisterOp):
         self.is_xdec = is_xdec
 
     def __repr__(self) -> str:
-        return '<{}DecRef {!r}>'.format('X' if self.is_xdec else '', self.src)
+        return "<{}DecRef {!r}>".format("X" if self.is_xdec else "", self.src)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_dec_ref(self)
 
 
@@ -489,33 +509,29 @@ class Call(RegisterOp):
     The call target can be a module-level function or a class.
     """
 
-    error_kind = ERR_MAGIC
-
-    def __init__(self, fn: 'FuncDecl', args: Sequence[Value], line: int) -> None:
-        super().__init__(line)
+    def __init__(self, fn: FuncDecl, args: Sequence[Value], line: int) -> None:
         self.fn = fn
         self.args = list(args)
         assert len(self.args) == len(fn.sig.args)
         self.type = fn.sig.ret_type
+        ret_type = fn.sig.ret_type
+        if not ret_type.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return list(self.args[:])
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_call(self)
 
 
 class MethodCall(RegisterOp):
     """Native method call obj.method(arg, ...)"""
 
-    error_kind = ERR_MAGIC
-
-    def __init__(self,
-                 obj: Value,
-                 method: str,
-                 args: List[Value],
-                 line: int = -1) -> None:
-        super().__init__(line)
+    def __init__(self, obj: Value, method: str, args: list[Value], line: int = -1) -> None:
         self.obj = obj
         self.method = method
         self.args = args
@@ -523,13 +539,20 @@ class MethodCall(RegisterOp):
         self.receiver_type = obj.type
         method_ir = self.receiver_type.class_ir.method_sig(method)
         assert method_ir is not None, "{} doesn't have method {}".format(
-            self.receiver_type.name, method)
-        self.type = method_ir.ret_type
+            self.receiver_type.name, method
+        )
+        ret_type = method_ir.ret_type
+        self.type = ret_type
+        if not ret_type.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.args[:] + [self.obj]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_method_call(self)
 
 
@@ -542,9 +565,9 @@ class LoadErrorValue(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, rtype: RType, line: int = -1,
-                 is_borrowed: bool = False,
-                 undefines: bool = False) -> None:
+    def __init__(
+        self, rtype: RType, line: int = -1, is_borrowed: bool = False, undefines: bool = False
+    ) -> None:
         super().__init__(line)
         self.type = rtype
         self.is_borrowed = is_borrowed
@@ -553,10 +576,10 @@ class LoadErrorValue(RegisterOp):
         # undefined (and thus checks should be added on uses).
         self.undefines = undefines
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_error_value(self)
 
 
@@ -581,16 +604,18 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self,
-                 value: Union[None, str, bytes, bool, int, float, complex, Tuple[object, ...]],
-                 rtype: RType) -> None:
+    def __init__(
+        self,
+        value: None | str | bytes | bool | int | float | complex | tuple[object, ...],
+        rtype: RType,
+    ) -> None:
         self.value = value
         self.type = rtype
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_literal(self)
 
 
@@ -603,15 +628,18 @@ class GetAttr(RegisterOp):
         super().__init__(line)
         self.obj = obj
         self.attr = attr
-        assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
+        assert isinstance(obj.type, RInstance), "Attribute access not supported: %s" % obj.type
         self.class_type = obj.type
-        self.type = obj.type.attr_type(attr)
-        self.is_borrowed = borrow
+        attr_type = obj.type.attr_type(attr)
+        self.type = attr_type
+        if is_fixed_width_rtype(attr_type):
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        self.is_borrowed = borrow and attr_type.is_refcounted
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.obj]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_get_attr(self)
 
 
@@ -628,7 +656,7 @@ class SetAttr(RegisterOp):
         self.obj = obj
         self.attr = attr
         self.src = src
-        assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
+        assert isinstance(obj.type, RInstance), "Attribute access not supported: %s" % obj.type
         self.class_type = obj.type
         self.type = bool_rprimitive
         # If True, we can safely assume that the attribute is previously undefined
@@ -640,13 +668,13 @@ class SetAttr(RegisterOp):
         self.error_kind = ERR_NEVER
         self.type = void_rtype
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.obj, self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_set_attr(self)
 
 
@@ -674,13 +702,15 @@ class LoadStatic(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self,
-                 type: RType,
-                 identifier: str,
-                 module_name: Optional[str] = None,
-                 namespace: str = NAMESPACE_STATIC,
-                 line: int = -1,
-                 ann: object = None) -> None:
+    def __init__(
+        self,
+        type: RType,
+        identifier: str,
+        module_name: str | None = None,
+        namespace: str = NAMESPACE_STATIC,
+        line: int = -1,
+        ann: object = None,
+    ) -> None:
         super().__init__(line)
         self.identifier = identifier
         self.module_name = module_name
@@ -688,10 +718,10 @@ class LoadStatic(RegisterOp):
         self.type = type
         self.ann = ann  # An object to pretty print with the load
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_static(self)
 
 
@@ -703,22 +733,24 @@ class InitStatic(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self,
-                 value: Value,
-                 identifier: str,
-                 module_name: Optional[str] = None,
-                 namespace: str = NAMESPACE_STATIC,
-                 line: int = -1) -> None:
+    def __init__(
+        self,
+        value: Value,
+        identifier: str,
+        module_name: str | None = None,
+        namespace: str = NAMESPACE_STATIC,
+        line: int = -1,
+    ) -> None:
         super().__init__(line)
         self.identifier = identifier
         self.module_name = module_name
         self.namespace = namespace
         self.value = value
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.value]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_init_static(self)
 
 
@@ -727,21 +759,24 @@ class TupleSet(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, items: List[Value], line: int) -> None:
+    def __init__(self, items: list[Value], line: int) -> None:
         super().__init__(line)
         self.items = items
         # Don't keep track of the fact that an int is short after it
         # is put into a tuple, since we don't properly implement
         # runtime subtyping for tuples.
         self.tuple_type = RTuple(
-            [arg.type if not is_short_int_rprimitive(arg.type) else int_rprimitive
-             for arg in items])
+            [
+                arg.type if not is_short_int_rprimitive(arg.type) else int_rprimitive
+                for arg in items
+            ]
+        )
         self.type = self.tuple_type
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.items[:]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_set(self)
 
 
@@ -758,10 +793,10 @@ class TupleGet(RegisterOp):
         assert index >= 0
         self.type = src.type.types[index]
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_get(self)
 
 
@@ -775,18 +810,21 @@ class Cast(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, src: Value, typ: RType, line: int) -> None:
+    def __init__(self, src: Value, typ: RType, line: int, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.src = src
         self.type = typ
+        self.is_borrowed = borrow
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
+        if self.is_borrowed:
+            return []
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_cast(self)
 
 
@@ -804,18 +842,20 @@ class Box(RegisterOp):
         self.src = src
         self.type = object_rprimitive
         # When we box None and bool values, we produce a borrowed result
-        if (is_none_rprimitive(self.src.type)
-                or is_bool_rprimitive(self.src.type)
-                or is_bit_rprimitive(self.src.type)):
+        if (
+            is_none_rprimitive(self.src.type)
+            or is_bool_rprimitive(self.src.type)
+            or is_bit_rprimitive(self.src.type)
+        ):
             self.is_borrowed = True
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_box(self)
 
 
@@ -826,17 +866,19 @@ class Unbox(RegisterOp):
     representation. Only supported for types with an unboxed representation.
     """
 
-    error_kind = ERR_MAGIC
-
     def __init__(self, src: Value, typ: RType, line: int) -> None:
-        super().__init__(line)
         self.src = src
         self.type = typ
+        if not typ.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_unbox(self)
 
 
@@ -858,16 +900,16 @@ class RaiseStandardError(RegisterOp):
     RUNTIME_ERROR: Final = "RuntimeError"
     NAME_ERROR: Final = "NameError"
 
-    def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
+    def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
         self.class_name = class_name
         self.value = value
         self.type = bool_rprimitive
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_raise_standard_error(self)
 
 
@@ -883,15 +925,17 @@ class CallC(RegisterOp):
     functions.
     """
 
-    def __init__(self,
-                 function_name: str,
-                 args: List[Value],
-                 ret_type: RType,
-                 steals: StealsDescription,
-                 is_borrowed: bool,
-                 error_kind: int,
-                 line: int,
-                 var_arg_idx: int = -1) -> None:
+    def __init__(
+        self,
+        function_name: str,
+        args: list[Value],
+        ret_type: RType,
+        steals: StealsDescription,
+        is_borrowed: bool,
+        error_kind: int,
+        line: int,
+        var_arg_idx: int = -1,
+    ) -> None:
         self.error_kind = error_kind
         super().__init__(line)
         self.function_name = function_name
@@ -902,17 +946,17 @@ class CallC(RegisterOp):
         # The position of the first variable argument in args (if >= 0)
         self.var_arg_idx = var_arg_idx
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.args
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         if isinstance(self.steals, list):
             assert len(self.steals) == len(self.args)
             return [arg for arg, steal in zip(self.args, self.steals) if steal]
         else:
             return [] if not self.steals else self.sources()
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_call_c(self)
 
 
@@ -921,31 +965,57 @@ class Truncate(RegisterOp):
 
     Truncate a value from type with more bits to type with less bits.
 
-    Both src_type and dst_type should be non-reference counted integer
-    types or bool. Note that int_rprimitive is reference counted so
-    it should never be used here.
+    dst_type and src_type can be native integer types, bools or tagged
+    integers. Tagged integers should have the tag bit unset.
     """
 
     error_kind = ERR_NEVER
 
-    def __init__(self,
-                 src: Value,
-                 src_type: RType,
-                 dst_type: RType,
-                 line: int = -1) -> None:
+    def __init__(self, src: Value, dst_type: RType, line: int = -1) -> None:
         super().__init__(line)
         self.src = src
-        self.src_type = src_type
         self.type = dst_type
+        self.src_type = src.type
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_truncate(self)
+
+
+class Extend(RegisterOp):
+    """result = extend src from src_type to dst_type
+
+    Extend a value from a type with fewer bits to a type with more bits.
+
+    dst_type and src_type can be native integer types, bools or tagged
+    integers. Tagged integers should have the tag bit unset.
+
+    If 'signed' is true, perform sign extension. Otherwise, the result will be
+    zero extended.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, dst_type: RType, signed: bool, line: int = -1) -> None:
+        super().__init__(line)
+        self.src = src
+        self.type = dst_type
+        self.src_type = src.type
+        self.signed = signed
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def stolen(self) -> list[Value]:
+        return []
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_extend(self)
 
 
 class LoadGlobal(RegisterOp):
@@ -959,20 +1029,16 @@ class LoadGlobal(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self,
-                 type: RType,
-                 identifier: str,
-                 line: int = -1,
-                 ann: object = None) -> None:
+    def __init__(self, type: RType, identifier: str, line: int = -1, ann: object = None) -> None:
         super().__init__(line)
         self.identifier = identifier
         self.type = type
         self.ann = ann  # An object to pretty print with the load
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_global(self)
 
 
@@ -1006,16 +1072,16 @@ class IntOp(RegisterOp):
     RIGHT_SHIFT: Final = 204
 
     op_str: Final = {
-        ADD: '+',
-        SUB: '-',
-        MUL: '*',
-        DIV: '/',
-        MOD: '%',
-        AND: '&',
-        OR: '|',
-        XOR: '^',
-        LEFT_SHIFT: '<<',
-        RIGHT_SHIFT: '>>',
+        ADD: "+",
+        SUB: "-",
+        MUL: "*",
+        DIV: "/",
+        MOD: "%",
+        AND: "&",
+        OR: "|",
+        XOR: "^",
+        LEFT_SHIFT: "<<",
+        RIGHT_SHIFT: ">>",
     }
 
     def __init__(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
@@ -1025,11 +1091,16 @@ class IntOp(RegisterOp):
         self.rhs = rhs
         self.op = op
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_int_op(self)
+
+
+# We can't have this in the IntOp class body, because of
+# https://github.com/mypyc/mypyc/issues/932.
+int_op_to_id: Final = {op: op_id for op_id, op in IntOp.op_str.items()}
 
 
 class ComparisonOp(RegisterOp):
@@ -1061,17 +1132,19 @@ class ComparisonOp(RegisterOp):
     UGE: Final = 109
 
     op_str: Final = {
-        EQ: '==',
-        NEQ: '!=',
-        SLT: '<',
-        SGT: '>',
-        SLE: '<=',
-        SGE: '>=',
-        ULT: '<',
-        UGT: '>',
-        ULE: '<=',
-        UGE: '>=',
+        EQ: "==",
+        NEQ: "!=",
+        SLT: "<",
+        SGT: ">",
+        SLE: "<=",
+        SGE: ">=",
+        ULT: "<",
+        UGT: ">",
+        ULE: "<=",
+        UGE: ">=",
     }
+
+    signed_ops: Final = {"==": EQ, "!=": NEQ, "<": SLT, ">": SGT, "<=": SLE, ">=": SGE}
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
@@ -1080,10 +1153,10 @@ class ComparisonOp(RegisterOp):
         self.rhs = rhs
         self.op = op
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_comparison_op(self)
 
 
@@ -1106,10 +1179,10 @@ class LoadMem(RegisterOp):
         self.src = src
         self.is_borrowed = True
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_mem(self)
 
 
@@ -1124,24 +1197,20 @@ class SetMem(Op):
 
     error_kind = ERR_NEVER
 
-    def __init__(self,
-                 type: RType,
-                 dest: Value,
-                 src: Value,
-                 line: int = -1) -> None:
+    def __init__(self, type: RType, dest: Value, src: Value, line: int = -1) -> None:
         super().__init__(line)
         self.type = void_rtype
         self.dest_type = type
         self.src = src
         self.dest = dest
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src, self.dest]
 
-    def stolen(self) -> List[Value]:
+    def stolen(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_set_mem(self)
 
 
@@ -1161,10 +1230,10 @@ class GetElementPtr(RegisterOp):
         self.src_type = src_type
         self.field = field
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_get_element_ptr(self)
 
 
@@ -1180,18 +1249,18 @@ class LoadAddress(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, src: Union[str, Register], line: int = -1) -> None:
+    def __init__(self, type: RType, src: str | Register, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         if isinstance(self.src, Register):
             return [self.src]
         else:
             return []
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_address(self)
 
 
@@ -1215,14 +1284,14 @@ class KeepAlive(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: List[Value]) -> None:
+    def __init__(self, src: list[Value]) -> None:
         assert src
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return self.src[:]
 
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_keep_alive(self)
 
 
@@ -1325,6 +1394,10 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_extend(self, op: Extend) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_load_global(self, op: LoadGlobal) -> T:
         raise NotImplementedError
 
@@ -1381,5 +1454,6 @@ class OpVisitor(Generic[T]):
 #
 # (Serialization and deserialization *will* be used for incremental
 # compilation but so far it is not hooked up to anything.)
-DeserMaps = NamedTuple('DeserMaps',
-                       [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
+DeserMaps = NamedTuple(
+    "DeserMaps", [("classes", Dict[str, "ClassIR"]), ("functions", Dict[str, "FuncIR"])]
+)

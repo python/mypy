@@ -1,11 +1,13 @@
-from typing import Optional, Callable, List
+from __future__ import annotations
+
+from typing import Callable
 
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
 from mypy.typestate import TypeState
 
 
-def calculate_mro(info: TypeInfo, obj_type: Optional[Callable[[], Instance]] = None) -> None:
+def calculate_mro(info: TypeInfo, obj_type: Callable[[], Instance] | None = None) -> None:
     """Calculate and set mro (method resolution order).
 
     Raise MroError if cannot determine mro.
@@ -22,17 +24,16 @@ class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 
 
-def linearize_hierarchy(info: TypeInfo,
-                        obj_type: Optional[Callable[[], Instance]] = None) -> List[TypeInfo]:
+def linearize_hierarchy(
+    info: TypeInfo, obj_type: Callable[[], Instance] | None = None
+) -> list[TypeInfo]:
     # TODO describe
     if info.mro:
         return info.mro
     bases = info.direct_base_classes()
-    if (not bases and info.fullname != 'builtins.object' and
-            obj_type is not None):
-        # Second pass in import cycle, add a dummy `object` base class,
+    if not bases and info.fullname != "builtins.object" and obj_type is not None:
+        # Probably an error, add a dummy `object` base class,
         # otherwise MRO calculation may spuriously fail.
-        # MRO will be re-calculated for real in the third pass.
         bases = [obj_type().type]
     lin_bases = []
     for base in bases:
@@ -42,9 +43,9 @@ def linearize_hierarchy(info: TypeInfo,
     return [info] + merge(lin_bases)
 
 
-def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
+def merge(seqs: list[list[TypeInfo]]) -> list[TypeInfo]:
     seqs = [s[:] for s in seqs]
-    result: List[TypeInfo] = []
+    result: list[TypeInfo] = []
     while True:
         seqs = [s for s in seqs if s]
         if not seqs:

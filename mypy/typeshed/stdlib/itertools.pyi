@@ -18,7 +18,7 @@ _T4 = TypeVar("_T4")
 _T5 = TypeVar("_T5")
 _T6 = TypeVar("_T6")
 
-_Step: TypeAlias = int | float | SupportsFloat | SupportsInt | SupportsIndex | SupportsComplex
+_Step: TypeAlias = SupportsFloat | SupportsInt | SupportsIndex | SupportsComplex
 
 _Predicate: TypeAlias = Callable[[_T], object]
 

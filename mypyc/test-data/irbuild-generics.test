@@ -62,9 +62,10 @@ L0:
     c = r0
     r1 = object 1
     c.x = r1; r2 = is_error
-    r3 = c.x
+    r3 = borrow c.x
     r4 = unbox(int, r3)
     r5 = CPyTagged_Add(4, r4)
+    keep_alive c
     return 1
 
 [case testGenericMethod]
