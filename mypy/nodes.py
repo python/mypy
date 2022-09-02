@@ -3580,7 +3580,10 @@ class SymbolTableNode:
             if prefix is not None:
                 fullname = self.node.fullname
                 if (
-                    fullname is not None
+                    # See the comment above SymbolNode.fullname -- fullname can often be None,
+                    # but for complex reasons it's annotated as being `Bogus[str]` instead of `str | None`,
+                    # meaning mypy erroneously thinks the `fullname is not None` check here is redundant
+                    fullname is not None  # type: ignore[redundant-expr]
                     and "." in fullname
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
