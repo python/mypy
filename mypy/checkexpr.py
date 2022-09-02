@@ -189,12 +189,6 @@ OVERLAPPING_TYPES_ALLOWLIST: Final = [
 ]
 
 
-class TooManyUnions(Exception):
-    """Indicates that we need to stop splitting unions in an attempt
-    to match an overload in order to save performance.
-    """
-
-
 def allow_fast_container_literal(t: ProperType) -> bool:
     return isinstance(t, Instance) or (
         isinstance(t, TupleType)
@@ -2093,35 +2087,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #         typevar. See https://github.com/python/mypy/issues/4063 for related discussion.
         erased_targets: list[CallableType] | None = None
         unioned_result: tuple[Type, Type] | None = None
-        union_interrupted = False  # did we try all union combinations?
         if any(self.real_union(arg) for arg in arg_types):
-            try:
-                with self.msg.filter_errors():
-                    unioned_return = self.union_overload_result(
-                        plausible_targets,
-                        args,
-                        arg_types,
-                        arg_kinds,
-                        arg_names,
-                        callable_name,
-                        object_type,
-                        context,
-                    )
-            except TooManyUnions:
-                union_interrupted = True
-            else:
-                # Record if we succeeded. Next we need to see if maybe normal procedure
-                # gives a narrower type.
-                if unioned_return:
-                    returns, inferred_types = zip(*unioned_return)
-                    # Note that we use `combine_function_signatures` instead of just returning
-                    # a union of inferred callables because for example a call
-                    # Union[int -> int, str -> str](Union[int, str]) is invalid and
-                    # we don't want to introduce internal inconsistencies.
-                    unioned_result = (
-                        make_simplified_union(list(returns), context.line, context.column),
-                        self.combine_function_signatures(inferred_types),
-                    )
+            with self.msg.filter_errors():
+                unioned_return = self.union_overload_result(
+                    plausible_targets,
+                    args,
+                    arg_types,
+                    arg_kinds,
+                    arg_names,
+                    callable_name,
+                    object_type,
+                    context,
+                )
+            # Record if we succeeded. Next we need to see if maybe normal procedure
+            # gives a narrower type.
+            if unioned_return:
+                returns, inferred_types = zip(*unioned_return)
+                # Note that we use `combine_function_signatures` instead of just returning
+                # a union of inferred callables because for example a call
+                # Union[int -> int, str -> str](Union[int, str]) is invalid and
+                # we don't want to introduce internal inconsistencies.
+                unioned_result = (
+                    make_simplified_union(list(returns), context.line, context.column),
+                    self.combine_function_signatures(inferred_types),
+                )
 
         # Step 3: We try checking each branch one-by-one.
         inferred_result = self.infer_overload_return_type(
@@ -2188,8 +2177,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_name=callable_name,
             object_type=object_type,
         )
-        if union_interrupted:
-            self.chk.fail(message_registry.TOO_MANY_UNION_COMBINATIONS, context)
         return result
 
     def plausible_overload_call_targets(
@@ -2356,7 +2343,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callable_name: str | None,
         object_type: Type | None,
         context: Context,
-        level: int = 0,
     ) -> list[tuple[Type, Type]] | None:
         """Accepts a list of overload signatures and attempts to match calls by destructuring
         the first union.
@@ -2364,13 +2350,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Return a list of (<return type>, <inferred variant type>) if call succeeds for every
         item of the desctructured union. Returns None if there is no match.
         """
-        # Step 1: If we are already too deep, then stop immediately. Otherwise mypy might
-        # hang for long time because of a weird overload call. The caller will get
-        # the exception and generate an appropriate note message, if needed.
-        if level >= MAX_UNIONS:
-            raise TooManyUnions
-
-        # Step 2: Find position of the first union in arguments. Return the normal inferred
+        # Step 1: Find position of the first union in arguments. Return the normal inferred
         # type if no more unions left.
         for idx, typ in enumerate(arg_types):
             if self.real_union(typ):
@@ -2392,7 +2372,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return [res]
             return None
 
-        # Step 3: Try a direct match before splitting to avoid unnecessary union splits
+        # Step 2: Try a direct match before splitting to avoid unnecessary union splits
         # and save performance.
         with self.type_overrides_set(args, arg_types):
             direct = self.infer_overload_return_type(
@@ -2409,7 +2389,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # We only return non-unions soon, to avoid greedy match.
             return [direct]
 
-        # Step 4: Split the first remaining union type in arguments into items and
+        # Step 3: Split the first remaining union type in arguments into items and
         # try to match each item individually (recursive).
         first_union = get_proper_type(arg_types[idx])
         assert isinstance(first_union, UnionType)
@@ -2417,24 +2397,24 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for item in first_union.relevant_items():
             new_arg_types = arg_types.copy()
             new_arg_types[idx] = item
-            sub_result = self.union_overload_result(
-                plausible_targets,
-                args,
-                new_arg_types,
-                arg_kinds,
-                arg_names,
-                callable_name,
-                object_type,
-                context,
-                level + 1,
-            )
+            with self.type_overrides_set(args, new_arg_types):
+                sub_result = self.infer_overload_return_type(
+                    plausible_targets,
+                    args,
+                    new_arg_types,
+                    arg_kinds,
+                    arg_names,
+                    callable_name,
+                    object_type,
+                    context,
+                )
             if sub_result is not None:
-                res_items.extend(sub_result)
+                res_items.append(sub_result)
             else:
                 # Some item doesn't match, return soon.
                 return None
 
-        # Step 5: If splitting succeeded, then filter out duplicate items before returning.
+        # Step 4: If splitting succeeded, then filter out duplicate items before returning.
         seen: set[tuple[Type, Type]] = set()
         result = []
         for pair in res_items:

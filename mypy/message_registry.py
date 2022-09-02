@@ -231,9 +231,6 @@ RUNTIME_PROTOCOL_EXPECTED: Final = ErrorMessage(
     "Only @runtime_checkable protocols can be used with instance and class checks"
 )
 CANNOT_INSTANTIATE_PROTOCOL: Final = ErrorMessage('Cannot instantiate protocol class "{}"')
-TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage(
-    "Not all union combinations were tried because there are too many unions"
-)
 
 CONTIGUOUS_ITERABLE_EXPECTED: Final = ErrorMessage("Contiguous iterable with same type expected")
 ITERABLE_TYPE_EXPECTED: Final = ErrorMessage("Invalid type '{}' for *expr (iterable expected)")
