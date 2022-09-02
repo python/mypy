@@ -24,6 +24,7 @@ Functions
 * ``cast(<type>, obj)``
 * ``type(obj)``
 * ``len(obj)``
+* ``abs(obj)``
 * ``id(obj)``
 * ``iter(obj)``
 * ``next(iter: Iterator)``

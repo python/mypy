@@ -633,7 +633,7 @@ class GetAttr(RegisterOp):
         attr_type = obj.type.attr_type(attr)
         self.type = attr_type
         if is_fixed_width_rtype(attr_type):
-            self.error_kind = ERR_NEVER
+            self.error_kind = ERR_MAGIC_OVERLAPPING
         self.is_borrowed = borrow and attr_type.is_refcounted
 
     def sources(self) -> list[Value]:
