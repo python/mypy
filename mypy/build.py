@@ -47,9 +47,11 @@ import mypy.semanal_main
 from mypy.checker import TypeChecker
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.indirection import TypeIndirectionVisitor
+from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
+from mypy.undefined_vars import UndefinedVariableVisitor
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
@@ -2340,6 +2342,11 @@ class State:
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
+        if manager.options.disallow_undefined_vars:
+            manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
+            self.tree.accept(
+                UndefinedVariableVisitor(MessageBuilder(manager.errors, manager.modules))
+            )
         t0 = time_ref()
         with self.wrap_context():
             # Some tests (and tools) want to look at the set of all types.

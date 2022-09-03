@@ -1216,6 +1216,9 @@ class MessageBuilder:
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail(f'"{member}" undefined in superclass', context)
 
+    def variable_may_be_undefined(self, name: str, context: Context) -> None:
+        self.fail(f'Name "{name}" may be undefined', context)
+
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
         actual = get_proper_type(actual)
         if isinstance(actual, Instance):

@@ -180,6 +180,9 @@ class Options:
         # Make arguments prepended via Concatenate be truly positional-only.
         self.strict_concatenate = False
 
+        # Disallow using vars that could be undefined.
+        self.disallow_undefined_vars = False
+
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
         self.warn_unreachable = False
