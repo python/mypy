@@ -6676,6 +6676,7 @@ class MyMetaClass(type):
 class MyClass(metaclass=MyMetaClass):
     pass
 
+<<<<<<< HEAD
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties
 from sympy.ops import AssocOp
@@ -6717,6 +6718,8 @@ class Meta(A): pass
 from m import Meta
 class A(metaclass=Meta): pass
 
+=======
+>>>>>>> f56d15148ffcb15ee3d4b69fe170097951ee753d
 [case testMetaclassConflict]
 class MyMeta1(type): ...
 class MyMeta2(type): ...
