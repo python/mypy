@@ -92,10 +92,6 @@ def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -> N
     check_type_arguments(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
     check_blockers(graph, scc)
-    # Add some magic attrs to special modules:
-    for special_module in ("builtins", "typing", "abc"):
-        if special_module in scc:
-            process_special_implicit_attrs(graph[special_module])
     # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
     if "builtins" in scc:
         cleanup_builtin_scc(graph["builtins"])
@@ -225,16 +221,6 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
         # processing the same target twice in a row, which is inefficient.
         worklist = list(reversed(all_deferred))
         final_iteration = not any_progress
-
-
-def process_special_implicit_attrs(state: State) -> None:
-    # Add things like `__name__` and `__annotations__` to main modules.
-    analyzer = state.manager.semantic_analyzer
-    assert state.tree is not None
-    with analyzer.file_context(state.tree, state.options):
-        # We do it in the very last order,
-        # because of `dict <-> Mapping <-> ABCMeta` cyclic imports.
-        analyzer.add_implicit_module_attrs(state.tree)
 
 
 def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
