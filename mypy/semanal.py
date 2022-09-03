@@ -2120,7 +2120,7 @@ class SemanticAnalyzer(
                 abc_meta = self.named_type_or_none("abc.ABCMeta", [])
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
                     defn.info.metaclass_type = abc_meta
-        elif defn.info.metaclass_type and defn.info.metaclass_type.type.has_base(
+        if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base(
             "enum.EnumMeta"
         ):
             defn.info.is_enum = True
