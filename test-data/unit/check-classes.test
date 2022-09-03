@@ -6676,6 +6676,48 @@ class MyMetaClass(type):
 class MyClass(metaclass=MyMetaClass):
     pass
 
+
+[case testMetaclassPlaceholderNode]
+from sympy.assumptions import ManagedProperties
+from sympy.ops import AssocOp
+reveal_type(AssocOp.x)  # N: Revealed type is "sympy.basic.Basic"
+reveal_type(AssocOp.y)  # N: Revealed type is "builtins.int"
+
+[file sympy/__init__.py]
+
+[file sympy/assumptions.py]
+from .basic import Basic
+class ManagedProperties(type):
+    x: Basic
+    y: int
+# The problem is with the next line,
+# it creates the following order (classname, metaclass):
+# 1. Basic NameExpr(ManagedProperties)
+# 2. AssocOp None
+# 3. ManagedProperties None
+# 4. Basic NameExpr(ManagedProperties [sympy.assumptions.ManagedProperties])
+# So, `AssocOp` will still have `metaclass_type` as `None`
+# and all its `mro` types will have `declared_metaclass` as `None`.
+from sympy.ops import AssocOp
+
+[file sympy/basic.py]
+from .assumptions import ManagedProperties
+class Basic(metaclass=ManagedProperties): ...
+
+[file sympy/ops.py]
+from sympy.basic import Basic
+class AssocOp(Basic): ...
+
+[case testMetaclassSubclassSelf]
+# This does not make much sense, but we must not crash:
+import a
+[file m.py]
+from a import A  # E: Module "a" has no attribute "A"
+class Meta(A): pass
+[file a.py]
+from m import Meta
+class A(metaclass=Meta): pass
+
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any
 

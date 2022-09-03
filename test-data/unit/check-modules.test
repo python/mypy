@@ -2904,6 +2904,20 @@ from . import m as m
 [file p/m.py]
 [builtins fixtures/list.pyi]
 
+[case testSpecialModulesNameImplicitAttr]
+import typing
+import builtins
+import abc
+
+reveal_type(abc.__name__)       # N: Revealed type is "builtins.str"
+reveal_type(builtins.__name__)  # N: Revealed type is "builtins.str"
+reveal_type(typing.__name__)    # N: Revealed type is "builtins.str"
+
+[case testSpecialAttrsAreAvaliableInClasses]
+class Some:
+    name = __name__
+reveal_type(Some.name)  # N: Revealed type is "builtins.str"
+
 [case testReExportAllInStub]
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
