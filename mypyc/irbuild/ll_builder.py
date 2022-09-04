@@ -113,7 +113,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
-    uint32_rprimitive,
+    bitmap_rprimitive,
 )
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import concrete_arg_kind
@@ -1023,7 +1023,7 @@ class LowLevelIRBuilder:
                         if lst:
                             bitmap |= 1 << (c & (BITMAP_BITS - 1))
                     c += 1
-            output_args.append(Integer(bitmap, uint32_rprimitive))
+            output_args.append(Integer(bitmap, bitmap_rprimitive))
 
         return output_args
 

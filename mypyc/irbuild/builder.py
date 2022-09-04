@@ -97,7 +97,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    uint32_rprimitive,
+    bitmap_rprimitive,
 )
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -464,13 +464,13 @@ class IRBuilder:
     ) -> None:
         error_block, body_block = BasicBlock(), BasicBlock()
         o = self.int_op(
-            uint32_rprimitive,
+            bitmap_rprimitive,
             self.builder.args[-1 - index // BITMAP_BITS],
-            Integer(1 << (index & (BITMAP_BITS - 1)), uint32_rprimitive),
+            Integer(1 << (index & (BITMAP_BITS - 1)), bitmap_rprimitive),
             IntOp.AND,
             line,
         )
-        b = self.add(ComparisonOp(o, Integer(0, uint32_rprimitive), ComparisonOp.EQ))
+        b = self.add(ComparisonOp(o, Integer(0, bitmap_rprimitive), ComparisonOp.EQ))
         self.add(Branch(b, error_block, body_block, Branch.BOOL))
         self.activate_block(error_block)
         self.add(Assign(target, self.coerce(get_val(), target.type, line)))

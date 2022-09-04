@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
     Register,
     Value,
 )
-from mypyc.ir.rtypes import RType, deserialize_type, is_fixed_width_rtype, uint32_rprimitive
+from mypyc.ir.rtypes import RType, deserialize_type, is_fixed_width_rtype, bitmap_rprimitive
 from mypyc.namegen import NameGenerator
 
 
@@ -73,7 +73,7 @@ class FuncSignature:
         self.num_bitmap_args = num_bitmap_args(self.args)
         if self.num_bitmap_args:
             extra = [
-                RuntimeArg(bitmap_name(i), uint32_rprimitive, pos_only=True)
+                RuntimeArg(bitmap_name(i), bitmap_rprimitive, pos_only=True)
                 for i in range(self.num_bitmap_args)
             ]
             self.args = self.args + tuple(reversed(extra))

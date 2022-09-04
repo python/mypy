@@ -21,7 +21,7 @@ from mypy.nodes import Argument, FuncDef, SymbolNode, Var
 from mypyc.common import ENV_ATTR_NAME, SELF_NAME, bitmap_name, BITMAP_BITS
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, is_fixed_width_rtype, object_rprimitive, uint32_rprimitive
+from mypyc.ir.rtypes import RInstance, is_fixed_width_rtype, object_rprimitive, bitmap_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
@@ -182,7 +182,7 @@ def add_args_to_env(
             rtype = builder.type_to_rtype(arg.variable.type)
             builder.add_local_reg(arg.variable, rtype, is_arg=True)
         for i in reversed(range(nb)):
-            builder.add_local_reg(Var(bitmap_name(i)), uint32_rprimitive, is_arg=True)
+            builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
     else:
         for arg in args:
             if is_free_variable(builder, arg.variable) or fn_info.is_generator:
