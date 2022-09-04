@@ -6,7 +6,7 @@ from typing import Sequence
 from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
-from mypyc.common import JsonDict, bitmap_name, get_id_from_name, short_id_from_name, BITMAP_BITS
+from mypyc.common import BITMAP_BITS, JsonDict, bitmap_name, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
     Register,
     Value,
 )
-from mypyc.ir.rtypes import RType, deserialize_type, is_fixed_width_rtype, bitmap_rprimitive
+from mypyc.ir.rtypes import RType, bitmap_rprimitive, deserialize_type, is_fixed_width_rtype
 from mypyc.namegen import NameGenerator
 
 

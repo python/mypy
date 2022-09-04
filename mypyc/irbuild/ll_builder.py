@@ -18,6 +18,7 @@ from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
+    BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
@@ -26,7 +27,6 @@ from mypyc.common import (
     PLATFORM_SIZE,
     use_method_vectorcall,
     use_vectorcall,
-    BITMAP_BITS,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -81,6 +81,7 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     bit_rprimitive,
+    bitmap_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
     c_int_rprimitive,
@@ -113,7 +114,6 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
-    bitmap_rprimitive,
 )
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import concrete_arg_kind

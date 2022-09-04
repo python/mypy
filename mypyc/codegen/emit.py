@@ -8,8 +8,8 @@ from typing_extensions import Final
 
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
-    BITMAP_BITS,
     ATTR_PREFIX,
+    BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     NATIVE_PREFIX,
     REG_PREFIX,

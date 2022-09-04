@@ -57,7 +57,7 @@ from mypy.types import (
 )
 from mypy.util import split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import SELF_NAME, TEMP_ATTR_NAME, BITMAP_BITS
+from mypyc.common import BITMAP_BITS, SELF_NAME, TEMP_ATTR_NAME
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -85,6 +85,7 @@ from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
     RType,
+    bitmap_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
@@ -97,7 +98,6 @@ from mypyc.ir.rtypes import (
     none_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    bitmap_rprimitive,
 )
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder

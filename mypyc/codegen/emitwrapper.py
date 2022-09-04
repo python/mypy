@@ -17,7 +17,15 @@ from typing import Sequence
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
 from mypyc.codegen.emit import AssignHandler, Emitter, ErrorHandler, GotoHandler, ReturnHandler
-from mypyc.common import DUNDER_PREFIX, NATIVE_PREFIX, PREFIX, bitmap_name, use_vectorcall, BITMAP_TYPE, BITMAP_BITS
+from mypyc.common import (
+    BITMAP_BITS,
+    BITMAP_TYPE,
+    DUNDER_PREFIX,
+    NATIVE_PREFIX,
+    PREFIX,
+    bitmap_name,
+    use_vectorcall,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
 from mypyc.ir.rtypes import (

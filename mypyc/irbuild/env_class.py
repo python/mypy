@@ -18,10 +18,10 @@ non-locals is via an instance of an environment class. Example:
 from __future__ import annotations
 
 from mypy.nodes import Argument, FuncDef, SymbolNode, Var
-from mypyc.common import ENV_ATTR_NAME, SELF_NAME, bitmap_name, BITMAP_BITS
+from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME, bitmap_name
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, is_fixed_width_rtype, object_rprimitive, bitmap_rprimitive
+from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, is_fixed_width_rtype, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
