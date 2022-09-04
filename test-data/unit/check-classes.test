@@ -4399,9 +4399,12 @@ MyAny: Any
 class WithMeta(metaclass=MyAny):
     x: ClassVar[int]
 
-reveal_type(WithMeta.a)  # N: Revealed type is "Any"
-reveal_type(WithMeta.m)  # N: Revealed type is "Any"
-reveal_type(WithMeta.x)  # N: Revealed type is "builtins.int"
+reveal_type(WithMeta.a)   # N: Revealed type is "Any"
+reveal_type(WithMeta.m)   # N: Revealed type is "Any"
+reveal_type(WithMeta.x)   # N: Revealed type is "builtins.int"
+reveal_type(WithMeta().x) # N: Revealed type is "builtins.int"
+WithMeta().m              # E: "WithMeta" has no attribute "m"
+WithMeta().a              # E: "WithMeta" has no attribute "a"
 
 [case testMetaclassAsAnyWithAFlag]
 # flags: --config-file tmp/mypy.ini
@@ -4411,9 +4414,12 @@ MyAny: Any
 class WithMeta(metaclass=MyAny):  # E: Class cannot use "__main__.MyAny" as a metaclass (has type "Any")
     x: ClassVar[int]
 
-reveal_type(WithMeta.a)  # N: Revealed type is "Any"
-reveal_type(WithMeta.m)  # N: Revealed type is "Any"
-reveal_type(WithMeta.x)  # N: Revealed type is "builtins.int"
+reveal_type(WithMeta.a)   # N: Revealed type is "Any"
+reveal_type(WithMeta.m)   # N: Revealed type is "Any"
+reveal_type(WithMeta.x)   # N: Revealed type is "builtins.int"
+reveal_type(WithMeta().x) # N: Revealed type is "builtins.int"
+WithMeta().m              # E: "WithMeta" has no attribute "m"
+WithMeta().a              # E: "WithMeta" has no attribute "a"
 [file mypy.ini]
 \[mypy]
 disallow_subclassing_any = True
