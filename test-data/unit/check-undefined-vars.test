@@ -125,3 +125,15 @@ else:
     z = 2
 
 y = z  # No error.
+
+[case testForLoop]
+# flags: --disallow-undefined-vars
+for x in [1, 2, 3]:
+    if x:
+        x = 1
+    y = x
+    z = 1
+else:
+    z = 2
+
+a = z + y  # E: Name "y" may be undefined

@@ -5,6 +5,7 @@ from typing import NamedTuple
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     AssignmentStmt,
+    ForStmt,
     FuncDef,
     FuncItem,
     IfStmt,
@@ -176,6 +177,18 @@ class UndefinedVariableVisitor(TraverserVisitor):
             for arg in o.arguments:
                 self.tracker.record_declaration(arg.variable.name)
         super().visit_func(o)
+
+    def visit_for_stmt(self, o: ForStmt) -> None:
+        o.expr.accept(self)
+        self.process_lvalue(o.index)
+        # Also analyze as non-lvalue so that every for loop index variable is assumed to be read.
+        o.index.accept(self)
+        self.tracker.start_branch_statement()
+        o.body.accept(self)
+        self.tracker.next_branch()
+        if o.else_body:
+            o.else_body.accept(self)
+        self.tracker.end_branch_statement()
 
     def visit_while_stmt(self, o: WhileStmt) -> None:
         o.expr.accept(self)
