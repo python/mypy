@@ -2936,7 +2936,7 @@ class TypeInfo(SymbolNode):
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
-                if isinstance(node, FuncBase):
+                if isinstance(node, SYMBOL_FUNCBASE_TYPES):
                     return node
                 elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
                     return node

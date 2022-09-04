@@ -70,6 +70,7 @@ from mypy.nodes import (
     LDEF,
     LITERAL_TYPE,
     MDEF,
+    SYMBOL_FUNCBASE_TYPES,
     AssertStmt,
     AssignmentExpr,
     AssignmentStmt,
@@ -2292,7 +2293,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
         if sym.type is not None:
             return sym.type
-        if isinstance(sym.node, FuncBase):
+        if isinstance(sym.node, SYMBOL_FUNCBASE_TYPES):
             return self.function_type(sym.node)
         if isinstance(sym.node, TypeInfo):
             if sym.node.typeddict_type:

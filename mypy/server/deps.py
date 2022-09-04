@@ -88,6 +88,7 @@ from mypy.nodes import (
     GDEF,
     LDEF,
     MDEF,
+    SYMBOL_FUNCBASE_TYPES,
     AssertTypeExpr,
     AssignmentStmt,
     AwaitExpr,
@@ -506,7 +507,7 @@ class DependencyVisitor(TraverserVisitor):
                 if isinstance(rvalue.callee.node, TypeInfo):
                     # use actual __init__ as a dependency source
                     init = rvalue.callee.node.get("__init__")
-                    if init and isinstance(init.node, FuncBase):
+                    if init and isinstance(init.node, SYMBOL_FUNCBASE_TYPES):
                         fname = init.node.fullname
                 else:
                     fname = rvalue.callee.fullname
