@@ -1099,7 +1099,7 @@ class SemanticAnalyzer(
                     )
                 else:
                     self.fail(
-                        "The implementation for an overloaded function " "must come last",
+                        "The implementation for an overloaded function must come last",
                         defn.items[idx],
                     )
         else:
@@ -3347,7 +3347,7 @@ class SemanticAnalyzer(
         elif isinstance(lval, MemberExpr):
             self.analyze_member_lvalue(lval, explicit_type, is_final)
             if explicit_type and not self.is_self_member_ref(lval):
-                self.fail("Type cannot be declared in assignment to non-self " "attribute", lval)
+                self.fail("Type cannot be declared in assignment to non-self attribute", lval)
         elif isinstance(lval, IndexExpr):
             if explicit_type:
                 self.fail("Unexpected type declaration", lval)

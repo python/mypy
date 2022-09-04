@@ -1302,7 +1302,7 @@ class MessageBuilder:
         )
 
     def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
-        self.fail("All conditional function variants must have identical " "signatures", defn)
+        self.fail("All conditional function variants must have identical signatures", defn)
 
     def cannot_instantiate_abstract_class(
         self, class_name: str, abstract_attributes: dict[str, bool], context: Context

@@ -1194,7 +1194,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return ret_type
 
     def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
-        """ "Type check calling a member expression where the base type is a union."""
+        """Type check calling a member expression where the base type is a union."""
         res: list[Type] = []
         for typ in object_type.relevant_items():
             # Member access errors are already reported when visiting the member expression.

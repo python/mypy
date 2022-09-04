@@ -484,8 +484,7 @@ def parse_section(
                     results["follow_imports"] = "skip"
         if key == "almost_silent":
             print(
-                "%salmost_silent has been replaced by " "follow_imports=error" % prefix,
-                file=stderr,
+                "%salmost_silent has been replaced by follow_imports=error" % prefix, file=stderr
             )
             if v:
                 if "follow_imports" not in results:
