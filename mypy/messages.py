@@ -1301,8 +1301,12 @@ class MessageBuilder:
             context,
         )
 
-    def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
+    def incompatible_conditional_function_def(
+        self, defn: FuncDef, old_type: FunctionLike, new_type: FunctionLike
+    ) -> None:
         self.fail("All conditional function variants must have identical signatures", defn)
+        self.note(f"Original signature: {old_type}", defn)
+        self.note(f"Redefinition signature: {new_type}", defn)
 
     def cannot_instantiate_abstract_class(
         self, class_name: str, abstract_attributes: dict[str, bool], context: Context

@@ -1864,7 +1864,9 @@ if int():
 elif bool():
     def f(x: int) -> None:
         1()  # E: "int" not callable
-    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
+    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures \
+                            # N: Original signature: def (x: builtins.int) \
+                            # N: Redefinition signature: def (x: builtins.str)
         pass
 else:
     def f(x: int) -> None:
@@ -1881,7 +1883,10 @@ if int():
 else:
     def f(x: A) -> None:
         1()  # E: "int" not callable
-    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
+    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures \
+                            # N: Original signature: def (x: __main__.A) \
+                            # N: Redefinition signature: def (x: builtins.str)
+
         pass
 
 reveal_type(g) # N: Revealed type is "def (x: __main__.A)"

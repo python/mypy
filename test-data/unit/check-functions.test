@@ -1393,7 +1393,9 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(x): pass # E: All conditional function variants must have identical signatures
+    def f(x): pass # E: All conditional function variants must have identical signatures \
+                   # N: Original signature: def (x: builtins.int) \
+                   # N: Redefinition signature: def (x: Any) -> Any
 
 [case testIncompatibleConditionalFunctionDefinition2]
 from typing import Any
@@ -1401,7 +1403,9 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original signature: def (x: builtins.int) \
+                                # N: Redefinition signature: def (y: builtins.int)
 
 [case testIncompatibleConditionalFunctionDefinition3]
 from typing import Any
@@ -1409,7 +1413,9 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures \
+                                    # N: Original signature: def (x: builtins.int) \
+                                    # N: Redefinition signature: def (x: builtins.int =)
 
 [case testConditionalFunctionDefinitionUsingDecorator1]
 from typing import Callable
@@ -1640,7 +1646,9 @@ class A:
     if x:
         def f(self, x: int) -> None: pass
     else:
-        def f(self, x): pass # E: All conditional function variants must have identical signatures
+        def f(self, x): pass # E: All conditional function variants must have identical signatures \
+                             # N: Original signature: def (self: __main__.A, x: builtins.int) \
+                             # N: Redefinition signature: def (self: __main__.A, x: Any) -> Any
 [out]
 
 [case testConditionalFunctionDefinitionInTry]
