@@ -1473,14 +1473,18 @@ from typing import Any
 def f(x: str) -> None: pass
 x = None # type: Any
 if x:
-    def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original signature: def (x: builtins.str) \
+                                # N: Redefinition signature: def (x: builtins.int)
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2]
 from typing import Any
 def f(x: int) -> None: pass # N: "f" defined here
 x = None # type: Any
 if x:
-    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original signature: def (x: builtins.int) \
+                                # N: Redefinition signature: def (y: builtins.int)
 f(x=1) # The first definition takes precedence.
 f(y=1) # E: Unexpected keyword argument "y" for "f"
 
