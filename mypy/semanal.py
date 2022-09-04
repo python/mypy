@@ -2079,6 +2079,11 @@ class SemanticAnalyzer(
                 any_info = self.make_empty_type_info(ClassDef(sym.node.name, Block([])))
                 any_info.fallback_to_any = True
                 any_info._fullname = sym.node.fullname
+                if self.options.disallow_subclassing_any:
+                    self.fail(
+                        f'Class cannot use "{any_info.fullname}" as a metaclass (has type "Any")',
+                        metaclass_expr,
+                    )
                 return Instance(any_info, []), False
             if isinstance(sym.node, PlaceholderNode):
                 return None, True  # defer later in the caller

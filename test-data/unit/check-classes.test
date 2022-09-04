@@ -4403,6 +4403,21 @@ reveal_type(WithMeta.a)  # N: Revealed type is "Any"
 reveal_type(WithMeta.m)  # N: Revealed type is "Any"
 reveal_type(WithMeta.x)  # N: Revealed type is "builtins.int"
 
+[case testMetaclassAsAnyWithAFlag]
+# flags: --config-file tmp/mypy.ini
+from typing import Any, ClassVar
+
+MyAny: Any
+class WithMeta(metaclass=MyAny):  # E: Class cannot use "__main__.MyAny" as a metaclass (has type "Any")
+    x: ClassVar[int]
+
+reveal_type(WithMeta.a)  # N: Revealed type is "Any"
+reveal_type(WithMeta.m)  # N: Revealed type is "Any"
+reveal_type(WithMeta.x)  # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+disallow_subclassing_any = True
+
 [case testMetaclassIterable]
 from typing import Iterable, Iterator
 
