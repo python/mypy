@@ -127,6 +127,7 @@ from mypy.types import (
     CallableType,
     DeletedType,
     ErasedType,
+    ExtraAttrs,
     FunctionLike,
     Instance,
     LiteralType,
@@ -153,6 +154,7 @@ from mypy.types import (
     is_generic_instance,
     is_named_instance,
     is_optional,
+    is_self_type_like,
     remove_optional,
 )
 from mypy.typestate import TypeState
@@ -318,7 +320,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = self.typeddict_callable(node)
             else:
                 result = type_object_type(node, self.named_type)
-            if isinstance(result, CallableType) and isinstance(  # type: ignore
+            if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
                 result.ret_type, Instance
             ):
                 # We need to set correct line and column
@@ -331,13 +333,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            try:
-                result = self.named_type("types.ModuleType")
-            except KeyError:
-                # In test cases might 'types' may not be available.
-                # Fall back to a dummy 'object' type instead to
-                # avoid a crash.
-                result = self.named_type("builtins.object")
+            result = self.module_type(node)
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
@@ -372,6 +368,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.handle_cannot_determine_type(var.name, context)
             # Implicit 'Any' type.
             return AnyType(TypeOfAny.special_form)
+
+    def module_type(self, node: MypyFile) -> Instance:
+        try:
+            result = self.named_type("types.ModuleType")
+        except KeyError:
+            # In test cases might 'types' may not be available.
+            # Fall back to a dummy 'object' type instead to
+            # avoid a crash.
+            result = self.named_type("builtins.object")
+        module_attrs = {}
+        immutable = set()
+        for name, n in node.names.items():
+            if not n.module_public:
+                continue
+            if isinstance(n.node, Var) and n.node.is_final:
+                immutable.add(name)
+            typ = self.chk.determine_type_of_member(n)
+            if typ:
+                module_attrs[name] = typ
+            else:
+                # TODO: what to do about nested module references?
+                # They are non-trivial because there may be import cycles.
+                module_attrs[name] = AnyType(TypeOfAny.special_form)
+        result.extra_attrs = ExtraAttrs(module_attrs, immutable, node.fullname)
+        return result
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
@@ -800,7 +821,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     lvalue_type=item_expected_type,
                     rvalue=item_value,
                     context=item_value,
-                    msg=message_registry.INCOMPATIBLE_TYPES,
+                    msg=message_registry.INCOMPATIBLE_TYPES.value,
                     lvalue_name=f'TypedDict item "{item_name}"',
                     rvalue_name="expression",
                     code=codes.TYPEDDICT_ITEM,
@@ -1322,6 +1343,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         See the docstring of check_call for more information.
         """
+        # Always unpack **kwargs before checking a call.
+        callee = callee.with_unpacked_kwargs()
         if callable_name is None and callee.name:
             callable_name = callee.name
         ret_type = get_proper_type(callee.ret_type)
@@ -2029,8 +2052,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
-            if self.chk.should_suppress_optional_error([caller_type, callee_type]):
-                return
             code = self.msg.incompatible_argument(
                 n,
                 m,
@@ -2057,6 +2078,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         context: Context,
     ) -> tuple[Type, Type]:
         """Checks a call to an overloaded function."""
+        # Normalize unpacked kwargs before checking the call.
+        callee = callee.with_unpacked_kwargs()
         arg_types = self.infer_arg_types_in_empty_context(args)
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(
@@ -2150,13 +2173,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # There was no plausible match: give up
             target = AnyType(TypeOfAny.from_error)
-
-            if not self.chk.should_suppress_optional_error(arg_types):
-                if not is_operator_method(callable_name):
-                    code = None
-                else:
-                    code = codes.OPERATOR
-                self.msg.no_variant_matches_arguments(callee, arg_types, context, code=code)
+            if not is_operator_method(callable_name):
+                code = None
+            else:
+                code = codes.OPERATOR
+            self.msg.no_variant_matches_arguments(callee, arg_types, context, code=code)
 
         result = self.check_call(
             target,
@@ -3804,7 +3825,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
-        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore
+        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore[misc]
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
         # If this is a generic alias, we set all variables to `Any`.
@@ -4264,9 +4285,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # The base is the first MRO entry *after* type_info that has a member
         # with the right name
-        try:
+        index = None
+        if type_info in mro:
             index = mro.index(type_info)
-        except ValueError:
+        else:
+            method = self.chk.scope.top_function()
+            assert method is not None
+            # Mypy explicitly allows supertype upper bounds (and no upper bound at all)
+            # for annotating self-types. However, if such an annotation is used for
+            # checking super() we will still get an error. So to be consistent, we also
+            # allow such imprecise annotations for use with super(), where we fall back
+            # to the current class MRO instead.
+            if is_self_type_like(instance_type, is_classmethod=method.is_class):
+                if e.info and type_info in e.info.mro:
+                    mro = e.info.mro
+                    index = mro.index(type_info)
+        if index is None:
             self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
             return AnyType(TypeOfAny.from_error)
 

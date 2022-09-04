@@ -270,4 +270,6 @@ class IPCServer(IPCBase):
         if sys.platform == "win32":
             return self.name
         else:
-            return self.sock.getsockname()
+            name = self.sock.getsockname()
+            assert isinstance(name, str)
+            return name

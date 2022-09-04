@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from typing import Any, Iterator, cast
 
 from mypy import build
@@ -38,6 +39,8 @@ files = [
     "run-misc.test",
     "run-functions.test",
     "run-integers.test",
+    "run-i64.test",
+    "run-i32.test",
     "run-floats.test",
     "run-bools.test",
     "run-strings.test",
@@ -167,6 +170,12 @@ class TestRun(MypycDataSuite):
             # new by distutils, shift the mtime of all of the
             # generated artifacts back by a second.
             fudge_dir_mtimes(WORKDIR, -1)
+            # On Ubuntu, changing the mtime doesn't work reliably. As
+            # a workaround, sleep.
+            #
+            # TODO: Figure out a better approach, since this slows down tests.
+            if sys.platform == "linux":
+                time.sleep(1.0)
 
             step += 1
             with chdir_manager(".."):
@@ -184,6 +193,8 @@ class TestRun(MypycDataSuite):
         options.export_types = True
         options.preserve_asts = True
         options.incremental = self.separate
+        if "IncompleteFeature" in testcase.name:
+            options.enable_incomplete_features = True
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.

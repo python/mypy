@@ -20,7 +20,9 @@ from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     MAX_LITERAL_SHORT_INT,
+    MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
+    MIN_SHORT_INT,
     PLATFORM_SIZE,
     use_method_vectorcall,
     use_vectorcall,
@@ -42,6 +44,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    Extend,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -63,6 +66,7 @@ from mypyc.ir.ops import (
     Unbox,
     Unreachable,
     Value,
+    int_op_to_id,
 )
 from mypyc.ir.rtypes import (
     PyListObject,
@@ -71,6 +75,7 @@ from mypyc.ir.rtypes import (
     PyVarObject,
     RArray,
     RInstance,
+    RPrimitive,
     RTuple,
     RType,
     RUnion,
@@ -78,6 +83,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     bytes_rprimitive,
     c_int_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     dict_rprimitive,
@@ -87,6 +93,10 @@ from mypyc.ir.rtypes import (
     is_bool_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
+    is_fixed_width_rtype,
+    is_int32_rprimitive,
+    is_int64_rprimitive,
+    is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
     is_set_rprimitive,
@@ -124,7 +134,18 @@ from mypyc.primitives.generic_ops import (
     py_vectorcall_method_op,
     py_vectorcall_op,
 )
-from mypyc.primitives.int_ops import int_comparison_op_mapping
+from mypyc.primitives.int_ops import (
+    int32_divide_op,
+    int32_mod_op,
+    int32_overflow,
+    int64_divide_op,
+    int64_mod_op,
+    int64_to_int_op,
+    int_comparison_op_mapping,
+    int_to_int32_op,
+    int_to_int64_op,
+    ssize_t_to_int_op,
+)
 from mypyc.primitives.list_ops import list_build_op, list_extend_op, new_list_op
 from mypyc.primitives.misc_ops import bool_op, fast_isinstance_op, none_object_op
 from mypyc.primitives.registry import (
@@ -152,6 +173,29 @@ LIST_BUILDING_EXPANSION_THRESHOLD = 10
 
 # From CPython
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
+
+FIXED_WIDTH_INT_BINARY_OPS: Final = {
+    "+",
+    "-",
+    "*",
+    "//",
+    "%",
+    "&",
+    "|",
+    "^",
+    "<<",
+    ">>",
+    "+=",
+    "-=",
+    "*=",
+    "//=",
+    "%=",
+    "&=",
+    "|=",
+    "^=",
+    "<<=",
+    ">>=",
+}
 
 
 class LowLevelIRBuilder:
@@ -250,17 +294,43 @@ class LowLevelIRBuilder:
 
         Returns the register with the converted value (may be same as src).
         """
-        if src.type.is_unboxed and not target_type.is_unboxed:
+        src_type = src.type
+        if src_type.is_unboxed and not target_type.is_unboxed:
+            # Unboxed -> boxed
             return self.box(src)
-        if (src.type.is_unboxed and target_type.is_unboxed) and not is_runtime_subtype(
-            src.type, target_type
+        if (src_type.is_unboxed and target_type.is_unboxed) and not is_runtime_subtype(
+            src_type, target_type
         ):
-            # To go from one unboxed type to another, we go through a boxed
-            # in-between value, for simplicity.
-            tmp = self.box(src)
-            return self.unbox_or_cast(tmp, target_type, line)
-        if (not src.type.is_unboxed and target_type.is_unboxed) or not is_subtype(
-            src.type, target_type
+            if (
+                isinstance(src, Integer)
+                and is_short_int_rprimitive(src_type)
+                and is_fixed_width_rtype(target_type)
+            ):
+                # TODO: range check
+                return Integer(src.value >> 1, target_type)
+            elif is_int_rprimitive(src_type) and is_fixed_width_rtype(target_type):
+                return self.coerce_int_to_fixed_width(src, target_type, line)
+            elif is_fixed_width_rtype(src_type) and is_int_rprimitive(target_type):
+                return self.coerce_fixed_width_to_int(src, line)
+            elif is_short_int_rprimitive(src_type) and is_fixed_width_rtype(target_type):
+                return self.coerce_short_int_to_fixed_width(src, target_type, line)
+            elif (
+                isinstance(src_type, RPrimitive)
+                and isinstance(target_type, RPrimitive)
+                and src_type.is_native_int
+                and target_type.is_native_int
+                and src_type.size == target_type.size
+                and src_type.is_signed == target_type.is_signed
+            ):
+                # Equivalent types
+                return src
+            else:
+                # To go from one unboxed type to another, we go through a boxed
+                # in-between value, for simplicity.
+                tmp = self.box(src)
+                return self.unbox_or_cast(tmp, target_type, line)
+        if (not src_type.is_unboxed and target_type.is_unboxed) or not is_subtype(
+            src_type, target_type
         ):
             return self.unbox_or_cast(src, target_type, line, can_borrow=can_borrow)
         elif force:
@@ -268,6 +338,133 @@ class LowLevelIRBuilder:
             self.add(Assign(tmp, src))
             return tmp
         return src
+
+    def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
+        assert is_fixed_width_rtype(target_type), target_type
+        assert isinstance(target_type, RPrimitive)
+
+        res = Register(target_type)
+
+        fast, slow, end = BasicBlock(), BasicBlock(), BasicBlock()
+
+        check = self.check_tagged_short_int(src, line)
+        self.add(Branch(check, fast, slow, Branch.BOOL))
+
+        self.activate_block(fast)
+
+        size = target_type.size
+        if size < int_rprimitive.size:
+            # Add a range check when the target type is smaller than the source tyoe
+            fast2, fast3 = BasicBlock(), BasicBlock()
+            upper_bound = 1 << (size * 8 - 1)
+            check2 = self.add(ComparisonOp(src, Integer(upper_bound, src.type), ComparisonOp.SLT))
+            self.add(Branch(check2, fast2, slow, Branch.BOOL))
+            self.activate_block(fast2)
+            check3 = self.add(ComparisonOp(src, Integer(-upper_bound, src.type), ComparisonOp.SGE))
+            self.add(Branch(check3, fast3, slow, Branch.BOOL))
+            self.activate_block(fast3)
+            tmp = self.int_op(
+                c_pyssize_t_rprimitive,
+                src,
+                Integer(1, c_pyssize_t_rprimitive),
+                IntOp.RIGHT_SHIFT,
+                line,
+            )
+            tmp = self.add(Truncate(tmp, target_type))
+        else:
+            if size > int_rprimitive.size:
+                tmp = self.add(Extend(src, target_type, signed=True))
+            else:
+                tmp = src
+            tmp = self.int_op(target_type, tmp, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
+
+        self.add(Assign(res, tmp))
+        self.goto(end)
+
+        self.activate_block(slow)
+        if is_int64_rprimitive(target_type) or (
+            is_int32_rprimitive(target_type) and size == int_rprimitive.size
+        ):
+            # Slow path calls a library function that handles more complex logic
+            ptr = self.int_op(
+                pointer_rprimitive, src, Integer(1, pointer_rprimitive), IntOp.XOR, line
+            )
+            ptr2 = Register(c_pointer_rprimitive)
+            self.add(Assign(ptr2, ptr))
+            if is_int64_rprimitive(target_type):
+                conv_op = int_to_int64_op
+            else:
+                conv_op = int_to_int32_op
+            tmp = self.call_c(conv_op, [ptr2], line)
+            self.add(Assign(res, tmp))
+            self.add(KeepAlive([src]))
+            self.goto(end)
+        elif is_int32_rprimitive(target_type):
+            # Slow path just always generates an OverflowError
+            self.call_c(int32_overflow, [], line)
+            self.add(Unreachable())
+        else:
+            assert False, target_type
+
+        self.activate_block(end)
+        return res
+
+    def coerce_short_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
+        if is_int64_rprimitive(target_type):
+            return self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
+        # TODO: i32
+        assert False, (src.type, target_type)
+
+    def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
+        if is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8:
+            # Simple case -- just sign extend and shift.
+            extended = self.add(Extend(src, c_pyssize_t_rprimitive, signed=True))
+            return self.int_op(
+                int_rprimitive,
+                extended,
+                Integer(1, c_pyssize_t_rprimitive),
+                IntOp.LEFT_SHIFT,
+                line,
+            )
+
+        assert is_fixed_width_rtype(src.type)
+        assert isinstance(src.type, RPrimitive)
+        src_type = src.type
+
+        res = Register(int_rprimitive)
+
+        fast, fast2, slow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+
+        c1 = self.add(ComparisonOp(src, Integer(MAX_SHORT_INT, src_type), ComparisonOp.SLE))
+        self.add(Branch(c1, fast, slow, Branch.BOOL))
+
+        self.activate_block(fast)
+        c2 = self.add(ComparisonOp(src, Integer(MIN_SHORT_INT, src_type), ComparisonOp.SGE))
+        self.add(Branch(c2, fast2, slow, Branch.BOOL))
+
+        self.activate_block(slow)
+        if is_int64_rprimitive(src_type):
+            conv_op = int64_to_int_op
+        elif is_int32_rprimitive(src_type):
+            assert PLATFORM_SIZE == 4
+            conv_op = ssize_t_to_int_op
+        else:
+            assert False, src_type
+        x = self.call_c(conv_op, [src], line)
+        self.add(Assign(res, x))
+        self.goto(end)
+
+        self.activate_block(fast2)
+        if int_rprimitive.size < src_type.size:
+            tmp = self.add(Truncate(src, c_pyssize_t_rprimitive))
+        else:
+            tmp = src
+        s = self.int_op(int_rprimitive, tmp, Integer(1, tmp.type), IntOp.LEFT_SHIFT, line)
+        self.add(Assign(res, s))
+        self.goto(end)
+
+        self.activate_block(end)
+        return res
 
     def coerce_nullable(self, src: Value, target_type: RType, line: int) -> Value:
         """Generate a coercion from a potentially null value."""
@@ -305,9 +502,12 @@ class LowLevelIRBuilder:
             and obj.type.class_ir.is_ext_class
             and obj.type.class_ir.has_attr(attr)
         ):
-            if borrow:
+            op = GetAttr(obj, attr, line, borrow=borrow)
+            # For non-refcounted attribute types, the borrow might be
+            # disabled even if requested, so don't check 'borrow'.
+            if op.is_borrowed:
                 self.keep_alives.append(obj)
-            return self.add(GetAttr(obj, attr, line, borrow=borrow))
+            return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
         else:
@@ -965,7 +1165,13 @@ class LowLevelIRBuilder:
         return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
 
     # Other primitive operations
+
     def binary_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
+        """Perform a binary operation.
+
+        Generate specialized operations based on operand types, with a fallback
+        to generic operations.
+        """
         ltype = lreg.type
         rtype = rreg.type
 
@@ -998,6 +1204,58 @@ class LowLevelIRBuilder:
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
         if isinstance(rtype, RInstance) and op in ("in", "not in"):
             return self.translate_instance_contains(rreg, lreg, op, line)
+        if is_fixed_width_rtype(ltype):
+            if op in FIXED_WIDTH_INT_BINARY_OPS:
+                if op.endswith("="):
+                    op = op[:-1]
+                if is_fixed_width_rtype(rtype) or is_tagged(rtype):
+                    if op != "//":
+                        op_id = int_op_to_id[op]
+                    else:
+                        op_id = IntOp.DIV
+                    return self.fixed_width_int_op(ltype, lreg, rreg, op_id, line)
+                if isinstance(rreg, Integer):
+                    # TODO: Check what kind of Integer
+                    if op != "//":
+                        op_id = int_op_to_id[op]
+                    else:
+                        op_id = IntOp.DIV
+                    return self.fixed_width_int_op(
+                        ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line
+                    )
+            elif op in ComparisonOp.signed_ops:
+                if is_int_rprimitive(rtype):
+                    rreg = self.coerce_int_to_fixed_width(rreg, ltype, line)
+                op_id = ComparisonOp.signed_ops[op]
+                if is_fixed_width_rtype(rreg.type):
+                    return self.comparison_op(lreg, rreg, op_id, line)
+                if isinstance(rreg, Integer):
+                    return self.comparison_op(lreg, Integer(rreg.value >> 1, ltype), op_id, line)
+        elif is_fixed_width_rtype(rtype):
+            if (
+                isinstance(lreg, Integer) or is_tagged(ltype)
+            ) and op in FIXED_WIDTH_INT_BINARY_OPS:
+                if op.endswith("="):
+                    op = op[:-1]
+                # TODO: Support comparison ops (similar to above)
+                if op != "//":
+                    op_id = int_op_to_id[op]
+                else:
+                    op_id = IntOp.DIV
+                if isinstance(lreg, Integer):
+                    # TODO: Check what kind of Integer
+                    return self.fixed_width_int_op(
+                        rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line
+                    )
+                else:
+                    return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
+            elif op in ComparisonOp.signed_ops:
+                if is_int_rprimitive(ltype):
+                    lreg = self.coerce_int_to_fixed_width(lreg, rtype, line)
+                op_id = ComparisonOp.signed_ops[op]
+                if isinstance(lreg, Integer):
+                    return self.comparison_op(Integer(lreg.value >> 1, rtype), rreg, op_id, line)
+                return self.comparison_op(lreg, rreg, op_id, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -1210,9 +1468,26 @@ class LowLevelIRBuilder:
         typ = value.type
         if (is_bool_rprimitive(typ) or is_bit_rprimitive(typ)) and expr_op == "not":
             return self.unary_not(value, line)
+        if is_fixed_width_rtype(typ):
+            if expr_op == "-":
+                # Translate to '0 - x'
+                return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
+            elif expr_op == "~":
+                # Translate to 'x ^ -1'
+                return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
+            elif expr_op == "+":
+                return value
+        if isinstance(value, Integer):
+            # TODO: Overflow? Unsigned?
+            num = value.value
+            if is_short_int_rprimitive(typ):
+                num >>= 1
+            return Integer(-num, typ, value.line)
         if isinstance(typ, RInstance):
             if expr_op == "-":
                 method = "__neg__"
+            elif expr_op == "+":
+                method = "__pos__"
             elif expr_op == "~":
                 method = "__invert__"
             else:
@@ -1334,6 +1609,9 @@ class LowLevelIRBuilder:
             zero = Integer(0, short_int_rprimitive)
             self.compare_tagged_condition(value, zero, "!=", true, false, value.line)
             return
+        elif is_fixed_width_rtype(value.type):
+            zero = Integer(0, value.type)
+            value = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
         elif is_same_type(value.type, str_rprimitive):
             value = self.call_c(str_check_if_true, [value], value.line)
         elif is_same_type(value.type, list_rprimitive) or is_same_type(
@@ -1480,7 +1758,97 @@ class LowLevelIRBuilder:
         return None
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        """Generate a native integer binary op.
+
+        Use native/C semantics, which sometimes differ from Python
+        semantics.
+
+        Args:
+            type: Either int64_rprimitive or int32_rprimitive
+            op: IntOp.* constant (e.g. IntOp.ADD)
+        """
         return self.add(IntOp(type, lhs, rhs, op, line))
+
+    def fixed_width_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        """Generate a binary op using Python fixed-width integer semantics.
+
+        These may differ in overflow/rounding behavior from native/C ops.
+
+        Args:
+            type: Either int64_rprimitive or int32_rprimitive
+            op: IntOp.* constant (e.g. IntOp.ADD)
+        """
+        lhs = self.coerce(lhs, type, line)
+        rhs = self.coerce(rhs, type, line)
+        if op == IntOp.DIV:
+            # Inline simple division by a constant, so that C
+            # compilers can optimize more
+            if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
+                return self.inline_fixed_width_divide(type, lhs, rhs, line)
+            if is_int64_rprimitive(type):
+                prim = int64_divide_op
+            elif is_int32_rprimitive(type):
+                prim = int32_divide_op
+            else:
+                assert False, type
+            return self.call_c(prim, [lhs, rhs], line)
+        if op == IntOp.MOD:
+            # Inline simple % by a constant, so that C
+            # compilers can optimize more
+            if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
+                return self.inline_fixed_width_mod(type, lhs, rhs, line)
+            if is_int64_rprimitive(type):
+                prim = int64_mod_op
+            elif is_int32_rprimitive(type):
+                prim = int32_mod_op
+            else:
+                assert False, type
+            return self.call_c(prim, [lhs, rhs], line)
+        return self.int_op(type, lhs, rhs, op, line)
+
+    def inline_fixed_width_divide(self, type: RType, lhs: Value, rhs: Value, line: int) -> Value:
+        # Perform floor division (native division truncates)
+        res = Register(type)
+        div = self.int_op(type, lhs, rhs, IntOp.DIV, line)
+        self.add(Assign(res, div))
+        diff_signs = self.is_different_native_int_signs(type, lhs, rhs, line)
+        tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
+        self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+        self.activate_block(tricky)
+        mul = self.int_op(type, res, rhs, IntOp.MUL, line)
+        mul_eq = self.add(ComparisonOp(mul, lhs, ComparisonOp.EQ, line))
+        adjust = BasicBlock()
+        self.add(Branch(mul_eq, done, adjust, Branch.BOOL))
+        self.activate_block(adjust)
+        adj = self.int_op(type, res, Integer(1, type), IntOp.SUB, line)
+        self.add(Assign(res, adj))
+        self.add(Goto(done))
+        self.activate_block(done)
+        return res
+
+    def inline_fixed_width_mod(self, type: RType, lhs: Value, rhs: Value, line: int) -> Value:
+        # Perform floor modulus
+        res = Register(type)
+        mod = self.int_op(type, lhs, rhs, IntOp.MOD, line)
+        self.add(Assign(res, mod))
+        diff_signs = self.is_different_native_int_signs(type, lhs, rhs, line)
+        tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
+        self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+        self.activate_block(tricky)
+        is_zero = self.add(ComparisonOp(res, Integer(0, type), ComparisonOp.EQ, line))
+        adjust = BasicBlock()
+        self.add(Branch(is_zero, done, adjust, Branch.BOOL))
+        self.activate_block(adjust)
+        adj = self.int_op(type, res, rhs, IntOp.ADD, line)
+        self.add(Assign(res, adj))
+        self.add(Goto(done))
+        self.activate_block(done)
+        return res
+
+    def is_different_native_int_signs(self, type: RType, a: Value, b: Value, line: int) -> Value:
+        neg1 = self.add(ComparisonOp(a, Integer(0, type), ComparisonOp.SLT, line))
+        neg2 = self.add(ComparisonOp(b, Integer(0, type), ComparisonOp.SLT, line))
+        return self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
 
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))

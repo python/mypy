@@ -38,7 +38,7 @@ SIZEOF_SIZE_T_SYSCONFIG: Final = sysconfig.get_config_var("SIZEOF_SIZE_T")
 SIZEOF_SIZE_T: Final = (
     int(SIZEOF_SIZE_T_SYSCONFIG)
     if SIZEOF_SIZE_T_SYSCONFIG is not None
-    else (math.log2(sys.maxsize) + 1) // 8
+    else round((math.log2(sys.maxsize + 1)) / 8)
 )
 
 IS_32_BIT_PLATFORM: Final = int(SIZEOF_SIZE_T) == 4
@@ -55,12 +55,20 @@ IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_inf
 # Maximum value for a short tagged integer.
 MAX_SHORT_INT: Final = 2 ** (8 * int(SIZEOF_SIZE_T) - 2) - 1
 
+# Minimum value for a short tagged integer.
+MIN_SHORT_INT: Final = -(MAX_SHORT_INT) - 1
+
 # Maximum value for a short tagged integer represented as a C integer literal.
 #
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
 MAX_LITERAL_SHORT_INT: Final = MAX_SHORT_INT if not IS_MIXED_32_64_BIT_BUILD else 2**30 - 1
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
+
+# Decription of the C type used to track definedness of attributes
+# that have types with overlapping error values
+ATTR_BITMAP_TYPE: Final = "uint32_t"
+ATTR_BITMAP_BITS: Final = 32
 
 # Runtime C library files
 RUNTIME_C_FILES: Final = [

@@ -4305,9 +4305,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType2]
 import a
@@ -4323,9 +4323,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType3]
 import a
@@ -4337,7 +4337,7 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 
 [case testNonePartialType4]
 import a
@@ -4353,7 +4353,7 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 ==
 
 [case testSkippedClass1]
@@ -9818,3 +9818,216 @@ x: str
 [builtins fixtures/dataclasses.pyi]
 [out]
 ==
+
+[case testParamSpecCached]
+import a
+
+[file a.py]
+import b
+
+def f(x: int) -> str: return 'x'
+
+b.foo(f)
+
+[file a.py.2]
+import b
+
+def f(x: int) -> str: return 'x'
+
+reveal_type(b.foo(f))
+
+[file b.py]
+from typing import TypeVar, Callable, Union
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def foo(f: Callable[P, T]) -> Callable[P, Union[T, None]]:
+    return f
+
+[file b.py.2]
+from typing import TypeVar, Callable, Union
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def foo(f: Callable[P, T]) -> Callable[P, Union[T, None]]:
+    return f
+
+x = 0  # Arbitrary change to trigger reprocessing
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+a.py:5: note: Revealed type is "def (x: builtins.int) -> builtins.str"
+
+[case testTypeVarTupleCached]
+import a
+
+[file a.py]
+import b
+
+def f(x: int) -> str: return 'x'
+
+b.foo((1, 'x'))
+
+[file a.py.2]
+import b
+
+reveal_type(b.foo((1, 'x')))
+
+[file b.py]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+def foo(t: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    return t
+
+[file b.py.2]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+def foo(t: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    return t
+
+x = 0  # Arbitrary change to trigger reprocessing
+[builtins fixtures/dict.pyi]
+[out]
+==
+a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
+
+[case testUnpackKwargsUpdateFine]
+# flags: --enable-incomplete-features
+import m
+[file shared.py]
+from typing_extensions import TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+[file shared.py.2]
+from typing_extensions import TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: str
+
+[file lib.py]
+from typing_extensions import Unpack
+from shared import Person
+
+def foo(**kwargs: Unpack[Person]):
+    ...
+[file m.py]
+from lib import foo
+foo(name='Jennifer', age=38)
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+m.py:2: error: Argument "age" to "foo" has incompatible type "int"; expected "str"
+
+[case testModuleAsProtocolImplementationFine]
+import m
+[file m.py]
+from typing import Protocol
+from lib import C
+
+class Options(Protocol):
+    timeout: int
+    def update(self) -> bool: ...
+
+def setup(options: Options) -> None: ...
+setup(C().config)
+
+[file lib.py]
+import default_config
+
+class C:
+    config = default_config
+
+[file default_config.py]
+timeout = 100
+def update() -> bool: ...
+
+[file default_config.py.2]
+timeout = 100
+def update() -> str: ...
+[builtins fixtures/module.pyi]
+[out]
+==
+m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
+m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+m.py:9: note:     Expected:
+m.py:9: note:         def update() -> bool
+m.py:9: note:     Got:
+m.py:9: note:         def update() -> str
+
+[case testBoundGenericMethodFine]
+import main
+[file main.py]
+import lib
+[file main.py.3]
+import lib
+reveal_type(lib.foo(42))
+[file lib/__init__.pyi]
+from lib import context
+foo = context.test.foo
+[file lib/context.pyi]
+from typing import TypeVar
+import lib.other
+
+T = TypeVar("T")
+class Test:
+    def foo(self, x: T, n: lib.other.C = ...) -> T: ...
+test: Test
+
+[file lib/other.pyi]
+class C: ...
+[file lib/other.pyi.2]
+class B: ...
+class C(B): ...
+[out]
+==
+==
+main.py:2: note: Revealed type is "builtins.int"
+
+[case testBoundGenericMethodParamSpecFine]
+import main
+[file main.py]
+import lib
+[file main.py.3]
+from typing import Callable
+import lib
+f: Callable[[], int]
+reveal_type(lib.foo(f))
+[file lib/__init__.pyi]
+from lib import context
+foo = context.test.foo
+[file lib/context.pyi]
+from typing_extensions import ParamSpec
+from typing import Callable
+import lib.other
+
+P = ParamSpec("P")
+class Test:
+    def foo(self, x: Callable[P, int], n: lib.other.C = ...) -> Callable[P, str]: ...
+test: Test
+
+[file lib/other.pyi]
+class C: ...
+[file lib/other.pyi.2]
+class B: ...
+class C(B): ...
+[builtins fixtures/dict.pyi]
+[out]
+==
+==
+main.py:4: note: Revealed type is "def () -> builtins.str"

@@ -21,6 +21,9 @@ class ErrorMessage(NamedTuple):
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
 
+    def with_additional_msg(self, info: str) -> ErrorMessage:
+        return ErrorMessage(self.value + info, code=self.code)
+
 
 # Invalid types
 INVALID_TYPE_RAW_ENUM_VALUE: Final = "Invalid type: try using Literal[{}.{}] instead?"
@@ -47,7 +50,7 @@ INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
     "supertypes"
 )
 YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
-INCOMPATIBLE_TYPES: Final = "Incompatible types"
+INCOMPATIBLE_TYPES: Final = ErrorMessage("Incompatible types")
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")

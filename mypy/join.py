@@ -141,7 +141,7 @@ class InstanceJoiner:
 
 def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
     """Return a simple least upper bound given the declared type."""
-    # TODO: check infinite recursion for aliases here.
+    # TODO: check infinite recursion for aliases here?
     declaration = get_proper_type(declaration)
     s = get_proper_type(s)
     t = get_proper_type(t)
@@ -171,6 +171,9 @@ def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
 
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
         s, t = t, s
+
+    # Meets/joins require callable type normalization.
+    s, t = normalize_callables(s, t)
 
     value = t.accept(TypeJoinVisitor(s))
     if declaration is None or is_subtype(value, declaration):
@@ -228,6 +231,9 @@ def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) 
         return s.accept(TypeJoinVisitor(t))
     elif isinstance(t, PlaceholderType):
         return AnyType(TypeOfAny.from_error)
+
+    # Meets/joins require callable type normalization.
+    s, t = normalize_callables(s, t)
 
     # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s, instance_joiner))
@@ -526,6 +532,14 @@ def is_better(t: Type, s: Type) -> bool:
         if len(t.type.mro) > len(s.type.mro):
             return True
     return False
+
+
+def normalize_callables(s: ProperType, t: ProperType) -> tuple[ProperType, ProperType]:
+    if isinstance(s, (CallableType, Overloaded)):
+        s = s.with_unpacked_kwargs()
+    if isinstance(t, (CallableType, Overloaded)):
+        t = t.with_unpacked_kwargs()
+    return s, t
 
 
 def is_similar_callables(t: CallableType, s: CallableType) -> bool:

@@ -538,7 +538,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
             # We don't want people to try to use this yet.
             if not self.options.enable_incomplete_features:
-                self.fail('"Unpack" is not supported by mypy yet', t)
+                self.fail('"Unpack" is not supported yet, use --enable-incomplete-features', t)
                 return AnyType(TypeOfAny.from_error)
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
         return None
@@ -838,17 +838,21 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> Type:
         """Analyze signature argument type for *args and **kwargs argument."""
-        # TODO: Check that suffix and kind match
         if isinstance(t, UnboundType) and t.name and "." in t.name and not t.args:
             components = t.name.split(".")
-            sym = self.lookup_qualified(".".join(components[:-1]), t)
+            tvar_name = ".".join(components[:-1])
+            sym = self.lookup_qualified(tvar_name, t)
             if sym is not None and isinstance(sym.node, ParamSpecExpr):
                 tvar_def = self.tvar_scope.get_binding(sym)
                 if isinstance(tvar_def, ParamSpecType):
                     if kind == ARG_STAR:
                         make_paramspec = paramspec_args
+                        if components[-1] != "args":
+                            self.fail(f'Use "{tvar_name}.args" for variadic "*" parameter', t)
                     elif kind == ARG_STAR2:
                         make_paramspec = paramspec_kwargs
+                        if components[-1] != "kwargs":
+                            self.fail(f'Use "{tvar_name}.kwargs" for variadic "**" parameter', t)
                     else:
                         assert False, kind
                     return make_paramspec(
@@ -1546,7 +1550,7 @@ def expand_type_alias(
     assert typ.alias is not None
     # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
     if (
-        isinstance(typ.alias.target, Instance)  # type: ignore
+        isinstance(typ.alias.target, Instance)  # type: ignore[misc]
         and typ.alias.target.type.fullname == "mypy_extensions.FlexibleAlias"
     ):
         exp = get_proper_type(typ)

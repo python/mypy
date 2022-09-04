@@ -90,6 +90,7 @@ class MemberContext:
         chk: mypy.checker.TypeChecker,
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
+        no_deferral: bool = False,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -100,6 +101,7 @@ class MemberContext:
         self.msg = msg
         self.chk = chk
         self.module_symbol_table = module_symbol_table
+        self.no_deferral = no_deferral
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -124,6 +126,7 @@ class MemberContext:
             self.chk,
             self.self_type,
             self.module_symbol_table,
+            self.no_deferral,
         )
         if messages is not None:
             mx.msg = messages
@@ -149,6 +152,7 @@ def analyze_member_access(
     in_literal_context: bool = False,
     self_type: Type | None = None,
     module_symbol_table: SymbolTable | None = None,
+    no_deferral: bool = False,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -183,6 +187,7 @@ def analyze_member_access(
         chk=chk,
         self_type=self_type,
         module_symbol_table=module_symbol_table,
+        no_deferral=no_deferral,
     )
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
@@ -231,8 +236,6 @@ def _analyze_member_access(
         return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
-        return AnyType(TypeOfAny.from_error)
-    if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
     return report_missing_attribute(mx.original_type, typ, name, mx)
 
@@ -302,12 +305,12 @@ def analyze_instance_member_access(
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type("builtins.function"))
         signature = freshen_function_type_vars(signature)
-        if name == "__new__":
+        if name == "__new__" or method.is_static:
             # __new__ is special and behaves like a static method -- don't strip
             # the first argument.
             pass
         else:
-            if isinstance(signature, FunctionLike) and name != "__call__":
+            if name != "__call__":
                 # TODO: use proper treatment of special methods on unions instead
                 #       of this hack here and below (i.e. mx.self_type).
                 dispatched_type = meet.meet_types(mx.original_type, typ)
@@ -315,6 +318,8 @@ def analyze_instance_member_access(
                     signature, dispatched_type, method.is_class, mx.context, name, mx.msg
                 )
             signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
+        # TODO: should we skip these steps for static methods as well?
+        # Since generic static methods should not be allowed.
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
         freeze_type_vars(member_type)
@@ -425,8 +430,6 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
             ret_type=literal_false,
             fallback=mx.named_type("builtins.function"),
         )
-    elif mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     else:
         return _analyze_member_access(name, mx.named_type("builtins.object"), mx)
 
@@ -477,6 +480,9 @@ def analyze_member_var_access(
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
+    elif isinstance(v, MypyFile):
+        mx.chk.module_refs.add(v.fullname)
+        return mx.chk.expr_checker.module_type(v)
     elif (
         not v
         and name not in ["__getattr__", "__setattr__", "__getattribute__"]
@@ -539,12 +545,15 @@ def analyze_member_var_access(
         return AnyType(TypeOfAny.special_form)
 
     # Could not find the member.
+    if itype.extra_attrs and name in itype.extra_attrs.attrs:
+        # For modules use direct symbol table lookup.
+        if not itype.extra_attrs.mod_name:
+            return itype.extra_attrs.attrs[name]
+
     if mx.is_super:
         mx.msg.undefined_in_superclass(name, mx.context)
         return AnyType(TypeOfAny.from_error)
     else:
-        if mx.chk and mx.chk.should_suppress_optional_error([itype]):
-            return AnyType(TypeOfAny.from_error)
         return report_missing_attribute(mx.original_type, itype, name, mx)
 
 
@@ -745,7 +754,7 @@ def analyze_var(
                 else:
                     result = expanded_signature
     else:
-        if not var.is_ready:
+        if not var.is_ready and not mx.no_deferral:
             mx.not_ready_callback(var.name, mx.context)
         # Implicit 'Any' type.
         result = AnyType(TypeOfAny.special_form)
@@ -859,6 +868,10 @@ def analyze_class_attribute_access(
 
     node = info.get(name)
     if not node:
+        if itype.extra_attrs and name in itype.extra_attrs.attrs:
+            # For modules use direct symbol table lookup.
+            if not itype.extra_attrs.mod_name:
+                return itype.extra_attrs.attrs[name]
         if info.fallback_to_any:
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         return None

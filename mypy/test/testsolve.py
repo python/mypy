@@ -138,7 +138,7 @@ class SolveSuite(Suite):
         assert_equal(str(actual), str(res))
 
     def supc(self, type_var: TypeVarType, bound: Type) -> Constraint:
-        return Constraint(type_var.id, SUPERTYPE_OF, bound)
+        return Constraint(type_var, SUPERTYPE_OF, bound)
 
     def subc(self, type_var: TypeVarType, bound: Type) -> Constraint:
-        return Constraint(type_var.id, SUBTYPE_OF, bound)
+        return Constraint(type_var, SUBTYPE_OF, bound)
