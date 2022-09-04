@@ -30,9 +30,9 @@ class DefinedVariables(NamedTuple):
 
 
 class BranchingTracker:
-    def __init__(self) -> None:
+    def __init__(self, previously_defined: DefinedVariables) -> None:
         self.defined_by_branch: list[DefinedVariables] = [
-            DefinedVariables(may_be_defined=set(), must_be_defined=set())
+            DefinedVariables(may_be_defined=set(), must_be_defined=set(previously_defined.must_be_defined))
         ]
 
     def next_branch(self) -> None:
@@ -82,20 +82,22 @@ class DefinedVariableTracker:
     def __init__(self) -> None:
         # todo(stas): we should initialize this with some variables.
         # There's always at least one scope. Within each scope, there's at least one "global" BranchingTracker.
-        self.scopes: list[list[BranchingTracker]] = [[BranchingTracker()]]
+        self.scopes: list[list[BranchingTracker]] = [[BranchingTracker(DefinedVariables(may_be_defined=set(), must_be_defined=set()))]]
 
     def _scope(self) -> list[BranchingTracker]:
         assert len(self.scopes) > 0
         return self.scopes[-1]
 
     def enter_scope(self) -> None:
-        self.scopes.append([BranchingTracker()])
+        assert len(self._scope()) > 0
+        self.scopes.append([BranchingTracker(self._scope()[-1].defined_by_branch[-1])])
 
     def exit_scope(self) -> None:
         self.scopes.pop()
 
     def start_branch_statement(self) -> None:
-        self._scope().append(BranchingTracker())
+        assert len(self._scope()) > 0
+        self._scope().append(BranchingTracker(self._scope()[-1].defined_by_branch[-1]))
 
     def next_branch(self) -> None:
         assert len(self._scope()) > 1
