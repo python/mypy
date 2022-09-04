@@ -26,6 +26,7 @@ from mypyc.common import (
     PLATFORM_SIZE,
     use_method_vectorcall,
     use_vectorcall,
+    BITMAP_BITS,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -1018,9 +1019,9 @@ class LowLevelIRBuilder:
             c = 0
             for lst, arg in zip(formal_to_actual, sig_args):
                 if arg.kind.is_optional() and is_fixed_width_rtype(arg.type):
-                    if i * 32 <= c < (i + 1) * 32:
+                    if i * BITMAP_BITS <= c < (i + 1) * BITMAP_BITS:
                         if lst:
-                            bitmap |= 1 << (c & 31)
+                            bitmap |= 1 << (c & (BITMAP_BITS - 1))
                     c += 1
             output_args.append(Integer(bitmap, uint32_rprimitive))
 

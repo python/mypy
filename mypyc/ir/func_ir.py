@@ -6,7 +6,7 @@ from typing import Sequence
 from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
-from mypyc.common import JsonDict, bitmap_name, get_id_from_name, short_id_from_name
+from mypyc.common import JsonDict, bitmap_name, get_id_from_name, short_id_from_name, BITMAP_BITS
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -107,7 +107,7 @@ def num_bitmap_args(args: tuple[RuntimeArg, ...]) -> int:
     for arg in args:
         if is_fixed_width_rtype(arg.type) and arg.kind.is_optional():
             n += 1
-    return (n + 31) // 32
+    return (n + (BITMAP_BITS - 1)) // BITMAP_BITS
 
 
 FUNC_NORMAL: Final = 0

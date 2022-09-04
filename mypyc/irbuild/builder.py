@@ -57,7 +57,7 @@ from mypy.types import (
 )
 from mypy.util import split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import SELF_NAME, TEMP_ATTR_NAME, BITMAP_BITS
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -465,8 +465,8 @@ class IRBuilder:
         error_block, body_block = BasicBlock(), BasicBlock()
         o = self.int_op(
             uint32_rprimitive,
-            self.builder.args[-1 - index // 32],
-            Integer(1 << (index & 31), uint32_rprimitive),
+            self.builder.args[-1 - index // BITMAP_BITS],
+            Integer(1 << (index & (BITMAP_BITS - 1)), uint32_rprimitive),
             IntOp.AND,
             line,
         )

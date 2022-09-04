@@ -18,7 +18,7 @@ non-locals is via an instance of an environment class. Example:
 from __future__ import annotations
 
 from mypy.nodes import Argument, FuncDef, SymbolNode, Var
-from mypyc.common import ENV_ATTR_NAME, SELF_NAME, bitmap_name
+from mypyc.common import ENV_ATTR_NAME, SELF_NAME, bitmap_name, BITMAP_BITS
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
 from mypyc.ir.rtypes import RInstance, is_fixed_width_rtype, object_rprimitive, uint32_rprimitive
@@ -165,7 +165,7 @@ def num_bitmap_args(builder: IRBuilder, args: list[Argument]) -> int:
         t = builder.type_to_rtype(arg.variable.type)
         if is_fixed_width_rtype(t) and arg.kind.is_optional():
             n += 1
-    return (n + 31) // 32
+    return (n + (BITMAP_BITS - 1)) // BITMAP_BITS
 
 
 def add_args_to_env(

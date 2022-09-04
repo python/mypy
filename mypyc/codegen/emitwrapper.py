@@ -17,7 +17,7 @@ from typing import Sequence
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
 from mypyc.codegen.emit import AssignHandler, Emitter, ErrorHandler, GotoHandler, ReturnHandler
-from mypyc.common import DUNDER_PREFIX, NATIVE_PREFIX, PREFIX, bitmap_name, use_vectorcall
+from mypyc.common import DUNDER_PREFIX, NATIVE_PREFIX, PREFIX, bitmap_name, use_vectorcall, BITMAP_TYPE, BITMAP_BITS
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
 from mypyc.ir.rtypes import (
@@ -190,7 +190,7 @@ def generate_wrapper_function(
     )
     for i in range(fn.sig.num_bitmap_args):
         name = bitmap_name(i)
-        emitter.emit_line(f"uint32_t {name} = 0;")
+        emitter.emit_line(f"{BITMAP_TYPE} {name} = 0;")
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(
         fn,
@@ -264,7 +264,7 @@ def generate_legacy_wrapper_function(
     )
     for i in range(fn.sig.num_bitmap_args):
         name = bitmap_name(i)
-        emitter.emit_line(f"uint32_t {name} = 0;")
+        emitter.emit_line(f"{BITMAP_TYPE} {name} = 0;")
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(
         fn,
@@ -714,8 +714,8 @@ def generate_arg_check(
             # Update bitmap is value is provided.
             emitter.emit_line(f"{emitter.ctype(typ)} arg_{name} = 0;")
             emitter.emit_line(f"if (obj_{name} != NULL) {{")
-            bitmap = bitmap_name(bitmap_arg_index // 32)
-            emitter.emit_line(f"{bitmap} |= 1 << {bitmap_arg_index & 31};")
+            bitmap = bitmap_name(bitmap_arg_index // BITMAP_BITS)
+            emitter.emit_line(f"{bitmap} |= 1 << {bitmap_arg_index & (BITMAP_BITS - 1)};")
             emitter.emit_unbox(
                 f"obj_{name}",
                 f"arg_{name}",
