@@ -149,9 +149,6 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "files": split_and_match_files,
     "quickstart_file": expand_path,
     "junit_xml": expand_path,
-    # These two are for backwards compatibility
-    "silent_imports": bool,
-    "almost_silent": bool,
     "follow_imports": check_follow_imports,
     "no_site_packages": bool,
     "plugins": lambda s: [p.strip() for p in s.split(",")],
@@ -471,24 +468,6 @@ def parse_section(
             if v:
                 set_strict_flags()
             continue
-        if key == "silent_imports":
-            print(
-                "%ssilent_imports has been replaced by "
-                "ignore_missing_imports=True; follow_imports=skip" % prefix,
-                file=stderr,
-            )
-            if v:
-                if "ignore_missing_imports" not in results:
-                    results["ignore_missing_imports"] = True
-                if "follow_imports" not in results:
-                    results["follow_imports"] = "skip"
-        if key == "almost_silent":
-            print(
-                "%salmost_silent has been replaced by follow_imports=error" % prefix, file=stderr
-            )
-            if v:
-                if "follow_imports" not in results:
-                    results["follow_imports"] = "error"
         results[options_key] = v
 
     # These two flags act as per-module overrides, so store the empty defaults.
