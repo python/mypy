@@ -1305,8 +1305,13 @@ class MessageBuilder:
         self, defn: FuncDef, old_type: FunctionLike, new_type: FunctionLike
     ) -> None:
         self.fail("All conditional function variants must have identical signatures", defn)
-        self.note(f"Original signature: {old_type}", defn)
-        self.note(f"Redefinition signature: {new_type}", defn)
+        if isinstance(old_type, (CallableType, Overloaded)) and isinstance(
+            new_type, (CallableType, Overloaded)
+        ):
+            self.note("Original:", defn)
+            self.pretty_callable_or_overload(old_type, defn, offset=4)
+            self.note("Redefinition:", defn)
+            self.pretty_callable_or_overload(new_type, defn, offset=4)
 
     def cannot_instantiate_abstract_class(
         self, class_name: str, abstract_attributes: dict[str, bool], context: Context

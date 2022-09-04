@@ -1394,8 +1394,10 @@ if x:
     def f(x: int) -> None: pass
 else:
     def f(x): pass # E: All conditional function variants must have identical signatures \
-                   # N: Original signature: def (x: builtins.int) \
-                   # N: Redefinition signature: def (x: Any) -> Any
+                   # N: Original: \
+                   # N:     def f(x: int) -> None \
+                   # N: Redefinition: \
+                   # N:     def f(x: Any) -> Any
 
 [case testIncompatibleConditionalFunctionDefinition2]
 from typing import Any
