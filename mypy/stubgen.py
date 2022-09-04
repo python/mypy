@@ -1733,7 +1733,7 @@ def parse_options(args: list[str]) -> Options:
         "--export-less",
         action="store_true",
         help=(
-            "don't implicitly export all names imported from other modules " "in the same package"
+            "don't implicitly export all names imported from other modules in the same package"
         ),
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="show more verbose messages")

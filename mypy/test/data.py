@@ -189,7 +189,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
         ):
             raise ValueError(
                 (
-                    "Stale modules after pass {} must be a subset of rechecked " "modules ({}:{})"
+                    "Stale modules after pass {} must be a subset of rechecked modules ({}:{})"
                 ).format(passnum, case.file, first_item.line)
             )
 
