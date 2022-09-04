@@ -1729,7 +1729,7 @@ def parse_options(args: list[str]) -> _Arguments:
     parser.add_argument(
         "--mypy-config-file",
         metavar="FILE",
-        help=("Use specified mypy config file to determine mypy plugins " "and mypy path"),
+        help=("Use specified mypy config file to determine mypy plugins and mypy path"),
     )
     parser.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
