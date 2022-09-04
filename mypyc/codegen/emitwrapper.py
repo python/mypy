@@ -229,6 +229,8 @@ def generate_legacy_wrapper_function(
 
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
+    if fn.sig.num_bitmap_args:
+        real_args = real_args[:-fn.sig.num_bitmap_args]
     if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
@@ -260,6 +262,9 @@ def generate_legacy_wrapper_function(
         "return NULL;",
         "}",
     )
+    for i in range(fn.sig.num_bitmap_args):
+        name = bitmap_name(i)
+        emitter.emit_line(f"uint32_t {name} = 0;")
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(
         fn,
