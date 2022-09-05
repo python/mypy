@@ -4229,6 +4229,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callable_ctx = get_proper_type(replace_meta_vars(ctx, ErasedType()))
         assert isinstance(callable_ctx, CallableType)
 
+        # The callable_ctx may have a fallback of builtins.type if the context
+        # is a constructor -- but this fallback doesn't make sense for lambdas.
+        callable_ctx = callable_ctx.copy_modified(fallback=self.named_type("builtins.function"))
+
         if callable_ctx.type_guard is not None:
             # Lambda's return type cannot be treated as a `TypeGuard`,
             # because it is implicit. And `TypeGuard`s must be explicit.
