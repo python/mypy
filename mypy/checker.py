@@ -2309,9 +2309,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.msg.filter_errors():
                 # Suppress any errors, they will be given when analyzing the corresponding node.
                 # Here we may have incorrect options and location context.
-                return self.expr_checker.alias_type_in_runtime_context(
-                    sym.node, sym.node.no_args, sym.node
-                )
+                return self.expr_checker.alias_type_in_runtime_context(sym.node, ctx=sym.node)
         # TODO: handle more node kinds here.
         return None
 

@@ -341,7 +341,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Note that we suppress bogus errors for alias redefinitions,
             # they are already reported in semanal.py.
             result = self.alias_type_in_runtime_context(
-                node, node.no_args, e, alias_definition=e.is_alias_rvalue or lvalue
+                node, ctx=e, alias_definition=e.is_alias_rvalue or lvalue
             )
         elif isinstance(node, (TypeVarExpr, ParamSpecExpr)):
             result = self.object_type()
@@ -3805,12 +3805,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         both `reveal_type` instances will reveal the same type `def (...) -> builtins.list[Any]`.
         Note that type variables are implicitly substituted with `Any`.
         """
-        return self.alias_type_in_runtime_context(
-            alias.node, alias.no_args, alias, alias_definition=True
-        )
+        return self.alias_type_in_runtime_context(alias.node, ctx=alias, alias_definition=True)
 
     def alias_type_in_runtime_context(
-        self, alias: TypeAlias, no_args: bool, ctx: Context, *, alias_definition: bool = False
+        self, alias: TypeAlias, *, ctx: Context, alias_definition: bool = False
     ) -> Type:
         """Get type of a type alias (could be generic) in a runtime expression.
 
@@ -3842,7 +3840,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
             tp = type_object_type(item.type, self.named_type)
-            if no_args:
+            if alias.no_args:
                 return tp
             return self.apply_type_arguments_to_callable(tp, item.args, ctx)
         elif (
@@ -3860,6 +3858,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
             # This type is invalid in most runtime contexts, give it an 'object' type.
+            # TODO: Use typing._SpecialForm instead?
             return self.named_type("builtins.object")
 
     def apply_type_arguments_to_callable(
