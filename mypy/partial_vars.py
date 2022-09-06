@@ -178,7 +178,6 @@ class PartiallyDefinedVariableVisitor(TraverserVisitor):
     def visit_for_stmt(self, o: ForStmt) -> None:
         o.expr.accept(self)
         self.process_lvalue(o.index)
-        # Also analyze as non-lvalue so that every for loop index variable is assumed to be read.
         o.index.accept(self)
         self.tracker.start_branch_statement()
         o.body.accept(self)
