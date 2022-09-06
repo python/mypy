@@ -1099,7 +1099,7 @@ class SemanticAnalyzer(
                     )
                 else:
                     self.fail(
-                        "The implementation for an overloaded function " "must come last",
+                        "The implementation for an overloaded function must come last",
                         defn.items[idx],
                     )
         else:
@@ -2120,18 +2120,10 @@ class SemanticAnalyzer(
                 abc_meta = self.named_type_or_none("abc.ABCMeta", [])
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
                     defn.info.metaclass_type = abc_meta
-        if declared_metaclass is not None and defn.info.metaclass_type is None:
-            # Inconsistency may happen due to multiple baseclasses even in classes that
-            # do not declare explicit metaclass, but it's harder to catch at this stage
-            if defn.metaclass is not None:
-                self.fail(f'Inconsistent metaclass structure for "{defn.name}"', defn)
-        else:
-            if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base(
-                "enum.EnumMeta"
-            ):
-                defn.info.is_enum = True
-                if defn.type_vars:
-                    self.fail("Enum class cannot be generic", defn)
+        if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
+            defn.info.is_enum = True
+            if defn.type_vars:
+                self.fail("Enum class cannot be generic", defn)
 
     #
     # Imports
@@ -3347,7 +3339,7 @@ class SemanticAnalyzer(
         elif isinstance(lval, MemberExpr):
             self.analyze_member_lvalue(lval, explicit_type, is_final)
             if explicit_type and not self.is_self_member_ref(lval):
-                self.fail("Type cannot be declared in assignment to non-self " "attribute", lval)
+                self.fail("Type cannot be declared in assignment to non-self attribute", lval)
         elif isinstance(lval, IndexExpr):
             if explicit_type:
                 self.fail("Unexpected type declaration", lval)

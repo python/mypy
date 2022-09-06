@@ -4351,7 +4351,7 @@ class C(B):
 class X(type): pass
 class Y(type): pass
 class A(metaclass=X): pass
-class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for "B"
+class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
 [case testMetaclassNoTypeReveal]
 class M:
@@ -5213,8 +5213,8 @@ class CD(six.with_metaclass(M)): pass  # E: Multiple metaclass definitions
 class M1(type): pass
 class Q1(metaclass=M1): pass
 @six.add_metaclass(M)
-class CQA(Q1): pass  # E: Inconsistent metaclass structure for "CQA"
-class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
+class CQA(Q1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class CQW(six.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 [builtins fixtures/tuple.pyi]
 
 [case testSixMetaclassAny]
@@ -5319,7 +5319,7 @@ class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not sup
 
 class M1(type): pass
 class Q1(metaclass=M1): pass
-class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
+class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 [builtins fixtures/tuple.pyi]
 
 [case testFutureMetaclassAny]
@@ -6717,6 +6717,39 @@ class Meta(A): pass
 [file a.py]
 from m import Meta
 class A(metaclass=Meta): pass
+
+[case testMetaclassConflict]
+class MyMeta1(type): ...
+class MyMeta2(type): ...
+class MyMeta3(type): ...
+class A(metaclass=MyMeta1): ...
+class B(metaclass=MyMeta2): ...
+class C(metaclass=type): ...
+class A1(A): ...
+class E: ...
+
+class CorrectMeta(MyMeta1, MyMeta2): ...
+class CorrectSubclass1(A1, B, E, metaclass=CorrectMeta): ...
+class CorrectSubclass2(A, B, E, metaclass=CorrectMeta): ...
+class CorrectSubclass3(B, A, metaclass=CorrectMeta): ...
+
+class ChildOfCorrectSubclass1(CorrectSubclass1): ...
+
+class CorrectWithType1(C, A1): ...
+class CorrectWithType2(B, C): ...
+
+class Conflict1(A1, B, E): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class Conflict2(A, B): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class Conflict3(B, A): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+
+class ChildOfConflict1(Conflict3): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class ChildOfConflict2(Conflict3, metaclass=CorrectMeta): ...
+
+class ConflictingMeta(MyMeta1, MyMeta3): ...
+class Conflict4(A1, B, E, metaclass=ConflictingMeta): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+
+class ChildOfCorrectButWrongMeta(CorrectSubclass1, metaclass=ConflictingMeta):  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+    ...
 
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any
