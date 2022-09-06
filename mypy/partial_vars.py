@@ -18,8 +18,8 @@ from mypy.nodes import (
 from mypy.traverser import TraverserVisitor
 
 
-class DefinedVariables(NamedTuple):
-    """DefinedVariables contains information about variable definition at the end of a branching statement.
+class DefinedVars(NamedTuple):
+    """DefinedVars contains information about variable definition at the end of a branching statement.
     `if` and `match` are examples of branching statements.
 
     `may_be_defined` contains variables that were defined in only some branches.
@@ -31,17 +31,15 @@ class DefinedVariables(NamedTuple):
 
 
 class BranchStatement:
-    def __init__(self, already_defined: DefinedVariables) -> None:
+    def __init__(self, already_defined: DefinedVars) -> None:
         self.already_defined = already_defined
-        self.defined_by_branch: list[DefinedVariables] = [
-            DefinedVariables(
-                may_be_defined=set(), must_be_defined=set(already_defined.must_be_defined)
-            )
+        self.defined_by_branch: list[DefinedVars] = [
+            DefinedVars(may_be_defined=set(), must_be_defined=set(already_defined.must_be_defined))
         ]
 
     def next_branch(self) -> None:
         self.defined_by_branch.append(
-            DefinedVariables(
+            DefinedVars(
                 may_be_defined=set(), must_be_defined=set(self.already_defined.must_be_defined)
             )
         )
@@ -51,7 +49,7 @@ class BranchStatement:
         self.defined_by_branch[-1].must_be_defined.add(name)
         self.defined_by_branch[-1].may_be_defined.discard(name)
 
-    def record_nested_branch(self, vars: DefinedVariables) -> None:
+    def record_nested_branch(self, vars: DefinedVars) -> None:
         assert len(self.defined_by_branch) > 0
         current_branch = self.defined_by_branch[-1]
         current_branch.must_be_defined.update(vars.must_be_defined)
@@ -62,7 +60,7 @@ class BranchStatement:
         assert len(self.defined_by_branch) > 0
         return name in self.defined_by_branch[-1].may_be_defined
 
-    def done(self) -> DefinedVariables:
+    def done(self) -> DefinedVars:
         assert len(self.defined_by_branch) > 0
         if len(self.defined_by_branch) == 1:
             # If there's only one branch, then we just return current.
@@ -79,17 +77,16 @@ class BranchStatement:
             all_vars.update(branch_vars.may_be_defined)
             all_vars.update(branch_vars.must_be_defined)
         may_be_defined = all_vars.difference(must_be_defined)
-        return DefinedVariables(may_be_defined=may_be_defined, must_be_defined=must_be_defined)
+        return DefinedVars(may_be_defined=may_be_defined, must_be_defined=must_be_defined)
 
 
 class DefinedVariableTracker:
     """DefinedVariableTracker manages the state and scope for the UndefinedVariablesVisitor."""
 
     def __init__(self) -> None:
-        # todo(stas): we should initialize this with some variables.
-        # There's always at least one scope. Within each scope, there's at least one "global" BranchingTracker.
+        # There's always at least one scope. Within each scope, there's at least one "global" BranchingStatement.
         self.scopes: list[list[BranchStatement]] = [
-            [BranchStatement(DefinedVariables(may_be_defined=set(), must_be_defined=set()))]
+            [BranchStatement(DefinedVars(may_be_defined=set(), must_be_defined=set()))]
         ]
 
     def _scope(self) -> list[BranchStatement]:
@@ -128,7 +125,7 @@ class DefinedVariableTracker:
         return self._scope()[-1].is_possibly_undefined(name)
 
 
-class UndefinedVariableVisitor(TraverserVisitor):
+class PartiallyDefinedVariableVisitor(TraverserVisitor):
     """Detect variables that are defined only part of the time.
 
     This visitor detects the following case:

@@ -49,9 +49,9 @@ from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
+from mypy.partial_vars import PartiallyDefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
-from mypy.undefined_vars import UndefinedVariableVisitor
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
@@ -2337,16 +2337,20 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return result
 
+    def detect_partially_defined_vars(self) -> None:
+        manager = self.manager
+        if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED_VARS):
+            manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
+            self.tree.accept(
+                PartiallyDefinedVariableVisitor(MessageBuilder(manager.errors, manager.modules))
+            )
+
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
-        if manager.options.disallow_undefined_vars:
-            manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
-            self.tree.accept(
-                UndefinedVariableVisitor(MessageBuilder(manager.errors, manager.modules))
-            )
+
         t0 = time_ref()
         with self.wrap_context():
             # Some tests (and tools) want to look at the set of all types.
@@ -3371,6 +3375,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         graph[id].type_check_first_pass()
         if not graph[id].type_checker().deferred_nodes:
             unfinished_modules.discard(id)
+            graph[id].detect_partially_defined_vars()
             graph[id].finish_passes()
 
     while unfinished_modules:
@@ -3379,6 +3384,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
                 continue
             if not graph[id].type_check_second_pass():
                 unfinished_modules.discard(id)
+                graph[id].detect_partially_defined_vars()
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()

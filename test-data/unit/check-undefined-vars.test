@@ -1,12 +1,12 @@
 [case testDefinedInOneBranch]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 if int():
     a = 1
 else:
     x = 2
 z = a + 1  # E: Name "a" may be undefined
 [case testElif]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 if int():
     a = 1
 elif int():
@@ -17,7 +17,7 @@ else:
 z = a + 1  # E: Name "a" may be undefined
 
 [case testDefinedInAllBranches]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 if int():
     a = 1
 elif int():
@@ -27,13 +27,13 @@ else:
 z = a + 1
 
 [case testOmittedElse]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 if int():
     a = 1
 z = a + 1  # E: Name "a" may be undefined
 
 [case testUpdatedInIf]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 # Variable a is already defined. Just updating it in an "if" is acceptable.
 a = 1
 if int():
@@ -41,7 +41,7 @@ if int():
 z = a + 1
 
 [case testNestedIf]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 if int():
     if int():
         a = 1
@@ -56,7 +56,7 @@ else:
 z = a + b  # E: Name "a" may be undefined
 
 [case testVeryNestedIf]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 if int():
     if int():
         if int():
@@ -72,7 +72,7 @@ else:
 z = a + b  # E: Name "a" may be undefined
 
 [case testTupleUnpack]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 
 if int():
     (x, y) = (1, 2)
@@ -82,7 +82,7 @@ a = y + x  # E: Name "x" may be undefined
 a = y + z  # E: Name "z" may be undefined
 
 [case testRedefined]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 y = 3
 if int():
     if int():
@@ -96,7 +96,7 @@ else:
 x = y + 2
 
 [case testScope]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 def foo() -> None:
     if int():
         y = 2
@@ -106,14 +106,14 @@ if int():
 x = y  # E: Name "y" may be undefined
 
 [case testFuncParams]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 def foo(a: int) -> None:
     if int():
         a = 2
     x = a
 
 [case testWhile]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 while int():
     x = 1
 
@@ -127,7 +127,7 @@ else:
 y = z  # No error.
 
 [case testForLoop]
-# flags: --disallow-undefined-vars
+# flags: --enable-error-code partially-defined
 for x in [1, 2, 3]:
     if x:
         x = 1

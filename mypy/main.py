@@ -823,8 +823,6 @@ def process_options(
         help="Make arguments prepended via Concatenate be truly positional-only",
         group=strictness_group,
     )
-    # Experiment flag to detect undefined variables being used.
-    add_invertible_flag("--disallow-undefined-vars", default=False, help=argparse.SUPPRESS)
 
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names)
