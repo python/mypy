@@ -17,14 +17,7 @@ from mypyc.codegen.emitwrapper import (
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import (
-    ATTR_BITMAP_BITS,
-    ATTR_BITMAP_TYPE,
-    NATIVE_PREFIX,
-    PREFIX,
-    REG_PREFIX,
-    use_fastcall,
-)
+from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
 from mypyc.ir.rtypes import RTuple, RType, is_fixed_width_rtype, object_rprimitive
@@ -385,10 +378,10 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
             if base.bitmap_attrs:
                 # Do we need another attribute bitmap field?
                 if emitter.bitmap_field(len(base.bitmap_attrs) - 1) not in bitmap_attrs:
-                    for i in range(0, len(base.bitmap_attrs), ATTR_BITMAP_BITS):
+                    for i in range(0, len(base.bitmap_attrs), BITMAP_BITS):
                         attr = emitter.bitmap_field(i)
                         if attr not in bitmap_attrs:
-                            lines.append(f"{ATTR_BITMAP_TYPE} {attr};")
+                            lines.append(f"{BITMAP_TYPE} {attr};")
                             bitmap_attrs.append(attr)
             for attr, rtype in base.attributes.items():
                 if (attr, rtype) not in seen_attrs:
@@ -567,7 +560,7 @@ def generate_setup_for_class(
         emitter.emit_line("}")
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
-    for i in range(0, len(cl.bitmap_attrs), ATTR_BITMAP_BITS):
+    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
         field = emitter.bitmap_field(i)
         emitter.emit_line(f"self->{field} = 0;")
 

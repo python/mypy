@@ -53,10 +53,12 @@ MIN_SHORT_INT: Final = -(sys.maxsize >> 1) - 1
 MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2**30 - 1
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
-# Decription of the C type used to track definedness of attributes
-# that have types with overlapping error values
-ATTR_BITMAP_TYPE: Final = "uint32_t"
-ATTR_BITMAP_BITS: Final = 32
+# Decription of the C type used to track the definedness of attributes and
+# the presence of argument default values that have types with overlapping
+# error values. Each tracked attribute/argument has a dedicated bit in the
+# relevant bitmap.
+BITMAP_TYPE: Final = "uint32_t"
+BITMAP_BITS: Final = 32
 
 # Runtime C library files
 RUNTIME_C_FILES: Final = [
@@ -128,3 +130,9 @@ def short_id_from_name(func_name: str, shortname: str, line: int | None) -> str:
     else:
         partial_name = shortname
     return partial_name
+
+
+def bitmap_name(index: int) -> str:
+    if index == 0:
+        return "__bitmap"
+    return f"__bitmap{index + 1}"

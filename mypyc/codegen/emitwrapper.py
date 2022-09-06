@@ -17,13 +17,22 @@ from typing import Sequence
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
 from mypyc.codegen.emit import AssignHandler, Emitter, ErrorHandler, GotoHandler, ReturnHandler
-from mypyc.common import DUNDER_PREFIX, NATIVE_PREFIX, PREFIX, use_vectorcall
+from mypyc.common import (
+    BITMAP_BITS,
+    BITMAP_TYPE,
+    DUNDER_PREFIX,
+    NATIVE_PREFIX,
+    PREFIX,
+    bitmap_name,
+    use_vectorcall,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
 from mypyc.ir.rtypes import (
     RInstance,
     RType,
     is_bool_rprimitive,
+    is_fixed_width_rtype,
     is_int_rprimitive,
     is_object_rprimitive,
     object_rprimitive,
@@ -135,6 +144,8 @@ def generate_wrapper_function(
 
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
+    if fn.sig.num_bitmap_args:
+        real_args = real_args[: -fn.sig.num_bitmap_args]
     if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
@@ -185,6 +196,9 @@ def generate_wrapper_function(
         "return NULL;",
         "}",
     )
+    for i in range(fn.sig.num_bitmap_args):
+        name = bitmap_name(i)
+        emitter.emit_line(f"{BITMAP_TYPE} {name} = 0;")
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(
         fn,
@@ -223,6 +237,8 @@ def generate_legacy_wrapper_function(
 
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
+    if fn.sig.num_bitmap_args:
+        real_args = real_args[: -fn.sig.num_bitmap_args]
     if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
@@ -254,6 +270,9 @@ def generate_legacy_wrapper_function(
         "return NULL;",
         "}",
     )
+    for i in range(fn.sig.num_bitmap_args):
+        name = bitmap_name(i)
+        emitter.emit_line(f"{BITMAP_TYPE} {name} = 0;")
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(
         fn,
@@ -669,7 +688,8 @@ def generate_wrapper_core(
     """
     gen = WrapperGenerator(None, emitter)
     gen.set_target(fn)
-    gen.arg_names = arg_names or [arg.name for arg in fn.args]
+    if arg_names:
+        gen.arg_names = arg_names
     gen.cleanups = cleanups or []
     gen.optional_args = optional_args or []
     gen.traceback_code = traceback_code or ""
@@ -688,6 +708,7 @@ def generate_arg_check(
     *,
     optional: bool = False,
     raise_exception: bool = True,
+    bitmap_arg_index: int = 0,
 ) -> None:
     """Insert a runtime check for argument and unbox if necessary.
 
@@ -697,17 +718,34 @@ def generate_arg_check(
     """
     error = error or AssignHandler()
     if typ.is_unboxed:
-        # Borrow when unboxing to avoid reference count manipulation.
-        emitter.emit_unbox(
-            f"obj_{name}",
-            f"arg_{name}",
-            typ,
-            declare_dest=True,
-            raise_exception=raise_exception,
-            error=error,
-            borrow=True,
-            optional=optional,
-        )
+        if is_fixed_width_rtype(typ) and optional:
+            # Update bitmap is value is provided.
+            emitter.emit_line(f"{emitter.ctype(typ)} arg_{name} = 0;")
+            emitter.emit_line(f"if (obj_{name} != NULL) {{")
+            bitmap = bitmap_name(bitmap_arg_index // BITMAP_BITS)
+            emitter.emit_line(f"{bitmap} |= 1 << {bitmap_arg_index & (BITMAP_BITS - 1)};")
+            emitter.emit_unbox(
+                f"obj_{name}",
+                f"arg_{name}",
+                typ,
+                declare_dest=False,
+                raise_exception=raise_exception,
+                error=error,
+                borrow=True,
+            )
+            emitter.emit_line("}")
+        else:
+            # Borrow when unboxing to avoid reference count manipulation.
+            emitter.emit_unbox(
+                f"obj_{name}",
+                f"arg_{name}",
+                typ,
+                declare_dest=True,
+                raise_exception=raise_exception,
+                error=error,
+                borrow=True,
+                optional=optional,
+            )
     elif is_object_rprimitive(typ):
         # Object is trivial since any object is valid
         if optional:
@@ -749,8 +787,12 @@ class WrapperGenerator:
         """
         self.target_name = fn.name
         self.target_cname = fn.cname(self.emitter.names)
-        self.arg_names = [arg.name for arg in fn.args]
-        self.args = fn.args[:]
+        self.num_bitmap_args = fn.sig.num_bitmap_args
+        if self.num_bitmap_args:
+            self.args = fn.args[: -self.num_bitmap_args]
+        else:
+            self.args = fn.args
+        self.arg_names = [arg.name for arg in self.args]
         self.ret_type = fn.ret_type
 
     def wrapper_name(self) -> str:
@@ -779,17 +821,22 @@ class WrapperGenerator:
     ) -> None:
         """Emit validation and unboxing of arguments."""
         error = error or self.error()
+        bitmap_arg_index = 0
         for arg_name, arg in zip(self.arg_names, self.args):
             # Suppress the argument check for *args/**kwargs, since we know it must be right.
             typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
+            optional = arg in self.optional_args
             generate_arg_check(
                 arg_name,
                 typ,
                 self.emitter,
                 error,
                 raise_exception=raise_exception,
-                optional=arg in self.optional_args,
+                optional=optional,
+                bitmap_arg_index=bitmap_arg_index,
             )
+            if optional and is_fixed_width_rtype(typ):
+                bitmap_arg_index += 1
 
     def emit_call(self, not_implemented_handler: str = "") -> None:
         """Emit call to the wrapper function.
@@ -798,6 +845,12 @@ class WrapperGenerator:
         a NotImplemented return value (if it's possible based on the return type).
         """
         native_args = ", ".join(f"arg_{arg}" for arg in self.arg_names)
+        if self.num_bitmap_args:
+            bitmap_args = ", ".join(
+                [bitmap_name(i) for i in reversed(range(self.num_bitmap_args))]
+            )
+            native_args = f"{native_args}, {bitmap_args}"
+
         ret_type = self.ret_type
         emitter = self.emitter
         if ret_type.is_unboxed or self.use_goto():

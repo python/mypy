@@ -8,8 +8,8 @@ from typing_extensions import Final
 
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
-    ATTR_BITMAP_BITS,
     ATTR_PREFIX,
+    BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     NATIVE_PREFIX,
     REG_PREFIX,
@@ -332,7 +332,7 @@ class Emitter:
 
     def bitmap_field(self, index: int) -> str:
         """Return C field name used for attribute bitmap."""
-        n = index // ATTR_BITMAP_BITS
+        n = index // BITMAP_BITS
         if n == 0:
             return "bitmap"
         return f"bitmap{n + 1}"
@@ -366,7 +366,7 @@ class Emitter:
         if value:
             self.emit_line(f"if (unlikely({value} == {self.c_undefined_value(rtype)})) {{")
         index = cl.bitmap_attrs.index(attr)
-        mask = 1 << (index & (ATTR_BITMAP_BITS - 1))
+        mask = 1 << (index & (BITMAP_BITS - 1))
         bitmap = self.attr_bitmap_expr(obj, cl, index)
         if clear:
             self.emit_line(f"{bitmap} &= ~{mask};")
@@ -400,7 +400,7 @@ class Emitter:
             check = f"unlikely({check})"
         if is_fixed_width_rtype(rtype):
             index = cl.bitmap_attrs.index(attr)
-            bit = 1 << (index & (ATTR_BITMAP_BITS - 1))
+            bit = 1 << (index & (BITMAP_BITS - 1))
             attr = self.bitmap_field(index)
             obj_expr = f"({cl.struct_name(self.names)} *){obj}"
             check = f"{check} && !(({obj_expr})->{attr} & {bit})"
@@ -986,7 +986,11 @@ class Emitter:
 
     def emit_error_check(self, value: str, rtype: RType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""
-        if not isinstance(rtype, RTuple):
+        if is_fixed_width_rtype(rtype):
+            # The error value is also valid as a normal value, so we need to also check
+            # for a raised exception.
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
+        elif not isinstance(rtype, RTuple):
             self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
         else:
             if len(rtype.types) == 0:
