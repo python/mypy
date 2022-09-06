@@ -2338,6 +2338,7 @@ class State:
         return result
 
     def detect_partially_defined_vars(self) -> None:
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED_VARS):
             manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
