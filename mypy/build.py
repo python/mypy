@@ -2351,7 +2351,6 @@ class State:
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
-
         t0 = time_ref()
         with self.wrap_context():
             # Some tests (and tools) want to look at the set of all types.
