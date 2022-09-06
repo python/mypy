@@ -122,7 +122,7 @@ NO_ANY_RETURN: Final = ErrorCode(
 UNREACHABLE: Final = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
 )
-PARTIALLY_DEFINED_VARS: Final[ErrorCode] = ErrorCode(
+PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
     "partially-defined",
     "Warn about variables that are defined only in some execution paths",
     "General",
