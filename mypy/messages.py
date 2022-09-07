@@ -582,20 +582,18 @@ class MessageBuilder:
                     )
                     return codes.INDEX
                 else:
-                    msg = "{} (expression has type {}, target has type {})"
                     arg_type_str, callee_type_str = format_type_distinctly(
                         arg_type, callee.arg_types[n - 1]
                     )
-                    self.fail(
-                        msg.format(
-                            message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                            arg_type_str,
-                            callee_type_str,
-                        ),
-                        context,
-                        code=codes.ASSIGNMENT,
+                    info = (
+                        f" (expression has type {arg_type_str}, "
+                        f"target has type {callee_type_str})"
                     )
-                    return codes.ASSIGNMENT
+                    error_msg = (
+                        message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT.with_additional_msg(info)
+                    )
+                    self.fail(error_msg.value, context, code=error_msg.code)
+                    return error_msg.code
 
             target = f"to {name} "
 

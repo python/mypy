@@ -821,10 +821,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     lvalue_type=item_expected_type,
                     rvalue=item_value,
                     context=item_value,
-                    msg=message_registry.INCOMPATIBLE_TYPES.value,
+                    msg=ErrorMessage(
+                        message_registry.INCOMPATIBLE_TYPES.value, code=codes.TYPEDDICT_ITEM
+                    ),
                     lvalue_name=f'TypedDict item "{item_name}"',
                     rvalue_name="expression",
-                    code=codes.TYPEDDICT_ITEM,
                 )
 
         return orig_ret_type

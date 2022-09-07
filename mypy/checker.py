@@ -1255,10 +1255,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 arg.variable.type,
                 arg.initializer,
                 context=arg.initializer,
-                msg=msg,
+                msg=ErrorMessage(msg, code=codes.ASSIGNMENT),
                 lvalue_name="argument",
                 rvalue_name="default",
-                code=codes.ASSIGNMENT,
             )
 
     def is_forward_op_method(self, method_name: str) -> bool:
@@ -2427,8 +2426,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if lvalue_type is None:
                 # TODO: This is broken.
                 lvalue_type = AnyType(TypeOfAny.special_form)
-            message = '{} "{}"'.format(
-                message_registry.INCOMPATIBLE_IMPORT_OF, cast(NameExpr, assign.rvalue).name
+            message = message_registry.INCOMPATIBLE_IMPORT_OF.format(
+                cast(NameExpr, assign.rvalue).name
             )
             self.check_simple_assignment(
                 lvalue_type,
@@ -2692,9 +2691,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             lvalue_type = make_optional_type(lvalue_type)
                             self.set_inferred_type(lvalue.node, lvalue, lvalue_type)
 
-                    rvalue_type = self.check_simple_assignment(
-                        lvalue_type, rvalue, context=rvalue, code=codes.ASSIGNMENT
-                    )
+                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, context=rvalue)
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
@@ -2923,7 +2920,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                 "expression has type",
                 f'base class "{base.name}" defined the type as',
-                code=codes.ASSIGNMENT,
             )
         return True
 
@@ -3711,11 +3707,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         lvalue_type: Type | None,
         rvalue: Expression,
         context: Context,
-        msg: str = message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+        msg: ErrorMessage = message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
         lvalue_name: str = "variable",
         rvalue_name: str = "expression",
-        *,
-        code: ErrorCode | None = None,
     ) -> Type:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
@@ -3740,7 +3734,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     msg,
                     f"{rvalue_name} has type",
                     f"{lvalue_name} has type",
-                    code=code,
                 )
             return rvalue_type
 
@@ -3764,16 +3757,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or isinstance(
             instance_type, TypeType
         ):
-            rvalue_type = self.check_simple_assignment(
-                attribute_type, rvalue, context, code=codes.ASSIGNMENT
-            )
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, attribute_type, True
 
         if not isinstance(attribute_type, Instance):
             # TODO: support __set__() for union types.
-            rvalue_type = self.check_simple_assignment(
-                attribute_type, rvalue, context, code=codes.ASSIGNMENT
-            )
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, attribute_type, True
 
         mx = MemberContext(
@@ -3792,9 +3781,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # the return type of __get__. This doesn't match the python semantics,
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
-            rvalue_type = self.check_simple_assignment(
-                get_type, rvalue, context, code=codes.ASSIGNMENT
-            )
+            rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
             return rvalue_type, get_type, True
 
         dunder_set = attribute_type.type.get_method("__set__")
@@ -3861,9 +3848,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
-        rvalue_type = self.check_simple_assignment(
-            set_type, rvalue, context, code=codes.ASSIGNMENT
-        )
+        rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
         infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
         return rvalue_type if infer else set_type, get_type, infer
 

@@ -51,7 +51,9 @@ INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
 )
 YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
 INCOMPATIBLE_TYPES: Final = ErrorMessage("Incompatible types")
-INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = ErrorMessage(
+    "Incompatible types in assignment", code=codes.ASSIGNMENT
+)
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")
 INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER: Final = (
@@ -97,7 +99,7 @@ RETURN_TYPE_CANNOT_BE_CONTRAVARIANT: Final = ErrorMessage(
 FUNCTION_PARAMETER_CANNOT_BE_COVARIANT: Final = ErrorMessage(
     "Cannot use a covariant type variable as a parameter"
 )
-INCOMPATIBLE_IMPORT_OF: Final = "Incompatible import of"
+INCOMPATIBLE_IMPORT_OF: Final = ErrorMessage('Incompatible import of "{}"', code=codes.ASSIGNMENT)
 FUNCTION_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a type annotation", codes.NO_UNTYPED_DEF
 )
