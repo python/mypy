@@ -920,3 +920,119 @@ def test_magic_default() -> None:
     assert a() == MAGIC
     assert a(1) == 1
     assert a(MAGIC) == MAGIC
+
+[case testI64UndefinedLocal]
+from typing_extensions import Final
+
+MYPY = False
+if MYPY:
+    from mypy_extensions import i64, i32
+
+from testutil import assertRaises
+
+MAGIC: Final = -113
+
+
+def test_conditionally_defined_local() -> None:
+    x = not int()
+    if x:
+        y: i64 = 5
+        z: i32 = 6
+    assert y == 5
+    assert z == 6
+
+def test_conditionally_undefined_local() -> None:
+    x = int()
+    if x:
+        y: i64 = 5
+        z: i32 = 6
+    else:
+        ok: i64 = 7
+    assert ok == 7
+    try:
+        print(y)
+    except NameError as e:
+        assert str(e) == 'local variable "y" referenced before assignment'
+    else:
+        assert False
+    try:
+        print(z)
+    except NameError as e:
+        assert str(e) == 'local variable "z" referenced before assignment'
+    else:
+        assert False
+
+def test_assign_error_value_conditionally() -> None:
+    x = int()
+    if not x:
+        y: i64 = MAGIC
+        z: i32 = MAGIC
+    assert y == MAGIC
+    assert z == MAGIC
+
+def test_many_locals() -> None:
+    x = int()
+    if x:
+        a0: i64 = 0
+        a1: i64 = 1
+        a2: i64 = 2
+        a3: i64 = 3
+        a4: i64 = 4
+        a5: i64 = 5
+        a6: i64 = 6
+        a7: i64 = 7
+        a8: i64 = 8
+        a9: i64 = 9
+        a10: i64 = 10
+        a11: i64 = 11
+        a12: i64 = 12
+        a13: i64 = 13
+        a14: i64 = 14
+        a15: i64 = 15
+        a16: i64 = 16
+        a17: i64 = 17
+        a18: i64 = 18
+        a19: i64 = 19
+        a20: i64 = 20
+        a21: i64 = 21
+        a22: i64 = 22
+        a23: i64 = 23
+        a24: i64 = 24
+        a25: i64 = 25
+        a26: i64 = 26
+        a27: i64 = 27
+        a28: i64 = 28
+        a29: i64 = 29
+        a30: i64 = 30
+        a31: i64 = 31
+        a32: i64 = 32
+        a33: i64 = 33
+    with assertRaises(NameError):
+        print(a0)
+    with assertRaises(NameError):
+        print(a31)
+    with assertRaises(NameError):
+        print(a32)
+    with assertRaises(NameError):
+        print(a33)
+    a0 = 5
+    assert a0 == 5
+    with assertRaises(NameError):
+        print(a31)
+    with assertRaises(NameError):
+        print(a32)
+    with assertRaises(NameError):
+        print(a33)
+    a32 = 55
+    assert a0 == 5
+    assert a32 == 55
+    with assertRaises(NameError):
+        print(a31)
+    with assertRaises(NameError):
+        print(a33)
+    a31 = 10
+    a33 = 20
+    assert a0 == 5
+    assert a31 == 10
+    assert a32 == 55
+    assert a33 == 20
