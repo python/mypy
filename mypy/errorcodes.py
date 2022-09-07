@@ -46,7 +46,7 @@ RETURN: Final[ErrorCode] = ErrorCode(
 RETURN_VALUE: Final[ErrorCode] = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
-ASSIGNMENT: Final = ErrorCode(
+ASSIGNMENT: Final[ErrorCode] = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
 )
 TYPE_ARG: Final = ErrorCode("type-arg", "Check that generic type arguments are present", "General")
