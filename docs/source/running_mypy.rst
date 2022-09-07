@@ -480,7 +480,7 @@ First, mypy has its own search path.
 This is computed from the following items:
 
 - The ``MYPYPATH`` environment variable
-  (a colon-separated list of directories).
+  (a list of directories, colon-separated on UNIX systems, semicolon-separated on Windows).
 - The :confval:`mypy_path` config file option.
 - The directories containing the sources given on the command line
   (see :ref:`Mapping file paths to modules <mapping-paths-to-modules>`).
