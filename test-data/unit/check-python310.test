@@ -1632,6 +1632,7 @@ match var:
 [case testMatchNamedAndKeywordsAreTheSame]
 from typing import Generic, TypeVar, Union
 from typing_extensions import Final
+from dataclasses import dataclass
 
 T = TypeVar("T")
 
@@ -1649,8 +1650,20 @@ class GenericRegular(Generic[T]):
 class GenericWithFinal(Generic[T]):
     x: T
     __match_args__: Final = ("x",)
+class RegularSubtype(GenericRegular[str]): ...
 
-input_arg: Union[Regular, ReveresedOrder, GenericRegular[str], GenericWithFinal[str]]
+@dataclass
+class GenericDataclass(Generic[T]):
+    x: T
+
+input_arg: Union[
+    Regular,
+    ReveresedOrder,
+    GenericRegular[str],
+    GenericWithFinal[str],
+    RegularSubtype,
+    GenericDataclass[str],
+]
 
 # Positional:
 match input_arg:
@@ -1658,19 +1671,27 @@ match input_arg:
         reveal_type(a)  # N: Revealed type is "builtins.str"
     case ReveresedOrder(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericWithFinal(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case RegularSubtype(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
     case GenericRegular(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-    case GenericWithFinal(a):
+    case GenericDataclass(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
 # Keywords:
 match input_arg:
     case Regular(x=a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-    case ReveresedOrder(x=b):  # note, that order is different
+    case ReveresedOrder(x=b):  # Order is different
         reveal_type(b)  # N: Revealed type is "builtins.int"
-    case GenericRegular(x=a):
-        reveal_type(a)  # N: Revealed type is "builtins.str"
     case GenericWithFinal(x=a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-[builtins fixtures/tuple.pyi]
+    case RegularSubtype(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericRegular(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericDataclass(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dataclasses.pyi]
