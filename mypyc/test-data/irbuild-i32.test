@@ -432,7 +432,7 @@ L0:
     r0 = truncate x: int64 to int32
     return r0
 
-[case testI32ExplicitConversionFromInt]
+[case testI32ExplicitConversionFromInt_64bit]
 from mypy_extensions import i32
 
 def f(x: int) -> i32:

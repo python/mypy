@@ -1528,7 +1528,7 @@ def from_i64(x):
 L0:
     return x
 
-[case testI64ExplicitConversionFromInt]
+[case testI64ExplicitConversionFromInt_64bit]
 from mypy_extensions import i64
 
 def f(x: int) -> i64:
