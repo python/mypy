@@ -33,6 +33,7 @@ from mypy.typeops import (
     coerce_to_literal,
     make_simplified_union,
     try_getting_str_literals_from_type,
+    tuple_fallback,
 )
 from mypy.types import (
     AnyType,
@@ -325,7 +326,9 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 return None
 
-        if self.chk.type_is_iterable(t) and isinstance(t, Instance):
+        if self.chk.type_is_iterable(t) and isinstance(t, (Instance, TupleType)):
+            if isinstance(t, TupleType):
+                t = tuple_fallback(t)
             return self.chk.iterable_item_type(t)
         else:
             return None
@@ -645,6 +648,9 @@ class PatternChecker(PatternVisitor[PatternType]):
 
         For example:
         construct_sequence_child(List[int], str) = List[str]
+
+        TODO: this doesn't make sense. For example if one has class S(Sequence[int], Generic[T])
+        or class T(Sequence[Tuple[T, T]]), there is no way any of those can map to Sequence[str].
         """
         proper_type = get_proper_type(outer_type)
         if isinstance(proper_type, UnionType):
@@ -657,6 +663,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
         if is_subtype(outer_type, self.chk.named_type("typing.Sequence")):
             proper_type = get_proper_type(outer_type)
+            if isinstance(proper_type, TupleType):
+                proper_type = tuple_fallback(proper_type)
             assert isinstance(proper_type, Instance)
             empty_type = fill_typevars(proper_type.type)
             partial_type = expand_type_by_instance(empty_type, sequence)

@@ -2968,7 +2968,7 @@ class M(type):
     pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for "D"
+a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
 [case testFineMetaclassDeclaredUpdate]
 import a
@@ -2984,7 +2984,7 @@ class M(type): pass
 class M2(type): pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for "D"
+a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
 [case testFineMetaclassRemoveFromClass]
 import a
@@ -4305,9 +4305,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType2]
 import a
@@ -4323,9 +4323,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType3]
 import a
@@ -4337,7 +4337,7 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 
 [case testNonePartialType4]
 import a
@@ -4353,7 +4353,7 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 ==
 
 [case testSkippedClass1]
@@ -9933,3 +9933,101 @@ foo(name='Jennifer', age=38)
 [out]
 ==
 m.py:2: error: Argument "age" to "foo" has incompatible type "int"; expected "str"
+
+[case testModuleAsProtocolImplementationFine]
+import m
+[file m.py]
+from typing import Protocol
+from lib import C
+
+class Options(Protocol):
+    timeout: int
+    def update(self) -> bool: ...
+
+def setup(options: Options) -> None: ...
+setup(C().config)
+
+[file lib.py]
+import default_config
+
+class C:
+    config = default_config
+
+[file default_config.py]
+timeout = 100
+def update() -> bool: ...
+
+[file default_config.py.2]
+timeout = 100
+def update() -> str: ...
+[builtins fixtures/module.pyi]
+[out]
+==
+m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
+m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+m.py:9: note:     Expected:
+m.py:9: note:         def update() -> bool
+m.py:9: note:     Got:
+m.py:9: note:         def update() -> str
+
+[case testBoundGenericMethodFine]
+import main
+[file main.py]
+import lib
+[file main.py.3]
+import lib
+reveal_type(lib.foo(42))
+[file lib/__init__.pyi]
+from lib import context
+foo = context.test.foo
+[file lib/context.pyi]
+from typing import TypeVar
+import lib.other
+
+T = TypeVar("T")
+class Test:
+    def foo(self, x: T, n: lib.other.C = ...) -> T: ...
+test: Test
+
+[file lib/other.pyi]
+class C: ...
+[file lib/other.pyi.2]
+class B: ...
+class C(B): ...
+[out]
+==
+==
+main.py:2: note: Revealed type is "builtins.int"
+
+[case testBoundGenericMethodParamSpecFine]
+import main
+[file main.py]
+import lib
+[file main.py.3]
+from typing import Callable
+import lib
+f: Callable[[], int]
+reveal_type(lib.foo(f))
+[file lib/__init__.pyi]
+from lib import context
+foo = context.test.foo
+[file lib/context.pyi]
+from typing_extensions import ParamSpec
+from typing import Callable
+import lib.other
+
+P = ParamSpec("P")
+class Test:
+    def foo(self, x: Callable[P, int], n: lib.other.C = ...) -> Callable[P, str]: ...
+test: Test
+
+[file lib/other.pyi]
+class C: ...
+[file lib/other.pyi.2]
+class B: ...
+class C(B): ...
+[builtins fixtures/dict.pyi]
+[out]
+==
+==
+main.py:4: note: Revealed type is "def () -> builtins.str"

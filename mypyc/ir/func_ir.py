@@ -6,7 +6,7 @@ from typing import Sequence
 from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
-from mypyc.common import JsonDict, get_id_from_name, short_id_from_name
+from mypyc.common import BITMAP_BITS, JsonDict, bitmap_name, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
     Register,
     Value,
 )
-from mypyc.ir.rtypes import RType, deserialize_type
+from mypyc.ir.rtypes import RType, bitmap_rprimitive, deserialize_type, is_fixed_width_rtype
 from mypyc.namegen import NameGenerator
 
 
@@ -70,12 +70,29 @@ class FuncSignature:
     def __init__(self, args: Sequence[RuntimeArg], ret_type: RType) -> None:
         self.args = tuple(args)
         self.ret_type = ret_type
+        self.num_bitmap_args = num_bitmap_args(self.args)
+        if self.num_bitmap_args:
+            extra = [
+                RuntimeArg(bitmap_name(i), bitmap_rprimitive, pos_only=True)
+                for i in range(self.num_bitmap_args)
+            ]
+            self.args = self.args + tuple(reversed(extra))
+
+    def bound_sig(self) -> "FuncSignature":
+        if self.num_bitmap_args:
+            return FuncSignature(self.args[1 : -self.num_bitmap_args], self.ret_type)
+        else:
+            return FuncSignature(self.args[1:], self.ret_type)
 
     def __repr__(self) -> str:
         return f"FuncSignature(args={self.args!r}, ret={self.ret_type!r})"
 
     def serialize(self) -> JsonDict:
-        return {"args": [t.serialize() for t in self.args], "ret_type": self.ret_type.serialize()}
+        if self.num_bitmap_args:
+            args = self.args[: -self.num_bitmap_args]
+        else:
+            args = self.args
+        return {"args": [t.serialize() for t in args], "ret_type": self.ret_type.serialize()}
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> FuncSignature:
@@ -83,6 +100,14 @@ class FuncSignature:
             [RuntimeArg.deserialize(arg, ctx) for arg in data["args"]],
             deserialize_type(data["ret_type"], ctx),
         )
+
+
+def num_bitmap_args(args: tuple[RuntimeArg, ...]) -> int:
+    n = 0
+    for arg in args:
+        if is_fixed_width_rtype(arg.type) and arg.kind.is_optional():
+            n += 1
+    return (n + (BITMAP_BITS - 1)) // BITMAP_BITS
 
 
 FUNC_NORMAL: Final = 0
@@ -120,7 +145,7 @@ class FuncDecl:
             if kind == FUNC_STATICMETHOD:
                 self.bound_sig = sig
             else:
-                self.bound_sig = FuncSignature(sig.args[1:], sig.ret_type)
+                self.bound_sig = sig.bound_sig()
 
         # this is optional because this will be set to the line number when the corresponding
         # FuncIR is created

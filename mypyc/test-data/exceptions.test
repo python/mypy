@@ -514,3 +514,128 @@ L13:
 L14:
     dec_ref r9
     goto L8
+
+[case testExceptionWithOverlappingErrorValue]
+from mypy_extensions import i64
+
+def f() -> i64:
+    return 0
+
+def g() -> i64:
+    return f()
+[out]
+def f():
+L0:
+    return 0
+def g():
+    r0 :: int64
+    r1 :: bit
+    r2 :: object
+    r3 :: int64
+L0:
+    r0 = f()
+    r1 = r0 == -113
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    return r0
+L2:
+    r2 = PyErr_Occurred()
+    if not is_error(r2) goto L3 (error at g:7) else goto L1
+L3:
+    r3 = <error> :: int64
+    return r3
+
+[case testExceptionWithNativeAttributeGetAndSet]
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def foo(c: C, x: int) -> None:
+    c.x = x - c.x
+[out]
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: int
+L0:
+    inc_ref x :: int
+    self.x = x
+    return 1
+def foo(c, x):
+    c :: __main__.C
+    x, r0, r1 :: int
+    r2 :: bool
+L0:
+    r0 = borrow c.x
+    r1 = CPyTagged_Subtract(x, r0)
+    c.x = r1
+    return 1
+
+[case testExceptionWithLowLevelIntAttribute]
+from mypy_extensions import i32, i64
+
+class C:
+    def __init__(self, x: i32, y: i64) -> None:
+        self.x = x
+        self.y = y
+
+def f(c: C) -> None:
+    c.x
+    c.y
+[out]
+def C.__init__(self, x, y):
+    self :: __main__.C
+    x :: int32
+    y :: int64
+L0:
+    self.x = x
+    self.y = y
+    return 1
+def f(c):
+    c :: __main__.C
+    r0 :: int32
+    r1 :: int64
+L0:
+    r0 = c.x
+    r1 = c.y
+    return 1
+
+[case testConditionallyUndefinedI64]
+from mypy_extensions import i64
+
+def f(x: i64) -> i64:
+    if x:
+        y: i64 = 2
+    return y
+[out]
+def f(x):
+    x, r0, y :: int64
+    __locals_bitmap0 :: uint32
+    r1 :: bit
+    r2, r3 :: uint32
+    r4 :: bit
+    r5 :: bool
+    r6 :: int64
+L0:
+    r0 = <error> :: int64
+    y = r0
+    __locals_bitmap0 = 0
+    r1 = x != 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    y = 2
+    r2 = __locals_bitmap0 | 1
+    __locals_bitmap0 = r2
+L2:
+    r3 = __locals_bitmap0 & 1
+    r4 = r3 == 0
+    if r4 goto L3 else goto L5 :: bool
+L3:
+    r5 = raise UnboundLocalError('local variable "y" referenced before assignment')
+    if not r5 goto L6 (error at f:-1) else goto L4 :: bool
+L4:
+    unreachable
+L5:
+    return y
+L6:
+    r6 = <error> :: int64
+    return r6

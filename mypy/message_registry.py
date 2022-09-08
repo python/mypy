@@ -21,9 +21,14 @@ class ErrorMessage(NamedTuple):
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
 
+    def with_additional_msg(self, info: str) -> ErrorMessage:
+        return ErrorMessage(self.value + info, code=self.code)
+
 
 # Invalid types
-INVALID_TYPE_RAW_ENUM_VALUE: Final = "Invalid type: try using Literal[{}.{}] instead?"
+INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
+    "Invalid type: try using Literal[{}.{}] instead?", codes.VALID_TYPE
+)
 
 # Type checker error message constants
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)
@@ -47,8 +52,10 @@ INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
     "supertypes"
 )
 YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
-INCOMPATIBLE_TYPES: Final = "Incompatible types"
-INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
+INCOMPATIBLE_TYPES: Final = ErrorMessage("Incompatible types")
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = ErrorMessage(
+    "Incompatible types in assignment", code=codes.ASSIGNMENT
+)
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")
 INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER: Final = (
@@ -94,7 +101,7 @@ RETURN_TYPE_CANNOT_BE_CONTRAVARIANT: Final = ErrorMessage(
 FUNCTION_PARAMETER_CANNOT_BE_COVARIANT: Final = ErrorMessage(
     "Cannot use a covariant type variable as a parameter"
 )
-INCOMPATIBLE_IMPORT_OF: Final = "Incompatible import of"
+INCOMPATIBLE_IMPORT_OF: Final = ErrorMessage('Incompatible import of "{}"', code=codes.ASSIGNMENT)
 FUNCTION_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a type annotation", codes.NO_UNTYPED_DEF
 )

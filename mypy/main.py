@@ -657,7 +657,7 @@ def process_options(
         "--disallow-any-generics",
         default=False,
         strict_flag=True,
-        help="Disallow usage of generic types that do not specify explicit type " "parameters",
+        help="Disallow usage of generic types that do not specify explicit type parameters",
         group=disallow_any_group,
     )
     add_invertible_flag(

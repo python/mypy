@@ -120,8 +120,10 @@ reveal_type(x)  # N: Revealed type is "mypy_extensions.i32"
 
 y = 1
 if int():
+    # We don't narrow an int down to i32, since they have different
+    # representations.
     y = i32(1)
-    reveal_type(y)  # N: Revealed type is "mypy_extensions.i32"
+    reveal_type(y)  # N: Revealed type is "builtins.int"
 reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 

@@ -45,6 +45,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeQuery,
     TypeType,
@@ -104,7 +105,7 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    return Instance(info, [join_type_list(items)])
+    return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
 
 
 def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
@@ -462,7 +463,20 @@ def make_simplified_union(
     ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return get_proper_type(UnionType.make_union(simplified_set, line, column))
+    result = get_proper_type(UnionType.make_union(simplified_set, line, column))
+
+    # Step 4: At last, we erase any (inconsistent) extra attributes on instances.
+    extra_attrs_set = set()
+    for item in items:
+        instance = try_getting_instance_fallback(item)
+        if instance and instance.extra_attrs:
+            extra_attrs_set.add(instance.extra_attrs)
+
+    fallback = try_getting_instance_fallback(result)
+    if len(extra_attrs_set) > 1 and fallback:
+        fallback.extra_attrs = None
+
+    return result
 
 
 def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
@@ -984,3 +998,21 @@ def separate_union_literals(t: UnionType) -> tuple[Sequence[LiteralType], Sequen
             union_items.append(item)
 
     return literal_items, union_items
+
+
+def try_getting_instance_fallback(typ: Type) -> Instance | None:
+    """Returns the Instance fallback for this type if one exists or None."""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return typ
+    elif isinstance(typ, TupleType):
+        return typ.partial_fallback
+    elif isinstance(typ, TypedDictType):
+        return typ.fallback
+    elif isinstance(typ, FunctionLike):
+        return typ.fallback
+    elif isinstance(typ, LiteralType):
+        return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
+    return None

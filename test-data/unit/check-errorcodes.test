@@ -632,9 +632,6 @@ def g() -> int:
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]
 
-[case testErrorCodeIgnoreMiscNote]
-x: [int]  # type: ignore[misc]
-
 [case testErrorCodeProtocolProblemsIgnore]
 from typing_extensions import Protocol
 
@@ -920,3 +917,8 @@ def f(d: D, s: str) -> None:
     d[s]  # type: ignore[literal-required]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+
+[case testRecommendErrorCode]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code=...`  [syntax]
+1 + "asdf"

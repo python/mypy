@@ -267,7 +267,9 @@ class Server:
                 # Only the above commands use some error formatting.
                 del data["is_tty"]
                 del data["terminal_width"]
-            return method(self, **data)
+            ret = method(self, **data)
+            assert isinstance(ret, dict)
+            return ret
 
     # Command functions (run in the server via RPC).
 
