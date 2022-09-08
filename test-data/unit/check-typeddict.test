@@ -2012,15 +2012,34 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testCannotUseFinalDecoratorWithTypedDict]
+[case testCannotSubclassFinalTypedDict]
 from typing import TypedDict
 from typing_extensions import final
 
-@final  # E: @final cannot be used with TypedDict
+@final
 class DummyTypedDict(TypedDict):
     int_val: int
     float_val: float
     str_val: str
+
+class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedDict"
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCannotSubclassFinalTypedDictWithForwardDeclarations]
+from typing import TypedDict
+from typing_extensions import final
+
+@final
+class DummyTypedDict(TypedDict):
+    forward_declared: "ForwardDeclared"
+
+class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedDict"
+    pass
+
+class ForwardDeclared: pass
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

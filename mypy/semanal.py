@@ -1478,8 +1478,8 @@ class SemanticAnalyzer(
             for decorator in defn.decorators:
                 decorator.accept(self)
                 if isinstance(decorator, RefExpr):
-                    if decorator.fullname in FINAL_DECORATOR_NAMES:
-                        self.fail("@final cannot be used with TypedDict", decorator)
+                    if decorator.fullname in FINAL_DECORATOR_NAMES and info is not None:
+                        info.is_final = True
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
