@@ -138,7 +138,7 @@ the import. This can cause errors that look like the following:
 .. code-block:: text
 
     main.py:1: error: Skipping analyzing 'django': module is installed, but missing library stubs or py.typed marker
-    main.py:2: error: Library stubs not installed for "requests" (or incompatible with Python 3.8)
+    main.py:2: error: Library stubs not installed for "requests"
     main.py:3: error: Cannot find implementation or library stub for module named "this_module_does_not_exist"
 
 If you get any of these errors on an import, mypy will assume the type of that
@@ -243,7 +243,7 @@ the library, you will get a message like this:
 
 .. code-block:: text
 
-    main.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+    main.py:1: error: Library stubs not installed for "yaml"
     main.py:1: note: Hint: "python3 -m pip install types-PyYAML"
     main.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
 
@@ -275,6 +275,11 @@ explicitly installing stubs before running mypy, since it may type
 check your code twice -- the first time to find the missing stubs, and
 the second time to type check your code properly after mypy has
 installed the stubs.
+
+If you've already installed the relevant third-party libraries in an environment
+other than the one mypy is running in, you can use :option:`--python-executable
+<mypy --python-executable>` flag to point to the Python executable for that
+environment, and mypy will find packages installed for that Python executable.
 
 .. _missing-type-hints-for-third-party-library:
 
