@@ -959,8 +959,8 @@ def f():
     x = 42
     assert_type(x, Literal[42])
 [out]
-main:5 error: Expression is of type "Any", not "Literal[42]"
-main:5 note: "assert_type" expects everything to be "Any" in unchecked functions
+main:5: error: Expression is of type "Any", not "Literal[42]"
+main:5: note: "assert_type" expects everything to be "Any" in unchecked functions
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeUncheckedFunctionWithUntypedCheck]
@@ -971,8 +971,8 @@ def f():
     x = 42
     assert_type(x, Literal[42])
 [out]
-main:6 error: Expression is of type "Any", not "Literal[42]"
-main:6 note: "assert_type" expects everything to be "Any" in unchecked functions
+main:6: error: Expression is of type "Any", not "Literal[42]"
+main:6: note: "assert_type" expects everything to be "Any" in unchecked functions
 [builtins fixtures/tuple.pyi]
 
 -- None return type
