@@ -511,7 +511,7 @@ section of the command line docs.
     Causes mypy to treat arguments with a ``None``
     default value as having an implicit :py:data:`~typing.Optional` type.
 
-    **Note:** This was True by default in mypy versions earlier than 0.980.
+    **Note:** This was True by default in mypy versions 0.980 and earlier.
 
 .. confval:: strict_optional
 
