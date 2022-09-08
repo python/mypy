@@ -668,7 +668,7 @@ class BuildManager:
                 raise CompileError(
                     [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
                 )
-            if is_typeshed_file(options.custom_typeshed_dir, path) or is_stub_package_file(path):
+            if is_typeshed_file(options.abs_custom_typeshed_dir, path) or is_stub_package_file(path):
                 continue
 
             raise CompileError(

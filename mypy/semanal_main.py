@@ -370,7 +370,7 @@ def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:
         analyzer = TypeArgumentAnalyzer(
             errors,
             state.options,
-            is_typeshed_file(state.options.custom_typeshed_dir, state.path or ""),
+            is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
         )
         with state.wrap_context():
             with mypy.state.state.strict_optional_set(state.options.strict_optional):
@@ -388,7 +388,7 @@ def check_type_arguments_in_targets(
     analyzer = TypeArgumentAnalyzer(
         errors,
         state.options,
-        is_typeshed_file(state.options.custom_typeshed_dir, state.path or ""),
+        is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
     )
     with state.wrap_context():
         with mypy.state.state.strict_optional_set(state.options.strict_optional):

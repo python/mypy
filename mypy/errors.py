@@ -618,7 +618,7 @@ class Errors:
 
     def generate_unused_ignore_errors(self, file: str) -> None:
         if (
-            is_typeshed_file(self.options.custom_typeshed_dir if self.options else None, file)
+            is_typeshed_file(self.options.abs_custom_typeshed_dir if self.options else None, file)
             or file in self.ignored_files
         ):
             return
@@ -662,7 +662,7 @@ class Errors:
         self, file: str, is_warning_unused_ignores: bool
     ) -> None:
         if (
-            is_typeshed_file(self.options.custom_typeshed_dir if self.options else None, file)
+            is_typeshed_file(self.options.abs_custom_typeshed_dir if self.options else None, file)
             or file in self.ignored_files
         ):
             return
