@@ -281,7 +281,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             tvar_def = self.tvar_scope.get_binding(sym)
             if isinstance(sym.node, ParamSpecExpr):
                 if tvar_def is None:
-                    self.fail(f'ParamSpec "{t.name}" is unbound', t, code=codes.TYPE_VAR)
+                    self.fail(f'ParamSpec "{t.name}" is unbound', t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, ParamSpecType)
                 if len(t.args) > 0:
@@ -302,7 +302,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail(
                     f'Can\'t use bound type variable "{t.name}" to define generic alias',
                     t,
-                    code=codes.TYPE_VAR,
+                    code=codes.VALID_TYPE,
                 )
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
@@ -328,12 +328,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail(
                     f'Can\'t use bound type variable "{t.name}" to define generic alias',
                     t,
-                    code=codes.TYPE_VAR,
+                    code=codes.VALID_TYPE,
                 )
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarTupleExpr):
                 if tvar_def is None:
-                    self.fail(f'TypeVarTuple "{t.name}" is unbound', t, code=codes.TYPE_VAR)
+                    self.fail(f'TypeVarTuple "{t.name}" is unbound', t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, TypeVarTupleType)
                 if len(t.args) > 0:
@@ -1347,7 +1347,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail(
-                    f'Type variable "{name}" is bound by an outer class', defn, code=codes.TYPE_VAR
+                    f'Type variable "{name}" is bound by an outer class', defn, code=codes.VALID_TYPE
                 )
             self.tvar_scope.bind_new(name, tvar)
             binding = self.tvar_scope.get_binding(tvar.fullname)
