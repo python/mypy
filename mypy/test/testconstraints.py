@@ -58,8 +58,8 @@ class ConstraintsSuite(Suite):
                 SUPERTYPE_OF,
             )
         ) == {
-            Constraint(type_var=fx.t.id, op=SUPERTYPE_OF, target=fx.a),
-            Constraint(type_var=fx.t.id, op=SUPERTYPE_OF, target=fx.b),
+            Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.a),
+            Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.b),
         }
 
     def test_unpack_homogenous_tuple_with_prefix_and_suffix(self) -> None:
@@ -71,10 +71,10 @@ class ConstraintsSuite(Suite):
                 SUPERTYPE_OF,
             )
         ) == {
-            Constraint(type_var=fx.t.id, op=SUPERTYPE_OF, target=fx.a),
-            Constraint(type_var=fx.s.id, op=SUPERTYPE_OF, target=fx.b),
-            Constraint(type_var=fx.s.id, op=SUPERTYPE_OF, target=fx.c),
-            Constraint(type_var=fx.u.id, op=SUPERTYPE_OF, target=fx.d),
+            Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.a),
+            Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.b),
+            Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.c),
+            Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.d),
         }
 
     def test_unpack_tuple(self) -> None:
@@ -93,8 +93,8 @@ class ConstraintsSuite(Suite):
                 SUPERTYPE_OF,
             )
         ) == {
-            Constraint(type_var=fx.t.id, op=SUPERTYPE_OF, target=fx.a),
-            Constraint(type_var=fx.s.id, op=SUPERTYPE_OF, target=fx.b),
+            Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.a),
+            Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.b),
         }
 
     def test_unpack_with_prefix_and_suffix(self) -> None:
@@ -115,10 +115,10 @@ class ConstraintsSuite(Suite):
                 SUPERTYPE_OF,
             )
         ) == {
-            Constraint(type_var=fx.u.id, op=SUPERTYPE_OF, target=fx.a),
-            Constraint(type_var=fx.t.id, op=SUPERTYPE_OF, target=fx.b),
-            Constraint(type_var=fx.s.id, op=SUPERTYPE_OF, target=fx.c),
-            Constraint(type_var=fx.u.id, op=SUPERTYPE_OF, target=fx.d),
+            Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.a),
+            Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.b),
+            Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.c),
+            Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.d),
         }
 
     def test_unpack_tuple_length_non_match(self) -> None:
@@ -140,6 +140,6 @@ class ConstraintsSuite(Suite):
             )
             # We still get constraints on the prefix/suffix in this case.
         ) == {
-            Constraint(type_var=fx.u.id, op=SUPERTYPE_OF, target=fx.a),
-            Constraint(type_var=fx.u.id, op=SUPERTYPE_OF, target=fx.d),
+            Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.a),
+            Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.d),
         }
