@@ -387,7 +387,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.pass_num = 0
         self.current_node_deferred = False
         self.is_stub = tree.is_stub
-        self.is_typeshed_stub = is_typeshed_file(path)
+        self.is_typeshed_stub = is_typeshed_file(options.abs_custom_typeshed_dir, path)
         self.inferred_attribute_types = None
 
         # If True, process function definitions. If False, don't. This is used
