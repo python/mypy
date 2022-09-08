@@ -3726,7 +3726,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if not is_same_type(source_type, target_type):
             if not self.chk.in_checked_function():
                 self.msg.note(
-                    "'assert_type' always outputs 'Any' in unchecked functions", expr.expr
+                    '"assert_type" expects everything to be "Any" in unchecked functions',
+                    expr.expr,
                 )
             self.msg.assert_type_fail(source_type, target_type, expr)
         return source_type
