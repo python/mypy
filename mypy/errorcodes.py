@@ -124,6 +124,12 @@ NO_ANY_RETURN: Final = ErrorCode(
 UNREACHABLE: Final = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
 )
+PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
+    "partially-defined",
+    "Warn about variables that are defined only in some execution paths",
+    "General",
+    default_enabled=False,
+)
 REDUNDANT_EXPR: Final = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False
 )

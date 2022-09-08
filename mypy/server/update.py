@@ -651,6 +651,7 @@ def update_module_isolated(
     state.type_checker().reset()
     state.type_check_first_pass()
     state.type_check_second_pass()
+    state.detect_partially_defined_vars()
     t2 = time.time()
     state.finish_passes()
     t3 = time.time()
