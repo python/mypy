@@ -77,6 +77,8 @@ class Options:
         self.platform = sys.platform
         self.custom_typing_module: str | None = None
         self.custom_typeshed_dir: str | None = None
+        # The abspath() version of the above, we compute it once as an optimization.
+        self.abs_custom_typeshed_dir: str | None = None
         self.mypy_path: list[str] = []
         self.report_dirs: dict[str, str] = {}
         # Show errors in PEP 561 packages/site-packages modules

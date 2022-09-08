@@ -1267,6 +1267,10 @@ def process_options(
     # Enabling an error code always overrides disabling
     options.disabled_error_codes -= options.enabled_error_codes
 
+    # Compute absolute path for custom typeshed (if present).
+    if options.custom_typeshed_dir is not None:
+        options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
+
     # Set build flags.
     if options.strict_optional_whitelist is not None:
         # TODO: Deprecate, then kill this flag
