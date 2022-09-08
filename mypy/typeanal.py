@@ -1347,7 +1347,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail(
-                    f'Type variable "{name}" is bound by an outer class', defn, code=codes.VALID_TYPE
+                    f'Type variable "{name}" is bound by an outer class',
+                    defn,
+                    code=codes.VALID_TYPE,
                 )
             self.tvar_scope.bind_new(name, tvar)
             binding = self.tvar_scope.get_binding(tvar.fullname)
