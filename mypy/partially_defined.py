@@ -7,11 +7,15 @@ from mypy.messages import MessageBuilder
 from mypy.nodes import (
     AssertStmt,
     AssignmentStmt,
+    Block,
     BreakStmt,
     ContinueStmt,
+    Expression,
+    ExpressionStmt,
     ForStmt,
     FuncDef,
     FuncItem,
+    GeneratorExpr,
     IfStmt,
     ListExpr,
     Lvalue,
@@ -19,7 +23,7 @@ from mypy.nodes import (
     RaiseStmt,
     ReturnStmt,
     TupleExpr,
-    WhileStmt, ExpressionStmt, Expression, Block, GeneratorExpr,
+    WhileStmt,
 )
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.types import Type, UninhabitedType
@@ -193,6 +197,13 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             for arg in o.arguments:
                 self.tracker.record_declaration(arg.variable.name)
         super().visit_func(o)
+
+    def visit_generator_expr(self, o: GeneratorExpr) -> None:
+        self.tracker.enter_scope()
+        for idx in o.indices:
+            self.process_lvalue(idx)
+        super().visit_generator_expr(o)
+        self.tracker.exit_scope()
 
     def visit_for_stmt(self, o: ForStmt) -> None:
         o.expr.accept(self)

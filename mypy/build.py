@@ -2343,7 +2343,9 @@ class State:
         if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED):
             manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
             self.tree.accept(
-                PartiallyDefinedVariableVisitor(MessageBuilder(manager.errors, manager.modules), type_map)
+                PartiallyDefinedVariableVisitor(
+                    MessageBuilder(manager.errors, manager.modules), type_map
+                )
             )
 
     def finish_passes(self) -> None:

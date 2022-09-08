@@ -95,6 +95,13 @@ else:
 
 x = y + 2
 
+[case testGenerator]
+# flags: --enable-error-code partially-defined
+if int():
+    a = 3
+s = [a + 1 for a in [1, 2, 3]]
+x = a  # E: Name "a" may be undefined
+
 [case testScope]
 # flags: --enable-error-code partially-defined
 def foo() -> None:
