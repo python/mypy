@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from mypy import checker
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
