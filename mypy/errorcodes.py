@@ -33,7 +33,9 @@ ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "Genera
 CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
-VALID_TYPE: Final = ErrorCode("valid-type", "Check that type (annotation) is valid", "General")
+VALID_TYPE: Final[ErrorCode] = ErrorCode(
+    "valid-type", "Check that type (annotation) is valid", "General"
+)
 VAR_ANNOTATED: Final = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
 )

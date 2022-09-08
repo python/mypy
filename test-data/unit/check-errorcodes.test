@@ -632,9 +632,6 @@ def g() -> int:
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]
 
-[case testErrorCodeIgnoreMiscNote]
-x: [int]  # type: ignore[misc]
-
 [case testErrorCodeProtocolProblemsIgnore]
 from typing_extensions import Protocol
 
