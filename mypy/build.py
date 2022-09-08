@@ -2337,7 +2337,7 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return result
 
-    def detect_partially_defined_vars(self, type_map: Dict[Expression, Type]) -> None:
+    def detect_partially_defined_vars(self, type_map: dict[Expression, Type]) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED):

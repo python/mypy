@@ -38,8 +38,8 @@ class BranchState:
 
     def __init__(
         self,
-        must_be_defined: Optional[set[str]] = None,
-        may_be_defined: Optional[set[str]] = None,
+        must_be_defined: set[str] | None = None,
+        may_be_defined: set[str] | None = None,
         skipped: bool = False,
     ) -> None:
         if may_be_defined is None:
