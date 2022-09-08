@@ -251,6 +251,16 @@ def f2() -> int:
         x = 2
     return x  # E: Name "x" may be undefined
 
+def f3() -> None:
+    while True:
+        if int():
+            x = 2
+        elif int():
+            continue
+        else:
+            continue
+        y = x
+
 [case testBreak]
 # flags: --enable-error-code partially-defined
 def f1() -> None:
