@@ -644,11 +644,20 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             isinstance(template_unpack, Instance)
                             and template_unpack.type.fullname == "builtins.tuple"
                         ):
-                            # TODO: check homogenous tuple case
-                            raise NotImplementedError
+                            for item in mapped_middle:
+                                res.extend(
+                                    infer_constraints(
+                                        template_unpack.args[0], item, self.direction
+                                    )
+                                )
                         elif isinstance(template_unpack, TupleType):
-                            # TODO: check tuple case
-                            raise NotImplementedError
+                            if len(template_unpack.items) == len(mapped_middle):
+                                for template_arg, item in zip(
+                                    template_unpack.items, mapped_middle
+                                ):
+                                    res.extend(
+                                        infer_constraints(template_arg, item, self.direction)
+                                    )
 
                     mapped_args = mapped_prefix + mapped_suffix
                     template_args = template_prefix + template_suffix
