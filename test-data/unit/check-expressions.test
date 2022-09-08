@@ -950,6 +950,14 @@ assert_type(Gen(1), Gen[int])
 # With type context, it infers Gen[Literal[1]] instead.
 y: Gen[Literal[1]] = assert_type(Gen(1), Gen[Literal[1]])
 
+[case testAssertTypeUncheckedFunction]
+def f():
+    x = 42
+    assert_type(x, Literal[42])
+[out]
+main:3: error: Expression is of type "Any", not "Literal[42]"
+main:3: note: 'assert_type' always outputs 'Any' in unchecked functions
+
 [builtins fixtures/tuple.pyi]
 
 -- None return type
