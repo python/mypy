@@ -2076,12 +2076,17 @@ class SemanticAnalyzer(
                 # Probably a name error - it is already handled elsewhere
                 return None, False
             if isinstance(sym.node, Var) and isinstance(get_proper_type(sym.node.type), AnyType):
-                # 'Any' metaclass -- just ignore it.
-                #
-                # TODO: A better approach would be to record this information
-                #       and assume that the type object supports arbitrary
-                #       attributes, similar to an 'Any' base class.
-                return None, False
+                # Create a fake TypeInfo that fallbacks to `Any`, basically allowing
+                # all the attributes. Same thing as we do for `Any` base class.
+                any_info = self.make_empty_type_info(ClassDef(sym.node.name, Block([])))
+                any_info.fallback_to_any = True
+                any_info._fullname = sym.node.fullname
+                if self.options.disallow_subclassing_any:
+                    self.fail(
+                        f'Class cannot use "{any_info.fullname}" as a metaclass (has type "Any")',
+                        metaclass_expr,
+                    )
+                return Instance(any_info, []), False
             if isinstance(sym.node, PlaceholderNode):
                 return None, True  # defer later in the caller
 
