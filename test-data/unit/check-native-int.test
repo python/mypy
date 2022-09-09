@@ -176,11 +176,11 @@ for f in range(0, i64(3), 2):
 n = 5
 for g in range(0, n, i64(2)):
     reveal_type(g)  # N: Revealed type is "mypy_extensions.i64"
-[builtins fixtures/range.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testNativeIntComprehensionRange]
 from mypy_extensions import i64, i32
 
 reveal_type([a for a in range(i64(5))])  # N: Revealed type is "builtins.list[mypy_extensions.i64]"
 [reveal_type(a) for a in range(0, i32(5))]  # N: Revealed type is "mypy_extensions.i32"
-[builtins fixtures/range.pyi]
+[builtins fixtures/primitives.pyi]
