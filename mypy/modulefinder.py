@@ -89,9 +89,7 @@ class ModuleNotFoundReason(Enum):
             )
             notes = [doc_link]
         elif self is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            msg = (
-                'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
-            )
+            msg = 'Library stubs not installed for "{module}"'
             notes = ['Hint: "python3 -m pip install {stub_dist}"']
             if not daemon:
                 notes.append(
