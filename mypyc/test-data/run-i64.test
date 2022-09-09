@@ -3,7 +3,7 @@ from typing import List, Any, Tuple
 
 MYPY = False
 if MYPY:
-    from mypy_extensions import i64
+    from mypy_extensions import i64, i32
 
 from testutil import assertRaises
 
@@ -228,6 +228,46 @@ def test_coerce_to_and_from_int() -> None:
                     x: i64 = n
                     m: int = x
                     assert m == n
+
+def test_explicit_conversion_to_i64() -> None:
+    x = i64(5)
+    assert x == 5
+    y = int() - 113
+    x = i64(y)
+    assert x == -113
+    n32: i32 = 1733
+    x = i64(n32)
+    assert x == 1733
+    n32 = -1733
+    x = i64(n32)
+    assert x == -1733
+    z = i64(x)
+    assert z == -1733
+
+def test_explicit_conversion_overflow() -> None:
+    max_i64 = int() + 2**63 - 1
+    x = i64(max_i64)
+    assert x == 2**63 - 1
+    assert int(x) == max_i64
+
+    min_i64 = int() - 2**63
+    y = i64(min_i64)
+    assert y == -2**63
+    assert int(y) == min_i64
+
+    too_big = int() + 2**63
+    with assertRaises(OverflowError):
+        x = i64(too_big)
+
+    too_small = int() - 2**63 - 1
+    with assertRaises(OverflowError):
+        x = i64(too_small)
+
+def test_i64_from_large_small_literal() -> None:
+    x = i64(2**63 - 1)
+    assert x == 2**63 - 1
+    x = i64(-2**63)
+    assert x == -2**63
 
 def test_tuple_i64() -> None:
     a: i64 = 1

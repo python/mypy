@@ -1507,3 +1507,70 @@ L0:
     r0 = c.m(0, 0)
     r1 = c.m(6, 1)
     return 1
+
+[case testI64ExplicitConversionFromNativeInt]
+from mypy_extensions import i64, i32
+
+def from_i32(x: i32) -> i64:
+    return i64(x)
+
+def from_i64(x: i64) -> i64:
+    return i64(x)
+[out]
+def from_i32(x):
+    x :: int32
+    r0 :: int64
+L0:
+    r0 = extend signed x: int32 to int64
+    return r0
+def from_i64(x):
+    x :: int64
+L0:
+    return x
+
+[case testI64ExplicitConversionFromInt_64bit]
+from mypy_extensions import i64
+
+def f(x: int) -> i64:
+    return i64(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: int64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6 :: int64
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = x >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = x ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive x
+L3:
+    return r3
+
+[case testI64ExplicitConversionFromLiteral]
+from mypy_extensions import i64
+
+def f() -> None:
+    x = i64(0)
+    y = i64(11)
+    z = i64(-3)
+[out]
+def f():
+    x, y, z :: int64
+L0:
+    x = 0
+    y = 11
+    z = -3
+    return 1
