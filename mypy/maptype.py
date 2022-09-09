@@ -37,7 +37,7 @@ def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Insta
                 # Unfortunately we can't support this for generic recursive tuples.
                 # If we skip this special casing we will fall back to tuple[Any, ...].
                 env = instance_to_type_environment(instance)
-                tuple_type = get_proper_type(expand_type(instance.type.tuple_type, env))
+                tuple_type = expand_type(instance.type.tuple_type, env)
                 if isinstance(tuple_type, TupleType):
                     return mypy.typeops.tuple_fallback(tuple_type)
 
@@ -101,7 +101,6 @@ def map_instance_to_direct_supertypes(instance: Instance, supertype: TypeInfo) -
         if b.type == supertype:
             env = instance_to_type_environment(instance)
             t = expand_type(b, env)
-            assert isinstance(t, ProperType)
             assert isinstance(t, Instance)
             result.append(t)
 

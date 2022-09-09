@@ -731,7 +731,7 @@ def analyze_var(
                     signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
                 )
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
-                expanded_signature = get_proper_type(expand_type_by_instance(signature, itype))
+                expanded_signature = expand_type_by_instance(signature, itype)
                 freeze_type_vars(expanded_signature)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
@@ -1111,7 +1111,7 @@ def add_class_tvars(
             ]
         )
     if isuper is not None:
-        t = cast(ProperType, expand_type_by_instance(t, isuper))
+        t = expand_type_by_instance(t, isuper)
     return t
 
 
