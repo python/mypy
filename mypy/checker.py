@@ -4313,7 +4313,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and 1 <= len(expr.args) <= 3
             and all(kind == ARG_POS for kind in expr.arg_kinds)
         ):
-            native_int = None
+            native_int: Type | None = None
             ok = True
             for arg in expr.args:
                 argt = get_proper_type(self.lookup_type(arg))
