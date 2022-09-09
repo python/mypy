@@ -955,7 +955,7 @@ class SubGood(Base):
 class SubBad(Base):
     def foo(self, **kwargs: Unpack[Unrelated]) -> None: ...  # E: Signature of "foo" incompatible with supertype "Base" \
     # N:      Superclass: \
-    # N:          def foo(*, name: str, age: int) -> None \
+    # N:          def foo(self, *, name: str, age: int) -> None \
     # N:      Subclass: \
     # N:          def foo(self, *, baz: int) -> None
 [builtins fixtures/dict.pyi]
