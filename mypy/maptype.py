@@ -3,17 +3,7 @@ from __future__ import annotations
 import mypy.typeops
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
-from mypy.types import (
-    AnyType,
-    Instance,
-    ProperType,
-    TupleType,
-    Type,
-    TypeOfAny,
-    TypeVarId,
-    get_proper_type,
-    has_type_vars,
-)
+from mypy.types import AnyType, Instance, TupleType, Type, TypeOfAny, TypeVarId, has_type_vars
 
 
 def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Instance:
