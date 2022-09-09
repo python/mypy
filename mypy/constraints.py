@@ -678,6 +678,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 mapped = map_instance_to_supertype(instance, template.type)
                 tvars = template.type.defn.type_vars
                 if template.type.has_type_var_tuple_type:
+                    mapped_prefix, mapped_middle, mapped_suffix = split_with_instance(mapped)
+                    template_prefix, template_middle, template_suffix = split_with_instance(
+                        template
+                    )
+                    split_result = split_with_mapped_and_template(mapped, template)
+                    assert split_result is not None
                     (
                         mapped_prefix,
                         mapped_middle,
@@ -685,7 +691,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         template_prefix,
                         template_middle,
                         template_suffix,
-                    ) = split_with_mapped_and_template(mapped, template)
+                    ) = split_result
 
                     # Add a constraint for the type var tuple, and then
                     # remove it for the case below.

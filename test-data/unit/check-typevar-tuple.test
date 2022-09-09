@@ -304,3 +304,46 @@ def prefix_tuple(
 z = prefix_tuple(x=0, y=(True, 'a'))
 reveal_type(z)  # N: Revealed type is "Tuple[builtins.int, builtins.bool, builtins.str]"
 [builtins fixtures/tuple.pyi]
+[case testPep646TypeVarTupleUnpacking]
+from typing import Generic, TypeVar, NewType, Any, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Shape = TypeVarTuple('Shape')
+
+Channels = NewType("Channels", int)
+Batch = NewType("Batch", int)
+Height = NewType('Height', int)
+Width = NewType('Width', int)
+
+class Array(Generic[Unpack[Shape]]):
+    pass
+
+def process_batch_channels(
+    x: Array[Batch, Unpack[Tuple[Any, ...]], Channels]
+) -> None:
+    ...
+
+x: Array[Batch, Height, Width, Channels]
+process_batch_channels(x)
+y: Array[Batch, Channels]
+process_batch_channels(y)
+z: Array[Batch]
+process_batch_channels(z)  # E: Argument 1 to "process_batch_channels" has incompatible type "Array[Batch]"; expected "Array[Batch, Unpack[Tuple[Any, ...]], Channels]"
+
+u: Array[Unpack[Tuple[Any, ...]]]
+
+def expect_variadic_array(
+    x: Array[Batch, Unpack[Shape]]
+) -> None:
+    ...
+
+def expect_variadic_array_2(
+    x: Array[Batch, Height, Width, Channels]
+) -> None:
+    ...
+
+expect_variadic_array(u)
+expect_variadic_array_2(u)
+
+
+[builtins fixtures/tuple.pyi]
