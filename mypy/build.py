@@ -2736,8 +2736,7 @@ def module_not_found(
     else:
         daemon = manager.options.fine_grained_incremental
         msg, notes = reason.error_message_templates(daemon)
-        pyver = "%d.%d" % manager.options.python_version
-        errors.report(line, 0, msg.format(module=target, pyver=pyver), code=codes.IMPORT)
+        errors.report(line, 0, msg.format(module=target), code=codes.IMPORT)
         top_level, second_level = get_top_two_prefixes(target)
         if second_level in legacy_bundled_packages:
             top_level = second_level
