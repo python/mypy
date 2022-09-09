@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, Mapping, Sequence, TypeVar, cast
+from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
 
 from mypy.types import (
     AnyType,
@@ -37,18 +37,36 @@ from mypy.types import (
 from mypy.typevartuples import split_with_instance, split_with_prefix_and_suffix
 
 
+@overload
+def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType:
+    ...
+
+
+@overload
+def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
+    ...
+
+
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
     """
-    # TODO: use an overloaded signature? (ProperType stays proper after expansion.)
     return typ.accept(ExpandTypeVisitor(env))
+
+
+@overload
+def expand_type_by_instance(typ: ProperType, instance: Instance) -> ProperType:
+    ...
+
+
+@overload
+def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
+    ...
 
 
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     """Substitute type variables in type using values from an Instance.
     Type variables are considered to be bound by the class declaration."""
-    # TODO: use an overloaded signature? (ProperType stays proper after expansion.)
     if not instance.args:
         return typ
     else:
@@ -87,7 +105,6 @@ def freshen_function_type_vars(callee: F) -> F:
         tvs = []
         tvmap: dict[TypeVarId, Type] = {}
         for v in callee.variables:
-            # TODO(PEP612): fix for ParamSpecType
             if isinstance(v, TypeVarType):
                 tv: TypeVarLikeType = TypeVarType.new_unification_variable(v)
             elif isinstance(v, TypeVarTupleType):
