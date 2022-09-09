@@ -688,20 +688,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
             if t.type == self.s.type:
-                if is_subtype(t, self.s) or is_subtype(self.s, t):
-                    # Combine type arguments. We could have used join below
-                    # equivalently.
-                    args: list[Type] = []
-                    # N.B: We use zip instead of indexing because the lengths might have
-                    # mismatches during daemon reprocessing.
-                    for ta, sia in zip(t.args, self.s.args):
-                        args.append(self.meet(ta, sia))
-                    return Instance(t.type, args)
-                else:
-                    if state.strict_optional:
-                        return UninhabitedType()
-                    else:
-                        return NoneType()
+                # Combine type arguments. We could have used join below
+                # equivalently.
+                args: list[Type] = []
+                # N.B: We use zip instead of indexing because the lengths might have
+                # mismatches during daemon reprocessing.
+                for ta, sia in zip(t.args, self.s.args):
+                    args.append(self.meet(ta, sia))
+                return Instance(t.type, args)
             else:
                 alt_promote = t.type.alt_promote
                 if alt_promote and alt_promote is self.s.type:
