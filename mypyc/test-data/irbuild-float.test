@@ -258,3 +258,41 @@ L3:
     x = r10
 L4:
     return 1
+
+[case testFloatDivide]
+def f1(x: float, y: float) -> float:
+    z = x / y
+    z = z / 2.0
+    return z / 3
+def f2(n: int, m: int) -> float:
+    return n / m
+def f3(f: float, n: int) -> float:
+    x = f / n
+    return n / x
+[out]
+def f1(x, y):
+    x, y, r0, z, r1, r2 :: float
+L0:
+    r0 = x / y
+    z = r0
+    r1 = z / 2.0
+    z = r1
+    r2 = z / 3.0
+    return r2
+def f2(n, m):
+    n, m :: int
+    r0 :: float
+L0:
+    r0 = CPyTagged_TrueDivide(n, m)
+    return r0
+def f3(f, n):
+    f :: float
+    n :: int
+    r0, r1, x, r2, r3 :: float
+L0:
+    r0 = CPyFloat_FromTagged(n)
+    r1 = f / r0
+    x = r1
+    r2 = CPyFloat_FromTagged(n)
+    r3 = r2 / x
+    return r3

@@ -640,3 +640,22 @@ int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
 void CPyInt32_Overflow() {
     PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
 }
+
+double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
+    if (unlikely(y == 0)) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "division by zero");
+        return CPY_FLOAT_ERROR;
+    }
+    if (likely(!CPyTagged_CheckLong(x) && !CPyTagged_CheckLong(y))) {
+        return (double)((Py_ssize_t)x >> 1) / (double)((Py_ssize_t)y >> 1);
+    } else {
+        PyObject *xo = CPyTagged_AsObject(x);
+        PyObject *yo = CPyTagged_AsObject(y);
+        PyObject *result = PyNumber_TrueDivide(xo, yo);
+        if (result == NULL) {
+            return CPY_FLOAT_ERROR;
+        }
+        return PyFloat_AsDouble(result);
+    }
+    return 1.0;
+}
