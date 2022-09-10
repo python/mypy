@@ -165,8 +165,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def __init__(self, msg: MessageBuilder, type_map: dict[Expression, Type]) -> None:
         self.msg = msg
-        self.tracker = DefinedVariableTracker()
         self.type_map = type_map
+        self.tracker = DefinedVariableTracker()
 
     def process_lvalue(self, lvalue: Lvalue) -> None:
         if isinstance(lvalue, NameExpr):
@@ -250,9 +250,10 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         o.expr.accept(self)
         self.tracker.start_branch_statement()
         o.body.accept(self)
-        self.tracker.next_branch()
-        if o.else_body:
-            o.else_body.accept(self)
+        if not checker.is_true_literal(o.expr):
+            self.tracker.next_branch()
+            if o.else_body:
+                o.else_body.accept(self)
         self.tracker.end_branch_statement()
 
     def visit_name_expr(self, o: NameExpr) -> None:

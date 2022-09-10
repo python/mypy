@@ -133,6 +133,12 @@ else:
 
 y = z  # No error.
 
+while True:
+    k = 1
+    if int():
+        break
+y = k # No error.
+
 [case testForLoop]
 # flags: --enable-error-code partially-defined
 for x in [1, 2, 3]:
@@ -144,6 +150,7 @@ else:
     z = 2
 
 a = z + y  # E: Name "y" may be undefined
+
 [case testReturn]
 # flags: --enable-error-code partially-defined
 def f1() -> int:
@@ -177,8 +184,8 @@ def f4() -> int:
     elif int():
         return 0
     else:
-        y = 2
-    return x  # E: Name "x" may be undefined
+        return 0
+    return x
 
 def f5() -> int:
     # This is a test against crashes.
@@ -189,6 +196,7 @@ def f5() -> int:
     else:
         return 3
     return 1
+
 [case testAssert]
 # flags: --enable-error-code partially-defined
 def f1() -> int:
@@ -206,6 +214,7 @@ def f2() -> int:
     else:
         y = 2
     return x  # E: Name "x" may be undefined
+
 [case testRaise]
 # flags: --enable-error-code partially-defined
 def f1() -> int:
@@ -280,6 +289,17 @@ def f2() -> None:
         else:
             break
         y = x  # E: Name "x" may be undefined
+
+def f3() -> None:
+    while int():
+        x = 1
+        while int():
+            if int():
+                x = 2
+            else:
+                break
+        y = x
+    z = x  # E: Name "x" may be undefined
 
 [case testNoReturn]
 # flags: --enable-error-code partially-defined
