@@ -349,7 +349,7 @@ class LowLevelIRBuilder:
                     return Float(float(src.value // 2))
                 return Float(float(src.value))
             elif is_tagged(src_type) and is_float_rprimitive(target_type):
-                return self.call_c(int_to_float_op, [src], line)
+                return self.int_to_float(src, line)
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -1345,6 +1345,10 @@ class LowLevelIRBuilder:
                 lreg = Float(float(lreg.numeric_value()))
             elif isinstance(rreg, Integer):
                 rreg = Float(float(rreg.numeric_value()))
+            elif is_int_rprimitive(lreg.type):
+                lreg = self.int_to_float(lreg, line)
+            elif is_int_rprimitive(rreg.type):
+                rreg = self.int_to_float(rreg, line)
             if is_float_rprimitive(lreg.type) and is_float_rprimitive(rreg.type):
                 if op in FloatComparisonOp.op_to_id:
                     return self.compare_floats(lreg, rreg, FloatComparisonOp.op_to_id[op], line)
@@ -2086,6 +2090,9 @@ class LowLevelIRBuilder:
             line: line number
         """
         return self.call_c(new_tuple_with_length_op, [length], line)
+
+    def int_to_float(self, n: Value, line: int) -> Value:
+        return self.call_c(int_to_float_op, [n], line)
 
     # Internal helpers
 

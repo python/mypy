@@ -222,6 +222,39 @@ L2:
 def f(x: float, y: int) -> None:
     if x < y:
         z = x + y
-        x += y
+        x -= y
+        z = y + z
+    if y == x:
+        x -= 1
 [out]
-x
+def f(x, y):
+    x :: float
+    y :: int
+    r0 :: float
+    r1 :: bit
+    r2, r3, z, r4, r5, r6, r7, r8 :: float
+    r9 :: bit
+    r10 :: float
+L0:
+    r0 = CPyFloat_FromTagged(y)
+    r1 = x < r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = CPyFloat_FromTagged(y)
+    r3 = x + r2
+    z = r3
+    r4 = CPyFloat_FromTagged(y)
+    r5 = x - r4
+    x = r5
+    r6 = CPyFloat_FromTagged(y)
+    r7 = r6 + z
+    z = r7
+L2:
+    r8 = CPyFloat_FromTagged(y)
+    r9 = r8 == x
+    if r9 goto L3 else goto L4 :: bool
+L3:
+    r10 = x - 1.0
+    x = r10
+L4:
+    return 1

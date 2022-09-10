@@ -111,6 +111,7 @@ class str:
 class float:
     def __init__(self, x: object) -> None: pass
     def __add__(self, n: float) -> float: pass
+    def __radd__(self, n: float) -> float: pass
     def __sub__(self, n: float) -> float: pass
     def __rsub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
