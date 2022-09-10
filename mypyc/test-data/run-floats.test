@@ -17,6 +17,10 @@ def test_arithmetic() -> None:
     assert x / 2.0 == 0.75
     assert x * (-0.5) == -0.75
     assert -x == -1.5
+    assert x % 0.4 == 0.29999999999999993
+    assert x % -0.4 == -0.10000000000000009
+    assert (-x) % 0.4 == 0.10000000000000009
+    assert (-x) % -0.4 == -0.29999999999999993
 
 def test_mixed_arithmetic() -> None:
     zf = float(0.0)
@@ -26,6 +30,14 @@ def test_mixed_arithmetic() -> None:
     x = zf + 3.4
     x += zn + 2
     assert x == 5.4
+
+def test_arithmetic_errors() -> None:
+    zero = float(0.0)
+    one = zero + 1.0
+    with assertRaises(ZeroDivisionError, "float division by zero"):
+        print(one / zero)
+    with assertRaises(ZeroDivisionError, "float modulo"):
+        print(one % zero)
 
 def test_comparisons() -> None:
     zero = float(0.0)
