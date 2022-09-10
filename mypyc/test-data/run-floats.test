@@ -18,6 +18,44 @@ def test_arithmetic() -> None:
     assert x * (-0.5) == -0.75
     assert -x == -1.5
 
+def test_mixed_arithmetic() -> None:
+    zf = float(0.0)
+    zn = int()
+    assert (zf + 5.5) + (zn + 1) == 6.5
+    assert (zn - 2) - (zf - 5.5) == 3.5
+    x = zf + 3.4
+    x += zn + 2
+    assert x == 5.4
+
+def test_comparisons() -> None:
+    zero = float(0.0)
+    one = zero + 1.0
+    x = one + one / 2.0
+    assert x < (1.51 + zero)
+    assert not (x < (1.49 + zero))
+    assert x > (1.49 + zero)
+    assert not (x > (1.51 + zero))
+    assert x <= (1.5 + zero)
+    assert not (x <= (1.49 + zero))
+    assert x >= (1.5 + zero)
+    assert not (x >= (1.51 + zero))
+
+def test_mixed_comparisons() -> None:
+    zf = float(0.0)
+    zn = int()
+    if (zf + 1.0) == (zn + 1):
+        assert True
+    else:
+        assert False
+    if (zf + 1.1) == (zn + 1):
+        assert False
+    else:
+        assert True
+    assert (zf + 1.1) != (zn + 1)
+    assert (zf + 1.1) > (zn + 1)
+    assert not (zf + 0.9) > (zn + 1)
+    assert (zn + 1) < (zf + 1.1)
+
 def test_boxing_and_unboxing() -> None:
     x = 1.5
     boxed: Any = x
