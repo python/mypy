@@ -96,6 +96,14 @@ def test_coerce_from_long_tagged_int() -> None:
     y: float = n
     assert repr(y) == '-1.2676506002282294e+30'
 
+def test_coerce_from_very_long_tagged_int() -> None:
+    n = int() + 10**1000
+    with assertRaises(OverflowError, "int too large to convert to float"):
+        x: float = n
+    n = int() - 10**1000
+    with assertRaises(OverflowError, "int too large to convert to float"):
+        y: float = n
+
 def str_to_float(x: str) -> float:
     return float(x)
 

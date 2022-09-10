@@ -15,7 +15,11 @@ double CPyFloat_FromTagged(CPyTagged x) {
     if (CPyTagged_CheckShort(x)) {
         return CPyTagged_ShortAsSsize_t(x);
     }
-    return PyFloat_AsDouble(CPyTagged_LongAsObject(x));
+    double result = PyFloat_AsDouble(CPyTagged_LongAsObject(x));
+    if (unlikely(result == -1.0) && PyErr_Occurred()) {
+        return CPY_FLOAT_ERROR;
+    }
+    return result;
 }
 
 double CPyFloat_Sqrt(double x) {
