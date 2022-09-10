@@ -62,6 +62,7 @@ from mypyc.ir.rtypes import (
     list_rprimitive,
     set_rprimitive,
     str_rprimitive,
+    is_float_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
@@ -728,3 +729,15 @@ def translate_bool(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value
     arg = expr.args[0]
     src = builder.accept(arg)
     return builder.builder.bool_value(src)
+
+
+@specialize_function("builtins.float")
+def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_float_rprimitive(arg_type):
+        # No-op float conversion.
+        return builder.accept(arg)
+    return None

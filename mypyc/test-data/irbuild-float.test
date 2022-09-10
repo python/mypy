@@ -296,3 +296,21 @@ L0:
     r2 = CPyFloat_FromTagged(n)
     r3 = r2 / x
     return r3
+
+[case testFloatExplicitConversions]
+def f(f: float, n: int) -> int:
+    x = float(n)
+    y = float(x)  # no-op
+    return int(y)
+[out]
+def f(f, n):
+    f :: float
+    n :: int
+    r0, x, y :: float
+    r1 :: int
+L0:
+    r0 = CPyFloat_FromTagged(n)
+    x = r0
+    y = x
+    r1 = CPyTagged_FromFloat(y)
+    return r1
