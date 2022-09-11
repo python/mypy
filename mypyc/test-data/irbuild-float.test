@@ -259,43 +259,76 @@ L3:
 L4:
     return 1
 
-[case testFloatDivide]
-def f1(x: float, y: float) -> float:
+[case testFloatDivideSimple]
+def f(x: float, y: float) -> float:
     z = x / y
     z = z / 2.0
     return z / 3
-def f2(n: int, m: int) -> float:
-    return n / m
-def f3(f: float, n: int) -> float:
-    x = f / n
-    return n / x
 [out]
-def f1(x, y):
-    x, y, r0, z, r1, r2 :: float
+def f(x, y):
+    x, y :: float
+    r0 :: bit
+    r1 :: bool
+    r2, z, r3, r4 :: float
 L0:
-    r0 = x / y
-    z = r0
-    r1 = z / 2.0
-    z = r1
-    r2 = z / 3.0
-    return r2
-def f2(n, m):
+    r0 = y == 0.0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = raise ZeroDivisionError('float division by zero')
+    unreachable
+L2:
+    r2 = x / y
+    z = r2
+    r3 = z / 2.0
+    z = r3
+    r4 = z / 3.0
+    return r4
+
+[case testFloatDivideIntOperand]
+def f(n: int, m: int) -> float:
+    return n / m
+[out]
+def f(n, m):
     n, m :: int
     r0 :: float
 L0:
     r0 = CPyTagged_TrueDivide(n, m)
     return r0
-def f3(f, n):
+
+[case testFloatResultOfIntDivide]
+def f(f: float, n: int) -> float:
+    x = f / n
+    return n / x
+[out]
+def f(f, n):
     f :: float
     n :: int
-    r0, r1, x, r2, r3 :: float
+    r0 :: float
+    r1 :: bit
+    r2 :: bool
+    r3, x, r4 :: float
+    r5 :: bit
+    r6 :: bool
+    r7 :: float
 L0:
     r0 = CPyFloat_FromTagged(n)
-    r1 = f / r0
-    x = r1
-    r2 = CPyFloat_FromTagged(n)
-    r3 = r2 / x
-    return r3
+    r1 = r0 == 0.0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = raise ZeroDivisionError('float division by zero')
+    unreachable
+L2:
+    r3 = f / r0
+    x = r3
+    r4 = CPyFloat_FromTagged(n)
+    r5 = x == 0.0
+    if r5 goto L3 else goto L4 :: bool
+L3:
+    r6 = raise ZeroDivisionError('float division by zero')
+    unreachable
+L4:
+    r7 = r4 / x
+    return r7
 
 [case testFloatExplicitConversions]
 def f(f: float, n: int) -> int:
@@ -314,3 +347,40 @@ L0:
     y = x
     r1 = CPyTagged_FromFloat(y)
     return r1
+
+[case testFloatModulo]
+def f(x: float, y: float) -> float:
+    return x % y
+[out]
+def f(x, y):
+    x, y :: float
+    r0 :: bit
+    r1 :: bool
+    r2, r3 :: float
+    r4, r5, r6, r7 :: bit
+    r8, r9 :: float
+L0:
+    r0 = y == 0.0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = raise ZeroDivisionError('float modulo')
+    unreachable
+L2:
+    r2 = x % y
+    r3 = r2
+    r4 = r3 == 0.0
+    if r4 goto L5 else goto L3 :: bool
+L3:
+    r5 = x < 0.0
+    r6 = y < 0.0
+    r7 = r5 == r6
+    if r7 goto L6 else goto L4 :: bool
+L4:
+    r8 = r3 + y
+    r3 = r8
+    goto L6
+L5:
+    r9 = copysign(0.0, y)
+    r3 = r9
+L6:
+    return r3

@@ -62,3 +62,12 @@ function_op(
     c_function_name="CPyFloat_Sqrt",
     error_kind=ERR_NEVER,
 )
+
+# math.copysign(float, float)
+copysign_op = function_op(
+    name="math.copysign",
+    arg_types=[float_rprimitive, float_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="copysign",
+    error_kind=ERR_NEVER,
+)

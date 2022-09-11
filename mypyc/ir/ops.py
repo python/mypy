@@ -915,6 +915,7 @@ class RaiseStandardError(RegisterOp):
     UNBOUND_LOCAL_ERROR: Final = "UnboundLocalError"
     RUNTIME_ERROR: Final = "RuntimeError"
     NAME_ERROR: Final = "NameError"
+    ZERO_DIVISION_ERROR: Final = "ZeroDivisionError"
 
     def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
@@ -1180,7 +1181,7 @@ class FloatOp(RegisterOp):
     """Binary float arithmetic op (e.g., r1 = r2 + r3).
 
     These ops are low-level and are similar to the corresponding C
-    operations (and unlike Python operations).
+    operations (and somewhat different from Python operations).
 
     The left and right values must be floats.
     """
@@ -1191,10 +1192,10 @@ class FloatOp(RegisterOp):
     SUB: Final = 1
     MUL: Final = 2
     DIV: Final = 3
+    MOD: Final = 4
 
-    op_str: Final = {ADD: "+", SUB: "-", MUL: "*", DIV: "/"}
-
-    op_to_id = {op: op_id for op_id, op in op_str.items()}  # type: Final
+    op_str: Final = {ADD: "+", SUB: "-", MUL: "*", DIV: "/", MOD: "%"}
+    op_to_id: Final = {op: op_id for op_id, op in op_str.items()}
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)

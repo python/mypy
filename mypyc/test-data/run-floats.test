@@ -4,8 +4,12 @@
 from typing import Any, cast
 from typing_extensions import Final
 from testutil import assertRaises
+import math
 
 MAGIC: Final = -113.0
+
+# Various different float values
+float_vals = [float(n) * 0.25 for n in range(-10, 10)] + [-0.0, 1.0/3.0, math.sqrt(2.0), 1.23e200, -2.34e200, 5.43e-100, -6.532e-200, float('inf'), -float('inf'), float('nan')]
 
 def test_arithmetic() -> None:
     zero = float(0.0)
@@ -17,10 +21,23 @@ def test_arithmetic() -> None:
     assert x / 2.0 == 0.75
     assert x * (-0.5) == -0.75
     assert -x == -1.5
+    for x in float_vals:
+        for y in float_vals:
+            if y != 0:
+                assert repr(x / y) == repr(getattr(x, "__truediv__")(y))
+
+def test_mod() -> None:
+    zero = float(0.0)
+    one = zero + 1.0
+    x = one + one / 2.0
     assert x % 0.4 == 0.29999999999999993
-    assert x % -0.4 == -0.10000000000000009
     assert (-x) % 0.4 == 0.10000000000000009
+    assert x % -0.4 == -0.10000000000000009
     assert (-x) % -0.4 == -0.29999999999999993
+    for x in float_vals:
+        for y in float_vals:
+            if y != 0:
+                assert repr(x % y) == repr(getattr(x, "__mod__")(y))
 
 def test_mixed_arithmetic() -> None:
     zf = float(0.0)

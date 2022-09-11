@@ -678,7 +678,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
-        self.emit_line("%s = %s %s %s;" % (dest, lhs, op.op_str[op.op], rhs))
+        if op.op != FloatOp.MOD:
+            self.emit_line("%s = %s %s %s;" % (dest, lhs, op.op_str[op.op], rhs))
+        else:
+            # TODO: This may set errno as a side effect, that is a little sketchy.
+            self.emit_line("%s = fmod(%s, %s);" % (dest, lhs, rhs))
 
     def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
         dest = self.reg(op)

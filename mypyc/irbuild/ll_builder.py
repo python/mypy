@@ -117,6 +117,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    float_rprimitive,
 )
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import concrete_arg_kind
@@ -129,7 +130,7 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op,
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.float_ops import int_to_float_op
+from mypyc.primitives.float_ops import int_to_float_op, copysign_op
 from mypyc.primitives.generic_ops import (
     generic_len_op,
     generic_ssize_t_len_op,
@@ -1357,7 +1358,7 @@ class LowLevelIRBuilder:
                 else:
                     base_op = op
                 if base_op in FloatOp.op_to_id:
-                    return self.float_op(lreg, rreg, FloatOp.op_to_id[base_op], line)
+                    return self.float_op(lreg, rreg, base_op, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -1588,7 +1589,7 @@ class LowLevelIRBuilder:
                 return value
         if is_float_rprimitive(typ) and expr_op == "-":
             # Translate to '0 - x'
-            return self.float_op(Float(0.0), value, FloatOp.SUB, line)
+            return self.float_op(Float(0.0), value, '-', line)
 
         if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?
@@ -1928,13 +1929,58 @@ class LowLevelIRBuilder:
         """
         return self.add(IntOp(type, lhs, rhs, op, line))
 
-    def float_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
-        """Generate a native float binary op.
+    def float_op(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        """Generate a native float binary arithmetic operation.
+
+        This follows Python semantics (e.g. raise exception on division by zero).
+        Add a FloatOp directly if you want low-level semantics.
 
         Args:
-            op: FloatOp.* constant (e.g. FloatOp.ADD)
+            op: Binary operator (e.g. '+' or '*')
         """
-        return self.add(FloatOp(lhs, rhs, op, line))
+        op_id = FloatOp.op_to_id[op]
+        if op_id in (FloatOp.DIV, FloatOp.MOD):
+            if not (isinstance(rhs, Float) and rhs.value != 0.0):
+                c = self.compare_floats(rhs, Float(0.0), FloatComparisonOp.EQ, line)
+                err, ok = BasicBlock(), BasicBlock()
+                self.add(Branch(c, err, ok, Branch.BOOL, rare=True))
+                self.activate_block(err)
+                if op_id == FloatOp.DIV:
+                    msg = "float division by zero"
+                else:
+                    msg = "float modulo"
+                self.add(RaiseStandardError(RaiseStandardError.ZERO_DIVISION_ERROR, msg, line))
+                self.add(Unreachable())
+                self.activate_block(ok)
+        if op_id == FloatOp.MOD:
+            # Adjust the result to match Python semantics (FloatOp follows C semantics).
+            return self.float_mod(lhs, rhs, line)
+        else:
+            return self.add(FloatOp(lhs, rhs, op_id, line))
+
+    def float_mod(self, lhs: Value, rhs: Value, line: int) -> Value:
+        """Perform x % y on floats using Python semantics."""
+        mod = self.add(FloatOp(lhs, rhs, FloatOp.MOD, line))
+        res = Register(float_rprimitive)
+        self.add(Assign(res, mod))
+        tricky, adjust, copysign, done = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+        is_zero = self.add(FloatComparisonOp(res, Float(0.0), FloatComparisonOp.EQ, line))
+        self.add(Branch(is_zero, copysign, tricky, Branch.BOOL))
+        self.activate_block(tricky)
+        same_signs = self.is_same_float_signs(type, lhs, rhs, line)
+        self.add(Branch(same_signs, done, adjust, Branch.BOOL))
+        self.activate_block(adjust)
+        adj = self.float_op(res, rhs, '+', line)
+        self.add(Assign(res, adj))
+        self.add(Goto(done))
+        self.activate_block(copysign)
+        # If the remainder is zero, CPython ensures the result has the
+        # same sign as the denominator.
+        adj = self.call_c(copysign_op, [Float(0.0), rhs], line)
+        self.add(Assign(res, adj))
+        self.add(Goto(done))
+        self.activate_block(done)
+        return res
 
     def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(FloatComparisonOp(lhs, rhs, op, line))
@@ -1981,13 +2027,12 @@ class LowLevelIRBuilder:
         res = Register(type)
         div = self.int_op(type, lhs, rhs, IntOp.DIV, line)
         self.add(Assign(res, div))
-        diff_signs = self.is_different_native_int_signs(type, lhs, rhs, line)
+        same_signs = self.is_same_native_int_signs(type, lhs, rhs, line)
         tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
-        self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+        self.add(Branch(same_signs, done, tricky, Branch.BOOL))
         self.activate_block(tricky)
         mul = self.int_op(type, res, rhs, IntOp.MUL, line)
         mul_eq = self.add(ComparisonOp(mul, lhs, ComparisonOp.EQ, line))
-        adjust = BasicBlock()
         self.add(Branch(mul_eq, done, adjust, Branch.BOOL))
         self.activate_block(adjust)
         adj = self.int_op(type, res, Integer(1, type), IntOp.SUB, line)
@@ -2001,12 +2046,11 @@ class LowLevelIRBuilder:
         res = Register(type)
         mod = self.int_op(type, lhs, rhs, IntOp.MOD, line)
         self.add(Assign(res, mod))
-        diff_signs = self.is_different_native_int_signs(type, lhs, rhs, line)
+        same_signs = self.is_same_native_int_signs(type, lhs, rhs, line)
         tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
-        self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+        self.add(Branch(same_signs, done, tricky, Branch.BOOL))
         self.activate_block(tricky)
         is_zero = self.add(ComparisonOp(res, Integer(0, type), ComparisonOp.EQ, line))
-        adjust = BasicBlock()
         self.add(Branch(is_zero, done, adjust, Branch.BOOL))
         self.activate_block(adjust)
         adj = self.int_op(type, res, rhs, IntOp.ADD, line)
@@ -2015,9 +2059,14 @@ class LowLevelIRBuilder:
         self.activate_block(done)
         return res
 
-    def is_different_native_int_signs(self, type: RType, a: Value, b: Value, line: int) -> Value:
+    def is_same_native_int_signs(self, type: RType, a: Value, b: Value, line: int) -> Value:
         neg1 = self.add(ComparisonOp(a, Integer(0, type), ComparisonOp.SLT, line))
         neg2 = self.add(ComparisonOp(b, Integer(0, type), ComparisonOp.SLT, line))
+        return self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
+
+    def is_same_float_signs(self, type: RType, a: Value, b: Value, line: int) -> Value:
+        neg1 = self.add(FloatComparisonOp(a, Float(0.0), FloatComparisonOp.LT, line))
+        neg2 = self.add(FloatComparisonOp(b, Float(0.0), FloatComparisonOp.LT, line))
         return self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
 
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
