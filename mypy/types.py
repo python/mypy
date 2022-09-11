@@ -3064,7 +3064,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.variables:
             vs = []
             for var in t.variables:
-                if isinstance(var, TypeVarType):
+                if isinstance(var, SelfType):
+                    pass  # purposely skip printing self type
+                elif isinstance(var, TypeVarType):
                     # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
                     if var.values:
                         vals = f"({', '.join(val.accept(self) for val in var.values)})"
