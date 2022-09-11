@@ -1391,6 +1391,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             class AP1:
+                @property
                 def some(self) -> int: ...
             """,
             runtime="""
@@ -1400,6 +1401,19 @@ class StubtestUnit(unittest.TestCase):
                 def some(self) -> int: ...
             """,
             error="AP1.some",
+        )
+        yield Case(
+            stub="""
+            class AP1_2:
+                def some(self) -> int: ...  # missing `@property` decorator
+            """,
+            runtime="""
+            class AP1_2:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            error="AP1_2.some",
         )
         yield Case(
             stub="""
