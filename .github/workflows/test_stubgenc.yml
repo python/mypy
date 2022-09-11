@@ -12,6 +12,9 @@ on:
     - 'mypy/stubdoc.py'
     - 'test-data/stubgen/**'
 
+permissions:
+  contents: read
+
 jobs:
   stubgenc:
     # Check stub file generation for a small pybind11 project

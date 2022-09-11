@@ -15,6 +15,9 @@ on:
     - 'mypy/test/**'
     - 'test-data/**'
 
+permissions:
+  contents: read
+
 jobs:
   mypy_primer:
     name: Run mypy_primer
