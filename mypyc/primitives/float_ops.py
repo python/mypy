@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
-from mypyc.ir.rtypes import float_rprimitive, int_rprimitive, object_rprimitive, str_rprimitive
+from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER, ERR_MAGIC_OVERLAPPING
+from mypyc.ir.rtypes import float_rprimitive, int_rprimitive, object_rprimitive, str_rprimitive, bool_rprimitive
 from mypyc.primitives.registry import function_op, load_address_op
 
 # Get the 'builtins.float' type object.
@@ -41,8 +41,8 @@ function_op(
     name="math.sin",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
-    c_function_name="sin",
-    error_kind=ERR_NEVER,
+    c_function_name="CPyFloat_Sin",
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
 # math.cos(float)
@@ -50,8 +50,8 @@ function_op(
     name="math.cos",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
-    c_function_name="cos",
-    error_kind=ERR_NEVER,
+    c_function_name="CPyFloat_Cos",
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
 # math.sqrt(float)
@@ -60,7 +60,7 @@ function_op(
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
     c_function_name="CPyFloat_Sqrt",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
 # math.copysign(float, float)
@@ -69,5 +69,23 @@ copysign_op = function_op(
     arg_types=[float_rprimitive, float_rprimitive],
     return_type=float_rprimitive,
     c_function_name="copysign",
+    error_kind=ERR_NEVER,
+)
+
+# math.isinf(float)
+function_op(
+    name="math.isinf",
+    arg_types=[float_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyFloat_IsInf",
+    error_kind=ERR_NEVER,
+)
+
+# math.isnan(float)
+function_op(
+    name="math.isnan",
+    arg_types=[float_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyFloat_IsNaN",
     error_kind=ERR_NEVER,
 )

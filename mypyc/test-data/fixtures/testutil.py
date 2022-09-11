@@ -2,10 +2,22 @@
 
 from contextlib import contextmanager
 from collections.abc import Iterator
+import math
 from typing import (
     Any, Iterator, TypeVar, Generator, Optional, List, Tuple, Sequence,
     Union, Callable, Awaitable,
 )
+from typing_extensions import Final
+
+FLOAT_MAGIC: Final = -113.0
+
+# Various different float values
+float_vals = [
+    float(n) * 0.25 for n in range(-10, 10)
+] + [
+    -0.0, 1.0/3.0, math.sqrt(2.0), 1.23e200, -2.34e200, 5.43e-100, -6.532e-200,
+    float('inf'), -float('inf'), float('nan'), FLOAT_MAGIC
+]
 
 @contextmanager
 def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
@@ -16,6 +28,9 @@ def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
         assert msg in str(e), f'Message "{e}" does not match "{msg}"'
     else:
         assert False, f"Expected {typ.__name__} but got no exception"
+
+def assertDomainError() -> Any:
+    return assertRaises(ValueError, "math domain error")
 
 T = TypeVar('T')
 U = TypeVar('U')

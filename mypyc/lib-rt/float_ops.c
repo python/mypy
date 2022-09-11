@@ -6,10 +6,10 @@
 #include "CPy.h"
 
 
-double CPyFloat_Abs(double x) {
-    return x >= 0.0 ? x : -x;
+static double CPy_DomainError() {
+    PyErr_SetString(PyExc_ValueError, "math domain error");
+    return CPY_FLOAT_ERROR;
 }
-
 
 double CPyFloat_FromTagged(CPyTagged x) {
     if (CPyTagged_CheckShort(x)) {
@@ -22,10 +22,37 @@ double CPyFloat_FromTagged(CPyTagged x) {
     return result;
 }
 
+double CPyFloat_Abs(double x) {
+    return x >= 0.0 ? x : -x;
+}
+
+double CPyFloat_Sin(double x) {
+    double v = sin(x);
+    if (unlikely(isnan(v)) && !isnan(x)) {
+        return CPy_DomainError();
+    }
+    return v;
+}
+
+double CPyFloat_Cos(double x) {
+    double v = cos(x);
+    if (unlikely(isnan(v)) && !isnan(x)) {
+        return CPy_DomainError();
+    }
+    return v;
+}
+
 double CPyFloat_Sqrt(double x) {
     if (x < 0.0) {
-        PyErr_SetString(PyExc_ValueError, "math domain error");
-        return CPY_FLOAT_ERROR;
+        return CPy_DomainError();
     }
     return sqrt(x);
+}
+
+bool CPyFloat_IsInf(double x) {
+    return isinf(x) != 0;
+}
+
+bool CPyFloat_IsNaN(double x) {
+    return isnan(x) != 0;
 }

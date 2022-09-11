@@ -3,13 +3,8 @@
 [case testFloatOps]
 from typing import Any, cast
 from typing_extensions import Final
-from testutil import assertRaises
+from testutil import assertRaises, float_vals, FLOAT_MAGIC
 import math
-
-MAGIC: Final = -113.0
-
-# Various different float values
-float_vals = [float(n) * 0.25 for n in range(-10, 10)] + [-0.0, 1.0/3.0, math.sqrt(2.0), 1.23e200, -2.34e200, 5.43e-100, -6.532e-200, float('inf'), -float('inf'), float('nan')]
 
 def test_arithmetic() -> None:
     zero = float(0.0)
@@ -185,13 +180,13 @@ def test_float_attr() -> None:
         assert c.x == f
         a: Any = c
         assert a.x == f
-        c.x = MAGIC
-        assert c.x == MAGIC
-        assert a.x == MAGIC
+        c.x = FLOAT_MAGIC
+        assert c.x == FLOAT_MAGIC
+        assert a.x == FLOAT_MAGIC
         a.x = 1.0
         assert a.x == 1.0
-        a.x = MAGIC
-        assert a.x == MAGIC
+        a.x = FLOAT_MAGIC
+        assert a.x == FLOAT_MAGIC
 
 class D:
     def __init__(self, x: float) -> None:
@@ -207,18 +202,18 @@ def test_float_attr_maybe_undefned() -> None:
             a: Any = d
             with assertRaises(AttributeError):
                 a.x
-            d.x = MAGIC
-            assert d.x == MAGIC
-            assert a.x == MAGIC
+            d.x = FLOAT_MAGIC
+            assert d.x == FLOAT_MAGIC
+            assert a.x == FLOAT_MAGIC
             d.x = 0.0
             assert d.x == 0.0
             assert a.x == 0.0
-            a.x = MAGIC
-            assert a.x == MAGIC
+            a.x = FLOAT_MAGIC
+            assert a.x == FLOAT_MAGIC
             d = D(0.0)
             a = cast(Any, d)
-            a.x = MAGIC
-            assert d.x == MAGIC
+            a.x = FLOAT_MAGIC
+            assert d.x == FLOAT_MAGIC
         else:
             f = float(i)
             d = D(f)
