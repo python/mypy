@@ -1036,13 +1036,8 @@ def verify_paramspecexpr(
         return
 
 
-def _verify_property_decorator(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
-    assert stub.func.is_property
-    yield from _verify_readonly_property(stub, runtime)
-    yield from _verify_abstract_status(stub.func, runtime)
-
-
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
+    assert stub.func.is_property
     if isinstance(runtime, property):
         return
     if inspect.isdatadescriptor(runtime):
@@ -1128,7 +1123,9 @@ def verify_decorator(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     if stub.func.is_property:
-        for message in _verify_property_decorator(stub, runtime):
+        for message in _verify_readonly_property(stub, runtime):
+            yield Error(object_path, message, stub, runtime)
+        for message in _verify_abstract_status(stub.func, runtime):
             yield Error(object_path, message, stub, runtime)
         return
 
