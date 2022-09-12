@@ -1382,6 +1382,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_abstract_properties(self) -> Iterator[Case]:
+        # TODO: test abstract properties with setters
         yield Case(
             stub="from abc import abstractmethod",
             runtime="from abc import abstractmethod",
