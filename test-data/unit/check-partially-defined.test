@@ -319,13 +319,3 @@ def f() -> None:
         fail()
     z = y  # E: Name "y" may be undefined
     z = x
-
-[case testAssignmentExpr]
-# flags: --python-version 3.8 --enable-error-code partially-defined
-def f1() -> None:
-    d = {0: 1}
-    if (x := d.get(1)) is None:
-        z = x
-        x = 2
-    z = x
-[builtins fixtures/dict.pyi]
