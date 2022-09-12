@@ -3173,6 +3173,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: maybe elsewhere; redundant.
         rvalue_type = get_proper_type(rv_type or self.expr_checker.accept(rvalue))
 
+        if isinstance(rvalue_type, TypeVarType):
+            rvalue_type = get_proper_type(rvalue_type.upper_bound)
+
         if isinstance(rvalue_type, UnionType):
             # If this is an Optional type in non-strict Optional code, unwrap it.
             relevant_items = rvalue_type.relevant_items()
