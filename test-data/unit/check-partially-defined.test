@@ -5,7 +5,7 @@ if int():
 else:
     x = 2
 z = a + 1  # E: Name "a" may be undefined
-z = a + 1  # We only report the error only once.
+z = a + 1  # We only report the error on first occurrence.
 
 [case testElif]
 # flags: --enable-error-code partially-defined
