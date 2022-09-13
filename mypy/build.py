@@ -2331,13 +2331,15 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return result
 
-    def detect_partially_defined_vars(self) -> None:
+    def detect_partially_defined_vars(self, type_map: dict[Expression, Type]) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED):
             manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
             self.tree.accept(
-                PartiallyDefinedVariableVisitor(MessageBuilder(manager.errors, manager.modules))
+                PartiallyDefinedVariableVisitor(
+                    MessageBuilder(manager.errors, manager.modules), type_map
+                )
             )
 
     def finish_passes(self) -> None:
@@ -3368,7 +3370,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         graph[id].type_check_first_pass()
         if not graph[id].type_checker().deferred_nodes:
             unfinished_modules.discard(id)
-            graph[id].detect_partially_defined_vars()
+            graph[id].detect_partially_defined_vars(graph[id].type_map())
             graph[id].finish_passes()
 
     while unfinished_modules:
@@ -3377,7 +3379,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
                 continue
             if not graph[id].type_check_second_pass():
                 unfinished_modules.discard(id)
-                graph[id].detect_partially_defined_vars()
+                graph[id].detect_partially_defined_vars(graph[id].type_map())
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()

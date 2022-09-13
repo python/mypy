@@ -95,6 +95,13 @@ else:
 
 x = y + 2
 
+[case testGenerator]
+# flags: --enable-error-code partially-defined
+if int():
+    a = 3
+s = [a + 1 for a in [1, 2, 3]]
+x = a  # E: Name "a" may be undefined
+
 [case testScope]
 # flags: --enable-error-code partially-defined
 def foo() -> None:
@@ -126,6 +133,12 @@ else:
 
 y = z  # No error.
 
+while True:
+    k = 1
+    if int():
+        break
+y = k # No error.
+
 [case testForLoop]
 # flags: --enable-error-code partially-defined
 for x in [1, 2, 3]:
@@ -137,3 +150,172 @@ else:
     z = 2
 
 a = z + y  # E: Name "y" may be undefined
+
+[case testReturn]
+# flags: --enable-error-code partially-defined
+def f1() -> int:
+    if int():
+        x = 1
+    else:
+        return 0
+    return x
+
+def f2() -> int:
+    if int():
+        x = 1
+    elif int():
+        return 0
+    else:
+        x = 2
+    return x
+
+def f3() -> int:
+    if int():
+        x = 1
+    elif int():
+        return 0
+    else:
+        y = 2
+    return x  # E: Name "x" may be undefined
+
+def f4() -> int:
+    if int():
+        x = 1
+    elif int():
+        return 0
+    else:
+        return 0
+    return x
+
+def f5() -> int:
+    # This is a test against crashes.
+    if int():
+        return 1
+    if int():
+        return 2
+    else:
+        return 3
+    return 1
+
+[case testAssert]
+# flags: --enable-error-code partially-defined
+def f1() -> int:
+    if int():
+        x = 1
+    else:
+        assert False, "something something"
+    return x
+
+def f2() -> int:
+    if int():
+        x = 1
+    elif int():
+        assert False
+    else:
+        y = 2
+    return x  # E: Name "x" may be undefined
+
+[case testRaise]
+# flags: --enable-error-code partially-defined
+def f1() -> int:
+    if int():
+        x = 1
+    else:
+        raise BaseException("something something")
+    return x
+
+def f2() -> int:
+    if int():
+        x = 1
+    elif int():
+        raise BaseException("something something")
+    else:
+        y = 2
+    return x  # E: Name "x" may be undefined
+[builtins fixtures/exception.pyi]
+
+[case testContinue]
+# flags: --enable-error-code partially-defined
+def f1() -> int:
+    while int():
+        if int():
+            x = 1
+        else:
+            continue
+        y = x
+    else:
+        x = 2
+    return x
+
+def f2() -> int:
+    while int():
+        if int():
+            x = 1
+        elif int():
+            pass
+        else:
+            continue
+        y = x  # E: Name "x" may be undefined
+    else:
+        x = 2
+    return x  # E: Name "x" may be undefined
+
+def f3() -> None:
+    while True:
+        if int():
+            x = 2
+        elif int():
+            continue
+        else:
+            continue
+        y = x
+
+[case testBreak]
+# flags: --enable-error-code partially-defined
+def f1() -> None:
+    while int():
+        if int():
+            x = 1
+        else:
+            break
+        y = x  # No error -- x is always defined.
+
+def f2() -> None:
+    while int():
+        if int():
+            x = 1
+        elif int():
+            pass
+        else:
+            break
+        y = x  # E: Name "x" may be undefined
+
+def f3() -> None:
+    while int():
+        x = 1
+        while int():
+            if int():
+                x = 2
+            else:
+                break
+        y = x
+    z = x  # E: Name "x" may be undefined
+
+[case testNoReturn]
+# flags: --enable-error-code partially-defined
+
+from typing import NoReturn
+def fail() -> NoReturn:
+    assert False
+
+def f() -> None:
+    if int():
+        x = 1
+    elif int():
+        x = 2
+        y = 3
+    else:
+        # This has a NoReturn type, so we can skip it.
+        fail()
+    z = y  # E: Name "y" may be undefined
+    z = x
