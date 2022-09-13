@@ -185,8 +185,9 @@ def f(p1: bytes, p2: float = 0.0, /, *, kw: int) -> None:
     reveal_type(p2)  # N: Revealed type is "builtins.float"
     reveal_type(kw)  # N: Revealed type is "builtins.int"
 
-# flags: --python-version 3.8
 [case testPEP570Signatures4]
+# flags: --python-version 3.8
+
 def f(p1: bytes, p2: int = 0, /) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.int"
@@ -599,6 +600,7 @@ class Bar:
 [builtins fixtures/bool.pyi]
 
 [case testOverloadPositionalOnlyErrorMessage]
+# flags: --python-version 3.8
 from typing import overload
 
 @overload
@@ -609,12 +611,13 @@ def foo(a): ...
 
 foo(a=1)
 [out]
-main:9: error: No overload variant of "foo" matches argument type "int"
-main:9: note: Possible overload variants:
-main:9: note:     def foo(int, /) -> Any
-main:9: note:     def foo(a: str) -> Any
+main:10: error: No overload variant of "foo" matches argument type "int"
+main:10: note: Possible overload variants:
+main:10: note:     def foo(int, /) -> Any
+main:10: note:     def foo(a: str) -> Any
 
 [case testOverloadPositionalOnlyErrorMessageAllTypes]
+# flags: --python-version 3.8
 from typing import overload
 
 @overload
@@ -625,12 +628,13 @@ def foo(a, b, *, c): ...
 
 foo(a=1)
 [out]
-main:9: error: No overload variant of "foo" matches argument type "int"
-main:9: note: Possible overload variants:
-main:9: note:     def foo(int, /, b: int, *, c: int) -> Any
-main:9: note:     def foo(a: str, b: int, *, c: int) -> Any
+main:10: error: No overload variant of "foo" matches argument type "int"
+main:10: note: Possible overload variants:
+main:10: note:     def foo(int, /, b: int, *, c: int) -> Any
+main:10: note:     def foo(a: str, b: int, *, c: int) -> Any
 
 [case testOverloadPositionalOnlyErrorMessageMultiplePosArgs]
+# flags: --python-version 3.8
 from typing import overload
 
 @overload
@@ -641,12 +645,13 @@ def foo(a, b, c, d): ...
 
 foo(a=1)
 [out]
-main:9: error: No overload variant of "foo" matches argument type "int"
-main:9: note: Possible overload variants:
-main:9: note:     def foo(int, int, int, /, d: str) -> Any
-main:9: note:     def foo(a: str, b: int, c: int, d: str) -> Any
+main:10: error: No overload variant of "foo" matches argument type "int"
+main:10: note: Possible overload variants:
+main:10: note:     def foo(int, int, int, /, d: str) -> Any
+main:10: note:     def foo(a: str, b: int, c: int, d: str) -> Any
 
 [case testOverloadPositionalOnlyErrorMessageMethod]
+# flags: --python-version 3.8
 from typing import overload
 
 class Some:
@@ -660,13 +665,14 @@ class Some:
 
 Some().foo(a=1)
 [out]
-main:12: error: No overload variant of "foo" of "Some" matches argument type "int"
-main:12: note: Possible overload variants:
-main:12: note:     def foo(self, int, /) -> Any
-main:12: note:     def foo(self, float, /) -> Any
-main:12: note:     def foo(self, a: str) -> Any
+main:13: error: No overload variant of "foo" of "Some" matches argument type "int"
+main:13: note: Possible overload variants:
+main:13: note:     def foo(self, int, /) -> Any
+main:13: note:     def foo(self, float, /) -> Any
+main:13: note:     def foo(self, a: str) -> Any
 
 [case testOverloadPositionalOnlyErrorMessageClassMethod]
+# flags: --python-version 3.8
 from typing import overload
 
 class Some:
@@ -685,11 +691,11 @@ class Some:
 Some.foo(a=1)
 [builtins fixtures/classmethod.pyi]
 [out]
-main:16: error: No overload variant of "foo" of "Some" matches argument type "int"
-main:16: note: Possible overload variants:
-main:16: note:     def foo(cls, int, /) -> Any
-main:16: note:     def foo(cls, float, /) -> Any
-main:16: note:     def foo(cls, a: str) -> Any
+main:17: error: No overload variant of "foo" of "Some" matches argument type "int"
+main:17: note: Possible overload variants:
+main:17: note:     def foo(cls, int, /) -> Any
+main:17: note:     def foo(cls, float, /) -> Any
+main:17: note:     def foo(cls, a: str) -> Any
 
 [case testUnpackWithDuplicateNamePositionalOnly]
 # flags: --python-version 3.8
