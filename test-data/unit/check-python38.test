@@ -187,7 +187,6 @@ def f(p1: bytes, p2: float = 0.0, /, *, kw: int) -> None:
 
 [case testPEP570Signatures4]
 # flags: --python-version 3.8
-
 def f(p1: bytes, p2: int = 0, /) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.int"
