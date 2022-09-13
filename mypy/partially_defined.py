@@ -4,6 +4,7 @@ from mypy import checker
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     AssertStmt,
+    AssignmentExpr,
     AssignmentStmt,
     BreakStmt,
     ContinueStmt,
@@ -179,6 +180,10 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         for lvalue in o.lvalues:
             self.process_lvalue(lvalue)
         super().visit_assignment_stmt(o)
+
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        o.value.accept(self)
+        self.process_lvalue(o.target)
 
     def visit_if_stmt(self, o: IfStmt) -> None:
         for e in o.expr:
