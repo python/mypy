@@ -324,7 +324,7 @@ def f() -> None:
 # flags: --enable-error-code partially-defined
 
 def f() -> None:
-    for _ in some_iterator():  # type: ignore[name-defined]
+    for _ in [1, 2]:
         key = 2
         val = 2
 
