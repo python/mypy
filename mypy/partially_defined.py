@@ -4,9 +4,11 @@ from mypy import checker
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     AssertStmt,
+    AssignmentExpr,
     AssignmentStmt,
     BreakStmt,
     ContinueStmt,
+    DictionaryComprehension,
     Expression,
     ExpressionStmt,
     ForStmt,
@@ -181,6 +183,10 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             self.process_lvalue(lvalue)
         super().visit_assignment_stmt(o)
 
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        o.value.accept(self)
+        self.process_lvalue(o.target)
+
     def visit_if_stmt(self, o: IfStmt) -> None:
         for e in o.expr:
             e.accept(self)
@@ -208,6 +214,13 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         for idx in o.indices:
             self.process_lvalue(idx)
         super().visit_generator_expr(o)
+        self.tracker.exit_scope()
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        self.tracker.enter_scope()
+        for idx in o.indices:
+            self.process_lvalue(idx)
+        super().visit_dictionary_comprehension(o)
         self.tracker.exit_scope()
 
     def visit_for_stmt(self, o: ForStmt) -> None:
@@ -260,6 +273,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_name_expr(self, o: NameExpr) -> None:
         if self.tracker.is_possibly_undefined(o.name):
             self.msg.variable_may_be_undefined(o.name, o)
+            # We don't want to report the error on the same variable multiple times.
+            self.tracker.record_declaration(o.name)
         super().visit_name_expr(o)
 
     def visit_with_stmt(self, o: WithStmt) -> None:
