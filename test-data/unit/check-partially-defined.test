@@ -323,3 +323,20 @@ def f() -> None:
         fail()
     z = y  # E: Name "y" may be undefined
     z = x
+
+[case testDictComprehension]
+# flags: --enable-error-code partially-defined
+
+def f() -> None:
+    for _ in [1, 2]:
+        key = 2
+        val = 2
+
+    x = (
+        key,  # E: Name "key" may be undefined
+        val,  # E: Name "val" may be undefined
+    )
+
+    d = [(0, "a"), (1, "b")]
+    {val: key for key, val in d}
+[builtins fixtures/dict.pyi]

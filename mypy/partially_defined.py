@@ -8,6 +8,7 @@ from mypy.nodes import (
     AssignmentStmt,
     BreakStmt,
     ContinueStmt,
+    DictionaryComprehension,
     Expression,
     ExpressionStmt,
     ForStmt,
@@ -212,6 +213,13 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         for idx in o.indices:
             self.process_lvalue(idx)
         super().visit_generator_expr(o)
+        self.tracker.exit_scope()
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        self.tracker.enter_scope()
+        for idx in o.indices:
+            self.process_lvalue(idx)
+        super().visit_dictionary_comprehension(o)
         self.tracker.exit_scope()
 
     def visit_for_stmt(self, o: ForStmt) -> None:
