@@ -3078,7 +3078,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 else:
                     # For other TypeVarLikeTypes, just use the name
                     vs.append(var.name)
-            s = f"[{', '.join(vs)}] {s}"
+            s = f"[{', '.join(vs)}] {s}" if vs else s
 
         return f"def {s}"
 
