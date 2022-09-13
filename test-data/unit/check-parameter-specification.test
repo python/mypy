@@ -595,7 +595,7 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 f2(lambda x: 42)(42, x=42)
 [builtins fixtures/paramspec.pyi]
 [out]
-main:10: error: invalid syntax
+main:10: error: invalid syntax; you likely need to run mypy using Python 3.8 or newer
 [out version>=3.8]
 main:17: error: Incompatible return value type (got "Callable[[Arg(int, 'x'), **P], R]", expected "Callable[[int, **P], R]")
 main:17: note: This may be because "result" has arguments named: "x"
@@ -624,7 +624,7 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 f2(lambda x: 42)(42, x=42)
 [builtins fixtures/paramspec.pyi]
 [out]
-main:9: error: invalid syntax
+main:11: error: invalid syntax; you likely need to run mypy using Python 3.8 or newer
 [out version>=3.8]
 
 [case testParamSpecConcatenateWithTypeVar]
@@ -665,7 +665,7 @@ reveal_type(abc)
 bar(abc)
 [builtins fixtures/paramspec.pyi]
 [out]
-main:11: error: invalid syntax
+main:13: error: invalid syntax; you likely need to run mypy using Python 3.8 or newer
 [out version>=3.8]
 main:16: note: Revealed type is "__main__.Foo[[builtins.int, b: builtins.str]]"
 
