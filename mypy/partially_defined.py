@@ -23,6 +23,7 @@ from mypy.nodes import (
     ReturnStmt,
     TupleExpr,
     WhileStmt,
+    WithStmt,
 )
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.types import Type, UninhabitedType
@@ -170,7 +171,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.type_map = type_map
         self.tracker = DefinedVariableTracker()
 
-    def process_lvalue(self, lvalue: Lvalue) -> None:
+    def process_lvalue(self, lvalue: Lvalue | None) -> None:
         if isinstance(lvalue, NameExpr):
             self.tracker.record_declaration(lvalue.name)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
@@ -275,3 +276,9 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             # We don't want to report the error on the same variable multiple times.
             self.tracker.record_declaration(o.name)
         super().visit_name_expr(o)
+
+    def visit_with_stmt(self, o: WithStmt) -> None:
+        for expr, idx in zip(o.expr, o.target):
+            expr.accept(self)
+            self.process_lvalue(idx)
+        o.body.accept(self)
