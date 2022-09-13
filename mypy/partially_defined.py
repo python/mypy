@@ -182,8 +182,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_assignment_stmt(o)
 
     def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        o.value.accept(self)
         self.process_lvalue(o.target)
-        return super().visit_assignment_expr(o)
 
     def visit_if_stmt(self, o: IfStmt) -> None:
         for e in o.expr:
