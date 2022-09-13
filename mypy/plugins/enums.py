@@ -20,7 +20,15 @@ from mypy.nodes import TypeInfo
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
 from mypy.typeops import make_simplified_union
-from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type, SelfType
+from mypy.types import (
+    CallableType,
+    Instance,
+    LiteralType,
+    ProperType,
+    Type,
+    get_proper_type,
+    SelfType,
+)
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
     f"{prefix}._name_" for prefix in ENUM_BASES

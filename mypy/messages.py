@@ -74,6 +74,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    SelfType,
     TupleType,
     Type,
     TypeAliasType,
@@ -406,7 +407,7 @@ class MessageBuilder:
                 extra = " (not async iterable)"
             if not self.are_type_names_disabled():
                 failed = False
-                if isinstance(original_type, TypeVarType) and isinstance(
+                if isinstance(original_type, SelfType) and isinstance(
                     original_type.upper_bound, Instance
                 ):
                     original_type = original_type.upper_bound
