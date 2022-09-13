@@ -319,3 +319,23 @@ def f() -> None:
         fail()
     z = y  # E: Name "y" may be undefined
     z = x
+
+[case testWithStmt]
+# flags: --enable-error-code partially-defined
+from contextlib import contextmanager
+
+@contextmanager
+def ctx(*args):
+    yield 1
+
+def f() -> None:
+    if int():
+        a = b = 1
+        x = 1
+
+    with ctx() as a, ctx(a) as b, ctx(x) as x:  # E: Name "x" may be undefined
+        c = a
+        c = b
+    d = a
+    d = b
+[builtins fixtures/tuple.pyi]
