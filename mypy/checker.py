@@ -4286,6 +4286,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         iterable = get_proper_type(echk.accept(expr))
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], expr)[0]
 
+        int_type = self.analyze_range_native_int_type(expr)
+        if int_type:
+            return iterator, int_type
+
         if isinstance(iterable, TupleType):
             joined: Type = UninhabitedType()
             for item in iterable.items:
@@ -4294,6 +4298,36 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             # Non-tuple iterable.
             return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
+
+    def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
+        """Try to infer native int item type from arguments to range(...).
+
+        For example, return i64 if the expression is "range(0, i64(n))".
+
+        Return None if unsuccessful.
+        """
+        if (
+            isinstance(expr, CallExpr)
+            and isinstance(expr.callee, RefExpr)
+            and expr.callee.fullname == "builtins.range"
+            and 1 <= len(expr.args) <= 3
+            and all(kind == ARG_POS for kind in expr.arg_kinds)
+        ):
+            native_int: Type | None = None
+            ok = True
+            for arg in expr.args:
+                argt = get_proper_type(self.lookup_type(arg))
+                if isinstance(argt, Instance) and argt.type.fullname in (
+                    "mypy_extensions.i64",
+                    "mypy_extensions.i32",
+                ):
+                    if native_int is None:
+                        native_int = argt
+                    elif argt != native_int:
+                        ok = False
+            if ok and native_int:
+                return native_int
+        return None
 
     def analyze_container_item_type(self, typ: Type) -> Type | None:
         """Check if a type is a nominal container of a union of such.
