@@ -5,6 +5,8 @@ if int():
 else:
     x = 2
 z = a + 1  # E: Name "a" may be undefined
+z = a + 1  # We only report the error on first occurrence.
+
 [case testElif]
 # flags: --enable-error-code partially-defined
 if int():
@@ -251,6 +253,7 @@ def f2() -> int:
     while int():
         if int():
             x = 1
+            z = 1
         elif int():
             pass
         else:
@@ -258,7 +261,8 @@ def f2() -> int:
         y = x  # E: Name "x" may be undefined
     else:
         x = 2
-    return x  # E: Name "x" may be undefined
+        z = 2
+    return z  # E: Name "z" may be undefined
 
 def f3() -> None:
     while True:

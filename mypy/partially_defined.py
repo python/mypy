@@ -259,4 +259,6 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_name_expr(self, o: NameExpr) -> None:
         if self.tracker.is_possibly_undefined(o.name):
             self.msg.variable_may_be_undefined(o.name, o)
+            # We don't want to report the error on the same variable multiple times.
+            self.tracker.record_declaration(o.name)
         super().visit_name_expr(o)
