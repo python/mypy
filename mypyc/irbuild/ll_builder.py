@@ -1587,9 +1587,12 @@ class LowLevelIRBuilder:
                 return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
             elif expr_op == "+":
                 return value
-        if is_float_rprimitive(typ) and expr_op == "-":
-            # Translate to '0 - x'
-            return self.float_op(Float(0.0), value, '-', line)
+        if is_float_rprimitive(typ):
+            if expr_op == "-":
+                # Translate to '0 - x'
+                return self.float_op(Float(0.0), value, '-', line)
+            elif expr_op == "+":
+                return value
 
         if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?

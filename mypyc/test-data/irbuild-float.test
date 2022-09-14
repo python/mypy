@@ -38,9 +38,9 @@ L0:
     r0 = unbox(float, x)
     return r0
 
-[case testFloatNeg]
+[case testFloatNegAndPos]
 def f(x: float) -> float:
-    y = x * -0.5
+    y = +x * -0.5
     return -y
 [out]
 def f(x):
