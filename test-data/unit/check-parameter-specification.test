@@ -573,7 +573,7 @@ reveal_type(f(n))  # N: Revealed type is "def (builtins.int, builtins.bytes) -> 
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecConcatenateNamedArgs]
-# flags: --strict-concatenate
+# flags: --python-version 3.8 --strict-concatenate
 # this is one noticeable deviation from PEP but I believe it is for the better
 from typing_extensions import ParamSpec, Concatenate
 from typing import Callable, TypeVar
@@ -595,12 +595,14 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 f2(lambda x: 42)(42, x=42)
 [builtins fixtures/paramspec.pyi]
 [out]
-main:10: error: invalid syntax
+main:10: error: invalid syntax; you likely need to run mypy using Python 3.8 or newer
 [out version>=3.8]
 main:17: error: Incompatible return value type (got "Callable[[Arg(int, 'x'), **P], R]", expected "Callable[[int, **P], R]")
 main:17: note: This may be because "result" has arguments named: "x"
 
 [case testNonStrictParamSpecConcatenateNamedArgs]
+# flags: --python-version 3.8
+
 # this is one noticeable deviation from PEP but I believe it is for the better
 from typing_extensions import ParamSpec, Concatenate
 from typing import Callable, TypeVar
@@ -622,7 +624,7 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 f2(lambda x: 42)(42, x=42)
 [builtins fixtures/paramspec.pyi]
 [out]
-main:9: error: invalid syntax
+main:11: error: invalid syntax; you likely need to run mypy using Python 3.8 or newer
 [out version>=3.8]
 
 [case testParamSpecConcatenateWithTypeVar]
@@ -644,6 +646,8 @@ reveal_type(n(42))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
 [case testCallablesAsParameters]
+# flags: --python-version 3.8
+
 # credits to https://github.com/microsoft/pyright/issues/2705
 from typing_extensions import ParamSpec, Concatenate
 from typing import Generic, Callable, Any
@@ -661,9 +665,9 @@ reveal_type(abc)
 bar(abc)
 [builtins fixtures/paramspec.pyi]
 [out]
-main:11: error: invalid syntax
+main:13: error: invalid syntax; you likely need to run mypy using Python 3.8 or newer
 [out version>=3.8]
-main:14: note: Revealed type is "__main__.Foo[[builtins.int, b: builtins.str]]"
+main:16: note: Revealed type is "__main__.Foo[[builtins.int, b: builtins.str]]"
 
 [case testSolveParamSpecWithSelfType]
 from typing_extensions import ParamSpec, Concatenate
