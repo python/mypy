@@ -1356,7 +1356,7 @@ class Instance(ProperType):
         *,
         args: Bogus[list[Type]] = _dummy,
         last_known_value: Bogus[LiteralType | None] = _dummy,
-        literal_string: Bogus[bool] = _dummy,
+        literal_string: Bogus[int | None] = _dummy,
     ) -> Instance:
         new = Instance(
             self.type,
@@ -2933,7 +2933,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s = t.type.fullname or t.type.name or "<???>"
 
         if t.literal_string == TypeOfLiteralString.explicit:
-            s = 'LiteralString'
+            s = "LiteralString"
 
         if t.args:
             if t.type.fullname == "builtins.tuple":

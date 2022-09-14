@@ -49,12 +49,12 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
+    TypeOfLiteralString,
     TypeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
     UnboundType,
-    TypeOfLiteralString,
     UninhabitedType,
     UnionType,
     UnpackType,
@@ -468,8 +468,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname
 
             # Check `LiteralString` special case:
-            if rname == "builtins.str" and right.literal_string == TypeOfLiteralString.explicit and left.type.fullname == rname:
-                return left.literal_string or (
+            if (
+                rname == "builtins.str"
+                and right.literal_string == TypeOfLiteralString.explicit
+                and left.type.fullname == rname
+            ):
+                return left.literal_string is not None or (
                     left.last_known_value is not None
                     and isinstance(left.last_known_value.value, str)
                 )
@@ -783,8 +787,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_literal_type(self, left: LiteralType) -> bool:
         if isinstance(self.right, LiteralType):
             return left == self.right
-        elif isinstance(self.right, Instance) and self.right.literal_string:
-            return isinstance(left.value, str)
+        elif (
+            isinstance(left.value, str)
+            and isinstance(self.right, Instance)
+            and self.right.type.fullname == "builtins.str"
+            and self.right.literal_string is not None
+        ):
+            return True
         else:
             return self._is_subtype(left.fallback, self.right)
 
