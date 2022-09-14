@@ -20,6 +20,7 @@ from mypyc.ir.ops import (
     Extend,
     Float,
     FloatComparisonOp,
+    FloatNeg,
     FloatOp,
     GetAttr,
     GetElementPtr,
@@ -249,6 +250,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_float_op(self, op: FloatOp) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_float_neg(self, op: FloatNeg) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill[T]:

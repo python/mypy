@@ -25,6 +25,7 @@ from mypyc.ir.ops import (
     Extend,
     Float,
     FloatComparisonOp,
+    FloatNeg,
     FloatOp,
     GetAttr,
     GetElementPtr,
@@ -246,6 +247,9 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_float_op(self, op: FloatOp) -> str:
         return self.format("%r = %r %s %r", op, op.lhs, FloatOp.op_str[op.op], op.rhs)
+
+    def visit_float_neg(self, op: FloatNeg) -> str:
+        return self.format("%r = -%r", op, op.src)
 
     def visit_float_comparison_op(self, op: FloatComparisonOp) -> str:
         return self.format("%r = %r %s %r", op, op.lhs, op.op_str[op.op], op.rhs)

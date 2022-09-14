@@ -15,6 +15,7 @@ from mypyc.ir.ops import (
     ComparisonOp,
     Extend,
     FloatComparisonOp,
+    FloatNeg,
     FloatOp,
     GetAttr,
     GetElementPtr,
@@ -163,6 +164,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_float_op(self, op: FloatOp) -> GenAndKill:
+        return CLEAN
+
+    def visit_float_neg(self, op: FloatNeg) -> GenAndKill:
         return CLEAN
 
     def visit_float_comparison_op(self, op: FloatComparisonOp) -> GenAndKill:

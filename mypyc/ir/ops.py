@@ -1211,6 +1211,23 @@ class FloatOp(RegisterOp):
         return visitor.visit_float_op(self)
 
 
+class FloatNeg(RegisterOp):
+    """Float negation op (r1 = -r2)."""
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = float_rprimitive
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def accept(self, visitor: "OpVisitor[T]") -> T:
+        return visitor.visit_float_neg(self)
+
+
 class FloatComparisonOp(RegisterOp):
     """Low-level comparison op for floats."""
 
@@ -1492,6 +1509,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_float_op(self, op: FloatOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_float_neg(self, op: FloatNeg) -> T:
         raise NotImplementedError
 
     @abstractmethod

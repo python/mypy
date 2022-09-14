@@ -27,6 +27,7 @@ from mypyc.ir.ops import (
     Extend,
     Float,
     FloatComparisonOp,
+    FloatNeg,
     FloatOp,
     GetAttr,
     GetElementPtr,
@@ -683,6 +684,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # TODO: This may set errno as a side effect, that is a little sketchy.
             self.emit_line("%s = fmod(%s, %s);" % (dest, lhs, rhs))
+
+    def visit_float_neg(self, op: FloatNeg) -> None:
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        self.emit_line(f"{dest} = -{src};")
 
     def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
         dest = self.reg(op)

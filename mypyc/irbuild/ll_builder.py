@@ -48,6 +48,7 @@ from mypyc.ir.ops import (
     Extend,
     Float,
     FloatComparisonOp,
+    FloatNeg,
     FloatOp,
     GetAttr,
     GetElementPtr,
@@ -1589,8 +1590,7 @@ class LowLevelIRBuilder:
                 return value
         if is_float_rprimitive(typ):
             if expr_op == "-":
-                # Translate to '0 - x'
-                return self.float_op(Float(0.0), value, '-', line)
+                return self.add(FloatNeg(value, line))
             elif expr_op == "+":
                 return value
 

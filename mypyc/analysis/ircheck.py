@@ -17,6 +17,7 @@ from mypyc.ir.ops import (
     DecRef,
     Extend,
     FloatComparisonOp,
+    FloatNeg,
     FloatOp,
     GetAttr,
     GetElementPtr,
@@ -398,6 +399,9 @@ class OpChecker(OpVisitor[None]):
     def visit_float_op(self, op: FloatOp) -> None:
         self.expect_float(op, op.lhs)
         self.expect_float(op, op.rhs)
+
+    def visit_float_neg(self, op: FloatNeg) -> None:
+        self.expect_float(op, op.src)
 
     def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
         self.expect_float(op, op.lhs)

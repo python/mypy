@@ -48,7 +48,7 @@ def f(x):
 L0:
     r0 = x * -0.5
     y = r0
-    r1 = 0.0 - y
+    r1 = -y
     return r1
 
 [case testFloatCoerceFromInt]

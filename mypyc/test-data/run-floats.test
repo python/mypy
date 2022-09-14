@@ -17,6 +17,8 @@ def test_arithmetic() -> None:
     assert x * (-0.5) == -0.75
     assert -x == -1.5
     for x in float_vals:
+        assert repr(-x) == repr(getattr(x, "__neg__")())
+
         for y in float_vals:
             assert repr(x + y) == repr(getattr(x, "__add__")(y))
             assert repr(x - y) == repr(getattr(x, "__sub__")(y))
