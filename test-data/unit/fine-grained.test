@@ -10055,5 +10055,4 @@ some('b')
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-==
 main.py:7: error: Argument 1 to "some" has incompatible type "str"; expected "LiteralString"
