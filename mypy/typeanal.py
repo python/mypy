@@ -45,6 +45,7 @@ from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     ANNOTATED_TYPE_NAMES,
     FINAL_TYPE_NAMES,
+    LITERAL_STRING_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
     TYPE_ALIAS_NAMES,
@@ -575,7 +576,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail('"Unpack" is not supported yet, use --enable-incomplete-features', t)
                 return AnyType(TypeOfAny.from_error)
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
-        elif fullname in ("typing.LiteralString", "typing_extensions.LiteralString"):
+        elif fullname in LITERAL_STRING_NAMES:
             inst = self.named_type("builtins.str")
             if not self.options.enable_incomplete_features:
                 self.fail(

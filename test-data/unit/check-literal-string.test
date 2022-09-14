@@ -36,6 +36,7 @@ else:
     cond = ','.join(['a', 'b'])  # Dynamic
 
 literal_names = ["native"]
+reveal_type(literal_names)  # N: Revealed type is "builtins.list[builtins.str]"
 literal_names.append(str())
 [builtins fixtures/literal_string.pyi]
 
@@ -131,6 +132,46 @@ main:17: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#inco
 [builtins fixtures/literal_string.pyi]
 
 
+[case testLiteralStringErrorMessages]
+from typing_extensions import LiteralString
+
+class Base:
+    x: int
+class Sub(Base):
+    x = 'a'  # E: Incompatible types in assignment (expression has type "str", base class "Base" defined the type as "int")
+class ExcplicitSub1(Base):
+    x: LiteralString = 'a'  # E: Incompatible types in assignment (expression has type "LiteralString", base class "Base" defined the type as "int")
+class ExcplicitSub2(Base):
+    x: LiteralString  # E: Incompatible types in assignment (expression has type "LiteralString", base class "Base" defined the type as "int")
+
+def accepts_int(arg: int): ...
+accepts_int('b')  # E: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
+ls1: LiteralString
+ls2: LiteralString = 'a'
+accepts_int(ls1)  # E: Argument 1 to "accepts_int" has incompatible type "LiteralString"; expected "int"
+accepts_int(ls2)  # E: Argument 1 to "accepts_int" has incompatible type "LiteralString"; expected "int"
+[builtins fixtures/literal_string.pyi]
+
+
+[case testConditionalLiteralString]
+from typing_extensions import LiteralString
+if int():
+    cond: LiteralString = 'abc'
+else:
+    cond = ','.join(['a', 'b'])  # E: Incompatible types in assignment (expression has type "str", variable has type "LiteralString")
+[builtins fixtures/literal_string.pyi]
+
+
+[case testUnionOfLiteralString]
+from typing_extensions import LiteralString
+from typing import Union
+
+x: Union[str, LiteralString] = 'a'
+y: Union[str, LiteralString] = str()
+z: Union[str, LiteralString] = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Union[str, LiteralString]")
+[builtins fixtures/literal_string.pyi]
+
+
 [case testLiteralStringInsideList]
 from typing_extensions import LiteralString
 from typing import List
@@ -146,7 +187,7 @@ from typing_extensions import LiteralString
 from typing import Tuple
 
 literal_names: Tuple[LiteralString, ...] = ("native", "literal")
-literal_names2: Tuple[LiteralString, ...] = ("literal", str())  # E: Incompatible types in assignment (expression has type "Tuple[LiteralString, str]", variable has type "Tuple[LiteralString, ...]")
+literal_names2: Tuple[LiteralString, ...] = ("literal", str())  # E: Incompatible types in assignment (expression has type "Tuple[str, str]", variable has type "Tuple[LiteralString, ...]")
 [builtins fixtures/tuple.pyi]
 
 [case testLiteralStringInsideSet]

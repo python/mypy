@@ -233,6 +233,7 @@ from mypy.types import (
     ASSERT_TYPE_NAMES,
     FINAL_DECORATOR_NAMES,
     FINAL_TYPE_NAMES,
+    LITERAL_STRING_NAMES,
     NEVER_NAMES,
     OVERLOAD_NAMES,
     PROTOCOL_NAMES,
@@ -2655,7 +2656,7 @@ class SemanticAnalyzer(
         if bare:
             # These three are valid even if bare, for example
             # A = Tuple is just equivalent to A = Tuple[Any, ...].
-            valid_refs = {"typing.Any", "typing.Tuple", "typing.Callable"}
+            valid_refs = {"typing.Any", "typing.Tuple", "typing.Callable", *LITERAL_STRING_NAMES}
         else:
             valid_refs = type_constructors
 

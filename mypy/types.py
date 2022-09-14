@@ -133,6 +133,8 @@ ASSERT_TYPE_NAMES: Final = ("typing.assert_type", "typing_extensions.assert_type
 
 OVERLOAD_NAMES: Final = ("typing.overload", "typing_extensions.overload")
 
+LITERAL_STRING_NAMES: Final = ("typing.LiteralString", "typing_extensions.LiteralString")
+
 # Attributes that can optionally be defined in the body of a subclass of
 # enum.Enum but are removed from the class __dict__ by EnumMeta.
 ENUM_REMOVED_PROPS: Final = ("_ignore_", "_order_", "__order__")

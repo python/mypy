@@ -79,6 +79,7 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
+    TypeOfLiteralString,
     TypeType,
     TypeVarType,
     UnboundType,
@@ -2212,7 +2213,10 @@ def format_type_inner(
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
                 return f"{base_str} {itype.extra_attrs.mod_name}"
             return base_str
-        elif itype.type.fullname == "builtins.str" and itype.literal_string:
+        elif (
+            itype.type.fullname == "builtins.str"
+            and itype.literal_string == TypeOfLiteralString.explicit
+        ):
             return "LiteralString"
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname
