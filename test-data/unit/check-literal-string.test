@@ -172,6 +172,27 @@ z: Union[str, LiteralString] = 1  # E: Incompatible types in assignment (express
 [builtins fixtures/literal_string.pyi]
 
 
+[case testTypeAliasOfLiteralString]
+from typing_extensions import LiteralString, TypeAlias
+
+LS1: TypeAlias = LiteralString
+LS2 = LiteralString
+
+def ls1(arg: LS1) -> LS1: ...
+def ls2(arg: LS2) -> LS2: ...
+
+reveal_type(ls1('abc'))  # N: Revealed type is "LiteralString"
+reveal_type(ls2("abc"))  # N: Revealed type is "LiteralString"
+
+x: LiteralString
+reveal_type(ls1(x))  # N: Revealed type is "LiteralString"
+reveal_type(ls2(x))  # N: Revealed type is "LiteralString"
+y: str
+ls1(y)  # E: Argument 1 to "ls1" has incompatible type "str"; expected "LiteralString"
+ls2(y)  # E: Argument 1 to "ls2" has incompatible type "str"; expected "LiteralString"
+[builtins fixtures/literal_string.pyi]
+
+
 [case testLiteralStringInsideList]
 from typing_extensions import LiteralString
 from typing import List

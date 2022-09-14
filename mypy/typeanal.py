@@ -578,13 +578,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
         elif fullname in LITERAL_STRING_NAMES:
             inst = self.named_type("builtins.str")
-            if not self.options.enable_incomplete_features:
-                self.fail(
-                    '"LiteralString" is not fully supported yet, use --enable-incomplete-features',
-                    t,
-                )
-            else:
-                inst.literal_string = TypeOfLiteralString.explicit
+            inst.literal_string = TypeOfLiteralString.explicit
             return inst
         return None
 
@@ -1599,7 +1593,10 @@ def expand_type_alias(
             assert isinstance(node.target, Instance)  # type: ignore[misc]
             # Note: this is the only case where we use an eager expansion. See more info about
             # no_args aliases like L = List in the docstring for TypeAlias class.
-            return Instance(node.target.type, [], line=ctx.line, column=ctx.column)
+            inst = node.target.copy_modified(args=[])
+            inst.line = ctx.line
+            inst.column = ctx.column
+            return inst
         return TypeAliasType(node, [], line=ctx.line, column=ctx.column)
     if (
         exp_len == 0
