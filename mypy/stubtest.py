@@ -870,16 +870,8 @@ def verify_funcitem(
             return
 
     if isinstance(stub, nodes.FuncDef):
-        stub_abstract = stub.abstract_status == nodes.IS_ABSTRACT
-        runtime_abstract = getattr(runtime, "__isabstractmethod__", False)
-        # The opposite can exist: some implementations omit `@abstractmethod` decorators
-        if runtime_abstract and not stub_abstract:
-            yield Error(
-                object_path,
-                "is inconsistent, runtime method is abstract but stub is not",
-                stub,
-                runtime,
-            )
+        for error_text in _verify_abstract_status(stub, runtime):
+            yield Error(object_path, error_text, stub, runtime)
 
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
@@ -1066,6 +1058,15 @@ def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[s
     yield "is inconsistent, cannot reconcile @property on stub with runtime object"
 
 
+def _verify_abstract_status(stub: nodes.FuncDef, runtime: Any) -> Iterator[str]:
+    stub_abstract = stub.abstract_status == nodes.IS_ABSTRACT
+    runtime_abstract = getattr(runtime, "__isabstractmethod__", False)
+    # The opposite can exist: some implementations omit `@abstractmethod` decorators
+    if runtime_abstract and not stub_abstract:
+        item_type = "property" if stub.is_property else "method"
+        yield f"is inconsistent, runtime {item_type} is abstract but stub is not"
+
+
 def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem | None:
     """Returns a FuncItem that corresponds to the output of the decorator.
 
@@ -1123,6 +1124,8 @@ def verify_decorator(
         return
     if stub.func.is_property:
         for message in _verify_readonly_property(stub, runtime):
+            yield Error(object_path, message, stub, runtime)
+        for message in _verify_abstract_status(stub.func, runtime):
             yield Error(object_path, message, stub, runtime)
         return
 
