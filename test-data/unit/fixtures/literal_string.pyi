@@ -37,6 +37,7 @@ class str:
     def __add__(self, __other: str) -> str: pass
     def __mul__(self, __num: int) -> str: pass
     def format(self, *args: Any) -> str: pass
+    def join(self, __items: Iterable[str]) -> str: pass
 class bytes: pass
 class unicode: pass
 
@@ -47,6 +48,7 @@ class list(Sequence[T], Generic[T]):
     def __getitem__(self, s: slice) -> list[T]: ...
     def __contains__(self, item: object) -> bool: ...
     def __iter__(self) -> Iterator[T]: ...
+    def append(self, __item: T) -> None: ...
 
 def isinstance(x: object, t: type) -> bool: pass
 

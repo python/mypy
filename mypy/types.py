@@ -1193,6 +1193,15 @@ class ExtraAttrs:
         return ExtraAttrs(self.attrs.copy(), self.immutable.copy(), self.mod_name)
 
 
+class TypeOfLiteralString:
+    """Used to specify what kind of `LiteralString` are we dealing with."""
+
+    __slots__ = ()
+
+    explicit: Final = 1
+    implicit: Final = 2
+
+
 class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
 
@@ -1223,7 +1232,7 @@ class Instance(ProperType):
         *,
         last_known_value: LiteralType | None = None,
         extra_attrs: ExtraAttrs | None = None,
-        literal_string: bool = False,
+        literal_string: int | None = None,
     ) -> None:
         super().__init__(line, column)
         self.type = typ
@@ -1286,7 +1295,9 @@ class Instance(ProperType):
         # to be "short-lived", we don't serialize it, and even don't store as variable type.
         self.extra_attrs = extra_attrs
 
-        # Is set to true when `LiteralString` type is used.
+        # Is set to `1` when explicit `LiteralString` type is used.
+        # Is set to `2` when implicit `LiteralString` is used, like `'a'`
+        # Is `None` by default.
         self.literal_string = literal_string
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -2466,10 +2477,6 @@ class LiteralType(ProperType):
         self.fallback = fallback
         self._hash = -1  # Cached hash value
 
-        # Make sure `LiteralString` will just work with `Literal['...']` types:
-        if self.fallback.type.fullname == "builtins.str" and isinstance(self.value, str):
-            self.fallback.literal_string = True
-
     def can_be_false_default(self) -> bool:
         return not self.value
 
@@ -2924,6 +2931,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s = f"{t.last_known_value}?"
         else:
             s = t.type.fullname or t.type.name or "<???>"
+
+        if t.literal_string == TypeOfLiteralString.explicit:
+            s = 'LiteralString'
 
         if t.args:
             if t.type.fullname == "builtins.tuple":

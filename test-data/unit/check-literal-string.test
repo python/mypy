@@ -5,12 +5,38 @@
 from typing_extensions import LiteralString
 
 x: LiteralString = 'a'
+reveal_type(x)  # N: Revealed type is "LiteralString"
 raw_str: str = x   # Ok, can be narrowed
+reveal_type(raw_str)  # N: Revealed type is "builtins.str"
 
 some_str: str
 y: LiteralString = some_str  # E: Incompatible types in assignment (expression has type "str", variable has type "LiteralString")
 
 z: LiteralString = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "LiteralString")
+[builtins fixtures/literal_string.pyi]
+
+
+[case testLiteralStringAndFString]
+from typing_extensions import LiteralString
+x: LiteralString = f'Value: {1}'  # E: Incompatible types in assignment (expression has type "str", variable has type "LiteralString")
+[builtins fixtures/literal_string.pyi]
+
+
+[case testLiteralStringAndStrImplicitTypes]
+reveal_type('a')  # N: Revealed type is "Literal['a']?"
+
+x = 'a'
+reveal_type(x)  # N: Revealed type is "builtins.str"
+x = f'Value: {x}'
+reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if int():
+    cond = 'abc'  # Literal
+else:
+    cond = ','.join(['a', 'b'])  # Dynamic
+
+literal_names = ["native"]
+literal_names.append(str())
 [builtins fixtures/literal_string.pyi]
 
 
@@ -94,11 +120,48 @@ class Wrong(Base):
     def method3(self, arg: str) -> str: ...
     def method4(self, arg: LiteralString) -> LiteralString: ...
 [out]
+main:15: error: Argument 1 of "method2" is incompatible with supertype "Base"; supertype defines the argument type as "str"
+main:15: note: This violates the Liskov substitution principle
+main:15: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:15: error: Return type "str" of "method2" incompatible with return type "LiteralString" in supertype "Base"
 main:16: error: Return type "str" of "method3" incompatible with return type "LiteralString" in supertype "Base"
-main:17: error: Signature of "method4" incompatible with supertype "Base"
-main:17: note:      Superclass:
-main:17: note:          def method4(self, arg: str) -> str
-main:17: note:      Subclass:
-main:17: note:          def method4(self, arg: LiteralString) -> LiteralString
+main:17: error: Argument 1 of "method4" is incompatible with supertype "Base"; supertype defines the argument type as "str"
+main:17: note: This violates the Liskov substitution principle
+main:17: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [builtins fixtures/literal_string.pyi]
+
+
+[case testLiteralStringInsideList]
+from typing_extensions import LiteralString
+from typing import List
+
+literal_names: List[LiteralString] = ["native", "literal"]
+literal_names.append(str())  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "LiteralString"
+
+literal_names2: List[LiteralString] = ["literal", str()]  # E: List item 1 has incompatible type "str"; expected "LiteralString"
+[builtins fixtures/list.pyi]
+
+[case testLiteralStringInsideTuple]
+from typing_extensions import LiteralString
+from typing import Tuple
+
+literal_names: Tuple[LiteralString, ...] = ("native", "literal")
+literal_names2: Tuple[LiteralString, ...] = ("literal", str())  # E: Incompatible types in assignment (expression has type "Tuple[LiteralString, str]", variable has type "Tuple[LiteralString, ...]")
+[builtins fixtures/tuple.pyi]
+
+[case testLiteralStringInsideSet]
+from typing_extensions import LiteralString
+from typing import Set
+
+literal_names: Set[LiteralString] = {"native", "literal"}
+literal_names2: Set[LiteralString] = {"literal", str()}  # E: Argument 2 to <set> has incompatible type "str"; expected "LiteralString"
+[builtins fixtures/set.pyi]
+
+[case testLiteralStringInsideDict]
+from typing_extensions import LiteralString
+from typing import Dict
+
+literal_names: Dict[LiteralString, LiteralString] = {"native": "literal"}
+literal_names2: Dict[LiteralString, int] = {"literal": 1, str(): 2}  # E: Dict entry 1 has incompatible type "str": "int"; expected "LiteralString": "int"
+literal_names3: Dict[int, LiteralString] = {2: str(), 1: "literal"}  # E: Dict entry 0 has incompatible type "int": "str"; expected "int": "LiteralString"
+[builtins fixtures/dict.pyi]

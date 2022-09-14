@@ -78,6 +78,7 @@ from mypy.types import (
     TypeType,
     TypeVarLikeType,
     TypeVarTupleType,
+    TypeOfLiteralString,
     TypeVarType,
     UnboundType,
     UninhabitedType,
@@ -582,7 +583,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     t,
                 )
             else:
-                inst.literal_string = True
+                inst.literal_string = TypeOfLiteralString.explicit
             return inst
         return None
 
