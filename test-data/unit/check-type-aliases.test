@@ -762,12 +762,6 @@ from typing_extensions import LiteralString as tpxLS
 def f(a: tpLS, b: tpxLS) -> None:
     reveal_type(a)  # N: Revealed type is "LiteralString"
     reveal_type(b)  # N: Revealed type is "LiteralString"
-
-# This isn't the correct behaviour, but should unblock use of LiteralString in typeshed
-f("asdf", "asdf")
-string: str
-f(string, string)
-
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
 

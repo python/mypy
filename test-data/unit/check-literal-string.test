@@ -193,6 +193,27 @@ ls2(y)  # E: Argument 1 to "ls2" has incompatible type "str"; expected "LiteralS
 [builtins fixtures/literal_string.pyi]
 
 
+[case testOverloadsWithLiteralString]
+from over import some
+
+x: str
+y: str
+reveal_type(some('a', 'b'))  # N: Revealed type is "LiteralString"
+reveal_type(some(x, y))      # N: Revealed type is "builtins.str"
+reveal_type(some('a', y))    # N: Revealed type is "builtins.str"
+reveal_type(some(x, 'b'))    # N: Revealed type is "builtins.str"
+
+[file over.pyi]
+from typing_extensions import LiteralString
+from typing import Union, overload
+
+@overload
+def some(x: LiteralString, y: LiteralString) -> LiteralString: ...
+@overload
+def some(x: str, y: str) -> str: ...
+[builtins fixtures/literal_string.pyi]
+
+
 [case testLiteralStringInsideList]
 from typing_extensions import LiteralString
 from typing import List
