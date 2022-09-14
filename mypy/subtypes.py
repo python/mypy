@@ -463,7 +463,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # and we can't have circular promotions.
                 if left.type.alt_promote is right.type:
                     return True
+
             rname = right.type.fullname
+
+            # Check `LiteralString` special case:
+            if rname == "builtins.str" and right.literal_string:
+                return left.literal_string or (
+                    left.last_known_value is not None
+                    and isinstance(left.last_known_value.value, str)
+                )
+
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
             # NamedTuples are a special case, because `NamedTuple` is not listed

@@ -1203,7 +1203,16 @@ class Instance(ProperType):
     fallbacks for all "non-special" (like UninhabitedType, ErasedType etc) types.
     """
 
-    __slots__ = ("type", "args", "invalid", "type_ref", "last_known_value", "_hash", "extra_attrs")
+    __slots__ = (
+        "type",
+        "args",
+        "invalid",
+        "type_ref",
+        "last_known_value",
+        "_hash",
+        "extra_attrs",
+        "literal_string",
+    )
 
     def __init__(
         self,
@@ -1214,6 +1223,7 @@ class Instance(ProperType):
         *,
         last_known_value: LiteralType | None = None,
         extra_attrs: ExtraAttrs | None = None,
+        literal_string: bool = False,
     ) -> None:
         super().__init__(line, column)
         self.type = typ
@@ -1276,6 +1286,9 @@ class Instance(ProperType):
         # to be "short-lived", we don't serialize it, and even don't store as variable type.
         self.extra_attrs = extra_attrs
 
+        # Is set to true when `LiteralString` type is used.
+        self.literal_string = literal_string
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_instance(self)
 
@@ -1292,6 +1305,7 @@ class Instance(ProperType):
             and self.args == other.args
             and self.last_known_value == other.last_known_value
             and self.extra_attrs == other.extra_attrs
+            and self.literal_string == self.literal_string
         )
 
     def serialize(self) -> JsonDict | str:
@@ -1304,6 +1318,7 @@ class Instance(ProperType):
         data["args"] = [arg.serialize() for arg in self.args]
         if self.last_known_value is not None:
             data["last_known_value"] = self.last_known_value.serialize()
+        data["literal_string"] = self.literal_string
         return data
 
     @classmethod
@@ -1322,6 +1337,7 @@ class Instance(ProperType):
         inst.type_ref = data["type_ref"]  # Will be fixed up by fixup.py later.
         if "last_known_value" in data:
             inst.last_known_value = LiteralType.deserialize(data["last_known_value"])
+        inst.literal_string = data["literal_string"]
         return inst
 
     def copy_modified(
@@ -1329,15 +1345,19 @@ class Instance(ProperType):
         *,
         args: Bogus[list[Type]] = _dummy,
         last_known_value: Bogus[LiteralType | None] = _dummy,
+        literal_string: Bogus[bool] = _dummy,
     ) -> Instance:
         new = Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
             self.column,
-            last_known_value=last_known_value
-            if last_known_value is not _dummy
-            else self.last_known_value,
+            last_known_value=(
+                last_known_value if last_known_value is not _dummy else self.last_known_value
+            ),
+            literal_string=(
+                literal_string if literal_string is not _dummy else self.literal_string
+            ),
         )
         # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true
@@ -2445,6 +2465,10 @@ class LiteralType(ProperType):
         super().__init__(line, column)
         self.fallback = fallback
         self._hash = -1  # Cached hash value
+
+        # Make sure `LiteralString` will just work with `Literal['...']` types:
+        if self.fallback.type.fullname == "builtins.str" and isinstance(self.value, str):
+            self.fallback.literal_string = True
 
     def can_be_false_default(self) -> bool:
         return not self.value

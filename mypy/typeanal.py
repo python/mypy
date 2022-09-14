@@ -574,6 +574,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail('"Unpack" is not supported yet, use --enable-incomplete-features', t)
                 return AnyType(TypeOfAny.from_error)
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
+        elif fullname in ("typing.LiteralString", "typing_extensions.LiteralString"):
+            inst = self.named_type("builtins.str")
+            if not self.options.enable_incomplete_features:
+                self.fail(
+                    '"LiteralString" is not fully supported yet, use --enable-incomplete-features',
+                    t,
+                )
+            else:
+                inst.literal_string = True
+            return inst
         return None
 
     def get_omitted_any(self, typ: Type, fullname: str | None = None) -> AnyType:

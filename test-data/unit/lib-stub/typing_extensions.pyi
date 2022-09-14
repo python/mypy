@@ -33,6 +33,8 @@ Never: _SpecialForm
 TypeVarTuple: _SpecialForm
 Unpack: _SpecialForm
 
+LiteralString: _SpecialForm
+
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):
     # Needed to make this class non-abstract. It is explicitly declared abstract in

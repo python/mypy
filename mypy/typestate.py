@@ -141,6 +141,8 @@ class TypeState:
             # will be an unbounded number of potential types to cache,
             # making caching less effective.
             return False
+        if left.literal_string or right.literal_string:
+            return False
         info = right.type
         cache = TypeState._subtype_caches.get(info)
         if cache is None:

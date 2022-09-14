@@ -1,0 +1,104 @@
+-- LiteralString tests
+-- See https://peps.python.org/pep-0675/
+
+[case testLiteralStringInference]
+from typing_extensions import LiteralString
+
+x: LiteralString = 'a'
+raw_str: str = x   # Ok, can be narrowed
+
+some_str: str
+y: LiteralString = some_str  # E: Incompatible types in assignment (expression has type "str", variable has type "LiteralString")
+
+z: LiteralString = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "LiteralString")
+[builtins fixtures/literal_string.pyi]
+
+
+[case testLiteralTypeAndLiteralString]
+from typing_extensions import LiteralString, Literal
+
+l1: Literal['a']
+l2: Literal[1]
+
+ls1: LiteralString = l1
+ls2: LiteralString = l2  # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "LiteralString")
+
+ls3: LiteralString
+l3: Literal['a'] = ls3  # E: Incompatible types in assignment (expression has type "LiteralString", variable has type "Literal['a']")
+
+def expects_literal_string(x: LiteralString): ...
+def expects_literal_a(x: Literal['a']): ...
+
+expects_literal_string(l1)
+expects_literal_string(ls1)
+
+expects_literal_a(l1)
+expects_literal_a(ls1)  # E: Argument 1 to "expects_literal_a" has incompatible type "LiteralString"; expected "Literal['a']"
+[builtins fixtures/literal_string.pyi]
+
+
+[case testLiteralStringFallbackToString]
+from typing_extensions import LiteralString
+def expects_literal_string(x: LiteralString): ...
+
+x: LiteralString
+expects_literal_string(x.format(1))  # E: Argument 1 to "expects_literal_string" has incompatible type "str"; expected "LiteralString"
+[builtins fixtures/literal_string.pyi]
+
+
+-- TODO: this is not supported yet
+-- All cases here must pass
+-- But, we need literal type math for this
+[case testLiteralStringTypeMath-skip]
+from typing_extensions import LiteralString
+def expects_literal_string(x: LiteralString): ...
+
+expects_literal_string('a')
+expects_literal_string('a' + 'b')
+expects_literal_string('a' * 2)
+[builtins fixtures/literal_string.pyi]
+
+
+[case testLiteralStringBoundTypeVar]
+from typing_extensions import LiteralString
+from typing import TypeVar
+
+T = TypeVar('T', bound=LiteralString)
+def expects_literal_string(x: T): ...
+
+expects_literal_string('a')
+
+x: LiteralString
+y: str
+expects_literal_string(x)
+expects_literal_string(y)  # E: Value of type variable "T" of "expects_literal_string" cannot be "str"
+[builtins fixtures/literal_string.pyi]
+
+
+[case testLiteralStringAsMethodSig]
+from typing_extensions import LiteralString
+
+class Base:
+    def method1(self, arg: LiteralString) -> str: ...
+    def method2(self, arg: str) -> LiteralString: ...
+    def method3(self, arg: LiteralString) -> LiteralString: ...
+    def method4(self, arg: str) -> str: ...
+
+class Correct(Base):
+    def method1(self, arg: str) -> LiteralString: ...
+    def method3(self, arg: str) -> LiteralString: ...
+    def method4(self, arg: str) -> LiteralString: ...
+
+class Wrong(Base):
+    def method2(self, arg: LiteralString) -> str: ...
+    def method3(self, arg: str) -> str: ...
+    def method4(self, arg: LiteralString) -> LiteralString: ...
+[out]
+main:15: error: Return type "str" of "method2" incompatible with return type "LiteralString" in supertype "Base"
+main:16: error: Return type "str" of "method3" incompatible with return type "LiteralString" in supertype "Base"
+main:17: error: Signature of "method4" incompatible with supertype "Base"
+main:17: note:      Superclass:
+main:17: note:          def method4(self, arg: str) -> str
+main:17: note:      Subclass:
+main:17: note:          def method4(self, arg: LiteralString) -> LiteralString
+[builtins fixtures/literal_string.pyi]

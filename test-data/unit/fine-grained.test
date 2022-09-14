@@ -10031,3 +10031,29 @@ class C(B): ...
 ==
 ==
 main.py:4: note: Revealed type is "def () -> builtins.str"
+
+[case testLiteralStringCache]
+import main
+[file main.py]
+from typing_extensions import LiteralString
+
+def some(x: LiteralString) -> LiteralString:
+    return x
+
+x: LiteralString = 'a'
+some(x)
+some('b')
+[file main.py.2]
+from typing_extensions import LiteralString
+
+def some(x: LiteralString) -> str:
+    return x
+
+x: str
+some(x)  # error
+some('b')
+[builtins fixtures/tuple.pyi]
+[out]
+==
+==
+main.py:7: error: Argument 1 to "some" has incompatible type "str"; expected "LiteralString"
