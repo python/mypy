@@ -2525,7 +2525,9 @@ def pretty_callable(tp: CallableType, skip_self: bool = False) -> str:
     if tp.variables:
         tvars = []
         for tvar in tp.variables:
-            if isinstance(tvar, TypeVarType):
+            if isinstance(tvar, SelfType):
+                pass
+            elif isinstance(tvar, TypeVarType):
                 upper_bound = get_proper_type(tvar.upper_bound)
                 if (
                     isinstance(upper_bound, Instance)
