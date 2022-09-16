@@ -525,7 +525,7 @@ class FancyFormatter:
     def __init__(self, f_out: IO[str], f_err: IO[str], show_error_codes: bool) -> None:
         self.show_error_codes = show_error_codes
         # Check if we are in a human-facing terminal on a supported platform.
-        if sys.platform not in ("linux", "darwin", "win32"):
+        if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
             return
         force_color = int(os.getenv("MYPY_FORCE_COLOR", "0"))
@@ -534,6 +534,8 @@ class FancyFormatter:
             return
         if sys.platform == "win32":
             self.dummy_term = not self.initialize_win_colors()
+        elif sys.platform == "emscripten":
+            self.dummy_term = not self.initialize_vt100_colors()
         else:
             self.dummy_term = not self.initialize_unix_colors()
         if not self.dummy_term:
@@ -544,6 +546,20 @@ class FancyFormatter:
                 "yellow": self.YELLOW,
                 "none": "",
             }
+
+    def initialize_vt100_colors(self) -> bool:
+        """Return True if initialization was successful and we can use colors, False otherwise"""
+        # Windows and Emscripten can both use ANSI/VT100 escape sequences for color
+        assert sys.platform in ("win32", "emscripten")
+        self.BOLD = "\033[1m"
+        self.UNDER = "\033[4m"
+        self.BLUE = "\033[94m"
+        self.GREEN = "\033[92m"
+        self.RED = "\033[91m"
+        self.YELLOW = "\033[93m"
+        self.NORMAL = "\033[0m"
+        self.DIM = "\033[2m"
+        return True
 
     def initialize_win_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
@@ -571,14 +587,7 @@ class FancyFormatter:
                 | ENABLE_WRAP_AT_EOL_OUTPUT
                 | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
             )
-            self.BOLD = "\033[1m"
-            self.UNDER = "\033[4m"
-            self.BLUE = "\033[94m"
-            self.GREEN = "\033[92m"
-            self.RED = "\033[91m"
-            self.YELLOW = "\033[93m"
-            self.NORMAL = "\033[0m"
-            self.DIM = "\033[2m"
+            self.initialize_vt100_colors()
             return True
         return False
 
