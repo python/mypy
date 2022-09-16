@@ -636,7 +636,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
                 # N.B: We use zip instead of indexing because the lengths might have
                 # mismatches during daemon reprocessing.
-                for tvar, mapped_arg, instance_arg in zip(tvars, mapped.args, instance.args):
+                for tvar, mapped_arg, instance_arg in zip(tvars, mapped_args, instance_args):
                     # TODO(PEP612): More ParamSpec work (or is Parameters the only thing accepted)
                     if isinstance(tvar, TypeVarType):
                         # The constraints for generic type parameters depend on variance.
