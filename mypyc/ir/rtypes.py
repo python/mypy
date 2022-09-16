@@ -1030,7 +1030,7 @@ def vec_depth(t: RVec) -> int:
         if is_int64_rprimitive(it.item_type):
             return 0
         else:
-            return 1 + vec_depth(vec.item_type)
+            return 1 + vec_depth(it.item_type)
     assert False, t
 
 

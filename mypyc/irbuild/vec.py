@@ -1,5 +1,6 @@
 """Generate IR for vecs.vec operations"""
 
+from __future__ import annotations
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union, cast
 
 from mypyc.common import PLATFORM_SIZE
@@ -44,6 +45,7 @@ from mypyc.ir.rtypes import (
     optional_value_type,
     pointer_rprimitive,
     vec_depth,
+    is_short_int_rprimitive, is_int_rprimitive,
 )
 from mypyc.primitives.registry import builtin_names
 
@@ -51,11 +53,11 @@ if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 
-def as_platform_int(builder: "LowLevelIRBuilder", v: Value, line: int) -> Value:
+def as_platform_int(builder: LowLevelIRBuilder, v: Value, line: int) -> Value:
     rtype = v.type
     if is_c_py_ssize_t_rprimitive(rtype):
         return v
-    if isinstance(rtype, Integer):
+    if isinstance(v, Integer):
         if is_short_int_rprimitive(rtype) or is_int_rprimitive(rtype):
             return Integer(v.value // 2, c_pyssize_t_rprimitive)
         return Integer(v.value, c_pyssize_t_rprimitive)

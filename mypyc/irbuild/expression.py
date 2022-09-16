@@ -594,8 +594,8 @@ def translate_vec_create_from_iterable(
 
 
 def translate_vec_method_call(
-    builder: IRBuilder, vec_expr: Expression, method: str, args: List[Expression]
-) -> Optional[Value]:
+    builder: IRBuilder, vec_expr: Expression, method: str, args: list[Expression]
+) -> Value | None:
     if method == "pop" and 0 <= len(args) <= 1:
         vec_val = builder.accept(vec_expr)
         if args:
@@ -703,7 +703,8 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
             return value
 
     index_reg = builder.accept(expr.index, can_borrow=is_list)
-    return builder.builder.get_item(base, index_reg, builder.node_type(expr), expr.line)
+    return builder.builder.get_item(base, index_reg, builder.node_type(expr), expr.line,
+                                    can_borrow=builder.can_borrow)
 
 
 def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:

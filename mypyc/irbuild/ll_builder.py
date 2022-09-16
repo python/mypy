@@ -109,6 +109,7 @@ from mypyc.ir.rtypes import (
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
+    int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
@@ -1982,7 +1983,8 @@ class LowLevelIRBuilder:
             return self.unary_invert(value, line)
         raise RuntimeError("Unsupported unary operation: %s" % op)
 
-    def get_item(self, base: Value, item: Value, result_type: Optional[RType], line: int) -> Value:
+    def get_item(self, base: Value, item: Value, result_type: Optional[RType], line: int,
+                 *, can_borrow: bool = False) -> Value:
         """Generate base[item]."""
         if isinstance(base.type, RVec):
             if is_int_rprimitive(item.type) or is_short_int_rprimitive(item.type):
@@ -1990,7 +1992,7 @@ class LowLevelIRBuilder:
             if is_int64_rprimitive(item.type):
                 return vec_get_item(self, base, item, line)
         # TODO: Move special casing for RTuple here from transform_index_expr
-        return self.gen_method_call(base, "__getitem__", [item], result_type, line)
+        return self.gen_method_call(base, "__getitem__", [item], result_type, line, can_borrow=can_borrow)
 
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:

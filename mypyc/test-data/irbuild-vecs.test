@@ -444,7 +444,7 @@ def f(n, x):
     n, x :: int64
     r0 :: vec[int64]
     r1 :: ptr
-    r2 :: int64
+    r2 :: native_int
     r3, r4 :: ptr
     r5 :: bit
     r6 :: ptr
