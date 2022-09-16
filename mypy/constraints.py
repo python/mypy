@@ -597,7 +597,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(instance_unpack, TypeVarTupleType):
                             res.append(
                                 Constraint(
-                                    instance_unpack.id, SUBTYPE_OF, TypeList(list(mapped_middle))
+                                    instance_unpack, SUBTYPE_OF, TypeList(list(mapped_middle))
                                 )
                             )
                         elif (
