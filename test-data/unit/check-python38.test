@@ -386,7 +386,7 @@ reveal_type(z2)  # E: Name "z2" is not defined  # N: Revealed type is "Any"
 
 [case testWalrusConditionalTypeBinder]
 # flags: --python-version 3.8
-from typing import Union
+from typing import Tuple, Union
 from typing_extensions import Literal
 
 class Good:
@@ -403,7 +403,14 @@ if (thing := get_thing()).is_good:
     reveal_type(thing)  # N: Revealed type is "__main__.Good"
 else:
     reveal_type(thing)  # N: Revealed type is "__main__.Bad"
-[builtins fixtures/property.pyi]
+
+def get_things() -> Union[Tuple[Good], Tuple[Bad]]: ...
+
+if (things := get_things())[0].is_good:
+    reveal_type(things)  # N: Revealed type is "Tuple[__main__.Good]"
+else:
+    reveal_type(things)  # N: Revealed type is "Tuple[__main__.Bad]"
+[builtins fixtures/list.pyi]
 
 [case testWalrusConditionalTypeCheck]
 # flags: --strict-optional --python-version 3.8
@@ -576,3 +583,106 @@ class Bar:
     def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:
         ...
 [builtins fixtures/bool.pyi]
+
+[case testOverloadPositionalOnlyErrorMessage]
+from typing import overload
+
+@overload
+def foo(a: int, /): ...
+@overload
+def foo(a: str): ...
+def foo(a): ...
+
+foo(a=1)
+[out]
+main:9: error: No overload variant of "foo" matches argument type "int"
+main:9: note: Possible overload variants:
+main:9: note:     def foo(int, /) -> Any
+main:9: note:     def foo(a: str) -> Any
+
+[case testOverloadPositionalOnlyErrorMessageAllTypes]
+from typing import overload
+
+@overload
+def foo(a: int, /, b: int, *, c: int): ...
+@overload
+def foo(a: str, b: int, *, c: int): ...
+def foo(a, b, *, c): ...
+
+foo(a=1)
+[out]
+main:9: error: No overload variant of "foo" matches argument type "int"
+main:9: note: Possible overload variants:
+main:9: note:     def foo(int, /, b: int, *, c: int) -> Any
+main:9: note:     def foo(a: str, b: int, *, c: int) -> Any
+
+[case testOverloadPositionalOnlyErrorMessageMultiplePosArgs]
+from typing import overload
+
+@overload
+def foo(a: int, b: int, c: int, /, d: str): ...
+@overload
+def foo(a: str, b: int, c: int, d: str): ...
+def foo(a, b, c, d): ...
+
+foo(a=1)
+[out]
+main:9: error: No overload variant of "foo" matches argument type "int"
+main:9: note: Possible overload variants:
+main:9: note:     def foo(int, int, int, /, d: str) -> Any
+main:9: note:     def foo(a: str, b: int, c: int, d: str) -> Any
+
+[case testOverloadPositionalOnlyErrorMessageMethod]
+from typing import overload
+
+class Some:
+    @overload
+    def foo(self, __a: int): ...
+    @overload
+    def foo(self, a: float, /): ...
+    @overload
+    def foo(self, a: str): ...
+    def foo(self, a): ...
+
+Some().foo(a=1)
+[out]
+main:12: error: No overload variant of "foo" of "Some" matches argument type "int"
+main:12: note: Possible overload variants:
+main:12: note:     def foo(self, int, /) -> Any
+main:12: note:     def foo(self, float, /) -> Any
+main:12: note:     def foo(self, a: str) -> Any
+
+[case testOverloadPositionalOnlyErrorMessageClassMethod]
+from typing import overload
+
+class Some:
+    @overload
+    @classmethod
+    def foo(cls, __a: int): ...
+    @overload
+    @classmethod
+    def foo(cls, a: float, /): ...
+    @overload
+    @classmethod
+    def foo(cls, a: str): ...
+    @classmethod
+    def foo(cls, a): ...
+
+Some.foo(a=1)
+[builtins fixtures/classmethod.pyi]
+[out]
+main:16: error: No overload variant of "foo" of "Some" matches argument type "int"
+main:16: note: Possible overload variants:
+main:16: note:     def foo(cls, int, /) -> Any
+main:16: note:     def foo(cls, float, /) -> Any
+main:16: note:     def foo(cls, a: str) -> Any
+
+[case testUnpackWithDuplicateNamePositionalOnly]
+from typing_extensions import Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
+    ...
+[builtins fixtures/dict.pyi]

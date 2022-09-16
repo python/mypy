@@ -187,6 +187,66 @@ reveal_type(C)  # N: Revealed type is "def (some_int: builtins.int, some_str: bu
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassIncompatibleOverrides]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass
+class Base:
+    foo: int
+
+@dataclass
+class BadDerived1(Base):
+    def foo(self) -> int:  # E: Dataclass attribute may only be overridden by another attribute \
+                           # E: Signature of "foo" incompatible with supertype "Base"
+        return 1
+
+@dataclass
+class BadDerived2(Base):
+    @property              # E: Dataclass attribute may only be overridden by another attribute
+    def foo(self) -> int:  # E: Cannot override writeable attribute with read-only property
+        return 2
+
+@dataclass
+class BadDerived3(Base):
+    class foo: pass  # E: Dataclass attribute may only be overridden by another attribute
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassMultipleInheritance]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+class Unrelated:
+    foo: str
+
+@dataclass
+class Base:
+    bar: int
+
+@dataclass
+class Derived(Base, Unrelated):
+    pass
+
+d = Derived(3)
+reveal_type(d.foo)  # N: Revealed type is "builtins.str"
+reveal_type(d.bar)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassIncompatibleFrozenOverride]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Base:
+    foo: int
+
+@dataclass(frozen=True)
+class BadDerived(Base):
+    @property  # E: Dataclass attribute may only be overridden by another attribute
+    def foo(self) -> int:
+        return 3
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesFreezing]
 # flags: --python-version 3.7
 from dataclasses import dataclass
@@ -197,6 +257,28 @@ class Person:
 
 john = Person('John')
 john.name = 'Ben'  # E: Property "name" defined in "Person" is read-only
+
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesInconsistentFreezing]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class FrozenBase:
+    pass
+
+@dataclass
+class BadNormalDerived(FrozenBase):  # E: Cannot inherit non-frozen dataclass from a frozen one
+    pass
+
+@dataclass
+class NormalBase:
+    pass
+
+@dataclass(frozen=True)
+class BadFrozenDerived(NormalBase):  # E: Cannot inherit frozen dataclass from a non-frozen one
+    pass
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -1283,10 +1365,10 @@ from dataclasses import dataclass
 class A:
     foo: int
 
-@dataclass
+@dataclass(frozen=True)
 class B(A):
-    @property
-    def foo(self) -> int: pass  # E: Signature of "foo" incompatible with supertype "A"
+    @property  # E: Dataclass attribute may only be overridden by another attribute
+    def foo(self) -> int: pass
 
 reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
 
@@ -1795,4 +1877,22 @@ class Two:
 t: Two
 reveal_type(t.__match_args__)  # E: "Two" has no attribute "__match_args__" \
                                # N: Revealed type is "Any"
+[builtins fixtures/dataclasses.pyi]
+
+[case testFinalInDataclass]
+from dataclasses import dataclass
+from typing import Final
+
+@dataclass
+class FirstClass:
+    FIRST_CONST: Final = 3  # OK
+
+@dataclass
+class SecondClass:
+    SECOND_CONST: Final = FirstClass.FIRST_CONST  # E: Need type argument for Final[...] with non-literal default in dataclass
+
+reveal_type(FirstClass().FIRST_CONST)  # N: Revealed type is "Literal[3]?"
+FirstClass().FIRST_CONST = 42  # E: Cannot assign to final attribute "FIRST_CONST"
+reveal_type(SecondClass().SECOND_CONST)  # N: Revealed type is "Literal[3]?"
+SecondClass().SECOND_CONST = 42  # E: Cannot assign to final attribute "SECOND_CONST"
 [builtins fixtures/dataclasses.pyi]

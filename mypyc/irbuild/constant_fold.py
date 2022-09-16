@@ -80,7 +80,9 @@ def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | None:
             return left >> right
     elif op == "**":
         if right >= 0:
-            return left**right
+            ret = left**right
+            assert isinstance(ret, int)
+            return ret
     return None
 
 

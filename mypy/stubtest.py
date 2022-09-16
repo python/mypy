@@ -315,7 +315,7 @@ def verify_mypyfile(
         except Exception:
             return False
         if obj_mod is not None:
-            return obj_mod == r.__name__
+            return bool(obj_mod == r.__name__)
         return not isinstance(obj, types.ModuleType)
 
     runtime_public_contents = (
@@ -349,20 +349,12 @@ def verify_mypyfile(
         yield from verify(stub_entry, runtime_entry, object_path + [entry])
 
 
-@verify.register(nodes.TypeInfo)
-def verify_typeinfo(
-    stub: nodes.TypeInfo, runtime: MaybeMissing[type[Any]], object_path: list[str]
+def _verify_final(
+    stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
-        return
-    if not isinstance(runtime, type):
-        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
-        return
-
     try:
 
-        class SubClass(runtime):  # type: ignore
+        class SubClass(runtime):  # type: ignore[misc,valid-type]
             pass
 
     except TypeError:
@@ -379,6 +371,59 @@ def verify_typeinfo(
         # The class probably wants its subclasses to do something special.
         # Examples: ctypes.Array, ctypes._SimpleCData
         pass
+
+
+def _verify_metaclass(
+    stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str]
+) -> Iterator[Error]:
+    # We exclude protocols, because of how complex their implementation is in different versions of
+    # python. Enums are also hard, ignoring.
+    # TODO: check that metaclasses are identical?
+    if not stub.is_protocol and not stub.is_enum:
+        runtime_metaclass = type(runtime)
+        if runtime_metaclass is not type and stub.metaclass_type is None:
+            # This means that runtime has a custom metaclass, but a stub does not.
+            yield Error(
+                object_path,
+                "is inconsistent, metaclass differs",
+                stub,
+                runtime,
+                stub_desc="N/A",
+                runtime_desc=f"{runtime_metaclass}",
+            )
+        elif (
+            runtime_metaclass is type
+            and stub.metaclass_type is not None
+            # We ignore extra `ABCMeta` metaclass on stubs, this might be typing hack.
+            # We also ignore `builtins.type` metaclass as an implementation detail in mypy.
+            and not mypy.types.is_named_instance(
+                stub.metaclass_type, ("abc.ABCMeta", "builtins.type")
+            )
+        ):
+            # This means that our stub has a metaclass that is not present at runtime.
+            yield Error(
+                object_path,
+                "metaclass mismatch",
+                stub,
+                runtime,
+                stub_desc=f"{stub.metaclass_type.type.fullname}",
+                runtime_desc="N/A",
+            )
+
+
+@verify.register(nodes.TypeInfo)
+def verify_typeinfo(
+    stub: nodes.TypeInfo, runtime: MaybeMissing[type[Any]], object_path: list[str]
+) -> Iterator[Error]:
+    if isinstance(runtime, Missing):
+        yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
+        return
+    if not isinstance(runtime, type):
+        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
+        return
+
+    yield from _verify_final(stub, runtime, object_path)
+    yield from _verify_metaclass(stub, runtime, object_path)
 
     # Check everything already defined on the stub class itself (i.e. not inherited)
     to_check = set(stub.names)
@@ -569,7 +614,7 @@ class Signature(Generic[T]):
 
         def has_default(arg: Any) -> bool:
             if isinstance(arg, inspect.Parameter):
-                return arg.default != inspect.Parameter.empty
+                return bool(arg.default != inspect.Parameter.empty)
             if isinstance(arg, nodes.Argument):
                 return arg.kind.is_optional()
             raise AssertionError
@@ -1270,16 +1315,13 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
         and left.value in (0, 1)
-        and isinstance(right, mypy.types.Instance)
-        and right.type.fullname == "builtins.bool"
+        and mypy.types.is_named_instance(right, "builtins.bool")
     ):
         # Pretend Literal[0, 1] is a subtype of bool to avoid unhelpful errors.
         return True
 
-    if (
-        isinstance(right, mypy.types.TypedDictType)
-        and isinstance(left, mypy.types.Instance)
-        and left.type.fullname == "builtins.dict"
+    if isinstance(right, mypy.types.TypedDictType) and mypy.types.is_named_instance(
+        left, "builtins.dict"
     ):
         # Special case checks against TypedDicts
         return True

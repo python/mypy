@@ -119,7 +119,7 @@ Python 3 supports an annotation syntax for function declarations.
                   sender: str,
                   cc: Optional[list[str]],
                   bcc: Optional[list[str]],
-                  subject='',
+                  subject: str = '',
                   body: Optional[list[str]] = None
                   ) -> bool:
        ...

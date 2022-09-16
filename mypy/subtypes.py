@@ -38,6 +38,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    NormalizedCallableType,
     Overloaded,
     Parameters,
     ParamSpecType,
@@ -60,14 +61,16 @@ from mypy.types import (
     is_named_instance,
 )
 from mypy.typestate import SubtypeKind, TypeState
+from mypy.typevars import fill_typevars_with_any
 from mypy.typevartuples import extract_unpack, split_with_instance
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
 IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
+IS_VAR: Final = 4
 
-TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool], bool]
+TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
 
 class SubtypeContext:
@@ -80,6 +83,7 @@ class SubtypeContext:
         ignore_declared_variance: bool = False,
         # Supported for both proper and non-proper
         ignore_promotions: bool = False,
+        ignore_uninhabited: bool = False,
         # Proper subtype flags
         erase_instances: bool = False,
         keep_erased_types: bool = False,
@@ -89,6 +93,7 @@ class SubtypeContext:
         self.ignore_pos_arg_names = ignore_pos_arg_names
         self.ignore_declared_variance = ignore_declared_variance
         self.ignore_promotions = ignore_promotions
+        self.ignore_uninhabited = ignore_uninhabited
         self.erase_instances = erase_instances
         self.keep_erased_types = keep_erased_types
         self.options = options
@@ -115,6 +120,7 @@ def is_subtype(
     ignore_pos_arg_names: bool = False,
     ignore_declared_variance: bool = False,
     ignore_promotions: bool = False,
+    ignore_uninhabited: bool = False,
     options: Options | None = None,
 ) -> bool:
     """Is 'left' subtype of 'right'?
@@ -134,6 +140,7 @@ def is_subtype(
             ignore_pos_arg_names=ignore_pos_arg_names,
             ignore_declared_variance=ignore_declared_variance,
             ignore_promotions=ignore_promotions,
+            ignore_uninhabited=ignore_uninhabited,
             options=options,
         )
     else:
@@ -143,6 +150,7 @@ def is_subtype(
                 ignore_pos_arg_names,
                 ignore_declared_variance,
                 ignore_promotions,
+                ignore_uninhabited,
                 options,
             }
         ), "Don't pass both context and individual flags"
@@ -177,6 +185,7 @@ def is_proper_subtype(
     *,
     subtype_context: SubtypeContext | None = None,
     ignore_promotions: bool = False,
+    ignore_uninhabited: bool = False,
     erase_instances: bool = False,
     keep_erased_types: bool = False,
 ) -> bool:
@@ -192,12 +201,19 @@ def is_proper_subtype(
     if subtype_context is None:
         subtype_context = SubtypeContext(
             ignore_promotions=ignore_promotions,
+            ignore_uninhabited=ignore_uninhabited,
             erase_instances=erase_instances,
             keep_erased_types=keep_erased_types,
         )
     else:
         assert not any(
-            {ignore_promotions, erase_instances, keep_erased_types}
+            {
+                ignore_promotions,
+                ignore_uninhabited,
+                erase_instances,
+                keep_erased_types,
+                ignore_uninhabited,
+            }
         ), "Don't pass both context and individual flags"
     if TypeState.is_assumed_proper_subtype(left, right):
         return True
@@ -215,6 +231,7 @@ def is_equivalent(
     ignore_type_params: bool = False,
     ignore_pos_arg_names: bool = False,
     options: Options | None = None,
+    subtype_context: SubtypeContext | None = None,
 ) -> bool:
     return is_subtype(
         a,
@@ -222,16 +239,20 @@ def is_equivalent(
         ignore_type_params=ignore_type_params,
         ignore_pos_arg_names=ignore_pos_arg_names,
         options=options,
+        subtype_context=subtype_context,
     ) and is_subtype(
         b,
         a,
         ignore_type_params=ignore_type_params,
         ignore_pos_arg_names=ignore_pos_arg_names,
         options=options,
+        subtype_context=subtype_context,
     )
 
 
-def is_same_type(a: Type, b: Type, ignore_promotions: bool = True) -> bool:
+def is_same_type(
+    a: Type, b: Type, ignore_promotions: bool = True, subtype_context: SubtypeContext | None = None
+) -> bool:
     """Are these types proper subtypes of each other?
 
     This means types may have different representation (e.g. an alias, or
@@ -241,8 +262,10 @@ def is_same_type(a: Type, b: Type, ignore_promotions: bool = True) -> bool:
     # considered not the same type (which is the case at runtime).
     # Also Union[bool, int] (if it wasn't simplified before) will be different
     # from plain int, etc.
-    return is_proper_subtype(a, b, ignore_promotions=ignore_promotions) and is_proper_subtype(
-        b, a, ignore_promotions=ignore_promotions
+    return is_proper_subtype(
+        a, b, ignore_promotions=ignore_promotions, subtype_context=subtype_context
+    ) and is_proper_subtype(
+        b, a, ignore_promotions=ignore_promotions, subtype_context=subtype_context
     )
 
 
@@ -306,11 +329,15 @@ def _is_subtype(
     return left.accept(SubtypeVisitor(orig_right, subtype_context, proper_subtype))
 
 
-# TODO: should we pass on the original flags here and in couple other places?
-# This seems logical but was never done in the past for some reasons.
-def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
+def check_type_parameter(
+    lefta: Type, righta: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
+) -> bool:
     def check(left: Type, right: Type) -> bool:
-        return is_proper_subtype(left, right) if proper_subtype else is_subtype(left, right)
+        return (
+            is_proper_subtype(left, right, subtype_context=subtype_context)
+            if proper_subtype
+            else is_subtype(left, right, subtype_context=subtype_context)
+        )
 
     if variance == COVARIANT:
         return check(lefta, righta)
@@ -318,11 +345,18 @@ def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtyp
         return check(righta, lefta)
     else:
         if proper_subtype:
-            return is_same_type(lefta, righta)
-        return is_equivalent(lefta, righta)
+            # We pass ignore_promotions=False because it is a default for subtype checks.
+            # The actual value will be taken from the subtype_context, and it is whatever
+            # the original caller passed.
+            return is_same_type(
+                lefta, righta, ignore_promotions=False, subtype_context=subtype_context
+            )
+        return is_equivalent(lefta, righta, subtype_context=subtype_context)
 
 
-def ignore_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
+def ignore_type_parameter(
+    lefta: Type, righta: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
+) -> bool:
     return True
 
 
@@ -385,7 +419,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
 
     def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
-        return True
+        # We ignore this for unsafe overload checks, so that and empty list and
+        # a list of int will be considered non-overlapping.
+        if isinstance(self.right, UninhabitedType):
+            return True
+        return not self.subtype_context.ignore_uninhabited
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         # This may be encountered during type inference. The result probably doesn't
@@ -521,12 +559,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 for lefta, righta, tvar in type_params:
                     if isinstance(tvar, TypeVarType):
                         if not self.check_type_parameter(
-                            lefta, righta, tvar.variance, self.proper_subtype
+                            lefta, righta, tvar.variance, self.proper_subtype, self.subtype_context
                         ):
                             nominal = False
                     else:
                         if not self.check_type_parameter(
-                            lefta, righta, COVARIANT, self.proper_subtype
+                            lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
                         ):
                             nominal = False
                 if nominal:
@@ -591,8 +629,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
-        right = self.right
-        if isinstance(right, Parameters) or isinstance(right, CallableType):
+        if isinstance(self.right, Parameters) or isinstance(self.right, CallableType):
+            right = self.right
+            if isinstance(right, CallableType):
+                right = right.with_unpacked_kwargs()
             return are_parameters_compatible(
                 left,
                 right,
@@ -629,6 +669,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 assert call is not None
                 if self._is_subtype(left, call):
                     return True
+            if right.type.is_protocol and left.is_type_obj():
+                ret_type = get_proper_type(left.ret_type)
+                if isinstance(ret_type, TupleType):
+                    ret_type = mypy.typeops.tuple_fallback(ret_type)
+                if isinstance(ret_type, Instance) and is_protocol_implementation(
+                    ret_type, right, proper_subtype=self.proper_subtype, class_obj=True
+                ):
+                    return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
@@ -636,7 +684,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Parameters):
             # this doesn't check return types.... but is needed for is_equivalent
             return are_parameters_compatible(
-                left,
+                left.with_unpacked_kwargs(),
                 right,
                 is_compat=self._is_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
@@ -694,6 +742,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if not left.names_are_wider_than(right):
                 return False
             for name, l, r in left.zip(right):
+                # TODO: should we pass on the full subtype_context here and below?
                 if self.proper_subtype:
                     check = is_same_type(l, r)
                 else:
@@ -857,6 +906,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if isinstance(item, TypeVarType):
                 item = get_proper_type(item.upper_bound)
             if isinstance(item, Instance):
+                if right.type.is_protocol and is_protocol_implementation(
+                    item, right, proper_subtype=self.proper_subtype, class_obj=True
+                ):
+                    return True
                 metaclass = item.type.metaclass_type
                 return metaclass is not None and self._is_subtype(metaclass, right)
         return False
@@ -876,7 +929,7 @@ def pop_on_exit(stack: list[tuple[T, T]], left: T, right: T) -> Iterator[None]:
 
 
 def is_protocol_implementation(
-    left: Instance, right: Instance, proper_subtype: bool = False
+    left: Instance, right: Instance, proper_subtype: bool = False, class_obj: bool = False
 ) -> bool:
     """Check whether 'left' implements the protocol 'right'.
 
@@ -919,7 +972,19 @@ def is_protocol_implementation(
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = get_proper_type(find_member(member, right, left))
             assert supertype is not None
-            subtype = get_proper_type(find_member(member, left, left))
+            if member == "__call__" and class_obj:
+                # Special case: class objects always have __call__ that is just the constructor.
+                # TODO: move this helper function to typeops.py?
+                import mypy.checkmember
+
+                def named_type(fullname: str) -> Instance:
+                    return Instance(left.type.mro[-1], [])
+
+                subtype: ProperType | None = mypy.checkmember.type_object_type(
+                    left.type, named_type
+                )
+            else:
+                subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -946,14 +1011,22 @@ def is_protocol_implementation(
             if isinstance(subtype, NoneType) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
-            subflags = get_member_flags(member, left.type)
-            superflags = get_member_flags(member, right.type)
+            subflags = get_member_flags(member, left, class_obj=class_obj)
+            superflags = get_member_flags(member, right)
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
                 if not is_subtype(supertype, subtype):
                     return False
-            if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
-                return False
+            if not class_obj:
+                if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
+                    return False
+            else:
+                if IS_VAR in superflags and IS_CLASSVAR not in subflags:
+                    # Only class variables are allowed for class object access.
+                    return False
+                if IS_CLASSVAR in superflags:
+                    # This can be never matched by a class object.
+                    return False
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 return False
             # This rule is copied from nominal check in checker.py
@@ -974,7 +1047,7 @@ def is_protocol_implementation(
 
 
 def find_member(
-    name: str, itype: Instance, subtype: Type, is_operator: bool = False
+    name: str, itype: Instance, subtype: Type, is_operator: bool = False, class_obj: bool = False
 ) -> Type | None:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
@@ -987,23 +1060,24 @@ def find_member(
     method = info.get_method(name)
     if method:
         if isinstance(method, Decorator):
-            return find_node_type(method.var, itype, subtype)
+            return find_node_type(method.var, itype, subtype, class_obj=class_obj)
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            return find_node_type(dec.var, itype, subtype)
-        return find_node_type(method, itype, subtype)
+            return find_node_type(dec.var, itype, subtype, class_obj=class_obj)
+        return find_node_type(method, itype, subtype, class_obj=class_obj)
     else:
         # don't have such method, maybe variable or decorator?
         node = info.get(name)
         v = node.node if node else None
         if isinstance(v, Var):
-            return find_node_type(v, itype, subtype)
+            return find_node_type(v, itype, subtype, class_obj=class_obj)
         if (
             not v
             and name not in ["__getattr__", "__setattr__", "__getattribute__"]
             and not is_operator
+            and not class_obj
         ):
             for method_name in ("__getattribute__", "__getattr__"):
                 # Normally, mypy assumes that instances that define __getattr__ have all
@@ -1021,10 +1095,16 @@ def find_member(
                     return getattr_type
         if itype.type.fallback_to_any:
             return AnyType(TypeOfAny.special_form)
+        if isinstance(v, TypeInfo):
+            # PEP 544 doesn't specify anything about such use cases. So we just try
+            # to do something meaningful (at least we should not crash).
+            return TypeType(fill_typevars_with_any(v))
+    if itype.extra_attrs and name in itype.extra_attrs.attrs:
+        return itype.extra_attrs.attrs[name]
     return None
 
 
-def get_member_flags(name: str, info: TypeInfo) -> set[int]:
+def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set[int]:
     """Detect whether a member 'name' is settable, whether it is an
     instance or class variable, and whether it is class or static method.
 
@@ -1035,35 +1115,53 @@ def get_member_flags(name: str, info: TypeInfo) -> set[int]:
     * IS_CLASS_OR_STATIC: set for methods decorated with @classmethod or
       with @staticmethod.
     """
+    info = itype.type
     method = info.get_method(name)
     setattr_meth = info.get_method("__setattr__")
     if method:
         if isinstance(method, Decorator):
             if method.var.is_staticmethod or method.var.is_classmethod:
                 return {IS_CLASS_OR_STATIC}
+            elif method.var.is_property:
+                return {IS_VAR}
         elif method.is_property:  # this could be settable property
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
             if dec.var.is_settable_property or setattr_meth:
-                return {IS_SETTABLE}
-        return set()
+                return {IS_VAR, IS_SETTABLE}
+            else:
+                return {IS_VAR}
+        return set()  # Just a regular method
     node = info.get(name)
     if not node:
         if setattr_meth:
             return {IS_SETTABLE}
+        if itype.extra_attrs and name in itype.extra_attrs.attrs:
+            flags = set()
+            if name not in itype.extra_attrs.immutable:
+                flags.add(IS_SETTABLE)
+            return flags
         return set()
     v = node.node
     # just a variable
-    if isinstance(v, Var) and not v.is_property:
-        flags = {IS_SETTABLE}
+    if isinstance(v, Var):
+        if v.is_property:
+            return {IS_VAR}
+        flags = {IS_VAR}
+        if not v.is_final:
+            flags.add(IS_SETTABLE)
         if v.is_classvar:
+            flags.add(IS_CLASSVAR)
+        if class_obj and v.is_inferred:
             flags.add(IS_CLASSVAR)
         return flags
     return set()
 
 
-def find_node_type(node: Var | FuncBase, itype: Instance, subtype: Type) -> Type:
+def find_node_type(
+    node: Var | FuncBase, itype: Instance, subtype: Type, class_obj: bool = False
+) -> Type:
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
@@ -1085,10 +1183,16 @@ def find_node_type(node: Var | FuncBase, itype: Instance, subtype: Type) -> Type
         and not node.is_staticmethod
     ):
         assert isinstance(p_typ, FunctionLike)
-        signature = bind_self(
-            p_typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
-        )
-        if node.is_property:
+        if class_obj and not (
+            node.is_class if isinstance(node, FuncBase) else node.is_classmethod
+        ):
+            # Don't bind instance methods on class objects.
+            signature = p_typ
+        else:
+            signature = bind_self(
+                p_typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
+            )
+        if node.is_property and not class_obj:
             assert isinstance(signature, CallableType)
             typ = signature.ret_type
         else:
@@ -1213,6 +1317,10 @@ def is_callable_compatible(
         If the 'some_check' function is also symmetric, the two calls would be equivalent
         whether or not we check the args covariantly.
     """
+    # Normalize both types before comparing them.
+    left = left.with_unpacked_kwargs()
+    right = right.with_unpacked_kwargs()
+
     if is_compat_return is None:
         is_compat_return = is_compat
 
@@ -1277,8 +1385,8 @@ def is_callable_compatible(
 
 
 def are_parameters_compatible(
-    left: Parameters | CallableType,
-    right: Parameters | CallableType,
+    left: Parameters | NormalizedCallableType,
+    right: Parameters | NormalizedCallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
     ignore_pos_arg_names: bool = False,
@@ -1499,11 +1607,11 @@ def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type
 
 
 def unify_generic_callable(
-    type: CallableType,
-    target: CallableType,
+    type: NormalizedCallableType,
+    target: NormalizedCallableType,
     ignore_return: bool,
     return_constraint_direction: int | None = None,
-) -> CallableType | None:
+) -> NormalizedCallableType | None:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
@@ -1540,7 +1648,7 @@ def unify_generic_callable(
     )
     if had_errors:
         return None
-    return applied
+    return cast(NormalizedCallableType, applied)
 
 
 def try_restrict_literal_union(t: UnionType, s: Type) -> list[Type] | None:

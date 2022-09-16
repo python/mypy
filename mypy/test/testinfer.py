@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Tuple
-
 from mypy.argmap import map_actuals_to_formals
 from mypy.checker import DisjointDict, group_comparison_operands
 from mypy.literals import Key
@@ -46,15 +44,18 @@ class MapActualsToFormalsSuite(Suite):
 
     def test_tuple_star(self) -> None:
         any_type = AnyType(TypeOfAny.special_form)
-        self.assert_vararg_map([ARG_STAR], [ARG_POS], [[0]], self.tuple(any_type))
+        self.assert_vararg_map([ARG_STAR], [ARG_POS], [[0]], self.make_tuple(any_type))
         self.assert_vararg_map(
-            [ARG_STAR], [ARG_POS, ARG_POS], [[0], [0]], self.tuple(any_type, any_type)
+            [ARG_STAR], [ARG_POS, ARG_POS], [[0], [0]], self.make_tuple(any_type, any_type)
         )
         self.assert_vararg_map(
-            [ARG_STAR], [ARG_POS, ARG_OPT, ARG_OPT], [[0], [0], []], self.tuple(any_type, any_type)
+            [ARG_STAR],
+            [ARG_POS, ARG_OPT, ARG_OPT],
+            [[0], [0], []],
+            self.make_tuple(any_type, any_type),
         )
 
-    def tuple(self, *args: Type) -> TupleType:
+    def make_tuple(self, *args: Type) -> TupleType:
         return TupleType(list(args), TypeFixture().std_tuple)
 
     def test_named_args(self) -> None:
@@ -92,7 +93,7 @@ class MapActualsToFormalsSuite(Suite):
     def assert_map(
         self,
         caller_kinds_: list[ArgKind | str],
-        callee_kinds_: list[ArgKind | Tuple[ArgKind, str]],
+        callee_kinds_: list[ArgKind | tuple[ArgKind, str]],
         expected: list[list[int]],
     ) -> None:
         caller_kinds, caller_names = expand_caller_kinds(caller_kinds_)
