@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import sys
 import sysconfig
 from typing import Any, Dict
