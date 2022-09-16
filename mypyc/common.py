@@ -38,7 +38,7 @@ SIZEOF_SIZE_T_SYSCONFIG: Final = sysconfig.get_config_var("SIZEOF_SIZE_T")
 SIZEOF_SIZE_T: Final = (
     int(SIZEOF_SIZE_T_SYSCONFIG)
     if SIZEOF_SIZE_T_SYSCONFIG is not None
-    else round((math.log2(sys.maxsize + 1)) / 8)
+    else (sys.maxsize + 1).bit_length() // 8
 )
 
 IS_32_BIT_PLATFORM: Final = int(SIZEOF_SIZE_T) == 4
