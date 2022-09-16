@@ -546,6 +546,7 @@ class FancyFormatter:
                 "yellow": self.YELLOW,
                 "none": "",
             }
+
     def initialize_vt100_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
         # Windows and Emscripten can both use ANSI/VT100 escape sequences for color
