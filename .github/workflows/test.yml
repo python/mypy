@@ -115,7 +115,7 @@ jobs:
       if: ${{ matrix.test_mypyc }}
       run: |
         pip install -r test-requirements.txt
-        CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace
+        CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
     - name: Setup tox environment
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: Test
