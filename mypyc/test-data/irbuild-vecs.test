@@ -385,7 +385,7 @@ from mypy_extensions import i64
 def f() -> vec[i64]:
     return vec[i64]([1, 5, 14])
 [out]
-def f(n):
+def f():
     r0 :: vec[int64]
     r1, r2, r3, r4 :: ptr
 L0:
