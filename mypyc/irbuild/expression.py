@@ -359,7 +359,7 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
                 return vec_create(builder.builder, vec_type, 0, expr.line)
             elif len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
                 return translate_vec_create_from_iterable(builder, vec_type, expr.args[0])
-        callee = expr  # Unwrap type application
+        callee = analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
         if isinstance(callee.expr, RefExpr) and isinstance(callee.expr.node, MypyFile):
