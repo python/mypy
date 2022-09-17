@@ -360,7 +360,7 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
 def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: GeneratorExpr) -> Value:
     vec = Register(vec_type)
     builder.assign(vec, vec_create(builder.builder, vec_type, 0, gen.line), gen.line)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
