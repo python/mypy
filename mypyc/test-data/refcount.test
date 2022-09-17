@@ -1651,3 +1651,63 @@ L0:
     set_mem r5, r1 :: builtins.str*
     r6 = r5 + 8
     return r3
+
+[case testVecI64GetItemBorrowVec]
+from vecs import vec
+from mypy_extensions import i64
+
+class C:
+    v: vec[i64]
+
+    def f(self, x: i64) -> i64:
+        return self.v[x]
+[out]
+def C.f(self, x):
+    self :: __main__.C
+    x :: int64
+    r0 :: vec[int64]
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: bit
+    r4 :: bool
+    r5 :: ptr
+    r6 :: int64
+    r7 :: ptr
+    r8 :: int64
+L0:
+    r0 = borrow self.v
+    r1 = get_element_ptr r0 len :: VecObject
+    r2 = load_mem r1 :: native_int*
+    r3 = x < r2 :: unsigned
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r4 = raise IndexError
+    unreachable
+L2:
+    r5 = get_element_ptr r0 items :: VecI64Object
+    r6 = x * 8
+    r7 = r5 + r6
+    r8 = load_mem r7 :: int64*
+    return r8
+
+[case testVecI64LenBorrowVec]
+from vecs import vec
+from mypy_extensions import i64
+
+class C:
+    v: vec[i64]
+
+    def f(self, x: i64) -> i64:
+        return len(self.v)
+[out]
+def C.f(self, x):
+    self :: __main__.C
+    x :: int64
+    r0 :: vec[int64]
+    r1 :: ptr
+    r2 :: int64
+L0:
+    r0 = borrow self.v
+    r1 = get_element_ptr r0 len :: VecObject
+    r2 = load_mem r1 :: int64*
+    return r2

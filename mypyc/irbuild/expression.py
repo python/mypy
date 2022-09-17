@@ -679,8 +679,8 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
-    is_list = is_list_rprimitive(base_type)
-    can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
+    can_borrow = is_list_rprimitive(base_type) or isinstance(base_type, RVec)
+    can_borrow_base = can_borrow and is_borrow_friendly_expr(builder, index)
 
     # Check for dunder specialization for non-slice indexing
     if not isinstance(index, SliceExpr):
@@ -702,7 +702,7 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
         if value:
             return value
 
-    index_reg = builder.accept(expr.index, can_borrow=is_list)
+    index_reg = builder.accept(expr.index, can_borrow=can_borrow)
     return builder.builder.get_item(base, index_reg, builder.node_type(expr), expr.line,
                                     can_borrow=builder.can_borrow)
 
