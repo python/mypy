@@ -1223,7 +1223,7 @@ class MessageBuilder:
 
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
         actual = get_proper_type(actual)
-        if isinstance(actual, Instance):
+        if isinstance(actual, (Instance, SelfType)):
             # Don't include type of instance, because it can look confusingly like a type
             # object.
             type_str = "a non-type instance"
@@ -1829,6 +1829,8 @@ class MessageBuilder:
 
         class_obj = False
         is_module = False
+        if isinstance(subtype, SelfType):
+            subtype = subtype.upper_bound
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -2545,7 +2547,7 @@ def pretty_callable(tp: CallableType, skip_self: bool = False) -> str:
             else:
                 # For other TypeVarLikeTypes, just use the repr
                 tvars.append(repr(tvar))
-        s = f"[{', '.join(tvars)}] {s}"
+        s = f"[{', '.join(tvars)}] {s}" if tvars else s
     return f"def {s}"
 
 

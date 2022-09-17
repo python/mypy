@@ -25,9 +25,9 @@ from mypy.types import (
     Instance,
     LiteralType,
     ProperType,
+    SelfType,
     Type,
     get_proper_type,
-    SelfType,
 )
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {

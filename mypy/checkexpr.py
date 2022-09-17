@@ -138,6 +138,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    SelfType,
     StarType,
     TupleType,
     Type,
@@ -1959,6 +1960,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def missing_classvar_callable_note(
         self, object_type: Type, callable_name: str, context: Context
     ) -> None:
+        if isinstance(object_type, SelfType):
+            object_type = object_type.upper_bound
         if isinstance(object_type, ProperType) and isinstance(object_type, Instance):
             _, var_name = callable_name.rsplit(".", maxsplit=1)
             node = object_type.type.get(var_name)
