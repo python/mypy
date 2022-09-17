@@ -76,6 +76,7 @@ from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, n
 from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
+from mypyc.primitives.str_ops import str_get_item_unsafe_op
 from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 GenFunc = Callable[[], None]
@@ -772,6 +773,8 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
         return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
     elif is_tuple_rprimitive(target.type):
         return builder.call_c(tuple_get_item_unsafe_op, [target, index], line)
+    elif is_str_rprimitive(target.type):
+        return builder.call_c(str_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, "__getitem__", [index], None, line)
 

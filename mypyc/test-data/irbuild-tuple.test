@@ -272,7 +272,7 @@ L4:
     a = r6
     return 1
 
-[case testTupleBuiltFromStr_64bit]
+[case testTupleBuiltFromStr]
 def f2(val: str) -> str:
     return val + "f2"
 
@@ -292,10 +292,9 @@ def test():
     r2 :: bit
     r3 :: tuple
     r4, r5 :: native_int
-    r6, r7, r8, r9 :: bit
-    r10, r11, r12 :: int
-    r13, x, r14 :: str
-    r15 :: native_int
+    r6, r7 :: bit
+    r8, x, r9 :: str
+    r10 :: native_int
     a :: tuple
 L0:
     r0 = 'abc'
@@ -308,30 +307,17 @@ L1:
     r5 = CPyStr_Size_size_t(source)
     r6 = r5 >= 0 :: signed
     r7 = r4 < r5 :: signed
-    if r7 goto L2 else goto L8 :: bool
+    if r7 goto L2 else goto L4 :: bool
 L2:
-    r8 = r4 <= 4611686018427387903 :: signed
-    if r8 goto L3 else goto L4 :: bool
+    r8 = CPyStr_GetItemUnsafe(source, r4)
+    x = r8
+    r9 = f2(x)
+    CPySequenceTuple_SetItemUnsafe(r3, r4, r9)
 L3:
-    r9 = r4 >= -4611686018427387904 :: signed
-    if r9 goto L5 else goto L4 :: bool
-L4:
-    r10 = CPyTagged_FromInt64(r4)
-    r11 = r10
-    goto L6
-L5:
-    r12 = r4 << 1
-    r11 = r12
-L6:
-    r13 = CPyStr_GetItem(source, r11)
-    x = r13
-    r14 = f2(x)
-    CPySequenceTuple_SetItemUnsafe(r3, r4, r14)
-L7:
-    r15 = r4 + 1
-    r4 = r15
+    r10 = r4 + 1
+    r4 = r10
     goto L1
-L8:
+L4:
     a = r3
     return 1
 
