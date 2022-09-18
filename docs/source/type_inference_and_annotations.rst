@@ -1,3 +1,5 @@
+.. _type_inference_and_annotations:
+
 Type inference and type annotations
 ===================================
 
