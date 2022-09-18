@@ -67,7 +67,7 @@ print("It is", number + 1)  # error: Unsupported operand types for + ("str" and 
 
 Adding type hints for mypy does not interfere with the way your program would
 otherwise run. Think of type hints as similar to comments! You can always use
-the Python interpreter to run your code, even if mypy reports type errors.
+the Python interpreter to run your code, even if mypy reports errors.
 
 Mypy is designed with gradual typing in mind. This means you can add type
 hints to your code base slowly and that you can always fall back to dynamic
