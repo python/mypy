@@ -11,7 +11,7 @@ Variables
 
 Technically many of the type annotations shown below are redundant,
 since mypy can usually infer the type of a variable from its value.
-See :ref:`<type_inference_and_annotations>` for more details.
+See :ref:`type-inference-and-annotations` for more details.
 
 .. code-block:: python
 
