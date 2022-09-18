@@ -147,7 +147,7 @@ When you're puzzled or when things are complicated
    x: list[Union[int, str]] = [3, 5, "test", "fun"]
 
    # If you initialize a variable with an empty container or "None"
-   # you may have to help mypy a bit by providing a type annotation
+   # you may have to help mypy a bit by providing an explicit type annotation
    x: list[str] = []
    x: Optional[str] = None
 
@@ -173,8 +173,10 @@ When you're puzzled or when things are complicated
    if TYPE_CHECKING:
        import json
    else:
-       import orjson as json
+       import orjson as json  # mypy is unaware of this
 
+In some cases type annotations can cause issues at runtime, see
+:ref:`runtime_troubles` for dealing with this.
 
 Standard "duck types"
 *********************
