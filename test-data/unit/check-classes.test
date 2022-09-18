@@ -1060,6 +1060,16 @@ def f() -> None:
     a.g(a) # E: Too many arguments for "g" of "A"
 [targets __main__, __main__.f]
 
+[case testGenericClassWithinFunction]
+from typing import TypeVar
+
+def test() -> None:
+    T = TypeVar('T', bound='Foo')
+    class Foo:
+        def bar(self, foo: T) -> T:
+            pass
+    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`-1) -> T`-1"
+
 [case testConstructNestedClass]
 import typing
 class A:
