@@ -1066,7 +1066,7 @@ def callback(func: Callable[[Any], Any]) -> None: ...
 class Job(Generic[P]): ...
 
 @callback
-def run_job(job: Job[...]) -> T: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def run_job(job: Job[...]) -> T: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 [builtins fixtures/tuple.pyi]
 
 [case testTupleAndDictOperationsOnParamSpecArgsAndKwargs]

@@ -3232,7 +3232,7 @@ def error(u_c: Type[U]) -> P: # Error here, see below
     return new_pro(u_c)  # Error here, see below
 [out]
 main:11: note: Revealed type is "__main__.WizUser"
-main:12: error: A function returning TypeVar should receive at least one argument containing the same Typevar
+main:12: error: A function returning TypeVar should receive at least one argument containing the same TypeVar
 main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
 main:13: error: Incompatible return value type (got "U", expected "P")
 
