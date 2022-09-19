@@ -139,7 +139,7 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
     "General",
     default_enabled=False,
 )
-TRUTHY_FUNCTION: Final = ErrorCode(
+TRUTHY_FUNCTION: Final[ErrorCode] = ErrorCode(
     "truthy-function",
     "Warn about function that always evaluate to true in boolean contexts",
     "General",
