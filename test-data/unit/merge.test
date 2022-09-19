@@ -76,7 +76,7 @@ MypyFile:1<1>(
       Args(
         Var(self)
         Var(x))
-      def (self: target.A<4>, x: builtins.str<5>) -> builtins.int<6>
+      def (self: Self@target.A<4>, x: builtins.str<5>) -> builtins.int<6>
       Block:2<7>(
         PassStmt:3<8>()))))
 ==>
@@ -92,7 +92,7 @@ MypyFile:1<1>(
       Args(
         Var(self)
         Var(x))
-      def (self: target.A<4>, x: builtins.int<6>) -> builtins.str<5>
+      def (self: Self@target.A<4>, x: builtins.int<6>) -> builtins.str<5>
       Block:2<10>(
         PassStmt:3<11>()))))
 

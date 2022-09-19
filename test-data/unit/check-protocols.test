@@ -3297,9 +3297,9 @@ test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P"
          # N:         def foo(obj: Any, arg: str) -> str \
          # N:     Got: \
          # N:         @overload \
-         # N:         def foo(self: C, arg: int) -> int \
+         # N:         def foo(self: Self@C, arg: int) -> int \
          # N:         @overload \
-         # N:         def foo(self: C, arg: str) -> int
+         # N:         def foo(self: Self@C, arg: str) -> int
 
 [case testProtocolClassObjectClassMethod]
 from typing import Protocol

@@ -573,7 +573,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(o))
-      def (self: __main__.A, o: builtins.object)
+      def (self: Self@__main__.A, o: builtins.object)
       Block:2(
         PassStmt:2()))))
 
@@ -650,7 +650,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(x))
-      def (self: __main__.c[t`1, s`2], x: s`2) -> t`1
+      def (self: Self@__main__.c[t`1, s`2], x: s`2) -> t`1
       Block:7(
         PassStmt:7()))))
 
@@ -1141,7 +1141,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(x))
-      def [T] (self: __main__.A, x: T`-1) -> T`-1
+      def [T] (self: Self@__main__.A, x: T`-1) -> T`-1
       Block:4(
         PassStmt:4()))))
 
@@ -1193,7 +1193,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(x))
-      def (self: __main__.A[_m.T`1], x: _m.T`1) -> Any
+      def (self: Self@__main__.A[_m.T`1], x: _m.T`1) -> Any
       Block:5(
         AssignmentStmt:6(
           NameExpr(b [l])
@@ -1253,7 +1253,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(x))
-      def (self: __main__.A, x: builtins.int) -> builtins.str
+      def (self: Self@__main__.A, x: builtins.int) -> builtins.str
       Block:3(
         AssignmentStmt:4(
           NameExpr(x [l])

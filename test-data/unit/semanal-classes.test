@@ -202,8 +202,8 @@ MypyFile:1(
         Block:7(
           ExpressionStmt:7(
             NameExpr(self [l]))))
-      Overload(def (self: __main__.A), \
-               def (self: __main__.A, x: __main__.A))
+      Overload(def (self: Self@__main__.A), \
+               def (self: Self@__main__.A, x: __main__.A))
       Decorator:3(
         Var(f)
         NameExpr(overload [typing.overload])
@@ -223,7 +223,7 @@ MypyFile:1(
           Args(
             Var(self)
             Var(x))
-          def (self: __main__.A, x: __main__.A)
+          def (self: Self@__main__.A, x: __main__.A)
           Block:6(
             ExpressionStmt:6(
               NameExpr(self [l]))))))))
@@ -550,7 +550,7 @@ MypyFile:1(
         default(
           Var(x)
           NameExpr(X [__main__.A.X])))
-      def (self: __main__.A, x: builtins.int =)
+      def (self: Self@__main__.A, x: builtins.int =)
       Block:4(
         PassStmt:4()))))
 

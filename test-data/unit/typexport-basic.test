@@ -927,7 +927,7 @@ class A:
 A.f
 [builtins fixtures/tuple.pyi]
 [out]
-MemberExpr(10) : Overload(def (self: A), def (self: A, builtins.object))
+MemberExpr(10) : Overload(def (self: Self@A), def (self: A, builtins.object))
 
 [case testOverloadedUnboundMethodWithImplicitSig]
 ## MemberExpr
@@ -942,7 +942,7 @@ class A:
 A.f
 [builtins fixtures/tuple.pyi]
 [out]
-MemberExpr(10) : Overload(def (self: A) -> Any, def (self: A, Any) -> Any)
+MemberExpr(10) : Overload(def (self: Self@A) -> Any, def (self: A, Any) -> Any)
 
 [case testUnboundMethodWithInheritance]
 ## MemberExpr
@@ -965,7 +965,7 @@ class A:
     def f(self, x: t) -> None: pass
 A.f(A(), B())
 [out]
-MemberExpr(7) : def (self: A, x: B)
+MemberExpr(7) : def (self: Self@A, x: B)
 
 [case testUnboundMethodOfGenericClass]
 ## MemberExpr
@@ -978,8 +978,8 @@ A.f
 a_b = A() # type: A[B]
 A.f(a_b, B())
 [out]
-MemberExpr(7) : def [t] (self: A[t`1], x: t`1)
-MemberExpr(9) : def (self: A[B], x: B)
+MemberExpr(7) : def [t] (self: Self@A[t`1], x: t`1)
+MemberExpr(9) : def (self: Self@A[B], x: B)
 
 [case testUnboundOverloadedMethodOfGenericClass]
 ## CallExpr
@@ -1008,7 +1008,7 @@ class A(Generic[t]):
     def f(self, x): pass
 A.f(None, None)
 [out]
-MemberExpr(7) : def (self: A[t`1], x: Any) -> Any
+MemberExpr(7) : def (self: Self@A[t`1], x: Any) -> Any
 
 [case testGenericMethodOfGenericClass]
 ## MemberExpr
@@ -1022,7 +1022,7 @@ ab = None # type: A[B]
 o = None # type: object
 A.f(ab, o)
 [out]
-MemberExpr(10) : def (self: A[B], y: builtins.object)
+MemberExpr(10) : def (self: Self@A[B], y: builtins.object)
 
 
 -- Type variables with value restriction
