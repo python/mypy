@@ -297,8 +297,8 @@ Using X | Y syntax for Unions
 Starting with Python 3.10 (:pep:`604`), you can spell union types as ``x: int |
 str``, instead of ``x: typing.Union[int, str]``.
 
-There is limited support for using this syntax in Python 3.7 and later as well.
-If you use ``from __future__ import annotations``, mypy will understand this
+There is limited support for using this syntax in Python 3.7 and later as well:
+if you use ``from __future__ import annotations``, mypy will understand this
 syntax in annotations, string literal types, type comments and stub files.
 However, since this will not be supported by the Python interpreter at runtime
 (if evaluated, ``int | str`` will raise ``TypeError: unsupported operand type(s)
