@@ -172,7 +172,7 @@ TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
     "A function returning TypeVar should receive at least "
-    "one argument containing the same Typevar"
+    "one argument containing the same TypeVar"
 )
 
 # Super

@@ -254,7 +254,7 @@ z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
 from typing import TypeVar
 
 T = TypeVar('T')
-def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar  [type-var]
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar  [type-var]
 x = f()  # E: Need type annotation for "x"  [var-annotated]
 y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]

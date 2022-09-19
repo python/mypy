@@ -448,7 +448,7 @@ g(None) # Ok
 f()     # Ok because not used to infer local variable type
 g(a)
 
-def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 def g(a: T) -> None: pass
 [out]
 
@@ -2355,7 +2355,7 @@ def main() -> None:
 [case testDontMarkUnreachableAfterInferenceUninhabited]
 from typing import TypeVar
 T = TypeVar('T')
-def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 
 class C:
     x = f() # E: Need type annotation for "x"
