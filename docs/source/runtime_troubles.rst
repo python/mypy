@@ -59,7 +59,7 @@ Future annotations import (PEP 563)
 -----------------------------------
 
 Many of the issues described here are caused by Python trying to evaluate
-annotations. From Python 3.11 on, Python will no longer attempt to evaluate
+annotations. Future Python versions will no longer attempt to evaluate
 function and variable annotations. This behaviour is made available in Python
 3.7 and later through the use of ``from __future__ import annotations``.
 
