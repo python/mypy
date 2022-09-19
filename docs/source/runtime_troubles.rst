@@ -8,8 +8,8 @@ version of Python considers legal code. This section describes these scenarios
 and explains how to get your code running again. Generally speaking, we have
 three tools at our disposal:
 
-* For Python 3.7 through 3.9, use of ``from __future__ import annotations``
-  (:pep:`563`), made the default in Python 3.11 and later
+* Use of ``from __future__ import annotations`` (:pep:`563`)
+  (this behaviour may eventually be made the default in a future Python version)
 * Use of string literal types or type comments
 * Use of ``typing.TYPE_CHECKING``
 
@@ -18,11 +18,23 @@ problems you may encounter.
 
 .. _string-literal-types:
 
-String literal types
---------------------
+String literal types and type comments
+--------------------------------------
+
+Mypy allows you to add type annotations using ``# type:`` type comments.
+For example:
+
+.. code-block:: python
+
+   a = 1  # type: int
+
+   def f(x):  # type: (int) -> int
+       return x + 1
 
 Type comments can't cause runtime errors because comments are not evaluated by
-Python. In a similar way, using string literal types sidesteps the problem of
+Python.
+
+In a similar way, using string literal types sidesteps the problem of
 annotations that would cause runtime errors.
 
 Any type can be entered as a string literal, and you can combine
@@ -30,8 +42,8 @@ string-literal types with non-string-literal types freely:
 
 .. code-block:: python
 
-   def f(a: list['A']) -> None: ...  # OK
-   def g(n: 'int') -> None: ...      # OK, though not useful
+   def f(a: list['A']) -> None: ...  # OK, prevents NameError since A is defined later
+   def g(n: 'int') -> None: ...      # Also OK, though not useful
 
    class A: pass
 
@@ -74,7 +86,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
         class B: ...
         class C: ...
 
-.. note::
+.. warning::
 
     Some libraries may have use cases for dynamic evaluation of annotations, for
     instance, through use of ``typing.get_type_hints`` or ``eval``. If your
