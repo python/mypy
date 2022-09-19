@@ -285,8 +285,8 @@ the built-in collections or those from :py:mod:`collections.abc`:
    y: dict[int, str]
    z: Sequence[str] = x
 
-There is limited support for using this syntax in Python 3.7 and later as well.
-If you use ``from __future__ import annotations``, mypy will understand this
+There is limited support for using this syntax in Python 3.7 and later as well:
+if you use ``from __future__ import annotations``, mypy will understand this
 syntax in annotations. However, since this will not be supported by the Python
 interpreter at runtime, make sure you're aware of the caveats mentioned in the
 notes at :ref:`future annotations import<future-annotations>`.
