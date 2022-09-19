@@ -166,9 +166,11 @@ main:1: error: Setting "strict" not supported in inline configuration: specify i
 [case testInlineErrorCodes]
 # flags: --strict-optional
 # mypy: enable-error-code="ignore-without-code,truthy-bool"
+class Foo:
+    pass
 
-def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+foo = Foo()
+if foo: ...  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
 42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 
 [case testInlineErrorCodesOverrideConfig]
@@ -178,8 +180,10 @@ import tests.bar
 import tests.baz
 [file foo.py]
 # mypy: disable-error-code="truthy-bool"
+class Foo:
+    pass
 
-def foo() -> int: ...
+foo = Foo()
 if foo: ...
 42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 
@@ -193,8 +197,10 @@ if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean c
 
 [file tests/baz.py]
 # mypy: disable-error-code="truthy-bool"
+class Foo:
+    pass
 
-def foo() -> int: ...
+foo = Foo()
 if foo: ...
 42 + "no"  # type: ignore
 
