@@ -59,9 +59,10 @@ Future annotations import (PEP 563)
 -----------------------------------
 
 Many of the issues described here are caused by Python trying to evaluate
-annotations. Future Python versions will no longer attempt to evaluate
-function and variable annotations. This behaviour is made available in Python
-3.7 and later through the use of ``from __future__ import annotations``.
+annotations. Future Python versions (potentially Python 3.12) will by default no
+longer attempt to evaluate function and variable annotations. This behaviour is
+made available in Python 3.7 and later through the use of
+``from __future__ import annotations``.
 
 This can be thought of as automatic string literal-ification of all function and
 variable annotations. Note that function and variable annotations are still
