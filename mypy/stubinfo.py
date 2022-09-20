@@ -75,7 +75,8 @@ legacy_bundled_packages = {
 
 # Map package name to PyPI stub distribution name from typeshed.
 # Stubs for these packages were never bundled with mypy. Don't
-# include packages that ship with type information.
+# include packages that have a release that includes PEP 561 type
+# information.
 #
 # Package name can have one or two components ('a' or 'a.b').
 #

@@ -28,7 +28,7 @@ from mypy import pyinfo
 from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
-from mypy.stubinfo import is_legacy_bundled_package, approved_stub_package_exists
+from mypy.stubinfo import approved_stub_package_exists
 
 
 # Paths to be searched in find_module().
