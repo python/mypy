@@ -92,7 +92,7 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import is_legacy_bundled_package, legacy_bundled_packages
+from mypy.stubinfo import is_legacy_bundled_package, legacy_bundled_packages, stub_package_name
 from mypy.types import Type
 from mypy.typestate import TypeState, reset_global_state
 from mypy.version import __version__
@@ -2744,10 +2744,10 @@ def module_not_found(
             top_level = second_level
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=legacy_bundled_packages[top_level])
+                note = note.format(stub_dist=stub_package_name(top_level))
             errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
+            manager.missing_stub_packages.add(stub_package_name(top_level))
     errors.set_import_context(save_import_context)
 
 

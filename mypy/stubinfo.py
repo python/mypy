@@ -5,6 +5,14 @@ def is_legacy_bundled_package(prefix: str) -> bool:
     return prefix in legacy_bundled_packages
 
 
+def approved_stub_package_exists(prefix: str) -> bool:
+    return is_legacy_bundled_package(prefix) or prefix in non_bundled_packages
+
+
+def stub_package_name(prefix: str) -> str:
+    return legacy_bundled_packages.get(prefix) or non_bundled_packages[prefix]
+
+
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
