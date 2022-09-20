@@ -95,8 +95,8 @@ from mypy.stats import dump_type_stats
 from mypy.stubinfo import (
     is_legacy_bundled_package,
     legacy_bundled_packages,
-    stub_package_name,
     non_bundled_packages,
+    stub_package_name,
 )
 from mypy.types import Type
 from mypy.typestate import TypeState, reset_global_state
