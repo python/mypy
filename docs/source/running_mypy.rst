@@ -83,6 +83,9 @@ Note that if you use namespace packages (in particular, packages without
     ...will type check the above string as a mini-program (and in this case,
     will report that ``list[int]`` is not callable).
 
+You can also use the :confval:`files` option in your :file:`mypy.ini` file to specify which
+files to check, in which case you can simply run ``mypy`` with no arguments.
+
 
 Reading a list of files from a file
 ***********************************
