@@ -31,6 +31,16 @@ For example:
    def f(x):  # type: (int) -> int
        return x + 1
 
+   # Alternative type comment syntax for functions with many arguments
+   def send_email(
+        address,     # type: Union[str, List[str]]
+        sender,      # type: str
+        cc,          # type: Optional[List[str]]
+        subject='',
+        body=None    # type: List[str]
+   ):
+       # type: (...) -> bool
+
 Type comments can't cause runtime errors because comments are not evaluated by
 Python.
 
