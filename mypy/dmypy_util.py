@@ -6,12 +6,13 @@ This should be pretty lightweight and not depend on other mypy code (other than 
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 from typing_extensions import Final
 
 from mypy.ipc import IPCBase
 
-DEFAULT_STATUS_FILE: Final = ".dmypy.json"
+DEFAULT_STATUS_FILE: Final = os.getenv("DMYPY_STATUS_FILE", ".dmypy.json")
 
 
 def receive(connection: IPCBase) -> Any:
