@@ -3111,10 +3111,15 @@ from google.cloud import x
 [case testErrorFromGoogleCloud]
 import google.cloud
 from google.cloud import x
+import google.non_existent
+from google.non_existent import x
 [out]
-main:1: error: Cannot find implementation or library stub for module named "google.cloud"
+main:1: error: Library stubs not installed for "google.cloud"
+main:1: note: Hint: "python3 -m pip install types-google-cloud-ndb"
+main:1: note: (or run "mypy --install-types" to install all missing stub packages)
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:1: error: Cannot find implementation or library stub for module named "google"
+main:3: error: Cannot find implementation or library stub for module named "google.non_existent"
 
 [case testMissingSubmoduleOfInstalledStubPackage]
 import bleach.xyz
