@@ -2858,6 +2858,7 @@ class TypeInfo(SymbolNode):
         self.metadata = {}
 
     def add_type_vars(self) -> None:
+        self.has_type_var_tuple_type = False
         if self.defn.type_vars:
             for i, vd in enumerate(self.defn.type_vars):
                 if isinstance(vd, mypy.types.ParamSpecType):

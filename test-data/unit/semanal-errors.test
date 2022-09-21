@@ -1456,9 +1456,11 @@ bad: Tuple[Unpack[int]]  # E: builtins.int cannot be unpacked (must be tuple or 
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuple]
+from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
 
 TVariadic = TypeVarTuple('TVariadic')
+TVariadic2 = TypeVarTuple('TVariadic2')
 TP = TypeVarTuple('?')  # E: String argument 1 "?" to TypeVarTuple(...) does not match variable name "TP"
 TP2: int = TypeVarTuple('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
 TP3 = TypeVarTuple()  # E: Too few arguments for TypeVarTuple()
@@ -1467,3 +1469,7 @@ TP5 = TypeVarTuple(t='TP5')  # E: TypeVarTuple() expects a string literal as fir
 
 x: TVariadic  # E: TypeVarTuple "TVariadic" is unbound
 y: Unpack[TVariadic]  # E: TypeVarTuple "TVariadic" is unbound
+
+
+class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only use one type var tuple in a class def
+    pass
