@@ -2073,13 +2073,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.defn.type_vars:
-            for base in typ.bases:
-                for base_tvar, base_declared_tvar in zip(base.args, base.type.defn.type_vars):
+            for base_inst in typ.bases:
+                for base_tvar, base_decl_tvar in zip(base_inst.args, base_inst.type.defn.type_vars):
                     if (
                         isinstance(base_tvar, TypeVarType)
                         and base_tvar.variance != INVARIANT
-                        and isinstance(base_declared_tvar, TypeVarType)
-                        and base_declared_tvar.variance != base_tvar.variance
+                        and isinstance(base_decl_tvar, TypeVarType)
+                        and base_decl_tvar.variance != base_tvar.variance
                     ):
                         self.fail(
                             f'Variance of TypeVar "{base_tvar.name}" incompatible '
