@@ -153,8 +153,8 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
     "python_executable": expand_path,
     "strict": bool,
     "exclude": lambda s: [s.strip()],
-    "package": try_split,
-    "module": try_split,
+    "packages": try_split,
+    "modules": try_split,
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -173,8 +173,8 @@ toml_config_types.update(
         "enable_error_code": try_split,
         "package_root": try_split,
         "exclude": str_or_array_as_list,
-        "package": try_split,
-        "module": try_split,
+        "packages": try_split,
+        "modules": try_split,
     }
 )
 

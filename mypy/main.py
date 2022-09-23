@@ -1222,10 +1222,10 @@ def process_options(
     if not (special_opts.files or special_opts.packages or special_opts.modules):
         if options.files:
             special_opts.files = options.files
-        if options.package:
-            special_opts.packages = options.package
-        if options.module:
-            special_opts.modules = options.module
+        if options.packages:
+            special_opts.packages = options.packages
+        if options.modules:
+            special_opts.modules = options.modules
 
     # Check for invalid argument combinations.
     if require_targets:
