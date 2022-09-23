@@ -2072,6 +2072,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
+        if typ.defn.type_vars:
+            for base in typ.bases:
+                for base_tvar, base_declared_tvar in zip(base.args, base.type.defn.type_vars):
+                    if (
+                        isinstance(base_tvar, TypeVarType)
+                        and base_tvar.variance != INVARIANT
+                        and isinstance(base_declared_tvar, TypeVarType)
+                        and base_declared_tvar.variance != base_tvar.variance
+                    ):
+                        self.fail(
+                            f'Variance of TypeVar "{base_tvar.name}" incompatible '
+                            "with variance in parent type",
+                            context=defn,
+                        )
+
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
