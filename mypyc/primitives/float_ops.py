@@ -10,10 +10,18 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     bool_rprimitive,
 )
-from mypyc.primitives.registry import function_op, load_address_op
+from mypyc.primitives.registry import function_op, load_address_op, binary_op
 
 # Get the 'builtins.float' type object.
 load_address_op(name="builtins.float", type=object_rprimitive, src="PyFloat_Type")
+
+binary_op(
+    name="//",
+    arg_types=[float_rprimitive, float_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyFloat_FloorDivide",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
 
 # float(int)
 int_to_float_op = function_op(

@@ -89,3 +89,52 @@ bool CPyFloat_IsInf(double x) {
 bool CPyFloat_IsNaN(double x) {
     return isnan(x) != 0;
 }
+
+// From CPython 3.10.0, Objects/floatobject.c
+static void
+_float_div_mod(double vx, double wx, double *floordiv, double *mod)
+{
+    double div;
+    *mod = fmod(vx, wx);
+    /* fmod is typically exact, so vx-mod is *mathematically* an
+       exact multiple of wx.  But this is fp arithmetic, and fp
+       vx - mod is an approximation; the result is that div may
+       not be an exact integral value after the division, although
+       it will always be very close to one.
+    */
+    div = (vx - *mod) / wx;
+    if (*mod) {
+        /* ensure the remainder has the same sign as the denominator */
+        if ((wx < 0) != (*mod < 0)) {
+            *mod += wx;
+            div -= 1.0;
+        }
+    }
+    else {
+        /* the remainder is zero, and in the presence of signed zeroes
+           fmod returns different results across platforms; ensure
+           it has the same sign as the denominator. */
+        *mod = copysign(0.0, wx);
+    }
+    /* snap quotient to nearest integral value */
+    if (div) {
+        *floordiv = floor(div);
+        if (div - *floordiv > 0.5) {
+            *floordiv += 1.0;
+        }
+    }
+    else {
+        /* div is zero - get the same sign as the true quotient */
+        *floordiv = copysign(0.0, vx / wx); /* zero w/ sign of vx/wx */
+    }
+}
+
+double CPyFloat_FloorDivide(double x, double y) {
+    double mod, floordiv;
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "float floor division by zero");
+        return CPY_FLOAT_ERROR;
+    }
+    _float_div_mod(x, y, &floordiv, &mod);
+    return floordiv;
+}

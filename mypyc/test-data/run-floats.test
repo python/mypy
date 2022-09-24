@@ -39,6 +39,15 @@ def test_mod() -> None:
             if y != 0:
                 assert repr(x % y) == repr(getattr(x, "__mod__")(y))
 
+def test_floor_div() -> None:
+    for x in float_vals:
+        for y in float_vals:
+            if y != 0:
+                assert repr(x // y) == repr(getattr(x, "__floordiv__")(y))
+            else:
+                with assertRaises(ZeroDivisionError, "float floor division by zero"):
+                    x // y
+
 def test_mixed_arithmetic() -> None:
     zf = float(0.0)
     zn = int()

@@ -287,6 +287,7 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 // Float operations
 
 
+double CPyFloat_FloorDivide(double x, double y);
 double CPyFloat_Sin(double x);
 double CPyFloat_Cos(double x);
 double CPyFloat_Tan(double x);

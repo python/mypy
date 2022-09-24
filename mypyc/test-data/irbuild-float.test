@@ -401,3 +401,23 @@ L5:
     r3 = r9
 L6:
     return r3
+
+[case testFloatFloorDivide]
+def f(x: float, y: float) -> float:
+    return x // y
+def g(x: float, y: int) -> float:
+    return x // y
+[out]
+def f(x, y):
+    x, y, r0 :: float
+L0:
+    r0 = CPyFloat_FloorDivide(x, y)
+    return r0
+def g(x, y):
+    x :: float
+    y :: int
+    r0, r1 :: float
+L0:
+    r0 = CPyFloat_FromTagged(y)
+    r1 = CPyFloat_FloorDivide(x, r0)
+    return r1

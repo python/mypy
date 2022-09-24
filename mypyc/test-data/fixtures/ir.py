@@ -116,6 +116,7 @@ class float:
     def __rsub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __floordiv__(self, n: float) -> float: pass
     def __mod__(self, n: float) -> float: pass
     def __pow__(self, n: float) -> float: pass
     def __neg__(self) -> float: pass
