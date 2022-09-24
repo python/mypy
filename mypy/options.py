@@ -216,11 +216,11 @@ class Options:
         self.files: list[str] | None = None
 
         # A comma-separated list packages for mypy to type check
-        self.packages: Optional[List[str]] = None
+        self.packages: list[str] | None = None
 
         # A comma-separated list modules for mypy to type check;
         # This option can be used interchangably with package
-        self.modules: Optional[List[str]] = None
+        self.modules: list[str] | None = None
 
         # Write junit.xml to given file
         self.junit_xml: str | None = None
