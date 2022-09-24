@@ -75,9 +75,7 @@ def test_pow() -> None:
     validate_two_arg(lambda x, y: math.pow(x, y), pymath.pow)
 
 def test_copysign() -> None:
-    for x in float_vals:
-        for y in float_vals:
-            assert repr(math.copysign(x, y)) == repr(pymath.copysign(x, y))
+    validate_two_arg(lambda x, y: math.copysign(x, y), pymath.copysign)
 
 def test_isinf() -> None:
     for x in float_vals:
