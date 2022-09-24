@@ -138,3 +138,53 @@ double CPyFloat_FloorDivide(double x, double y) {
     _float_div_mod(x, y, &floordiv, &mod);
     return floordiv;
 }
+
+// Adapted from CPython 3.10.7
+double CPyFloat_Pow(double x, double y) {
+    if (!isfinite(x) || !isfinite(y)) {
+        if (isnan(x))
+            return y == 0.0 ? 1.0 : x; /* NaN**0 = 1 */
+        else if (isnan(y))
+            return x == 1.0 ? 1.0 : y; /* 1**NaN = 1 */
+        else if (isinf(x)) {
+            int odd_y = isfinite(y) && fmod(fabs(y), 2.0) == 1.0;
+            if (y > 0.0)
+                return odd_y ? x : fabs(x);
+            else if (y == 0.0)
+                return 1.0;
+            else /* y < 0. */
+                return odd_y ? copysign(0.0, x) : 0.0;
+        }
+        else if (isinf(y)) {
+            if (fabs(x) == 1.0)
+                return 1.0;
+            else if (y > 0.0 && fabs(x) > 1.0)
+                return y;
+            else if (y < 0.0 && fabs(x) < 1.0) {
+                if (x == 0.0) { /* 0**-inf: divide-by-zero */
+                    return CPy_DomainError();
+                }
+                return -y; /* result is +inf */
+            } else
+                return 0.0;
+        }
+    }
+    double r = pow(x, y);
+    if (!isfinite(r)) {
+        if (isnan(r)) {
+            return CPy_DomainError();
+        }
+        /*
+           an infinite result here arises either from:
+           (A) (+/-0.)**negative (-> divide-by-zero)
+           (B) overflow of x**y with x and y finite
+        */
+        else if (isinf(r)) {
+            if (x == 0.0)
+                return CPy_DomainError();
+            else
+                return CPy_MathRangeError();
+        }
+    }
+    return r;
+}

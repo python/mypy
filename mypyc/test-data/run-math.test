@@ -23,6 +23,27 @@ def validate_one_arg(test: Callable[[float], float], validate: Callable[[float],
         assert repr(actual) == repr(expected), (
             f"actual for {x!r}: {actual!r}, expected {expected!r}")
 
+def validate_two_arg(test: Callable[[float, float], float],
+                     validate: Callable[[float, float], float]) -> None:
+    for x in float_vals:
+        for y in float_vals:
+            args = f"({x!r}, {y!r})"
+            try:
+                expected = validate(x, y)
+            except Exception as e:
+                try:
+                    test(x, y)
+                    assert False, f"no exception raised for {args}, expected {e!r}"
+                except Exception as e2:
+                    assert repr(e) == repr(e2), f"actual for {args}: {e2!r}, expected: {e!r}"
+                    continue
+            try:
+                actual = test(x, y)
+            except Exception as e:
+                assert False, f"no exception expected for {args}, got {e!r}"
+            assert repr(actual) == repr(expected), (
+                f"actual for {args}: {actual!r}, expected {expected!r}")
+
 def test_sqrt() -> None:
     validate_one_arg(lambda x: math.sqrt(x), pymath.sqrt)
 
@@ -49,6 +70,9 @@ def test_ceil() -> None:
 
 def test_fabs() -> None:
     validate_one_arg(lambda x: math.fabs(x), pymath.fabs)
+
+def test_pow() -> None:
+    validate_two_arg(lambda x, y: math.pow(x, y), pymath.pow)
 
 def test_copysign() -> None:
     for x in float_vals:

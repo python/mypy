@@ -131,6 +131,15 @@ function_op(
     error_kind=ERR_NEVER,
 )
 
+# math.pow(float, float)
+pow_op = function_op(
+    name="math.pow",
+    arg_types=[float_rprimitive, float_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyFloat_Pow",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # math.copysign(float, float)
 copysign_op = function_op(
     name="math.copysign",
