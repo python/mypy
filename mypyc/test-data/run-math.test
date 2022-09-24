@@ -1,92 +1,54 @@
 # Test cases for the math module (compile and run)
 
 [case testMathOps]
-from typing import Any
+from typing import Any, Callable
 from typing_extensions import Final
 import math
 from testutil import assertRaises, float_vals, assertDomainError, assertMathRangeError
 
 pymath: Any = math
 
-def test_sqrt() -> None:
+def validate_one_arg(test: Callable[[float], float], validate: Callable[[float], float]) -> None:
     for x in float_vals:
-        if x >= 0 or math.isnan(x):
-            assert repr(math.sqrt(x)) == repr(pymath.sqrt(x))
-        elif x < 0:
-            with assertDomainError():
-                math.sqrt(x)
-            with assertDomainError():
-                pymath.sqrt(x)
+        try:
+            expected = validate(x)
+        except Exception as e:
+            try:
+                test(x)
+                assert False, f"no exception raised for {x!r}, expected {e!r}"
+            except Exception as e2:
+                assert repr(e) == repr(e2), f"actual for {x!r}: {e2!r}, expected: {e!r}"
+                continue
+        actual = test(x)
+        assert repr(actual) == repr(expected), (
+            f"actual for {x!r}: {actual!r}, expected {expected!r}")
+
+def test_sqrt() -> None:
+    validate_one_arg(lambda x: math.sqrt(x), pymath.sqrt)
 
 def test_sin() -> None:
-    for x in float_vals:
-        if not math.isinf(x):
-            assert repr(math.sin(x)) == repr(pymath.sin(x))
-        else:
-            with assertDomainError():
-                math.sin(x)
-            with assertDomainError():
-                pymath.sin(x)
+    validate_one_arg(lambda x: math.sin(x), pymath.sin)
 
 def test_cos() -> None:
-    for x in float_vals:
-        if not math.isinf(x):
-            assert repr(math.cos(x)) == repr(pymath.cos(x))
-        else:
-            with assertDomainError():
-                math.cos(x)
-            with assertDomainError():
-                pymath.cos(x)
+    validate_one_arg(lambda x: math.cos(x), pymath.cos)
 
 def test_tan() -> None:
-    for x in float_vals:
-        if math.isinf(x):
-            with assertDomainError():
-                math.tan(x)
-        else:
-            assert repr(math.tan(x)) == repr(pymath.tan(x))
+    validate_one_arg(lambda x: math.tan(x), pymath.tan)
 
 def test_exp() -> None:
-    for x in float_vals:
-        if math.isfinite(x) and x > 1e100:
-            with assertMathRangeError():
-                math.exp(x)
-        else:
-            assert repr(math.exp(x)) == repr(pymath.exp(x))
+    validate_one_arg(lambda x: math.exp(x), pymath.exp)
 
 def test_log() -> None:
-    for x in float_vals:
-        if x <= 0.0:
-            with assertDomainError():
-                math.log(x)
-        else:
-            assert repr(math.log(x)) == repr(pymath.log(x))
+    validate_one_arg(lambda x: math.log(x), pymath.log)
 
 def test_floor() -> None:
-    for x in float_vals:
-        if math.isinf(x):
-            with assertRaises(OverflowError, "cannot convert float infinity to integer"):
-                math.floor(x)
-        elif math.isnan(x):
-            with assertRaises(ValueError, "cannot convert float NaN to integer"):
-                math.floor(x)
-        else:
-            assert repr(math.floor(x)) == repr(pymath.floor(x))
+    validate_one_arg(lambda x: math.floor(x), pymath.floor)
 
 def test_ceil() -> None:
-    for x in float_vals:
-        if math.isinf(x):
-            with assertRaises(OverflowError, "cannot convert float infinity to integer"):
-                math.ceil(x)
-        elif math.isnan(x):
-            with assertRaises(ValueError, "cannot convert float NaN to integer"):
-                math.ceil(x)
-        else:
-            assert repr(math.ceil(x)) == repr(pymath.ceil(x))
+    validate_one_arg(lambda x: math.ceil(x), pymath.ceil)
 
 def test_fabs() -> None:
-    for x in float_vals:
-        assert repr(math.fabs(x)) == repr(pymath.fabs(x))
+    validate_one_arg(lambda x: math.fabs(x), pymath.fabs)
 
 def test_copysign() -> None:
     for x in float_vals:
