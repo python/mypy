@@ -1973,7 +1973,7 @@ class LowLevelIRBuilder:
         same_signs = self.is_same_float_signs(type, lhs, rhs, line)
         self.add(Branch(same_signs, done, adjust, Branch.BOOL))
         self.activate_block(adjust)
-        adj = self.float_op(res, rhs, '+', line)
+        adj = self.float_op(res, rhs, "+", line)
         self.add(Assign(res, adj))
         self.add(Goto(done))
         self.activate_block(copysign)

@@ -126,8 +126,9 @@ int_binary_op("%", "CPyTagged_Remainder", error_kind=ERR_MAGIC)
 int_binary_op(">>", "CPyTagged_Rshift", error_kind=ERR_MAGIC)
 int_binary_op("<<", "CPyTagged_Lshift", error_kind=ERR_MAGIC)
 
-int_binary_op("/", "CPyTagged_TrueDivide", return_type=float_rprimitive,
-              error_kind=ERR_MAGIC_OVERLAPPING)
+int_binary_op(
+    "/", "CPyTagged_TrueDivide", return_type=float_rprimitive, error_kind=ERR_MAGIC_OVERLAPPING
+)
 
 # This should work because assignment operators are parsed differently
 # and the code in irbuild that handles it does the assignment
