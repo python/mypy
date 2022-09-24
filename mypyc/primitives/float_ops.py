@@ -90,6 +90,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# math.fabs(float)
+function_op(
+    name="math.fabs",
+    arg_types=[float_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="fabs",
+    error_kind=ERR_NEVER,
+)
+
 # math.copysign(float, float)
 copysign_op = function_op(
     name="math.copysign",
