@@ -27,6 +27,7 @@ If the project you encountered the issue in is open source, please provide a lin
 
 ```python
 # Ideally, a small sample program that demonstrates the problem.
+# Or even better, a reproducible playground link https://mypy-play.net/ (use the "Gist" button)
 ```
 
 **Expected Behavior**
