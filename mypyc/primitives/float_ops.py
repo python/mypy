@@ -72,6 +72,15 @@ function_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+# math.log(float)
+function_op(
+    name="math.log",
+    arg_types=[float_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyFloat_Log",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # math.floor(float)
 function_op(
     name="math.floor",

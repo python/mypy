@@ -58,6 +58,13 @@ double CPyFloat_Exp(double x) {
     return v;
 }
 
+double CPyFloat_Log(double x) {
+    if (x <= 0.0) {
+        return CPy_DomainError();
+    }
+    return log(x);
+}
+
 CPyTagged CPyFloat_Floor(double x) {
     double v = floor(x);
     return CPyTagged_FromFloat(v);
