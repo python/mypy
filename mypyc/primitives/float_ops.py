@@ -72,6 +72,15 @@ function_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+# math.floor(float)
+function_op(
+    name="math.floor",
+    arg_types=[float_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyFloat_Floor",
+    error_kind=ERR_MAGIC,
+)
+
 # math.copysign(float, float)
 copysign_op = function_op(
     name="math.copysign",

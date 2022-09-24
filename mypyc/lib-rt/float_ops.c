@@ -58,6 +58,11 @@ double CPyFloat_Exp(double x) {
     return v;
 }
 
+CPyTagged CPyFloat_Floor(double x) {
+    double v = floor(x);
+    return CPyTagged_FromFloat(v);
+}
+
 bool CPyFloat_IsInf(double x) {
     return isinf(x) != 0;
 }
