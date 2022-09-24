@@ -170,6 +170,9 @@ def test_abs() -> None:
     assert abs(44324.732) == 44324.732
     assert abs(-23.4) == 23.4
     assert abs(-43.44e-4) == 43.44e-4
+    abs_any: Any = abs
+    for x in float_vals:
+        assert repr(abs(x)) == repr(abs_any(x))
 
 def test_float_min_max() -> None:
     for x in float_vals:

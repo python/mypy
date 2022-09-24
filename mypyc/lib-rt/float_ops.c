@@ -22,10 +22,6 @@ double CPyFloat_FromTagged(CPyTagged x) {
     return result;
 }
 
-double CPyFloat_Abs(double x) {
-    return x >= 0.0 ? x : -x;
-}
-
 double CPyFloat_Sin(double x) {
     double v = sin(x);
     if (unlikely(isnan(v)) && !isnan(x)) {

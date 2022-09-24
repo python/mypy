@@ -32,7 +32,7 @@ function_op(
     name="builtins.abs",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
-    c_function_name="CPyFloat_Abs",
+    c_function_name="fabs",
     error_kind=ERR_NEVER,
 )
 
