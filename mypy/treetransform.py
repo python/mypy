@@ -49,6 +49,7 @@ from mypy.nodes import (
     LambdaExpr,
     ListComprehension,
     ListExpr,
+    MatchStmt,
     MemberExpr,
     MypyFile,
     NamedTupleExpr,
@@ -380,6 +381,14 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_async = node.is_async
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
+
+    def visit_match_stmt(self, o: MatchStmt) -> MatchStmt:
+        return MatchStmt(
+            subject=self.expr(o.subject),
+            patterns=o.patterns,
+            guards=self.optional_expressions(o.guards),
+            bodies=self.blocks(o.bodies),
+        )
 
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
         return StarExpr(node.expr)
