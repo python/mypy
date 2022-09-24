@@ -17,7 +17,11 @@ float_vals = [
 ] + [
     -0.0, 1.0/3.0, math.sqrt(2.0), 1.23e200, -2.34e200, 5.43e-100, -6.532e-200,
     float('inf'), -float('inf'), float('nan'), FLOAT_MAGIC, math.pi, 2.0 * math.pi, math.pi / 2.0,
-    -math.pi / 2.0
+    -math.pi / 2.0,
+    -1.7976931348623158e+308,
+    -2.2250738585072014e-308,
+    1.7976931348623158e+308,
+    2.2250738585072014e-308,
 ]
 
 @contextmanager
