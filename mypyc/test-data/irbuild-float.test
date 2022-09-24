@@ -52,8 +52,6 @@ L0:
     return r1
 
 [case testFloatCoerceFromInt]
-from mypy_extensions import i64
-
 def from_int(x: int) -> float:
     return x
 
@@ -75,6 +73,25 @@ L0:
 def from_literal_neg():
 L0:
     return -2.0
+
+[case testConvertBetweenFloatAndInt]
+def to_int(x: float) -> int:
+    return int(x)
+def from_int(x: int) -> float:
+    return float(x)
+[out]
+def to_int(x):
+    x :: float
+    r0 :: int
+L0:
+    r0 = CPyTagged_FromFloat(x)
+    return r0
+def from_int(x):
+    x :: int
+    r0 :: float
+L0:
+    r0 = CPyFloat_FromTagged(x)
+    return r0
 
 [case testFloatOperatorAssignment]
 def f(x: float, y: float) -> float:

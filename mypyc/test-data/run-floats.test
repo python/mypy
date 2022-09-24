@@ -142,9 +142,35 @@ def test_coerce_from_very_long_tagged_int() -> None:
     n = int() + 10**1000
     with assertRaises(OverflowError, "int too large to convert to float"):
         x: float = n
+    with assertRaises(OverflowError, "int too large to convert to float"):
+        x2: float = int(n)
     n = int() - 10**1000
     with assertRaises(OverflowError, "int too large to convert to float"):
         y: float = n
+    with assertRaises(OverflowError, "int too large to convert to float"):
+        y2: float = int(n)
+
+def test_explicit_conversion_from_int() -> None:
+    float_any: Any = float
+    a = [0, 1, 2, 3, -1, -2, 13257, -928745]
+    for n in range(1, 100):
+        for delta in -1, 0, 1, 2342345:
+            a.append(2**n + delta)
+            a.append(-2**n + delta)
+    for x in a:
+        assert repr(float(x)) == repr(float_any(x))
+
+def test_explicit_conversion_to_int() -> None:
+    int_any: Any = int
+    for x in float_vals:
+        if math.isinf(x):
+            with assertRaises(OverflowError, "cannot convert float infinity to integer"):
+                int(x)
+        elif math.isnan(x):
+            with assertRaises(ValueError, "cannot convert float NaN to integer"):
+                int(x)
+        else:
+            assert repr(int(x)) == repr(int_any(x))
 
 def str_to_float(x: str) -> float:
     return float(x)
@@ -179,6 +205,8 @@ def test_float_min_max() -> None:
         for y in float_vals:
             min_any: Any = min
             assert repr(min(x, y)) == repr(min_any(x, y))
+            max_any: Any = max
+            assert repr(max(x, y)) == repr(max_any(x, y))
 
 def default(x: float = 2) -> float:
     return x + 1
