@@ -63,6 +63,15 @@ function_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+# math.exp(float)
+function_op(
+    name="math.exp",
+    arg_types=[float_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyFloat_Exp",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # math.copysign(float, float)
 copysign_op = function_op(
     name="math.copysign",

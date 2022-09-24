@@ -32,6 +32,9 @@ def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
 def assertDomainError() -> Any:
     return assertRaises(ValueError, "math domain error")
 
+def assertMathRangeError() -> Any:
+    return assertRaises(OverflowError, "math range error")
+
 T = TypeVar('T')
 U = TypeVar('U')
 V = TypeVar('V')

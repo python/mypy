@@ -11,6 +11,11 @@ static double CPy_DomainError() {
     return CPY_FLOAT_ERROR;
 }
 
+static double CPy_MathRangeError() {
+    PyErr_SetString(PyExc_OverflowError, "math range error");
+    return CPY_FLOAT_ERROR;
+}
+
 double CPyFloat_FromTagged(CPyTagged x) {
     if (CPyTagged_CheckShort(x)) {
         return CPyTagged_ShortAsSsize_t(x);
@@ -43,6 +48,14 @@ double CPyFloat_Sqrt(double x) {
         return CPy_DomainError();
     }
     return sqrt(x);
+}
+
+double CPyFloat_Exp(double x) {
+    double v = exp(x);
+    if (unlikely(v == INFINITY) && x != INFINITY) {
+        return CPy_MathRangeError();
+    }
+    return v;
 }
 
 bool CPyFloat_IsInf(double x) {

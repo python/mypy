@@ -290,6 +290,7 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 double CPyFloat_Sin(double x);
 double CPyFloat_Cos(double x);
 double CPyFloat_Sqrt(double x);
+double CPyFloat_Exp(double x);
 double CPyFloat_FromTagged(CPyTagged x);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
