@@ -1,0 +1,102 @@
+# Test cases for the math module (compile and run)
+
+[case testMathOps]
+from typing import Any
+from typing_extensions import Final
+import math
+from testutil import assertRaises, float_vals, assertDomainError, assertMathRangeError
+
+pymath: Any = math
+
+def test_sqrt() -> None:
+    for x in float_vals:
+        if x >= 0 or math.isnan(x):
+            assert repr(math.sqrt(x)) == repr(pymath.sqrt(x))
+        elif x < 0:
+            with assertDomainError():
+                math.sqrt(x)
+            with assertDomainError():
+                pymath.sqrt(x)
+
+def test_sin() -> None:
+    for x in float_vals:
+        if not math.isinf(x):
+            assert repr(math.sin(x)) == repr(pymath.sin(x))
+        else:
+            with assertDomainError():
+                math.sin(x)
+            with assertDomainError():
+                pymath.sin(x)
+
+def test_cos() -> None:
+    for x in float_vals:
+        if not math.isinf(x):
+            assert repr(math.cos(x)) == repr(pymath.cos(x))
+        else:
+            with assertDomainError():
+                math.cos(x)
+            with assertDomainError():
+                pymath.cos(x)
+
+def test_tan() -> None:
+    for x in float_vals:
+        if math.isinf(x):
+            with assertDomainError():
+                math.tan(x)
+        else:
+            assert repr(math.tan(x)) == repr(pymath.tan(x))
+
+def test_exp() -> None:
+    for x in float_vals:
+        if math.isfinite(x) and x > 1e100:
+            with assertMathRangeError():
+                math.exp(x)
+        else:
+            assert repr(math.exp(x)) == repr(pymath.exp(x))
+
+def test_log() -> None:
+    for x in float_vals:
+        if x <= 0.0:
+            with assertDomainError():
+                math.log(x)
+        else:
+            assert repr(math.log(x)) == repr(pymath.log(x))
+
+def test_floor() -> None:
+    for x in float_vals:
+        if math.isinf(x):
+            with assertRaises(OverflowError, "cannot convert float infinity to integer"):
+                math.floor(x)
+        elif math.isnan(x):
+            with assertRaises(ValueError, "cannot convert float NaN to integer"):
+                math.floor(x)
+        else:
+            assert repr(math.floor(x)) == repr(pymath.floor(x))
+
+def test_ceil() -> None:
+    for x in float_vals:
+        if math.isinf(x):
+            with assertRaises(OverflowError, "cannot convert float infinity to integer"):
+                math.ceil(x)
+        elif math.isnan(x):
+            with assertRaises(ValueError, "cannot convert float NaN to integer"):
+                math.ceil(x)
+        else:
+            assert repr(math.ceil(x)) == repr(pymath.ceil(x))
+
+def test_fabs() -> None:
+    for x in float_vals:
+        assert repr(math.fabs(x)) == repr(pymath.fabs(x))
+
+def test_copysign() -> None:
+    for x in float_vals:
+        for y in float_vals:
+            assert repr(math.copysign(x, y)) == repr(pymath.copysign(x, y))
+
+def test_isinf() -> None:
+    for x in float_vals:
+        assert repr(math.isinf(x)) == repr(pymath.isinf(x))
+
+def test_isnan() -> None:
+    for x in float_vals:
+        assert repr(math.isnan(x)) == repr(pymath.isnan(x))

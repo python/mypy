@@ -54,6 +54,15 @@ function_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+# math.tan(float)
+function_op(
+    name="math.tan",
+    arg_types=[float_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyFloat_Tan",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # math.sqrt(float)
 function_op(
     name="math.sqrt",

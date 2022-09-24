@@ -43,6 +43,13 @@ double CPyFloat_Cos(double x) {
     return v;
 }
 
+double CPyFloat_Tan(double x) {
+    if (unlikely(isinf(x))) {
+        return CPy_DomainError();
+    }
+    return tan(x);
+}
+
 double CPyFloat_Sqrt(double x) {
     if (x < 0.0) {
         return CPy_DomainError();
