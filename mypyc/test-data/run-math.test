@@ -9,6 +9,7 @@ from testutil import assertRaises, float_vals, assertDomainError, assertMathRang
 pymath: Any = math
 
 def validate_one_arg(test: Callable[[float], float], validate: Callable[[float], float]) -> None:
+    """Ensure that test and validate behave the same for various float args."""
     for x in float_vals:
         try:
             expected = validate(x)
@@ -25,6 +26,7 @@ def validate_one_arg(test: Callable[[float], float], validate: Callable[[float],
 
 def validate_two_arg(test: Callable[[float, float], float],
                      validate: Callable[[float, float], float]) -> None:
+    """Ensure that test and validate behave the same for various float args."""
     for x in float_vals:
         for y in float_vals:
             args = f"({x!r}, {y!r})"
