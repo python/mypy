@@ -81,6 +81,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# math.ceil(float)
+function_op(
+    name="math.ceil",
+    arg_types=[float_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyFloat_Ceil",
+    error_kind=ERR_MAGIC,
+)
+
 # math.copysign(float, float)
 copysign_op = function_op(
     name="math.copysign",

@@ -63,6 +63,11 @@ CPyTagged CPyFloat_Floor(double x) {
     return CPyTagged_FromFloat(v);
 }
 
+CPyTagged CPyFloat_Ceil(double x) {
+    double v = ceil(x);
+    return CPyTagged_FromFloat(v);
+}
+
 bool CPyFloat_IsInf(double x) {
     return isinf(x) != 0;
 }
