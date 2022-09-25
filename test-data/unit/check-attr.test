@@ -1,4 +1,4 @@
-[case testAttrsSimple]
+[case testAttrsSimple_no_empty]
 import attr
 @attr.s
 class A:

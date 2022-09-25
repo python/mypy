@@ -63,6 +63,7 @@ from mypy.nodes import (
     ARG_STAR,
     CONTRAVARIANT,
     COVARIANT,
+    FUNC_NO_INFO,
     GDEF,
     IMPLICITLY_ABSTRACT,
     INVARIANT,
@@ -1218,6 +1219,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     not allow_empty
                     and not (isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT)
                     and not self.is_stub
+                    and (
+                        defn.info is FUNC_NO_INFO
+                        # If we can't find the symbol, most likely there was already an error.
+                        or defn.name in defn.info.names
+                        and not defn.info.names[defn.name].plugin_generated
+                    )
                 )
 
                 if self.options.warn_no_return:
