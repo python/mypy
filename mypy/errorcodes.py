@@ -96,6 +96,9 @@ LITERAL_REQ: Final = ErrorCode("literal-required", "Check that value is a litera
 UNUSED_COROUTINE: Final = ErrorCode(
     "unused-coroutine", "Ensure that all coroutines are used", "General"
 )
+SAFE_SUPER: Final = ErrorCode(
+    "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
+)
 
 # These error codes aren't enabled by default.
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(

@@ -922,3 +922,16 @@ def f(d: D, s: str) -> None:
 [case testRecommendErrorCode]
 # type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code=...`  [syntax]
 1 + "asdf"
+
+[case testErrorCodeUnsafeSuper_no_empty]
+# flags: --strict-optional
+from abc import abstractmethod
+
+class Base:
+    @abstractmethod
+    def meth(self) -> int:
+        raise NotImplementedError()
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()  # E: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe  [safe-super]
+[builtins fixtures/exception.pyi]

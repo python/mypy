@@ -60,6 +60,7 @@ from mypy.nodes import (
     UNBOUND_IMPORTED,
     Decorator,
     FuncBase,
+    FuncDef,
     FuncItem,
     MypyFile,
     OverloadedFuncDef,
@@ -217,6 +218,12 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
             signature = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
+        impl: FuncDef | None = None
+        if isinstance(node, FuncDef):
+            impl = node
+        elif isinstance(node, OverloadedFuncDef) and node.impl:
+            impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
+        is_trivial_body = impl.is_trivial_body if impl else False
         return (
             "Func",
             common,
@@ -225,6 +232,7 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
             node.is_class,
             node.is_static,
             signature,
+            is_trivial_body,
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)

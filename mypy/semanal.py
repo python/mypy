@@ -77,6 +77,7 @@ from mypy.nodes import (
     IS_ABSTRACT,
     LDEF,
     MDEF,
+    NOT_ABSTRACT,
     REVEAL_LOCALS,
     REVEAL_TYPE,
     RUNTIME_PROTOCOL_DECOS,
@@ -861,6 +862,12 @@ class SemanticAnalyzer(
                 and is_trivial_body(defn.body)
             ):
                 defn.abstract_status = IMPLICITLY_ABSTRACT
+            if (
+                is_trivial_body(defn.body)
+                and not self.is_stub_file
+                and defn.abstract_status != NOT_ABSTRACT
+            ):
+                defn.is_trivial_body = True
 
         if (
             defn.is_coroutine
@@ -1038,6 +1045,8 @@ class SemanticAnalyzer(
             assert self.type is not None
             if self.type.is_protocol:
                 impl.abstract_status = IMPLICITLY_ABSTRACT
+            if impl.abstract_status != NOT_ABSTRACT:
+                impl.is_trivial_body = True
 
     def analyze_overload_sigs_and_impl(
         self, defn: OverloadedFuncDef
@@ -1125,6 +1134,7 @@ class SemanticAnalyzer(
                     else:
                         item.abstract_status = IS_ABSTRACT
             else:
+                # TODO: also allow omitting an implementation for abstract methods in ABCs?
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
                     defn,

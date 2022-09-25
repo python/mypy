@@ -296,6 +296,8 @@ class Options:
         self.fast_exit = True
         # fast path for finding modules from source set
         self.fast_module_lookup = False
+        # Allow empty function bodies even if it is not safe, used for testing only.
+        self.allow_empty_bodies = False
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
         self.transform_source: Callable[[Any], Any] | None = None

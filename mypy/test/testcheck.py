@@ -120,6 +120,8 @@ class TypeCheckSuite(DataSuite):
             options.show_column_numbers = True
         if "errorcodes" in testcase.file:
             options.show_error_codes = True
+        if "abstract" not in testcase.file:
+            options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases

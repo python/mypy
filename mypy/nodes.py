@@ -758,7 +758,7 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional"]
+FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional", "is_trivial_body"]
 
 # Abstract status of a function
 NOT_ABSTRACT: Final = 0
@@ -781,6 +781,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "abstract_status",
         "original_def",
         "deco_line",
+        "is_trivial_body",
     )
 
     # Note that all __init__ args must have default values
@@ -796,6 +797,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.abstract_status = NOT_ABSTRACT
+        # Is this an abstract method with trivial body?
+        # Such methods can't be called via super().
+        self.is_trivial_body = False
         self.is_final = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
