@@ -13,11 +13,8 @@ import traceback
 import types
 from typing import Any, Dict, List, Tuple
 #@-<< Watcher: imports >>
-#@+others
-#@+node:ekr.20220925074638.1: ** class LeoGlobals
-#@@nosearch
-
-
+#@+<< define LeoGlobals class >>
+#@+node:ekr.20220925080508.1: ** << define LeoGlobals class >>
 class LeoGlobals:  # pragma: no cover
     """
     Simplified version of functions in leoGlobals.py.
@@ -173,6 +170,10 @@ class LeoGlobals:  # pragma: no cover
         s2 = s[: n - 3] + f"...({len(s)})"
         return s2 + '\n' if s.endswith('\n') else s2
     #@-others
+#@-<< define LeoGlobals class >>
+g = LeoGlobals()
+
+#@+others
 #@+node:ekr.20220925071140.1: ** class Watcher(pdb.Pdb)
 class Watcher(pdb.Pdb):
     #@+<< Watcher: docstring >>
@@ -641,7 +642,7 @@ class Watcher(pdb.Pdb):
 def watcher_main():
     g.trace()
 #@-others
-g = LeoGlobals()
+
 if __name__ == '__main__':
     watcher_main()
 #@-leo
