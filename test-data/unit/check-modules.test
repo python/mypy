@@ -626,8 +626,10 @@ try:
 except:
     def f(x): pass
     def g(x): pass # E: All conditional function variants must have identical signatures \
-                   # N: Original signature: def (x: Any, y: Any) -> Any \
-                   # N: Redefinition signature: def (x: Any) -> Any
+                   # N: Original: \
+                   # N:     def g(x: Any, y: Any) -> Any \
+                   # N: Redefinition: \
+                   # N:     def g(x: Any) -> Any
 [file m.py]
 def f(x): pass
 def g(x, y): pass
