@@ -184,6 +184,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    SelfType,
     StarType,
     TupleType,
     Type,
@@ -3096,6 +3097,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         inst = get_proper_type(self.expr_checker.accept(lvalue.expr))
+        if isinstance(inst, SelfType):
+            inst = inst.upper_bound
         if not isinstance(inst, Instance):
             return
         if inst.type.slots is None:

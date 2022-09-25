@@ -148,7 +148,7 @@ class Base:
         pass
 
 class Derived(Base):
-    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
+    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Self], int]")
 
 
 [case testOverridePartialAttributeWithMethod]
@@ -1111,10 +1111,10 @@ class Outer:
     reveal_type(Inner().make_int)  # N: Revealed type is "def () -> builtins.int"
     some_int = Inner().make_int()
 
-reveal_type(Outer.Inner.make_int)  # N: Revealed type is "def (self: __main__.Outer.Inner) -> builtins.int"
+reveal_type(Outer.Inner.make_int)  # N: Revealed type is "def (self: Self@__main__.Outer.Inner) -> builtins.int"
 reveal_type(Outer().some_int) # N: Revealed type is "builtins.int"
 Bar = Outer.Inner
-reveal_type(Bar.make_int)  # N: Revealed type is "def (self: __main__.Outer.Inner) -> builtins.int"
+reveal_type(Bar.make_int)  # N: Revealed type is "def (self: Self@__main__.Outer.Inner) -> builtins.int"
 x = Bar()  # type: Bar
 def produce() -> Bar:
     reveal_type(Bar().make_int)  # N: Revealed type is "def () -> builtins.int"
@@ -1267,7 +1267,7 @@ class C:
     cls(1)      # E: Too many arguments for "C"
     cls.bar()
     cls.bar(1)  # E: Too many arguments for "bar" of "C"
-    cls.bozo()  # E: "Type[C]" has no attribute "bozo"
+    cls.bozo()  # E: "Type[Self]" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -1959,9 +1959,9 @@ class A:
     def __iadd__(self, other: int) -> int: pass
     def __radd__(self, other: int) -> int: pass
 
-reveal_type(A.__add__)  # N: Revealed type is "def (__main__.A, builtins.int) -> builtins.int"
-reveal_type(A.__iadd__) # N: Revealed type is "def (__main__.A, builtins.int) -> builtins.int"
-reveal_type(A.__radd__) # N: Revealed type is "def (__main__.A, builtins.int) -> builtins.int"
+reveal_type(A.__add__)  # N: Revealed type is "def (Self@__main__.A, builtins.int) -> builtins.int"
+reveal_type(A.__iadd__) # N: Revealed type is "def (Self@__main__.A, builtins.int) -> builtins.int"
+reveal_type(A.__radd__) # N: Revealed type is "def (Self@__main__.A, builtins.int) -> builtins.int"
 
 [case testOperatorMethodOverrideWithIdenticalOverloadedType]
 from foo import *
@@ -2079,8 +2079,8 @@ class B:
 class C:
     def __radd__(self, other, oops) -> int: ...
 [out]
-tmp/foo.pyi:3: error: Invalid signature "Callable[[B], A]"
-tmp/foo.pyi:5: error: Invalid signature "Callable[[C, Any, Any], int]"
+tmp/foo.pyi:3: error: Invalid signature "Callable[[Self], A]"
+tmp/foo.pyi:5: error: Invalid signature "Callable[[Self, Any, Any], int]"
 
 [case testReverseOperatorOrderingCase1]
 class A:
@@ -2670,8 +2670,8 @@ class C:
 class D:
     def __getattribute__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "Callable[[B, A], B]" for "__getattribute__"
-main:6: error: Invalid signature "Callable[[C, str, str], C]" for "__getattribute__"
+main:4: error: Invalid signature "Callable[[Self, A], B]" for "__getattribute__"
+main:6: error: Invalid signature "Callable[[Self, str, str], C]" for "__getattribute__"
 
 [case testGetattr]
 
@@ -2711,7 +2711,7 @@ a: A
 b: B
 
 a1: A = a.foo
-b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "Self", variable has type "B")
 a2: A = b.baz  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 b2: B = b.roo  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
 [builtins fixtures/tuple.pyi]

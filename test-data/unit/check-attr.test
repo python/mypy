@@ -218,8 +218,8 @@ from attr import attrib, attrs
 class A:
     a: int
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
-reveal_type(A.__eq__)  # N: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
-reveal_type(A.__ne__)  # N: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
+reveal_type(A.__eq__)  # N: Revealed type is "def (Self@builtins.object, builtins.object) -> builtins.bool"
+reveal_type(A.__ne__)  # N: Revealed type is "def (Self@builtins.object, builtins.object) -> builtins.bool"
 
 A(1) < A(2)  # E: Unsupported left operand type for < ("A")
 A(1) <= A(2)  # E: Unsupported left operand type for <= ("A")
@@ -612,7 +612,7 @@ class A(Generic[T]):
     x: Optional[T]
     @classmethod
     def clsmeth(cls) -> None:
-       reveal_type(cls)  # N: Revealed type is "Type[__main__.A[T`1]]"
+       reveal_type(cls)  # N: Revealed type is "Type[Self@__main__.A[T`1]]"
 
 [builtins fixtures/classmethod.pyi]
 
@@ -665,7 +665,7 @@ class A:
     b: str = attr.ib()
     @classmethod
     def new(cls) -> A:
-       reveal_type(cls)  # N: Revealed type is "Type[__main__.A]"
+       reveal_type(cls)  # N: Revealed type is "Type[Self@__main__.A]"
        return cls(6, 'hello')
     @classmethod
     def bad(cls) -> A:
@@ -700,7 +700,7 @@ class A:
 
     @classmethod
     def foo(cls, x: Union[int, str]) -> Union[int, str]:
-        reveal_type(cls)            # N: Revealed type is "Type[__main__.A]"
+        reveal_type(cls)            # N: Revealed type is "Type[Self@__main__.A]"
         reveal_type(cls.other())    # N: Revealed type is "builtins.str"
         return x
 
