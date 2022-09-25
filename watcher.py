@@ -183,8 +183,9 @@ class Watcher(pdb.Pdb):
 #@+node:ekr.20220925072732.1: ** function: watcher_main
 def watcher_main():
     import watcher_test
-    assert watcher_test  ###
     g.trace(watcher_test)
+    x = Watcher()
+    x.run(watcher_test.main.__code__)
 #@-others
 
 if __name__ == '__main__':
