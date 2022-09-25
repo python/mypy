@@ -3,10 +3,8 @@
 #@+node:ekr.20220925074015.1: * @file watcher_test.py
 #@@first
 
-from leo.core import leoGlobals as g
-
 def main():
-    g.trace()
+    print('watcher_test.py')
 
 
 
