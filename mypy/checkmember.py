@@ -296,23 +296,8 @@ def analyze_instance_member_access(
     # Look up the member. First look up the method dictionary.
     method = info.get_method(name)
     if method and not isinstance(method, Decorator):
-        unsafe_super = False
         if mx.is_super:
-            if isinstance(method, FuncDef) and method.is_trivial_body:
-                unsafe_super = True
-                impl = method
-            elif isinstance(method, OverloadedFuncDef):
-                if method.impl:
-                    impl = method.impl if isinstance(method.impl, FuncDef) else method.impl.func
-                    unsafe_super = impl.is_trivial_body
-            if unsafe_super:
-                ret_type = (
-                    impl.type.ret_type
-                    if isinstance(impl.type, CallableType)
-                    else AnyType(TypeOfAny.unannotated)
-                )
-                if not subtypes.is_subtype(NoneType(), ret_type):
-                    mx.msg.unsafe_super(method.name, method.info.name, mx.context)
+            validate_super_call(method, mx)
 
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
@@ -344,6 +329,25 @@ def analyze_instance_member_access(
     else:
         # Not a method.
         return analyze_member_var_access(name, typ, info, mx)
+
+
+def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
+    unsafe_super = False
+    if isinstance(node, FuncDef) and node.is_trivial_body:
+        unsafe_super = True
+        impl = node
+    elif isinstance(node, OverloadedFuncDef):
+        if node.impl:
+            impl = node.impl if isinstance(node.impl, FuncDef) else node.impl.func
+            unsafe_super = impl.is_trivial_body
+    if unsafe_super:
+        ret_type = (
+            impl.type.ret_type
+            if isinstance(impl.type, CallableType)
+            else AnyType(TypeOfAny.unannotated)
+        )
+        if not subtypes.is_subtype(NoneType(), ret_type):
+            mx.msg.unsafe_super(node.name, node.info.name, mx.context)
 
 
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
@@ -467,14 +471,8 @@ def analyze_member_var_access(
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
         v = vv.var
-        if mx.is_super and vv.func.is_trivial_body:
-            ret_type = (
-                vv.func.type.ret_type
-                if isinstance(vv.func.type, CallableType)
-                else AnyType(TypeOfAny.unannotated)
-            )
-            if not subtypes.is_subtype(NoneType(), ret_type):
-                mx.msg.unsafe_super(vv.func.name, vv.func.info.name, mx.context)
+        if mx.is_super:
+            validate_super_call(vv.func, mx)
 
     if isinstance(vv, TypeInfo):
         # If the associated variable is a TypeInfo synthesize a Var node for
