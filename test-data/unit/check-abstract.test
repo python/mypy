@@ -1057,6 +1057,7 @@ b.y = 1
 -- -----------------------------------------------
 
 [case testEmptyBodyProhibitedFunction]
+# flags: --strict-optional
 from typing import overload, Union
 
 def func1(x: str) -> int: pass  # E: Missing return statement
@@ -1079,6 +1080,7 @@ def func5(x: Union[int, str]) -> Union[int, str]:  # E: Missing return statement
     """Some function."""
 
 [case testEmptyBodyProhibitedMethodNonAbstract]
+# flags: --strict-optional
 from typing import overload, Union
 
 class A:
@@ -1113,6 +1115,7 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyProhibitedPropertyNonAbstract]
+# flags: --strict-optional
 class A:
     @property
     def x(self) -> int: ...  # E: Missing return statement

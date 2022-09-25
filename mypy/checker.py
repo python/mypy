@@ -1219,13 +1219,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     not allow_empty
                     and not (isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT)
                     and not self.is_stub
-                    and (
-                        defn.info is FUNC_NO_INFO
-                        # If we can't find the symbol, most likely there was already an error.
-                        or defn.name in defn.info.names
-                        and not defn.info.names[defn.name].plugin_generated
-                    )
                 )
+
+                # Ignore plugin generated methods, these usually don't need any bodies.
+                if defn.info is not FUNC_NO_INFO and (
+                    defn.name not in defn.info.names or defn.info.names[defn.name].plugin_generated
+                ):
+                    show_error = False
+
+                # We want to minimize the fallout from checking empty bodies
+                # that was absent in many mypy versions.
+                if body_is_trivial and is_subtype(NoneType(), return_type):
+                    show_error = False
 
                 if self.options.warn_no_return:
                     if (
