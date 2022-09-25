@@ -1238,9 +1238,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if typ.ret_type not in arg_type_visitor.arg_types:
                 self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
+                upper_bound = get_proper_type(typ.ret_type.upper_bound)
                 if not (
-                    isinstance(typ.ret_type.upper_bound, Instance)
-                    and typ.ret_type.upper_bound.type.fullname == "builtins.object"
+                    isinstance(upper_bound, Instance)
+                    and upper_bound.type.fullname == "builtins.object"
                 ):
                     self.note(
                         "Consider using the upper bound "
