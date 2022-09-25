@@ -91,6 +91,17 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypy.patterns import (
+    Pattern,
+    AsPattern,
+    OrPattern,
+    ValuePattern,
+    SingletonPattern,
+    SequencePattern,
+    StarredPattern,
+    MappingPattern,
+    ClassPattern,
+)
 from mypy.traverser import TraverserVisitor
 from mypy.types import FunctionLike, ProperType, Type
 from mypy.util import replace_object_state
@@ -382,10 +393,48 @@ class TransformVisitor(NodeVisitor[Node]):
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
 
+    def visit_as_pattern(self, p: AsPattern) -> AsPattern:
+        return AsPattern(
+            pattern=self.pattern(p.pattern) if p.pattern is not None else None,
+            name=self.duplicate_name(p.name) if p.name is not None else None,
+        )
+
+    def visit_or_pattern(self, p: OrPattern) -> OrPattern:
+        return OrPattern([self.pattern(pat) for pat in p.patterns])
+
+    def visit_value_pattern(self, p: ValuePattern) -> ValuePattern:
+        return ValuePattern(self.expr(p.expr))
+
+    def visit_singleton_pattern(self, p: SingletonPattern) -> SingletonPattern:
+        return SingletonPattern(p.value)
+
+    def visit_sequence_pattern(self, p: SequencePattern) -> SequencePattern:
+        return SequencePattern([self.pattern(pat) for pat in p.patterns])
+
+    def visit_starred_pattern(self, p: StarredPattern) -> StarredPattern:
+        return StarredPattern(self.duplicate_name(p.capture) if p.capture is not None else None)
+
+    def visit_mapping_pattern(self, p: MappingPattern) -> MappingPattern:
+        return MappingPattern(
+            keys=[self.expr(expr) for expr in p.keys],
+            values=[self.pattern(pat) for pat in p.values],
+            rest=self.duplicate_name(p.rest) if p.rest is not None else None,
+        )
+
+    def visit_class_pattern(self, p: ClassPattern) -> ClassPattern:
+        class_ref = p.class_ref.accept(self)
+        assert isinstance(class_ref, RefExpr)
+        return ClassPattern(
+            class_ref=class_ref,
+            positionals=[self.pattern(pat) for pat in p.positionals],
+            keyword_keys=list(p.keyword_keys),
+            keyword_values=[self.pattern(pat) for pat in p.keyword_values],
+        )
+
     def visit_match_stmt(self, o: MatchStmt) -> MatchStmt:
         return MatchStmt(
             subject=self.expr(o.subject),
-            patterns=o.patterns,
+            patterns=[self.pattern(p) for p in o.patterns],
             guards=self.optional_expressions(o.guards),
             bodies=self.blocks(o.bodies),
         )
@@ -644,6 +693,12 @@ class TransformVisitor(NodeVisitor[Node]):
         new = stmt.accept(self)
         assert isinstance(new, Statement)
         new.set_line(stmt)
+        return new
+
+    def pattern(self, pattern: Pattern) -> Pattern:
+        new = pattern.accept(self)
+        assert isinstance(new, Pattern)
+        new.set_line(pattern)
         return new
 
     # Helpers
