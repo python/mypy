@@ -257,63 +257,56 @@ class PatternChecker(PatternVisitor[PatternType]):
         contracted_inner_types = self.contract_starred_pattern_types(
             inner_types, star_position, required_patterns
         )
-        can_match = True
         for p, t in zip(o.patterns, contracted_inner_types):
             pattern_type = self.accept(p, t)
             typ, rest, type_map = pattern_type
-            if is_uninhabited(typ):
-                can_match = False
-            else:
-                contracted_new_inner_types.append(typ)
-                contracted_rest_inner_types.append(rest)
+            contracted_new_inner_types.append(typ)
+            contracted_rest_inner_types.append(rest)
             self.update_type_map(captures, type_map)
 
+        new_inner_types = self.expand_starred_pattern_types(
+            contracted_new_inner_types, star_position, len(inner_types)
+        )
+        rest_inner_types = self.expand_starred_pattern_types(
+            contracted_rest_inner_types, star_position, len(inner_types)
+        )
+
+        #
+        # Calculate new type
+        #
         new_type: Type
         rest_type: Type = current_type
-        if can_match:
-            new_inner_types = self.expand_starred_pattern_types(
-                contracted_new_inner_types, star_position, len(inner_types)
-            )
-            rest_inner_types = self.expand_starred_pattern_types(
-                contracted_rest_inner_types, star_position, len(inner_types)
-            )
-
-            #
-            # Calculate new type
-            #
-            if isinstance(current_type, TupleType):
-                narrowed_inner_types = []
-                inner_rest_types = []
-                for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                    (
-                        narrowed_inner_type,
-                        inner_rest_type,
-                    ) = self.chk.conditional_types_with_intersection(
-                        new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
-                    )
-                    narrowed_inner_types.append(narrowed_inner_type)
-                    inner_rest_types.append(inner_rest_type)
-                if all(not is_uninhabited(typ) for typ in narrowed_inner_types):
-                    new_type = TupleType(narrowed_inner_types, current_type.partial_fallback)
-                else:
-                    new_type = UninhabitedType()
-
-                if all(is_uninhabited(typ) for typ in inner_rest_types):
-                    # All subpatterns always match, so we can apply negative narrowing
-                    rest_type = TupleType(rest_inner_types, current_type.partial_fallback)
+        if isinstance(current_type, TupleType):
+            narrowed_inner_types = []
+            inner_rest_types = []
+            for inner_type, new_inner_type in zip(inner_types, new_inner_types):
+                (
+                    narrowed_inner_type,
+                    inner_rest_type,
+                ) = self.chk.conditional_types_with_intersection(
+                    new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                )
+                narrowed_inner_types.append(narrowed_inner_type)
+                inner_rest_types.append(inner_rest_type)
+            if all(not is_uninhabited(typ) for typ in narrowed_inner_types):
+                new_type = TupleType(narrowed_inner_types, current_type.partial_fallback)
             else:
-                new_inner_type = UninhabitedType()
-                for typ in new_inner_types:
-                    new_inner_type = join_types(new_inner_type, typ)
-                new_type = self.construct_sequence_child(current_type, new_inner_type)
-                if is_subtype(new_type, current_type):
-                    new_type, _ = self.chk.conditional_types_with_intersection(
-                        current_type, [get_type_range(new_type)], o, default=current_type
-                    )
-                else:
-                    new_type = current_type
+                new_type = UninhabitedType()
+
+            if all(is_uninhabited(typ) for typ in inner_rest_types):
+                # All subpatterns always match, so we can apply negative narrowing
+                rest_type = TupleType(rest_inner_types, current_type.partial_fallback)
         else:
-            new_type = UninhabitedType()
+            new_inner_type = UninhabitedType()
+            for typ in new_inner_types:
+                new_inner_type = join_types(new_inner_type, typ)
+            new_type = self.construct_sequence_child(current_type, new_inner_type)
+            if is_subtype(new_type, current_type):
+                new_type, _ = self.chk.conditional_types_with_intersection(
+                    current_type, [get_type_range(new_type)], o, default=current_type
+                )
+            else:
+                new_type = current_type
         return PatternType(new_type, rest_type, captures)
 
     def get_sequence_type(self, t: Type) -> Type | None:
