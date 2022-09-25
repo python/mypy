@@ -60,6 +60,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
+    is_fixed_width_rtype,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -353,7 +354,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             always_defined = cl.is_always_defined(op.attr)
             merged_branch = None
             if not always_defined:
-                self.emitter.emit_undefined_attr_check(attr_rtype, dest, "==", unlikely=True)
+                self.emitter.emit_undefined_attr_check(
+                    attr_rtype, dest, "==", obj, op.attr, cl, unlikely=True
+                )
                 branch = self.next_branch()
                 if branch is not None:
                     if (
@@ -433,10 +436,17 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 # previously undefined), so decref the old value.
                 always_defined = cl.is_always_defined(op.attr)
                 if not always_defined:
-                    self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, "!=")
+                    self.emitter.emit_undefined_attr_check(
+                        attr_rtype, attr_expr, "!=", obj, op.attr, cl
+                    )
                 self.emitter.emit_dec_ref(attr_expr, attr_rtype)
                 if not always_defined:
                     self.emitter.emit_line("}")
+            elif is_fixed_width_rtype(attr_rtype) and not cl.is_always_defined(op.attr):
+                # If there is overlap with the error value, update bitmap to mark
+                # attribute as defined.
+                self.emitter.emit_attr_bitmap_set(src, obj, attr_rtype, cl, op.attr)
+
             # This steals the reference to src, so we don't need to increment the arg
             self.emitter.emit_line(f"{attr_expr} = {src};")
             if op.error_kind == ERR_FALSE:

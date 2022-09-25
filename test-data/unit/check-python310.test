@@ -1628,3 +1628,70 @@ match var:
     case ("yes", b):
         reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testMatchNamedAndKeywordsAreTheSame]
+from typing import Generic, TypeVar, Union
+from typing_extensions import Final
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+class Regular:
+    x: str
+    y: int
+    __match_args__ = ("x",)
+class ReveresedOrder:
+    x: int
+    y: str
+    __match_args__ = ("y",)
+class GenericRegular(Generic[T]):
+    x: T
+    __match_args__ = ("x",)
+class GenericWithFinal(Generic[T]):
+    x: T
+    __match_args__: Final = ("x",)
+class RegularSubtype(GenericRegular[str]): ...
+
+@dataclass
+class GenericDataclass(Generic[T]):
+    x: T
+
+input_arg: Union[
+    Regular,
+    ReveresedOrder,
+    GenericRegular[str],
+    GenericWithFinal[str],
+    RegularSubtype,
+    GenericDataclass[str],
+]
+
+# Positional:
+match input_arg:
+    case Regular(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case ReveresedOrder(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericWithFinal(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case RegularSubtype(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericRegular(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericDataclass(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+# Keywords:
+match input_arg:
+    case Regular(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case ReveresedOrder(x=b):  # Order is different
+        reveal_type(b)  # N: Revealed type is "builtins.int"
+    case GenericWithFinal(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case RegularSubtype(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericRegular(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericDataclass(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dataclasses.pyi]

@@ -608,14 +608,18 @@ class SemanticAnalyzer(
                 if not sym:
                     continue
                 node = sym.node
-                assert isinstance(node, TypeInfo)
+                if not isinstance(node, TypeInfo):
+                    self.defer(node)
+                    return
                 typ = Instance(node, [self.str_type()])
             elif name == "__annotations__":
                 sym = self.lookup_qualified("__builtins__.dict", Context(), suppress_errors=True)
                 if not sym:
                     continue
                 node = sym.node
-                assert isinstance(node, TypeInfo)
+                if not isinstance(node, TypeInfo):
+                    self.defer(node)
+                    return
                 typ = Instance(node, [self.str_type(), AnyType(TypeOfAny.special_form)])
             else:
                 assert t is not None, f"type should be specified for {name}"
@@ -739,7 +743,9 @@ class SemanticAnalyzer(
         self.cur_mod_id = file_node.fullname
         with scope.module_scope(self.cur_mod_id):
             self._is_stub_file = file_node.path.lower().endswith(".pyi")
-            self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
+            self._is_typeshed_stub_file = is_typeshed_file(
+                options.abs_custom_typeshed_dir, file_node.path
+            )
             self.globals = file_node.names
             self.tvar_scope = TypeVarLikeScope()
 
@@ -1151,7 +1157,7 @@ class SemanticAnalyzer(
                     )
                 else:
                     self.fail(
-                        "The implementation for an overloaded function " "must come last",
+                        "The implementation for an overloaded function must come last",
                         defn.items[idx],
                     )
         else:
@@ -1430,7 +1436,7 @@ class SemanticAnalyzer(
         defn.base_type_exprs.extend(defn.removed_base_type_exprs)
         defn.removed_base_type_exprs.clear()
 
-        self.update_metaclass(defn)
+        self.infer_metaclass_and_bases_from_compat_helpers(defn)
 
         bases = defn.base_type_exprs
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(
@@ -1446,17 +1452,22 @@ class SemanticAnalyzer(
                 self.defer()
 
         self.analyze_class_keywords(defn)
-        result = self.analyze_base_classes(bases)
-
-        if result is None or self.found_incomplete_ref(tag):
+        bases_result = self.analyze_base_classes(bases)
+        if bases_result is None or self.found_incomplete_ref(tag):
             # Something was incomplete. Defer current target.
             self.mark_incomplete(defn.name, defn)
             return
 
-        base_types, base_error = result
+        base_types, base_error = bases_result
         if any(isinstance(base, PlaceholderType) for base, _ in base_types):
             # We need to know the TypeInfo of each base to construct the MRO. Placeholder types
             # are okay in nested positions, since they can't affect the MRO.
+            self.mark_incomplete(defn.name, defn)
+            return
+
+        declared_metaclass, should_defer = self.get_declared_metaclass(defn.name, defn.metaclass)
+        if should_defer or self.found_incomplete_ref(tag):
+            # Metaclass was not ready. Defer current target.
             self.mark_incomplete(defn.name, defn)
             return
 
@@ -1478,7 +1489,7 @@ class SemanticAnalyzer(
         with self.scope.class_scope(defn.info):
             self.configure_base_classes(defn, base_types)
             defn.info.is_protocol = is_protocol
-            self.analyze_metaclass(defn)
+            self.recalculate_metaclass(defn, declared_metaclass)
             defn.info.runtime_protocol = False
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
@@ -1525,8 +1536,8 @@ class SemanticAnalyzer(
             for decorator in defn.decorators:
                 decorator.accept(self)
                 if isinstance(decorator, RefExpr):
-                    if decorator.fullname in FINAL_DECORATOR_NAMES:
-                        self.fail("@final cannot be used with TypedDict", decorator)
+                    if decorator.fullname in FINAL_DECORATOR_NAMES and info is not None:
+                        info.is_final = True
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
@@ -1729,10 +1740,16 @@ class SemanticAnalyzer(
         ):
             is_proto = sym.node.fullname != "typing.Generic"
             tvars: TypeVarLikeList = []
+            have_type_var_tuple = False
             for arg in unbound.args:
                 tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
+                    if isinstance(tvar[1], TypeVarTupleExpr):
+                        if have_type_var_tuple:
+                            self.fail("Can only use one type var tuple in a class def", base)
+                            continue
+                        have_type_var_tuple = True
                     tvars.append(tvar)
                 elif not self.found_incomplete_ref(tag):
                     self.fail("Free type variable expected in %s[...]" % sym.node.name, base)
@@ -1751,11 +1768,19 @@ class SemanticAnalyzer(
                 # It's bound by our type variable scope
                 return None
             return unbound.name, sym.node
-        if sym and isinstance(sym.node, TypeVarTupleExpr):
-            if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
-                # It's bound by our type variable scope
+        if sym and sym.fullname == "typing_extensions.Unpack":
+            inner_t = unbound.args[0]
+            if not isinstance(inner_t, UnboundType):
                 return None
-            return unbound.name, sym.node
+            inner_unbound = inner_t
+            inner_sym = self.lookup_qualified(inner_unbound.name, inner_unbound)
+            if inner_sym and isinstance(inner_sym.node, PlaceholderNode):
+                self.record_incomplete_ref()
+            if inner_sym and isinstance(inner_sym.node, TypeVarTupleExpr):
+                if inner_sym.fullname and not self.tvar_scope.allow_binding(inner_sym.fullname):
+                    # It's bound by our type variable scope
+                    return None
+                return inner_unbound.name, inner_sym.node
         if sym is None or not isinstance(sym.node, TypeVarExpr):
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
@@ -2024,7 +2049,7 @@ class SemanticAnalyzer(
             if hook:
                 hook(ClassDefContext(defn, FakeExpression(), self))
 
-    def update_metaclass(self, defn: ClassDef) -> None:
+    def infer_metaclass_and_bases_from_compat_helpers(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
 
         * six.with_metaclass(M, B1, B2, ...)
@@ -2102,30 +2127,38 @@ class SemanticAnalyzer(
                     visited.add(base.type)
         return False
 
-    def analyze_metaclass(self, defn: ClassDef) -> None:
-        if defn.metaclass:
+    def get_declared_metaclass(
+        self, name: str, metaclass_expr: Expression | None
+    ) -> tuple[Instance | None, bool]:
+        """Returns either metaclass instance or boolean whether we should defer."""
+        declared_metaclass = None
+        if metaclass_expr:
             metaclass_name = None
-            if isinstance(defn.metaclass, NameExpr):
-                metaclass_name = defn.metaclass.name
-            elif isinstance(defn.metaclass, MemberExpr):
-                metaclass_name = get_member_expr_fullname(defn.metaclass)
+            if isinstance(metaclass_expr, NameExpr):
+                metaclass_name = metaclass_expr.name
+            elif isinstance(metaclass_expr, MemberExpr):
+                metaclass_name = get_member_expr_fullname(metaclass_expr)
             if metaclass_name is None:
-                self.fail(f'Dynamic metaclass not supported for "{defn.name}"', defn.metaclass)
-                return
-            sym = self.lookup_qualified(metaclass_name, defn.metaclass)
+                self.fail(f'Dynamic metaclass not supported for "{name}"', metaclass_expr)
+                return None, False
+            sym = self.lookup_qualified(metaclass_name, metaclass_expr)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
-                return
+                return None, False
             if isinstance(sym.node, Var) and isinstance(get_proper_type(sym.node.type), AnyType):
-                # 'Any' metaclass -- just ignore it.
-                #
-                # TODO: A better approach would be to record this information
-                #       and assume that the type object supports arbitrary
-                #       attributes, similar to an 'Any' base class.
-                return
+                # Create a fake TypeInfo that fallbacks to `Any`, basically allowing
+                # all the attributes. Same thing as we do for `Any` base class.
+                any_info = self.make_empty_type_info(ClassDef(sym.node.name, Block([])))
+                any_info.fallback_to_any = True
+                any_info._fullname = sym.node.fullname
+                if self.options.disallow_subclassing_any:
+                    self.fail(
+                        f'Class cannot use "{any_info.fullname}" as a metaclass (has type "Any")',
+                        metaclass_expr,
+                    )
+                return Instance(any_info, []), False
             if isinstance(sym.node, PlaceholderNode):
-                self.defer(defn)
-                return
+                return None, True  # defer later in the caller
 
             # Support type aliases, like `_Meta: TypeAlias = type`
             if (
@@ -2139,16 +2172,20 @@ class SemanticAnalyzer(
                 metaclass_info = sym.node
 
             if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
-                self.fail(f'Invalid metaclass "{metaclass_name}"', defn.metaclass)
-                return
+                self.fail(f'Invalid metaclass "{metaclass_name}"', metaclass_expr)
+                return None, False
             if not metaclass_info.is_metaclass():
                 self.fail(
-                    'Metaclasses not inheriting from "type" are not supported', defn.metaclass
+                    'Metaclasses not inheriting from "type" are not supported', metaclass_expr
                 )
-                return
+                return None, False
             inst = fill_typevars(metaclass_info)
             assert isinstance(inst, Instance)
-            defn.info.declared_metaclass = inst
+            declared_metaclass = inst
+        return declared_metaclass, False
+
+    def recalculate_metaclass(self, defn: ClassDef, declared_metaclass: Instance | None) -> None:
+        defn.info.declared_metaclass = declared_metaclass
         defn.info.metaclass_type = defn.info.calculate_metaclass_type()
         if any(info.is_protocol for info in defn.info.mro):
             if (
@@ -2160,16 +2197,10 @@ class SemanticAnalyzer(
                 abc_meta = self.named_type_or_none("abc.ABCMeta", [])
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
                     defn.info.metaclass_type = abc_meta
-        if defn.info.metaclass_type is None:
-            # Inconsistency may happen due to multiple baseclasses even in classes that
-            # do not declare explicit metaclass, but it's harder to catch at this stage
-            if defn.metaclass is not None:
-                self.fail(f'Inconsistent metaclass structure for "{defn.name}"', defn)
-        else:
-            if defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
-                defn.info.is_enum = True
-                if defn.type_vars:
-                    self.fail("Enum class cannot be generic", defn)
+        if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
+            defn.info.is_enum = True
+            if defn.type_vars:
+                self.fail("Enum class cannot be generic", defn)
 
     #
     # Imports
@@ -3385,7 +3416,7 @@ class SemanticAnalyzer(
         elif isinstance(lval, MemberExpr):
             self.analyze_member_lvalue(lval, explicit_type, is_final)
             if explicit_type and not self.is_self_member_ref(lval):
-                self.fail("Type cannot be declared in assignment to non-self " "attribute", lval)
+                self.fail("Type cannot be declared in assignment to non-self attribute", lval)
         elif isinstance(lval, IndexExpr):
             if explicit_type:
                 self.fail("Unexpected type declaration", lval)
@@ -5956,7 +5987,7 @@ class SemanticAnalyzer(
         current_index = len(self.function_stack) - 1
         while current_index >= 0:
             current_func = self.function_stack[current_index]
-            if isinstance(current_func, FuncItem) and not isinstance(current_func, LambdaExpr):
+            if not isinstance(current_func, LambdaExpr):
                 return not current_func.is_dynamic()
 
             # Special case, `lambda` inherits the "checked" state from its parent.

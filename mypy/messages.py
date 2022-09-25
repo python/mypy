@@ -587,20 +587,18 @@ class MessageBuilder:
                     )
                     return codes.INDEX
                 else:
-                    msg = "{} (expression has type {}, target has type {})"
                     arg_type_str, callee_type_str = format_type_distinctly(
                         arg_type, callee.arg_types[n - 1]
                     )
-                    self.fail(
-                        msg.format(
-                            message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                            arg_type_str,
-                            callee_type_str,
-                        ),
-                        context,
-                        code=codes.ASSIGNMENT,
+                    info = (
+                        f" (expression has type {arg_type_str}, "
+                        f"target has type {callee_type_str})"
                     )
-                    return codes.ASSIGNMENT
+                    error_msg = (
+                        message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT.with_additional_msg(info)
+                    )
+                    self.fail(error_msg.value, context, code=error_msg.code)
+                    return error_msg.code
 
             target = f"to {name} "
 
@@ -1221,6 +1219,9 @@ class MessageBuilder:
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail(f'"{member}" undefined in superclass', context)
 
+    def variable_may_be_undefined(self, name: str, context: Context) -> None:
+        self.fail(f'Name "{name}" may be undefined', context, code=codes.PARTIALLY_DEFINED)
+
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
         actual = get_proper_type(actual)
         if isinstance(actual, (Instance, SelfType)):
@@ -1307,7 +1308,7 @@ class MessageBuilder:
         )
 
     def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
-        self.fail("All conditional function variants must have identical " "signatures", defn)
+        self.fail("All conditional function variants must have identical signatures", defn)
 
     def cannot_instantiate_abstract_class(
         self, class_name: str, abstract_attributes: dict[str, bool], context: Context
@@ -1531,23 +1532,30 @@ class MessageBuilder:
     ) -> None:
         hint = ""
         has_variable_annotations = not python_version or python_version >= (3, 6)
+        pep604_supported = not python_version or python_version >= (3, 10)
+        # type to recommend the user adds
+        recommended_type = None
         # Only gives hint if it's a variable declaration and the partial type is a builtin type
-        if (
-            python_version
-            and isinstance(node, Var)
-            and isinstance(node.type, PartialType)
-            and node.type.type
-            and node.type.type.fullname in reverse_builtin_aliases
-        ):
-            alias = reverse_builtin_aliases[node.type.type.fullname]
-            alias = alias.split(".")[-1]
+        if python_version and isinstance(node, Var) and isinstance(node.type, PartialType):
             type_dec = "<type>"
-            if alias == "Dict":
-                type_dec = f"{type_dec}, {type_dec}"
+            if not node.type.type:
+                # partial None
+                if pep604_supported:
+                    recommended_type = f"{type_dec} | None"
+                else:
+                    recommended_type = f"Optional[{type_dec}]"
+            elif node.type.type.fullname in reverse_builtin_aliases:
+                # partial types other than partial None
+                alias = reverse_builtin_aliases[node.type.type.fullname]
+                alias = alias.split(".")[-1]
+                if alias == "Dict":
+                    type_dec = f"{type_dec}, {type_dec}"
+                recommended_type = f"{alias}[{type_dec}]"
+        if recommended_type is not None:
             if has_variable_annotations:
-                hint = f' (hint: "{node.name}: {alias}[{type_dec}] = ...")'
+                hint = f' (hint: "{node.name}: {recommended_type} = ...")'
             else:
-                hint = f' (hint: "{node.name} = ...  # type: {alias}[{type_dec}]")'
+                hint = f' (hint: "{node.name} = ...  # type: {recommended_type}")'
 
         if has_variable_annotations:
             needed = "annotation"
@@ -2493,11 +2501,7 @@ def pretty_callable(tp: CallableType, skip_self: bool = False) -> str:
             slash = True
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
-    if (
-        isinstance(tp.definition, FuncDef)
-        and tp.definition.name is not None
-        and hasattr(tp.definition, "arguments")
-    ):
+    if isinstance(tp.definition, FuncDef) and hasattr(tp.definition, "arguments"):
         definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
         if (
             len(definition_arg_names) > len(tp.arg_names)
@@ -2693,7 +2697,7 @@ def find_defining_module(modules: dict[str, MypyFile], typ: CallableType) -> Myp
     if not typ.definition:
         return None
     fullname = typ.definition.fullname
-    if fullname is not None and "." in fullname:
+    if "." in fullname:
         for i in range(fullname.count(".")):
             module_name = fullname.rsplit(".", i + 1)[0]
             try:

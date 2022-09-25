@@ -1397,3 +1397,20 @@ a or a  # E: Right operand of "or" is never evaluated
 1 and a and 1  # E: Right operand of "and" is never evaluated
 a and a  # E: Right operand of "and" is never evaluated
 [builtins fixtures/exception.pyi]
+
+[case testUnreachableFlagWithTerminalBranchInDeferredNode]
+# flags: --warn-unreachable
+from typing import NoReturn
+
+def assert_never(x: NoReturn) -> NoReturn: ...
+
+def force_forward_ref() -> int:
+    return 4
+
+def f(value: None) -> None:
+    x
+    if value is not None:
+        assert_never(value)
+
+x = force_forward_ref()
+[builtins fixtures/exception.pyi]

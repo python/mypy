@@ -3,7 +3,7 @@ from typing import Any, Tuple
 
 MYPY = False
 if MYPY:
-    from mypy_extensions import i32
+    from mypy_extensions import i32, i64
 
 from testutil import assertRaises
 
@@ -251,6 +251,60 @@ def test_coerce_to_and_from_int() -> None:
                     x: i32 = n
                     m: int = x
                     assert m == n
+
+def test_explicit_conversion_to_i32() -> None:
+    x = i32(5)
+    assert x == 5
+    y = int() - 113
+    x = i32(y)
+    assert x == -113
+    n64: i64 = 1733
+    x = i32(n64)
+    assert x == 1733
+    n32 = -1733
+    x = i32(n32)
+    assert x == -1733
+    z = i32(x)
+    assert z == -1733
+
+def test_explicit_conversion_overflow() -> None:
+    max_i32 = int() + 2**31 - 1
+    x = i32(max_i32)
+    assert x == 2**31 - 1
+    assert int(x) == max_i32
+
+    min_i32 = int() - 2**31
+    y = i32(min_i32)
+    assert y == -2**31
+    assert int(y) == min_i32
+
+    too_big = int() + 2**31
+    with assertRaises(OverflowError):
+        x = i32(too_big)
+
+    too_small = int() - 2**31 - 1
+    with assertRaises(OverflowError):
+        x = i32(too_small)
+
+def test_i32_from_large_small_literal() -> None:
+    x = i32(2**31 - 1)
+    assert x == 2**31 - 1
+    x = i32(-2**31)
+    assert x == -2**31
+
+def test_i32_truncate_from_i64() -> None:
+    large = i64(2**32 + 157 + int())
+    x = i32(large)
+    assert x == 157
+    small = i64(-2**32 - 157 + int())
+    x = i32(small)
+    assert x == -157
+    large2 = i64(2**31 + int())
+    x = i32(large2)
+    assert x == -2**31
+    small2 = i64(-2**31 - 1 - int())
+    x = i32(small2)
+    assert x == 2**31 - 1
 
 def test_tuple_i32() -> None:
     a: i32 = 1

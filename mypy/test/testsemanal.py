@@ -220,7 +220,7 @@ class TypeInfoMap(Dict[str, TypeInfo]):
     def __str__(self) -> str:
         a: list[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):
-            if isinstance(x, str) and (
+            if (
                 not x.startswith("builtins.")
                 and not x.startswith("typing.")
                 and not x.startswith("abc.")

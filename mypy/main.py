@@ -657,7 +657,7 @@ def process_options(
         "--disallow-any-generics",
         default=False,
         strict_flag=True,
-        help="Disallow usage of generic types that do not specify explicit type " "parameters",
+        help="Disallow usage of generic types that do not specify explicit type parameters",
         group=disallow_any_group,
     )
     add_invertible_flag(
@@ -1263,6 +1263,10 @@ def process_options(
 
     # Enabling an error code always overrides disabling
     options.disabled_error_codes -= options.enabled_error_codes
+
+    # Compute absolute path for custom typeshed (if present).
+    if options.custom_typeshed_dir is not None:
+        options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
 
     # Set build flags.
     if special_opts.find_occurrences:

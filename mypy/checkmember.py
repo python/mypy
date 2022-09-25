@@ -30,7 +30,6 @@ from mypy.nodes import (
     is_final_node,
 )
 from mypy.plugin import AttributeContext
-from mypy.typeanal import set_any_tvars
 from mypy.typeops import (
     bind_self,
     class_callable,
@@ -311,7 +310,7 @@ def analyze_instance_member_access(
             # the first argument.
             pass
         else:
-            if isinstance(signature, FunctionLike) and name != "__call__":
+            if name != "__call__":
                 # TODO: use proper treatment of special methods on unions instead
                 #       of this hack here and below (i.e. mx.self_type).
                 dispatched_type = meet.meet_types(mx.original_type, typ)
@@ -459,14 +458,16 @@ def analyze_member_var_access(
         v = Var(name, type=type_object_type(vv, mx.named_type))
         v.info = info
 
-    if isinstance(vv, TypeAlias) and isinstance(get_proper_type(vv.target), Instance):
+    if isinstance(vv, TypeAlias):
         # Similar to the above TypeInfo case, we allow using
         # qualified type aliases in runtime context if it refers to an
         # instance type. For example:
         #     class C:
         #         A = List[int]
         #     x = C.A() <- this is OK
-        typ = instance_alias_type(vv, mx.named_type)
+        typ = mx.chk.expr_checker.alias_type_in_runtime_context(
+            vv, ctx=mx.context, alias_definition=mx.is_lvalue
+        )
         v = Var(name, type=typ)
         v.info = info
 
@@ -660,21 +661,6 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     return inferred_dunder_get_type.ret_type
 
 
-def instance_alias_type(alias: TypeAlias, named_type: Callable[[str], Instance]) -> Type:
-    """Type of a type alias node targeting an instance, when appears in runtime context.
-
-    As usual, we first erase any unbound type variables to Any.
-    """
-    target: Type = get_proper_type(alias.target)
-    assert isinstance(
-        get_proper_type(target), Instance
-    ), "Must be called only with aliases to classes"
-    target = get_proper_type(set_any_tvars(alias, alias.line, alias.column))
-    assert isinstance(target, Instance)
-    tp = type_object_type(target.type, named_type)
-    return expand_type_by_instance(tp, target)
-
-
 def is_instance_var(var: Var, info: TypeInfo) -> bool:
     """Return if var is an instance variable according to PEP 526."""
     return (
@@ -748,7 +734,7 @@ def analyze_var(
                     signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
                 )
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
-                expanded_signature = get_proper_type(expand_type_by_instance(signature, itype))
+                expanded_signature = expand_type_by_instance(signature, itype)
                 freeze_type_vars(expanded_signature)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
@@ -988,10 +974,10 @@ def analyze_class_attribute_access(
         # Reference to a module object.
         return mx.named_type("types.ModuleType")
 
-    if isinstance(node.node, TypeAlias) and isinstance(
-        get_proper_type(node.node.target), Instance
-    ):
-        return instance_alias_type(node.node, mx.named_type)
+    if isinstance(node.node, TypeAlias):
+        return mx.chk.expr_checker.alias_type_in_runtime_context(
+            node.node, ctx=mx.context, alias_definition=mx.is_lvalue
+        )
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
@@ -1133,7 +1119,7 @@ def add_class_tvars(
             ]
         )
     if isuper is not None:
-        t = cast(ProperType, expand_type_by_instance(t, isuper))
+        t = expand_type_by_instance(t, isuper)
     return t
 
 

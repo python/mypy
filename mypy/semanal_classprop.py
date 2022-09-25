@@ -95,7 +95,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     # implement some methods.
     typ.abstract_attributes = sorted(abstract)
     if is_stub_file:
-        if typ.declared_metaclass and typ.declared_metaclass.type.fullname == "abc.ABCMeta":
+        if typ.declared_metaclass and typ.declared_metaclass.type.has_base("abc.ABCMeta"):
             return
         if typ.is_protocol:
             return

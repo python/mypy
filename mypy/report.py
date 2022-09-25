@@ -372,7 +372,7 @@ class LineCoverageVisitor(TraverserVisitor):
             if cur_indent is None:
                 # Consume the line, but don't mark it as belonging to the function yet.
                 cur_line += 1
-            elif start_indent is not None and cur_indent > start_indent:
+            elif cur_indent > start_indent:
                 # A non-blank line that belongs to the function.
                 cur_line += 1
                 end_line = cur_line
