@@ -572,15 +572,17 @@ bodies are just empty. Calling such methods in subclasses via ``super()``
 will cause runtime errors, so mypy prevents you from doing so:
 
 .. code-block:: python
-    from abc import abstractmethod
-    class Base:
-        @abstractmethod
-        def foo(self) -> int: ...
-    class Sub(Base):
-        def foo(self) -> int:
-            return super().foo() + 1  # error: Call to abstract method "foo" of "Base" with
-                                      # trivial body via super() is unsafe  [safe-super]
-    Sub().foo()  # This will crash at runtime.
+
+   from abc import abstractmethod
+   class Base:
+       @abstractmethod
+       def foo(self) -> int: ...
+   class Sub(Base):
+       def foo(self) -> int:
+           return super().foo() + 1  # error: Call to abstract method "foo" of "Base" with
+                                     # trivial body via super() is unsafe  [safe-super]
+   Sub().foo()  # This will crash at runtime.
+
 Mypy considers the following as trivial bodies: a ``pass`` statement, a literal
 ellipsis ``...``, a docstring, and a ``raise NotImplementedError`` statement.
 
