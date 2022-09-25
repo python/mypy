@@ -1,7 +1,7 @@
 import sys
 from _typeshed import SupportsItems
 from collections.abc import Iterable
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, overload
 
 __all__ = ["TopologicalSorter", "CycleError"]
 
@@ -11,7 +11,10 @@ if sys.version_info >= (3, 11):
     from types import GenericAlias
 
 class TopologicalSorter(Generic[_T]):
-    def __init__(self, graph: SupportsItems[_T, Iterable[_T]] | None = ...) -> None: ...
+    @overload
+    def __init__(self, graph: None = ...) -> None: ...
+    @overload
+    def __init__(self, graph: SupportsItems[_T, Iterable[_T]]) -> None: ...
     def add(self, node: _T, *predecessors: _T) -> None: ...
     def prepare(self) -> None: ...
     def is_active(self) -> bool: ...

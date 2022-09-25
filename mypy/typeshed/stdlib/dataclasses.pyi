@@ -12,37 +12,23 @@ if sys.version_info >= (3, 9):
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 
+__all__ = [
+    "dataclass",
+    "field",
+    "Field",
+    "FrozenInstanceError",
+    "InitVar",
+    "MISSING",
+    "fields",
+    "asdict",
+    "astuple",
+    "make_dataclass",
+    "replace",
+    "is_dataclass",
+]
+
 if sys.version_info >= (3, 10):
-    __all__ = [
-        "dataclass",
-        "field",
-        "Field",
-        "FrozenInstanceError",
-        "InitVar",
-        "KW_ONLY",
-        "MISSING",
-        "fields",
-        "asdict",
-        "astuple",
-        "make_dataclass",
-        "replace",
-        "is_dataclass",
-    ]
-else:
-    __all__ = [
-        "dataclass",
-        "field",
-        "Field",
-        "FrozenInstanceError",
-        "InitVar",
-        "MISSING",
-        "fields",
-        "asdict",
-        "astuple",
-        "make_dataclass",
-        "replace",
-        "is_dataclass",
-    ]
+    __all__ += ["KW_ONLY"]
 
 # define _MISSING_TYPE as an enum within the type stubs,
 # even though that is not really its type at runtime
@@ -240,7 +226,26 @@ class InitVar(Generic[_T]):
         @overload
         def __class_getitem__(cls, type: Any) -> InitVar[Any]: ...
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 11):
+    def make_dataclass(
+        cls_name: str,
+        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        *,
+        bases: tuple[type, ...] = ...,
+        namespace: dict[str, Any] | None = ...,
+        init: bool = ...,
+        repr: bool = ...,
+        eq: bool = ...,
+        order: bool = ...,
+        unsafe_hash: bool = ...,
+        frozen: bool = ...,
+        match_args: bool = ...,
+        kw_only: bool = ...,
+        slots: bool = ...,
+        weakref_slot: bool = ...,
+    ) -> type: ...
+
+elif sys.version_info >= (3, 10):
     def make_dataclass(
         cls_name: str,
         fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],

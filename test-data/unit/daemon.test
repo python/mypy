@@ -72,7 +72,7 @@ Restarting: configuration changed
 Daemon stopped
 Daemon started
 foo.py:1: error: Function is missing a return type annotation
-    def f(): pass
+    def f():
     ^
 foo.py:1: note: Use "-> None" if function does not return a value
 Found 1 error in 1 file (checked 1 source file)
@@ -83,7 +83,8 @@ Success: no issues found in 1 source file
 $ dmypy stop
 Daemon stopped
 [file foo.py]
-def f(): pass
+def f():
+     pass
 
 [case testDaemonRunRestartPluginVersion]
 $ dmypy run -- foo.py --no-error-summary
@@ -295,3 +296,215 @@ from foo import foo
 def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
+
+[case testDaemonGetType_python38]
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy inspect foo:1:2:3:4
+Command "inspect" is only valid after a "check" command (that produces no parse errors)
+== Return code: 2
+$ dmypy check foo.py --export-types
+foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+== Return code: 1
+$ dmypy inspect foo:1
+Format should be file:line:column[:end_line:end_column]
+== Return code: 2
+$ dmypy inspect foo.py:1:2:a:b
+invalid literal for int() with base 10: 'a'
+== Return code: 2
+$ dmypy inspect foo.pyc:1:1:2:2
+Source file is not a Python file
+== Return code: 2
+$ dmypy inspect bar/baz.py:1:1:2:2
+Unknown module: baz
+== Return code: 1
+$ dmypy inspect foo.py:3:1:1:1
+"end_line" must not be before "line"
+== Return code: 2
+$ dmypy inspect foo.py:3:3:3:1
+"end_column" must be after "column"
+== Return code: 2
+$ dmypy inspect foo.py:3:10:3:17
+"str"
+$ dmypy inspect foo.py:3:10:3:17 -vv
+"builtins.str"
+$ dmypy inspect foo.py:9:9:9:11
+"int"
+$ dmypy inspect foo.py:11:1:11:3
+"Callable[[Optional[int]], None]"
+$ dmypy inspect foo.py:11:1:13:1
+"None"
+$ dmypy inspect foo.py:1:2:3:4
+Can't find expression at span 1:2:3:4
+== Return code: 1
+$ dmypy inspect foo.py:17:5:17:5
+No known type available for "NameExpr" (maybe unreachable or try --force-reload)
+== Return code: 1
+
+[file foo.py]
+from typing import Optional
+
+x: int = "no way"  # line 3
+
+def foo(arg: Optional[int] = None) -> None:
+    if arg is None:
+        arg
+    else:
+        arg  # line 9
+
+foo(
+    # multiline
+)
+
+def unreachable(x: int) -> None:
+    return
+    x  # line 17
+
+[case testDaemonGetTypeInexact_python38]
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy check foo.py --export-types
+$ dmypy inspect foo.py:1:a
+invalid literal for int() with base 10: 'a'
+== Return code: 2
+$ dmypy inspect foo.pyc:1:2
+Source file is not a Python file
+== Return code: 2
+$ dmypy inspect bar/baz.py:1:2
+Unknown module: baz
+== Return code: 1
+$ dmypy inspect foo.py:7:5 --include-span
+7:5:7:5 -> "int"
+7:5:7:11 -> "int"
+7:1:7:12 -> "None"
+$ dmypy inspect foo.py:7:5 --include-kind
+NameExpr -> "int"
+OpExpr -> "int"
+CallExpr -> "None"
+$ dmypy inspect foo.py:7:5 --include-span --include-kind
+NameExpr:7:5:7:5 -> "int"
+OpExpr:7:5:7:11 -> "int"
+CallExpr:7:1:7:12 -> "None"
+$ dmypy inspect foo.py:7:5 -vv
+"builtins.int"
+"builtins.int"
+"None"
+$ dmypy inspect foo.py:7:5 -vv --limit=1
+"builtins.int"
+$ dmypy inspect foo.py:7:3
+"Callable[[int], None]"
+"None"
+$ dmypy inspect foo.py:1:2
+Can't find any expressions at position 1:2
+== Return code: 1
+$ dmypy inspect foo.py:11:5 --force-reload
+No known type available for "NameExpr" (maybe unreachable)
+No known type available for "OpExpr" (maybe unreachable)
+== Return code: 1
+
+[file foo.py]
+from typing import Optional
+
+def foo(x: int) -> None: ...
+
+a: int
+b: int
+foo(a and b)  # line 7
+
+def unreachable(x: int, y: int) -> None:
+    return
+    x and y  # line 11
+
+[case testDaemonGetAttrs_python38]
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy check foo.py bar.py --export-types
+$ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind -vv
+NameExpr:9:1:9:1 -> {"foo.C": ["a", "x", "y"], "foo.B": ["a", "b"]}
+$ dmypy inspect foo.py:11:10 --show attrs
+No known type available for "StrExpr" (maybe unreachable or try --force-reload)
+== Return code: 1
+$ dmypy inspect foo.py:1:1 --show attrs
+Can't find any expressions at position 1:1
+== Return code: 1
+$ dmypy inspect --show attrs bar.py:10:1
+{"A": ["z"], "B": ["z"]}
+$ dmypy inspect --show attrs bar.py:10:1 --union-attrs
+{"A": ["x", "z"], "B": ["y", "z"]}
+
+[file foo.py]
+class B:
+    def b(self) -> int: ...
+    a: int
+class C(B):
+    a: int
+    y: int
+    def x(self) -> int: ...
+
+v: C  # line 9
+if False:
+    "unreachable"
+
+[file bar.py]
+from typing import Union
+
+class A:
+    x: int
+    z: int
+class B:
+    y: int
+    z: int
+var: Union[A, B]
+var  # line 10
+
+[case testDaemonGetDefinition_python38]
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy check foo.py bar/baz.py bar/__init__.py --export-types
+$ dmypy inspect foo.py:5:1 --show definition
+foo.py:4:1:y
+$ dmypy inspect foo.py:2:3 --show definition --include-span --include-kind -vv
+MemberExpr:2:1:2:7 -> bar/baz.py:3:5:Alias
+$ dmypy inspect foo.py:3:1 --show definition
+Cannot find definition for "NameExpr" at 3:1:3:1
+== Return code: 1
+$ dmypy inspect foo.py:4:6 --show definition
+No name or member expressions at 4:6
+== Return code: 1
+$ dmypy inspect foo.py:7:1:7:6 --show definition
+bar/baz.py:4:5:attr
+$ dmypy inspect foo.py:10:10 --show definition --include-span
+10:1:10:12 -> bar/baz.py:6:1:test
+$ dmypy inspect foo.py:14:6 --show definition --include-span --include-kind
+NameExpr:14:5:14:7 -> foo.py:13:1:arg
+MemberExpr:14:5:14:9 -> bar/baz.py:9:5:x, bar/baz.py:11:5:x
+
+[file foo.py]
+from bar.baz import A, B, C
+C.Alias
+x  # type: ignore
+y = 42
+y  # line 5
+z = C()
+z.attr
+
+import bar
+bar.baz.test()  # line 10
+
+from typing import Union
+def foo(arg: Union[A, B]) -> None:
+    arg.x
+
+[file bar/__init__.py]
+[file bar/baz.py]
+from typing import Union
+class C:
+    Alias = Union[int, str]
+    attr = 42
+
+def test() -> None: ...  # line 6
+
+class A:
+    x: int
+class B:
+    x: int

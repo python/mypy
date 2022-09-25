@@ -130,29 +130,28 @@ two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_myp
 two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
+-- Note that we use `----`, because this is how `--` is escaped while `--` is a comment starter.
 [case testFlagsFile]
 # cmd: mypy @flagsfile
 [file flagsfile]
--2
+----always-true=FLAG
 main.py
 [file main.py]
-def f():
-    try:
-        1/0
-    except ZeroDivisionError, err:
-        print err
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
 
 [case testConfigFile]
 # cmd: mypy main.py
 [file mypy.ini]
 \[mypy]
-python_version = 2.7
+always_true = FLAG
 [file main.py]
-def f():
-    try:
-        1/0
-    except ZeroDivisionError, err:
-        print err
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
 
 [case testErrorContextConfig]
 # cmd: mypy main.py
@@ -170,13 +169,12 @@ main.py:2: error: Unsupported operand types for + ("int" and "str")
 # cmd: mypy --config-file config.ini main.py
 [file config.ini]
 \[mypy]
-python_version = 2.7
+always_true = FLAG
 [file main.py]
-def f():
-    try:
-        1/0
-    except ZeroDivisionError, err:
-        print err
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
 
 [case testNoConfigFile]
 # cmd: mypy main.py --config-file=
@@ -335,11 +333,11 @@ file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int
 \[mypy-x]
 ignore_errors = True
 [file x.py]
-"" + 0
+x: str = 5
 [file y.py]
-"" + 0
+x: str = 5
 [out]
-y.py:1: error: Unsupported operand types for + ("str" and "int")
+y.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testConfigFollowImportsNormal]
 # cmd: mypy main.py
@@ -431,9 +429,9 @@ main.py:4: note: Revealed type is "Any"
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
 [file main.py]
-from a import x
+from a import x  # Error reported here
 reveal_type(x)  # Expect Any
-import a  # Error reported here
+import a
 reveal_type(a.x)  # Expect Any
 [file mypy.ini]
 \[mypy]
@@ -441,9 +439,9 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
+main.py:1: error: Import of "a" ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: note: Revealed type is "Any"
-main.py:3: error: Import of "a" ignored
-main.py:3: note: (Using --follow-imports=error, module not passed on command line)
 main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
@@ -602,16 +600,7 @@ pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4
 \[mypy]
 python_version = 1.0
 [out]
-mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
-== Return code: 0
-
-[case testPythonVersionTooOld26]
-# cmd: mypy -c pass
-[file mypy.ini]
-\[mypy]
-python_version = 2.6
-[out]
-mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
+mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 3)
 == Return code: 0
 
 [case testPythonVersionTooOld33]
@@ -623,30 +612,25 @@ python_version = 3.3
 mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
 == Return code: 0
 
-[case testPythonVersionTooNew28]
-# cmd: mypy -c pass
-[file mypy.ini]
-\[mypy]
-python_version = 2.8
-[out]
-mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
-== Return code: 0
-
 [case testPythonVersionTooNew40]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
 python_version = 4.0
 [out]
-mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
+mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 3)
 == Return code: 0
 
-[case testPythonVersionAccepted27]
+[case testPythonVersionTooDead27]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
 python_version = 2.7
 [out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<0.980 if you need to check Python 2 code.
+== Return code: 2
 
 [case testPythonVersionAccepted34]
 # cmd: mypy -c pass
@@ -840,19 +824,19 @@ src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", e
 x = 0  # type: str
 [file pkg/a1/b/f.py]
 from pkg.a1.b.c.d.e import x
-x + 1
+x()
 
 [file pkg/a2/__init__.py]
 [file pkg/a2/b/c/d/e.py]
 x = 0  # type: str
 [file pkg/a2/b/f.py]
 from pkg.a2.b.c.d.e import x
-x + 1
+x()
 [out]
 pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-pkg/a2/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
-pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a2/b/f.py:2: error: "str" not callable
+pkg/a1/b/f.py:2: error: "str" not callable
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py
@@ -1112,7 +1096,7 @@ mypy: can't read file 'missing.py': No such file or directory
 == Return code: 2
 
 [case testShowSourceCodeSnippetsWrappedFormatting]
-# cmd: mypy --pretty --python-version=3.6 some_file.py
+# cmd: mypy --pretty some_file.py
 [file some_file.py]
 from typing import Union
 
@@ -1138,7 +1122,19 @@ some_file.py:11: error: Argument 1 to "some_interesting_method" of
 "AnotherCustomClassDefinedBelow"
     ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
                                                                          ^
-
+[out version>=3.8]
+some_file.py:3: error: Unsupported operand types for + ("int" and "str")
+    42 + 'no way'
+         ^~~~~~~~
+some_file.py:11: error: Incompatible types in assignment (expression has type
+"AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
+    ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
+                                                        ^~~~~~~~~~~~~~~~~~~~~...
+some_file.py:11: error: Argument 1 to "some_interesting_method" of
+"OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
+"AnotherCustomClassDefinedBelow"
+    ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
+                                                                         ^~~
 [case testShowSourceCodeSnippetsBlockingError]
 # cmd: mypy --pretty --show-error-codes some_file.py
 [file some_file.py]
@@ -1154,10 +1150,24 @@ some_file.py:1: error: invalid syntax  [syntax]
 [file tabs.py]
 def test_tabs() -> str:
 	return None
+def test_between(x: str) -> None: ...
+test_between(1	+	1)
 [out]
 tabs.py:2: error: Incompatible return value type (got "None", expected "str")
             return None
                    ^
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
+    test_between(1  +       1)
+                 ^
+[out version>=3.8]
+tabs.py:2: error: Incompatible return value type (got "None", expected "str")
+            return None
+                   ^~~~
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
+    test_between(1  +       1)
+                 ^~~~~~~~~~~~
 
 [case testErrorMessageWhenOpenPydFile]
 # cmd: mypy a.pyd
@@ -1425,3 +1435,42 @@ b\.c \d+
 # cmd: mypy --enable-incomplete-features a.py
 [file a.py]
 pass
+
+[case testShadowTypingModuleEarlyLoad]
+# cmd: mypy dir
+[file dir/__init__.py]
+from typing import Union
+
+def foo(a: Union[int, str]) -> str:
+    return str
+[file typing.py]
+# Since this file will be picked by mypy itself, we need it to be a fully-working typing
+# A bare minimum would be NamedTuple and TypedDict, which are used in runtime,
+# everything else technically can be just mocked.
+import sys
+import os
+del sys.modules["typing"]
+path = sys.path
+try:
+    sys.path.remove(os.getcwd())
+except ValueError:
+    sys.path.remove("")  # python 3.6
+from typing import *
+sys.path = path
+[out]
+mypy: "typing.py" shadows library module "typing"
+note: A user-defined top-level module with name "typing" is not supported
+== Return code: 2
+
+[case testCustomTypeshedDirWithRelativePathDoesNotCrash]
+# cmd: mypy --custom-typeshed-dir dir dir/typing.pyi
+[file dir/stdlib/abc.pyi]
+[file dir/stdlib/builtins.pyi]
+[file dir/stdlib/sys.pyi]
+[file dir/stdlib/types.pyi]
+[file dir/stdlib/typing.pyi]
+[file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/VERSIONS]
+[out]
+Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
+== Return code: 2

@@ -1,10 +1,8 @@
-import sys
 import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from multiprocessing.context import BaseContext
 from types import TracebackType
-from typing import Any
 from typing_extensions import TypeAlias
 
 __all__ = ["Lock", "RLock", "Semaphore", "BoundedSemaphore", "Condition", "Event"]
@@ -13,7 +11,7 @@ _LockLike: TypeAlias = Lock | RLock
 
 class Barrier(threading.Barrier):
     def __init__(
-        self, parties: int, action: Callable[..., Any] | None = ..., timeout: float | None = ..., *ctx: BaseContext
+        self, parties: int, action: Callable[[], object] | None = ..., timeout: float | None = ..., *ctx: BaseContext
     ) -> None: ...
 
 class BoundedSemaphore(Semaphore):
@@ -21,11 +19,7 @@ class BoundedSemaphore(Semaphore):
 
 class Condition(AbstractContextManager[bool]):
     def __init__(self, lock: _LockLike | None = ..., *, ctx: BaseContext) -> None: ...
-    if sys.version_info >= (3, 7):
-        def notify(self, n: int = ...) -> None: ...
-    else:
-        def notify(self) -> None: ...
-
+    def notify(self, n: int = ...) -> None: ...
     def notify_all(self) -> None: ...
     def wait(self, timeout: float | None = ...) -> bool: ...
     def wait_for(self, predicate: Callable[[], bool], timeout: float | None = ...) -> bool: ...

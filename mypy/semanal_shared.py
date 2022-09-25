@@ -1,22 +1,42 @@
 """Shared definitions used by different parts of semantic analysis."""
 
-from abc import abstractmethod
+from __future__ import annotations
 
-from typing import Optional, List, Callable, Union
+from abc import abstractmethod
+from typing import Callable
 from typing_extensions import Final, Protocol
+
 from mypy_extensions import trait
 
+from mypy import join
+from mypy.errorcodes import ErrorCode
 from mypy.nodes import (
-    Context, SymbolTableNode, FuncDef, Node, TypeInfo, Expression,
-    SymbolNode, SymbolTable
-)
-from mypy.types import (
-    Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES, ProperType, get_proper_type,
-    ParamSpecType, ParamSpecFlavor, Parameters, TypeVarId
+    Context,
+    Expression,
+    FuncDef,
+    Node,
+    SymbolNode,
+    SymbolTable,
+    SymbolTableNode,
+    TypeInfo,
 )
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.errorcodes import ErrorCode
-from mypy import join
+from mypy.type_visitor import TypeQuery
+from mypy.types import (
+    TPDICT_FB_NAMES,
+    FunctionLike,
+    Instance,
+    Parameters,
+    ParamSpecFlavor,
+    ParamSpecType,
+    PlaceholderType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeVarId,
+    TypeVarLikeType,
+    get_proper_type,
+)
 
 # Priorities for ordering of patches within the "patch" phase of semantic analysis
 # (after the main pass):
@@ -33,8 +53,9 @@ class SemanticAnalyzerCoreInterface:
     """
 
     @abstractmethod
-    def lookup_qualified(self, name: str, ctx: Context,
-                         suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+    def lookup_qualified(
+        self, name: str, ctx: Context, suppress_errors: bool = False
+    ) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -42,16 +63,23 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
-             blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
+    def fail(
+        self,
+        msg: str,
+        ctx: Context,
+        serious: bool = False,
+        *,
+        blocker: bool = False,
+        code: ErrorCode | None = None,
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def note(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def note(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -59,7 +87,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def defer(self) -> None:
+    def defer(self, debug_context: Context | None = None, force_progress: bool = False) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -83,6 +111,10 @@ class SemanticAnalyzerCoreInterface:
     def is_stub_file(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_func_scope(self) -> bool:
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
@@ -95,19 +127,20 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     * Less need to pass around callback functions
     """
 
+    tvar_scope: TypeVarLikeScope
+
     @abstractmethod
-    def lookup(self, name: str, ctx: Context,
-               suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+    def lookup(
+        self, name: str, ctx: Context, suppress_errors: bool = False
+    ) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, fullname: str,
-                   args: Optional[List[Type]] = None) -> Instance:
+    def named_type(self, fullname: str, args: list[Type] | None = None) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(self, fullname: str,
-                           args: Optional[List[Type]] = None) -> Optional[Instance]:
+    def named_type_or_none(self, fullname: str, args: list[Type] | None = None) -> Instance | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -115,12 +148,21 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def anal_type(self, t: Type, *,
-                  tvar_scope: Optional[TypeVarLikeScope] = None,
-                  allow_tuple_literal: bool = False,
-                  allow_unbound_tvars: bool = False,
-                  allow_required: bool = False,
-                  report_invalid_types: bool = True) -> Optional[Type]:
+    def anal_type(
+        self,
+        t: Type,
+        *,
+        tvar_scope: TypeVarLikeScope | None = None,
+        allow_tuple_literal: bool = False,
+        allow_unbound_tvars: bool = False,
+        allow_required: bool = False,
+        allow_placeholder: bool = False,
+        report_invalid_types: bool = True,
+    ) -> Type | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_and_bind_all_tvars(self, type_exprs: list[Expression]) -> list[TypeVarLikeType]:
         raise NotImplementedError
 
     @abstractmethod
@@ -145,9 +187,15 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol(self, name: str, node: SymbolNode, context: Context,
-                   module_public: bool = True, module_hidden: bool = False,
-                   can_defer: bool = True) -> bool:
+    def add_symbol(
+        self,
+        name: str,
+        node: SymbolNode,
+        context: Context,
+        module_public: bool = True,
+        module_hidden: bool = False,
+        can_defer: bool = True,
+    ) -> bool:
         """Add symbol to the current symbol table."""
         raise NotImplementedError
 
@@ -162,7 +210,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def parse_bool(self, expr: Expression) -> Optional[bool]:
+    def parse_bool(self, expr: Expression) -> bool | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -174,10 +222,6 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     def is_typeshed_stub_file(self) -> bool:
         raise NotImplementedError
 
-    @abstractmethod
-    def is_func_scope(self) -> bool:
-        raise NotImplementedError
-
 
 def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
     sig = get_proper_type(sig)
@@ -185,11 +229,10 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
         if fdef.info:
             if fdef.info.fullname in TPDICT_FB_NAMES:
                 # Avoid exposing the internal _TypedDict name.
-                class_name = 'TypedDict'
+                class_name = "TypedDict"
             else:
                 class_name = fdef.info.name
-            return sig.with_name(
-                f'{fdef.name} of {class_name}')
+            return sig.with_name(f"{fdef.name} of {class_name}")
         else:
             return sig.with_name(fdef.name)
     else:
@@ -211,37 +254,46 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     we don't prevent their existence).
     """
     fallback = typ.partial_fallback
-    assert fallback.type.fullname == 'builtins.tuple'
+    assert fallback.type.fullname == "builtins.tuple"
     fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]
 
 
 class _NamedTypeCallback(Protocol):
-    def __call__(
-        self, fully_qualified_name: str, args: Optional[List[Type]] = None
-    ) -> Instance: ...
+    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance:
+        ...
 
 
 def paramspec_args(
-    name: str, fullname: str, id: Union[TypeVarId, int], *,
-    named_type_func: _NamedTypeCallback, line: int = -1, column: int = -1,
-    prefix: Optional[Parameters] = None
+    name: str,
+    fullname: str,
+    id: TypeVarId | int,
+    *,
+    named_type_func: _NamedTypeCallback,
+    line: int = -1,
+    column: int = -1,
+    prefix: Parameters | None = None,
 ) -> ParamSpecType:
     return ParamSpecType(
         name,
         fullname,
         id,
         flavor=ParamSpecFlavor.ARGS,
-        upper_bound=named_type_func('builtins.tuple', [named_type_func('builtins.object')]),
+        upper_bound=named_type_func("builtins.tuple", [named_type_func("builtins.object")]),
         line=line,
         column=column,
-        prefix=prefix
+        prefix=prefix,
     )
 
 
 def paramspec_kwargs(
-    name: str, fullname: str, id: Union[TypeVarId, int], *,
-    named_type_func: _NamedTypeCallback, line: int = -1, column: int = -1,
-    prefix: Optional[Parameters] = None
+    name: str,
+    fullname: str,
+    id: TypeVarId | int,
+    *,
+    named_type_func: _NamedTypeCallback,
+    line: int = -1,
+    column: int = -1,
+    prefix: Parameters | None = None,
 ) -> ParamSpecType:
     return ParamSpecType(
         name,
@@ -249,10 +301,22 @@ def paramspec_kwargs(
         id,
         flavor=ParamSpecFlavor.KWARGS,
         upper_bound=named_type_func(
-            'builtins.dict',
-            [named_type_func('builtins.str'), named_type_func('builtins.object')]
+            "builtins.dict", [named_type_func("builtins.str"), named_type_func("builtins.object")]
         ),
         line=line,
         column=column,
-        prefix=prefix
+        prefix=prefix,
     )
+
+
+class HasPlaceholders(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> bool:
+        return True
+
+
+def has_placeholder(typ: Type) -> bool:
+    """Check if a type contains any placeholder types (recursively)."""
+    return typ.accept(HasPlaceholders())

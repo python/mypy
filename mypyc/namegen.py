@@ -1,4 +1,6 @@
-from typing import List, Dict, Tuple, Set, Optional, Iterable
+from __future__ import annotations
+
+from typing import Iterable
 
 
 class NameGenerator:
@@ -35,7 +37,7 @@ class NameGenerator:
     though not very usable.
     """
 
-    def __init__(self, groups: Iterable[List[str]]) -> None:
+    def __init__(self, groups: Iterable[list[str]]) -> None:
         """Initialize with a list of modules in each compilation group.
 
         The names of modules are used to shorten names referring to
@@ -43,13 +45,13 @@ class NameGenerator:
         names are supported for generated names, but uncompiled modules
         will use long names.
         """
-        self.module_map: Dict[str, str] = {}
+        self.module_map: dict[str, str] = {}
         for names in groups:
             self.module_map.update(make_module_translation_map(names))
-        self.translations: Dict[Tuple[str, str], str] = {}
-        self.used_names: Set[str] = set()
+        self.translations: dict[tuple[str, str], str] = {}
+        self.used_names: set[str] = set()
 
-    def private_name(self, module: str, partial_name: Optional[str] = None) -> str:
+    def private_name(self, module: str, partial_name: str | None = None) -> str:
         """Return a C name usable for a static definition.
 
         Return a distinct result for each (module, partial_name) pair.
@@ -64,16 +66,16 @@ class NameGenerator:
         """
         # TODO: Support unicode
         if partial_name is None:
-            return exported_name(self.module_map[module].rstrip('.'))
+            return exported_name(self.module_map[module].rstrip("."))
         if (module, partial_name) in self.translations:
             return self.translations[module, partial_name]
         if module in self.module_map:
             module_prefix = self.module_map[module]
         elif module:
-            module_prefix = module + '.'
+            module_prefix = module + "."
         else:
-            module_prefix = ''
-        actual = exported_name(f'{module_prefix}{partial_name}')
+            module_prefix = ""
+        actual = exported_name(f"{module_prefix}{partial_name}")
         self.translations[module, partial_name] = actual
         return actual
 
@@ -86,11 +88,11 @@ def exported_name(fullname: str) -> str:
     builds.
     """
     # TODO: Support unicode
-    return fullname.replace('___', '___3_').replace('.', '___')
+    return fullname.replace("___", "___3_").replace(".", "___")
 
 
-def make_module_translation_map(names: List[str]) -> Dict[str, str]:
-    num_instances: Dict[str, int] = {}
+def make_module_translation_map(names: list[str]) -> dict[str, str]:
+    num_instances: dict[str, int] = {}
     for name in names:
         for suffix in candidate_suffixes(name):
             num_instances[suffix] = num_instances.get(suffix, 0) + 1
@@ -105,9 +107,9 @@ def make_module_translation_map(names: List[str]) -> Dict[str, str]:
     return result
 
 
-def candidate_suffixes(fullname: str) -> List[str]:
-    components = fullname.split('.')
-    result = ['']
+def candidate_suffixes(fullname: str) -> list[str]:
+    components = fullname.split(".")
+    result = [""]
     for i in range(len(components)):
-        result.append('.'.join(components[-i - 1:]) + '.')
+        result.append(".".join(components[-i - 1 :]) + ".")
     return result

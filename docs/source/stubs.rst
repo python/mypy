@@ -62,7 +62,7 @@ in your programs and stub files.
 Stub file syntax
 ****************
 
-Stub files are written in normal Python 3 syntax, but generally
+Stub files are written in normal Python syntax, but generally
 leaving out runtime logic like variable initializers, function bodies,
 and default arguments.
 
@@ -89,12 +89,6 @@ stub file as three dots:
     The ellipsis ``...`` is also used with a different meaning in
     :ref:`callable types <callable-types>` and :ref:`tuple types
     <tuple-types>`.
-
-.. note::
-
-    It is always legal to use Python 3 syntax in stub files, even when
-    writing Python 2 code. The example above is a valid stub file
-    for both Python 2 and 3.
 
 Using stub file syntax at runtime
 *********************************
@@ -133,10 +127,3 @@ For example:
         # type "ellipsis", argument has type "list[str]")
         def not_ok(self, foo: list[str] = ...) -> None:
             print(foo)
-
-.. note::
-
-    Ellipsis expressions are legal syntax in Python 3 only. This means
-    it is not possible to elide default arguments in Python 2 code.
-    You can still elide function bodies in Python 2 by using either
-    the ``pass`` statement or by throwing a :py:exc:`NotImplementedError`.

@@ -1,14 +1,10 @@
-import sys
 from asyncio.events import AbstractEventLoop
 from asyncio.protocols import BaseProtocol
 from collections.abc import Mapping
 from socket import _Address
 from typing import Any
 
-if sys.version_info >= (3, 7):
-    __all__ = ("BaseTransport", "ReadTransport", "WriteTransport", "Transport", "DatagramTransport", "SubprocessTransport")
-else:
-    __all__ = ["BaseTransport", "ReadTransport", "WriteTransport", "Transport", "DatagramTransport", "SubprocessTransport"]
+__all__ = ("BaseTransport", "ReadTransport", "WriteTransport", "Transport", "DatagramTransport", "SubprocessTransport")
 
 class BaseTransport:
     def __init__(self, extra: Mapping[Any, Any] | None = ...) -> None: ...
@@ -19,9 +15,7 @@ class BaseTransport:
     def get_protocol(self) -> BaseProtocol: ...
 
 class ReadTransport(BaseTransport):
-    if sys.version_info >= (3, 7):
-        def is_reading(self) -> bool: ...
-
+    def is_reading(self) -> bool: ...
     def pause_reading(self) -> None: ...
     def resume_reading(self) -> None: ...
 
@@ -51,6 +45,3 @@ class SubprocessTransport(BaseTransport):
 
 class _FlowControlMixin(Transport):
     def __init__(self, extra: Mapping[Any, Any] | None = ..., loop: AbstractEventLoop | None = ...) -> None: ...
-    def set_write_buffer_limits(self, high: int | None = ..., low: int | None = ...) -> None: ...
-    def get_write_buffer_size(self) -> int: ...
-    def get_write_buffer_limits(self) -> tuple[int, int]: ...

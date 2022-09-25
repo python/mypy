@@ -13,7 +13,8 @@ class object:
     def __init_subclass__(cls) -> None: pass
     def __eq__(self, other: object) -> bool: pass
 
-class type: pass
+class type:
+    __annotations__: Mapping[str, object]
 
 class dict(Mapping[KT, VT]):
     @overload
@@ -33,6 +34,7 @@ class dict(Mapping[KT, VT]):
 
 class int: # for convenience
     def __add__(self, x: Union[int, complex]) -> int: pass
+    def __radd__(self, x: int) -> int: pass
     def __sub__(self, x: Union[int, complex]) -> int: pass
     def __neg__(self) -> int: pass
     real: int

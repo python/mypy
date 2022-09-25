@@ -79,6 +79,7 @@ if sys.version_info >= (3, 8) and sys.platform != "win32":
     MADV_SEQUENTIAL: int
     MADV_WILLNEED: int
     MADV_DONTNEED: int
+    MADV_FREE: int
 
     if sys.platform == "linux":
         MADV_REMOVE: int
@@ -94,7 +95,6 @@ if sys.version_info >= (3, 8) and sys.platform != "win32":
         MADV_NOHUGEPAGE: int
         MADV_DONTDUMP: int
         MADV_DODUMP: int
-        MADV_FREE: int
 
     # This Values are defined for FreeBSD but type checkers do not support conditions for these
     if sys.platform != "linux" and sys.platform != "darwin":

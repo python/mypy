@@ -251,22 +251,12 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 
     This flag will make mypy type check your code as if it were
     run under Python version X.Y. Without this option, mypy will default to using
-    whatever version of Python is running mypy. Note that the :option:`-2` and
-    :option:`--py2` flags are aliases for :option:`--python-version 2.7 <--python-version>`.
+    whatever version of Python is running mypy.
 
     This flag will attempt to find a Python executable of the corresponding
     version to search for :pep:`561` compliant packages. If you'd like to
     disable this, use the :option:`--no-site-packages` flag (see
     :ref:`import-discovery` for more details).
-
-.. option:: -2, --py2
-
-    Equivalent to running :option:`--python-version 2.7 <--python-version>`.
-
-    .. note::
-
-        To check Python 2 code with mypy, you'll need to install mypy with
-        ``pip install 'mypy[python2]'``.
 
 .. option:: --platform PLATFORM
 
@@ -705,6 +695,14 @@ in error messages.
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
+.. option:: --show-error-end
+
+    This flag will make mypy show not just that start position where
+    an error was detected, but also the end position of the relevant expression.
+    This way various tools can easily highlight the whole error span. The format is
+    ``file:line:column:end_line:end_column``. This option implies
+    ``--show-column-numbers``.
+
 .. option:: --show-error-codes
 
     This flag will add an error code ``[<code>]`` to error messages. The error
@@ -832,7 +830,8 @@ in developing or debugging mypy internals.
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
 
-    Note that this doesn't affect third-party library stubs.
+    Note that this doesn't affect third-party library stubs. To test third-party stubs,
+    for example try ``MYPYPATH=stubs/six mypy ...``.
 
 .. _warn-incomplete-stub:
 

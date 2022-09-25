@@ -202,7 +202,7 @@ a.py:8: note:     x: expected "int", got "str"
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
 -- the proto deps file with something with mtime mismatches.
-[file ../.mypy_cache/3.6/@deps.meta.json.2]
+[file ../.mypy_cache/3.7/@deps.meta.json.2]
 {"snapshot": {"__main__": "a7c958b001a45bd6a2a320f4e53c4c16", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "c532c89da517a4b779bcf7a964478d67"}, "deps_meta": {"@root": {"path": "@root.deps.json", "mtime": 0}, "__main__": {"path": "__main__.deps.json", "mtime": 0}, "a": {"path": "a.deps.json", "mtime": 0}, "b": {"path": "b.deps.json", "mtime": 0}, "builtins": {"path": "builtins.deps.json", "mtime": 0}}}
 
 [file b.py.2]
@@ -234,8 +234,8 @@ x = 10
 [file p/c.py]
 class C: pass
 
-[delete ../.mypy_cache/3.6/b.meta.json.2]
-[delete ../.mypy_cache/3.6/p/c.meta.json.2]
+[delete ../.mypy_cache/3.7/b.meta.json.2]
+[delete ../.mypy_cache/3.7/p/c.meta.json.2]
 
 [out]
 ==
