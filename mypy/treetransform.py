@@ -92,15 +92,15 @@ from mypy.nodes import (
     YieldFromExpr,
 )
 from mypy.patterns import (
-    Pattern,
     AsPattern,
-    OrPattern,
-    ValuePattern,
-    SingletonPattern,
-    SequencePattern,
-    StarredPattern,
-    MappingPattern,
     ClassPattern,
+    MappingPattern,
+    OrPattern,
+    Pattern,
+    SequencePattern,
+    SingletonPattern,
+    StarredPattern,
+    ValuePattern,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import FunctionLike, ProperType, Type
