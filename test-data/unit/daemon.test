@@ -434,12 +434,12 @@ $ dmypy inspect --show attrs bar.py:10:1 --union-attrs
 
 [file foo.py]
 class B:
-    def b(self) -> int: ...
+    def b(self) -> int: return 0
     a: int
 class C(B):
     a: int
     y: int
-    def x(self) -> int: ...
+    def x(self) -> int: return 0
 
 v: C  # line 9
 if False:
