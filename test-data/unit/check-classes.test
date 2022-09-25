@@ -1060,6 +1060,35 @@ def f() -> None:
     a.g(a) # E: Too many arguments for "g" of "A"
 [targets __main__, __main__.f]
 
+[case testGenericClassWithinFunction]
+from typing import TypeVar
+
+def test() -> None:
+    T = TypeVar('T', bound='Foo')
+    class Foo:
+        def returns_int(self) -> int:
+            return 0
+
+        def bar(self, foo: T) -> T:
+            x: T = foo
+            reveal_type(x)  # N: Revealed type is "T`-1"
+            reveal_type(x.returns_int())  # N: Revealed type is "builtins.int"
+            return foo
+    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`-1) -> T`-1"
+
+[case testGenericClassWithInvalidTypevarUseWithinFunction]
+from typing import TypeVar
+
+def test() -> None:
+    T = TypeVar('T', bound='Foo')
+    class Foo:
+        invalid: T  # E: Type variable "T" is unbound \
+                    # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
+                    # N: (Hint: Use "T" in function signature to bind "T" inside a function)
+
+        def bar(self, foo: T) -> T:
+            pass
+
 [case testConstructNestedClass]
 import typing
 class A:

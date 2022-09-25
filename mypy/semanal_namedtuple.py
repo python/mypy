@@ -321,11 +321,12 @@ class NamedTupleAnalyzer:
     ) -> None | (tuple[list[str], list[Type], list[Expression], str, list[TypeVarLikeType], bool]):
         """Parse a namedtuple() call into data needed to construct a type.
 
-        Returns a 5-tuple:
+        Returns a 6-tuple:
         - List of argument names
         - List of argument types
         - List of default values
         - First argument of namedtuple
+        - All typevars found in the field definition
         - Whether all types are ready.
 
         Return None if the definition didn't typecheck.

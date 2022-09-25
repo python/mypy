@@ -2752,30 +2752,32 @@ class SemanticAnalyzer(
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
-            s.rvalue, name, self.is_func_scope()
-        )
-        if internal_name is None:
-            return False
-        if isinstance(lvalue, MemberExpr):
-            self.fail("NamedTuple type as an attribute is not supported", lvalue)
-            return False
-        if internal_name != name:
-            self.fail(
-                'First argument to namedtuple() should be "{}", not "{}"'.format(
-                    name, internal_name
-                ),
-                s.rvalue,
-                code=codes.NAME_MATCH,
+        namespace = self.qualified_name(name)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
+            internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
+                s.rvalue, name, self.is_func_scope()
             )
+            if internal_name is None:
+                return False
+            if isinstance(lvalue, MemberExpr):
+                self.fail("NamedTuple type as an attribute is not supported", lvalue)
+                return False
+            if internal_name != name:
+                self.fail(
+                    'First argument to namedtuple() should be "{}", not "{}"'.format(
+                        name, internal_name
+                    ),
+                    s.rvalue,
+                    code=codes.NAME_MATCH,
+                )
+                return True
+            # Yes, it's a valid namedtuple, but defer if it is not ready.
+            if not info:
+                self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+            else:
+                self.setup_type_vars(info.defn, tvar_defs)
+                self.setup_alias_type_vars(info.defn)
             return True
-        # Yes, it's a valid namedtuple, but defer if it is not ready.
-        if not info:
-            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
-        else:
-            self.setup_type_vars(info.defn, tvar_defs)
-            self.setup_alias_type_vars(info.defn)
-        return True
 
     def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a typed dict."""
@@ -2789,22 +2791,24 @@ class SemanticAnalyzer(
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
-            s.rvalue, name, self.is_func_scope()
-        )
-        if not is_typed_dict:
-            return False
-        if isinstance(lvalue, MemberExpr):
-            self.fail("TypedDict type as attribute is not supported", lvalue)
-            return False
-        # Yes, it's a valid typed dict, but defer if it is not ready.
-        if not info:
-            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
-        else:
-            defn = info.defn
-            self.setup_type_vars(defn, tvar_defs)
-            self.setup_alias_type_vars(defn)
-        return True
+        namespace = self.qualified_name(name)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
+            is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
+                s.rvalue, name, self.is_func_scope()
+            )
+            if not is_typed_dict:
+                return False
+            if isinstance(lvalue, MemberExpr):
+                self.fail("TypedDict type as attribute is not supported", lvalue)
+                return False
+            # Yes, it's a valid typed dict, but defer if it is not ready.
+            if not info:
+                self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+            else:
+                defn = info.defn
+                self.setup_type_vars(defn, tvar_defs)
+                self.setup_alias_type_vars(defn)
+            return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         # We cannot use s.type, because analyze_simple_literal_type() will set it.
