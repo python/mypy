@@ -378,13 +378,14 @@ omitting a value for an attribute or a method body will make it implicitly
 abstract:
 
 .. code-block:: python
-    class SomeProto(Protocol):
-        attr: int  # Note, no right hand side
-        def method(self) -> str: ...  # Literal ... here
-    class ExplicitSubclass(SomeProto):
-        pass
-    ExplicitSubclass()  # error: Cannot instantiate abstract class 'ExplicitSubclass'
-                        # with abstract attributes 'attr' and 'method'
+
+   class SomeProto(Protocol):
+       attr: int  # Note, no right hand side
+       def method(self) -> str: ...  # Literal ... here
+   class ExplicitSubclass(SomeProto):
+       pass
+   ExplicitSubclass()  # error: Cannot instantiate abstract class 'ExplicitSubclass'
+                       # with abstract attributes 'attr' and 'method'
 
 Recursive protocols
 *******************
