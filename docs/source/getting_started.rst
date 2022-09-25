@@ -436,7 +436,7 @@ often suggest the name of the stub distribution:
 
 .. code-block:: text
 
-  prog.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+  prog.py:1: error: Library stubs not installed for "yaml"
   prog.py:1: note: Hint: "python3 -m pip install types-PyYAML"
   ...
 

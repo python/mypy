@@ -70,7 +70,8 @@ class BaseServer:
     def close_request(self, request: _RequestType) -> None: ...  # undocumented
 
 class TCPServer(BaseServer):
-    allow_reuse_port: bool
+    if sys.version_info >= (3, 11):
+        allow_reuse_port: bool
     request_queue_size: int
     def __init__(
         self: Self,
@@ -80,11 +81,9 @@ class TCPServer(BaseServer):
     ) -> None: ...
     def get_request(self) -> tuple[_socket, Any]: ...
 
-class UDPServer(BaseServer):
-    if sys.version_info >= (3, 11):
-        allow_reuse_port: bool
+class UDPServer(TCPServer):
     max_packet_size: ClassVar[int]
-    def get_request(self) -> tuple[tuple[bytes, _socket], Any]: ...
+    def get_request(self) -> tuple[tuple[bytes, _socket], Any]: ...  # type: ignore[override]
 
 if sys.platform != "win32":
     class UnixStreamServer(BaseServer):

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Union
 from typing_extensions import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
@@ -61,6 +60,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
+    is_fixed_width_rtype,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -156,9 +156,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.literals = emitter.context.literals
         self.rare = False
         # Next basic block to be processed after the current one (if any), set by caller
-        self.next_block: Optional[BasicBlock] = None
+        self.next_block: BasicBlock | None = None
         # Ops in the basic block currently being processed, set by caller
-        self.ops: List[Op] = []
+        self.ops: list[Op] = []
         # Current index within ops; visit methods can increment this to skip/merge ops
         self.op_index = 0
 
@@ -289,7 +289,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             self.emit_line("%s = (CPyTagged)CPyStatics[%d] | 1;%s" % (self.reg(op), index, ann))
 
-    def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
+    def get_attr_expr(self, obj: str, op: GetAttr | SetAttr, decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.
 
         This either has a form like obj->attr_name for attributes defined in non-trait
@@ -354,7 +354,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             always_defined = cl.is_always_defined(op.attr)
             merged_branch = None
             if not always_defined:
-                self.emitter.emit_undefined_attr_check(attr_rtype, dest, "==", unlikely=True)
+                self.emitter.emit_undefined_attr_check(
+                    attr_rtype, dest, "==", obj, op.attr, cl, unlikely=True
+                )
                 branch = self.next_branch()
                 if branch is not None:
                     if (
@@ -388,7 +390,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif not always_defined:
                 self.emitter.emit_line("}")
 
-    def next_branch(self) -> Optional[Branch]:
+    def next_branch(self) -> Branch | None:
         if self.op_index + 1 < len(self.ops):
             next_op = self.ops[self.op_index + 1]
             if isinstance(next_op, Branch):
@@ -434,10 +436,17 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 # previously undefined), so decref the old value.
                 always_defined = cl.is_always_defined(op.attr)
                 if not always_defined:
-                    self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, "!=")
+                    self.emitter.emit_undefined_attr_check(
+                        attr_rtype, attr_expr, "!=", obj, op.attr, cl
+                    )
                 self.emitter.emit_dec_ref(attr_expr, attr_rtype)
                 if not always_defined:
                     self.emitter.emit_line("}")
+            elif is_fixed_width_rtype(attr_rtype) and not cl.is_always_defined(op.attr):
+                # If there is overlap with the error value, update bitmap to mark
+                # attribute as defined.
+                self.emitter.emit_attr_bitmap_set(src, obj, attr_rtype, cl, op.attr)
+
             # This steals the reference to src, so we don't need to increment the arg
             self.emitter.emit_line(f"{attr_expr} = {src};")
             if op.error_kind == ERR_FALSE:

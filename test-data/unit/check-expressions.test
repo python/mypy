@@ -857,8 +857,8 @@ a[b]
 a[c]
 a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "int" \
       # N: Possible overload variants: \
-      # N:     def __getitem__(self, B) -> int \
-      # N:     def __getitem__(self, C) -> str
+      # N:     def __getitem__(self, B, /) -> int \
+      # N:     def __getitem__(self, C, /) -> str
 
 i, s = None, None  # type: (int, str)
 if int():
@@ -950,6 +950,28 @@ assert_type(Gen(1), Gen[int])
 # With type context, it infers Gen[Literal[1]] instead.
 y: Gen[Literal[1]] = assert_type(Gen(1), Gen[Literal[1]])
 
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeUncheckedFunction]
+from typing import assert_type
+from typing_extensions import Literal
+def f():
+    x = 42
+    assert_type(x, Literal[42])
+[out]
+main:5: error: Expression is of type "Any", not "Literal[42]"
+main:5: note: "assert_type" expects everything to be "Any" in unchecked functions
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeUncheckedFunctionWithUntypedCheck]
+# flags: --check-untyped-defs
+from typing import assert_type
+from typing_extensions import Literal
+def f():
+    x = 42
+    assert_type(x, Literal[42])
+[out]
+main:6: error: Expression is of type "int", not "Literal[42]"
 [builtins fixtures/tuple.pyi]
 
 -- None return type

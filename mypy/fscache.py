@@ -28,9 +28,10 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
+from __future__ import annotations
+
 import os
 import stat
-from typing import Dict, List, Set
 
 from mypy_extensions import mypyc_attr
 
@@ -42,24 +43,24 @@ class FileSystemCache:
     def __init__(self) -> None:
         # The package root is not flushed with the caches.
         # It is set by set_package_root() below.
-        self.package_root: List[str] = []
+        self.package_root: list[str] = []
         self.flush()
 
-    def set_package_root(self, package_root: List[str]) -> None:
+    def set_package_root(self, package_root: list[str]) -> None:
         self.package_root = package_root
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        self.stat_cache: Dict[str, os.stat_result] = {}
-        self.stat_error_cache: Dict[str, OSError] = {}
-        self.listdir_cache: Dict[str, List[str]] = {}
-        self.listdir_error_cache: Dict[str, OSError] = {}
-        self.isfile_case_cache: Dict[str, bool] = {}
-        self.exists_case_cache: Dict[str, bool] = {}
-        self.read_cache: Dict[str, bytes] = {}
-        self.read_error_cache: Dict[str, Exception] = {}
-        self.hash_cache: Dict[str, str] = {}
-        self.fake_package_cache: Set[str] = set()
+        self.stat_cache: dict[str, os.stat_result] = {}
+        self.stat_error_cache: dict[str, OSError] = {}
+        self.listdir_cache: dict[str, list[str]] = {}
+        self.listdir_error_cache: dict[str, OSError] = {}
+        self.isfile_case_cache: dict[str, bool] = {}
+        self.exists_case_cache: dict[str, bool] = {}
+        self.read_cache: dict[str, bytes] = {}
+        self.read_error_cache: dict[str, Exception] = {}
+        self.hash_cache: dict[str, str] = {}
+        self.fake_package_cache: set[str] = set()
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
@@ -146,7 +147,7 @@ class FileSystemCache:
         dirname = os.path.normpath(dirname)
         st = self.stat(dirname)  # May raise OSError
         # Get stat result as a list so we can modify it.
-        seq: List[float] = list(st)
+        seq: list[float] = list(st)
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
         seq[stat.ST_NLINK] = 1
@@ -157,7 +158,7 @@ class FileSystemCache:
         self.fake_package_cache.add(dirname)
         return st
 
-    def listdir(self, path: str) -> List[str]:
+    def listdir(self, path: str) -> list[str]:
         path = os.path.normpath(path)
         if path in self.listdir_cache:
             res = self.listdir_cache[path]

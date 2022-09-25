@@ -24,6 +24,8 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
+from __future__ import annotations
+
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
@@ -67,7 +69,7 @@ CORE_WARMUP: Final = 2
 core_modules: Final = ["typing", "builtins", "abc", "collections"]
 
 
-def semantic_analysis_for_scc(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -> None:
     """Perform semantic analysis for all modules in a SCC (import cycle).
 
     Assume that reachability analysis has already been performed.
@@ -95,7 +97,7 @@ def semantic_analysis_for_scc(graph: "Graph", scc: List[str], errors: Errors) ->
         cleanup_builtin_scc(graph["builtins"])
 
 
-def cleanup_builtin_scc(state: "State") -> None:
+def cleanup_builtin_scc(state: State) -> None:
     """Remove imported names from builtins namespace.
 
     This way names imported from typing in builtins.pyi aren't available
@@ -108,10 +110,7 @@ def cleanup_builtin_scc(state: "State") -> None:
 
 
 def semantic_analysis_for_targets(
-    state: "State",
-    nodes: List[FineGrainedDeferredNode],
-    graph: "Graph",
-    saved_attrs: SavedAttributes,
+    state: State, nodes: list[FineGrainedDeferredNode], graph: Graph, saved_attrs: SavedAttributes
 ) -> None:
     """Semantically analyze only selected nodes in a given module.
 
@@ -166,7 +165,7 @@ def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
             info.names[name] = sym
 
 
-def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None:
+def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Process top levels until everything has been bound.
 
     # Reverse order of the scc so the first modules in the original list will be
@@ -203,7 +202,7 @@ def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None
         if final_iteration:
             # Give up. It's impossible to bind all names.
             state.manager.incomplete_namespaces.clear()
-        all_deferred: List[str] = []
+        all_deferred: list[str] = []
         any_progress = False
         while worklist:
             next_id = worklist.pop()
@@ -224,7 +223,7 @@ def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None
         final_iteration = not any_progress
 
 
-def process_functions(graph: "Graph", scc: List[str], patches: Patches) -> None:
+def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Process functions.
     for module in scc:
         tree = graph[module].tree
@@ -247,12 +246,12 @@ def process_functions(graph: "Graph", scc: List[str], patches: Patches) -> None:
 
 
 def process_top_level_function(
-    analyzer: "SemanticAnalyzer",
-    state: "State",
+    analyzer: SemanticAnalyzer,
+    state: State,
     module: str,
     target: str,
-    node: Union[FuncDef, OverloadedFuncDef, Decorator],
-    active_type: Optional[TypeInfo],
+    node: FuncDef | OverloadedFuncDef | Decorator,
+    active_type: TypeInfo | None,
     patches: Patches,
 ) -> None:
     """Analyze single top-level function or method.
@@ -294,12 +293,14 @@ def process_top_level_function(
     analyzer.saved_locals.clear()
 
 
-TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
+TargetInfo: _TypeAlias = Tuple[
+    str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+]
 
 
-def get_all_leaf_targets(file: MypyFile) -> List[TargetInfo]:
+def get_all_leaf_targets(file: MypyFile) -> list[TargetInfo]:
     """Return all leaf targets in a symbol table (module-level and methods)."""
-    result: List[TargetInfo] = []
+    result: list[TargetInfo] = []
     for fullname, node, active_type in file.local_definitions():
         if isinstance(node.node, (FuncDef, OverloadedFuncDef, Decorator)):
             result.append((fullname, node.node, active_type))
@@ -308,12 +309,12 @@ def get_all_leaf_targets(file: MypyFile) -> List[TargetInfo]:
 
 def semantic_analyze_target(
     target: str,
-    state: "State",
-    node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
-    active_type: Optional[TypeInfo],
+    state: State,
+    node: MypyFile | FuncDef | OverloadedFuncDef | Decorator,
+    active_type: TypeInfo | None,
     final_iteration: bool,
     patches: Patches,
-) -> Tuple[List[str], bool, bool]:
+) -> tuple[list[str], bool, bool]:
     """Semantically analyze a single target.
 
     Return tuple with these items:
@@ -362,29 +363,37 @@ def semantic_analyze_target(
         return [], analyzer.incomplete, analyzer.progress
 
 
-def check_type_arguments(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:
     for module in scc:
         state = graph[module]
         assert state.tree
-        analyzer = TypeArgumentAnalyzer(errors, state.options, is_typeshed_file(state.path or ""))
+        analyzer = TypeArgumentAnalyzer(
+            errors,
+            state.options,
+            is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        )
         with state.wrap_context():
             with mypy.state.state.strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
 
 
 def check_type_arguments_in_targets(
-    targets: List[FineGrainedDeferredNode], state: "State", errors: Errors
+    targets: list[FineGrainedDeferredNode], state: State, errors: Errors
 ) -> None:
     """Check type arguments against type variable bounds and restrictions.
 
     This mirrors the logic in check_type_arguments() except that we process only
     some targets. This is used in fine grained incremental mode.
     """
-    analyzer = TypeArgumentAnalyzer(errors, state.options, is_typeshed_file(state.path or ""))
+    analyzer = TypeArgumentAnalyzer(
+        errors,
+        state.options,
+        is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+    )
     with state.wrap_context():
         with mypy.state.state.strict_optional_set(state.options.strict_optional):
             for target in targets:
-                func: Optional[Union[FuncDef, OverloadedFuncDef]] = None
+                func: FuncDef | OverloadedFuncDef | None = None
                 if isinstance(target.node, (FuncDef, OverloadedFuncDef)):
                     func = target.node
                 saved = (state.id, target.active_typeinfo, func)  # module, class, function
@@ -393,7 +402,7 @@ def check_type_arguments_in_targets(
                     target.node.accept(analyzer)
 
 
-def apply_class_plugin_hooks(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def apply_class_plugin_hooks(graph: Graph, scc: list[str], errors: Errors) -> None:
     """Apply class plugin hooks within a SCC.
 
     We run these after to the main semantic analysis so that the hooks
@@ -449,7 +458,7 @@ def apply_hooks_to_class(
     return ok
 
 
-def calculate_class_properties(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def calculate_class_properties(graph: Graph, scc: list[str], errors: Errors) -> None:
     builtins = graph["builtins"].tree
     assert builtins
     for module in scc:
@@ -467,6 +476,6 @@ def calculate_class_properties(graph: "Graph", scc: List[str], errors: Errors) -
                     )
 
 
-def check_blockers(graph: "Graph", scc: List[str]) -> None:
+def check_blockers(graph: Graph, scc: list[str]) -> None:
     for module in scc:
         graph[module].check_blockers()

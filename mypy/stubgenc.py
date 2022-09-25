@@ -4,12 +4,15 @@
 The public interface is via the mypy.stubgen module.
 """
 
+from __future__ import annotations
+
 import importlib
 import inspect
 import os.path
 import re
+from abc import abstractmethod
 from types import ModuleType
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Iterable, Mapping
 from typing_extensions import Final
 
 from mypy.moduleinspect import is_c_module
@@ -38,16 +41,119 @@ _DEFAULT_TYPING_IMPORTS: Final = (
 )
 
 
+class SignatureGenerator:
+    """Abstract base class for extracting a list of FunctionSigs for each function."""
+
+    @abstractmethod
+    def get_function_sig(
+        self, func: object, module_name: str, name: str
+    ) -> list[FunctionSig] | None:
+        pass
+
+    @abstractmethod
+    def get_method_sig(
+        self, func: object, module_name: str, class_name: str, name: str, self_var: str
+    ) -> list[FunctionSig] | None:
+        pass
+
+
+class ExternalSignatureGenerator(SignatureGenerator):
+    def __init__(
+        self, func_sigs: dict[str, str] | None = None, class_sigs: dict[str, str] | None = None
+    ):
+        """
+        Takes a mapping of function/method names to signatures and class name to
+        class signatures (usually corresponds to __init__).
+        """
+        self.func_sigs = func_sigs or {}
+        self.class_sigs = class_sigs or {}
+
+    def get_function_sig(
+        self, func: object, module_name: str, name: str
+    ) -> list[FunctionSig] | None:
+        if name in self.func_sigs:
+            return [
+                FunctionSig(
+                    name=name,
+                    args=infer_arg_sig_from_anon_docstring(self.func_sigs[name]),
+                    ret_type="Any",
+                )
+            ]
+        else:
+            return None
+
+    def get_method_sig(
+        self, func: object, module_name: str, class_name: str, name: str, self_var: str
+    ) -> list[FunctionSig] | None:
+        if (
+            name in ("__new__", "__init__")
+            and name not in self.func_sigs
+            and class_name in self.class_sigs
+        ):
+            return [
+                FunctionSig(
+                    name=name,
+                    args=infer_arg_sig_from_anon_docstring(self.class_sigs[class_name]),
+                    ret_type="None" if name == "__init__" else "Any",
+                )
+            ]
+        return self.get_function_sig(func, module_name, name)
+
+
+class DocstringSignatureGenerator(SignatureGenerator):
+    def get_function_sig(
+        self, func: object, module_name: str, name: str
+    ) -> list[FunctionSig] | None:
+        docstr = getattr(func, "__doc__", None)
+        inferred = infer_sig_from_docstring(docstr, name)
+        if inferred:
+            assert docstr is not None
+            if is_pybind11_overloaded_function_docstring(docstr, name):
+                # Remove pybind11 umbrella (*args, **kwargs) for overloaded functions
+                del inferred[-1]
+        return inferred
+
+    def get_method_sig(
+        self, func: object, module_name: str, class_name: str, name: str, self_var: str
+    ) -> list[FunctionSig] | None:
+        return self.get_function_sig(func, module_name, name)
+
+
+class FallbackSignatureGenerator(SignatureGenerator):
+    def get_function_sig(
+        self, func: object, module_name: str, name: str
+    ) -> list[FunctionSig] | None:
+        return [
+            FunctionSig(
+                name=name,
+                args=infer_arg_sig_from_anon_docstring("(*args, **kwargs)"),
+                ret_type="Any",
+            )
+        ]
+
+    def get_method_sig(
+        self, func: object, module_name: str, class_name: str, name: str, self_var: str
+    ) -> list[FunctionSig] | None:
+        return [
+            FunctionSig(
+                name=name,
+                args=infer_method_sig(name, self_var),
+                ret_type="None" if name == "__init__" else "Any",
+            )
+        ]
+
+
 def generate_stub_for_c_module(
-    module_name: str,
-    target: str,
-    sigs: Optional[Dict[str, str]] = None,
-    class_sigs: Optional[Dict[str, str]] = None,
+    module_name: str, target: str, sig_generators: Iterable[SignatureGenerator]
 ) -> None:
     """Generate stub for C module.
 
-    This combines simple runtime introspection (looking for docstrings and attributes
-    with simple builtin types) and signatures inferred from .rst documentation (if given).
+    Signature generators are called in order until a list of signatures is returned.  The order
+    is:
+    - signatures inferred from .rst documentation (if given)
+    - simple runtime introspection (looking for docstrings and attributes
+      with simple builtin types)
+    - fallback based special method names or "(*args, **kwargs)"
 
     If directory for target doesn't exist it will be created. Existing stub
     will be overwritten.
@@ -57,21 +163,23 @@ def generate_stub_for_c_module(
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
-    imports: List[str] = []
-    functions: List[str] = []
+    imports: list[str] = []
+    functions: list[str] = []
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
-            generate_c_function_stub(module, name, obj, functions, imports=imports, sigs=sigs)
+            generate_c_function_stub(
+                module, name, obj, functions, imports=imports, sig_generators=sig_generators
+            )
             done.add(name)
-    types: List[str] = []
+    types: list[str] = []
     for name, obj in items:
         if name.startswith("__") and name.endswith("__"):
             continue
         if is_c_type(obj):
             generate_c_type_stub(
-                module, name, obj, types, imports=imports, sigs=sigs, class_sigs=class_sigs
+                module, name, obj, types, imports=imports, sig_generators=sig_generators
             )
             done.add(name)
     variables = []
@@ -98,7 +206,7 @@ def generate_stub_for_c_module(
             file.write(f"{line}\n")
 
 
-def add_typing_import(output: List[str]) -> List[str]:
+def add_typing_import(output: list[str]) -> list[str]:
     """Add typing imports for collections/types that occur in the generated stub."""
     names = []
     for name in _DEFAULT_TYPING_IMPORTS:
@@ -149,12 +257,11 @@ def generate_c_function_stub(
     module: ModuleType,
     name: str,
     obj: object,
-    output: List[str],
-    imports: List[str],
-    self_var: Optional[str] = None,
-    sigs: Optional[Dict[str, str]] = None,
-    class_name: Optional[str] = None,
-    class_sigs: Optional[Dict[str, str]] = None,
+    output: list[str],
+    imports: list[str],
+    sig_generators: Iterable[SignatureGenerator],
+    self_var: str | None = None,
+    class_name: str | None = None,
 ) -> None:
     """Generate stub for a single function or method.
 
@@ -163,60 +270,38 @@ def generate_c_function_stub(
     The 'class_name' is used to find signature of __init__ or __new__ in
     'class_sigs'.
     """
-    if sigs is None:
-        sigs = {}
-    if class_sigs is None:
-        class_sigs = {}
-
-    ret_type = "None" if name == "__init__" and class_name else "Any"
-
-    if (
-        name in ("__new__", "__init__")
-        and name not in sigs
-        and class_name
-        and class_name in class_sigs
-    ):
-        inferred: Optional[List[FunctionSig]] = [
-            FunctionSig(
-                name=name,
-                args=infer_arg_sig_from_anon_docstring(class_sigs[class_name]),
-                ret_type=ret_type,
-            )
-        ]
+    inferred: list[FunctionSig] | None = None
+    if class_name:
+        # method:
+        assert self_var is not None, "self_var should be provided for methods"
+        for sig_gen in sig_generators:
+            inferred = sig_gen.get_method_sig(obj, module.__name__, class_name, name, self_var)
+            if inferred:
+                # add self/cls var, if not present
+                for sig in inferred:
+                    if not sig.args or sig.args[0].name != self_var:
+                        sig.args.insert(0, ArgSig(name=self_var))
+                break
     else:
-        docstr = getattr(obj, "__doc__", None)
-        inferred = infer_sig_from_docstring(docstr, name)
-        if inferred:
-            assert docstr is not None
-            if is_pybind11_overloaded_function_docstring(docstr, name):
-                # Remove pybind11 umbrella (*args, **kwargs) for overloaded functions
-                del inferred[-1]
-        if not inferred:
-            if class_name and name not in sigs:
-                inferred = [
-                    FunctionSig(name, args=infer_method_sig(name, self_var), ret_type=ret_type)
-                ]
-            else:
-                inferred = [
-                    FunctionSig(
-                        name=name,
-                        args=infer_arg_sig_from_anon_docstring(
-                            sigs.get(name, "(*args, **kwargs)")
-                        ),
-                        ret_type=ret_type,
-                    )
-                ]
-        elif class_name and self_var:
-            args = inferred[0].args
-            if not args or args[0].name != self_var:
-                args.insert(0, ArgSig(name=self_var))
+        # function:
+        for sig_gen in sig_generators:
+            inferred = sig_gen.get_function_sig(obj, module.__name__, name)
+            if inferred:
+                break
 
+    if not inferred:
+        raise ValueError(
+            "No signature was found. This should never happen "
+            "if FallbackSignatureGenerator is provided"
+        )
+
+    is_classmethod = self_var == "cls"
     is_overloaded = len(inferred) > 1 if inferred else False
     if is_overloaded:
         imports.append("from typing import overload")
     if inferred:
         for signature in inferred:
-            sig = []
+            args: list[str] = []
             for arg in signature.args:
                 if arg.name == self_var:
                     arg_def = self_var
@@ -231,20 +316,22 @@ def generate_c_function_stub(
                     if arg.default:
                         arg_def += " = ..."
 
-                sig.append(arg_def)
+                args.append(arg_def)
 
             if is_overloaded:
                 output.append("@overload")
+            if is_classmethod:
+                output.append("@classmethod")
             output.append(
                 "def {function}({args}) -> {ret}: ...".format(
                     function=name,
-                    args=", ".join(sig),
+                    args=", ".join(args),
                     ret=strip_or_import(signature.ret_type, module, imports),
                 )
             )
 
 
-def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
+def strip_or_import(typ: str, module: ModuleType, imports: list[str]) -> str:
     """Strips unnecessary module names from typ.
 
     If typ represents a type that is inside module or is a type coming from builtins, remove
@@ -281,19 +368,19 @@ def is_static_property(obj: object) -> bool:
 def generate_c_property_stub(
     name: str,
     obj: object,
-    static_properties: List[str],
-    rw_properties: List[str],
-    ro_properties: List[str],
+    static_properties: list[str],
+    rw_properties: list[str],
+    ro_properties: list[str],
     readonly: bool,
-    module: Optional[ModuleType] = None,
-    imports: Optional[List[str]] = None,
+    module: ModuleType | None = None,
+    imports: list[str] | None = None,
 ) -> None:
     """Generate property stub using introspection of 'obj'.
 
     Try to infer type from docstring, append resulting lines to 'output'.
     """
 
-    def infer_prop_type(docstr: Optional[str]) -> Optional[str]:
+    def infer_prop_type(docstr: str | None) -> str | None:
         """Infer property type from docstring or docstring signature."""
         if docstr is not None:
             inferred = infer_ret_type_sig_from_anon_docstring(docstr)
@@ -334,10 +421,9 @@ def generate_c_type_stub(
     module: ModuleType,
     class_name: str,
     obj: type,
-    output: List[str],
-    imports: List[str],
-    sigs: Optional[Dict[str, str]] = None,
-    class_sigs: Optional[Dict[str, str]] = None,
+    output: list[str],
+    imports: list[str],
+    sig_generators: Iterable[SignatureGenerator],
 ) -> None:
     """Generate stub for a single class using runtime introspection.
 
@@ -346,14 +432,14 @@ def generate_c_type_stub(
     """
     # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
-    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa
+    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa: B009
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
-    methods: List[str] = []
-    types: List[str] = []
-    static_properties: List[str] = []
-    rw_properties: List[str] = []
-    ro_properties: List[str] = []
-    done: Set[str] = set()
+    methods: list[str] = []
+    types: list[str] = []
+    static_properties: list[str] = []
+    rw_properties: list[str] = []
+    ro_properties: list[str] = []
+    done: set[str] = set()
     for attr, value in items:
         if is_c_method(value) or is_c_classmethod(value):
             done.add(attr)
@@ -367,7 +453,6 @@ def generate_c_type_stub(
                         continue
                     attr = "__init__"
                 if is_c_classmethod(value):
-                    methods.append("@classmethod")
                     self_var = "cls"
                 else:
                     self_var = "self"
@@ -378,9 +463,8 @@ def generate_c_type_stub(
                     methods,
                     imports=imports,
                     self_var=self_var,
-                    sigs=sigs,
                     class_name=class_name,
-                    class_sigs=class_sigs,
+                    sig_generators=sig_generators,
                 )
         elif is_c_property(value):
             done.add(attr)
@@ -396,7 +480,7 @@ def generate_c_type_stub(
             )
         elif is_c_type(value):
             generate_c_type_stub(
-                module, attr, value, types, imports=imports, sigs=sigs, class_sigs=class_sigs
+                module, attr, value, types, imports=imports, sig_generators=sig_generators
             )
             done.add(attr)
 
@@ -420,7 +504,7 @@ def generate_c_type_stub(
     # remove the class itself
     all_bases = all_bases[1:]
     # Remove base classes of other bases as redundant.
-    bases: List[type] = []
+    bases: list[type] = []
     for base in all_bases:
         if not any(issubclass(b, base) for b in bases):
             bases.append(base)
@@ -457,7 +541,7 @@ def get_type_fullname(typ: type) -> str:
     return f"{typ.__module__}.{getattr(typ, '__qualname__', typ.__name__)}"
 
 
-def method_name_sort_key(name: str) -> Tuple[int, str]:
+def method_name_sort_key(name: str) -> tuple[int, str]:
     """Sort methods in classes in a typical order.
 
     I.e.: constructor, normal methods, special methods.
@@ -487,8 +571,8 @@ def is_skipped_attribute(attr: str) -> bool:
     )
 
 
-def infer_method_sig(name: str, self_var: Optional[str] = None) -> List[ArgSig]:
-    args: Optional[List[ArgSig]] = None
+def infer_method_sig(name: str, self_var: str | None = None) -> list[ArgSig]:
+    args: list[ArgSig] | None = None
     if name.startswith("__") and name.endswith("__"):
         name = name[2:-2]
         if name in (

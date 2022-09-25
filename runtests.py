@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
+
+from __future__ import annotations
+
 import subprocess
 from subprocess import Popen
 from sys import argv, executable, exit
 
 # Slow test suites
 CMDLINE = "PythonCmdline"
-SAMPLES = "SamplesSuite"
-TYPESHED = "TypeshedSuite"
 PEP561 = "PEP561Suite"
 EVALUATION = "PythonEvaluation"
 DAEMON = "testdaemon"
@@ -21,8 +22,6 @@ ERROR_STREAM = "ErrorStreamSuite"
 
 ALL_NON_FAST = [
     CMDLINE,
-    SAMPLES,
-    TYPESHED,
     PEP561,
     EVALUATION,
     DAEMON,
@@ -68,12 +67,10 @@ cmds = {
         "pytest",
         "-q",
         "-k",
-        " or ".join([SAMPLES, TYPESHED, DAEMON, MYPYC_EXTERNAL, MYPYC_COMMAND_LINE, ERROR_STREAM]),
+        " or ".join([DAEMON, MYPYC_EXTERNAL, MYPYC_COMMAND_LINE, ERROR_STREAM]),
     ],
     # Test cases that might take minutes to run
     "pytest-extra": ["pytest", "-q", "-k", " or ".join(PYTEST_OPT_IN)],
-    # Test cases to run in typeshed CI
-    "typeshed-ci": ["pytest", "-q", "-k", " or ".join([CMDLINE, EVALUATION, SAMPLES, TYPESHED])],
     # Mypyc tests that aren't run by default, since they are slow and rarely
     # fail for commits that don't touch mypyc
     "mypyc-extra": ["pytest", "-q", "-k", " or ".join(MYPYC_OPT_IN)],
@@ -82,7 +79,7 @@ cmds = {
 # Stop run immediately if these commands fail
 FAST_FAIL = ["self", "lint"]
 
-EXTRA_COMMANDS = ("pytest-extra", "mypyc-extra", "typeshed-ci")
+EXTRA_COMMANDS = ("pytest-extra", "mypyc-extra")
 DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd not in EXTRA_COMMANDS]
 
 assert all(cmd in cmds for cmd in FAST_FAIL)

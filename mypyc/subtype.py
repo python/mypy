@@ -1,5 +1,7 @@
 """Subtype check for RTypes."""
 
+from __future__ import annotations
+
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,

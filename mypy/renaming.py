@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from contextlib import contextmanager
-from typing import Dict, Iterator, List, Set
+from typing import Iterator
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -74,20 +76,20 @@ class VariableRenameVisitor(TraverserVisitor):
         # Number of surrounding loop statements
         self.loop_depth = 0
         # Map block id to loop depth.
-        self.block_loop_depth: Dict[int, int] = {}
+        self.block_loop_depth: dict[int, int] = {}
         # Stack of block ids being processed.
-        self.blocks: List[int] = []
+        self.blocks: list[int] = []
         # List of scopes; each scope maps short (unqualified) name to block id.
-        self.var_blocks: List[Dict[str, int]] = []
+        self.var_blocks: list[dict[str, int]] = []
 
         # References to variables that we may need to rename. List of
         # scopes; each scope is a mapping from name to list of collections
         # of names that refer to the same logical variable.
-        self.refs: List[Dict[str, List[List[NameExpr]]]] = []
+        self.refs: list[dict[str, list[list[NameExpr]]]] = []
         # Number of reads of the most recent definition of a variable (per scope)
-        self.num_reads: List[Dict[str, int]] = []
+        self.num_reads: list[dict[str, int]] = []
         # Kinds of nested scopes (FILE, FUNCTION or CLASS)
-        self.scope_kinds: List[int] = []
+        self.scope_kinds: list[int] = []
 
     def visit_mypy_file(self, file_node: MypyFile) -> None:
         """Rename variables within a file.
@@ -440,14 +442,14 @@ class LimitedVariableRenameVisitor(TraverserVisitor):
     def __init__(self) -> None:
         # Short names of variables bound in with statements using "as"
         # in a surrounding scope
-        self.bound_vars: List[str] = []
+        self.bound_vars: list[str] = []
         # Stack of names that can't be safely renamed, per scope ('*' means that
         # no names can be renamed)
-        self.skipped: List[Set[str]] = []
+        self.skipped: list[set[str]] = []
         # References to variables that we may need to rename. Stack of
         # scopes; each scope is a mapping from name to list of collections
         # of names that refer to the same logical variable.
-        self.refs: List[Dict[str, List[List[NameExpr]]]] = []
+        self.refs: list[dict[str, list[list[NameExpr]]]] = []
 
     def visit_mypy_file(self, file_node: MypyFile) -> None:
         """Rename variables within a file.
@@ -559,7 +561,7 @@ class LimitedVariableRenameVisitor(TraverserVisitor):
                     rename_refs(item, i)
 
 
-def rename_refs(names: List[NameExpr], index: int) -> None:
+def rename_refs(names: list[NameExpr], index: int) -> None:
     name = names[0].name
     new_name = name + "'" * (index + 1)
     for expr in names:

@@ -5,6 +5,8 @@ With some infrastructure, this can allow for distributing small cache diffs to u
 many cases instead of full cache artifacts.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os

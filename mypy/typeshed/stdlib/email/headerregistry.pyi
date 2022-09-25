@@ -14,7 +14,7 @@ from email._header_value_parser import (
 )
 from email.errors import MessageDefect
 from email.policy import Policy
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Protocol
 from typing_extensions import Literal
 
 class BaseHeader(str):
@@ -141,9 +141,19 @@ if sys.version_info >= (3, 8):
         @staticmethod
         def value_parser(value: str) -> MessageID: ...
 
+class _HeaderParser(Protocol):
+    max_count: ClassVar[Literal[1] | None]
+    @staticmethod
+    def value_parser(value: str) -> TokenList: ...
+    @classmethod
+    def parse(cls, value: str, kwds: dict[str, Any]) -> None: ...
+
 class HeaderRegistry:
+    registry: dict[str, type[_HeaderParser]]
+    base_class: type[BaseHeader]
+    default_class: type[_HeaderParser]
     def __init__(
-        self, base_class: type[BaseHeader] = ..., default_class: type[BaseHeader] = ..., use_default_map: bool = ...
+        self, base_class: type[BaseHeader] = ..., default_class: type[_HeaderParser] = ..., use_default_map: bool = ...
     ) -> None: ...
     def map_to_type(self, name: str, cls: type[BaseHeader]) -> None: ...
     def __getitem__(self, name: str) -> type[BaseHeader]: ...

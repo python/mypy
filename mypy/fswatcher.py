@@ -1,6 +1,8 @@
 """Watch parts of the file system for changes."""
 
-from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
+from __future__ import annotations
+
+from typing import AbstractSet, Iterable, NamedTuple
 
 from mypy.fscache import FileSystemCache
 
@@ -31,10 +33,10 @@ class FileSystemWatcher:
 
     def __init__(self, fs: FileSystemCache) -> None:
         self.fs = fs
-        self._paths: Set[str] = set()
-        self._file_data: Dict[str, Optional[FileData]] = {}
+        self._paths: set[str] = set()
+        self._file_data: dict[str, FileData | None] = {}
 
-    def dump_file_data(self) -> Dict[str, Tuple[float, int, str]]:
+    def dump_file_data(self) -> dict[str, tuple[float, int, str]]:
         return {k: v for k, v in self._file_data.items() if v is not None}
 
     def set_file_data(self, path: str, data: FileData) -> None:
@@ -90,7 +92,7 @@ class FileSystemWatcher:
         """Return paths that have changes since the last call, in the watched set."""
         return self._find_changed(self._paths)
 
-    def update_changed(self, remove: List[str], update: List[str]) -> AbstractSet[str]:
+    def update_changed(self, remove: list[str], update: list[str]) -> AbstractSet[str]:
         """Alternative to find_changed() given explicit changes.
 
         This only calls self.fs.stat() on added or updated files, not

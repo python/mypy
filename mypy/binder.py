@@ -1,16 +1,28 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import DefaultDict, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
+from typing import DefaultDict, Iterator, List, Optional, Tuple, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.join import join_simple
 from mypy.literals import Key, literal, literal_hash, subkeys
-from mypy.nodes import AssignmentExpr, Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, Var
+from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
-from mypy.types import AnyType, NoneType, PartialType, Type, TypeOfAny, UnionType, get_proper_type
+from mypy.types import (
+    AnyType,
+    NoneType,
+    PartialType,
+    Type,
+    TypeOfAny,
+    TypeType,
+    UnionType,
+    get_proper_type,
+)
+from mypy.typevars import fill_typevars_with_any
 
-BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
+BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, NameExpr]
 
 
 class Frame:
@@ -27,7 +39,7 @@ class Frame:
 
     def __init__(self, id: int, conditional_frame: bool = False) -> None:
         self.id = id
-        self.types: Dict[Key, Type] = {}
+        self.types: dict[Key, Type] = {}
         self.unreachable = False
         self.conditional_frame = conditional_frame
 
@@ -66,7 +78,7 @@ class ConditionalTypeBinder:
 
     # Stored assignments for situations with tuple/list lvalue and rvalue of union type.
     # This maps an expression to a list of bound types for every item in the union type.
-    type_assignments: Optional[Assigns] = None
+    type_assignments: Assigns | None = None
 
     def __init__(self) -> None:
         self.next_id = 1
@@ -84,27 +96,27 @@ class ConditionalTypeBinder:
         # the end of the frame or by a loop control construct
         # or raised exception. The last element of self.frames
         # has no corresponding element in this list.
-        self.options_on_return: List[List[Frame]] = []
+        self.options_on_return: list[list[Frame]] = []
 
         # Maps literal_hash(expr) to get_declaration(expr)
         # for every expr stored in the binder
-        self.declarations: Dict[Key, Optional[Type]] = {}
+        self.declarations: dict[Key, Type | None] = {}
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
         # Whenever a new key (e.g. x.a.b) is added, we update this
-        self.dependencies: Dict[Key, Set[Key]] = {}
+        self.dependencies: dict[Key, set[Key]] = {}
 
         # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
 
-        self.try_frames: Set[int] = set()
-        self.break_frames: List[int] = []
-        self.continue_frames: List[int] = []
+        self.try_frames: set[int] = set()
+        self.break_frames: list[int] = []
+        self.continue_frames: list[int] = []
 
     def _get_id(self) -> int:
         self.next_id += 1
         return self.next_id
 
-    def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
+    def _add_dependencies(self, key: Key, value: Key | None = None) -> None:
         if value is None:
             value = key
         else:
@@ -122,7 +134,7 @@ class ConditionalTypeBinder:
     def _put(self, key: Key, type: Type, index: int = -1) -> None:
         self.frames[index].types[key] = type
 
-    def _get(self, key: Key, index: int = -1) -> Optional[Type]:
+    def _get(self, key: Key, index: int = -1) -> Type | None:
         if index < 0:
             index += len(self.frames)
         for i in range(index, -1, -1):
@@ -131,7 +143,7 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        if not isinstance(expr, (IndexExpr, MemberExpr, AssignmentExpr, NameExpr)):
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
             return
@@ -148,7 +160,7 @@ class ConditionalTypeBinder:
     def suppress_unreachable_warnings(self) -> None:
         self.frames[-1].suppress_unreachable_warnings = True
 
-    def get(self, expr: Expression) -> Optional[Type]:
+    def get(self, expr: Expression) -> Type | None:
         key = literal_hash(expr)
         assert key is not None, "Internal error: binder tried to get non-literal"
         return self._get(key)
@@ -174,7 +186,7 @@ class ConditionalTypeBinder:
             if key in frame.types:
                 del frame.types[key]
 
-    def update_from_options(self, frames: List[Frame]) -> bool:
+    def update_from_options(self, frames: list[Frame]) -> bool:
         """Update the frame to reflect that each key will be updated
         as in one of the frames.  Return whether any item changes.
 
@@ -234,7 +246,7 @@ class ConditionalTypeBinder:
         return result
 
     @contextmanager
-    def accumulate_type_assignments(self) -> "Iterator[Assigns]":
+    def accumulate_type_assignments(self) -> Iterator[Assigns]:
         """Push a new map to collect assigned types in multiassign from union.
 
         If this map is not None, actual binding is deferred until all items in
@@ -249,11 +261,7 @@ class ConditionalTypeBinder:
         self.type_assignments = old_assignments
 
     def assign_type(
-        self,
-        expr: Expression,
-        type: Type,
-        declared_type: Optional[Type],
-        restrict_any: bool = False,
+        self, expr: Expression, type: Type, declared_type: Type | None, restrict_any: bool = False
     ) -> None:
         # We should erase last known value in binder, because if we are using it,
         # it means that the target is not final, and therefore can't hold a literal.
@@ -341,7 +349,7 @@ class ConditionalTypeBinder:
         for dep in self.dependencies.get(key, set()):
             self._cleanse_key(dep)
 
-    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Optional[Type]:
+    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Type | None:
         type = get_proper_type(type)
         if isinstance(type, AnyType):
             return get_declaration(expr)
@@ -440,9 +448,12 @@ class ConditionalTypeBinder:
         self.pop_frame(True, 0)
 
 
-def get_declaration(expr: BindableExpression) -> Optional[Type]:
-    if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
-        type = expr.node.type
-        if not isinstance(get_proper_type(type), PartialType):
-            return type
+def get_declaration(expr: BindableExpression) -> Type | None:
+    if isinstance(expr, RefExpr):
+        if isinstance(expr.node, Var):
+            type = expr.node.type
+            if not isinstance(get_proper_type(type), PartialType):
+                return type
+        elif isinstance(expr.node, TypeInfo):
+            return TypeType(fill_typevars_with_any(expr.node))
     return None

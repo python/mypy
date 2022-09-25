@@ -4,17 +4,19 @@ This is tailored to mypy and knows (a little) about which list objects are
 owned by particular AST nodes, etc.
 """
 
+from __future__ import annotations
+
 import gc
 import sys
 from collections import defaultdict
-from typing import Dict, Iterable, List, Tuple, cast
+from typing import Dict, Iterable, cast
 
 from mypy.nodes import FakeInfo, Node
 from mypy.types import Type
 from mypy.util import get_class_descriptors
 
 
-def collect_memory_stats() -> Tuple[Dict[str, int], Dict[str, int]]:
+def collect_memory_stats() -> tuple[dict[str, int], dict[str, int]]:
     """Return stats about memory use.
 
     Return a tuple with these items:
@@ -33,7 +35,7 @@ def collect_memory_stats() -> Tuple[Dict[str, int], Dict[str, int]]:
         if hasattr(obj, "__dict__"):
             # Keep track of which class a particular __dict__ is associated with.
             inferred[id(obj.__dict__)] = f"{n} (__dict__)"
-        if isinstance(obj, (Node, Type)):  # type: ignore
+        if isinstance(obj, (Node, Type)):  # type: ignore[misc]
             if hasattr(obj, "__dict__"):
                 for x in obj.__dict__.values():
                     if isinstance(x, list):
@@ -50,8 +52,8 @@ def collect_memory_stats() -> Tuple[Dict[str, int], Dict[str, int]]:
                 if isinstance(x, tuple):
                     inferred[id(x)] = f"{n} (tuple)"
 
-    freqs: Dict[str, int] = {}
-    memuse: Dict[str, int] = {}
+    freqs: dict[str, int] = {}
+    memuse: dict[str, int] = {}
     for obj in objs:
         if id(obj) in inferred:
             name = inferred[id(obj)]
@@ -88,7 +90,7 @@ def print_memory_profile(run_gc: bool = True) -> None:
     print("Total reachable ", totalmem // 1024)
 
 
-def find_recursive_objects(objs: List[object]) -> None:
+def find_recursive_objects(objs: list[object]) -> None:
     """Find additional objects referenced by objs and append them to objs.
 
     We use this since gc.get_objects() does not return objects without pointers

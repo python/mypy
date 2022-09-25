@@ -2904,6 +2904,20 @@ from . import m as m
 [file p/m.py]
 [builtins fixtures/list.pyi]
 
+[case testSpecialModulesNameImplicitAttr]
+import typing
+import builtins
+import abc
+
+reveal_type(abc.__name__)       # N: Revealed type is "builtins.str"
+reveal_type(builtins.__name__)  # N: Revealed type is "builtins.str"
+reveal_type(typing.__name__)    # N: Revealed type is "builtins.str"
+
+[case testSpecialAttrsAreAvaliableInClasses]
+class Some:
+    name = __name__
+reveal_type(Some.name)  # N: Revealed type is "builtins.str"
+
 [case testReExportAllInStub]
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
@@ -3097,10 +3111,15 @@ from google.cloud import x
 [case testErrorFromGoogleCloud]
 import google.cloud
 from google.cloud import x
+import google.non_existent
+from google.non_existent import x
 [out]
-main:1: error: Cannot find implementation or library stub for module named "google.cloud"
+main:1: error: Library stubs not installed for "google.cloud"
+main:1: note: Hint: "python3 -m pip install types-google-cloud-ndb"
+main:1: note: (or run "mypy --install-types" to install all missing stub packages)
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:1: error: Cannot find implementation or library stub for module named "google"
+main:3: error: Cannot find implementation or library stub for module named "google.non_existent"
 
 [case testMissingSubmoduleOfInstalledStubPackage]
 import bleach.xyz

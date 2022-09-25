@@ -13,7 +13,8 @@ class object:
     def __init_subclass__(cls) -> None: pass
     def __eq__(self, other: object) -> bool: pass
 
-class type: pass
+class type:
+    __annotations__: Mapping[str, object]
 
 class dict(Mapping[KT, VT]):
     @overload

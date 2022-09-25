@@ -1,7 +1,9 @@
 """Shared definitions used by different parts of semantic analysis."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Callable, List, Optional, Union
+from typing import Callable
 from typing_extensions import Final, Protocol
 
 from mypy_extensions import trait
@@ -32,6 +34,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeVarId,
+    TypeVarLikeType,
     get_proper_type,
 )
 
@@ -52,7 +55,7 @@ class SemanticAnalyzerCoreInterface:
     @abstractmethod
     def lookup_qualified(
         self, name: str, ctx: Context, suppress_errors: bool = False
-    ) -> Optional[SymbolTableNode]:
+    ) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -60,7 +63,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -71,12 +74,12 @@ class SemanticAnalyzerCoreInterface:
         serious: bool = False,
         *,
         blocker: bool = False,
-        code: Optional[ErrorCode] = None,
+        code: ErrorCode | None = None,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def note(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def note(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -84,7 +87,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def defer(self, debug_context: Optional[Context] = None, force_progress: bool = False) -> None:
+    def defer(self, debug_context: Context | None = None, force_progress: bool = False) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -124,20 +127,20 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     * Less need to pass around callback functions
     """
 
+    tvar_scope: TypeVarLikeScope
+
     @abstractmethod
     def lookup(
         self, name: str, ctx: Context, suppress_errors: bool = False
-    ) -> Optional[SymbolTableNode]:
+    ) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, fullname: str, args: Optional[List[Type]] = None) -> Instance:
+    def named_type(self, fullname: str, args: list[Type] | None = None) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(
-        self, fullname: str, args: Optional[List[Type]] = None
-    ) -> Optional[Instance]:
+    def named_type_or_none(self, fullname: str, args: list[Type] | None = None) -> Instance | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -149,13 +152,17 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         self,
         t: Type,
         *,
-        tvar_scope: Optional[TypeVarLikeScope] = None,
+        tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         allow_required: bool = False,
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
-    ) -> Optional[Type]:
+    ) -> Type | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_and_bind_all_tvars(self, type_exprs: list[Expression]) -> list[TypeVarLikeType]:
         raise NotImplementedError
 
     @abstractmethod
@@ -203,7 +210,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def parse_bool(self, expr: Expression) -> Optional[bool]:
+    def parse_bool(self, expr: Expression) -> bool | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -252,19 +259,19 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
 
 
 class _NamedTypeCallback(Protocol):
-    def __call__(self, fully_qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance:
         ...
 
 
 def paramspec_args(
     name: str,
     fullname: str,
-    id: Union[TypeVarId, int],
+    id: TypeVarId | int,
     *,
     named_type_func: _NamedTypeCallback,
     line: int = -1,
     column: int = -1,
-    prefix: Optional[Parameters] = None,
+    prefix: Parameters | None = None,
 ) -> ParamSpecType:
     return ParamSpecType(
         name,
@@ -281,12 +288,12 @@ def paramspec_args(
 def paramspec_kwargs(
     name: str,
     fullname: str,
-    id: Union[TypeVarId, int],
+    id: TypeVarId | int,
     *,
     named_type_func: _NamedTypeCallback,
     line: int = -1,
     column: int = -1,
-    prefix: Optional[Parameters] = None,
+    prefix: Parameters | None = None,
 ) -> ParamSpecType:
     return ParamSpecType(
         name,

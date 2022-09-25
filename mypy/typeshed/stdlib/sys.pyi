@@ -11,7 +11,7 @@ from typing_extensions import Literal, TypeAlias, final
 
 _T = TypeVar("_T")
 
-_OptExcInfo: TypeAlias = OptExcInfo  # TODO: obsolete, remove fall 2022 or later
+_OptExcInfo: TypeAlias = OptExcInfo  # noqa: Y047  # TODO: obsolete, remove fall 2022 or later
 
 # Intentionally omits one deprecated and one optional method of `importlib.abc.MetaPathFinder`
 class _MetaPathFinder(Protocol):

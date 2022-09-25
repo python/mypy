@@ -1,10 +1,12 @@
 """Utilities for mypy.stubgen, mypy.stubgenc, and mypy.stubdoc modules."""
 
+from __future__ import annotations
+
 import os.path
 import re
 import sys
 from contextlib import contextmanager
-from typing import Iterator, List, Optional, Tuple, Union
+from typing import Iterator
 from typing_extensions import overload
 
 from mypy.modulefinder import ModuleNotFoundReason
@@ -21,7 +23,7 @@ class CantImport(Exception):
 
 
 def walk_packages(
-    inspect: ModuleInspect, packages: List[str], verbose: bool = False
+    inspect: ModuleInspect, packages: list[str], verbose: bool = False
 ) -> Iterator[str]:
     """Iterates through all packages and sub-packages in the given list.
 
@@ -50,7 +52,7 @@ def walk_packages(
             yield from prop.subpackages
 
 
-def find_module_path_using_sys_path(module: str, sys_path: List[str]) -> Optional[str]:
+def find_module_path_using_sys_path(module: str, sys_path: list[str]) -> str | None:
     relative_candidates = (
         module.replace(".", "/") + ".py",
         os.path.join(module.replace(".", "/"), "__init__.py"),
@@ -65,7 +67,7 @@ def find_module_path_using_sys_path(module: str, sys_path: List[str]) -> Optiona
 
 def find_module_path_and_all_py3(
     inspect: ModuleInspect, module: str, verbose: bool
-) -> Optional[Tuple[Optional[str], Optional[List[str]]]]:
+) -> tuple[str | None, list[str] | None] | None:
     """Find module and determine __all__ for a Python 3 module.
 
     Return None if the module is a C module. Return (module_path, __all__) if
@@ -113,7 +115,7 @@ def generate_guarded(
             print(f"Created {target}")
 
 
-def report_missing(mod: str, message: Optional[str] = "", traceback: str = "") -> None:
+def report_missing(mod: str, message: str | None = "", traceback: str = "") -> None:
     if message:
         message = " with error: " + message
     print(f"{mod}: Failed to import, skipping{message}")
@@ -139,7 +141,7 @@ def remove_misplaced_type_comments(source: str) -> str:
     ...
 
 
-def remove_misplaced_type_comments(source: Union[str, bytes]) -> Union[str, bytes]:
+def remove_misplaced_type_comments(source: str | bytes) -> str | bytes:
     """Remove comments from source that could be understood as misplaced type comments.
 
     Normal comments may look like misplaced type comments, and since they cause blocking
@@ -169,7 +171,7 @@ def remove_misplaced_type_comments(source: Union[str, bytes]) -> Union[str, byte
         return text
 
 
-def common_dir_prefix(paths: List[str]) -> str:
+def common_dir_prefix(paths: list[str]) -> str:
     if not paths:
         return "."
     cur = os.path.dirname(os.path.normpath(paths[0]))

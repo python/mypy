@@ -1,5 +1,8 @@
-from typing import Callable, Optional, Type as typing_Type
+from __future__ import annotations
 
+from typing import Callable
+
+from mypy.checker import TypeChecker
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin
 from mypy.subtypes import is_proper_subtype
@@ -31,7 +34,7 @@ class ProperTypePlugin(Plugin):
     all these became dangerous because typ may be e.g. an alias to union.
     """
 
-    def get_function_hook(self, fullname: str) -> Optional[Callable[[FunctionContext], Type]]:
+    def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         if fullname == "builtins.isinstance":
             return isinstance_proper_hook
         if fullname == "mypy.types.get_proper_type":
@@ -48,10 +51,8 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
     right = get_proper_type(ctx.arg_types[1][0])
     for arg in ctx.arg_types[0]:
         if (
-            is_improper_type(arg)
-            or isinstance(get_proper_type(arg), AnyType)
-            and is_dangerous_target(right)
-        ):
+            is_improper_type(arg) or isinstance(get_proper_type(arg), AnyType)
+        ) and is_dangerous_target(right):
             if is_special_target(right):
                 return ctx.default_return_type
             ctx.api.fail(
@@ -95,6 +96,7 @@ def is_special_target(right: ProperType) -> bool:
             "mypy.types.PartialType",
             "mypy.types.ErasedType",
             "mypy.types.DeletedType",
+            "mypy.types.RequiredType",
         ):
             # Special case: these are not valid targets for a type alias and thus safe.
             # TODO: introduce a SyntheticType base to simplify this?
@@ -152,11 +154,13 @@ def proper_types_hook(ctx: FunctionContext) -> Type:
 
 
 def get_proper_type_instance(ctx: FunctionContext) -> Instance:
-    types = ctx.api.modules["mypy.types"]  # type: ignore
+    checker = ctx.api
+    assert isinstance(checker, TypeChecker)
+    types = checker.modules["mypy.types"]
     proper_type_info = types.names["ProperType"]
     assert isinstance(proper_type_info.node, TypeInfo)
     return Instance(proper_type_info.node, [])
 
 
-def plugin(version: str) -> typing_Type[ProperTypePlugin]:
+def plugin(version: str) -> type[ProperTypePlugin]:
     return ProperTypePlugin
