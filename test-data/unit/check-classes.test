@@ -865,6 +865,23 @@ class C(B): pass
 class D(C): pass
 class D2(C): pass
 
+[case testConstructorJoinsWithCustomMetaclass]
+# flags: --strict-optional
+from typing import TypeVar
+import abc
+
+def func() -> None: pass
+class NormalClass: pass
+class WithMetaclass(metaclass=abc.ABCMeta): pass
+
+T = TypeVar('T')
+def join(x: T, y: T) -> T: pass
+
+f1 = join(func, WithMetaclass)
+reveal_type(f1())  # N: Revealed type is "Union[__main__.WithMetaclass, None]"
+
+f2 = join(WithMetaclass, func)
+reveal_type(f2())  # N: Revealed type is "Union[__main__.WithMetaclass, None]"
 
 -- Attribute access in class body
 -- ------------------------------
