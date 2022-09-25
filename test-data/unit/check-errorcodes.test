@@ -935,3 +935,11 @@ class Sub(Base):
     def meth(self) -> int:
         return super().meth()  # E: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe  [safe-super]
 [builtins fixtures/exception.pyi]
+
+[case testDedicatedErrorCodeForEmpty_no_empty]
+# flags: --strict-optional
+from typing import Optional
+def foo() -> int: ...  # E: Missing return statement  [empty-body]
+def bar() -> None: ...
+# This is consistent with how --warn-no-return behaves in general
+def baz() -> Optional[int]: ...  # E: Missing return statement  [empty-body]

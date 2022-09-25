@@ -96,6 +96,11 @@ LITERAL_REQ: Final = ErrorCode("literal-required", "Check that value is a litera
 UNUSED_COROUTINE: Final = ErrorCode(
     "unused-coroutine", "Ensure that all coroutines are used", "General"
 )
+EMPTY_BODY: Final = ErrorCode(
+    "empty-body",
+    "A dedicated error code to opt out return errors for empty/trivial bodies",
+    "General",
+)
 SAFE_SUPER: Final = ErrorCode(
     "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
 )

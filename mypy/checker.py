@@ -1231,10 +1231,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # entirely pass/Ellipsis/raise NotImplementedError.
                         if isinstance(return_type, UninhabitedType):
                             # This is a NoReturn function
-                            self.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
+                            msg = message_registry.INVALID_IMPLICIT_RETURN
                         else:
-                            self.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
+                            msg = message_registry.MISSING_RETURN_STATEMENT
+                        if body_is_trivial:
+                            msg = msg._replace(code=codes.EMPTY_BODY)
+                        self.fail(msg, defn)
                 elif show_error:
+                    msg = message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE
+                    if body_is_trivial:
+                        msg = msg._replace(code=codes.EMPTY_BODY)
                     # similar to code in check_return_stmt
                     self.check_subtype(
                         subtype_label="implicitly returns",
@@ -1242,7 +1248,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         supertype_label="expected",
                         supertype=return_type,
                         context=defn,
-                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
+                        msg=msg,
                     )
 
             self.return_types.pop()

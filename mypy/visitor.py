@@ -356,7 +356,7 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     subclasses do not always need to override all the methods.
 
     TODO: make the default return value explicit, then turn on
-          the warn_no_return flag in mypy_self_check.ini.
+          empty body checking in mypy_self_check.ini.
     """
 
     # Not in superclasses:
