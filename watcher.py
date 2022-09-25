@@ -13,7 +13,6 @@ import traceback
 import types
 from typing import Any, Dict, List, Tuple
 #@-<< Watcher: imports >>
-assert pdb  ### to do.
 #@+others
 #@+node:ekr.20220925074638.1: ** class LeoGlobals
 #@@nosearch
@@ -174,14 +173,12 @@ class LeoGlobals:  # pragma: no cover
         s2 = s[: n - 3] + f"...({len(s)})"
         return s2 + '\n' if s.endswith('\n') else s2
     #@-others
-#@+node:ekr.20220925071140.1: ** class Watcher
-class SherlockTracer:
+#@+node:ekr.20220925071140.1: ** class Watcher(pdb.Pdb)
+class Watcher(pdb.Pdb):
     #@+<< Watcher: docstring >>
     #@+node:ekr.20220925073342.1: *3* << Watcher: docstring >>
     """
     A stand-alone tracer/analysis class.
-
-    This class uses only the re, os, sys, types and typing modules.
 
     The arguments in the pattern lists determine which functions get traced
     or which stats get printed. Each pattern starts with "+", "-", "+:" or
@@ -214,7 +211,7 @@ class SherlockTracer:
     """
     #@-<< Watcher: docstring >>
     #@+others
-    #@+node:ekr.20220925071140.2: *3* sherlock.__init__
+    #@+node:ekr.20220925071140.2: *3* watcher.__init__
     def __init__(
         self,
         patterns: List[Any],
@@ -243,17 +240,17 @@ class SherlockTracer:
                 QtCore.pyqtRemoveInputHook()
         except Exception:
             pass
-    #@+node:ekr.20220925071140.3: *3* sherlock.__call__
+    #@+node:ekr.20220925071140.3: *3* watcher.__call__
     def __call__(self, frame: Any, event: Any, arg: Any) -> Any:
         """Exists so that self.dispatch can return self."""
         return self.dispatch(frame, event, arg)
-    #@+node:ekr.20220925071140.4: *3* sherlock.bad_pattern
+    #@+node:ekr.20220925071140.4: *3* watcher.bad_pattern
     def bad_pattern(self, pattern: Any) -> None:
         """Report a bad Sherlock pattern."""
         if pattern not in self.bad_patterns:
             self.bad_patterns.append(pattern)
             print(f"\nignoring bad pattern: {pattern}\n")
-    #@+node:ekr.20220925071140.5: *3* sherlock.check_pattern
+    #@+node:ekr.20220925071140.5: *3* watcher.check_pattern
     def check_pattern(self, pattern: str) -> bool:
         """Give an error and return False for an invalid pattern."""
         try:
@@ -266,7 +263,7 @@ class SherlockTracer:
         except Exception:
             self.bad_pattern(pattern)
             return False
-    #@+node:ekr.20220925071140.6: *3* sherlock.dispatch
+    #@+node:ekr.20220925071140.6: *3* watcher.dispatch
     def dispatch(self, frame: Any, event: Any, arg: Any) -> Any:
         """The dispatch method."""
         if event == 'call':
@@ -277,7 +274,7 @@ class SherlockTracer:
             self.do_line(frame, arg)
         # Queue the SherlockTracer instance again.
         return self
-    #@+node:ekr.20220925071140.7: *3* sherlock.do_call & helper
+    #@+node:ekr.20220925071140.7: *3* watcher.do_call & helper
     def do_call(self, frame: Any, unused_arg: Any) -> None:
         """Trace through a function call."""
         frame1 = frame
@@ -314,7 +311,7 @@ class SherlockTracer:
         d = self.stats.get(file_name, {})
         d[full_name] = 1 + d.get(full_name, 0)
         self.stats[file_name] = d
-    #@+node:ekr.20220925071140.8: *4* sherlock.get_args
+    #@+node:ekr.20220925071140.8: *4* watcher.get_args
     def get_args(self, frame: Any) -> List[str]:
         """Return a List of string "name=val" for each arg in the function call."""
         code = frame.f_code
@@ -341,7 +338,7 @@ class SherlockTracer:
                     if val:
                         result.append(f"{name}={val}")
         return result
-    #@+node:ekr.20220925071140.9: *3* sherlock.do_line (not used)
+    #@+node:ekr.20220925071140.9: *3* watcher.do_line (not used)
     bad_fns: List[str] = []
 
     def do_line(self, frame: Any, arg: Any) -> None:
@@ -375,7 +372,7 @@ class SherlockTracer:
             print(f"{name:3} {line}")
         else:
             print(f"{g.shortFileName(file_name)} {n} {full_name} {line}")
-    #@+node:ekr.20220925071140.10: *3* sherlock.do_return & helper
+    #@+node:ekr.20220925071140.10: *3* watcher.do_return & helper
     def do_return(self, frame: Any, arg: Any) -> None:  # Arg *is* used below.
         """Trace a return statement."""
         code = frame.f_code
@@ -398,7 +395,7 @@ class SherlockTracer:
                 self.put_ret(f"<{ret1.__class__.__name__}>", n, path)
         else:
             self.put_ret(arg, n, path)
-    #@+node:ekr.20220925071140.11: *4* sherlock.put_ret
+    #@+node:ekr.20220925071140.11: *4* watcher.put_ret
     def put_ret(self, arg: Any, n: int, path: str) -> None:
         """Print arg, the value returned by a "return" statement."""
         indent = ' ' * max(0, n - self.n + 1) if self.indent else ''
@@ -429,7 +426,7 @@ class SherlockTracer:
                 f"{path}:{indent}-{self.full_name} -> "
                 f"{exctype.__name__}, {value} {arg_s}"
             )
-    #@+node:ekr.20220925071140.12: *3* sherlock.fn_is_enabled
+    #@+node:ekr.20220925071140.12: *3* watcher.fn_is_enabled
     def fn_is_enabled(self, func: Any, patterns: List[str]) -> bool:
         """Return True if tracing for the given function is enabled."""
         if func in self.ignored_functions:
@@ -476,7 +473,7 @@ class SherlockTracer:
         except Exception:
             self.bad_pattern(pattern)
             return False
-    #@+node:ekr.20220925071140.13: *3* sherlock.get_full_name
+    #@+node:ekr.20220925071140.13: *3* watcher.get_full_name
     def get_full_name(self, locals_: Any, name: str) -> str:
         """Return class_name::name if possible."""
         full_name = name
@@ -487,7 +484,7 @@ class SherlockTracer:
         except Exception:
             pass
         return full_name
-    #@+node:ekr.20220925071140.14: *3* sherlock.is_enabled
+    #@+node:ekr.20220925071140.14: *3* watcher.is_enabled
     ignored_files: List[str] = []  # List of files.
     ignored_functions: List[str] = []  # List of files.
 
@@ -565,7 +562,7 @@ class SherlockTracer:
             except Exception:
                 self.bad_pattern(pattern)
         return enabled
-    #@+node:ekr.20220925071140.15: *3* sherlock.print_stats
+    #@+node:ekr.20220925071140.15: *3* watcher.print_stats
     def print_stats(self, patterns: List[str]=None) -> None:
         """Print all accumulated statisitics."""
         print('\nSherlock statistics...')
@@ -585,7 +582,7 @@ class SherlockTracer:
                 print('/'.join(parts[-2:]))
                 for key in result:
                     print(f"{d.get(key):4} {key}")
-    #@+node:ekr.20220925071140.16: *3* sherlock.run
+    #@+node:ekr.20220925071140.16: *3* watcher.run
     # Modified from pdb.Pdb.set_trace.
 
     def run(self, frame: Any=None) -> None:
@@ -600,7 +597,7 @@ class SherlockTracer:
             self.n += 1
         # Pass self to sys.settrace to give easy access to all methods.
         sys.settrace(self)
-    #@+node:ekr.20220925071140.17: *3* sherlock.push & pop
+    #@+node:ekr.20220925071140.17: *3* watcher.push & pop
     def push(self, patterns: List[str]) -> None:
         """Push the old patterns and set the new."""
         self.pattern_stack.append(self.patterns)  # type:ignore
@@ -614,11 +611,11 @@ class SherlockTracer:
             print(f"SherlockTracer.pop: {self.patterns}")
         else:
             print('SherlockTracer.pop: pattern stack underflow')
-    #@+node:ekr.20220925071140.18: *3* sherlock.set_patterns
+    #@+node:ekr.20220925071140.18: *3* watcher.set_patterns
     def set_patterns(self, patterns: List[str]) -> None:
         """Set the patterns in effect."""
         self.patterns = [z for z in patterns if self.check_pattern(z)]
-    #@+node:ekr.20220925071140.19: *3* sherlock.show
+    #@+node:ekr.20220925071140.19: *3* watcher.show
     def show(self, item: Any) -> str:
         """return the best representation of item."""
         if not item:
@@ -635,7 +632,7 @@ class SherlockTracer:
         if s.startswith("<object object"):
             s = "_dummy"
         return s
-    #@+node:ekr.20220925071140.20: *3* sherlock.stop
+    #@+node:ekr.20220925071140.20: *3* watcher.stop
     def stop(self) -> None:
         """Stop all tracing."""
         sys.settrace(None)
