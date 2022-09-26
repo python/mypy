@@ -118,7 +118,7 @@ class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
     def __getitem__(self, __k: _KT) -> _VT_co: ...
 
 # stable
-class SupportsGetItem(Container[_KT_contra], Protocol[_KT_contra, _VT_co]):
+class SupportsGetItem(Container[_KT_contra], Protocol[_KT_contra, _VT_co]):  # type: ignore
     def __getitem__(self, __k: _KT_contra) -> _VT_co: ...
 
 # stable
