@@ -625,7 +625,11 @@ try:
     from m import f, g
 except:
     def f(x): pass
-    def g(x): pass # E: All conditional function variants must have identical signatures
+    def g(x): pass # E: All conditional function variants must have identical signatures \
+                   # N: Original: \
+                   # N:     def g(x: Any, y: Any) -> Any \
+                   # N: Redefinition: \
+                   # N:     def g(x: Any) -> Any
 [file m.py]
 def f(x): pass
 def g(x, y): pass
