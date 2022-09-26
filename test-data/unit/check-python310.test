@@ -1695,3 +1695,18 @@ match input_arg:
     case GenericDataclass(x=a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
 [builtins fixtures/dataclasses.pyi]
+
+[case testMatchValueConstrainedTypeVar]
+from typing import TypeVar, Iterable
+
+S = TypeVar("S", int, str)
+
+def my_func(pairs: Iterable[tuple[S, S]]) -> None:
+    for pair in pairs:
+        reveal_type(pair)  # N: Revealed type is "Tuple[builtins.int, builtins.int]" \
+                           # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+        match pair:
+            case _:
+                reveal_type(pair)  # N: Revealed type is "Tuple[builtins.int, builtins.int]" \
+                                   # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+[builtins fixtures/tuple.pyi]
