@@ -108,7 +108,7 @@ In these cases you can give the type explicitly using a type annotation:
 Compatibility of container types
 ********************************
 
-A quick note: container types can sometims be unintuitive. We'll discuss this
+A quick note: container types can sometimes be unintuitive. We'll discuss this
 more in :ref:`variance`. For example, the following program generates a mypy error,
 because mypy treats ``list[int]`` as incompatible with ``list[object]``:
 
