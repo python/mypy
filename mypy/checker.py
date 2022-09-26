@@ -1227,6 +1227,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ):
                     show_error = False
 
+                # Ignore also definitions that appear in `if TYPE_CHECKING: ...` blocks.
+                # These can't be called at runtime anyway (similar to plugin-generated).
+                if isinstance(defn, FuncDef) and defn.is_mypy_only:
+                    show_error = False
+
                 # We want to minimize the fallout from checking empty bodies
                 # that was absent in many mypy versions.
                 if body_is_trivial and is_subtype(NoneType(), return_type):

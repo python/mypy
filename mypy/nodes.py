@@ -782,6 +782,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "deco_line",
         "is_trivial_body",
+        "is_mypy_only",
     )
 
     # Note that all __init__ args must have default values
@@ -803,8 +804,10 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_final = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
-        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        # Used for error reporting (to keep backward compatibility with pre-3.8)
         self.deco_line: int | None = None
+        # Definitions that appear in if TYPE_CHECKING are marked with this flag.
+        self.is_mypy_only = False
 
     @property
     def name(self) -> str:
