@@ -7,7 +7,7 @@ This chapter introduces some core concepts of mypy, including function
 annotations, the :py:mod:`typing` module, stub files, and more.
 
 If you're looking for a quick intro, see the
-:ref:`mypy cheatsheet <cheat-sheet-py3>`
+:ref:`mypy cheatsheet <cheat-sheet-py3>`.
 
 If you're unfamiliar with the concepts of static and dynamic type checking,
 be sure to read this chapter carefully, as the rest of the documentation
