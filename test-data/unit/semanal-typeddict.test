@@ -42,4 +42,4 @@ MypyFile:1(
       NameExpr(x)
       TempNode:4(
         Any)
-      str?)))
+      builtins.str)))

@@ -294,6 +294,12 @@ class TypedDictAnalyzer:
                     )
                     if analyzed is None:
                         return None, [], set()  # Need to defer
+                    # TypedDictAnalyzer sets the AssignmentStmt type here, but
+                    # NamedTupleAnalyzer doesn't and instead has semanal.py set it
+                    # by calling analyze_class_body_common after.
+                    #
+                    # TODO: Resolve this inconsistency?
+                    stmt.type = analyzed
                     types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
