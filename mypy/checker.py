@@ -2087,6 +2087,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             f'Variance of TypeVar "{base_tvar.name}" incompatible '
                             "with variance in parent type",
                             context=defn,
+                            code=codes.TYPE_VAR,
                         )
 
         if typ.is_protocol and typ.defn.type_vars:
