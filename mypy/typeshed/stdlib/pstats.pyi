@@ -30,7 +30,7 @@ if sys.version_info >= (3, 9):
 
     @dataclass(unsafe_hash=True)
     class FunctionProfile:
-        ncalls: int
+        ncalls: str
         tottime: float
         percall_tottime: float
         cumtime: float

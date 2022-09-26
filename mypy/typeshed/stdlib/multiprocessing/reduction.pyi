@@ -1,10 +1,9 @@
 import pickle
 import sys
-from _typeshed import HasFileno
+from _typeshed import HasFileno, Incomplete
 from abc import ABCMeta
 from copyreg import _DispatchTableType
 from socket import socket
-from typing import Any
 from typing_extensions import Literal
 
 if sys.platform == "win32":
@@ -18,12 +17,12 @@ class ForkingPickler(pickle.Pickler):
     @classmethod
     def register(cls, type, reduce) -> None: ...
     @classmethod
-    def dumps(cls, obj, protocol: Any | None = ...): ...
+    def dumps(cls, obj, protocol: Incomplete | None = ...): ...
     loads = pickle.loads
 
 register = ForkingPickler.register
 
-def dump(obj, file, protocol: Any | None = ...) -> None: ...
+def dump(obj, file, protocol: Incomplete | None = ...) -> None: ...
 
 if sys.platform == "win32":
     if sys.version_info >= (3, 8):
@@ -38,7 +37,7 @@ if sys.platform == "win32":
     def recv_handle(conn): ...
 
     class DupHandle:
-        def __init__(self, handle, access, pid: Any | None = ...) -> None: ...
+        def __init__(self, handle, access, pid: Incomplete | None = ...) -> None: ...
         def detach(self): ...
 
 else:
