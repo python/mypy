@@ -317,6 +317,21 @@ match x:
     case [str()]:
         pass
 
+[case testMatchSequencePatternWithInvalidClassPattern]
+class Example:
+    __match_args__ = ("value",)
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+SubClass: type[Example]
+
+match [SubClass("a"), SubClass("b")]:
+    case [SubClass(value), *rest]:  # E: Expected type in class pattern; found "Type[__main__.Example]"
+        reveal_type(value)  # E: Cannot determine type of "value" \
+                            # N: Revealed type is "Any"
+        reveal_type(rest)  # N: Revealed type is "builtins.list[__main__.Example]"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchSequenceUnion-skip]
 from typing import List, Union
 m: Union[List[List[str]], str]
