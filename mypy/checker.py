@@ -1232,6 +1232,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if body_is_trivial and is_subtype(NoneType(), return_type):
                     show_error = False
 
+                may_be_abstract = (
+                    body_is_trivial
+                    and defn.info is not FUNC_NO_INFO
+                    and defn.info.metaclass_type is not None
+                    and defn.info.metaclass_type.type.fullname == "abc.ABCMeta"
+                )
+
                 if self.options.warn_no_return:
                     if (
                         not self.current_node_deferred
@@ -1249,19 +1256,30 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if body_is_trivial:
                             msg = msg._replace(code=codes.EMPTY_BODY)
                         self.fail(msg, defn)
+                        if may_be_abstract:
+                            self.note(
+                                "If the method is meant to be abstract use @abc.abstractmethod",
+                                defn,
+                            )
                 elif show_error:
                     msg = message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE
                     if body_is_trivial:
                         msg = msg._replace(code=codes.EMPTY_BODY)
                     # similar to code in check_return_stmt
-                    self.check_subtype(
-                        subtype_label="implicitly returns",
-                        subtype=NoneType(),
-                        supertype_label="expected",
-                        supertype=return_type,
-                        context=defn,
-                        msg=msg,
-                    )
+                    if (
+                        not self.check_subtype(
+                            subtype_label="implicitly returns",
+                            subtype=NoneType(),
+                            supertype_label="expected",
+                            supertype=return_type,
+                            context=defn,
+                            msg=msg,
+                        )
+                        and may_be_abstract
+                    ):
+                        self.note(
+                            "If the method is meant to be abstract use @abc.abstractmethod", defn
+                        )
 
             self.return_types.pop()
 
