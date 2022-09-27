@@ -67,7 +67,7 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -151,7 +151,7 @@ def run_build(
     stdout: TextIO,
     stderr: TextIO,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
 
@@ -544,8 +544,9 @@ def process_options(
         title="Import discovery", description="Configure how imports are discovered and followed."
     )
     add_invertible_flag(
-        "--namespace-packages",
-        default=False,
+        "--no-namespace-packages",
+        dest="namespace_packages",
+        default=True,
         help="Support namespace packages (PEP 420, __init__.py-less)",
         group=imports_group,
     )
@@ -720,10 +721,9 @@ def process_options(
         "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional",
     )
     add_invertible_flag(
-        "--no-implicit-optional",
+        "--implicit-optional",
         default=False,
-        strict_flag=True,
-        help="Don't assume arguments with default values of None are Optional",
+        help="Assume arguments with default values of None are Optional",
         group=none_group,
     )
     none_group.add_argument("--strict-optional", action="store_true", help=argparse.SUPPRESS)
@@ -871,9 +871,9 @@ def process_options(
         group=error_group,
     )
     add_invertible_flag(
-        "--show-error-codes",
+        "--hide-error-codes",
         default=False,
-        help="Show error codes in error messages",
+        help="Hide error codes in error messages",
         group=error_group,
     )
     add_invertible_flag(

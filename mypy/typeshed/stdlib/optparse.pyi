@@ -42,7 +42,6 @@ class AmbiguousOptionError(BadOptionError):
     def __init__(self, opt_str: str, possibilities: Sequence[str]) -> None: ...
 
 class OptionError(OptParseError):
-    msg: str
     option_id: str
     def __init__(self, msg: str, option: Option) -> None: ...
 

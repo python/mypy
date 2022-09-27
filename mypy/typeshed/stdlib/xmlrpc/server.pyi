@@ -72,11 +72,9 @@ class SimpleXMLRPCRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self) -> None: ...
     def decode_request_content(self, data: bytes) -> bytes | None: ...
     def report_404(self) -> None: ...
-    def log_request(self, code: int | str = ..., size: int | str = ...) -> None: ...
 
 class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
 
-    allow_reuse_address: bool
     _send_traceback_handler: bool
     def __init__(
         self,
@@ -92,8 +90,6 @@ class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
 class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
 
     dispatchers: dict[str, SimpleXMLRPCDispatcher]
-    allow_none: bool
-    encoding: str
     def __init__(
         self,
         addr: tuple[str, int],
@@ -106,12 +102,6 @@ class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
     ) -> None: ...
     def add_dispatcher(self, path: str, dispatcher: SimpleXMLRPCDispatcher) -> SimpleXMLRPCDispatcher: ...
     def get_dispatcher(self, path: str) -> SimpleXMLRPCDispatcher: ...
-    def _marshaled_dispatch(
-        self,
-        data: str,
-        dispatch_method: Callable[[str | None, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = ...,
-        path: Any | None = ...,
-    ) -> str: ...
 
 class CGIXMLRPCRequestHandler(SimpleXMLRPCDispatcher):
     def __init__(self, allow_none: bool = ..., encoding: str | None = ..., use_builtin_types: bool = ...) -> None: ...

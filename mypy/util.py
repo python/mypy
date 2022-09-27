@@ -522,8 +522,8 @@ class FancyFormatter:
     This currently only works on Linux and Mac.
     """
 
-    def __init__(self, f_out: IO[str], f_err: IO[str], show_error_codes: bool) -> None:
-        self.show_error_codes = show_error_codes
+    def __init__(self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool) -> None:
+        self.hide_error_codes = hide_error_codes
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
@@ -690,7 +690,7 @@ class FancyFormatter:
         """Colorize an output line by highlighting the status and error code."""
         if ": error:" in error:
             loc, msg = error.split("error:", maxsplit=1)
-            if not self.show_error_codes:
+            if self.hide_error_codes:
                 return (
                     loc + self.style("error:", "red", bold=True) + self.highlight_quote_groups(msg)
                 )

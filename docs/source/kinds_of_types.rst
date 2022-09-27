@@ -388,12 +388,8 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
 .. note::
 
     ``Optional[...]`` *does not* mean a function argument with a default value.
-    However, if the default value of an argument is ``None``, you can use
-    an optional type for the argument, but it's not enforced by default.
-    You can use the :option:`--no-implicit-optional <mypy --no-implicit-optional>` command-line option to stop
-    treating arguments with a ``None`` default value as having an implicit
-    ``Optional[...]`` type. It's possible that this will become the default
-    behavior in the future.
+    It simply means that ``None`` is a valid value for the argument. This is
+    a common confusion because ``None`` is a common default value for arguments.
 
 .. _alternative_union_syntax:
 

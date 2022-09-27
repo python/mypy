@@ -282,9 +282,6 @@ class CacheFTPHandler(FTPHandler):
     def setMaxConns(self, m: int) -> None: ...
     def check_cache(self) -> None: ...  # undocumented
     def clear_cache(self) -> None: ...  # undocumented
-    def connect_ftp(
-        self, user: str, passwd: str, host: str, port: int, dirs: str, timeout: float
-    ) -> ftpwrapper: ...  # undocumented
 
 class UnknownHandler(BaseHandler):
     def unknown_open(self, req: Request) -> NoReturn: ...

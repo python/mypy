@@ -82,6 +82,7 @@ class C: pass
 [builtins fixtures/list.pyi]
 
 [case testCallingVarArgsFunctionWithDefaultArgs]
+# flags: --implicit-optional --no-strict-optional
 
 a = None # type: A
 b = None # type: B
@@ -388,12 +389,14 @@ class B(A): pass
 [builtins fixtures/list.pyi]
 
 [case testCallerVarArgsAndDefaultArgs]
+# flags: --implicit-optional --no-strict-optional
 
 a, b = None, None # type: (A, B)
-f(*())        # Fail
-f(a, *[a])    # Fail
-f(a, b, *[a]) # Fail
-f(*(a, a, b)) # Fail
+f(*())        # E: Too few arguments for "f"
+f(a, *[a])    # E: Argument 2 to "f" has incompatible type "*List[A]"; expected "Optional[B]" \
+              # E: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
+f(a, b, *[a]) # E: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
+f(*(a, a, b)) # E: Argument 1 to "f" has incompatible type "*Tuple[A, A, B]"; expected "Optional[B]"
 f(*(a,))
 f(*(a, b))
 f(*(a, b, b, b))
@@ -407,12 +410,6 @@ def f(a: 'A', b: 'B' = None, *c: 'B') -> None:
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
-[out]
-main:3: error: Too few arguments for "f"
-main:4: error: Argument 2 to "f" has incompatible type "*List[A]"; expected "Optional[B]"
-main:4: error: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
-main:5: error: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
-main:6: error: Argument 1 to "f" has incompatible type "*Tuple[A, A, B]"; expected "Optional[B]"
 
 [case testVarArgsAfterKeywordArgInCall1]
 # see: mypy issue #2729
