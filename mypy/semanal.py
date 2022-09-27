@@ -215,7 +215,6 @@ from mypy.semanal_shared import (
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.type_visitor import TypeQuery
 from mypy.typeanal import (
     TypeAnalyser,
     TypeVarLikeList,
@@ -4033,7 +4032,7 @@ class SemanticAnalyzer(
                 # This means that we have a type var defined inside of a ClassVar.
                 # This is not allowed by PEP526. (Unless it's a SelfType, which is fine)
                 # See https://github.com/python/mypy/issues/11538
-                if not (s.type.args and self.is_self_type(s.type.args[0])):
+                if not (isinstance(s.type, Instance) and s.type.args and self.is_self_type(s.type.args[0])):
                     self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
         elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
@@ -4056,7 +4055,7 @@ class SemanticAnalyzer(
             return False
         return sym.node.fullname in FINAL_TYPE_NAMES
 
-    def is_self_type(self, typ: Optional[Type]) -> bool:
+    def is_self_type(self, typ: Type | None) -> bool:
         if not isinstance(typ, UnboundType):
             return False
         sym = self.lookup_qualified(typ.name, typ)
@@ -6147,7 +6146,7 @@ class SemanticAnalyzer(
         self.add_type_alias_deps(a.aliases_used)
         return typ
 
-    def class_type(self, self_type: Type) -> Type:
+    def class_type(self, self_type: Type) -> ProperType:
         return TypeType.make_normalized(self_type)
 
     def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:

@@ -576,17 +576,17 @@ class TypeVarType(TypeVarLikeType):
         )
 
 
-SELF_ID = TypeVarId(0.5)  # type: ignore
+SELF_ID = TypeVarId(0.5)  # type: ignore[arg-type]
 # this is a hack cause I need a way to represent a number that's constant and can't be +ve or -ve
 # and using TypeVarId.new() would quickly hit a huge number which is harder to read.
 
 
 class SelfType(TypeVarType):
     __slots__ = ()
-    upper_bound: "Instance"
+    upper_bound: Instance
 
     def __init__(
-        self, fullname: str, upper_bound: "Instance", line: int = -1, column: int = -1
+        self, fullname: str, upper_bound: Instance, line: int = -1, column: int = -1
     ) -> None:
         super().__init__("Self", fullname, SELF_ID, [], upper_bound, line=line, column=column)
 
@@ -608,7 +608,7 @@ class SelfType(TypeVarType):
     @classmethod
     def deserialize(cls, data: JsonDict) -> "SelfType":
         assert data[".class"] == "SelfType"
-        return SelfType(data["fullname"], deserialize_type(data["upper_bound"]))
+        return SelfType(data["fullname"], Instance.deserialize(data["upper_bound"]))
 
 
 class ParamSpecFlavor:
