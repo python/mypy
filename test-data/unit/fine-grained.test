@@ -9795,11 +9795,11 @@ class ExampleClass(Generic[T]):
 [case testDataclassCheckTypeVarBoundsInReprocess]
 # flags: --python-version 3.7
 from dataclasses import dataclass
-from typing import Protocol, Dict, TypeVar, Generic
+from typing import ClassVar, Protocol, Dict, TypeVar, Generic
 from m import x
 
 class DataclassProtocol(Protocol):
-    __dataclass_fields__: Dict
+    __dataclass_fields__: ClassVar[Dict]
 
 T = TypeVar("T", bound=DataclassProtocol)
 
