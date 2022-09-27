@@ -1271,7 +1271,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     "PEP 484 prohibits implicit Optional. "
                     "Accordingly, mypy has changed its default to no_implicit_optional=True",
                     "Use https://github.com/hauntsaninja/no_implicit_optional to automatically "
-                    "upgrade your codebase"
+                    "upgrade your codebase",
                 ]
             else:
                 notes = None
