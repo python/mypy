@@ -67,7 +67,7 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -151,7 +151,7 @@ def run_build(
     stdout: TextIO,
     stderr: TextIO,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
 
@@ -871,9 +871,9 @@ def process_options(
         group=error_group,
     )
     add_invertible_flag(
-        "--show-error-codes",
+        "--hide-error-codes",
         default=False,
-        help="Show error codes in error messages",
+        help="Hide error codes in error messages",
         group=error_group,
     )
     add_invertible_flag(

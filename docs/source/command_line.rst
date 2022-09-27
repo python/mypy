@@ -691,9 +691,9 @@ in error messages.
     ``file:line:column:end_line:end_column``. This option implies
     ``--show-column-numbers``.
 
-.. option:: --show-error-codes
+.. option:: --hide-error-codes
 
-    This flag will add an error code ``[<code>]`` to error messages. The error
+    This flag will hide the error code ``[<code>]`` from error messages. By default, the error
     code is shown after each error message::
 
         prog.py:1: error: "str" has no attribute "trim"  [attr-defined]

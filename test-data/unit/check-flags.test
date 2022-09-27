@@ -2023,12 +2023,12 @@ x = 'should be fine'
 x.trim()
 
 [case testDisableDifferentErrorCode]
-# flags: --disable-error-code name-defined --show-error-code
+# flags: --disable-error-code name-defined --show-error-codes
 x = 'should not be fine'
 x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 
 [case testDisableMultipleErrorCode]
-# flags: --disable-error-code attr-defined --disable-error-code return-value --show-error-code
+# flags: --disable-error-code attr-defined --disable-error-code return-value --show-error-codes
 x = 'should be fine'
 x.trim()
 
@@ -2038,12 +2038,12 @@ def bad_return_type() -> str:
 bad_return_type('no args taken!')  # E: Too many arguments for "bad_return_type"  [call-arg]
 
 [case testEnableErrorCode]
-# flags: --disable-error-code attr-defined --enable-error-code attr-defined --show-error-code
+# flags: --disable-error-code attr-defined --enable-error-code attr-defined --show-error-codes
 x = 'should be fine'
 x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 
 [case testEnableDifferentErrorCode]
-# flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-code
+# flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-codes
 x = 'should not be fine'
 x.trim()
 y.trim()  # E: Name "y" is not defined  [name-defined]
@@ -2054,7 +2054,7 @@ y.trim()  # E: Name "y" is not defined  [name-defined]
     --disable-error-code return-value \
     --disable-error-code call-arg \
     --enable-error-code attr-defined \
-    --enable-error-code return-value --show-error-code
+    --enable-error-code return-value --show-error-codes
 x = 'should be fine'
 x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 
@@ -2109,3 +2109,11 @@ enable_error_code = ignore-without-code, truthy-bool
 
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
+
+[case testShowErrorCodes]
+# flags: --show-error-codes
+x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
+[case testHideErrorCodes]
+# flags: --hide-error-codes
+x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")

@@ -431,6 +431,9 @@ def parse_section(
                 elif key.startswith("disallow") and hasattr(template, key[3:]):
                     options_key = key[3:]
                     invert = True
+                elif key.startswith("show_") and hasattr(template, "hide_" + key[5:]):
+                    options_key = "hide_" + key[5:]
+                    invert = True
                 elif key == "strict":
                     pass  # Special handling below
                 else:

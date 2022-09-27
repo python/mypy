@@ -237,7 +237,7 @@ def _build(
     errors = Errors(
         options.show_error_context,
         options.show_column_numbers,
-        options.show_error_codes,
+        options.hide_error_codes,
         options.pretty,
         options.show_error_end,
         lambda path: read_py_file(path, cached_read),

@@ -922,3 +922,12 @@ def f(d: D, s: str) -> None:
 [case testRecommendErrorCode]
 # type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code=...`  [syntax]
 1 + "asdf"
+
+[case testShowErrorCodesInConfig]
+# flags: --config-file tmp/mypy.ini
+# Test 'show_error_codes = True' in config doesn't raise an exception
+var: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
+[file mypy.ini]
+\[mypy]
+show_error_codes = True
