@@ -411,3 +411,72 @@ L0:
     y = -127
     z = 12
     return 1
+
+[case testI32ExplicitConversionFromNativeInt]
+from mypy_extensions import i64, i32
+
+def from_i32(x: i32) -> i32:
+    return i32(x)
+
+def from_i64(x: i64) -> i32:
+    return i32(x)
+[out]
+def from_i32(x):
+    x :: int32
+L0:
+    return x
+def from_i64(x):
+    x :: int64
+    r0 :: int32
+L0:
+    r0 = truncate x: int64 to int32
+    return r0
+
+[case testI32ExplicitConversionFromInt_64bit]
+from mypy_extensions import i32
+
+def f(x: int) -> i32:
+    return i32(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: int32
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = x < 4294967296 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >= -4294967296 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = x >> 1
+    r5 = truncate r4: native_int to int32
+    r6 = r5
+    goto L5
+L4:
+    CPyInt32_Overflow()
+    unreachable
+L5:
+    return r6
+
+[case testI32ExplicitConversionFromLiteral]
+from mypy_extensions import i32
+
+def f() -> None:
+    x = i32(0)
+    y = i32(11)
+    z = i32(-3)
+[out]
+def f():
+    x, y, z :: int32
+L0:
+    x = 0
+    y = 11
+    z = -3
+    return 1

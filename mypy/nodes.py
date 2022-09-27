@@ -2858,6 +2858,7 @@ class TypeInfo(SymbolNode):
         self.metadata = {}
 
     def add_type_vars(self) -> None:
+        self.has_type_var_tuple_type = False
         if self.defn.type_vars:
             for i, vd in enumerate(self.defn.type_vars):
                 if isinstance(vd, mypy.types.ParamSpecType):
@@ -3580,7 +3581,10 @@ class SymbolTableNode:
             if prefix is not None:
                 fullname = self.node.fullname
                 if (
-                    fullname is not None
+                    # See the comment above SymbolNode.fullname -- fullname can often be None,
+                    # but for complex reasons it's annotated as being `Bogus[str]` instead of `str | None`,
+                    # meaning mypy erroneously thinks the `fullname is not None` check here is redundant
+                    fullname is not None  # type: ignore[redundant-expr]
                     and "." in fullname
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
@@ -3712,7 +3716,7 @@ def check_arg_kinds(
         if kind == ARG_POS:
             if is_var_arg or is_kw_arg or seen_named or seen_opt:
                 fail(
-                    "Required positional args may not appear " "after default, named or var args",
+                    "Required positional args may not appear after default, named or var args",
                     node,
                 )
                 break

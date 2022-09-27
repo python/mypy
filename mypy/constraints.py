@@ -54,6 +54,7 @@ from mypy.typevartuples import (
     extract_unpack,
     find_unpack_in_list,
     split_with_instance,
+    split_with_mapped_and_template,
     split_with_prefix_and_suffix,
 )
 
@@ -583,9 +584,60 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if self.direction == SUBTYPE_OF and template.type.has_base(instance.type.fullname):
                 mapped = map_instance_to_supertype(template, instance.type)
                 tvars = mapped.type.defn.type_vars
+
+                if instance.type.has_type_var_tuple_type:
+                    mapped_prefix, mapped_middle, mapped_suffix = split_with_instance(mapped)
+                    instance_prefix, instance_middle, instance_suffix = split_with_instance(
+                        instance
+                    )
+
+                    # Add a constraint for the type var tuple, and then
+                    # remove it for the case below.
+                    instance_unpack = extract_unpack(instance_middle)
+                    if instance_unpack is not None:
+                        if isinstance(instance_unpack, TypeVarTupleType):
+                            res.append(
+                                Constraint(
+                                    instance_unpack, SUBTYPE_OF, TypeList(list(mapped_middle))
+                                )
+                            )
+                        elif (
+                            isinstance(instance_unpack, Instance)
+                            and instance_unpack.type.fullname == "builtins.tuple"
+                        ):
+                            for item in mapped_middle:
+                                res.extend(
+                                    infer_constraints(
+                                        instance_unpack.args[0], item, self.direction
+                                    )
+                                )
+                        elif isinstance(instance_unpack, TupleType):
+                            if len(instance_unpack.items) == len(mapped_middle):
+                                for instance_arg, item in zip(
+                                    instance_unpack.items, mapped_middle
+                                ):
+                                    res.extend(
+                                        infer_constraints(instance_arg, item, self.direction)
+                                    )
+
+                    mapped_args = mapped_prefix + mapped_suffix
+                    instance_args = instance_prefix + instance_suffix
+
+                    assert instance.type.type_var_tuple_prefix is not None
+                    assert instance.type.type_var_tuple_suffix is not None
+                    tvars_prefix, _, tvars_suffix = split_with_prefix_and_suffix(
+                        tuple(tvars),
+                        instance.type.type_var_tuple_prefix,
+                        instance.type.type_var_tuple_suffix,
+                    )
+                    tvars = list(tvars_prefix + tvars_suffix)
+                else:
+                    mapped_args = mapped.args
+                    instance_args = instance.args
+
                 # N.B: We use zip instead of indexing because the lengths might have
                 # mismatches during daemon reprocessing.
-                for tvar, mapped_arg, instance_arg in zip(tvars, mapped.args, instance.args):
+                for tvar, mapped_arg, instance_arg in zip(tvars, mapped_args, instance_args):
                     # TODO(PEP612): More ParamSpec work (or is Parameters the only thing accepted)
                     if isinstance(tvar, TypeVarType):
                         # The constraints for generic type parameters depend on variance.
@@ -617,18 +669,23 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
                             res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
-                    elif isinstance(tvar, TypeVarTupleType):
-                        raise NotImplementedError
+                    else:
+                        # This case should have been handled above.
+                        assert not isinstance(tvar, TypeVarTupleType)
 
                 return res
             elif self.direction == SUPERTYPE_OF and instance.type.has_base(template.type.fullname):
                 mapped = map_instance_to_supertype(instance, template.type)
                 tvars = template.type.defn.type_vars
                 if template.type.has_type_var_tuple_type:
-                    mapped_prefix, mapped_middle, mapped_suffix = split_with_instance(mapped)
-                    template_prefix, template_middle, template_suffix = split_with_instance(
-                        template
-                    )
+                    (
+                        mapped_prefix,
+                        mapped_middle,
+                        mapped_suffix,
+                        template_prefix,
+                        template_middle,
+                        template_suffix,
+                    ) = split_with_mapped_and_template(mapped, template)
 
                     # Add a constraint for the type var tuple, and then
                     # remove it for the case below.
@@ -644,11 +701,20 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             isinstance(template_unpack, Instance)
                             and template_unpack.type.fullname == "builtins.tuple"
                         ):
-                            # TODO: check homogenous tuple case
-                            raise NotImplementedError
+                            for item in mapped_middle:
+                                res.extend(
+                                    infer_constraints(
+                                        template_unpack.args[0], item, self.direction
+                                    )
+                                )
                         elif isinstance(template_unpack, TupleType):
-                            # TODO: check tuple case
-                            raise NotImplementedError
+                            if len(template_unpack.items) == len(mapped_middle):
+                                for template_arg, item in zip(
+                                    template_unpack.items, mapped_middle
+                                ):
+                                    res.extend(
+                                        infer_constraints(template_arg, item, self.direction)
+                                    )
 
                     mapped_args = mapped_prefix + mapped_suffix
                     template_args = template_prefix + template_suffix
@@ -701,6 +767,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
                             res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
+                    else:
+                        # This case should have been handled above.
+                        assert not isinstance(tvar, TypeVarTupleType)
                 return res
             if (
                 template.type.is_protocol

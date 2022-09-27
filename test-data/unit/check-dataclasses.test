@@ -632,8 +632,8 @@ class Two:
     S: TypeAlias = Callable[[int], str]  # E: Type aliases inside dataclass definitions are not supported at runtime
 
 c = Two()
-x = c.S  # E: Member "S" is not assignable
-reveal_type(x)  # N: Revealed type is "Any"
+x = c.S
+reveal_type(x)  # N: Revealed type is "builtins.object"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassOrdering]

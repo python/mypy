@@ -6,7 +6,13 @@ from mypy import join
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
-from mypy.subtypes import is_callable_compatible, is_equivalent, is_proper_subtype, is_subtype
+from mypy.subtypes import (
+    is_callable_compatible,
+    is_equivalent,
+    is_proper_subtype,
+    is_same_type,
+    is_subtype,
+)
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
     AnyType,
@@ -61,10 +67,24 @@ def meet_types(s: Type, t: Type) -> ProperType:
     """Return the greatest lower bound of two types."""
     if is_recursive_pair(s, t):
         # This case can trigger an infinite recursion, general support for this will be
-        # tricky so we use a trivial meet (like for protocols).
+        # tricky, so we use a trivial meet (like for protocols).
         return trivial_meet(s, t)
     s = get_proper_type(s)
     t = get_proper_type(t)
+
+    if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
+        # Code in checker.py should merge any extra_items where possible, so we
+        # should have only compatible extra_items here. We check this before
+        # the below subtype check, so that extra_attrs will not get erased.
+        if is_same_type(s, t) and (s.extra_attrs or t.extra_attrs):
+            if s.extra_attrs and t.extra_attrs:
+                if len(s.extra_attrs.attrs) > len(t.extra_attrs.attrs):
+                    # Return the one that has more precise information.
+                    return s
+                return t
+            if s.extra_attrs:
+                return s
+            return t
 
     if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
         if is_proper_subtype(s, t, ignore_promotions=True):

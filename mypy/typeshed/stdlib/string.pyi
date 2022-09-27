@@ -2,7 +2,7 @@ import sys
 from _typeshed import StrOrLiteralStr
 from collections.abc import Iterable, Mapping, Sequence
 from re import Pattern, RegexFlag
-from typing import Any, overload
+from typing import Any, ClassVar, overload
 from typing_extensions import LiteralString
 
 __all__ = [
@@ -34,11 +34,11 @@ def capwords(s: StrOrLiteralStr, sep: StrOrLiteralStr | None = ...) -> StrOrLite
 
 class Template:
     template: str
-    delimiter: str
-    idpattern: str
-    braceidpattern: str | None
-    flags: RegexFlag
-    pattern: Pattern[str]
+    delimiter: ClassVar[str]
+    idpattern: ClassVar[str]
+    braceidpattern: ClassVar[str | None]
+    flags: ClassVar[RegexFlag]
+    pattern: ClassVar[Pattern[str]]
     def __init__(self, template: str) -> None: ...
     def substitute(self, __mapping: Mapping[str, object] = ..., **kwds: object) -> str: ...
     def safe_substitute(self, __mapping: Mapping[str, object] = ..., **kwds: object) -> str: ...

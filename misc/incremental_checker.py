@@ -407,7 +407,7 @@ def main() -> None:
     parser.add_argument(
         "range_start",
         metavar="COMMIT_ID_OR_NUMBER",
-        help="the commit id to start from, or the number of " "commits to move back (see above)",
+        help="the commit id to start from, or the number of commits to move back (see above)",
     )
     parser.add_argument(
         "-r",
@@ -439,7 +439,7 @@ def main() -> None:
         "--branch",
         default=None,
         metavar="NAME",
-        help="check out and test a custom branch" "uses the default if not specified",
+        help="check out and test a custom branch uses the default if not specified",
     )
     parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
     parser.add_argument("--seed", type=str, help="random seed")
