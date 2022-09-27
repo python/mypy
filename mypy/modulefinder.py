@@ -28,7 +28,7 @@ from mypy import pyinfo
 from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
-from mypy.stubinfo import is_legacy_bundled_package
+from mypy.stubinfo import approved_stub_package_exists
 
 
 # Paths to be searched in find_module().
@@ -89,9 +89,7 @@ class ModuleNotFoundReason(Enum):
             )
             notes = [doc_link]
         elif self is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            msg = (
-                'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
-            )
+            msg = 'Library stubs not installed for "{module}"'
             notes = ['Hint: "python3 -m pip install {stub_dist}"']
             if not daemon:
                 notes.append(
@@ -338,13 +336,13 @@ class FindModuleCache:
             # If this is not a directory then we can't traverse further into it
             if not self.fscache.isdir(dir_path):
                 break
-        if is_legacy_bundled_package(components[0]):
+        if approved_stub_package_exists(components[0]):
             if len(components) == 1 or (
                 self.find_module(components[0])
                 is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
             ):
                 return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        if is_legacy_bundled_package(".".join(components[:2])):
+        if approved_stub_package_exists(".".join(components[:2])):
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS

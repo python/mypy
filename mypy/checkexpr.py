@@ -127,6 +127,7 @@ from mypy.types import (
     CallableType,
     DeletedType,
     ErasedType,
+    ExtraAttrs,
     FunctionLike,
     Instance,
     LiteralType,
@@ -319,7 +320,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = self.typeddict_callable(node)
             else:
                 result = type_object_type(node, self.named_type)
-            if isinstance(result, CallableType) and isinstance(  # type: ignore
+            if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
                 result.ret_type, Instance
             ):
                 # We need to set correct line and column
@@ -332,13 +333,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            try:
-                result = self.named_type("types.ModuleType")
-            except KeyError:
-                # In test cases might 'types' may not be available.
-                # Fall back to a dummy 'object' type instead to
-                # avoid a crash.
-                result = self.named_type("builtins.object")
+            result = self.module_type(node)
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
@@ -346,7 +341,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Note that we suppress bogus errors for alias redefinitions,
             # they are already reported in semanal.py.
             result = self.alias_type_in_runtime_context(
-                node, node.no_args, e, alias_definition=e.is_alias_rvalue or lvalue
+                node, ctx=e, alias_definition=e.is_alias_rvalue or lvalue
             )
         elif isinstance(node, (TypeVarExpr, ParamSpecExpr)):
             result = self.object_type()
@@ -373,6 +368,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.handle_cannot_determine_type(var.name, context)
             # Implicit 'Any' type.
             return AnyType(TypeOfAny.special_form)
+
+    def module_type(self, node: MypyFile) -> Instance:
+        try:
+            result = self.named_type("types.ModuleType")
+        except KeyError:
+            # In test cases might 'types' may not be available.
+            # Fall back to a dummy 'object' type instead to
+            # avoid a crash.
+            result = self.named_type("builtins.object")
+        module_attrs = {}
+        immutable = set()
+        for name, n in node.names.items():
+            if not n.module_public:
+                continue
+            if isinstance(n.node, Var) and n.node.is_final:
+                immutable.add(name)
+            typ = self.chk.determine_type_of_member(n)
+            if typ:
+                module_attrs[name] = typ
+            else:
+                # TODO: what to do about nested module references?
+                # They are non-trivial because there may be import cycles.
+                module_attrs[name] = AnyType(TypeOfAny.special_form)
+        result.extra_attrs = ExtraAttrs(module_attrs, immutable, node.fullname)
+        return result
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
@@ -801,10 +821,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     lvalue_type=item_expected_type,
                     rvalue=item_value,
                     context=item_value,
-                    msg=message_registry.INCOMPATIBLE_TYPES,
+                    msg=ErrorMessage(
+                        message_registry.INCOMPATIBLE_TYPES.value, code=codes.TYPEDDICT_ITEM
+                    ),
                     lvalue_name=f'TypedDict item "{item_name}"',
                     rvalue_name="expression",
-                    code=codes.TYPEDDICT_ITEM,
                 )
 
         return orig_ret_type
@@ -1174,7 +1195,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return ret_type
 
     def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
-        """ "Type check calling a member expression where the base type is a union."""
+        """Type check calling a member expression where the base type is a union."""
         res: list[Type] = []
         for typ in object_type.relevant_items():
             # Member access errors are already reported when visiting the member expression.
@@ -1485,7 +1506,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             res = type_object_type(item.type, self.named_type)
             if isinstance(res, CallableType):
                 res = res.copy_modified(from_type_type=True)
-            expanded = get_proper_type(expand_type_by_instance(res, item))
+            expanded = expand_type_by_instance(res, item)
             if isinstance(expanded, CallableType):
                 # Callee of the form Type[...] should never be generic, only
                 # proper class objects can be.
@@ -3703,6 +3724,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
         target_type = expr.type
         if not is_same_type(source_type, target_type):
+            if not self.chk.in_checked_function():
+                self.msg.note(
+                    '"assert_type" expects everything to be "Any" in unchecked functions',
+                    expr.expr,
+                )
             self.msg.assert_type_fail(source_type, target_type, expr)
         return source_type
 
@@ -3785,12 +3811,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         both `reveal_type` instances will reveal the same type `def (...) -> builtins.list[Any]`.
         Note that type variables are implicitly substituted with `Any`.
         """
-        return self.alias_type_in_runtime_context(
-            alias.node, alias.no_args, alias, alias_definition=True
-        )
+        return self.alias_type_in_runtime_context(alias.node, ctx=alias, alias_definition=True)
 
     def alias_type_in_runtime_context(
-        self, alias: TypeAlias, no_args: bool, ctx: Context, *, alias_definition: bool = False
+        self, alias: TypeAlias, *, ctx: Context, alias_definition: bool = False
     ) -> Type:
         """Get type of a type alias (could be generic) in a runtime expression.
 
@@ -3805,7 +3829,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
-        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore
+        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore[misc]
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
         # If this is a generic alias, we set all variables to `Any`.
@@ -3822,7 +3846,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
             tp = type_object_type(item.type, self.named_type)
-            if no_args:
+            if alias.no_args:
                 return tp
             return self.apply_type_arguments_to_callable(tp, item.args, ctx)
         elif (
@@ -3840,6 +3864,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
             # This type is invalid in most runtime contexts, give it an 'object' type.
+            # TODO: Use typing._SpecialForm instead?
             return self.named_type("builtins.object")
 
     def apply_type_arguments_to_callable(
@@ -4209,6 +4234,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # only).
         callable_ctx = get_proper_type(replace_meta_vars(ctx, ErasedType()))
         assert isinstance(callable_ctx, CallableType)
+
+        # The callable_ctx may have a fallback of builtins.type if the context
+        # is a constructor -- but this fallback doesn't make sense for lambdas.
+        callable_ctx = callable_ctx.copy_modified(fallback=self.named_type("builtins.function"))
 
         if callable_ctx.type_guard is not None:
             # Lambda's return type cannot be treated as a `TypeGuard`,

@@ -54,10 +54,16 @@ python3 runtests.py
 You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
 ```
 tox -e py
+
+# Or some specific python version:
+tox -e py39
+
+# Or some specific command:
+tox -e lint
 ```
 
 Some useful commands for running specific tests include:
-```
+```bash
 # Use mypy to check mypy's own code
 python3 runtests.py self
 # or equivalently:

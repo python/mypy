@@ -1,34 +1,27 @@
 .. _cheat-sheet-py3:
 
-Type hints cheat sheet (Python 3)
-=================================
+Type hints cheat sheet
+======================
 
-This document is a quick cheat sheet showing how the :pep:`484` type
-annotation notation represents various common types in Python 3.
-
-.. note::
-
-   Technically many of the type annotations shown below are redundant,
-   because mypy can derive them from the type of the expression.  So
-   many of the examples have a dual purpose: show how to write the
-   annotation, and show the inferred types.
-
+This document is a quick cheat sheet showing how to use type
+annotations for various common types in Python.
 
 Variables
 *********
 
-Python 3.6 introduced a syntax for annotating variables in :pep:`526`
-and we use it in most examples.
+Technically many of the type annotations shown below are redundant,
+since mypy can usually infer the type of a variable from its value.
+See :ref:`type-inference-and-annotations` for more details.
 
 .. code-block:: python
 
-   # This is how you declare the type of a variable type in Python 3.6
+   # This is how you declare the type of a variable
    age: int = 1
 
    # You don't need to initialize a variable to annotate it
    a: int  # Ok (no value at runtime until assigned)
 
-   # The latter is useful in conditional branches
+   # Doing so is useful in conditional branches
    child: bool
    if age < 18:
        child = True
@@ -36,15 +29,14 @@ and we use it in most examples.
        child = False
 
 
-Built-in types
-**************
+Useful built-in types
+*********************
 
 .. code-block:: python
 
-
    from typing import List, Set, Dict, Tuple, Optional
 
-   # For simple built-in types, just use the name of the type
+   # For most types, just use the name of the type
    x: int = 1
    x: float = 1.0
    x: bool = True
@@ -85,8 +77,6 @@ Built-in types
 Functions
 *********
 
-Python 3 supports an annotation syntax for function declarations.
-
 .. code-block:: python
 
    from typing import Callable, Iterator, Union, Optional
@@ -124,73 +114,69 @@ Python 3 supports an annotation syntax for function declarations.
                   ) -> bool:
        ...
 
-   # An argument can be declared positional-only by giving it a name
-   # starting with two underscores:
-   def quux(__x: int) -> None:
+   # Mypy understands positional-only and keyword-only arguments
+   # Positional-only arguments can also be marked by using a name starting with
+   # two underscores
+   def quux(x: int, / *, y: int) -> None:
        pass
 
-   quux(3)  # Fine
-   quux(__x=3)  # Error
+   quux(3, y=5)  # Ok
+   quux(3, 5)  # error: Too many positional arguments for "quux"
+   quux(x=3, y=5)  # error: Unexpected keyword argument "x" for "quux"
+
+   # This makes each positional arg and each keyword arg a "str"
+   def call(self, *args: str, **kwargs: str) -> str:
+       reveal_type(args)  # Revealed type is "tuple[str, ...]"
+       reveal_type(kwargs)  # Revealed type is "dict[str, str]"
+       request = make_request(*args, **kwargs)
+       return self.do_api_query(request)
 
 When you're puzzled or when things are complicated
 **************************************************
 
 .. code-block:: python
 
-   from typing import Union, Any, Optional, cast
+   from typing import Union, Any, Optional, TYPE_CHECKING, cast
 
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type().  Mypy will print an error
    # message with the type; remove it again before running the code.
-   reveal_type(1)  # -> Revealed type is "builtins.int"
+   reveal_type(1)  # Revealed type is "builtins.int"
 
    # Use Union when something could be one of a few types
    x: list[Union[int, str]] = [3, 5, "test", "fun"]
+
+   # If you initialize a variable with an empty container or "None"
+   # you may have to help mypy a bit by providing an explicit type annotation
+   x: list[str] = []
+   x: Optional[str] = None
 
    # Use Any if you don't know the type of something or it's too
    # dynamic to write a type for
    x: Any = mystery_function()
 
-   # If you initialize a variable with an empty container or "None"
-   # you may have to help mypy a bit by providing a type annotation
-   x: list[str] = []
-   x: Optional[str] = None
-
-   # This makes each positional arg and each keyword arg a "str"
-   def call(self, *args: str, **kwargs: str) -> str:
-       request = make_request(*args, **kwargs)
-       return self.do_api_query(request)
-
    # Use a "type: ignore" comment to suppress errors on a given line,
    # when your code confuses mypy or runs into an outright bug in mypy.
-   # Good practice is to comment every "ignore" with a bug link
-   # (in mypy, typeshed, or your own code) or an explanation of the issue.
-   x = confusing_function()  # type: ignore  # https://github.com/python/mypy/issues/1167
+   # Good practice is to add a comment explaining the issue.
+   x = confusing_function()  # type: ignore  # confusing_function won't return None here because ...
 
    # "cast" is a helper function that lets you override the inferred
    # type of an expression. It's only for mypy -- there's no runtime check.
    a = [4]
    b = cast(list[int], a)  # Passes fine
-   c = cast(list[str], a)  # Passes fine (no runtime check)
-   reveal_type(c)  # -> Revealed type is "builtins.list[builtins.str]"
-   print(c)  # -> [4]; the object is not cast
+   c = cast(list[str], a)  # Passes fine despite being a lie (no runtime check)
+   reveal_type(c)  # Revealed type is "builtins.list[builtins.str]"
+   print(c)  # Still prints [4] ... the object is not changed or casted at runtime
 
-   # If you want dynamic attributes on your class, have it override "__setattr__"
-   # or "__getattr__" in a stub or in your source code.
-   #
-   # "__setattr__" allows for dynamic assignment to names
-   # "__getattr__" allows for dynamic access to names
-   class A:
-       # This will allow assignment to any A.x, if x is the same type as "value"
-       # (use "value: Any" to allow arbitrary types)
-       def __setattr__(self, name: str, value: int) -> None: ...
+   # Use "TYPE_CHECKING" if you want to have code that mypy can see but will not
+   # be executed at runtime (or to have code that mypy can't see)
+   if TYPE_CHECKING:
+       import json
+   else:
+       import orjson as json  # mypy is unaware of this
 
-       # This will allow access to any A.x, if x is compatible with the return type
-       def __getattr__(self, name: str) -> int: ...
-
-   a.foo = 42  # Works
-   a.bar = 'Ex-parrot'  # Fails type checking
-
+In some cases type annotations can cause issues at runtime, see
+:ref:`runtime_troubles` for dealing with this.
 
 Standard "duck types"
 *********************
@@ -216,7 +202,7 @@ that are common in idiomatic Python are standardized.
    # Mapping describes a dict-like object (with "__getitem__") that we won't
    # mutate, and MutableMapping one (with "__setitem__") that we might
    def f(my_mapping: Mapping[int, str]) -> list[int]:
-       my_mapping[5] = 'maybe'  # if we try this, mypy will throw an error...
+       my_mapping[5] = 'maybe'  # mypy will complain about this line...
        return list(my_mapping.keys())
 
    f({3: 'yes', 4: 'no'})
@@ -262,6 +248,22 @@ Classes
    class Box:
        def __init__(self) -> None:
            self.items: list[str] = []
+
+   # If you want dynamic attributes on your class, have it override "__setattr__"
+   # or "__getattr__" in a stub or in your source code.
+   #
+   # "__setattr__" allows for dynamic assignment to names
+   # "__getattr__" allows for dynamic access to names
+   class A:
+       # This will allow assignment to any A.x, if x is the same type as "value"
+       # (use "value: Any" to allow arbitrary types)
+       def __setattr__(self, name: str, value: int) -> None: ...
+
+       # This will allow access to any A.x, if x is compatible with the return type
+       def __getattr__(self, name: str) -> int: ...
+
+   a.foo = 42  # Works
+   a.bar = 'Ex-parrot'  # Fails type checking
 
 
 Coroutines and asyncio

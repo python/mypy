@@ -68,6 +68,7 @@ from mypy.typevartuples import extract_unpack, split_with_instance
 IS_SETTABLE: Final = 1
 IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
+IS_VAR: Final = 4
 
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
@@ -1010,8 +1011,8 @@ def is_protocol_implementation(
             if isinstance(subtype, NoneType) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
-            subflags = get_member_flags(member, left.type, class_obj=class_obj)
-            superflags = get_member_flags(member, right.type)
+            subflags = get_member_flags(member, left, class_obj=class_obj)
+            superflags = get_member_flags(member, right)
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
                 if not is_subtype(supertype, subtype):
@@ -1020,8 +1021,11 @@ def is_protocol_implementation(
                 if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
                     return False
             else:
-                if IS_SETTABLE in superflags and IS_CLASSVAR not in subflags:
+                if IS_VAR in superflags and IS_CLASSVAR not in subflags:
                     # Only class variables are allowed for class object access.
+                    return False
+                if IS_CLASSVAR in superflags:
+                    # This can be never matched by a class object.
                     return False
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 return False
@@ -1095,10 +1099,12 @@ def find_member(
             # PEP 544 doesn't specify anything about such use cases. So we just try
             # to do something meaningful (at least we should not crash).
             return TypeType(fill_typevars_with_any(v))
+    if itype.extra_attrs and name in itype.extra_attrs.attrs:
+        return itype.extra_attrs.attrs[name]
     return None
 
 
-def get_member_flags(name: str, info: TypeInfo, class_obj: bool = False) -> set[int]:
+def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set[int]:
     """Detect whether a member 'name' is settable, whether it is an
     instance or class variable, and whether it is class or static method.
 
@@ -1109,28 +1115,42 @@ def get_member_flags(name: str, info: TypeInfo, class_obj: bool = False) -> set[
     * IS_CLASS_OR_STATIC: set for methods decorated with @classmethod or
       with @staticmethod.
     """
+    info = itype.type
     method = info.get_method(name)
     setattr_meth = info.get_method("__setattr__")
     if method:
         if isinstance(method, Decorator):
             if method.var.is_staticmethod or method.var.is_classmethod:
                 return {IS_CLASS_OR_STATIC}
+            elif method.var.is_property:
+                return {IS_VAR}
         elif method.is_property:  # this could be settable property
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
             if dec.var.is_settable_property or setattr_meth:
-                return {IS_SETTABLE}
-        return set()
+                return {IS_VAR, IS_SETTABLE}
+            else:
+                return {IS_VAR}
+        return set()  # Just a regular method
     node = info.get(name)
     if not node:
         if setattr_meth:
             return {IS_SETTABLE}
+        if itype.extra_attrs and name in itype.extra_attrs.attrs:
+            flags = set()
+            if name not in itype.extra_attrs.immutable:
+                flags.add(IS_SETTABLE)
+            return flags
         return set()
     v = node.node
     # just a variable
-    if isinstance(v, Var) and not v.is_property:
-        flags = {IS_SETTABLE}
+    if isinstance(v, Var):
+        if v.is_property:
+            return {IS_VAR}
+        flags = {IS_VAR}
+        if not v.is_final:
+            flags.add(IS_SETTABLE)
         if v.is_classvar:
             flags.add(IS_CLASSVAR)
         if class_obj and v.is_inferred:

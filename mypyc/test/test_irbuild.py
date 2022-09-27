@@ -37,6 +37,8 @@ files = [
     "irbuild-generics.test",
     "irbuild-try.test",
     "irbuild-strip-asserts.test",
+    "irbuild-i64.test",
+    "irbuild-i32.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",

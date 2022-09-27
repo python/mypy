@@ -945,6 +945,18 @@ x = f()
 main:10: note: Revealed type is "builtins.int"
 main:15: note: Revealed type is "builtins.str"
 
+[case testExceptionVariableWithDisallowAnyExprInDeferredNode]
+# flags: --disallow-any-expr
+def f() -> int:
+    x
+    try:
+        pass
+    except Exception as ex:
+        pass
+    return 0
+x = f()
+[builtins fixtures/exception.pyi]
+
 [case testArbitraryExpressionAsExceptionType]
 import typing
 a = BaseException

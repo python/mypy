@@ -189,7 +189,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
         ):
             raise ValueError(
                 (
-                    "Stale modules after pass {} must be a subset of rechecked " "modules ({}:{})"
+                    "Stale modules after pass {} must be a subset of rechecked modules ({}:{})"
                 ).format(passnum, case.file, first_item.line)
             )
 
@@ -680,7 +680,9 @@ class DataFileCollector(pytest.Collector):
     def from_parent(  # type: ignore[override]
         cls, parent: DataSuiteCollector, *, name: str
     ) -> DataFileCollector:
-        return super().from_parent(parent, name=name)
+        collector = super().from_parent(parent, name=name)
+        assert isinstance(collector, DataFileCollector)
+        return collector
 
     def collect(self) -> Iterator[DataDrivenTestCase]:
         yield from split_test_cases(

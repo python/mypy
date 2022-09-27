@@ -197,7 +197,7 @@ class Server:
 
         # Since the object is created in the parent process we can check
         # the output terminal options here.
-        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes)
+        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.hide_error_codes)
 
     def _response_metadata(self) -> dict[str, str]:
         py_version = f"{self.options.python_version[0]}_{self.options.python_version[1]}"
@@ -267,7 +267,9 @@ class Server:
                 # Only the above commands use some error formatting.
                 del data["is_tty"]
                 del data["terminal_width"]
-            return method(self, **data)
+            ret = method(self, **data)
+            assert isinstance(ret, dict)
+            return ret
 
     # Command functions (run in the server via RPC).
 

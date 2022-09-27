@@ -3,7 +3,7 @@
 
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
-    overload, Mapping, Union, Callable, Sequence, FrozenSet
+    overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
 )
 
 T = TypeVar('T')
@@ -11,6 +11,10 @@ T_co = TypeVar('T_co', covariant=True)
 S = TypeVar('S')
 K = TypeVar('K') # for keys in mapping
 V = TypeVar('V') # for values in mapping
+
+class __SupportsAbs(Protocol[T_co]):
+    def __abs__(self) -> T_co: pass
+
 
 class object:
     def __init__(self) -> None: pass
@@ -40,6 +44,7 @@ class int:
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
+    def __abs__(self) -> int: pass
     def __invert__(self) -> int: pass
     def __and__(self, n: int) -> int: pass
     def __or__(self, n: int) -> int: pass
@@ -88,6 +93,9 @@ class float:
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
     def __neg__(self) -> float: pass
+    def __pos__(self) -> float: pass
+    def __abs__(self) -> float: pass
+    def __invert__(self) -> float: pass
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
@@ -164,6 +172,7 @@ class list(Generic[T], Sequence[T], Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
     def __contains__(self, item: object) -> int: ...
+    def __add__(self, x: List[T]) -> List[T]: ...
     def append(self, x: T) -> None: pass
     def pop(self, i: int = -1) -> T: pass
     def count(self, T) -> int: pass
@@ -248,39 +257,26 @@ class Exception(BaseException):
     def __init__(self, message: Optional[str] = None) -> None: pass
 
 class Warning(Exception): pass
-
 class UserWarning(Warning): pass
-
 class TypeError(Exception): pass
-
 class ValueError(Exception): pass
-
 class AttributeError(Exception): pass
-
 class ImportError(Exception): pass
-
 class NameError(Exception): pass
-
 class LookupError(Exception): pass
-
 class KeyError(LookupError): pass
-
 class IndexError(LookupError): pass
-
 class RuntimeError(Exception): pass
-
 class UnicodeEncodeError(RuntimeError): pass
-
 class UnicodeDecodeError(RuntimeError): pass
-
 class NotImplementedError(RuntimeError): pass
 
 class StopIteration(Exception):
     value: Any
 
 class ArithmeticError(Exception): pass
-
-class ZeroDivisionError(Exception): pass
+class ZeroDivisionError(ArithmeticError): pass
+class OverflowError(ArithmeticError): pass
 
 class GeneratorExit(BaseException): pass
 
@@ -308,7 +304,7 @@ def zip(x: Iterable[T], y: Iterable[S]) -> Iterator[Tuple[T, S]]: ...
 @overload
 def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, V]]: ...
 def eval(e: str) -> Any: ...
-def abs(x: float) -> float: ...
+def abs(x: __SupportsAbs[T]) -> T: ...
 def exit() -> None: ...
 def min(x: T, y: T) -> T: ...
 def max(x: T, y: T) -> T: ...
