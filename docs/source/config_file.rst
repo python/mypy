@@ -254,10 +254,11 @@ section of the command line docs.
 .. confval:: namespace_packages
 
     :type: boolean
-    :default: False
+    :default: True
 
     Enables :pep:`420` style namespace packages.  See the
-    corresponding flag :option:`--namespace-packages <mypy --namespace-packages>` for more information.
+    corresponding flag :option:`--no-namespace-packages <mypy --no-namespace-packages>`
+    for more information.
 
     This option may only be set in the global section (``[mypy]``).
 
@@ -269,7 +270,7 @@ section of the command line docs.
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
     :confval:`mypy_path` config option. This option is only useful in
-    conjunction with :confval:`namespace_packages`. See :ref:`Mapping file
+    the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
     This option may only be set in the global section (``[mypy]``).

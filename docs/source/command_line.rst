@@ -129,30 +129,12 @@ Import discovery
 The following flags customize how exactly mypy discovers and follows
 imports.
 
-.. option:: --namespace-packages
-
-    This flag enables import discovery to use namespace packages (see
-    :pep:`420`).  In particular, this allows discovery of imported
-    packages that don't have an ``__init__.py`` (or ``__init__.pyi``)
-    file.
-
-    Namespace packages are found (using the PEP 420 rules, which
-    prefers "classic" packages over namespace packages) along the
-    module search path -- this is primarily set from the source files
-    passed on the command line, the ``MYPYPATH`` environment variable,
-    and the :confval:`mypy_path` config option.
-
-    This flag affects how mypy finds modules and packages explicitly passed on
-    the command line. It also affects how mypy determines fully qualified module
-    names for files passed on the command line. See :ref:`Mapping file paths to
-    modules <mapping-paths-to-modules>` for details.
-
 .. option:: --explicit-package-bases
 
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
     :confval:`mypy_path` config option. This option is only useful in
-    conjunction with :option:`--namespace-packages`. See :ref:`Mapping file
+    in the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
 .. option:: --ignore-missing-imports
@@ -234,6 +216,18 @@ imports.
 
     If you are in this situation, you can enable an experimental fast path by
     setting the :option:`--fast-module-lookup` option.
+
+
+.. option:: --no-namespace-packages
+
+    This flag disables import discovery of namespace packages (see :pep:`420`).
+    In particular, this prevents discovery of packages that don't have an
+    ``__init__.py`` (or ``__init__.pyi``) file.
+
+    This flag affects how mypy finds modules and packages explicitly passed on
+    the command line. It also affects how mypy determines fully qualified module
+    names for files passed on the command line. See :ref:`Mapping file paths to
+    modules <mapping-paths-to-modules>` for details.
 
 
 .. _platform-configuration:

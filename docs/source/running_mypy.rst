@@ -26,10 +26,6 @@ Specifying code to be checked
 
 Mypy lets you specify what files it should type check in several different ways.
 
-Note that if you use namespace packages (in particular, packages without
-``__init__.py``), you'll need to specify :option:`--namespace-packages <mypy
---namespace-packages>`.
-
 1.  First, you can pass in paths to Python files and directories you
     want to type check. For example::
 
@@ -322,11 +318,6 @@ this error, try:
     you must run ``mypy ~/foo-project/src`` (or set the ``MYPYPATH`` to
     ``~/foo-project/src``.
 
-4.  If you are using namespace packages -- packages which do not contain
-    ``__init__.py`` files within each subfolder -- using the
-    :option:`--namespace-packages <mypy --namespace-packages>` command
-    line flag.
-
 In some rare cases, you may get the "Cannot find implementation or library
 stub for module" error even when the module is installed in your system.
 This can happen when the module is both missing type hints and is installed
@@ -423,10 +414,10 @@ to modules to type check.
   added to mypy's module search paths.
 
 How mypy determines fully qualified module names depends on if the options
-:option:`--namespace-packages <mypy --namespace-packages>` and
+:option:`--no-namespace-packages <mypy --no-namespace-packages>` and
 :option:`--explicit-package-bases <mypy --explicit-package-bases>` are set.
 
-1. If :option:`--namespace-packages <mypy --namespace-packages>` is off,
+1. If :option:`--no-namespace-packages <mypy --no-namespace-packages>` is set,
    mypy will rely solely upon the presence of ``__init__.py[i]`` files to
    determine the fully qualified module name. That is, mypy will crawl up the
    directory tree for as long as it continues to find ``__init__.py`` (or
@@ -436,12 +427,13 @@ How mypy determines fully qualified module names depends on if the options
    would require ``pkg/__init__.py`` and ``pkg/subpkg/__init__.py`` to exist in
    order correctly associate ``mod.py`` with ``pkg.subpkg.mod``
 
-2. If :option:`--namespace-packages <mypy --namespace-packages>` is on, but
-   :option:`--explicit-package-bases <mypy --explicit-package-bases>` is off,
-   mypy will allow for the possibility that directories without
-   ``__init__.py[i]`` are packages. Specifically, mypy will look at all parent
-   directories of the file and use the location of the highest
-   ``__init__.py[i]`` in the directory tree to determine the top-level package.
+2. The default case. If :option:`--namespace-packages <mypy
+   --no-namespace-packages>` is on, but :option:`--explicit-package-bases <mypy
+   --explicit-package-bases>` is off, mypy will allow for the possibility that
+   directories without ``__init__.py[i]`` are packages. Specifically, mypy will
+   look at all parent directories of the file and use the location of the
+   highest ``__init__.py[i]`` in the directory tree to determine the top-level
+   package.
 
    For example, say your directory tree consists solely of ``pkg/__init__.py``
    and ``pkg/a/b/c/d/mod.py``. When determining ``mod.py``'s fully qualified
