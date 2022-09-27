@@ -465,6 +465,7 @@ if int():
 
 
 [case testCallingFunctionsWithDefaultArgumentValues]
+# flags: --implicit-optional --no-strict-optional
 
 a, b = None, None # type: (A, B)
 if int():

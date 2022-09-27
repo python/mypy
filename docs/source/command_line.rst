@@ -390,29 +390,23 @@ None and Optional handling
 The following flags adjust how mypy handles values of type ``None``.
 For more details, see :ref:`no_strict_optional`.
 
-.. _no-implicit-optional:
+.. _implicit-optional:
 
-.. option:: --no-implicit-optional
+.. option:: --implicit-optional
 
-    This flag causes mypy to stop treating arguments with a ``None``
+    This flag causes mypy to treat arguments with a ``None``
     default value as having an implicit :py:data:`~typing.Optional` type.
 
-    For example, by default mypy will assume that the ``x`` parameter
-    is of type ``Optional[int]`` in the code snippet below since
-    the default parameter is ``None``:
+    For example, if this flag is set, mypy would assume that the ``x``
+    parameter is actually of type ``Optional[int]`` in the code snippet below
+    since the default parameter is ``None``:
 
     .. code-block:: python
 
         def foo(x: int = None) -> None:
             print(x)
 
-    If this flag is set, the above snippet will no longer type check:
-    we must now explicitly indicate that the type is ``Optional[int]``:
-
-    .. code-block:: python
-
-        def foo(x: Optional[int] = None) -> None:
-            print(x)
+    **Note:** This was disabled by default starting in mypy 0.980.
 
 .. option:: --no-strict-optional
 

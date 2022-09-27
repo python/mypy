@@ -843,6 +843,7 @@ standard.f(None)
 [file mypy.ini]
 \[mypy]
 strict_optional = False
+implicit_optional = true
 \[mypy-optional]
 strict_optional = True
 
@@ -862,6 +863,7 @@ standard.f(None)
 [file pyproject.toml]
 \[tool.mypy]
 strict_optional = false
+implicit_optional = true
 \[[tool.mypy.overrides]]
 module = 'optional'
 strict_optional = true

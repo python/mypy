@@ -2979,8 +2979,9 @@ class B: pass
 
 
 [case testConstructInstanceWith__new__]
+from typing import Optional
 class C:
-    def __new__(cls, foo: int = None) -> 'C':
+    def __new__(cls, foo: Optional[int] = None) -> 'C':
         obj = object.__new__(cls)
         return obj
 

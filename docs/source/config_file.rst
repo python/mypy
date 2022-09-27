@@ -503,13 +503,15 @@ None and Optional handling
 For more information, see the :ref:`None and Optional handling <none-and-optional-handling>`
 section of the command line docs.
 
-.. confval:: no_implicit_optional
+.. confval:: implicit_optional
 
     :type: boolean
     :default: False
 
-    Changes the treatment of arguments with a default value of ``None`` by not implicitly
-    making their type :py:data:`~typing.Optional`.
+    Causes mypy to treat arguments with a ``None``
+    default value as having an implicit :py:data:`~typing.Optional` type.
+
+    **Note:** This was True by default in mypy versions 0.980 and earlier.
 
 .. confval:: strict_optional
 

@@ -39,14 +39,14 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
-    "follow_imports",
     "follow_imports_for_stubs",
+    "follow_imports",
     "ignore_errors",
     "ignore_missing_imports",
+    "implicit_optional",
     "implicit_reexport",
     "local_partial_types",
     "mypyc",
-    "no_implicit_optional",
     "strict_concatenate",
     "strict_equality",
     "strict_optional",
@@ -162,8 +162,8 @@ class Options:
         self.color_output = True
         self.error_summary = True
 
-        # Don't assume arguments with default values of None are Optional
-        self.no_implicit_optional = False
+        # Assume arguments with default values of None are Optional
+        self.implicit_optional = False
 
         # Don't re-export names unless they are imported with `from ... as ...`
         self.implicit_reexport = True

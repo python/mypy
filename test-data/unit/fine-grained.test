@@ -7942,7 +7942,7 @@ class Foo(a.I):
 ==
 
 [case testImplicitOptionalRefresh1]
-# flags: --strict-optional
+# flags: --strict-optional --implicit-optional
 from x import f
 def foo(x: int = None) -> None:
     f()

@@ -720,10 +720,9 @@ def process_options(
         "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional",
     )
     add_invertible_flag(
-        "--no-implicit-optional",
+        "--implicit-optional",
         default=False,
-        strict_flag=True,
-        help="Don't assume arguments with default values of None are Optional",
+        help="Assume arguments with default values of None are Optional",
         group=none_group,
     )
     none_group.add_argument("--strict-optional", action="store_true", help=argparse.SUPPRESS)
