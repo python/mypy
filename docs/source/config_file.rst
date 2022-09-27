@@ -722,7 +722,7 @@ These options may only be set in the global section (``[mypy]``).
     :type: boolean
     :default: False
 
-    Hide error codes in error messages. See :ref:`error-codes` for more information.
+    Hides error codes in error messages. See :ref:`error-codes` for more information.
 
 .. confval:: pretty
 
