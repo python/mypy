@@ -5911,6 +5911,38 @@ tmp/c.py:4: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M'
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 tmp/c.py:7: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M', {'r': Union[..., None], 'x': builtins.int}), None], 'x': builtins.int})"
 
+[case testIncrementalAddClassMethodPlugin]
+# flags: --config-file tmp/mypy.ini
+import b
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py
+
+[file a.py]
+class BaseAddMethod: pass
+
+class MyClass(BaseAddMethod):
+    pass
+
+[file b.py]
+import a
+
+[file b.py.2]
+import a
+
+my_class = a.MyClass()
+reveal_type(a.MyClass.foo_classmethod)
+reveal_type(a.MyClass.foo_staticmethod)
+reveal_type(my_class.foo_classmethod)
+reveal_type(my_class.foo_staticmethod)
+
+[rechecked b]
+[out2]
+tmp/b.py:4: note: Revealed type is "def ()"
+tmp/b.py:5: note: Revealed type is "def (builtins.int) -> builtins.str"
+tmp/b.py:6: note: Revealed type is "def ()"
+tmp/b.py:7: note: Revealed type is "def (builtins.int) -> builtins.str"
 [case testGenericNamedTupleSerialization]
 import b
 [file a.py]
@@ -5957,3 +5989,72 @@ s: str = td["value"]
 [out]
 [out2]
 tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testUnpackKwargsSerialize]
+import m
+[file lib.py]
+from typing_extensions import Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+def foo(**kwargs: Unpack[Person]):
+    ...
+
+[file m.py]
+from lib import foo
+foo(name='Jennifer', age=38)
+[file m.py.2]
+from lib import foo
+foo(name='Jennifer', age="38")
+[builtins fixtures/dict.pyi]
+[out]
+[out2]
+tmp/m.py:2: error: Argument "age" to "foo" has incompatible type "str"; expected "int"
+
+[case testDisableEnableErrorCodesIncremental]
+# flags: --disable-error-code truthy-bool
+# flags2: --enable-error-code truthy-bool
+def foo() -> int: ...
+if foo:
+    ...
+[out]
+[out2]
+main:4: error: Function "Callable[[], int]" could always be true in boolean context
+
+[case testModuleAsProtocolImplementationSerialize]
+import m
+[file m.py]
+from typing import Protocol
+from lib import C
+
+class Options(Protocol):
+    timeout: int
+    def update(self) -> bool: ...
+
+def setup(options: Options) -> None: ...
+setup(C().config)
+
+[file lib.py]
+import default_config
+
+class C:
+    config = default_config
+
+[file default_config.py]
+timeout = 100
+def update() -> bool: ...
+
+[file default_config.py.2]
+timeout = 100
+def update() -> str: ...
+[builtins fixtures/module.pyi]
+[out]
+[out2]
+tmp/m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
+tmp/m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+tmp/m.py:9: note:     Expected:
+tmp/m.py:9: note:         def update() -> bool
+tmp/m.py:9: note:     Got:
+tmp/m.py:9: note:         def update() -> str

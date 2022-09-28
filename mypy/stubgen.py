@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Dict, Iterable, List, Mapping, Optional, cast
+from typing import Iterable, List, Mapping, cast
 from typing_extensions import Final
 
 import mypy.build
@@ -104,7 +104,13 @@ from mypy.nodes import (
 )
 from mypy.options import Options as MypyOptions
 from mypy.stubdoc import Sig, find_unique_signatures, parse_all_signatures
-from mypy.stubgenc import generate_stub_for_c_module
+from mypy.stubgenc import (
+    DocstringSignatureGenerator,
+    ExternalSignatureGenerator,
+    FallbackSignatureGenerator,
+    SignatureGenerator,
+    generate_stub_for_c_module,
+)
 from mypy.stubutil import (
     CantImport,
     common_dir_prefix,
@@ -643,7 +649,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.visit_func_def(item.func, is_abstract=is_abstract, is_overload=is_overload)
                 if is_overload:
                     overload_chain = True
-            elif overload_chain and is_overload:
+            elif is_overload:
                 self.visit_func_def(item.func, is_abstract=is_abstract, is_overload=is_overload)
             else:
                 # skip the overload implementation and clear the decorator we just processed
@@ -725,9 +731,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 retname = None  # implicit Any
             else:
                 retname = self.print_annotation(o.unanalyzed_type.ret_type)
-        elif isinstance(o, FuncDef) and (
-            o.abstract_status == IS_ABSTRACT or o.name in METHODS_WITH_RETURN_VALUE
-        ):
+        elif o.abstract_status == IS_ABSTRACT or o.name in METHODS_WITH_RETURN_VALUE:
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = None  # implicit Any
@@ -985,7 +989,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 continue
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
                 items = lvalue.items
-                if isinstance(o.unanalyzed_type, TupleType):  # type: ignore
+                if isinstance(o.unanalyzed_type, TupleType):  # type: ignore[misc]
                     annotations: Iterable[Type | None] = o.unanalyzed_type.items
                 else:
                     annotations = [None] * len(items)
@@ -1628,6 +1632,18 @@ def generate_stub_from_ast(
         file.write("".join(gen.output()))
 
 
+def get_sig_generators(options: Options) -> List[SignatureGenerator]:
+    sig_generators: List[SignatureGenerator] = [
+        DocstringSignatureGenerator(),
+        FallbackSignatureGenerator(),
+    ]
+    if options.doc_dir:
+        # Collect info from docs (if given). Always check these first.
+        sigs, class_sigs = collect_docs_signatures(options.doc_dir)
+        sig_generators.insert(0, ExternalSignatureGenerator(sigs, class_sigs))
+    return sig_generators
+
+
 def collect_docs_signatures(doc_dir: str) -> tuple[dict[str, str], dict[str, str]]:
     """Gather all function and class signatures in the docs.
 
@@ -1650,12 +1666,7 @@ def generate_stubs(options: Options) -> None:
     """Main entry point for the program."""
     mypy_opts = mypy_options(options)
     py_modules, c_modules = collect_build_targets(options, mypy_opts)
-
-    # Collect info from docs (if given):
-    sigs = class_sigs = None  # type: Optional[Dict[str, str]]
-    if options.doc_dir:
-        sigs, class_sigs = collect_docs_signatures(options.doc_dir)
-
+    sig_generators = get_sig_generators(options)
     # Use parsed sources to generate stubs for Python modules.
     generate_asts_for_modules(py_modules, options.parse_only, mypy_opts, options.verbose)
     files = []
@@ -1682,7 +1693,7 @@ def generate_stubs(options: Options) -> None:
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
-            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
+            generate_stub_for_c_module(mod.module, target, sig_generators=sig_generators)
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
         print("Processed %d modules" % num_modules)
@@ -1733,9 +1744,7 @@ def parse_options(args: list[str]) -> Options:
     parser.add_argument(
         "--export-less",
         action="store_true",
-        help=(
-            "don't implicitly export all names imported from other modules " "in the same package"
-        ),
+        help="don't implicitly export all names imported from other modules in the same package",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="show more verbose messages")
     parser.add_argument("-q", "--quiet", action="store_true", help="show fewer messages")

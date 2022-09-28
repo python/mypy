@@ -10,7 +10,6 @@ import shutil
 import sys
 import time
 import tokenize
-import typing
 from abc import ABCMeta, abstractmethod
 from operator import attrgetter
 from typing import Any, Callable, Dict, Iterator, Tuple, cast
@@ -26,7 +25,7 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree  # type: ignore
+    from lxml import etree  # type: ignore[import]
 
     LXML_INSTALLED = True
 except ImportError:
@@ -141,8 +140,12 @@ def should_skip_path(path: str) -> bool:
 
 def iterate_python_lines(path: str) -> Iterator[tuple[int, str]]:
     """Return an iterator over (line number, line text) from a Python file."""
-    with tokenize.open(path) as input_file:
-        yield from enumerate(input_file, 1)
+    try:
+        with tokenize.open(path) as input_file:
+            yield from enumerate(input_file, 1)
+    except IsADirectoryError:
+        # can happen with namespace packages
+        pass
 
 
 class FuncCounterVisitor(TraverserVisitor):
@@ -211,7 +214,7 @@ class AnyExpressionsReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts: dict[str, tuple[int, int]] = {}
-        self.any_types_counter: dict[str, typing.Counter[int]] = {}
+        self.any_types_counter: dict[str, collections.Counter[int]] = {}
 
     def on_file(
         self,
@@ -286,7 +289,7 @@ class AnyExpressionsReporter(AbstractReporter):
         self._write_out_report("any-exprs.txt", column_names, rows, total_row)
 
     def _report_types_of_anys(self) -> None:
-        total_counter: typing.Counter[int] = collections.Counter()
+        total_counter: collections.Counter[int] = collections.Counter()
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
@@ -373,7 +376,7 @@ class LineCoverageVisitor(TraverserVisitor):
             if cur_indent is None:
                 # Consume the line, but don't mark it as belonging to the function yet.
                 cur_line += 1
-            elif start_indent is not None and cur_indent > start_indent:
+            elif cur_indent > start_indent:
                 # A non-blank line that belongs to the function.
                 cur_line += 1
                 end_line = cur_line
@@ -528,7 +531,7 @@ class MemoryXmlReporter(AbstractReporter):
     def _get_any_info_for_line(visitor: stats.StatisticsVisitor, lineno: int) -> str:
         if lineno in visitor.any_line_map:
             result = "Any Types on this line: "
-            counter: typing.Counter[int] = collections.Counter()
+            counter: collections.Counter[int] = collections.Counter()
             for typ in visitor.any_line_map[lineno]:
                 counter[typ.type_of_any] += 1
             for any_type, occurrences in counter.items():

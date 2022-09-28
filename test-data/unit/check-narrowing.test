@@ -436,8 +436,8 @@ else:
 weird_mixture: Union[KeyedTypedDict, KeyedNamedTuple]
 if weird_mixture["key"] is Key.B:       # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
                                         # N: Possible overload variants: \
-                                        # N:     def __getitem__(self, int) -> Literal[Key.C] \
-                                        # N:     def __getitem__(self, slice) -> Tuple[Literal[Key.C], ...]
+                                        # N:     def __getitem__(self, int, /) -> Literal[Key.C] \
+                                        # N:     def __getitem__(self, slice, /) -> Tuple[Literal[Key.C], ...]
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 else:
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
@@ -1248,4 +1248,15 @@ def two_type_vars(x: Union[str, Dict[str, int], Dict[bool, object], int]) -> Non
         reveal_type(x)  # N: Revealed type is "Union[builtins.dict[builtins.str, builtins.int], builtins.dict[builtins.bool, builtins.object]]"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingWithDef]
+from typing import Callable, Optional
+
+def g() -> None:
+    foo: Optional[Callable[[], None]] = None
+    if foo is None:
+        def foo(): ...
+    foo()
 [builtins fixtures/dict.pyi]

@@ -252,7 +252,7 @@ class IPCServer(IPCBase):
                 # Wait for the client to finish reading the last write before disconnecting
                 if not FlushFileBuffers(self.connection):
                     raise IPCException(
-                        "Failed to flush NamedPipe buffer," "maybe the client hung up?"
+                        "Failed to flush NamedPipe buffer, maybe the client hung up?"
                     )
             finally:
                 DisconnectNamedPipe(self.connection)
@@ -270,4 +270,6 @@ class IPCServer(IPCBase):
         if sys.platform == "win32":
             return self.name
         else:
-            return self.sock.getsockname()
+            name = self.sock.getsockname()
+            assert isinstance(name, str)
+            return name

@@ -361,6 +361,9 @@ c_pointer_rprimitive: Final = RPrimitive(
     "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *"
 )
 
+# The type corresponding to mypyc.common.BITMAP_TYPE
+bitmap_rprimitive: Final = uint32_rprimitive
+
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
 float_rprimitive: Final = RPrimitive("builtins.float", is_unboxed=False, is_refcounted=True)

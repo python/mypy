@@ -8,8 +8,8 @@ version of Python considers legal code. This section describes these scenarios
 and explains how to get your code running again. Generally speaking, we have
 three tools at our disposal:
 
-* For Python 3.7 through 3.9, use of ``from __future__ import annotations``
-  (:pep:`563`), made the default in Python 3.11 and later
+* Use of ``from __future__ import annotations`` (:pep:`563`)
+  (this behaviour may eventually be made the default in a future Python version)
 * Use of string literal types or type comments
 * Use of ``typing.TYPE_CHECKING``
 
@@ -18,11 +18,33 @@ problems you may encounter.
 
 .. _string-literal-types:
 
-String literal types
---------------------
+String literal types and type comments
+--------------------------------------
+
+Mypy allows you to add type annotations using ``# type:`` type comments.
+For example:
+
+.. code-block:: python
+
+   a = 1  # type: int
+
+   def f(x):  # type: (int) -> int
+       return x + 1
+
+   # Alternative type comment syntax for functions with many arguments
+   def send_email(
+        address,     # type: Union[str, List[str]]
+        sender,      # type: str
+        cc,          # type: Optional[List[str]]
+        subject='',
+        body=None    # type: List[str]
+   ):
+       # type: (...) -> bool
 
 Type comments can't cause runtime errors because comments are not evaluated by
-Python. In a similar way, using string literal types sidesteps the problem of
+Python.
+
+In a similar way, using string literal types sidesteps the problem of
 annotations that would cause runtime errors.
 
 Any type can be entered as a string literal, and you can combine
@@ -30,8 +52,8 @@ string-literal types with non-string-literal types freely:
 
 .. code-block:: python
 
-   def f(a: list['A']) -> None: ...  # OK
-   def g(n: 'int') -> None: ...      # OK, though not useful
+   def f(a: list['A']) -> None: ...  # OK, prevents NameError since A is defined later
+   def g(n: 'int') -> None: ...      # Also OK, though not useful
 
    class A: pass
 
@@ -47,9 +69,10 @@ Future annotations import (PEP 563)
 -----------------------------------
 
 Many of the issues described here are caused by Python trying to evaluate
-annotations. From Python 3.11 on, Python will no longer attempt to evaluate
-function and variable annotations. This behaviour is made available in Python
-3.7 and later through the use of ``from __future__ import annotations``.
+annotations. Future Python versions (potentially Python 3.12) will by default no
+longer attempt to evaluate function and variable annotations. This behaviour is
+made available in Python 3.7 and later through the use of
+``from __future__ import annotations``.
 
 This can be thought of as automatic string literal-ification of all function and
 variable annotations. Note that function and variable annotations are still
@@ -74,7 +97,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
         class B: ...
         class C: ...
 
-.. note::
+.. warning::
 
     Some libraries may have use cases for dynamic evaluation of annotations, for
     instance, through use of ``typing.get_type_hints`` or ``eval``. If your
@@ -273,8 +296,8 @@ the built-in collections or those from :py:mod:`collections.abc`:
    y: dict[int, str]
    z: Sequence[str] = x
 
-There is limited support for using this syntax in Python 3.7 and later as well.
-If you use ``from __future__ import annotations``, mypy will understand this
+There is limited support for using this syntax in Python 3.7 and later as well:
+if you use ``from __future__ import annotations``, mypy will understand this
 syntax in annotations. However, since this will not be supported by the Python
 interpreter at runtime, make sure you're aware of the caveats mentioned in the
 notes at :ref:`future annotations import<future-annotations>`.
@@ -285,8 +308,8 @@ Using X | Y syntax for Unions
 Starting with Python 3.10 (:pep:`604`), you can spell union types as ``x: int |
 str``, instead of ``x: typing.Union[int, str]``.
 
-There is limited support for using this syntax in Python 3.7 and later as well.
-If you use ``from __future__ import annotations``, mypy will understand this
+There is limited support for using this syntax in Python 3.7 and later as well:
+if you use ``from __future__ import annotations``, mypy will understand this
 syntax in annotations, string literal types, type comments and stub files.
 However, since this will not be supported by the Python interpreter at runtime
 (if evaluated, ``int | str`` will raise ``TypeError: unsupported operand type(s)

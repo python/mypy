@@ -141,7 +141,7 @@ class InstanceJoiner:
 
 def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
     """Return a simple least upper bound given the declared type."""
-    # TODO: check infinite recursion for aliases here.
+    # TODO: check infinite recursion for aliases here?
     declaration = get_proper_type(declaration)
     s = get_proper_type(s)
     t = get_proper_type(t)
@@ -171,6 +171,9 @@ def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
 
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
         s, t = t, s
+
+    # Meets/joins require callable type normalization.
+    s, t = normalize_callables(s, t)
 
     value = t.accept(TypeJoinVisitor(s))
     if declaration is None or is_subtype(value, declaration):
@@ -228,6 +231,9 @@ def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) 
         return s.accept(TypeJoinVisitor(t))
     elif isinstance(t, PlaceholderType):
         return AnyType(TypeOfAny.from_error)
+
+    # Meets/joins require callable type normalization.
+    s, t = normalize_callables(s, t)
 
     # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s, instance_joiner))
@@ -528,6 +534,14 @@ def is_better(t: Type, s: Type) -> bool:
     return False
 
 
+def normalize_callables(s: ProperType, t: ProperType) -> tuple[ProperType, ProperType]:
+    if isinstance(s, (CallableType, Overloaded)):
+        s = s.with_unpacked_kwargs()
+    if isinstance(t, (CallableType, Overloaded)):
+        t = t.with_unpacked_kwargs()
+    return s, t
+
+
 def is_similar_callables(t: CallableType, s: CallableType) -> bool:
     """Return True if t and s have identical numbers of
     arguments, default arguments and varargs.
@@ -545,10 +559,10 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
-    # TODO in combine_similar_callables also applies here (names and kinds)
-    # The fallback type can be either 'function' or 'type'. The result should have 'type' as
-    # fallback only if both operands have it as 'type'.
-    if t.fallback.type.fullname != "builtins.type":
+    # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
+    # The fallback type can be either 'function', 'type', or some user-provided metaclass.
+    # The result should always use 'function' as a fallback if either operands are using it.
+    if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
     else:
         fallback = s.fallback
@@ -566,9 +580,10 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names
-    # The fallback type can be either 'function' or 'type'. The result should have 'type' as
-    # fallback only if both operands have it as 'type'.
-    if t.fallback.type.fullname != "builtins.type":
+    # TODO what should happen if one fallback is 'type' and the other is a user-provided metaclass?
+    # The fallback type can be either 'function', 'type', or some user-provided metaclass.
+    # The result should always use 'function' as a fallback if either operands are using it.
+    if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
     else:
         fallback = s.fallback

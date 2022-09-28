@@ -17,7 +17,7 @@
 #   " Convert to 0-based column offsets
 #   let startcol = startcol - 1
 #   " Change this line to point to the find_type.py script.
-#   execute '!python3 /path/to/mypy/scripts/find_type.py % ' . startline . ' ' . startcol . ' ' . endline . ' ' . endcol . ' ' . mypycmd
+#   execute '!python3 /path/to/mypy/misc/find_type.py % ' . startline . ' ' . startcol . ' ' . endline . ' ' . endcol . ' ' . mypycmd
 # endfunction
 # vnoremap <Leader>t :call RevealType()<CR>
 #
@@ -68,7 +68,7 @@ def process_output(output: str, filename: str, start_line: int) -> tuple[str | N
     return None, True  # finding no reveal_type is an error
 
 
-def main():
+def main() -> None:
     filename, start_line_str, start_col_str, end_line_str, end_col_str, *mypy_and_args = sys.argv[
         1:
     ]

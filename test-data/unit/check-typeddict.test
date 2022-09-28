@@ -478,9 +478,9 @@ fun2(a) # Error
 main:17: error: Argument 1 to "fun2" has incompatible type "A"; expected "StrIntMap"
 main:17: note: Following member(s) of "A" have conflicts:
 main:17: note:     Expected:
-main:17: note:         def __getitem__(self, str) -> int
+main:17: note:         def __getitem__(self, str, /) -> int
 main:17: note:     Got:
-main:17: note:         def __getitem__(self, str) -> object
+main:17: note:         def __getitem__(self, str, /) -> object
 
 [case testTypedDictWithSimpleProtocolInference]
 from typing_extensions import Protocol, TypedDict
@@ -2012,15 +2012,34 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testCannotUseFinalDecoratorWithTypedDict]
+[case testCannotSubclassFinalTypedDict]
 from typing import TypedDict
 from typing_extensions import final
 
-@final  # E: @final cannot be used with TypedDict
+@final
 class DummyTypedDict(TypedDict):
     int_val: int
     float_val: float
     str_val: str
+
+class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedDict"
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCannotSubclassFinalTypedDictWithForwardDeclarations]
+from typing import TypedDict
+from typing_extensions import final
+
+@final
+class DummyTypedDict(TypedDict):
+    forward_declared: "ForwardDeclared"
+
+class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedDict"
+    pass
+
+class ForwardDeclared: pass
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -2531,7 +2550,7 @@ from typing import TypedDict, TypeVar
 
 T = TypeVar("T")
 TD = TypedDict("TD", {"key": int, "value": T})
-reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`-1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`-1})"
+reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`1})"
 
 tds: TD[str]
 reveal_type(tds)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.str})"

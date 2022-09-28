@@ -194,7 +194,7 @@ class Import(stmt):
 class ImportFrom(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("module", "names", "level")
-    module: _Identifier | None
+    module: str | None
     names: list[alias]
     level: int
 

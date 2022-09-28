@@ -1,6 +1,6 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Type
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type
 
 T = TypeVar("T")
 Tco = TypeVar('Tco', covariant=True)
@@ -47,6 +47,6 @@ class list(Sequence[T], Generic[T]):
 
 def isinstance(x: object, t: type) -> bool: pass
 
-def sum(iterable: Iterable[T], start: T = None) -> T: pass
+def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
 
 class BaseException: pass

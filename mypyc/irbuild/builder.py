@@ -45,10 +45,19 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import Instance, TupleType, Type, UninhabitedType, get_proper_type
+from mypy.types import (
+    AnyType,
+    Instance,
+    ProperType,
+    TupleType,
+    Type,
+    TypeOfAny,
+    UninhabitedType,
+    get_proper_type,
+)
 from mypy.util import split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import BITMAP_BITS, SELF_NAME, TEMP_ATTR_NAME
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -58,9 +67,11 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     Branch,
+    ComparisonOp,
     GetAttr,
     InitStatic,
     Integer,
+    IntOp,
     LoadStatic,
     Op,
     RaiseStandardError,
@@ -74,10 +85,12 @@ from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
     RType,
+    bitmap_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_fixed_width_rtype,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
@@ -441,6 +454,24 @@ class IRBuilder:
         """If target is NULL, assign value produced by get_val to it."""
         error_block, body_block = BasicBlock(), BasicBlock()
         self.add(Branch(target, error_block, body_block, Branch.IS_ERROR))
+        self.activate_block(error_block)
+        self.add(Assign(target, self.coerce(get_val(), target.type, line)))
+        self.goto(body_block)
+        self.activate_block(body_block)
+
+    def assign_if_bitmap_unset(
+        self, target: Register, get_val: Callable[[], Value], index: int, line: int
+    ) -> None:
+        error_block, body_block = BasicBlock(), BasicBlock()
+        o = self.int_op(
+            bitmap_rprimitive,
+            self.builder.args[-1 - index // BITMAP_BITS],
+            Integer(1 << (index & (BITMAP_BITS - 1)), bitmap_rprimitive),
+            IntOp.AND,
+            line,
+        )
+        b = self.add(ComparisonOp(o, Integer(0, bitmap_rprimitive), ComparisonOp.EQ))
+        self.add(Branch(b, error_block, body_block, Branch.BOOL))
         self.activate_block(error_block)
         self.add(Assign(target, self.coerce(get_val(), target.type, line)))
         self.goto(body_block)
@@ -867,7 +898,11 @@ class IRBuilder:
     def _analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Return the item type given by 'expr' in an iterable context."""
         # This logic is copied from mypy's TypeChecker.analyze_iterable_item_type.
-        iterable = get_proper_type(self.types[expr])
+        if expr not in self.types:
+            # Mypy thinks this is unreachable.
+            iterable: ProperType = AnyType(TypeOfAny.from_error)
+        else:
+            iterable = get_proper_type(self.types[expr])
         echk = self.graph[self.module_name].type_checker().expr_checker
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], expr)[0]
 
@@ -1246,6 +1281,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
     value to the argument.
     """
     fitem = builder.fn_info.fitem
+    nb = 0
     for arg in fitem.arguments:
         if arg.initializer:
             target = builder.lookup(arg.variable)
@@ -1271,7 +1307,14 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                     )
 
             assert isinstance(target, AssignmentTargetRegister)
-            builder.assign_if_null(target.register, get_default, arg.initializer.line)
+            reg = target.register
+            if not is_fixed_width_rtype(reg.type):
+                builder.assign_if_null(target.register, get_default, arg.initializer.line)
+            else:
+                builder.assign_if_bitmap_unset(
+                    target.register, get_default, nb, arg.initializer.line
+                )
+                nb += 1
 
 
 def remangle_redefinition_name(name: str) -> str:

@@ -2918,3 +2918,44 @@ def incorrect_return2() -> Union[Tuple[Literal[True], int], Tuple[Literal[False]
     else:
         return (bool(), 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
 [builtins fixtures/bool.pyi]
+
+[case testLiteralSubtypeContext]
+from typing_extensions import Literal
+
+class A:
+    foo: Literal['bar', 'spam']
+class B(A):
+    foo = 'spam'
+
+reveal_type(B().foo)  # N: Revealed type is "Literal['spam']"
+[builtins fixtures/tuple.pyi]
+
+[case testLiteralSubtypeContextNested]
+from typing import List
+from typing_extensions import Literal
+
+class A:
+    foo: List[Literal['bar', 'spam']]
+class B(A):
+    foo = ['spam']
+
+reveal_type(B().foo)  # N: Revealed type is "builtins.list[Union[Literal['bar'], Literal['spam']]]"
+[builtins fixtures/tuple.pyi]
+
+[case testLiteralSubtypeContextGeneric]
+from typing_extensions import Literal
+from typing import Generic, List, TypeVar
+
+T = TypeVar("T", bound=str)
+
+class B(Generic[T]):
+    collection: List[T]
+    word: T
+
+class C(B[Literal["word"]]):
+   collection = ["word"]
+   word = "word"
+
+reveal_type(C().collection)  # N: Revealed type is "builtins.list[Literal['word']]"
+reveal_type(C().word)  # N: Revealed type is "Literal['word']"
+[builtins fixtures/tuple.pyi]

@@ -64,11 +64,11 @@ def get_edges(o: object) -> Iterator[tuple[object, object]]:
             # in closures and self pointers to other objects
 
             if hasattr(e, "__closure__"):
-                yield (s, "__closure__"), e.__closure__  # type: ignore
+                yield (s, "__closure__"), e.__closure__
             if hasattr(e, "__self__"):
-                se = e.__self__  # type: ignore
+                se = e.__self__
                 if se is not o and se is not type(o) and hasattr(s, "__self__"):
-                    yield s.__self__, se  # type: ignore
+                    yield s.__self__, se
         else:
             if not type(e) in TYPE_BLACKLIST:
                 yield s, e

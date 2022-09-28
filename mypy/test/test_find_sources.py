@@ -356,7 +356,8 @@ class SourceFinderSuite(unittest.TestCase):
             "/kg",
             "/g.py",
             "/bc",
-            "/xxx/pkg/a2/b/f.py" "xxx/pkg/a2/b/f.py",
+            "/xxx/pkg/a2/b/f.py",
+            "xxx/pkg/a2/b/f.py",
         ]
         big_exclude2 = ["|".join(big_exclude1)]
         for big_exclude in [big_exclude1, big_exclude2]:

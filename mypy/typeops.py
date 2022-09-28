@@ -8,7 +8,7 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from typing import Any, Iterable, List, Sequence, Type as TypingType, TypeVar, cast
+from typing import Any, Iterable, List, Sequence, TypeVar, cast
 
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -45,6 +45,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeQuery,
     TypeType,
@@ -104,7 +105,16 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    return Instance(info, [join_type_list(items)])
+    return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
+
+
+def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
+    if isinstance(get_proper_type(func.ret_type), UninhabitedType):
+        return func.ret_type
+    elif func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
+        return func.arg_types[0]
+    else:
+        return None
 
 
 def type_object_type_from_function(
@@ -117,14 +127,7 @@ def type_object_type_from_function(
     # classes such as subprocess.Popen.
     default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
-        orig_self_types = [
-            (
-                it.arg_types[0]
-                if it.arg_types and it.arg_types[0] != default_self and it.arg_kinds[0] == ARG_POS
-                else None
-            )
-            for it in signature.items
-        ]
+        orig_self_types = [get_self_type(it, default_self) for it in signature.items]
     else:
         orig_self_types = [None] * len(signature.items)
 
@@ -177,7 +180,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -460,7 +463,20 @@ def make_simplified_union(
     ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return get_proper_type(UnionType.make_union(simplified_set, line, column))
+    result = get_proper_type(UnionType.make_union(simplified_set, line, column))
+
+    # Step 4: At last, we erase any (inconsistent) extra attributes on instances.
+    extra_attrs_set = set()
+    for item in items:
+        instance = try_getting_instance_fallback(item)
+        if instance and instance.extra_attrs:
+            extra_attrs_set.add(instance.extra_attrs)
+
+    fallback = try_getting_instance_fallback(result)
+    if len(extra_attrs_set) > 1 and fallback:
+        fallback.extra_attrs = None
+
+    return result
 
 
 def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
@@ -741,7 +757,7 @@ T = TypeVar("T")
 
 
 def try_getting_literals_from_type(
-    typ: Type, target_literal_type: TypingType[T], target_fullname: str
+    typ: Type, target_literal_type: type[T], target_fullname: str
 ) -> list[T] | None:
     """If the given expression or type corresponds to a Literal or
     union of Literals where the underlying values correspond to the given
@@ -982,3 +998,21 @@ def separate_union_literals(t: UnionType) -> tuple[Sequence[LiteralType], Sequen
             union_items.append(item)
 
     return literal_items, union_items
+
+
+def try_getting_instance_fallback(typ: Type) -> Instance | None:
+    """Returns the Instance fallback for this type if one exists or None."""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return typ
+    elif isinstance(typ, TupleType):
+        return typ.partial_fallback
+    elif isinstance(typ, TypedDictType):
+        return typ.fallback
+    elif isinstance(typ, FunctionLike):
+        return typ.fallback
+    elif isinstance(typ, LiteralType):
+        return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
+    return None
