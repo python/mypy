@@ -5086,7 +5086,9 @@ class SemanticAnalyzer(
                 X = X  # Initializer refers to outer scope
 
         Nested classes are an exception, since we want to support
-        arbitrary forward references in type annotations.
+        arbitrary forward references in type annotations. Also, we
+        allow forward references to type aliases to support recursive
+        types.
         """
         # TODO: Forward reference to name imported in class body is not
         #       caught.
@@ -5097,7 +5099,7 @@ class SemanticAnalyzer(
             node is None
             or self.is_textually_before_statement(node)
             or not self.is_defined_in_current_module(node.fullname)
-            or isinstance(node, TypeInfo)
+            or isinstance(node, (TypeInfo, TypeAlias))
             or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo)
         )
 
