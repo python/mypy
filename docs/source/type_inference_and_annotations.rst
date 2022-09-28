@@ -1,22 +1,35 @@
+.. _type-inference-and-annotations:
+
 Type inference and type annotations
 ===================================
 
 Type inference
 **************
 
-Mypy considers the initial assignment as the definition of a variable.
-If you do not explicitly
-specify the type of the variable, mypy infers the type based on the
-static type of the value expression:
+For most variables, if you do not explicitly specify its type, mypy will
+infer the correct type based on what is initially assigned to the variable.
 
 .. code-block:: python
 
-   i = 1           # Infer type "int" for i
-   l = [1, 2]      # Infer type "list[int]" for l
+    # Mypy will infer the type of these variables, despite no annotations
+    i = 1
+    reveal_type(i)  # Revealed type is "builtins.int"
+    l = [1, 2]
+    reveal_type(l)  # Revealed type is "builtins.list[builtins.int]"
 
-Type inference is not used in dynamically typed functions (those
-without a function type annotation) — every local variable type defaults
-to ``Any`` in such functions. ``Any`` is discussed later in more detail.
+
+.. note::
+
+    Note that mypy will not use type inference in dynamically typed functions
+    (those without a function type annotation) — every local variable type
+    defaults to ``Any`` in such functions. For more details, see :ref:`dynamic-typing`.
+
+    .. code-block:: python
+
+        def untyped_function():
+            i = 1
+            reveal_type(i) # Revealed type is "Any"
+                           # 'reveal_type' always outputs 'Any' in unchecked functions
 
 .. _explicit-var-types:
 
@@ -35,20 +48,33 @@ variable type annotation:
 Without the type annotation, the type of ``x`` would be just ``int``. We
 use an annotation to give it a more general type ``Union[int, str]`` (this
 type means that the value can be either an ``int`` or a ``str``).
-Mypy checks that the type of the initializer is compatible with the
-declared type. The following example is not valid, since the initializer is
-a floating point number, and this is incompatible with the declared
-type:
+
+The best way to think about this is that the type annotation sets the type of
+the variable, not the type of the expression. For instance, mypy will complain
+about the following code:
 
 .. code-block:: python
 
-   x: Union[int, str] = 1.1  # Error!
+   x: Union[int, str] = 1.1  # error: Incompatible types in assignment
+                             # (expression has type "float", variable has type "Union[int, str]")
 
 .. note::
 
-   The best way to think about this is that the type annotation sets the
-   type of the variable, not the type of the expression. To force the
-   type of an expression you can use :py:func:`cast(\<type\>, \<expression\>) <typing.cast>`.
+   To explicitly override the type of an expression you can use
+   :py:func:`cast(\<type\>, \<expression\>) <typing.cast>`.
+   See :ref:`casts` for details.
+
+Note that you can explicitly declare the type of a variable without
+giving it an initial value:
+
+.. code-block:: python
+
+   # We only unpack two values, so there's no right-hand side value
+   # for mypy to infer the type of "cs" from:
+   a, b, *cs = 1, 2  # error: Need type annotation for "cs"
+
+   rs: list[int]  # no assignment!
+   p, q, *rs = 1, 2  # OK
 
 Explicit types for collections
 ******************************
@@ -67,14 +93,8 @@ In these cases you can give the type explicitly using a type annotation:
 
 .. code-block:: python
 
-   l: list[int] = []       # Create empty list with type list[int]
+   l: list[int] = []       # Create empty list of int
    d: dict[str, int] = {}  # Create empty dictionary (str -> int)
-
-Similarly, you can also give an explicit type when creating an empty set:
-
-.. code-block:: python
-
-   s: set[int] = set()
 
 .. note::
 
@@ -88,13 +108,14 @@ Similarly, you can also give an explicit type when creating an empty set:
 Compatibility of container types
 ********************************
 
-The following program generates a mypy error, since ``list[int]``
-is not compatible with ``list[object]``:
+A quick note: container types can sometimes be unintuitive. We'll discuss this
+more in :ref:`variance`. For example, the following program generates a mypy error,
+because mypy treats ``list[int]`` as incompatible with ``list[object]``:
 
 .. code-block:: python
 
    def f(l: list[object], k: list[int]) -> None:
-       l = k  # Type check error: incompatible types in assignment
+       l = k  # error: Incompatible types in assignment
 
 The reason why the above assignment is disallowed is that allowing the
 assignment could result in non-int values stored in a list of ``int``:
@@ -106,33 +127,32 @@ assignment could result in non-int values stored in a list of ``int``:
        l.append('x')
        print(k[-1])  # Ouch; a string in list[int]
 
-Other container types like :py:class:`dict` and :py:class:`set` behave similarly. We
-will discuss how you can work around this in :ref:`variance`.
+Other container types like :py:class:`dict` and :py:class:`set` behave similarly.
 
-You can still run the above program; it prints ``x``. This illustrates
-the fact that static types are used during type checking, but they do
-not affect the runtime behavior of programs. You can run programs with
-type check failures, which is often very handy when performing a large
-refactoring. Thus you can always 'work around' the type system, and it
+You can still run the above program; it prints ``x``. This illustrates the fact
+that static types do not affect the runtime behavior of programs. You can run
+programs with type check failures, which is often very handy when performing a
+large refactoring. Thus you can always 'work around' the type system, and it
 doesn't really limit what you can do in your program.
 
 Context in type inference
 *************************
 
-Type inference is *bidirectional* and takes context into account. For
-example, the following is valid:
+Type inference is *bidirectional* and takes context into account.
+
+Mypy will take into account the type of the variable on the left-hand side
+of an assignment when inferring the type of the expression on the right-hand
+side. For example, the following will type check:
 
 .. code-block:: python
 
    def f(l: list[object]) -> None:
        l = [1, 2]  # Infer type list[object] for [1, 2], not list[int]
 
-In an assignment, the type context is determined by the assignment
-target. In this case this is ``l``, which has the type
-``list[object]``. The value expression ``[1, 2]`` is type checked in
-this context and given the type ``list[object]``. In the previous
-example we introduced a new variable ``l``, and here the type context
-was empty.
+
+The value expression ``[1, 2]`` is type checked with the additional
+context that it is being assigned to a variable of type ``list[object]``.
+This is used to infer the type of the *expression* as ``list[object]``.
 
 Declared argument types are also used for type context. In this program
 mypy knows that the empty list ``[]`` should have type ``list[int]`` based
@@ -165,51 +185,30 @@ Working around the issue is easy by adding a type annotation:
     a: list[int] = []  # OK
     foo(a)
 
-Starred expressions
-*******************
-
-In most cases, mypy can infer the type of starred expressions from the
-right-hand side of an assignment, but not always:
-
-.. code-block:: python
-
-    a, *bs = 1, 2, 3   # OK
-    p, q, *rs = 1, 2   # Error: Type of rs cannot be inferred
-
-On first line, the type of ``bs`` is inferred to be
-``list[int]``. However, on the second line, mypy cannot infer the type
-of ``rs``, because there is no right-hand side value for ``rs`` to
-infer the type from. In cases like these, the starred expression needs
-to be annotated with a starred type:
-
-.. code-block:: python
-
-    p, q, *rs = 1, 2  # type: int, int, list[int]
-
-Here, the type of ``rs`` is set to ``list[int]``.
-
 Silencing type errors
 *********************
 
 You might want to disable type checking on specific lines, or within specific
 files in your codebase. To do that, you can use a ``# type: ignore`` comment.
 
-For example, say that the web framework that you use now takes an integer
-argument to ``run()``, which starts it on localhost on that port. Like so:
+For example, say in its latest update, the web framework you use can now take an
+integer argument to ``run()``, which starts it on localhost on that port.
+Like so:
 
 .. code-block:: python
 
     # Starting app on http://localhost:8000
     app.run(8000)
 
-However, the type stubs that the package uses is not up-to-date, and it still
-expects only ``str`` types for ``run()``. This would give you the following error:
+However, the devs forgot to update their type annotations for
+``run``, so mypy still thinks ``run`` only expects ``str`` types.
+This would give you the following error:
 
 .. code-block:: text
 
     error: Argument 1 to "run" of "A" has incompatible type "int"; expected "str"
 
-If you cannot directly fix the type stubs yourself, you can temporarily
+If you cannot directly fix the web framework yourself, you can temporarily
 disable type checking on that line, by adding a ``# type: ignore``:
 
 .. code-block:: python
@@ -227,11 +226,10 @@ short explanation of the bug. To do that, use this format:
 .. code-block:: python
 
     # Starting app on http://localhost:8000
-    app.run(8000)  # type: ignore  # `run()` now accepts an `int`, as a port
+    app.run(8000)  # type: ignore  # `run()` in v2.0 accepts an `int`, as a port
 
 
-Mypy displays an error code for each error if you use
-:option:`--show-error-codes <mypy --show-error-codes>`:
+By default, mypy displays an error code for each error:
 
 .. code-block:: text
 
@@ -242,12 +240,12 @@ It is possible to add a specific error-code in your ignore comment (e.g.
 ``# type: ignore[attr-defined]``) to clarify what's being silenced. You can
 find more information about error codes :ref:`here <silence-error-codes>`.
 
-Similarly, you can also ignore all mypy checks in a file, by adding a
-``# type: ignore`` at the top of the file:
+Similarly, you can also ignore all mypy errors in a file, by adding a
+``# mypy: ignore-errors`` at the top of the file:
 
 .. code-block:: python
 
-    # type: ignore
+    # mypy: ignore-errors
     # This is a test file, skipping type checking in it.
     import unittest
     ...

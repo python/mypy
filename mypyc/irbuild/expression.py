@@ -52,6 +52,8 @@ from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
     Assign,
     BasicBlock,
+    ComparisonOp,
+    Integer,
     LoadAddress,
     RaiseStandardError,
     Register,
@@ -62,6 +64,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RTuple,
     int_rprimitive,
+    is_fixed_width_rtype,
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
@@ -472,21 +475,26 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     if folded:
         return folded
 
+    borrow_left = False
+    borrow_right = False
+
+    ltype = builder.node_type(expr.left)
+    rtype = builder.node_type(expr.right)
+
     # Special case some int ops to allow borrowing operands.
-    if is_int_rprimitive(builder.node_type(expr.left)) and is_int_rprimitive(
-        builder.node_type(expr.right)
-    ):
+    if is_int_rprimitive(ltype) and is_int_rprimitive(rtype):
         if expr.op == "//":
             expr = try_optimize_int_floor_divide(expr)
         if expr.op in int_borrow_friendly_op:
             borrow_left = is_borrow_friendly_expr(builder, expr.right)
-            left = builder.accept(expr.left, can_borrow=borrow_left)
-            right = builder.accept(expr.right, can_borrow=True)
-            return builder.binary_op(left, right, expr.op, expr.line)
+            borrow_right = True
+    elif is_fixed_width_rtype(ltype) and is_fixed_width_rtype(rtype):
+        borrow_left = is_borrow_friendly_expr(builder, expr.right)
+        borrow_right = True
 
-    return builder.binary_op(
-        builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
-    )
+    left = builder.accept(expr.left, can_borrow=borrow_left)
+    right = builder.accept(expr.right, can_borrow=borrow_right)
+    return builder.binary_op(left, right, expr.op, expr.line)
 
 
 def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:
@@ -708,6 +716,25 @@ def transform_basic_comparison(
         and op in int_comparison_op_mapping.keys()
     ):
         return builder.compare_tagged(left, right, op, line)
+    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping.keys():
+        if right.type == left.type:
+            op_id = ComparisonOp.signed_ops[op]
+            return builder.builder.comparison_op(left, right, op_id, line)
+        elif isinstance(right, Integer):
+            op_id = ComparisonOp.signed_ops[op]
+            return builder.builder.comparison_op(
+                left, Integer(right.value >> 1, left.type), op_id, line
+            )
+    elif (
+        is_fixed_width_rtype(right.type)
+        and op in int_comparison_op_mapping.keys()
+        and isinstance(left, Integer)
+    ):
+        op_id = ComparisonOp.signed_ops[op]
+        return builder.builder.comparison_op(
+            Integer(left.value >> 1, right.type), right, op_id, line
+        )
+
     negate = False
     if op == "is not":
         op, negate = "is", True

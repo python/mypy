@@ -81,7 +81,8 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 
 from __future__ import annotations
 
-from typing import DefaultDict, List
+from collections import defaultdict
+from typing import List
 
 from mypy.nodes import (
     GDEF,
@@ -220,7 +221,7 @@ class DependencyVisitor(TraverserVisitor):
         self,
         type_map: dict[Expression, Type],
         python_version: tuple[int, int],
-        alias_deps: DefaultDict[str, set[str]],
+        alias_deps: defaultdict[str, set[str]],
         options: Options | None = None,
     ) -> None:
         self.scope = Scope()
@@ -968,6 +969,9 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             triggers.extend(self.get_type_triggers(arg))
         if typ.last_known_value:
             triggers.extend(self.get_type_triggers(typ.last_known_value))
+        if typ.extra_attrs and typ.extra_attrs.mod_name:
+            # Module as type effectively depends on all module attributes, use wildcard.
+            triggers.append(make_wildcard_trigger(typ.extra_attrs.mod_name))
         return triggers
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> list[str]:

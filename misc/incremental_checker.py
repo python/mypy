@@ -44,8 +44,8 @@ import sys
 import textwrap
 import time
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
-from typing import Any, Dict, Tuple
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Dict
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 CACHE_PATH: Final = ".incremental_checker_cache.json"
 MYPY_REPO_URL: Final = "https://github.com/python/mypy.git"
@@ -70,7 +70,7 @@ def execute(command: list[str], fail_on_error: bool = True) -> tuple[str, str, i
     proc = subprocess.Popen(
         " ".join(command), stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
     )
-    stdout_bytes, stderr_bytes = proc.communicate()  # type: Tuple[bytes, bytes]
+    stdout_bytes, stderr_bytes = proc.communicate()
     stdout, stderr = stdout_bytes.decode("utf-8"), stderr_bytes.decode("utf-8")
     if fail_on_error and proc.returncode != 0:
         print("EXECUTED COMMAND:", repr(command))
@@ -197,7 +197,9 @@ def stop_daemon() -> None:
 def load_cache(incremental_cache_path: str = CACHE_PATH) -> JsonDict:
     if os.path.exists(incremental_cache_path):
         with open(incremental_cache_path) as stream:
-            return json.load(stream)
+            cache = json.load(stream)
+            assert isinstance(cache, dict)
+            return cache
     else:
         return {}
 
@@ -405,7 +407,7 @@ def main() -> None:
     parser.add_argument(
         "range_start",
         metavar="COMMIT_ID_OR_NUMBER",
-        help="the commit id to start from, or the number of " "commits to move back (see above)",
+        help="the commit id to start from, or the number of commits to move back (see above)",
     )
     parser.add_argument(
         "-r",
@@ -437,7 +439,7 @@ def main() -> None:
         "--branch",
         default=None,
         metavar="NAME",
-        help="check out and test a custom branch" "uses the default if not specified",
+        help="check out and test a custom branch uses the default if not specified",
     )
     parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
     parser.add_argument("--seed", type=str, help="random seed")

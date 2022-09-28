@@ -75,7 +75,7 @@ attr_optional_converters: Final = {"attr.converters.optional", "attrs.converters
 
 SELF_TVAR_NAME: Final = "_AT"
 MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
-MAGIC_ATTR_CLS_NAME: Final = "_AttrsAttributes"  # The namedtuple subclass name.
+MAGIC_ATTR_CLS_NAME_TEMPLATE: Final = "__{}_AttrsAttributes__"  # The tuple subclass pattern.
 
 
 class Converter:
@@ -257,7 +257,7 @@ def attr_tag_callback(ctx: mypy.plugin.ClassDefContext) -> None:
     """Record that we have an attrs class in the main semantic analysis pass.
 
     The later pass implemented by attr_class_maker_callback will use this
-    to detect attrs lasses in base classes.
+    to detect attrs classes in base classes.
     """
     # The value is ignored, only the existence matters.
     ctx.cls.info.metadata["attrs_tag"] = {}
@@ -792,10 +792,11 @@ def _add_attrs_magic_attribute(
         "builtins.tuple", [ctx.api.named_type_or_none("attr.Attribute", [any_type]) or any_type]
     )
 
-    ti = ctx.api.basic_new_typeinfo(MAGIC_ATTR_CLS_NAME, fallback_type, 0)
-    ti.is_named_tuple = True
+    attr_name = MAGIC_ATTR_CLS_NAME_TEMPLATE.format(ctx.cls.fullname.replace(".", "_"))
+    ti = ctx.api.basic_new_typeinfo(attr_name, fallback_type, 0)
     for (name, _), attr_type in zip(attrs, attributes_types):
         var = Var(name, attr_type)
+        var._fullname = name
         var.is_property = True
         proper_type = get_proper_type(attr_type)
         if isinstance(proper_type, Instance):
@@ -803,14 +804,18 @@ def _add_attrs_magic_attribute(
         ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
     attributes_type = Instance(ti, [])
 
-    # TODO: refactor using `add_attribute_to_class`
-    var = Var(name=MAGIC_ATTR_NAME, type=TupleType(attributes_types, fallback=attributes_type))
-    var.info = ctx.cls.info
-    var.is_classvar = True
-    var._fullname = f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}"
-    var.allow_incompatible_override = True
-    ctx.cls.info.names[MAGIC_ATTR_NAME] = SymbolTableNode(
-        kind=MDEF, node=var, plugin_generated=True, no_serialize=True
+    # We need to stash the type of the magic attribute so it can be
+    # loaded on cached runs.
+    ctx.cls.info.names[attr_name] = SymbolTableNode(MDEF, ti, plugin_generated=True)
+
+    add_attribute_to_class(
+        ctx.api,
+        ctx.cls,
+        MAGIC_ATTR_NAME,
+        TupleType(attributes_types, fallback=attributes_type),
+        fullname=f"{ctx.cls.fullname}.{attr_name}",
+        override_allow_incompatible=True,
+        is_classvar=True,
     )
 
 

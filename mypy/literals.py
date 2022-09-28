@@ -173,7 +173,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ("Binary", e.op, literal_hash(e.left), literal_hash(e.right))
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Key:
-        rest: Any = tuple(e.operators)
+        rest: tuple[str | Key | None, ...] = tuple(e.operators)
         rest += tuple(literal_hash(o) for o in e.operands)
         return ("Comparison",) + rest
 
@@ -182,7 +182,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def seq_expr(self, e: ListExpr | TupleExpr | SetExpr, name: str) -> Key | None:
         if all(literal(x) == LITERAL_YES for x in e.items):
-            rest: Any = tuple(literal_hash(x) for x in e.items)
+            rest: tuple[Key | None, ...] = tuple(literal_hash(x) for x in e.items)
             return (name,) + rest
         return None
 
@@ -191,7 +191,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def visit_dict_expr(self, e: DictExpr) -> Key | None:
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
-            rest: Any = tuple(
+            rest: tuple[Key | None, ...] = tuple(
                 (literal_hash(a) if a else None, literal_hash(b)) for a, b in e.items
             )
             return ("Dict",) + rest

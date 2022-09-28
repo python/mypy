@@ -1033,3 +1033,21 @@ x2: X2[str, int]
 reveal_type(iter(x2))  # N: Revealed type is "typing.Iterator[builtins.int]"
 reveal_type([*x2])  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/dict.pyi]
+
+[case testIncompatibleVariance]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class A(Generic[T_co]): ...
+class B(A[T_contra], Generic[T_contra]): ...  # E: Variance of TypeVar "T_contra" incompatible with variance in parent type
+
+class C(Generic[T_contra]): ...
+class D(C[T_co], Generic[T_co]): ...  # E: Variance of TypeVar "T_co" incompatible with variance in parent type
+
+class E(Generic[T]): ...
+class F(E[T_co], Generic[T_co]): ...  # E: Variance of TypeVar "T_co" incompatible with variance in parent type
+
+class G(Generic[T]): ...
+class H(G[T_contra], Generic[T_contra]): ...  # E: Variance of TypeVar "T_contra" incompatible with variance in parent type

@@ -624,7 +624,7 @@ class socket:
             __buffers: Iterable[ReadableBuffer],
             __ancdata: Iterable[_CMSGArg] = ...,
             __flags: int = ...,
-            __address: _Address = ...,
+            __address: _Address | None = ...,
         ) -> int: ...
     if sys.platform == "linux":
         def sendmsg_afalg(

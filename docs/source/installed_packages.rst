@@ -57,10 +57,10 @@ stubs.)
 If you have installed typed packages in another Python installation or
 environment, mypy won't automatically find them. One option is to
 install another copy of those packages in the environment in which you
-use to run mypy. Alternatively, you can use the
+installed mypy. Alternatively, you can use the
 :option:`--python-executable <mypy --python-executable>` flag to point
-to the target Python executable, and mypy will find packages installed
-for that Python executable.
+to the Python executable for another environment, and mypy will find
+packages installed for that Python executable.
 
 Note that mypy does not support some more advanced import features,
 such as zip imports and custom import hooks.

@@ -60,24 +60,9 @@ __all__ = [
 
 _T = TypeVar("_T")
 
-class excel(Dialect):
-    delimiter: str
-    quotechar: str
-    doublequote: bool
-    skipinitialspace: bool
-    lineterminator: str
-    quoting: _QuotingType
-
-class excel_tab(excel):
-    delimiter: str
-
-class unix_dialect(Dialect):
-    delimiter: str
-    quotechar: str
-    doublequote: bool
-    skipinitialspace: bool
-    lineterminator: str
-    quoting: _QuotingType
+class excel(Dialect): ...
+class excel_tab(excel): ...
+class unix_dialect(Dialect): ...
 
 class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
     fieldnames: Sequence[_T] | None

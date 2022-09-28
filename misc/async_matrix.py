@@ -70,7 +70,7 @@ def plain_host_generator(func) -> Generator[str, None, None]:
     x = 0
     f = func()
     try:
-        x = yield from f
+        x = yield from f  # noqa: F841
     finally:
         try:
             f.close()
@@ -80,7 +80,7 @@ def plain_host_generator(func) -> Generator[str, None, None]:
 
 async def plain_host_coroutine(func) -> None:
     x = 0
-    x = await func()
+    x = await func()  # noqa: F841
 
 
 @coroutine
@@ -89,7 +89,7 @@ def decorated_host_generator(func) -> Generator[str, None, None]:
     x = 0
     f = func()
     try:
-        x = yield from f
+        x = yield from f  # noqa: F841
     finally:
         try:
             f.close()
@@ -100,13 +100,13 @@ def decorated_host_generator(func) -> Generator[str, None, None]:
 @coroutine
 async def decorated_host_coroutine(func) -> None:
     x = 0
-    x = await func()
+    x = await func()  # noqa: F841
 
 
 # Main driver.
 
 
-def main():
+def main() -> None:
     verbose = "-v" in sys.argv
     for host in [
         plain_host_generator,

@@ -1,5 +1,4 @@
 import sys
-from multiprocessing.process import BaseProcess
 from typing import ClassVar
 
 from . import popen_fork
@@ -15,8 +14,3 @@ if sys.platform != "win32":
     class Popen(popen_fork.Popen):
         DupFd: ClassVar[type[_DupFd]]
         finalizer: Finalize
-        sentinel: int
-
-        def __init__(self, process_obj: BaseProcess) -> None: ...
-        def duplicate_for_child(self, fd: int) -> int: ...
-        def poll(self, flag: int = ...) -> int | None: ...

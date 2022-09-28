@@ -180,7 +180,9 @@ import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
 [case testErrorCodeBadIgnore]
-import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
+                                  # E: Cannot find implementation or library stub for module named "nostub"  [import] \
+                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
@@ -207,6 +209,8 @@ def f(x,  # type: int  # type: ignore[
     pass
 [out]
 main:2: error: Invalid "type: ignore" comment  [syntax]
+main:2: error: Cannot find implementation or library stub for module named "nostub"  [import]
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
@@ -250,7 +254,7 @@ z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
 from typing import TypeVar
 
 T = TypeVar('T')
-def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar  [type-var]
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar  [type-var]
 x = f()  # E: Need type annotation for "x"  [var-annotated]
 y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
@@ -628,9 +632,6 @@ def g() -> int:
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]
 
-[case testErrorCodeIgnoreMiscNote]
-x: [int]  # type: ignore[misc]
-
 [case testErrorCodeProtocolProblemsIgnore]
 from typing_extensions import Protocol
 
@@ -916,3 +917,17 @@ def f(d: D, s: str) -> None:
     d[s]  # type: ignore[literal-required]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+
+[case testRecommendErrorCode]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code=...`  [syntax]
+1 + "asdf"
+
+[case testShowErrorCodesInConfig]
+# flags: --config-file tmp/mypy.ini
+# Test 'show_error_codes = True' in config doesn't raise an exception
+var: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
+[file mypy.ini]
+\[mypy]
+show_error_codes = True

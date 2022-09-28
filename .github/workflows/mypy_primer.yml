@@ -13,7 +13,6 @@ on:
     - 'mypy/stubgen.py'
     - 'mypy/stubgenc.py'
     - 'mypy/test/**'
-    - 'scripts/**'
     - 'test-data/**'
 
 jobs:
@@ -24,7 +23,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        shard-index: [0, 1, 2]
+        shard-index: [0, 1, 2, 3, 4]
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -57,7 +56,7 @@ jobs:
             mypy_primer \
             --repo mypy_to_test \
             --new $GITHUB_SHA --old base_commit \
-            --num-shards 3 --shard-index ${{ matrix.shard-index }} \
+            --num-shards 5 --shard-index ${{ matrix.shard-index }} \
             --debug \
             --output concise \
             | tee diff_${{ matrix.shard-index }}.txt

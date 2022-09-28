@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 
-from mypy.metastore import FilesystemMetadataStore, SqliteMetadataStore
+from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 
 
 def main() -> None:
@@ -37,7 +37,8 @@ def main() -> None:
     input_dir = args.input_dir
     output_dir = args.output_dir or input_dir
     if args.to_sqlite:
-        input, output = FilesystemMetadataStore(input_dir), SqliteMetadataStore(output_dir)
+        input: MetadataStore = FilesystemMetadataStore(input_dir)
+        output: MetadataStore = SqliteMetadataStore(output_dir)
     else:
         input, output = SqliteMetadataStore(input_dir), FilesystemMetadataStore(output_dir)
 

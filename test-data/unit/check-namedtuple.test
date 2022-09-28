@@ -1284,7 +1284,7 @@ from typing import NamedTuple, TypeVar
 
 T = TypeVar("T")
 NT = NamedTuple("NT", [("key", int), ("value", T)])
-reveal_type(NT)  # N: Revealed type is "def [T] (key: builtins.int, value: T`-1) -> Tuple[builtins.int, T`-1, fallback=__main__.NT[T`-1]]"
+reveal_type(NT)  # N: Revealed type is "def [T] (key: builtins.int, value: T`1) -> Tuple[builtins.int, T`1, fallback=__main__.NT[T`1]]"
 
 nts: NT[str]
 reveal_type(nts)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.NT[builtins.str]]"

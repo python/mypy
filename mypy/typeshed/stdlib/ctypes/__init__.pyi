@@ -1,4 +1,5 @@
 import sys
+from _ctypes import RTLD_GLOBAL as RTLD_GLOBAL, RTLD_LOCAL as RTLD_LOCAL
 from _typeshed import ReadableBuffer, Self, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -12,8 +13,6 @@ _T = TypeVar("_T")
 _DLLT = TypeVar("_DLLT", bound=CDLL)
 _CT = TypeVar("_CT", bound=_CData)
 
-RTLD_GLOBAL: int
-RTLD_LOCAL: int
 DEFAULT_MODE: int
 
 class CDLL:

@@ -53,7 +53,7 @@ class TypeExportSuite(DataSuite):
             # Filter nodes that should be included in the output.
             keys = []
             for node in nodes:
-                if node.line is not None and node.line != -1 and map[node]:
+                if node.line != -1 and map[node]:
                     if ignore_node(node) or node in ignored:
                         continue
                     if re.match(mask, short_type(node)) or (
