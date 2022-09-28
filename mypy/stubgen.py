@@ -104,7 +104,13 @@ from mypy.nodes import (
 )
 from mypy.options import Options as MypyOptions
 from mypy.stubdoc import Sig, find_unique_signatures, parse_all_signatures
-from mypy.stubgenc import generate_stub_for_c_module
+from mypy.stubgenc import (
+    DocstringSignatureGenerator,
+    ExternalSignatureGenerator,
+    FallbackSignatureGenerator,
+    SignatureGenerator,
+    generate_stub_for_c_module,
+)
 from mypy.stubutil import (
     CantImport,
     common_dir_prefix,
@@ -1626,6 +1632,18 @@ def generate_stub_from_ast(
         file.write("".join(gen.output()))
 
 
+def get_sig_generators(options: Options) -> List[SignatureGenerator]:
+    sig_generators: List[SignatureGenerator] = [
+        DocstringSignatureGenerator(),
+        FallbackSignatureGenerator(),
+    ]
+    if options.doc_dir:
+        # Collect info from docs (if given). Always check these first.
+        sigs, class_sigs = collect_docs_signatures(options.doc_dir)
+        sig_generators.insert(0, ExternalSignatureGenerator(sigs, class_sigs))
+    return sig_generators
+
+
 def collect_docs_signatures(doc_dir: str) -> tuple[dict[str, str], dict[str, str]]:
     """Gather all function and class signatures in the docs.
 
@@ -1648,13 +1666,7 @@ def generate_stubs(options: Options) -> None:
     """Main entry point for the program."""
     mypy_opts = mypy_options(options)
     py_modules, c_modules = collect_build_targets(options, mypy_opts)
-
-    # Collect info from docs (if given):
-    sigs: dict[str, str] | None = None
-    class_sigs = sigs
-    if options.doc_dir:
-        sigs, class_sigs = collect_docs_signatures(options.doc_dir)
-
+    sig_generators = get_sig_generators(options)
     # Use parsed sources to generate stubs for Python modules.
     generate_asts_for_modules(py_modules, options.parse_only, mypy_opts, options.verbose)
     files = []
@@ -1681,7 +1693,7 @@ def generate_stubs(options: Options) -> None:
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
-            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
+            generate_stub_for_c_module(mod.module, target, sig_generators=sig_generators)
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
         print("Processed %d modules" % num_modules)

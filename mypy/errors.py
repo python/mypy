@@ -257,7 +257,7 @@ class Errors:
         self,
         show_error_context: bool = False,
         show_column_numbers: bool = False,
-        show_error_codes: bool = False,
+        hide_error_codes: bool = False,
         pretty: bool = False,
         show_error_end: bool = False,
         read_source: Callable[[str], list[str] | None] | None = None,
@@ -267,7 +267,7 @@ class Errors:
     ) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
-        self.show_error_codes = show_error_codes
+        self.hide_error_codes = hide_error_codes
         self.show_absolute_path = show_absolute_path
         self.pretty = pretty
         self.show_error_end = show_error_end
@@ -782,7 +782,7 @@ class Errors:
                 s = f"{srcloc}: {severity}: {message}"
             else:
                 s = message
-            if self.show_error_codes and code and severity != "note":
+            if not self.hide_error_codes and code and severity != "note":
                 # If note has an error code, it is related to a previous error. Avoid
                 # displaying duplicate error codes.
                 s = f"{s}  [{code.code}]"

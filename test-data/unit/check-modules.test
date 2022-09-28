@@ -625,7 +625,11 @@ try:
     from m import f, g
 except:
     def f(x): pass
-    def g(x): pass # E: All conditional function variants must have identical signatures
+    def g(x): pass # E: All conditional function variants must have identical signatures \
+                   # N: Original: \
+                   # N:     def g(x: Any, y: Any) -> Any \
+                   # N: Redefinition: \
+                   # N:     def g(x: Any) -> Any
 [file m.py]
 def f(x): pass
 def g(x, y): pass
@@ -2661,12 +2665,13 @@ from foo.bar import x
 x = 0
 
 [case testClassicNotPackage]
+# flags: --no-namespace-packages
 from foo.bar import x
 [file foo/bar.py]
 x = 0
 [out]
-main:1: error: Cannot find implementation or library stub for module named "foo.bar"
-main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "foo.bar"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNamespacePackage]
 # flags: --namespace-packages
@@ -3111,10 +3116,15 @@ from google.cloud import x
 [case testErrorFromGoogleCloud]
 import google.cloud
 from google.cloud import x
+import google.non_existent
+from google.non_existent import x
 [out]
-main:1: error: Cannot find implementation or library stub for module named "google.cloud"
+main:1: error: Library stubs not installed for "google.cloud"
+main:1: note: Hint: "python3 -m pip install types-google-cloud-ndb"
+main:1: note: (or run "mypy --install-types" to install all missing stub packages)
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:1: error: Cannot find implementation or library stub for module named "google"
+main:3: error: Cannot find implementation or library stub for module named "google.non_existent"
 
 [case testMissingSubmoduleOfInstalledStubPackage]
 import bleach.xyz

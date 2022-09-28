@@ -27,6 +27,7 @@ _collections_abc: 3.3-
 _compat_pickle: 3.1-
 _compression: 3.5-
 _csv: 2.7-
+_ctypes: 2.7-
 _curses: 2.7-
 _decimal: 3.3-
 _dummy_thread: 3.0-3.8

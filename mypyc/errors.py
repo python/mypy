@@ -7,7 +7,7 @@ class Errors:
     def __init__(self) -> None:
         self.num_errors = 0
         self.num_warnings = 0
-        self._errors = mypy.errors.Errors()
+        self._errors = mypy.errors.Errors(hide_error_codes=True)
 
     def error(self, msg: str, path: str, line: int) -> None:
         self._errors.report(line, None, msg, severity="error", file=path)

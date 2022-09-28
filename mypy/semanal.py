@@ -1684,10 +1684,16 @@ class SemanticAnalyzer(
         ):
             is_proto = sym.node.fullname != "typing.Generic"
             tvars: TypeVarLikeList = []
+            have_type_var_tuple = False
             for arg in unbound.args:
                 tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
+                    if isinstance(tvar[1], TypeVarTupleExpr):
+                        if have_type_var_tuple:
+                            self.fail("Can only use one type var tuple in a class def", base)
+                            continue
+                        have_type_var_tuple = True
                     tvars.append(tvar)
                 elif not self.found_incomplete_ref(tag):
                     self.fail("Free type variable expected in %s[...]" % sym.node.name, base)
@@ -1706,11 +1712,19 @@ class SemanticAnalyzer(
                 # It's bound by our type variable scope
                 return None
             return unbound.name, sym.node
-        if sym and isinstance(sym.node, TypeVarTupleExpr):
-            if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
-                # It's bound by our type variable scope
+        if sym and sym.fullname == "typing_extensions.Unpack":
+            inner_t = unbound.args[0]
+            if not isinstance(inner_t, UnboundType):
                 return None
-            return unbound.name, sym.node
+            inner_unbound = inner_t
+            inner_sym = self.lookup_qualified(inner_unbound.name, inner_unbound)
+            if inner_sym and isinstance(inner_sym.node, PlaceholderNode):
+                self.record_incomplete_ref()
+            if inner_sym and isinstance(inner_sym.node, TypeVarTupleExpr):
+                if inner_sym.fullname and not self.tvar_scope.allow_binding(inner_sym.fullname):
+                    # It's bound by our type variable scope
+                    return None
+                return inner_unbound.name, inner_sym.node
         if sym is None or not isinstance(sym.node, TypeVarExpr):
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
@@ -2738,30 +2752,32 @@ class SemanticAnalyzer(
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
-            s.rvalue, name, self.is_func_scope()
-        )
-        if internal_name is None:
-            return False
-        if isinstance(lvalue, MemberExpr):
-            self.fail("NamedTuple type as an attribute is not supported", lvalue)
-            return False
-        if internal_name != name:
-            self.fail(
-                'First argument to namedtuple() should be "{}", not "{}"'.format(
-                    name, internal_name
-                ),
-                s.rvalue,
-                code=codes.NAME_MATCH,
+        namespace = self.qualified_name(name)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
+            internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
+                s.rvalue, name, self.is_func_scope()
             )
+            if internal_name is None:
+                return False
+            if isinstance(lvalue, MemberExpr):
+                self.fail("NamedTuple type as an attribute is not supported", lvalue)
+                return False
+            if internal_name != name:
+                self.fail(
+                    'First argument to namedtuple() should be "{}", not "{}"'.format(
+                        name, internal_name
+                    ),
+                    s.rvalue,
+                    code=codes.NAME_MATCH,
+                )
+                return True
+            # Yes, it's a valid namedtuple, but defer if it is not ready.
+            if not info:
+                self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+            else:
+                self.setup_type_vars(info.defn, tvar_defs)
+                self.setup_alias_type_vars(info.defn)
             return True
-        # Yes, it's a valid namedtuple, but defer if it is not ready.
-        if not info:
-            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
-        else:
-            self.setup_type_vars(info.defn, tvar_defs)
-            self.setup_alias_type_vars(info.defn)
-        return True
 
     def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a typed dict."""
@@ -2775,22 +2791,24 @@ class SemanticAnalyzer(
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
-            s.rvalue, name, self.is_func_scope()
-        )
-        if not is_typed_dict:
-            return False
-        if isinstance(lvalue, MemberExpr):
-            self.fail("TypedDict type as attribute is not supported", lvalue)
-            return False
-        # Yes, it's a valid typed dict, but defer if it is not ready.
-        if not info:
-            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
-        else:
-            defn = info.defn
-            self.setup_type_vars(defn, tvar_defs)
-            self.setup_alias_type_vars(defn)
-        return True
+        namespace = self.qualified_name(name)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
+            is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
+                s.rvalue, name, self.is_func_scope()
+            )
+            if not is_typed_dict:
+                return False
+            if isinstance(lvalue, MemberExpr):
+                self.fail("TypedDict type as attribute is not supported", lvalue)
+                return False
+            # Yes, it's a valid typed dict, but defer if it is not ready.
+            if not info:
+                self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+            else:
+                defn = info.defn
+                self.setup_type_vars(defn, tvar_defs)
+                self.setup_alias_type_vars(defn)
+            return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         # We cannot use s.type, because analyze_simple_literal_type() will set it.
@@ -5068,7 +5086,9 @@ class SemanticAnalyzer(
                 X = X  # Initializer refers to outer scope
 
         Nested classes are an exception, since we want to support
-        arbitrary forward references in type annotations.
+        arbitrary forward references in type annotations. Also, we
+        allow forward references to type aliases to support recursive
+        types.
         """
         # TODO: Forward reference to name imported in class body is not
         #       caught.
@@ -5079,7 +5099,7 @@ class SemanticAnalyzer(
             node is None
             or self.is_textually_before_statement(node)
             or not self.is_defined_in_current_module(node.fullname)
-            or isinstance(node, TypeInfo)
+            or isinstance(node, (TypeInfo, TypeAlias))
             or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo)
         )
 

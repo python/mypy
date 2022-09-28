@@ -1819,10 +1819,10 @@ c.x  # E: "C" has no attribute "x"
 [case testDataclassCheckTypeVarBounds]
 # flags: --python-version 3.7
 from dataclasses import dataclass
-from typing import Protocol, Dict, TypeVar, Generic
+from typing import ClassVar, Protocol, Dict, TypeVar, Generic
 
 class DataclassProtocol(Protocol):
-    __dataclass_fields__: Dict
+    __dataclass_fields__: ClassVar[Dict]
 
 T = TypeVar("T", bound=DataclassProtocol)
 
@@ -1895,4 +1895,21 @@ reveal_type(FirstClass().FIRST_CONST)  # N: Revealed type is "Literal[3]?"
 FirstClass().FIRST_CONST = 42  # E: Cannot assign to final attribute "FIRST_CONST"
 reveal_type(SecondClass().SECOND_CONST)  # N: Revealed type is "Literal[3]?"
 SecondClass().SECOND_CONST = 42  # E: Cannot assign to final attribute "SECOND_CONST"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassFieldsProtocol]
+# flags: --python-version 3.9
+from dataclasses import dataclass
+from typing import Any, Protocol
+
+class ConfigProtocol(Protocol):
+    __dataclass_fields__: dict[str, Any]
+
+def takes_cp(cp: ConfigProtocol): ...
+
+@dataclass
+class MyDataclass:
+    x: int = 3
+
+takes_cp(MyDataclass)
 [builtins fixtures/dataclasses.pyi]

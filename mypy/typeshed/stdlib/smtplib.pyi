@@ -49,7 +49,6 @@ class SMTPResponseException(SMTPException):
     def __init__(self, code: int, msg: bytes | str) -> None: ...
 
 class SMTPSenderRefused(SMTPResponseException):
-    smtp_code: int
     smtp_error: bytes
     sender: str
     args: tuple[int, bytes, str]
@@ -151,7 +150,6 @@ class SMTP:
     def quit(self) -> _Reply: ...
 
 class SMTP_SSL(SMTP):
-    default_port: int
     keyfile: str | None
     certfile: str | None
     context: SSLContext

@@ -810,3 +810,19 @@ std: STD[str]
 reveal_type(std)  # N: Revealed type is "TypedDict('__main__.STD', {'val': builtins.str, 'other': ..., 'sval': builtins.str, 'one': TypedDict('__main__.TD', {'val': builtins.str, 'other': ...})})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testRecursiveClassLevelAlias]
+# flags: --enable-recursive-aliases
+from typing import Union, Sequence
+
+class A:
+    Children = Union[Sequence['Children'], 'A', None]
+x: A.Children
+reveal_type(x)  # N: Revealed type is "Union[typing.Sequence[...], __main__.A, None]"
+
+class B:
+    Foo = Sequence[Bar]
+    Bar = Sequence[Foo]
+y: B.Foo
+reveal_type(y)  # N: Revealed type is "typing.Sequence[typing.Sequence[...]]"
+[builtins fixtures/tuple.pyi]

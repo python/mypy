@@ -845,7 +845,7 @@ main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
 main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named "p"
+main:2: error: "object" has no attribute "a"
 
 [case testDeletePackage2]
 import p
@@ -2192,17 +2192,17 @@ x = 'x'
 [case testLibraryStubsNotInstalled]
 import a
 [file a.py]
-import waitress
+import requests
 [file a.py.2]
 # nothing
 [file a.py.3]
-import requests
+import jack
 [out]
-a.py:1: error: Library stubs not installed for "waitress"
-a.py:1: note: Hint: "python3 -m pip install types-waitress"
+a.py:1: error: Library stubs not installed for "requests"
+a.py:1: note: Hint: "python3 -m pip install types-requests"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 ==
-a.py:1: error: Library stubs not installed for "requests"
-a.py:1: note: Hint: "python3 -m pip install types-requests"
+a.py:1: error: Library stubs not installed for "jack"
+a.py:1: note: Hint: "python3 -m pip install types-JACK-Client"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
