@@ -191,21 +191,27 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
-.. confval:: packages
-
-    :type: comma-separated list of strings
-
-    A comma-separated list of packages which should be checked by mypy if none are given on the command
-    line. This option may only be set in the global section (``[mypy]``).  This option may be used
-    interchangeably with the ``modules`` option.
-
 .. confval:: modules
 
     :type: comma-separated list of strings
 
     A comma-separated list of packages which should be checked by mypy if none are given on the command
-    line. This option may only be set in the global section (``[mypy]``).  This option may be used
-    interchangeably with the ``packages`` option.
+    line. Mypy *will not* recursively type check any submodules of the provided
+    module.
+
+    This option may only be set in the global section (``[mypy]``).
+
+
+.. confval:: packages
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of packages which should be checked by mypy if none are given on the command
+    line.  Mypy *will* recursively type check any submodules of the provided
+    package. This flag is identical to :confval:`modules` apart from this
+    behavior.
+    
+    This option may only be set in the global section (``[mypy]``).
 
 .. confval:: exclude
 
