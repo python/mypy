@@ -1250,7 +1250,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # TODO: Once we start adding support for enums, make sure we report a custom
             # error for case 2 as well.
             if arg.type_of_any not in (TypeOfAny.from_error, TypeOfAny.special_form):
-                self.fail(f'Parameter {idx} of Literal[...] cannot be of type "Any"', ctx)
+                self.fail(
+                    f'Parameter {idx} of Literal[...] cannot be of type "Any"',
+                    ctx,
+                    code=codes.VALID_TYPE,
+                )
             return None
         elif isinstance(arg, RawExpressionType):
             # A raw literal. Convert it directly into a literal if we can.
@@ -1284,7 +1288,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 out.extend(union_result)
             return out
         else:
-            self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx)
+            self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx, code=codes.VALID_TYPE)
             return None
 
     def analyze_type(self, t: Type) -> Type:
