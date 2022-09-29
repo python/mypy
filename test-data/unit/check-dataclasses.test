@@ -1913,3 +1913,23 @@ class MyDataclass:
 
 takes_cp(MyDataclass)
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTypeAnnotationAliasUpdated]
+# flags: --enable-recursive-aliases
+import a
+[file a.py]
+from dataclasses import dataclass
+from b import B
+
+@dataclass
+class D:
+    x: B
+
+reveal_type(D)  # N: Revealed type is "def (x: builtins.list[b.C]) -> a.D"
+[file b.py]
+from typing import List
+import a
+B = List[C]
+class C(CC): ...
+class CC: ...
+[builtins fixtures/dataclasses.pyi]

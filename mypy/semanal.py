@@ -3032,6 +3032,7 @@ class SemanticAnalyzer(
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):
+                self.defer(s)
                 return
             s.type = analyzed
             if (
