@@ -298,7 +298,12 @@ class TypedDictAnalyzer:
                     # NamedTupleAnalyzer doesn't and instead has semanal.py set it
                     # by calling analyze_class_body_common after.
                     #
-                    # TODO: Resolve this inconsistency?
+                    # This is because unlike TypedDicts, NamedTuples support method
+                    # definitions. So, we must handle some of what analyze_class_body_common
+                    # does here -- including modifying `stmt.type`.
+                    #
+                    # TODO: Find some way of refactoring and partially unifying
+                    #       these two codepaths?
                     stmt.type = analyzed
                     types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
