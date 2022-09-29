@@ -2209,6 +2209,10 @@ a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 
 [case testXXX]
 # flags: --custom-typeshed-dir tmp/ts --follow-imports=normal
+# cmd1: mypy a.py
+# cmd2: mypy a.py
+
+[file a.py]
 import foobar
 
 [file ts/stdlib/abc.pyi]
@@ -2235,6 +2239,6 @@ import whatever
 undefined
 
 [out]
-main:2: error: Cannot find implementation or library stub for module named "foobar"
-main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+a.py:1: error: Cannot find implementation or library stub for module named "foobar"
+a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
