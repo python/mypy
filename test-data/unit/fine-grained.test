@@ -24,7 +24,7 @@
 -- as changed in the initial run with the cache while modules that depended on them
 -- should be.
 --
--- Modules that are require a full-module reprocessing by update can be checked with
+-- Modules that require a full-module reprocessing by update can be checked with
 -- [rechecked ...]. This should include any files detected as having changed as well
 -- as any files that contain targets that need to be reprocessed but which haven't
 -- been loaded yet. If there is no [rechecked...] directive, it inherits the value of
@@ -2968,7 +2968,7 @@ class M(type):
     pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for "D"
+a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
 [case testFineMetaclassDeclaredUpdate]
 import a
@@ -2984,7 +2984,7 @@ class M(type): pass
 class M2(type): pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for "D"
+a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
 [case testFineMetaclassRemoveFromClass]
 import a
@@ -4303,9 +4303,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType2]
 import a
@@ -4321,9 +4321,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType3]
 import a
@@ -4335,7 +4335,7 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 
 [case testNonePartialType4]
 import a
@@ -4351,7 +4351,7 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 ==
 
 [case testSkippedClass1]
@@ -7940,7 +7940,7 @@ class Foo(a.I):
 ==
 
 [case testImplicitOptionalRefresh1]
-# flags: --strict-optional
+# flags: --strict-optional --implicit-optional
 from x import f
 def foo(x: int = None) -> None:
     f()
@@ -9793,11 +9793,11 @@ class ExampleClass(Generic[T]):
 [case testDataclassCheckTypeVarBoundsInReprocess]
 # flags: --python-version 3.7
 from dataclasses import dataclass
-from typing import Protocol, Dict, TypeVar, Generic
+from typing import ClassVar, Protocol, Dict, TypeVar, Generic
 from m import x
 
 class DataclassProtocol(Protocol):
-    __dataclass_fields__: Dict
+    __dataclass_fields__: ClassVar[Dict]
 
 T = TypeVar("T", bound=DataclassProtocol)
 
@@ -10029,3 +10029,46 @@ class C(B): ...
 ==
 ==
 main.py:4: note: Revealed type is "def () -> builtins.str"
+
+[case testAbstractBodyTurnsEmpty]
+# flags: --strict-optional
+from b import Base
+
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()
+
+[file b.py]
+from abc import abstractmethod
+class Base:
+    @abstractmethod
+    def meth(self) -> int: return 0
+
+[file b.py.2]
+from abc import abstractmethod
+class Base:
+    @abstractmethod
+    def meth(self) -> int: ...
+[out]
+==
+main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+
+[case testAbstractBodyTurnsEmptyProtocol]
+# flags: --strict-optional
+from b import Base
+
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()
+
+[file b.py]
+from typing import Protocol
+class Base(Protocol):
+    def meth(self) -> int: return 0
+[file b.py.2]
+from typing import Protocol
+class Base(Protocol):
+    def meth(self) -> int: ...
+[out]
+==
+main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe

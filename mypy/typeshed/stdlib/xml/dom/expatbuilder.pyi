@@ -1,3 +1,4 @@
+from _typeshed import Incomplete
 from typing import Any, NoReturn
 from xml.dom.minidom import Document, DOMImplementation, Node, TypeInfo
 from xml.dom.xmlbuilder import DOMBuilderFilter, Options
@@ -12,8 +13,8 @@ FILTER_INTERRUPT = DOMBuilderFilter.FILTER_INTERRUPT
 theDOMImplementation: DOMImplementation | None
 
 class ElementInfo:
-    tagName: Any
-    def __init__(self, tagName, model: Any | None = ...) -> None: ...
+    tagName: Incomplete
+    def __init__(self, tagName, model: Incomplete | None = ...) -> None: ...
     def getAttributeType(self, aname) -> TypeInfo: ...
     def getAttributeTypeNS(self, namespaceURI, localName) -> TypeInfo: ...
     def isElementContent(self) -> bool: ...
@@ -23,7 +24,7 @@ class ElementInfo:
 
 class ExpatBuilder:
     document: Document  # Created in self.reset()
-    curNode: Any  # Created in self.reset()
+    curNode: Incomplete  # Created in self.reset()
     def __init__(self, options: Options | None = ...) -> None: ...
     def createParser(self): ...
     def getParser(self): ...
@@ -67,9 +68,9 @@ class Skipper(FilterCrutch):
     def end_element_handler(self, *args: Any) -> None: ...
 
 class FragmentBuilder(ExpatBuilder):
-    fragment: Any | None
-    originalDocument: Any
-    context: Any
+    fragment: Incomplete | None
+    originalDocument: Incomplete
+    context: Incomplete
     def __init__(self, context, options: Options | None = ...) -> None: ...
 
 class Namespaces:

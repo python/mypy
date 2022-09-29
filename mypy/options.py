@@ -39,14 +39,14 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
-    "follow_imports",
     "follow_imports_for_stubs",
+    "follow_imports",
     "ignore_errors",
     "ignore_missing_imports",
+    "implicit_optional",
     "implicit_reexport",
     "local_partial_types",
     "mypyc",
-    "no_implicit_optional",
     "strict_concatenate",
     "strict_equality",
     "strict_optional",
@@ -77,6 +77,8 @@ class Options:
         self.platform = sys.platform
         self.custom_typing_module: str | None = None
         self.custom_typeshed_dir: str | None = None
+        # The abspath() version of the above, we compute it once as an optimization.
+        self.abs_custom_typeshed_dir: str | None = None
         self.mypy_path: list[str] = []
         self.report_dirs: dict[str, str] = {}
         # Show errors in PEP 561 packages/site-packages modules
@@ -93,7 +95,7 @@ class Options:
         # This allows definitions of packages without __init__.py and allows packages to span
         # multiple directories. This flag affects both import discovery and the association of
         # input files/modules/packages to the relevant file and fully qualified module name.
-        self.namespace_packages = False
+        self.namespace_packages = True
         # Use current directory and MYPYPATH to determine fully qualified module names of files
         # passed by automatically considering their subdirectories as packages. This is only
         # relevant if namespace packages are enabled, since otherwise examining __init__.py's is
@@ -160,8 +162,8 @@ class Options:
         self.color_output = True
         self.error_summary = True
 
-        # Don't assume arguments with default values of None are Optional
-        self.no_implicit_optional = False
+        # Assume arguments with default values of None are Optional
+        self.implicit_optional = False
 
         # Don't re-export names unless they are imported with `from ... as ...`
         self.implicit_reexport = True
@@ -274,7 +276,7 @@ class Options:
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
-        self.show_error_codes = False
+        self.hide_error_codes = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
@@ -294,6 +296,8 @@ class Options:
         self.fast_exit = True
         # fast path for finding modules from source set
         self.fast_module_lookup = False
+        # Allow empty function bodies even if it is not safe, used for testing only.
+        self.allow_empty_bodies = False
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
         self.transform_source: Callable[[Any], Any] | None = None

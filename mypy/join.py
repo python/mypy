@@ -559,10 +559,10 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
-    # TODO in combine_similar_callables also applies here (names and kinds)
-    # The fallback type can be either 'function' or 'type'. The result should have 'type' as
-    # fallback only if both operands have it as 'type'.
-    if t.fallback.type.fullname != "builtins.type":
+    # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
+    # The fallback type can be either 'function', 'type', or some user-provided metaclass.
+    # The result should always use 'function' as a fallback if either operands are using it.
+    if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
     else:
         fallback = s.fallback
@@ -580,9 +580,10 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names
-    # The fallback type can be either 'function' or 'type'. The result should have 'type' as
-    # fallback only if both operands have it as 'type'.
-    if t.fallback.type.fullname != "builtins.type":
+    # TODO what should happen if one fallback is 'type' and the other is a user-provided metaclass?
+    # The fallback type can be either 'function', 'type', or some user-provided metaclass.
+    # The result should always use 'function' as a fallback if either operands are using it.
+    if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
     else:
         fallback = s.fallback

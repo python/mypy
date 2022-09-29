@@ -26,11 +26,16 @@ class ErrorMessage(NamedTuple):
 
 
 # Invalid types
-INVALID_TYPE_RAW_ENUM_VALUE: Final = "Invalid type: try using Literal[{}.{}] instead?"
+INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
+    "Invalid type: try using Literal[{}.{}] instead?", codes.VALID_TYPE
+)
 
 # Type checker error message constants
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)
 MISSING_RETURN_STATEMENT: Final = ErrorMessage("Missing return statement", codes.RETURN)
+EMPTY_BODY_ABSTRACT: Final = ErrorMessage(
+    "If the method is meant to be abstract, use @abc.abstractmethod", codes.EMPTY_BODY
+)
 INVALID_IMPLICIT_RETURN: Final = ErrorMessage("Implicit return in function which does not return")
 INCOMPATIBLE_RETURN_VALUE_TYPE: Final = ErrorMessage(
     "Incompatible return value type", codes.RETURN_VALUE
@@ -51,7 +56,9 @@ INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
 )
 YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
 INCOMPATIBLE_TYPES: Final = ErrorMessage("Incompatible types")
-INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = ErrorMessage(
+    "Incompatible types in assignment", code=codes.ASSIGNMENT
+)
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")
 INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER: Final = (
@@ -97,7 +104,7 @@ RETURN_TYPE_CANNOT_BE_CONTRAVARIANT: Final = ErrorMessage(
 FUNCTION_PARAMETER_CANNOT_BE_COVARIANT: Final = ErrorMessage(
     "Cannot use a covariant type variable as a parameter"
 )
-INCOMPATIBLE_IMPORT_OF: Final = "Incompatible import of"
+INCOMPATIBLE_IMPORT_OF: Final = ErrorMessage('Incompatible import of "{}"', code=codes.ASSIGNMENT)
 FUNCTION_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a type annotation", codes.NO_UNTYPED_DEF
 )
@@ -168,7 +175,7 @@ TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
     "A function returning TypeVar should receive at least "
-    "one argument containing the same Typevar"
+    "one argument containing the same TypeVar"
 )
 
 # Super
