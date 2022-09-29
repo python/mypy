@@ -6,15 +6,17 @@ Getting started
 This chapter introduces some core concepts of mypy, including function
 annotations, the :py:mod:`typing` module, stub files, and more.
 
-Be sure to read this chapter carefully, as the rest of the documentation
+If you're looking for a quick intro, see the
+:ref:`mypy cheatsheet <cheat-sheet-py3>`.
+
+If you're unfamiliar with the concepts of static and dynamic type checking,
+be sure to read this chapter carefully, as the rest of the documentation
 may not make much sense otherwise.
 
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.6 or later to run.  Once you've
-`installed Python 3 <https://www.python.org/downloads/>`_,
-install mypy using pip:
+Mypy requires Python 3.7 or later to run.  You can install mypy using pip:
 
 .. code-block:: shell
 
@@ -31,13 +33,16 @@ out any errors it finds. Mypy will type check your code *statically*: this
 means that it will check for errors without ever running your code, just
 like a linter.
 
-This means that you are always free to ignore the errors mypy reports and
-treat them as just warnings, if you so wish: mypy runs independently from
-Python itself.
+This also means that you are always free to ignore the errors mypy reports,
+if you so wish. You can always use the Python interpreter to run your code,
+even if mypy reports errors.
 
 However, if you try directly running mypy on your existing Python code, it
-will most likely report little to no errors: you must add *type annotations*
-to your code to take full advantage of mypy. See the section below for details.
+will most likely report little to no errors. This is a feature! It makes it
+easy to adopt mypy incrementally.
+
+In order to get useful diagnostics from mypy, you must add *type annotations*
+to your code. See the section below for details.
 
 Function signatures and dynamic vs static typing
 ************************************************
@@ -77,9 +82,6 @@ calls since the arguments have invalid types:
    greeting(3)         # Argument 1 to "greeting" has incompatible type "int"; expected "str"
    greeting(b'Alice')  # Argument 1 to "greeting" has incompatible type "bytes"; expected "str"
 
-Note that this is all still valid Python 3 code! The function annotation syntax
-shown above was added to Python :pep:`as a part of Python 3.0 <3107>`.
-
 Being able to pick whether you want a function to be dynamically or statically
 typed can be very helpful. For example, if you are migrating an existing
 Python codebase to use static types, it's usually easier to migrate by incrementally
@@ -90,12 +92,6 @@ the code using dynamic typing and only add type hints later once the code is mor
 Once you are finished migrating or prototyping your code, you can make mypy warn you
 if you add a dynamic function by mistake by using the :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`
 flag. See :ref:`command-line` for more information on configuring mypy.
-
-.. note::
-
-   The earlier stages of analysis performed by mypy may report errors
-   even for dynamically typed functions. However, you should not rely
-   on this, as this may change in the future.
 
 More function signatures
 ************************

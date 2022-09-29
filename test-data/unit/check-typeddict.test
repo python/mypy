@@ -2550,7 +2550,7 @@ from typing import TypedDict, TypeVar
 
 T = TypeVar("T")
 TD = TypedDict("TD", {"key": int, "value": T})
-reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`-1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`-1})"
+reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`1})"
 
 tds: TD[str]
 reveal_type(tds)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.str})"

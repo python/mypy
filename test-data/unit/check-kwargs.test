@@ -24,6 +24,7 @@ class A: pass
 class B: pass
 
 [case testOneOfSeveralOptionalKeywordArguments]
+# flags: --implicit-optional
 import typing
 def f(a: 'A' = None, b: 'B' = None, c: 'C' = None) -> None: pass
 f(a=A())
@@ -219,6 +220,7 @@ f(a, **b)
 [builtins fixtures/dict.pyi]
 
 [case testKeywordArgAfterVarArgs]
+# flags: --implicit-optional
 import typing
 def f(*a: 'A', b: 'B' = None) -> None: pass
 f()
@@ -235,6 +237,7 @@ class B: pass
 [builtins fixtures/list.pyi]
 
 [case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
+# flags: --implicit-optional --no-strict-optional
 from typing import List
 def f(*a: 'A', b: 'B' = None) -> None: pass
 a = None # type: List[A]

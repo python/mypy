@@ -106,6 +106,7 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testFastParsePerArgumentAnnotations]
+# flags: --implicit-optional
 
 class A: pass
 class B: pass
@@ -130,6 +131,7 @@ def f(a,        # type: A
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithReturn]
+# flags: --implicit-optional
 
 class A: pass
 class B: pass

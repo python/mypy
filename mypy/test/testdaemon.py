@@ -81,6 +81,8 @@ def parse_script(input: list[str]) -> list[list[str]]:
 
 
 def run_cmd(input: str) -> tuple[int, str]:
+    if input[1:].startswith("mypy run --") and "--show-error-codes" not in input:
+        input += " --hide-error-codes"
     if input.startswith("dmypy "):
         input = sys.executable + " -m mypy." + input
     if input.startswith("mypy "):

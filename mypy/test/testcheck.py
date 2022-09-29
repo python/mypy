@@ -119,7 +119,7 @@ class TypeCheckSuite(DataSuite):
         if "columns" in testcase.file:
             options.show_column_numbers = True
         if "errorcodes" in testcase.file:
-            options.show_error_codes = True
+            options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
 

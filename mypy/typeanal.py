@@ -1250,7 +1250,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # TODO: Once we start adding support for enums, make sure we report a custom
             # error for case 2 as well.
             if arg.type_of_any not in (TypeOfAny.from_error, TypeOfAny.special_form):
-                self.fail(f'Parameter {idx} of Literal[...] cannot be of type "Any"', ctx)
+                self.fail(
+                    f'Parameter {idx} of Literal[...] cannot be of type "Any"',
+                    ctx,
+                    code=codes.VALID_TYPE,
+                )
             return None
         elif isinstance(arg, RawExpressionType):
             # A raw literal. Convert it directly into a literal if we can.
@@ -1284,7 +1288,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 out.extend(union_result)
             return out
         else:
-            self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx)
+            self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx, code=codes.VALID_TYPE)
             return None
 
     def analyze_type(self, t: Type) -> Type:
@@ -1331,19 +1335,21 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     ) -> Sequence[TypeVarLikeType]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
         if fun_type.variables:
+            defs = []
             for var in fun_type.variables:
                 var_node = self.lookup_qualified(var.name, defn)
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarLikeExpr)
-                self.tvar_scope.bind_new(var.name, var_expr)
-            return fun_type.variables
+                binding = self.tvar_scope.bind_new(var.name, var_expr)
+                defs.append(binding)
+            return defs
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
         typevars = [
             (name, tvar) for name, tvar in typevars if not self.is_defined_type_var(name, defn)
         ]
-        defs: list[TypeVarLikeType] = []
+        defs = []
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail(
@@ -1351,9 +1357,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     defn,
                     code=codes.VALID_TYPE,
                 )
-            self.tvar_scope.bind_new(name, tvar)
-            binding = self.tvar_scope.get_binding(tvar.fullname)
-            assert binding is not None
+            binding = self.tvar_scope.bind_new(name, tvar)
             defs.append(binding)
 
         return defs

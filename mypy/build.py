@@ -237,7 +237,7 @@ def _build(
     errors = Errors(
         options.show_error_context,
         options.show_column_numbers,
-        options.show_error_codes,
+        options.hide_error_codes,
         options.pretty,
         options.show_error_end,
         lambda path: read_py_file(path, cached_read),
@@ -1401,8 +1401,8 @@ def validate_meta(
         st = manager.get_stat(path)
     except OSError:
         return None
-    if not (stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode)):
-        manager.log(f"Metadata abandoned for {id}: file {path} does not exist")
+    if not stat.S_ISDIR(st.st_mode) and not stat.S_ISREG(st.st_mode):
+        manager.log(f"Metadata abandoned for {id}: file or directory {path} does not exist")
         return None
 
     manager.add_stats(validate_stat_time=time.time() - t0)
@@ -2592,11 +2592,11 @@ def find_module_and_diagnose(
         if (
             root_source  # Honor top-level modules
             or (
-                not result.endswith(".py")  # Stubs are always normal
-                and not options.follow_imports_for_stubs
-            )  # except when they aren't
-            or id in mypy.semanal_main.core_modules
-        ):  # core is always normal
+                result.endswith(".pyi")  # Stubs are always normal
+                and not options.follow_imports_for_stubs  # except when they aren't
+            )
+            or id in mypy.semanal_main.core_modules  # core is always normal
+        ):
             follow_imports = "normal"
         if skip_diagnose:
             pass

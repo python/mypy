@@ -952,8 +952,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             new_type = self.function_type(defn)
             if isinstance(defn.original_def, FuncDef):
                 # Function definition overrides function definition.
-                if not is_same_type(new_type, self.function_type(defn.original_def)):
-                    self.msg.incompatible_conditional_function_def(defn)
+                old_type = self.function_type(defn.original_def)
+                if not is_same_type(new_type, old_type):
+                    self.msg.incompatible_conditional_function_def(defn, old_type, new_type)
             else:
                 # Function definition overrides a variable initialized via assignment or a
                 # decorated function.
@@ -1292,13 +1293,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_unbound_return_typevar(self, typ: CallableType) -> None:
         """Fails when the return typevar is not defined in arguments."""
-        if typ.ret_type in typ.variables:
-            arg_type_visitor = CollectArgTypes()
+        if isinstance(typ.ret_type, TypeVarType) and typ.ret_type in typ.variables:
+            arg_type_visitor = CollectArgTypeVarTypes()
             for argtype in typ.arg_types:
                 argtype.accept(arg_type_visitor)
 
             if typ.ret_type not in arg_type_visitor.arg_types:
                 self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
+                upper_bound = get_proper_type(typ.ret_type.upper_bound)
+                if not (
+                    isinstance(upper_bound, Instance)
+                    and upper_bound.type.fullname == "builtins.object"
+                ):
+                    self.note(
+                        "Consider using the upper bound "
+                        f"{format_type(typ.ret_type.upper_bound)} instead",
+                        context=typ.ret_type,
+                    )
 
     def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
         for arg in item.arguments:
@@ -1312,6 +1323,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 msg += f"tuple argument {name[12:]}"
             else:
                 msg += f'argument "{name}"'
+            if (
+                not self.options.implicit_optional
+                and isinstance(arg.initializer, NameExpr)
+                and arg.initializer.fullname == "builtins.None"
+            ):
+                notes = [
+                    "PEP 484 prohibits implicit Optional. "
+                    "Accordingly, mypy has changed its default to no_implicit_optional=True",
+                    "Use https://github.com/hauntsaninja/no_implicit_optional to automatically "
+                    "upgrade your codebase",
+                ]
+            else:
+                notes = None
             self.check_simple_assignment(
                 arg.variable.type,
                 arg.initializer,
@@ -1319,6 +1343,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 msg=ErrorMessage(msg, code=codes.ASSIGNMENT),
                 lvalue_name="argument",
                 rvalue_name="default",
+                notes=notes,
             )
 
     def is_forward_op_method(self, method_name: str) -> bool:
@@ -2133,6 +2158,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
+        if typ.defn.type_vars:
+            for base_inst in typ.bases:
+                for base_tvar, base_decl_tvar in zip(
+                    base_inst.args, base_inst.type.defn.type_vars
+                ):
+                    if (
+                        isinstance(base_tvar, TypeVarType)
+                        and base_tvar.variance != INVARIANT
+                        and isinstance(base_decl_tvar, TypeVarType)
+                        and base_decl_tvar.variance != base_tvar.variance
+                    ):
+                        self.fail(
+                            f'Variance of TypeVar "{base_tvar.name}" incompatible '
+                            "with variance in parent type",
+                            context=defn,
+                            code=codes.TYPE_VAR,
+                        )
+
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
@@ -3771,6 +3814,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         msg: ErrorMessage = message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
         lvalue_name: str = "variable",
         rvalue_name: str = "expression",
+        *,
+        notes: list[str] | None = None,
     ) -> Type:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
@@ -3795,6 +3840,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     msg,
                     f"{rvalue_name} has type",
                     f"{lvalue_name} has type",
+                    notes=notes,
                 )
             return rvalue_type
 
@@ -5698,6 +5744,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         subtype_label: str | None = None,
         supertype_label: str | None = None,
         *,
+        notes: list[str] | None = None,
         code: ErrorCode | None = None,
         outer_context: Context | None = None,
     ) -> bool:
@@ -5713,6 +5760,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         subtype_label: str | None = None,
         supertype_label: str | None = None,
         *,
+        notes: list[str] | None = None,
         outer_context: Context | None = None,
     ) -> bool:
         ...
@@ -5726,6 +5774,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         subtype_label: str | None = None,
         supertype_label: str | None = None,
         *,
+        notes: list[str] | None = None,
         code: ErrorCode | None = None,
         outer_context: Context | None = None,
     ) -> bool:
@@ -5746,7 +5795,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return False
         extra_info: list[str] = []
         note_msg = ""
-        notes: list[str] = []
+        notes = notes or []
         if subtype_label is not None or supertype_label is not None:
             subtype_str, supertype_str = format_type_distinctly(orig_subtype, orig_supertype)
             if subtype_label is not None:
@@ -5757,7 +5806,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 outer_context or context, subtype, supertype, supertype_str
             )
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
-                notes = append_invariance_notes([], subtype, supertype)
+                notes = append_invariance_notes(notes, subtype, supertype)
         if extra_info:
             msg = msg.with_additional_msg(" (" + ", ".join(extra_info) + ")")
 
@@ -6436,7 +6485,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return not watcher.has_new_errors()
 
 
-class CollectArgTypes(TypeTraverserVisitor):
+class CollectArgTypeVarTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
 
     def __init__(self) -> None:
