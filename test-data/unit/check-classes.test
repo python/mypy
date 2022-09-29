@@ -4779,7 +4779,7 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
@@ -4809,7 +4809,7 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-
+# flags: --disable-recursive-aliases
 from mypy_extensions import TypedDict
 
 class N(TypedDict):

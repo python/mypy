@@ -4600,7 +4600,7 @@ def outer() -> None:
 [out2]
 
 [case testRecursiveAliasImported]
-
+# flags: --disable-recursive-aliases
 import a
 
 [file a.py]
@@ -5759,7 +5759,7 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleUpdateNonRecursiveToRecursiveCoarse]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5802,7 +5802,7 @@ tmp/c.py:5: error: Incompatible types in assignment (expression has type "Option
 tmp/c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5835,7 +5835,7 @@ tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5868,7 +5868,7 @@ tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictUpdateNonRecursiveToRecursiveCoarse]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M

@@ -218,7 +218,7 @@ class TypedDictAnalyzer:
             analyzed = self.api.anal_type(
                 type,
                 allow_required=True,
-                allow_placeholder=self.options.enable_recursive_aliases
+                allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
             )
             if analyzed is None:
@@ -289,7 +289,7 @@ class TypedDictAnalyzer:
                     analyzed = self.api.anal_type(
                         stmt.type,
                         allow_required=True,
-                        allow_placeholder=self.options.enable_recursive_aliases
+                        allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
                     )
                     if analyzed is None:
@@ -484,7 +484,7 @@ class TypedDictAnalyzer:
             analyzed = self.api.anal_type(
                 type,
                 allow_required=True,
-                allow_placeholder=self.options.enable_recursive_aliases
+                allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
             )
             if analyzed is None:
