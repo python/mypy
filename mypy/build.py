@@ -2592,11 +2592,11 @@ def find_module_and_diagnose(
         if (
             root_source  # Honor top-level modules
             or (
-                not result.endswith(".py")  # Stubs are always normal
-                and not options.follow_imports_for_stubs
-            )  # except when they aren't
-            or id in mypy.semanal_main.core_modules
-        ):  # core is always normal
+                result.endswith(".pyi")  # Stubs are always normal
+                and not options.follow_imports_for_stubs  # except when they aren't
+            )
+            or id in mypy.semanal_main.core_modules  # core is always normal
+        ):
             follow_imports = "normal"
         if skip_diagnose:
             pass
