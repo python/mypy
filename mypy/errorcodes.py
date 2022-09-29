@@ -96,7 +96,9 @@ LITERAL_REQ: Final = ErrorCode("literal-required", "Check that value is a litera
 UNUSED_COROUTINE: Final = ErrorCode(
     "unused-coroutine", "Ensure that all coroutines are used", "General"
 )
-EMPTY_BODY: Final = ErrorCode(
+# TODO: why do we need the explicit type here? Without it mypyc CI builds fail with
+# mypy/message_registry.py:37: error: Cannot determine type of "EMPTY_BODY"  [has-type]
+EMPTY_BODY: Final[ErrorCode] = ErrorCode(
     "empty-body",
     "A dedicated error code to opt out return errors for empty/trivial bodies",
     "General",
