@@ -1915,7 +1915,6 @@ takes_cp(MyDataclass)
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTypeAnnotationAliasUpdated]
-# flags: --enable-recursive-aliases
 import a
 [file a.py]
 from dataclasses import dataclass

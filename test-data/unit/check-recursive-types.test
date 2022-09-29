@@ -772,7 +772,7 @@ reveal_type(std)  # N: Revealed type is "TypedDict('__main__.STD', {'val': built
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecursiveClassLevelAlias]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 from typing import Union, Sequence
 
 class A:
