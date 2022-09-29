@@ -2206,3 +2206,35 @@ a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 a.py:1: error: Library stubs not installed for "jack"
 a.py:1: note: Hint: "python3 -m pip install types-JACK-Client"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testXXX]
+# flags: --custom-typeshed-dir tmp/ts --follow-imports=normal
+import foobar
+
+[file ts/stdlib/abc.pyi]
+[file ts/stdlib/builtins.pyi]
+class object: pass
+class str: pass
+class ellipsis: pass
+[file ts/stdlib/sys.pyi]
+[file ts/stdlib/types.pyi]
+[file ts/stdlib/typing.pyi]
+def cast(x): ...
+[file ts/stdlib/typing_extensions.pyi]
+[file ts/stdlib/VERSIONS]
+[file ts/stubs/mypy_extensions/mypy_extensions.pyi]
+
+[file ts/stdlib/foobar.pyi.2]
+# We report no errors from typeshed
+import baz
+import zar
+undefined
+
+[file ts/stdlib/baz.pyi.2]
+import whatever
+undefined
+
+[out]
+main:2: error: Cannot find implementation or library stub for module named "foobar"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+==
