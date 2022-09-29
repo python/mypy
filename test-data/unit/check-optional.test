@@ -136,7 +136,9 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNone]
 # flags: --no-implicit-optional
-def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
+def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int") \
+                               # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
+                               # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   pass
 [out]
 
@@ -151,7 +153,9 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNoneComment]
 # flags: --no-implicit-optional
-def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
+def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int") \
+                # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
+                # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   # type: (int) -> None
   pass
 [out]
