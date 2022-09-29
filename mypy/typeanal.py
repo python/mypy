@@ -1284,7 +1284,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 out.extend(union_result)
             return out
         else:
-            self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx)
+            self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx, code=codes.VALID_TYPE)
             return None
 
     def analyze_type(self, t: Type) -> Type:
