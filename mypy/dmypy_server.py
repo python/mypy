@@ -214,6 +214,8 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
+                    debug_stdout = io.StringIO()
+                    sys.stdout = debug_stdout
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -230,8 +232,10 @@ class Server:
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
+                                resp["stdout"] = debug_stdout.getvalue()
                                 server.write(json.dumps(resp).encode("utf8"))
                                 raise
+                    resp["stdout"] = debug_stdout.getvalue()
                     try:
                         resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode("utf8"))
