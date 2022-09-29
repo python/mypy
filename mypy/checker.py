@@ -1217,9 +1217,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     not body_is_trivial
                     or
                     # Allow empty bodies for abstract methods, overloads, in tests and stubs.
-                    not allow_empty
-                    and not (isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT)
-                    and not self.is_stub
+                    (
+                        not allow_empty
+                        and not (
+                            isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT
+                        )
+                        and not self.is_stub
+                    )
                 )
 
                 # Ignore plugin generated methods, these usually don't need any bodies.
@@ -1242,7 +1246,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     body_is_trivial
                     and defn.info is not FUNC_NO_INFO
                     and defn.info.metaclass_type is not None
-                    and defn.info.metaclass_type.type.fullname == "abc.ABCMeta"
+                    and defn.info.metaclass_type.type.has_base("abc.ABCMeta")
                 )
 
                 if self.options.warn_no_return:
@@ -1252,8 +1256,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and show_error
                     ):
                         # Control flow fell off the end of a function that was
-                        # declared to return a non-None type and is not
-                        # entirely pass/Ellipsis/raise NotImplementedError.
+                        # declared to return a non-None type.
                         if isinstance(return_type, UninhabitedType):
                             # This is a NoReturn function
                             msg = message_registry.INVALID_IMPLICIT_RETURN
@@ -1263,10 +1266,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             msg = msg._replace(code=codes.EMPTY_BODY)
                         self.fail(msg, defn)
                         if may_be_abstract:
-                            self.note(
-                                "If the method is meant to be abstract use @abc.abstractmethod",
-                                defn,
-                            )
+                            self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
                 elif show_error:
                     msg = message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE
                     if body_is_trivial:
@@ -1283,9 +1283,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         )
                         and may_be_abstract
                     ):
-                        self.note(
-                            "If the method is meant to be abstract use @abc.abstractmethod", defn
-                        )
+                        self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
 
             self.return_types.pop()
 
@@ -6186,9 +6184,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg.fail(msg, context, code=code)
 
     def note(
-        self, msg: str, context: Context, offset: int = 0, *, code: ErrorCode | None = None
+        self, msg: str | ErrorMessage, context: Context, offset: int = 0, *, code: ErrorCode | None = None
     ) -> None:
         """Produce a note."""
+        if isinstance(msg, ErrorMessage):
+            self.msg.note(msg.value, context, code=msg.code)
+            return
         self.msg.note(msg, context, offset=offset, code=code)
 
     def iterable_item_type(self, instance: Instance) -> Type:

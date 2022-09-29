@@ -758,7 +758,12 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional", "is_trivial_body"]
+FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
+    "is_decorated",
+    "is_conditional",
+    "is_trivial_body",
+    "is_mypy_only",
+]
 
 # Abstract status of a function
 NOT_ABSTRACT: Final = 0

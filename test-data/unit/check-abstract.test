@@ -1149,7 +1149,7 @@ from abc import ABC
 
 class A(ABC):
     def foo(self) -> int:  # E: Missing return statement \
-                           # N: If the method is meant to be abstract use @abc.abstractmethod
+                           # N: If the method is meant to be abstract, use @abc.abstractmethod
         ...
 
 [case testEmptyBodyAllowedFunctionStub]
