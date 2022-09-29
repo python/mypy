@@ -2207,7 +2207,7 @@ a.py:1: error: Library stubs not installed for "jack"
 a.py:1: note: Hint: "python3 -m pip install types-JACK-Client"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
-[case testXXX]
+[case testIgnoreErrorsFromTypeshed]
 # flags: --custom-typeshed-dir tmp/ts --follow-imports=normal
 # cmd1: mypy a.py
 # cmd2: mypy a.py
@@ -2229,7 +2229,9 @@ def cast(x): ...
 [file ts/stubs/mypy_extensions/mypy_extensions.pyi]
 
 [file ts/stdlib/foobar.pyi.2]
-# We report no errors from typeshed
+# We report no errors from typeshed. It would be better to test ignoring
+# errors from PEP 561 packages, but it's harder to test and uses the
+# same code paths, so we are using typeshed instead.
 import baz
 import zar
 undefined
