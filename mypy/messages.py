@@ -1231,6 +1231,14 @@ class MessageBuilder:
             code=codes.ARG_TYPE,
         )
 
+    def unsafe_super(self, method: str, cls: str, ctx: Context) -> None:
+        self.fail(
+            'Call to abstract method "{}" of "{}" with trivial body'
+            " via super() is unsafe".format(method, cls),
+            ctx,
+            code=codes.SAFE_SUPER,
+        )
+
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail("Not enough arguments for format string", context, code=codes.STRING_FORMATTING)
 

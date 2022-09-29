@@ -63,6 +63,7 @@ from mypy.nodes import (
     ARG_STAR,
     CONTRAVARIANT,
     COVARIANT,
+    FUNC_NO_INFO,
     GDEF,
     IMPLICITLY_ABSTRACT,
     INVARIANT,
@@ -70,6 +71,7 @@ from mypy.nodes import (
     LDEF,
     LITERAL_TYPE,
     MDEF,
+    NOT_ABSTRACT,
     AssertStmt,
     AssignmentExpr,
     AssignmentStmt,
@@ -620,7 +622,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.visit_decorator(cast(Decorator, defn.items[0]))
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
-            self.check_func_item(fdef.func, name=fdef.func.name)
+            self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
             if fdef.func.abstract_status in (IS_ABSTRACT, IMPLICITLY_ABSTRACT):
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
@@ -987,7 +989,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
 
     def check_func_item(
-        self, defn: FuncItem, type_override: CallableType | None = None, name: str | None = None
+        self,
+        defn: FuncItem,
+        type_override: CallableType | None = None,
+        name: str | None = None,
+        allow_empty: bool = False,
     ) -> None:
         """Type check a function.
 
@@ -1001,7 +1007,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 typ = type_override.copy_modified(line=typ.line, column=typ.column)
             if isinstance(typ, CallableType):
                 with self.enter_attribute_inference_context():
-                    self.check_func_def(defn, typ, name)
+                    self.check_func_def(defn, typ, name, allow_empty)
             else:
                 raise RuntimeError("Not supported")
 
@@ -1018,7 +1024,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         yield None
         self.inferred_attribute_types = old_types
 
-    def check_func_def(self, defn: FuncItem, typ: CallableType, name: str | None) -> None:
+    def check_func_def(
+        self, defn: FuncItem, typ: CallableType, name: str | None, allow_empty: bool = False
+    ) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
         expanded = self.expand_typevars(defn, typ)
@@ -1190,7 +1198,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
-            if not unreachable and not body_is_trivial:
+            if not unreachable:
                 if defn.is_generator or is_named_instance(
                     self.return_types[-1], "typing.AwaitableGenerator"
                 ):
@@ -1203,28 +1211,79 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return_type = self.return_types[-1]
                 return_type = get_proper_type(return_type)
 
+                allow_empty = allow_empty or self.options.allow_empty_bodies
+
+                show_error = (
+                    not body_is_trivial
+                    or
+                    # Allow empty bodies for abstract methods, overloads, in tests and stubs.
+                    (
+                        not allow_empty
+                        and not (
+                            isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT
+                        )
+                        and not self.is_stub
+                    )
+                )
+
+                # Ignore plugin generated methods, these usually don't need any bodies.
+                if defn.info is not FUNC_NO_INFO and (
+                    defn.name not in defn.info.names or defn.info.names[defn.name].plugin_generated
+                ):
+                    show_error = False
+
+                # Ignore also definitions that appear in `if TYPE_CHECKING: ...` blocks.
+                # These can't be called at runtime anyway (similar to plugin-generated).
+                if isinstance(defn, FuncDef) and defn.is_mypy_only:
+                    show_error = False
+
+                # We want to minimize the fallout from checking empty bodies
+                # that was absent in many mypy versions.
+                if body_is_trivial and is_subtype(NoneType(), return_type):
+                    show_error = False
+
+                may_be_abstract = (
+                    body_is_trivial
+                    and defn.info is not FUNC_NO_INFO
+                    and defn.info.metaclass_type is not None
+                    and defn.info.metaclass_type.type.has_base("abc.ABCMeta")
+                )
+
                 if self.options.warn_no_return:
-                    if not self.current_node_deferred and not isinstance(
-                        return_type, (NoneType, AnyType)
+                    if (
+                        not self.current_node_deferred
+                        and not isinstance(return_type, (NoneType, AnyType))
+                        and show_error
                     ):
                         # Control flow fell off the end of a function that was
-                        # declared to return a non-None type and is not
-                        # entirely pass/Ellipsis/raise NotImplementedError.
+                        # declared to return a non-None type.
                         if isinstance(return_type, UninhabitedType):
                             # This is a NoReturn function
-                            self.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
+                            msg = message_registry.INVALID_IMPLICIT_RETURN
                         else:
-                            self.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
-                else:
+                            msg = message_registry.MISSING_RETURN_STATEMENT
+                        if body_is_trivial:
+                            msg = msg._replace(code=codes.EMPTY_BODY)
+                        self.fail(msg, defn)
+                        if may_be_abstract:
+                            self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
+                elif show_error:
+                    msg = message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE
+                    if body_is_trivial:
+                        msg = msg._replace(code=codes.EMPTY_BODY)
                     # similar to code in check_return_stmt
-                    self.check_subtype(
-                        subtype_label="implicitly returns",
-                        subtype=NoneType(),
-                        supertype_label="expected",
-                        supertype=return_type,
-                        context=defn,
-                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
-                    )
+                    if (
+                        not self.check_subtype(
+                            subtype_label="implicitly returns",
+                            subtype=NoneType(),
+                            supertype_label="expected",
+                            supertype=return_type,
+                            context=defn,
+                            msg=msg,
+                        )
+                        and may_be_abstract
+                    ):
+                        self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
 
             self.return_types.pop()
 
@@ -6125,9 +6184,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg.fail(msg, context, code=code)
 
     def note(
-        self, msg: str, context: Context, offset: int = 0, *, code: ErrorCode | None = None
+        self,
+        msg: str | ErrorMessage,
+        context: Context,
+        offset: int = 0,
+        *,
+        code: ErrorCode | None = None,
     ) -> None:
         """Produce a note."""
+        if isinstance(msg, ErrorMessage):
+            self.msg.note(msg.value, context, code=msg.code)
+            return
         self.msg.note(msg, context, offset=offset, code=code)
 
     def iterable_item_type(self, instance: Instance) -> Type:

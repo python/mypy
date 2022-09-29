@@ -152,6 +152,8 @@ class FineGrainedSuite(DataSuite):
         options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
         options.enable_incomplete_features = True
+        # Treat empty bodies safely for these test cases.
+        options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
         if re.search("flags:.*--follow-imports", source) is None:
             # Override the default for follow_imports
             options.follow_imports = "error"
