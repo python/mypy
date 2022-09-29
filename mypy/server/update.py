@@ -963,9 +963,10 @@ def reprocess_nodes(
 
     nodes = sorted(nodeset, key=key)
 
-    options = graph[module_id].options
+    state = graph[module_id]
+    options = state.options
     manager.errors.set_file_ignored_lines(
-        file_node.path, file_node.ignored_lines, options.ignore_errors
+        file_node.path, file_node.ignored_lines, options.ignore_errors or state.ignore_all
     )
 
     targets = set()
