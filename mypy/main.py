@@ -999,6 +999,11 @@ def process_options(
         "the contents of SHADOW_FILE instead.",
     )
     add_invertible_flag("--fast-exit", default=True, help=argparse.SUPPRESS, group=internals_group)
+    # This flag is useful for mypy tests, where function bodies may be omitted. Plugin developers
+    # may want to use this as well in their tests.
+    add_invertible_flag(
+        "--allow-empty-bodies", default=False, help=argparse.SUPPRESS, group=internals_group
+    )
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."

@@ -33,6 +33,9 @@ INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
 # Type checker error message constants
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)
 MISSING_RETURN_STATEMENT: Final = ErrorMessage("Missing return statement", codes.RETURN)
+EMPTY_BODY_ABSTRACT: Final = ErrorMessage(
+    "If the method is meant to be abstract, use @abc.abstractmethod", codes.EMPTY_BODY
+)
 INVALID_IMPLICIT_RETURN: Final = ErrorMessage("Implicit return in function which does not return")
 INCOMPATIBLE_RETURN_VALUE_TYPE: Final = ErrorMessage(
     "Incompatible return value type", codes.RETURN_VALUE

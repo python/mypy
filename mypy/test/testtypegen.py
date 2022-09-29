@@ -34,6 +34,7 @@ class TypeExportSuite(DataSuite):
             options.show_traceback = True
             options.export_types = True
             options.preserve_asts = True
+            options.allow_empty_bodies = True
             result = build.build(
                 sources=[BuildSource("main", None, src)],
                 options=options,
