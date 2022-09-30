@@ -1341,15 +1341,16 @@ class MessageBuilder:
             return
         if len(attrs_with_none) == 1:
             note = (
-                "The following method was marked implicitly abstract because it has an empty "
-                "function body: {}. If it is not meant to be abstract, explicitly return None."
+                f"{attrs_with_none[0]} is implicitly abstract because it has an empty function "
+                "body. If it is not meant to be abstract, explicitly `return` or `return None`."
             )
         else:
             note = (
                 "The following methods were marked implicitly abstract because they have empty "
-                "function bodies: {}. If they are not meant to be abstract, explicitly return None."
+                f"function bodies: {format_string_list(attrs_with_none)}. "
+                "If they are not meant to be abstract, explicitly `return` or `return None`."
             )
-        self.note(note.format(format_string_list(attrs_with_none)), context, code=codes.ABSTRACT)
+        self.note(note, context, code=codes.ABSTRACT)
 
     def base_class_definitions_incompatible(
         self, name: str, base1: TypeInfo, base2: TypeInfo, context: Context
