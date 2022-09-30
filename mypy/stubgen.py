@@ -133,6 +133,7 @@ from mypy.types import (
     TypeList,
     TypeStrVisitor,
     UnboundType,
+    UnionType,
     get_proper_type,
 )
 from mypy.visitor import NodeVisitor
@@ -301,6 +302,11 @@ class AnnotationPrinter(TypeStrVisitor):
         self.stubgen.import_tracker.require_name(s)
         if t.args:
             s += f"[{self.args_str(t.args)}]"
+        return s
+
+    def visit_union_type(self, t: UnionType) -> str:
+        s = super().visit_union_type(t)
+        self.stubgen.import_tracker.require_name("Union")
         return s
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -599,6 +605,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.export_less = export_less
         # Add imports that could be implicitly generated
         self.import_tracker.add_import_from("typing", [("NamedTuple", None)])
+        self.import_tracker.add_import_from("typing", [("Union", None)])
         # Names in __all__ are required
         for name in _all_ or ():
             if name not in IGNORED_DUNDERS:
@@ -1017,32 +1024,50 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if not isinstance(expr, CallExpr):
             return False
         callee = expr.callee
-        return (isinstance(callee, NameExpr) and callee.name.endswith("namedtuple")) or (
-            isinstance(callee, MemberExpr) and callee.name == "namedtuple"
+        return (
+            isinstance(callee, NameExpr)
+            and (callee.name.endswith("namedtuple") or callee.name.endswith("NamedTuple"))
+        ) or (
+            isinstance(callee, MemberExpr)
+            and (callee.name == "namedtuple" or callee.name == "NamedTuple")
         )
 
     def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
         if self._state != EMPTY:
             self.add("\n")
         if isinstance(rvalue.args[1], StrExpr):
-            items = rvalue.args[1].value.replace(",", " ").split()
+            items: list[tuple[str | None, str | None]] = [
+                (key, "Incomplete") for key in rvalue.args[1].value.replace(",", " ").split()
+            ]
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
-            items = [item.value for item in list_items]
+            items = [self.process_namedtuple_type(item) for item in list_items]
         else:
             self.add(f"{self._indent}{lvalue.name}: Incomplete")
             self.import_tracker.require_name("Incomplete")
             return
         self.import_tracker.require_name("NamedTuple")
         self.add(f"{self._indent}class {lvalue.name}(NamedTuple):")
-        if len(items) == 0:
+
+        validitems = list(filter(lambda v: v[0] is not None and v[0].isidentifier(), items))
+
+        if len(validitems) == 0:
             self.add(" ...\n")
         else:
             self.import_tracker.require_name("Incomplete")
             self.add("\n")
-            for item in items:
-                self.add(f"{self._indent}    {item}: Incomplete\n")
+            for item in validitems:
+                key, rtype = item
+                self.add(f"{self._indent}    {key}: {rtype}\n")
         self._state = CLASS
+
+    def process_namedtuple_type(self, item: StrExpr | TupleExpr) -> tuple[str | None, str | None]:
+        if isinstance(item, StrExpr):
+            return item.value, "Incomplete"
+        elif isinstance(item.items[0], StrExpr):
+            p = AliasPrinter(self)
+            return item.items[0].value, item.items[1].accept(p)
+        return None, None
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
         """Return True for things that look like target for an alias.

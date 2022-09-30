@@ -516,6 +516,17 @@ __all__ = ['urllib']
 [out]
 import urllib as urllib
 
+
+[case testImportUnion]
+def func(a: str | int) -> str | int:
+  pass
+
+[out]
+from typing import Union
+
+def func(a: Union[str, int]) -> Union[str, int]: ...
+
+
 [case testRelativeImportAll]
 from .x import *
 [out]
@@ -594,6 +605,33 @@ from typing import NamedTuple
 class X(NamedTuple):
     a: Incomplete
     b: Incomplete
+
+[case testNamedtupleUsingInvalidIdent]
+import collections, x
+X = collections.namedtuple('X', ['@'])
+[out]
+from typing import NamedTuple
+
+class X(NamedTuple): ...
+
+[case testNamedtupleWithTypesInvalidIdent]
+import collections, x
+X = typing.NamedTuple('X', [('@', int)])
+[out]
+from typing import NamedTuple
+
+class X(NamedTuple): ...
+
+[case testNamedtupleWithTypes]
+import collections, x
+X = typing.NamedTuple('X', [('a', str), ('b', str)])
+[out]
+from _typeshed import Incomplete
+from typing import NamedTuple
+
+class X(NamedTuple):
+    a: str
+    b: str
 
 [case testEmptyNamedtuple]
 import collections
@@ -915,7 +953,7 @@ T = TypeVar('T')
 alias = Union[T, List[T]]
 
 [out]
-from typing import TypeVar
+from typing import TypeVar, Union
 
 T = TypeVar('T')
 alias = Union[T, List[T]]
