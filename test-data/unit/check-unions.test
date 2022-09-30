@@ -355,12 +355,12 @@ def foo(a: Union[A, B, C]):
 from typing import TypeVar, Union
 T = TypeVar('T')
 S = TypeVar('S')
-def u(x: T, y: S) -> Union[S, T]: pass
+def u(x: T, y: S) -> Union[T, S]: pass
 
-reveal_type(u(1, 2.3))  # N: Revealed type is "builtins.float"
-reveal_type(u(2.3, 1))  # N: Revealed type is "builtins.float"
-reveal_type(u(False, 2.2)) # N: Revealed type is "builtins.float"
-reveal_type(u(2.2, False)) # N: Revealed type is "builtins.float"
+reveal_type(u(1, 2.3))  # N: Revealed type is "Union[builtins.int, builtins.float]"
+reveal_type(u(2.3, 1))  # N: Revealed type is "Union[builtins.float, builtins.int]"
+reveal_type(u(False, 2.2)) # N: Revealed type is "Union[builtins.bool, builtins.float]"
+reveal_type(u(2.2, False)) # N: Revealed type is "Union[builtins.float, builtins.bool]"
 [builtins fixtures/primitives.pyi]
 
 [case testSimplifyingUnionWithTypeTypes1]
@@ -491,7 +491,7 @@ class E:
 [case testUnionSimplificationWithBoolIntAndFloat]
 from typing import List, Union
 l = reveal_type([]) # type: List[Union[bool, int, float]] \
-    # N: Revealed type is "builtins.list[builtins.float]"
+    # N: Revealed type is "builtins.list[Union[builtins.int, builtins.float]]"
 reveal_type(l) \
     # N: Revealed type is "builtins.list[Union[builtins.bool, builtins.int, builtins.float]]"
 [builtins fixtures/list.pyi]
@@ -499,7 +499,7 @@ reveal_type(l) \
 [case testUnionSimplificationWithBoolIntAndFloat2]
 from typing import List, Union
 l = reveal_type([]) # type: List[Union[bool, int, float, str]] \
-    # N: Revealed type is "builtins.list[Union[builtins.float, builtins.str]]"
+    # N: Revealed type is "builtins.list[Union[builtins.int, builtins.float, builtins.str]]"
 reveal_type(l) \
     # N: Revealed type is "builtins.list[Union[builtins.bool, builtins.int, builtins.float, builtins.str]]"
 [builtins fixtures/list.pyi]
@@ -545,7 +545,7 @@ from typing import Union, Tuple, Any
 
 a: Union[Tuple[int], Tuple[float]]
 (a1,) = a
-reveal_type(a1)  # N: Revealed type is "builtins.float"
+reveal_type(a1)  # N: Revealed type is "Union[builtins.int, builtins.float]"
 
 b: Union[Tuple[int], Tuple[str]]
 (b1,) = b
@@ -558,7 +558,7 @@ from typing import Union, Tuple
 c: Union[Tuple[int, int], Tuple[int, float]]
 (c1, c2) = c
 reveal_type(c1)  # N: Revealed type is "builtins.int"
-reveal_type(c2)  # N: Revealed type is "builtins.float"
+reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignGeneric]
@@ -625,7 +625,7 @@ b: Union[Tuple[float, int], Tuple[int, int]]
 b1: object
 b2: int
 (b1, b2) = b
-reveal_type(b1) # N: Revealed type is "builtins.float"
+reveal_type(b1) # N: Revealed type is "Union[builtins.float, builtins.int]"
 reveal_type(b2) # N: Revealed type is "builtins.int"
 
 c: Union[Tuple[int, int], Tuple[int, int]]
@@ -639,7 +639,7 @@ d: Union[Tuple[int, int], Tuple[int, float]]
 d1: object
 (d1, d2) = d
 reveal_type(d1)  # N: Revealed type is "builtins.int"
-reveal_type(d2)  # N: Revealed type is "builtins.float"
+reveal_type(d2)  # N: Revealed type is "Union[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignIndexed]

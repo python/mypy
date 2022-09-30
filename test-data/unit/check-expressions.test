@@ -974,6 +974,18 @@ def f():
 main:6: error: Expression is of type "int", not "Literal[42]"
 [builtins fixtures/tuple.pyi]
 
+[case testAssertTypeNoPromoteUnion]
+from typing import Union, assert_type
+
+Scalar = Union[int, bool, bytes, bytearray]
+
+
+def reduce_it(s: Scalar) -> Scalar:
+    return s
+
+assert_type(reduce_it(True), Scalar)
+[builtins fixtures/tuple.pyi]
+
 -- None return type
 -- ----------------
 

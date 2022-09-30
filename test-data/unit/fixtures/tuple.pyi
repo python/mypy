@@ -35,6 +35,7 @@ class slice: pass
 class bool(int): pass
 class str: pass # For convenience
 class bytes: pass
+class bytearray: pass
 class unicode: pass
 
 class list(Sequence[T], Generic[T]):

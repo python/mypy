@@ -531,7 +531,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                 continue
             # actual redundancy checks (XXX?)
             if is_redundant_literal_instance(proper_item, proper_tj) and is_proper_subtype(
-                tj, item, keep_erased_types=keep_erased
+                tj, item, keep_erased_types=keep_erased, ignore_promotions=True
             ):
                 # We found a redundant item in the union.
                 removed.add(j)
