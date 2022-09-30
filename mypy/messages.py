@@ -1748,7 +1748,9 @@ class MessageBuilder:
 
     def concrete_only_call(self, typ: Type, context: Context) -> None:
         self.fail(
-            f"Only concrete class can be given where {format_type(typ)} is expected", context
+            f"Only concrete class can be given where {format_type(typ)} is expected",
+            context,
+            code=codes.TYPE_ABSTRACT,
         )
 
     def cannot_use_function_with_type(

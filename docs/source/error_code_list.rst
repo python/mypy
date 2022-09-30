@@ -564,6 +564,32 @@ Example:
     # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
+Safe handling of abstract type object types [type-abstract]
+-----------------------------------------------------------
+
+Mypy always allows instantiating (calling) type objects typed as ``Type[t]``,
+even if it is not known that ``t`` is non-abstract, since it is a common
+pattern to create functions that act as object factories (custom constructors).
+Therefore, to prevent issues described in the above section, when an abstract
+type object is passed where ``Type[t]`` is expected, mypy will give an error.
+Example:
+
+.. code-block:: python
+
+   from abc import ABCMeta, abstractmethod
+   from typing import List, Type, TypeVar
+
+   class Config(metaclass=ABCMeta):
+       @abstractmethod
+       def get_value(self, attr: str) -> str: ...
+
+   T = TypeVar("T")
+   def make_many(typ: Type[T], n: int) -> List[T]:
+       return [typ() for _ in range(n)]  # This will raise if typ is abstract
+
+   # Error: Only concrete class can be given where "Type[Config]" is expected [type-abstract]
+   make_many(Config, 5)
+
 Check that call to an abstract method via super is valid [safe-super]
 ---------------------------------------------------------------------
 

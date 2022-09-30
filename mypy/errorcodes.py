@@ -80,6 +80,9 @@ FUNC_RETURNS_VALUE: Final = ErrorCode(
 ABSTRACT: Final = ErrorCode(
     "abstract", "Prevent instantiation of classes with abstract attributes", "General"
 )
+TYPE_ABSTRACT: Final = ErrorCode(
+    "type-abstract", "Require only concrete classes where Type[...] is expected", "General"
+)
 VALID_NEWTYPE: Final = ErrorCode(
     "valid-newtype", "Check that argument 2 to NewType is valid", "General"
 )
