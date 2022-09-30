@@ -115,6 +115,7 @@ test cases (test-data/unit/fine-grained*.test).
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 from typing import Callable, NamedTuple, Sequence, Union
@@ -182,7 +183,7 @@ class FineGrainedBuildManager:
         # Merge in any root dependencies that may not have been loaded
         merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), self.deps)
         self.previous_targets_with_errors = manager.errors.targets()
-        self.previous_messages = result.errors[:]
+        self.previous_messages: list[str] = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
         self.blocking_error: tuple[str, str] | None = None
         # Module that we haven't processed yet but that are known to be stale.
@@ -290,6 +291,7 @@ class FineGrainedBuildManager:
                     messages = self.manager.errors.new_messages()
                     break
 
+        messages = sort_messages_preserving_file_order(messages, self.previous_messages)
         self.previous_messages = messages[:]
         return messages
 
@@ -1260,3 +1262,61 @@ def refresh_suppressed_submodules(
                                 state.suppressed.append(submodule)
                                 state.suppressed_set.add(submodule)
     return messages
+
+
+def extract_fnam_from_message(message: str) -> str | None:
+    m = re.match(r"([^:]+):[0-9]+: (error|note): ", message)
+    if m:
+        return m.group(1)
+    return None
+
+
+def extract_possible_fnam_from_message(message: str) -> str:
+    # This may return non-path things if there is some random colon on the line
+    return message.split(":", 1)[0]
+
+
+def sort_messages_preserving_file_order(
+    messages: list[str], prev_messages: list[str]
+) -> list[str]:
+    """Sort messages so that the order of files is preserved.
+
+    An update generates messages so that the files can be in a fairly
+    arbitrary order.  Preserve the order of files to avoid messages
+    getting reshuffled continuously.  If there are messages in
+    additional files, sort them towards the end.
+    """
+    # Calculate file order from the previous messages
+    n = 0
+    order = {}
+    for msg in prev_messages:
+        fnam = extract_fnam_from_message(msg)
+        if fnam and fnam not in order:
+            order[fnam] = n
+            n += 1
+
+    # Related messages must be sorted as a group of successive lines
+    groups = []
+    i = 0
+    while i < len(messages):
+        msg = messages[i]
+        maybe_fnam = extract_possible_fnam_from_message(msg)
+        group = [msg]
+        if maybe_fnam in order:
+            # This looks like a file name. Collect all lines related to this message.
+            while (
+                i + 1 < len(messages)
+                and extract_possible_fnam_from_message(messages[i + 1]) not in order
+                and extract_fnam_from_message(messages[i + 1]) is None
+                and not messages[i + 1].startswith("mypy: ")
+            ):
+                i += 1
+                group.append(messages[i])
+        groups.append((order.get(maybe_fnam, n), group))
+        i += 1
+
+    groups = sorted(groups, key=lambda g: g[0])
+    result = []
+    for key, group in groups:
+        result.extend(group)
+    return result
