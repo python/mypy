@@ -3372,3 +3372,13 @@ class B:
 [out]
 tmp/b.py:2: note: Revealed type is "builtins.int"
 tmp/a.py:2: note: Revealed type is "builtins.int"
+
+[case testUnionTypeCallableInference]
+from typing import Callable, Type, TypeVar, Union
+
+class A:
+    def __init__(self, x: str) -> None: ...
+
+T = TypeVar("T")
+def type_or_callable(value: T, tp: Union[Type[T], Callable[[int], T]]) -> T: ...
+reveal_type(type_or_callable(A("test"), A))  # N: Revealed type is "__main__.A"
