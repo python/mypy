@@ -420,3 +420,21 @@ class TestMessageSorting(unittest.TestCase):
             msg1,
             msg3,
         ]
+
+    def test_new_file_at_the_end(self) -> None:
+        msg1 = 'x.py:1: error: "int" not callable'
+        msg2 = 'foo/y.py:123: note: "X" not defined'
+        new1 = "ab.py:3: error: Problem: error"
+        new2 = "aaa:3: error: Bad"
+        old_msgs = ['foo/y.py:12: note: "Y" not defined', 'x.py:8: error: "str" not callable']
+        assert sort_messages_preserving_file_order([msg1, msg2, new1], old_msgs) == [
+            msg2,
+            msg1,
+            new1,
+        ]
+        assert sort_messages_preserving_file_order([new1, msg1, msg2, new2], old_msgs) == [
+            msg2,
+            msg1,
+            new1,
+            new2,
+        ]

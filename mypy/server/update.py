@@ -1307,6 +1307,7 @@ def sort_messages_preserving_file_order(
             while (
                 i + 1 < len(messages)
                 and extract_possible_fnam_from_message(messages[i + 1]) not in order
+                and extract_fnam_from_message(messages[i + 1]) is None
                 and not messages[i + 1].startswith("mypy: ")
             ):
                 i += 1
