@@ -2545,6 +2545,22 @@ Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testGenericTypedDictMultipleGenerics]
+# See https://github.com/python/mypy/issues/13755
+from typing import Generic, TypeVar, TypedDict
+
+T = TypeVar("T")
+Foo = TypedDict("Foo", {"bar": T})
+class Stack(Generic[T]): pass
+
+a = Foo[str]
+b = Foo[int]
+reveal_type(a)  # N: Revealed type is "def (*, bar: builtins.str) -> TypedDict('__main__.Foo', {'bar': builtins.str})"
+reveal_type(b)  # N: Revealed type is "def (*, bar: builtins.int) -> TypedDict('__main__.Foo', {'bar': builtins.int})"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testGenericTypedDictCallSyntax]
 from typing import TypedDict, TypeVar
 
