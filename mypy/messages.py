@@ -791,8 +791,8 @@ class MessageBuilder:
             if names:
                 missing_arguments = '"' + '", "'.join(names) + '"'
                 self.note(
-                    f'This may be because "{original_caller_type.name}" has arguments '
-                    f"named: {missing_arguments}",
+                    f'This is likely because "{original_caller_type.name}" has named arguments: '
+                    f"{missing_arguments}. Consider marking them positional-only",
                     context,
                     code=code,
                 )
