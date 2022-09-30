@@ -893,6 +893,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TypeType):
             return self._is_subtype(left.item, right.item)
         if isinstance(right, CallableType):
+            if self.proper_subtype and not right.is_type_obj():
+                # We can't accept `Type[X]` as a *proper* subtype of Callable[P, X]
+                # since this will break transitivity of subtyping.
+                return False
             # This is unsound, we don't check the __init__ signature.
             return self._is_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
