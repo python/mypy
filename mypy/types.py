@@ -1192,6 +1192,9 @@ class ExtraAttrs:
     def copy(self) -> ExtraAttrs:
         return ExtraAttrs(self.attrs.copy(), self.immutable.copy(), self.mod_name)
 
+    def __repr__(self) -> str:
+        return f"ExtraAttrs({self.attrs!r}, {self.immutable!r}, {self.mod_name!r})"
+
 
 class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].

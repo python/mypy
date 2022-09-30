@@ -2895,6 +2895,13 @@ else:
     mod.y  # E: Module has no attribute "y"
     reveal_type(mod.x)  # N: Revealed type is "builtins.int"
 
+if hasattr(mod, "x"):
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+else:
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+
 [file mod.py]
 x: int
 [builtins fixtures/module.pyi]
