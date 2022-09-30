@@ -1814,9 +1814,9 @@ def f() -> Iterator[None]:
 [out]
 main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
+main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 a.py:3: error: Cannot find implementation or library stub for module named "b"
 a.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
 main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 
@@ -8689,8 +8689,8 @@ main:2: note: Revealed type is "builtins.int"
 ==
 main:2: note: Revealed type is "Literal[1]"
 ==
-mod.py:2: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:2: note: Revealed type is "Literal[1]"
+mod.py:2: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 [case testLiteralFineGrainedFunctionConversion]
 from mod import foo
@@ -9178,10 +9178,10 @@ a.py:1: error: Type signature has too few arguments
 a.py:5: error: Type signature has too few arguments
 a.py:11: error: Type signature has too few arguments
 ==
+c.py:1: error: Type signature has too few arguments
 a.py:1: error: Type signature has too few arguments
 a.py:5: error: Type signature has too few arguments
 a.py:11: error: Type signature has too few arguments
-c.py:1: error: Type signature has too few arguments
 
 [case testErrorReportingNewAnalyzer]
 # flags: --disallow-any-generics
@@ -10072,3 +10072,53 @@ class Base(Protocol):
 [out]
 ==
 main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+
+[case testPrettyMessageSorting]
+# flags: --pretty
+import a
+
+[file a.py]
+1 + ''
+import b
+
+[file b.py]
+object + 1
+
+[file b.py.2]
+object + 1
+1()
+
+[out]
+b.py:1: error: Unsupported left operand type for + ("Type[object]")
+    object + 1
+    ^
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+    1 + ''
+        ^
+==
+b.py:1: error: Unsupported left operand type for + ("Type[object]")
+    object + 1
+    ^
+b.py:2: error: "int" not callable
+    1()
+    ^
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+    1 + ''
+        ^
+[out version>=3.8]
+b.py:1: error: Unsupported left operand type for + ("Type[object]")
+    object + 1
+    ^~~~~~~~~~
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+    1 + ''
+        ^~
+==
+b.py:1: error: Unsupported left operand type for + ("Type[object]")
+    object + 1
+    ^~~~~~~~~~
+b.py:2: error: "int" not callable
+    1()
+    ^~~
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+    1 + ''
+        ^~
