@@ -197,7 +197,7 @@ Alias = Tuple[int, T]
 [out]
 
 [case testRecursiveAliasesErrors1]
-
+# flags: --disable-recursive-aliases
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -206,7 +206,7 @@ B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
 C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
 
 [case testRecursiveAliasesErrors2]
-
+# flags: --disable-recursive-aliases
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -243,8 +243,7 @@ reveal_type(x[0].x) # N: Revealed type is "builtins.str"
 [out]
 
 [case testJSONAliasApproximation]
-
-# Recursive aliases are not supported yet.
+# flags: --disable-recursive-aliases
 from typing import List, Union, Dict
 x: JSON # E: Cannot resolve name "JSON" (possible cyclic definition)
 JSON = Union[int, str, List[JSON], Dict[str, JSON]] # E: Cannot resolve name "JSON" (possible cyclic definition)
@@ -772,7 +771,6 @@ f(string, string)
 [typing fixtures/typing-medium.pyi]
 
 [case testForwardTypeVarRefWithRecursiveFlag]
-# flags: --enable-recursive-aliases
 import c
 [file a.py]
 from typing import TypeVar, List, Any, Generic

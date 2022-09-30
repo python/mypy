@@ -176,7 +176,7 @@ class NamedTupleAnalyzer:
                     # it would be inconsistent with type aliases.
                     analyzed = self.api.anal_type(
                         stmt.type,
-                        allow_placeholder=self.options.enable_recursive_aliases
+                        allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
                     )
                     if analyzed is None:
@@ -321,11 +321,12 @@ class NamedTupleAnalyzer:
     ) -> None | (tuple[list[str], list[Type], list[Expression], str, list[TypeVarLikeType], bool]):
         """Parse a namedtuple() call into data needed to construct a type.
 
-        Returns a 5-tuple:
+        Returns a 6-tuple:
         - List of argument names
         - List of argument types
         - List of default values
         - First argument of namedtuple
+        - All typevars found in the field definition
         - Whether all types are ready.
 
         Return None if the definition didn't typecheck.
@@ -442,7 +443,7 @@ class NamedTupleAnalyzer:
                 # We never allow recursive types at function scope.
                 analyzed = self.api.anal_type(
                     type,
-                    allow_placeholder=self.options.enable_recursive_aliases
+                    allow_placeholder=not self.options.disable_recursive_aliases
                     and not self.api.is_func_scope(),
                 )
                 # Workaround #4987 and avoid introducing a bogus UnboundType

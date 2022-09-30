@@ -192,6 +192,7 @@ class TestRun(MypycDataSuite):
         options.python_version = sys.version_info[:2]
         options.export_types = True
         options.preserve_asts = True
+        options.allow_empty_bodies = True
         options.incremental = self.separate
         if "IncompleteFeature" in testcase.name:
             options.enable_incomplete_features = True

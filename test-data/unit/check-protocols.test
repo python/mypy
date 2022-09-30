@@ -3105,14 +3105,14 @@ class NoneCompatible(Protocol):
 
 class A(NoneCompatible): ...
 A() # E: Cannot instantiate abstract class "A" with abstract attributes "f", "g", "h", "i" and "j" \
-    # N: The following methods were marked implicitly abstract because they have empty function bodies: "f", "g", "h", "i" and "j". If they are not meant to be abstract, explicitly return None.
+    # N: The following methods were marked implicitly abstract because they have empty function bodies: "f", "g", "h", "i" and "j". If they are not meant to be abstract, explicitly `return` or `return None`.
 
 class NoneCompatible2(Protocol):
     def f(self, x: int): ...
 
 class B(NoneCompatible2): ...
 B() # E: Cannot instantiate abstract class "B" with abstract attribute "f" \
-    # N: The following method was marked implicitly abstract because it has an empty function body: "f". If it is not meant to be abstract, explicitly return None.
+    # N: "f" is implicitly abstract because it has an empty function body. If it is not meant to be abstract, explicitly `return` or `return None`.
 
 class NoneCompatible3(Protocol):
     @abstractmethod

@@ -23,12 +23,12 @@ Error codes may change in future mypy releases.
 Displaying error codes
 ----------------------
 
-Error codes are not displayed by default.  Use :option:`--show-error-codes <mypy --show-error-codes>`
-or config ``show_error_codes = True`` to display error codes. Error codes are shown inside square brackets:
+Error codes are displayed by default.  Use :option:`--hide-error-codes <mypy --hide-error-codes>`
+or config ``hide_error_codes = True`` to hide error codes. Error codes are shown inside square brackets:
 
 .. code-block:: text
 
-   $ mypy --show-error-codes prog.py
+   $ mypy prog.py
    prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
 
 It's also possible to require error codes for ``type: ignore`` comments.
