@@ -791,8 +791,8 @@ class MessageBuilder:
             if names:
                 missing_arguments = '"' + '", "'.join(names) + '"'
                 self.note(
-                    f'This may be because "{original_caller_type.name}" has arguments '
-                    f"named: {missing_arguments}",
+                    f'This is likely because "{original_caller_type.name}" has named arguments: '
+                    f"{missing_arguments}. Consider marking them positional-only",
                     context,
                     code=code,
                 )
@@ -1231,6 +1231,14 @@ class MessageBuilder:
             code=codes.ARG_TYPE,
         )
 
+    def unsafe_super(self, method: str, cls: str, ctx: Context) -> None:
+        self.fail(
+            'Call to abstract method "{}" of "{}" with trivial body'
+            " via super() is unsafe".format(method, cls),
+            ctx,
+            code=codes.SAFE_SUPER,
+        )
+
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail("Not enough arguments for format string", context, code=codes.STRING_FORMATTING)
 
@@ -1302,8 +1310,17 @@ class MessageBuilder:
             context,
         )
 
-    def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
+    def incompatible_conditional_function_def(
+        self, defn: FuncDef, old_type: FunctionLike, new_type: FunctionLike
+    ) -> None:
         self.fail("All conditional function variants must have identical signatures", defn)
+        if isinstance(old_type, (CallableType, Overloaded)) and isinstance(
+            new_type, (CallableType, Overloaded)
+        ):
+            self.note("Original:", defn)
+            self.pretty_callable_or_overload(old_type, defn, offset=4)
+            self.note("Redefinition:", defn)
+            self.pretty_callable_or_overload(new_type, defn, offset=4)
 
     def cannot_instantiate_abstract_class(
         self, class_name: str, abstract_attributes: dict[str, bool], context: Context
@@ -1324,15 +1341,16 @@ class MessageBuilder:
             return
         if len(attrs_with_none) == 1:
             note = (
-                "The following method was marked implicitly abstract because it has an empty "
-                "function body: {}. If it is not meant to be abstract, explicitly return None."
+                f"{attrs_with_none[0]} is implicitly abstract because it has an empty function "
+                "body. If it is not meant to be abstract, explicitly `return` or `return None`."
             )
         else:
             note = (
                 "The following methods were marked implicitly abstract because they have empty "
-                "function bodies: {}. If they are not meant to be abstract, explicitly return None."
+                f"function bodies: {format_string_list(attrs_with_none)}. "
+                "If they are not meant to be abstract, explicitly `return` or `return None`."
             )
-        self.note(note.format(format_string_list(attrs_with_none)), context, code=codes.ABSTRACT)
+        self.note(note, context, code=codes.ABSTRACT)
 
     def base_class_definitions_incompatible(
         self, name: str, base1: TypeInfo, base2: TypeInfo, context: Context

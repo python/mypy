@@ -148,7 +148,9 @@ class ExitStack(metaclass=abc.ABCMeta):
         self, __exc_type: type[BaseException] | None, __exc_value: BaseException | None, __traceback: TracebackType | None
     ) -> bool: ...
 
-_ExitCoroFunc: TypeAlias = Callable[[type[BaseException] | None, BaseException | None, TracebackType | None], Awaitable[bool]]
+_ExitCoroFunc: TypeAlias = Callable[
+    [type[BaseException] | None, BaseException | None, TracebackType | None], Awaitable[bool | None]
+]
 _ACM_EF = TypeVar("_ACM_EF", bound=AbstractAsyncContextManager[Any] | _ExitCoroFunc)
 
 # In reality this is a subclass of `AbstractAsyncContextManager`;

@@ -11,12 +11,10 @@ class HTTPServer(socketserver.TCPServer):
     server_name: str
     server_port: int
 
-class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
-    daemon_threads: bool  # undocumented
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer): ...
 
 class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     client_address: tuple[str, int]
-    server: socketserver.BaseServer
     close_connection: bool
     requestline: str
     command: str
@@ -34,7 +32,6 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     weekdayname: ClassVar[Sequence[str]]  # undocumented
     monthname: ClassVar[Sequence[str | None]]  # undocumented
     def __init__(self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer) -> None: ...
-    def handle(self) -> None: ...
     def handle_one_request(self) -> None: ...
     def handle_expect_100(self) -> bool: ...
     def send_error(self, code: int, message: str | None = ..., explain: str | None = ...) -> None: ...
@@ -53,7 +50,6 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     def parse_request(self) -> bool: ...  # undocumented
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    server_version: str
     extensions_map: dict[str, str]
     def __init__(
         self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer, directory: str | None = ...

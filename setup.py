@@ -220,6 +220,7 @@ setup(
         "dmypy": "psutil >= 4.0",
         "python2": "typed_ast >= 1.4.0, < 2",
         "reports": "lxml",
+        "install-types": "pip",
     },
     python_requires=">=3.7",
     include_package_data=True,

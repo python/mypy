@@ -77,6 +77,7 @@ from mypy.nodes import (
     IS_ABSTRACT,
     LDEF,
     MDEF,
+    NOT_ABSTRACT,
     REVEAL_LOCALS,
     REVEAL_TYPE,
     RUNTIME_PROTOCOL_DECOS,
@@ -861,6 +862,12 @@ class SemanticAnalyzer(
                 and is_trivial_body(defn.body)
             ):
                 defn.abstract_status = IMPLICITLY_ABSTRACT
+            if (
+                is_trivial_body(defn.body)
+                and not self.is_stub_file
+                and defn.abstract_status != NOT_ABSTRACT
+            ):
+                defn.is_trivial_body = True
 
         if (
             defn.is_coroutine
@@ -1038,6 +1045,8 @@ class SemanticAnalyzer(
             assert self.type is not None
             if self.type.is_protocol:
                 impl.abstract_status = IMPLICITLY_ABSTRACT
+            if impl.abstract_status != NOT_ABSTRACT:
+                impl.is_trivial_body = True
 
     def analyze_overload_sigs_and_impl(
         self, defn: OverloadedFuncDef
@@ -1125,6 +1134,7 @@ class SemanticAnalyzer(
                     else:
                         item.abstract_status = IS_ABSTRACT
             else:
+                # TODO: also allow omitting an implementation for abstract methods in ABCs?
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
                     defn,
@@ -3022,6 +3032,7 @@ class SemanticAnalyzer(
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):
+                self.defer(s)
                 return
             s.type = analyzed
             if (
@@ -3227,7 +3238,7 @@ class SemanticAnalyzer(
             )
             if not res:
                 return False
-            if self.options.enable_recursive_aliases and not self.is_func_scope():
+            if not self.options.disable_recursive_aliases and not self.is_func_scope():
                 # Only marking incomplete for top-level placeholders makes recursive aliases like
                 # `A = Sequence[str | A]` valid here, similar to how we treat base classes in class
                 # definitions, allowing `class str(Sequence[str]): ...`
@@ -5086,7 +5097,9 @@ class SemanticAnalyzer(
                 X = X  # Initializer refers to outer scope
 
         Nested classes are an exception, since we want to support
-        arbitrary forward references in type annotations.
+        arbitrary forward references in type annotations. Also, we
+        allow forward references to type aliases to support recursive
+        types.
         """
         # TODO: Forward reference to name imported in class body is not
         #       caught.
@@ -5097,7 +5110,7 @@ class SemanticAnalyzer(
             node is None
             or self.is_textually_before_statement(node)
             or not self.is_defined_in_current_module(node.fullname)
-            or isinstance(node, TypeInfo)
+            or isinstance(node, (TypeInfo, TypeAlias))
             or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo)
         )
 
@@ -5736,7 +5749,7 @@ class SemanticAnalyzer(
 
     def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
         self.fail(f'Cannot resolve {kind} "{name}" (possible cyclic definition)', ctx)
-        if self.options.enable_recursive_aliases and self.is_func_scope():
+        if not self.options.disable_recursive_aliases and self.is_func_scope():
             self.note("Recursive types are not allowed at function scope", ctx)
 
     def qualified_name(self, name: str) -> str:

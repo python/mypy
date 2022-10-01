@@ -355,7 +355,8 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     methods. As all methods defined here return None by default,
     subclasses do not always need to override all the methods.
 
-    TODO make the default return value explicit
+    TODO: make the default return value explicit, then turn on
+          empty body checking in mypy_self_check.ini.
     """
 
     # Not in superclasses:

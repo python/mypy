@@ -54,6 +54,7 @@ class ASTDiffSuite(DataSuite):
         options.show_traceback = True
         options.cache_dir = os.devnull
         options.python_version = PYTHON3_VERSION
+        options.allow_empty_bodies = True
         try:
             result = build.build(
                 sources=[BuildSource("main", None, source)],

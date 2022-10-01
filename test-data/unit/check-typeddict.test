@@ -1443,7 +1443,7 @@ reveal_type(x['a']['b']) # N: Revealed type is "builtins.int"
 [case testSelfRecursiveTypedDictInheriting]
 
 from mypy_extensions import TypedDict
-
+# flags: --disable-recursive-aliases
 class MovieBase(TypedDict):
     name: str
     year: int
@@ -1457,7 +1457,7 @@ reveal_type(m['director']['name']) # N: Revealed type is "Any"
 [out]
 
 [case testSubclassOfRecursiveTypedDict]
-
+# flags: --disable-recursive-aliases
 from typing import List
 from mypy_extensions import TypedDict
 
@@ -2542,6 +2542,22 @@ Alias[str](key=0, value=0)  # E: Incompatible types (expression has type "int", 
 # Generic aliases are *always* filled with Any, so this is different from TD(...) call.
 Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
                        # E: Incompatible types (expression has type "int", TypedDict item "value" has type "List[Any]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictMultipleGenerics]
+# See https://github.com/python/mypy/issues/13755
+from typing import Generic, TypeVar, TypedDict
+
+T = TypeVar("T")
+Foo = TypedDict("Foo", {"bar": T})
+class Stack(Generic[T]): pass
+
+a = Foo[str]
+b = Foo[int]
+reveal_type(a)  # N: Revealed type is "def (*, bar: builtins.str) -> TypedDict('__main__.Foo', {'bar': builtins.str})"
+reveal_type(b)  # N: Revealed type is "def (*, bar: builtins.int) -> TypedDict('__main__.Foo', {'bar': builtins.int})"
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

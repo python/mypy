@@ -25,11 +25,14 @@ except ImportError:
 
 T = TypeVar("T")
 
-with importlib_resources.path(
-    "mypy",  # mypy-c doesn't support __package__
-    "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
-) as _resource:
-    TYPESHED_DIR: Final = str(_resource.parent / "typeshed")
+if sys.version_info >= (3, 9):
+    TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
+else:
+    with importlib_resources.path(
+        "mypy",  # mypy-c doesn't support __package__
+        "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
+    ) as _resource:
+        TYPESHED_DIR = str(_resource.parent / "typeshed")
 
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
@@ -522,8 +525,8 @@ class FancyFormatter:
     This currently only works on Linux and Mac.
     """
 
-    def __init__(self, f_out: IO[str], f_err: IO[str], show_error_codes: bool) -> None:
-        self.show_error_codes = show_error_codes
+    def __init__(self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool) -> None:
+        self.hide_error_codes = hide_error_codes
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
@@ -690,7 +693,7 @@ class FancyFormatter:
         """Colorize an output line by highlighting the status and error code."""
         if ": error:" in error:
             loc, msg = error.split("error:", maxsplit=1)
-            if not self.show_error_codes:
+            if self.hide_error_codes:
                 return (
                     loc + self.style("error:", "red", bold=True) + self.highlight_quote_groups(msg)
                 )
