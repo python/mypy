@@ -194,8 +194,6 @@ class TestRun(MypycDataSuite):
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
-        if "IncompleteFeature" in testcase.name:
-            options.enable_incomplete_features = True
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
