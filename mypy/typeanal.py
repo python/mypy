@@ -38,7 +38,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import Options, TYPE_VAR_TUPLE
+from mypy.options import TYPE_VAR_TUPLE, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
 from mypy.tvar_scope import TypeVarLikeScope
