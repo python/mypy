@@ -1082,6 +1082,7 @@ def find_member(
             and name not in ["__getattr__", "__setattr__", "__getattribute__"]
             and not is_operator
             and not class_obj
+            and itype.extra_attrs is None  # skip ModuleType.__getattr__
         ):
             for method_name in ("__getattribute__", "__getattr__"):
                 # Normally, mypy assumes that instances that define __getattr__ have all

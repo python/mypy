@@ -6472,8 +6472,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return with_attr, without_attr
 
     def has_valid_attribute(self, typ: Type, name: str) -> bool:
-        if isinstance(get_proper_type(typ), AnyType):
+        p_typ = get_proper_type(typ)
+        if isinstance(p_typ, AnyType):
             return False
+        if isinstance(p_typ, Instance) and p_typ.extra_attrs and p_typ.extra_attrs.mod_name:
+            # Presence of module_symbol_table means this check will skip ModuleType.__getattr__
+            module_symbol_table = p_typ.type.names
+        else:
+            module_symbol_table = None
         with self.msg.filter_errors() as watcher:
             analyze_member_access(
                 name,
@@ -6487,6 +6493,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 chk=self,
                 # This is not a real attribute lookup so don't mess with deferring nodes.
                 no_deferral=True,
+                module_symbol_table=module_symbol_table,
             )
         return not watcher.has_new_errors()
 

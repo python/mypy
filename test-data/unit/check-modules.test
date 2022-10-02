@@ -1672,11 +1672,11 @@ mod_any: Any = m
 mod_int: int = m  # E: Incompatible types in assignment (expression has type Module, variable has type "int")
 
 reveal_type(mod_mod)  # N: Revealed type is "types.ModuleType"
-mod_mod.a  # E: Module has no attribute "a"
+reveal_type(mod_mod.a)  # N: Revealed type is "Any"
 reveal_type(mod_mod2)  # N: Revealed type is "types.ModuleType"
-mod_mod2.a  # E: Module has no attribute "a"
+reveal_type(mod_mod2.a)  # N: Revealed type is "Any"
 reveal_type(mod_mod3)  # N: Revealed type is "types.ModuleType"
-mod_mod3.a  # E: Module has no attribute "a"
+reveal_type(mod_mod3.a)  # N: Revealed type is "Any"
 reveal_type(mod_any)  # N: Revealed type is "Any"
 
 [file m.py]
@@ -1736,7 +1736,7 @@ if bool():
 else:
     x = n
 
-x.a  # E: Module has no attribute "a"
+reveal_type(x.nope)  # N: Revealed type is "Any"
 reveal_type(x.__file__)  # N: Revealed type is "builtins.str"
 
 [file m.py]
