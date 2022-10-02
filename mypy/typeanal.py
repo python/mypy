@@ -38,7 +38,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import Options
+from mypy.options import Options, TYPE_VAR_TUPLE
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
 from mypy.tvar_scope import TypeVarLikeScope
@@ -569,7 +569,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type("builtins.bool")
         elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
-            return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
+            inner = self.anal_type(t.args[0])
+            if (
+                isinstance(inner, TypeVarTupleType)
+                and not self.api.incomplete_feature_enabled(TYPE_VAR_TUPLE, t)
+                or isinstance(inner, UnboundType)
+            ):
+                return AnyType(TypeOfAny.from_error)
+            return UnpackType(inner, line=t.line, column=t.column)
         return None
 
     def get_omitted_any(self, typ: Type, fullname: str | None = None) -> AnyType:
