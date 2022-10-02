@@ -865,6 +865,23 @@ class C(B): pass
 class D(C): pass
 class D2(C): pass
 
+[case testConstructorJoinsWithCustomMetaclass]
+# flags: --strict-optional
+from typing import TypeVar
+import abc
+
+def func() -> None: pass
+class NormalClass: pass
+class WithMetaclass(metaclass=abc.ABCMeta): pass
+
+T = TypeVar('T')
+def join(x: T, y: T) -> T: pass
+
+f1 = join(func, WithMetaclass)
+reveal_type(f1())  # N: Revealed type is "Union[__main__.WithMetaclass, None]"
+
+f2 = join(WithMetaclass, func)
+reveal_type(f2())  # N: Revealed type is "Union[__main__.WithMetaclass, None]"
 
 -- Attribute access in class body
 -- ------------------------------
@@ -1059,6 +1076,35 @@ def f() -> None:
     a.g()
     a.g(a) # E: Too many arguments for "g" of "A"
 [targets __main__, __main__.f]
+
+[case testGenericClassWithinFunction]
+from typing import TypeVar
+
+def test() -> None:
+    T = TypeVar('T', bound='Foo')
+    class Foo:
+        def returns_int(self) -> int:
+            return 0
+
+        def bar(self, foo: T) -> T:
+            x: T = foo
+            reveal_type(x)  # N: Revealed type is "T`-1"
+            reveal_type(x.returns_int())  # N: Revealed type is "builtins.int"
+            return foo
+    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`-1) -> T`-1"
+
+[case testGenericClassWithInvalidTypevarUseWithinFunction]
+from typing import TypeVar
+
+def test() -> None:
+    T = TypeVar('T', bound='Foo')
+    class Foo:
+        invalid: T  # E: Type variable "T" is unbound \
+                    # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
+                    # N: (Hint: Use "T" in function signature to bind "T" inside a function)
+
+        def bar(self, foo: T) -> T:
+            pass
 
 [case testConstructNestedClass]
 import typing
@@ -2933,8 +2979,9 @@ class B: pass
 
 
 [case testConstructInstanceWith__new__]
+from typing import Optional
 class C:
-    def __new__(cls, foo: int = None) -> 'C':
+    def __new__(cls, foo: Optional[int] = None) -> 'C':
         obj = object.__new__(cls)
         return obj
 
@@ -3233,6 +3280,7 @@ def error(u_c: Type[U]) -> P: # Error here, see below
 [out]
 main:11: note: Revealed type is "__main__.WizUser"
 main:12: error: A function returning TypeVar should receive at least one argument containing the same TypeVar
+main:12: note: Consider using the upper bound "ProUser" instead
 main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
 main:13: error: Incompatible return value type (got "U", expected "P")
 
@@ -4731,7 +4779,7 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
@@ -4761,7 +4809,7 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-
+# flags: --disable-recursive-aliases
 from mypy_extensions import TypedDict
 
 class N(TypedDict):

@@ -257,16 +257,13 @@ class PatternChecker(PatternVisitor[PatternType]):
         contracted_inner_types = self.contract_starred_pattern_types(
             inner_types, star_position, required_patterns
         )
-        can_match = True
         for p, t in zip(o.patterns, contracted_inner_types):
             pattern_type = self.accept(p, t)
             typ, rest, type_map = pattern_type
-            if is_uninhabited(typ):
-                can_match = False
-            else:
-                contracted_new_inner_types.append(typ)
-                contracted_rest_inner_types.append(rest)
+            contracted_new_inner_types.append(typ)
+            contracted_rest_inner_types.append(rest)
             self.update_type_map(captures, type_map)
+
         new_inner_types = self.expand_starred_pattern_types(
             contracted_new_inner_types, star_position, len(inner_types)
         )
@@ -279,9 +276,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         new_type: Type
         rest_type: Type = current_type
-        if not can_match:
-            new_type = UninhabitedType()
-        elif isinstance(current_type, TupleType):
+        if isinstance(current_type, TupleType):
             narrowed_inner_types = []
             inner_rest_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):

@@ -197,7 +197,7 @@ class Server:
 
         # Since the object is created in the parent process we can check
         # the output terminal options here.
-        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes)
+        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.hide_error_codes)
 
     def _response_metadata(self) -> dict[str, str]:
         py_version = f"{self.options.python_version[0]}_{self.options.python_version[1]}"
@@ -214,6 +214,8 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
+                    debug_stdout = io.StringIO()
+                    sys.stdout = debug_stdout
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -230,8 +232,10 @@ class Server:
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
+                                resp["stdout"] = debug_stdout.getvalue()
                                 server.write(json.dumps(resp).encode("utf8"))
                                 raise
+                    resp["stdout"] = debug_stdout.getvalue()
                     try:
                         resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode("utf8"))

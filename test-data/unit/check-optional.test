@@ -127,6 +127,7 @@ def f(x: None) -> None: pass
 f(None)
 
 [case testInferOptionalFromDefaultNone]
+# flags: --implicit-optional
 def f(x: int = None) -> None:
   x + 1  # E: Unsupported left operand type for + ("None") \
          # N: Left operand is of type "Optional[int]"
@@ -135,11 +136,14 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNone]
 # flags: --no-implicit-optional
-def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
+def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int") \
+                               # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
+                               # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   pass
 [out]
 
 [case testInferOptionalFromDefaultNoneComment]
+# flags: --implicit-optional
 def f(x=None):
   # type: (int) -> None
   x + 1  # E: Unsupported left operand type for + ("None") \
@@ -149,7 +153,9 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNoneComment]
 # flags: --no-implicit-optional
-def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
+def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int") \
+                # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
+                # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   # type: (int) -> None
   pass
 [out]
