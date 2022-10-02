@@ -209,7 +209,7 @@ x = None # type: B
 class B: pass
 [out]
 main:7: error: Argument 1 to "f" of "A" has incompatible type "B"; expected "T"
-main:8: error: Incompatible types in assignment (expression has type "A[T]", variable has type "A[B]")
+main:8: error: Incompatible types in assignment (expression has type "Self", variable has type "A[B]")
 
 [case testGenericTypeBodyWithMultipleVariables]
 from typing import TypeVar, Generic
@@ -222,8 +222,8 @@ class A(Generic[S, T]):
         if int():
             s = t # E: Incompatible types in assignment (expression has type "T", variable has type "S")
             t = s # E: Incompatible types in assignment (expression has type "S", variable has type "T")
-        a = self # type: A[S, B] # E: Incompatible types in assignment (expression has type "A[S, T]", variable has type "A[S, B]")
-        b = self # type: A[T, T] # E: Incompatible types in assignment (expression has type "A[S, T]", variable has type "A[T, T]")
+        a = self # type: A[S, B] # E: Incompatible types in assignment (expression has type "Self", variable has type "A[S, B]")
+        b = self # type: A[T, T] # E: Incompatible types in assignment (expression has type "Self", variable has type "A[T, T]")
         c = self # type: A[S, T]
         if int():
             t = t

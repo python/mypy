@@ -1198,7 +1198,12 @@ class MessageBuilder:
     ) -> None:
         callee_name = callable_name(callee_type)
         if callee_name is not None and n > 0:
-            self.fail(f"Cannot infer type argument {n} of {callee_name}", context)
+            self.fail(
+                f"Cannot infer type argument "
+                f"{n-1 if any(isinstance(v, SelfType) for v in callee_type.variables) else n} "
+                f"of {callee_name}",
+                context
+            )
         else:
             self.fail("Cannot infer function type argument", context)
 

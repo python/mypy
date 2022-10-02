@@ -568,7 +568,7 @@ class A:
 
     @classmethod
     def foo(cls, x: Union[int, str]) -> Union[int, str]:
-        reveal_type(cls)            # N: Revealed type is "Type[__main__.A]"
+        reveal_type(cls)            # N: Revealed type is "Type[Self@__main__.A]"
         reveal_type(cls.other())    # N: Revealed type is "builtins.str"
         return x
 
@@ -856,7 +856,7 @@ class A(Generic[T]):
 
   @classmethod
   def foo(cls) -> None:
-      reveal_type(cls)  # N: Revealed type is "Type[__main__.A[T`1]]"
+      reveal_type(cls)  # N: Revealed type is "Type[Self@__main__.A[T`1]]"
       cls.x  # E: Access to generic instance variables via class is ambiguous
 
   @classmethod

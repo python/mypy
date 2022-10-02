@@ -105,7 +105,7 @@ class A:
 class B: pass
 [out]
 main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:5: error: "A" has no attribute "g"
+main:5: error: "Self" has no attribute "g"
 
 [case testAssignToMethodViaInstance]
 import typing
@@ -894,7 +894,7 @@ class A:
     if int():
         h = f
         g = h
-    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[B], None]")
+    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type "Callable[[Self], None]", variable has type "Callable[[B], None]")
     if int():
         g = ff  # E: Incompatible types in assignment (expression has type "Callable[[B], None]", variable has type "Callable[[A], None]")
 [out]
