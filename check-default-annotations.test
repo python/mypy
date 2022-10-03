@@ -1,0 +1,15 @@
+
+--- Tests of mypy issue #12352: https://github.com/python/mypy/issues/12352
+
+[case testDefaultString]
+# flags: --disallow-untyped-defs
+--- def f1(a):
+---    pass
+--- reveal_type(f1)  # N: Revealed type is "def (a: Any) -> Any"
+
+def f1_str(a="abc") -> None:
+    pass
+
+--- reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -> None"
+
+[builtins fixtures/tuple.pyi]
