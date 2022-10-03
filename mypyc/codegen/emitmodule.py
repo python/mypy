@@ -409,7 +409,6 @@ def compile_modules_to_c(
         compiler_options: The compilation options
         errors: Where to report any errors encountered
         groups: The groups that we are compiling. See documentation of Groups type above.
-        ops: Optionally, where to dump stringified ops for debugging.
 
     Returns the IR of the modules and a list containing the generated files for each group.
     """
