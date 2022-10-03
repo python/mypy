@@ -648,6 +648,30 @@ reveal_type(f3()) # N: Revealed type is "Union[builtins.int, __main__.Node[built
 
 [builtins fixtures/list.pyi]
 
+[case testGenericTypeAliasesWithNestedArgs]
+# flags: --pretty --show-error-codes
+import other
+a: other.Array[float]
+reveal_type(a) # N: Revealed type is "other.array[Any, other.dtype[builtins.float]]"
+
+[out]
+main:3: error: Type argument "float" of "dtype" must be a subtype of "generic"  [type-var]
+    a: other.Array[float]
+       ^
+[file other.py]
+from typing import Any, Generic, TypeVar
+
+DT = TypeVar("DT", covariant=True, bound=dtype[Any])
+DTS = TypeVar("DTS", covariant=True, bound=generic)
+S = TypeVar("S", bound=Any)
+ST = TypeVar("ST", bound=generic, covariant=True)
+
+class common: pass
+class generic(common): pass
+class dtype(Generic[DTS]): pass
+class array(common, Generic[S, DT]): pass
+Array = array[Any, dtype[ST]]
+
 [case testGenericTypeAliasesAny]
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -1533,9 +1557,9 @@ A = TypeVar('A')
 B = TypeVar('B')
 
 def f1(x: A) -> A: ...
-def f2(x: A) -> B: ...
+def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 def f3(x: B) -> B: ...
-def f4(x: int) -> A: ...
+def f4(x: int) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 
 y1 = f1
 if int():
@@ -1584,8 +1608,8 @@ B = TypeVar('B')
 T = TypeVar('T')
 def outer(t: T) -> None:
     def f1(x: A) -> A: ...
-    def f2(x: A) -> B: ...
-    def f3(x: T) -> A: ...
+    def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+    def f3(x: T) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
     def f4(x: A) -> T: ...
     def f5(x: T) -> T: ...
 
@@ -1754,7 +1778,7 @@ from typing import TypeVar
 A = TypeVar('A')
 B = TypeVar('B')
 def f1(x: int, y: A) -> A: ...
-def f2(x: int, y: A) -> B: ...
+def f2(x: int, y: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 def f3(x: A, y: B) -> B: ...
 g = f1
 g = f2
@@ -2540,3 +2564,19 @@ class Whatever(Generic[T]):
 class WhateverPartTwo(Whatever[A], Generic[V]):
     def something(self: S) -> S:
         return self
+
+
+[case testConstrainedGenericSuper]
+from typing import Generic, TypeVar
+
+AnyStr = TypeVar("AnyStr", str, bytes)
+
+class Foo(Generic[AnyStr]):
+    def method1(self, s: AnyStr, t: AnyStr) -> None: ...
+
+class Bar(Foo[AnyStr]):
+    def method1(self, s: AnyStr, t: AnyStr) -> None:
+        super().method1('x', b'y')  # Should be an error
+[out]
+main:10: error: Argument 1 to "method1" of "Foo" has incompatible type "str"; expected "AnyStr"
+main:10: error: Argument 2 to "method1" of "Foo" has incompatible type "bytes"; expected "AnyStr"

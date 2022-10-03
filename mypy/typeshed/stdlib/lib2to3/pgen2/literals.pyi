@@ -1,4 +1,4 @@
-from typing import Match
+from re import Match
 
 simple_escapes: dict[str, str]
 

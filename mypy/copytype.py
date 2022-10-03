@@ -1,12 +1,34 @@
+from __future__ import annotations
+
 from typing import Any, cast
 
 from mypy.types import (
-    ProperType, UnboundType, AnyType, NoneType, UninhabitedType, ErasedType, DeletedType,
-    Instance, TypeVarType, ParamSpecType, PartialType, CallableType, TupleType, TypedDictType,
-    LiteralType, UnionType, Overloaded, TypeType, TypeAliasType, UnpackType, Parameters,
-    TypeVarTupleType
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    TypeAliasType,
+    TypedDictType,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
 )
-from mypy.type_visitor import TypeVisitor
+
+# type_visitor needs to be imported after types
+from mypy.type_visitor import TypeVisitor  # isort: skip
 
 
 def copy_type(t: ProperType) -> ProperType:
@@ -62,9 +84,13 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(t, dup)
 
     def visit_parameters(self, t: Parameters) -> ProperType:
-        dup = Parameters(t.arg_types, t.arg_kinds, t.arg_names,
-                         variables=t.variables,
-                         is_ellipsis_args=t.is_ellipsis_args)
+        dup = Parameters(
+            t.arg_types,
+            t.arg_kinds,
+            t.arg_names,
+            variables=t.variables,
+            is_ellipsis_args=t.is_ellipsis_args,
+        )
         return self.copy_common(t, dup)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:

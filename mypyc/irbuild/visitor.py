@@ -3,81 +3,142 @@
 mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 """
 
-from typing_extensions import NoReturn
+from __future__ import annotations
+
+from typing import NoReturn
 
 from mypy.nodes import (
-    AssertTypeExpr, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
-    IntExpr, NameExpr, Var, IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, CallExpr,
-    IndexExpr, Block, ListExpr, ExpressionStmt, MemberExpr, ForStmt,
-    BreakStmt, ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef,
-    Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode,
-    PassStmt, PromoteExpr, AssignmentExpr, AwaitExpr, BackquoteExpr, AssertStmt, BytesExpr,
-    ComplexExpr, Decorator, DelStmt, DictionaryComprehension, EllipsisExpr, EnumCallExpr, ExecStmt,
-    FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
-    NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
-    RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
-    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, ParamSpecExpr,
-    MatchStmt, TypeVarTupleExpr
+    AssertStmt,
+    AssertTypeExpr,
+    AssignmentExpr,
+    AssignmentStmt,
+    AwaitExpr,
+    Block,
+    BreakStmt,
+    BytesExpr,
+    CallExpr,
+    CastExpr,
+    ClassDef,
+    ComparisonExpr,
+    ComplexExpr,
+    ConditionalExpr,
+    ContinueStmt,
+    Decorator,
+    DelStmt,
+    DictExpr,
+    DictionaryComprehension,
+    EllipsisExpr,
+    EnumCallExpr,
+    ExpressionStmt,
+    FloatExpr,
+    ForStmt,
+    FuncDef,
+    GeneratorExpr,
+    GlobalDecl,
+    IfStmt,
+    Import,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    IntExpr,
+    LambdaExpr,
+    ListComprehension,
+    ListExpr,
+    MatchStmt,
+    MemberExpr,
+    MypyFile,
+    NamedTupleExpr,
+    NameExpr,
+    NewTypeExpr,
+    NonlocalDecl,
+    OperatorAssignmentStmt,
+    OpExpr,
+    OverloadedFuncDef,
+    ParamSpecExpr,
+    PassStmt,
+    PromoteExpr,
+    RaiseStmt,
+    ReturnStmt,
+    RevealExpr,
+    SetComprehension,
+    SetExpr,
+    SliceExpr,
+    StarExpr,
+    StrExpr,
+    SuperExpr,
+    TempNode,
+    TryStmt,
+    TupleExpr,
+    TypeAliasExpr,
+    TypeApplication,
+    TypedDictExpr,
+    TypeVarExpr,
+    TypeVarTupleExpr,
+    UnaryExpr,
+    Var,
+    WhileStmt,
+    WithStmt,
+    YieldExpr,
+    YieldFromExpr,
 )
-
 from mypyc.ir.ops import Value
-from mypyc.irbuild.builder import IRVisitor, IRBuilder, UnsupportedException
+from mypyc.irbuild.builder import IRBuilder, IRVisitor, UnsupportedException
 from mypyc.irbuild.classdef import transform_class_def
+from mypyc.irbuild.expression import (
+    transform_assignment_expr,
+    transform_bytes_expr,
+    transform_call_expr,
+    transform_comparison_expr,
+    transform_complex_expr,
+    transform_conditional_expr,
+    transform_dict_expr,
+    transform_dictionary_comprehension,
+    transform_ellipsis,
+    transform_float_expr,
+    transform_generator_expr,
+    transform_index_expr,
+    transform_int_expr,
+    transform_list_comprehension,
+    transform_list_expr,
+    transform_member_expr,
+    transform_name_expr,
+    transform_op_expr,
+    transform_set_comprehension,
+    transform_set_expr,
+    transform_slice_expr,
+    transform_str_expr,
+    transform_super_expr,
+    transform_tuple_expr,
+    transform_unary_expr,
+)
 from mypyc.irbuild.function import (
-    transform_func_def,
-    transform_overloaded_func_def,
     transform_decorator,
+    transform_func_def,
     transform_lambda_expr,
-    transform_yield_expr,
-    transform_yield_from_expr,
-    transform_await_expr,
+    transform_overloaded_func_def,
 )
 from mypyc.irbuild.statement import (
-    transform_block,
-    transform_expression_stmt,
-    transform_return_stmt,
+    transform_assert_stmt,
     transform_assignment_stmt,
-    transform_operator_assignment_stmt,
-    transform_import,
-    transform_import_from,
-    transform_import_all,
-    transform_if_stmt,
-    transform_while_stmt,
-    transform_for_stmt,
+    transform_await_expr,
+    transform_block,
     transform_break_stmt,
     transform_continue_stmt,
-    transform_raise_stmt,
-    transform_try_stmt,
-    transform_with_stmt,
-    transform_assert_stmt,
     transform_del_stmt,
-)
-from mypyc.irbuild.expression import (
-    transform_name_expr,
-    transform_member_expr,
-    transform_super_expr,
-    transform_call_expr,
-    transform_unary_expr,
-    transform_op_expr,
-    transform_index_expr,
-    transform_conditional_expr,
-    transform_int_expr,
-    transform_float_expr,
-    transform_complex_expr,
-    transform_comparison_expr,
-    transform_str_expr,
-    transform_bytes_expr,
-    transform_ellipsis,
-    transform_list_expr,
-    transform_tuple_expr,
-    transform_dict_expr,
-    transform_set_expr,
-    transform_list_comprehension,
-    transform_set_comprehension,
-    transform_dictionary_comprehension,
-    transform_slice_expr,
-    transform_generator_expr,
-    transform_assignment_expr,
+    transform_expression_stmt,
+    transform_for_stmt,
+    transform_if_stmt,
+    transform_import,
+    transform_import_all,
+    transform_import_from,
+    transform_operator_assignment_stmt,
+    transform_raise_stmt,
+    transform_return_stmt,
+    transform_try_stmt,
+    transform_while_stmt,
+    transform_with_stmt,
+    transform_yield_expr,
+    transform_yield_from_expr,
 )
 
 
@@ -271,20 +332,6 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_assignment_expr(self, o: AssignmentExpr) -> Value:
         return transform_assignment_expr(self.builder, o)
-
-    # Unimplemented constructs that shouldn't come up because they are py2 only
-
-    def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_unicode_expr(self, o: UnicodeExpr) -> Value:
-        self.bail("Python 2 features are unsupported", o.line)
 
     # Constructs that shouldn't ever show up
 

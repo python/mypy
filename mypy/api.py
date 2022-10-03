@@ -43,13 +43,14 @@ print('\nExit status:', result[2])
 
 """
 
+from __future__ import annotations
+
 import sys
-
 from io import StringIO
-from typing import List, Tuple, TextIO, Callable
+from typing import Callable, TextIO
 
 
-def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]:
+def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> tuple[str, str, int]:
 
     stdout = StringIO()
     stderr = StringIO()
@@ -63,14 +64,16 @@ def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]
     return stdout.getvalue(), stderr.getvalue(), exit_status
 
 
-def run(args: List[str]) -> Tuple[str, str, int]:
+def run(args: list[str]) -> tuple[str, str, int]:
     # Lazy import to avoid needing to import all of mypy to call run_dmypy
     from mypy.main import main
-    return _run(lambda stdout, stderr: main(None, args=args,
-                                            stdout=stdout, stderr=stderr, clean_exit=True))
+
+    return _run(
+        lambda stdout, stderr: main(args=args, stdout=stdout, stderr=stderr, clean_exit=True)
+    )
 
 
-def run_dmypy(args: List[str]) -> Tuple[str, str, int]:
+def run_dmypy(args: list[str]) -> tuple[str, str, int]:
     from mypy.dmypy.client import main
 
     # A bunch of effort has been put into threading stdout and stderr

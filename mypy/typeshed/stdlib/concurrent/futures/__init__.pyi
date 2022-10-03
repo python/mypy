@@ -1,25 +1,10 @@
 import sys
 
-if sys.version_info >= (3, 7):
-    __all__ = (
-        "FIRST_COMPLETED",
-        "FIRST_EXCEPTION",
-        "ALL_COMPLETED",
-        "CancelledError",
-        "TimeoutError",
-        "BrokenExecutor",
-        "Future",
-        "Executor",
-        "wait",
-        "as_completed",
-        "ProcessPoolExecutor",
-        "ThreadPoolExecutor",
-    )
-
 from ._base import (
     ALL_COMPLETED as ALL_COMPLETED,
     FIRST_COMPLETED as FIRST_COMPLETED,
     FIRST_EXCEPTION as FIRST_EXCEPTION,
+    BrokenExecutor as BrokenExecutor,
     CancelledError as CancelledError,
     Executor as Executor,
     Future as Future,
@@ -32,5 +17,20 @@ from .thread import ThreadPoolExecutor as ThreadPoolExecutor
 
 if sys.version_info >= (3, 8):
     from ._base import InvalidStateError as InvalidStateError
-if sys.version_info >= (3, 7):
-    from ._base import BrokenExecutor as BrokenExecutor
+
+__all__ = (
+    "FIRST_COMPLETED",
+    "FIRST_EXCEPTION",
+    "ALL_COMPLETED",
+    "CancelledError",
+    "TimeoutError",
+    "BrokenExecutor",
+    "Future",
+    "Executor",
+    "wait",
+    "as_completed",
+    "ProcessPoolExecutor",
+    "ThreadPoolExecutor",
+)
+
+def __dir__() -> tuple[str, ...]: ...

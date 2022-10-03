@@ -1,5 +1,5 @@
 import sys
-from _typeshed import SupportsWrite
+from _typeshed import Self, SupportsWrite
 from collections.abc import Callable
 from typing import Any, Generic, TypeVar
 from typing_extensions import Literal
@@ -11,7 +11,16 @@ _FuncT = TypeVar("_FuncT", bound=Callable[..., Any])
 # These definitions have special processing in mypy
 class ABCMeta(type):
     __abstractmethods__: frozenset[str]
-    def __init__(self, name: str, bases: tuple[type, ...], namespace: dict[str, Any]) -> None: ...
+    if sys.version_info >= (3, 11):
+        def __new__(
+            __mcls: type[Self], __name: str, __bases: tuple[type, ...], __namespace: dict[str, Any], **kwargs: Any
+        ) -> Self: ...
+    else:
+        # pyright doesn't like the first parameter being called mcls, hence the `pyright: ignore`
+        def __new__(
+            mcls: type[Self], name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kwargs: Any  # pyright: ignore
+        ) -> Self: ...
+
     def __instancecheck__(cls: ABCMeta, instance: Any) -> Any: ...
     def __subclasscheck__(cls: ABCMeta, subclass: Any) -> Any: ...
     def _dump_registry(cls: ABCMeta, file: SupportsWrite[str] | None = ...) -> None: ...

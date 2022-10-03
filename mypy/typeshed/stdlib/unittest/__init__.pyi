@@ -32,55 +32,38 @@ if sys.version_info >= (3, 8):
 
     from .case import addModuleCleanup as addModuleCleanup
 
-    __all__ = [
-        "TestResult",
-        "TestCase",
-        "IsolatedAsyncioTestCase",
-        "TestSuite",
-        "TextTestRunner",
-        "TestLoader",
-        "FunctionTestCase",
-        "main",
-        "defaultTestLoader",
-        "SkipTest",
-        "skip",
-        "skipIf",
-        "skipUnless",
-        "expectedFailure",
-        "TextTestResult",
-        "installHandler",
-        "registerResult",
-        "removeResult",
-        "removeHandler",
-        "addModuleCleanup",
-        "getTestCaseNames",
-        "makeSuite",
-        "findTestCases",
-    ]
+if sys.version_info >= (3, 11):
+    from .case import doModuleCleanups as doModuleCleanups, enterModuleContext as enterModuleContext
 
-else:
-    __all__ = [
-        "TestResult",
-        "TestCase",
-        "TestSuite",
-        "TextTestRunner",
-        "TestLoader",
-        "FunctionTestCase",
-        "main",
-        "defaultTestLoader",
-        "SkipTest",
-        "skip",
-        "skipIf",
-        "skipUnless",
-        "expectedFailure",
-        "TextTestResult",
-        "installHandler",
-        "registerResult",
-        "removeResult",
-        "removeHandler",
-        "getTestCaseNames",
-        "makeSuite",
-        "findTestCases",
-    ]
+__all__ = [
+    "TestResult",
+    "TestCase",
+    "TestSuite",
+    "TextTestRunner",
+    "TestLoader",
+    "FunctionTestCase",
+    "main",
+    "defaultTestLoader",
+    "SkipTest",
+    "skip",
+    "skipIf",
+    "skipUnless",
+    "expectedFailure",
+    "TextTestResult",
+    "installHandler",
+    "registerResult",
+    "removeResult",
+    "removeHandler",
+    "getTestCaseNames",
+    "makeSuite",
+    "findTestCases",
+]
+
+if sys.version_info >= (3, 8):
+    __all__ += ["addModuleCleanup", "IsolatedAsyncioTestCase"]
+
+if sys.version_info >= (3, 11):
+    __all__ += ["enterModuleContext", "doModuleCleanups"]
 
 def load_tests(loader: TestLoader, tests: TestSuite, pattern: str | None) -> TestSuite: ...
+def __dir__() -> set[str]: ...

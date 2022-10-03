@@ -1,15 +1,30 @@
 """Block/import reachability analysis."""
 
+from __future__ import annotations
+
 from mypy.nodes import (
-    MypyFile, AssertStmt, IfStmt, Block, AssignmentStmt, ExpressionStmt, ReturnStmt, ForStmt,
-    MatchStmt, Import, ImportAll, ImportFrom, ClassDef, FuncDef
+    AssertStmt,
+    AssignmentStmt,
+    Block,
+    ClassDef,
+    ExpressionStmt,
+    ForStmt,
+    FuncDef,
+    IfStmt,
+    Import,
+    ImportAll,
+    ImportFrom,
+    MatchStmt,
+    MypyFile,
+    ReturnStmt,
 )
-from mypy.traverser import TraverserVisitor
 from mypy.options import Options
 from mypy.reachability import (
-    infer_reachability_of_if_statement, assert_will_always_fail,
-    infer_reachability_of_match_statement
+    assert_will_always_fail,
+    infer_reachability_of_if_statement,
+    infer_reachability_of_match_statement,
 )
+from mypy.traverser import TraverserVisitor
 
 
 class SemanticAnalyzerPreAnalysis(TraverserVisitor):
@@ -42,7 +57,6 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
     """
 
     def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: Options) -> None:
-        self.pyversion = options.python_version
         self.platform = options.platform
         self.cur_mod_id = mod_id
         self.cur_mod_node = file
@@ -55,7 +69,7 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
                 # We've encountered an assert that's always false,
                 # e.g. assert sys.platform == 'lol'.  Truncate the
                 # list of statements.  This mutates file.defs too.
-                del file.defs[i + 1:]
+                del file.defs[i + 1 :]
                 break
 
     def visit_func_def(self, node: FuncDef) -> None:
@@ -64,10 +78,12 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
         super().visit_func_def(node)
         self.is_global_scope = old_global_scope
         file_node = self.cur_mod_node
-        if (self.is_global_scope
-                and file_node.is_stub
-                and node.name == '__getattr__'
-                and file_node.is_package_init_file()):
+        if (
+            self.is_global_scope
+            and file_node.is_stub
+            and node.name == "__getattr__"
+            and file_node.is_package_init_file()
+        ):
             # __init__.pyi with __getattr__ means that any submodules are assumed
             # to exist, even if there is no stub. Note that we can't verify that the
             # return type is compatible, since we haven't bound types yet.

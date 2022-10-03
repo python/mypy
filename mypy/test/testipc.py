@@ -1,19 +1,21 @@
-from unittest import TestCase, main
+from __future__ import annotations
+
+import sys
+import time
 from multiprocessing import Process, Queue
+from unittest import TestCase, main
+
+import pytest
 
 from mypy.ipc import IPCClient, IPCServer
 
-import pytest
-import sys
-import time
-
-CONNECTION_NAME = 'dmypy-test-ipc'
+CONNECTION_NAME = "dmypy-test-ipc"
 
 
-def server(msg: str, q: 'Queue[str]') -> None:
+def server(msg: str, q: Queue[str]) -> None:
     server = IPCServer(CONNECTION_NAME)
     q.put(server.connection_name)
-    data = b''
+    data = b""
     while not data:
         with server:
             server.write(msg.encode())
@@ -24,30 +26,30 @@ def server(msg: str, q: 'Queue[str]') -> None:
 class IPCTests(TestCase):
     def test_transaction_large(self) -> None:
         queue: Queue[str] = Queue()
-        msg = 't' * 200000  # longer than the max read size of 100_000
+        msg = "t" * 200000  # longer than the max read size of 100_000
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
             assert client.read() == msg.encode()
-            client.write(b'test')
+            client.write(b"test")
         queue.close()
         queue.join_thread()
         p.join()
 
     def test_connect_twice(self) -> None:
         queue: Queue[str] = Queue()
-        msg = 'this is a test message'
+        msg = "this is a test message"
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
             assert client.read() == msg.encode()
-            client.write(b'')  # don't let the server hang up yet, we want to connect again.
+            client.write(b"")  # don't let the server hang up yet, we want to connect again.
 
         with IPCClient(connection_name, timeout=1) as client:
             assert client.read() == msg.encode()
-            client.write(b'test')
+            client.write(b"test")
         queue.close()
         queue.join_thread()
         p.join()
@@ -61,7 +63,7 @@ class IPCTests(TestCase):
         t0 = time.time()
         for i in range(1000):
             try:
-                print(i, 'start')
+                print(i, "start")
                 self.test_connect_twice()
             finally:
                 t1 = time.time()
@@ -70,5 +72,5 @@ class IPCTests(TestCase):
                 t0 = t1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

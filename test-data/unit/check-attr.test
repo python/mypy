@@ -35,7 +35,7 @@ A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "Lis
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
-[case testAttrsPython2Annotations]
+[case testAttrsTypeComments]
 import attr
 from typing import List, ClassVar
 @attr.s
@@ -878,9 +878,9 @@ def factory(default: int):
    ...
 @attr.s
 class C:
-    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter, only named functions and types are currently supported
-    y: str = attr.ib(converter=lambda x: x)  # E: Unsupported converter, only named functions and types are currently supported
-    z: str = attr.ib(converter=factory(8))   # E: Unsupported converter, only named functions and types are currently supported
+    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter, only named functions, types and lambdas are currently supported
+    y: str = attr.ib(converter=lambda x: x)
+    z: str = attr.ib(converter=factory(8))   # E: Unsupported converter, only named functions, types and lambdas are currently supported
 reveal_type(C)  # N: Revealed type is "def (x: Any, y: Any, z: Any) -> __main__.C"
 [builtins fixtures/list.pyi]
 
@@ -1031,28 +1031,6 @@ class C:
    a: int = attr.ib()  # E: Name "a" already defined on line 16
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.int) -> __main__.C"
 [builtins fixtures/bool.pyi]
-
-[case testAttrsNewStyleClassPy2]
-# flags: --py2
-import attr
-@attr.s
-class Good(object):
-    pass
-@attr.s
-class Bad:  # E: attrs only works with new-style classes
-    pass
-@attr.s
-class SubclassOfBad(Bad):
-    pass
-[builtins_py2 fixtures/bool.pyi]
-
-[case testAttrsAutoAttribsPy2]
-# flags: --py2
-import attr
-@attr.s(auto_attribs=True)  # E: auto_attribs is not supported in Python 2
-class A(object):
-    x = attr.ib()
-[builtins_py2 fixtures/bool.pyi]
 
 [case testAttrsFrozenSubclass]
 import attr
@@ -1290,17 +1268,6 @@ class C:
     b = attr.ib(15)
 
 [builtins fixtures/attr.pyi]
-
-[case testAttrsKwOnlyPy2]
-# flags: --py2
-import attr
-@attr.s(kw_only=True)  # E: kw_only is not supported in Python 2
-class A(object):
-    x = attr.ib()
-@attr.s
-class B(object):
-    x = attr.ib(kw_only=True)  # E: kw_only is not supported in Python 2
-[builtins_py2 fixtures/bool.pyi]
 
 [case testAttrsDisallowUntypedWorksForward]
 # flags: --disallow-untyped-defs
@@ -1731,9 +1698,38 @@ class C:
     name: Union[str, None] = attr.ib(default=None)
     options: Mapping[str, Mapping[str, Any]] = attr.ib(
         default=None, converter=default_if_none(factory=dict) \
-        # E: Unsupported converter, only named functions and types are currently supported
+        # E: Unsupported converter, only named functions, types and lambdas are currently supported
     )
 [builtins fixtures/dict.pyi]
+
+[case testAttrsUnannotatedConverter]
+import attr
+
+def foo(value):
+    return value.split()
+
+@attr.s
+class Bar:
+    field = attr.ib(default=None, converter=foo)
+
+reveal_type(Bar)  # N: Revealed type is "def (field: Any =) -> __main__.Bar"
+bar = Bar("Hello")
+reveal_type(bar.field)  # N: Revealed type is "Any"
+
+[builtins fixtures/tuple.pyi]
+
+[case testAttrsLambdaConverter]
+import attr
+
+@attr.s
+class Bar:
+    name: str = attr.ib(converter=lambda s: s.lower())
+
+reveal_type(Bar)  # N: Revealed type is "def (name: Any) -> __main__.Bar"
+bar = Bar("Hello")
+reveal_type(bar.name)  # N: Revealed type is "builtins.str"
+
+[builtins fixtures/tuple.pyi]
 
 [case testAttrsNestedClass]
 from typing import List

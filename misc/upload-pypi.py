@@ -5,6 +5,8 @@ You must first tag the release, use `git push --tags` and wait for the wheel bui
 
 """
 
+from __future__ import annotations
+
 import argparse
 import contextlib
 import json
@@ -16,7 +18,7 @@ import tempfile
 import venv
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, Iterator, List
+from typing import Any, Iterator
 from urllib.request import urlopen
 
 BASE = "https://api.github.com/repos"
@@ -27,15 +29,17 @@ def is_whl_or_tar(name: str) -> bool:
     return name.endswith(".tar.gz") or name.endswith(".whl")
 
 
-def get_release_for_tag(tag: str) -> Dict[str, Any]:
+def get_release_for_tag(tag: str) -> dict[str, Any]:
     with urlopen(f"{BASE}/{REPO}/releases/tags/{tag}") as f:
         data = json.load(f)
+    assert isinstance(data, dict)
     assert data["tag_name"] == tag
     return data
 
 
-def download_asset(asset: Dict[str, Any], dst: Path) -> Path:
+def download_asset(asset: dict[str, Any], dst: Path) -> Path:
     name = asset["name"]
+    assert isinstance(name, str)
     download_url = asset["browser_download_url"]
     assert is_whl_or_tar(name)
     with urlopen(download_url) as src_file:
@@ -44,8 +48,8 @@ def download_asset(asset: Dict[str, Any], dst: Path) -> Path:
     return dst / name
 
 
-def download_all_release_assets(release: Dict[str, Any], dst: Path) -> None:
-    print(f"Downloading assets...")
+def download_all_release_assets(release: dict[str, Any], dst: Path) -> None:
+    print("Downloading assets...")
     with ThreadPoolExecutor() as e:
         for asset in e.map(lambda asset: download_asset(asset, dst), release["assets"]):
             print(f"Downloaded {asset}")
@@ -90,7 +94,7 @@ def tmp_twine() -> Iterator[Path]:
 def upload_dist(dist: Path, dry_run: bool = True) -> None:
     with tmp_twine() as twine:
         files = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
-        cmd: List[Any] = [twine, "upload"]
+        cmd: list[Any] = [twine, "upload"]
         cmd += files
         if dry_run:
             print("[dry run] " + " ".join(map(str, cmd)))

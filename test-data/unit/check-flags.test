@@ -366,6 +366,22 @@ def f() -> NoReturn:  # E: Implicit return in function which does not return
   non_trivial_function = 1
 [builtins fixtures/dict.pyi]
 
+[case testNoReturnImplicitReturnCheckInDeferredNode]
+# flags: --warn-no-return
+from typing import NoReturn
+
+def exit() -> NoReturn: ...
+
+def force_forward_reference() -> int:
+    return 4
+
+def f() -> NoReturn:
+    x
+    exit()
+
+x = force_forward_reference()
+[builtins fixtures/exception.pyi]
+
 [case testNoReturnNoWarnNoReturn]
 # flags: --warn-no-return
 from mypy_extensions import NoReturn
@@ -409,6 +425,44 @@ async def h() -> NoReturn:  # E: Implicit return in function which does not retu
   _ = f()
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testNoWarnNoReturn]
+# flags: --no-warn-no-return --strict-optional
+import typing
+
+def implicit_optional_return(arg) -> typing.Optional[str]:
+    if arg:
+        return "false"
+
+def unsound_implicit_return(arg) -> str:  # E: Incompatible return value type (implicitly returns "None", expected "str")
+    if arg:
+        return "false"
+
+def implicit_return_gen(arg) -> typing.Generator[int, None, typing.Optional[str]]:
+    yield 1
+
+def unsound_implicit_return_gen(arg) -> typing.Generator[int, None, str]:  # E: Incompatible return value type (implicitly returns "None", expected "str")
+    yield 1
+[builtins fixtures/dict.pyi]
+
+[case testNoWarnNoReturnNoStrictOptional]
+# flags: --no-warn-no-return --no-strict-optional
+import typing
+
+def implicit_optional_return(arg) -> typing.Optional[str]:
+    if arg:
+        return "false"
+
+def unsound_implicit_return(arg) -> str:
+    if arg:
+        return "false"
+
+def implicit_return_gen(arg) -> typing.Generator[int, None, typing.Optional[str]]:
+    yield 1
+
+def unsound_implicit_return_gen(arg) -> typing.Generator[int, None, str]:
+    yield 1
+[builtins fixtures/dict.pyi]
 
 [case testNoReturnImportFromTyping]
 from typing import NoReturn
@@ -1856,6 +1910,28 @@ def f() -> G:  # E: Missing type parameters for generic type "G"
 x: G[Any] = G()  # no error
 y: G = x  # E: Missing type parameters for generic type "G"
 
+[case testDisallowAnyGenericsForAliasesInRuntimeContext]
+# flags: --disallow-any-generics
+from typing import Any, TypeVar, Generic, Tuple
+
+T = TypeVar("T")
+class G(Generic[T]):
+    @classmethod
+    def foo(cls) -> T: ...
+
+A = G[Tuple[T, T]]
+A()  # E: Missing type parameters for generic type "A"
+A.foo()  # E: Missing type parameters for generic type "A"
+
+B = G
+B()
+B.foo()
+
+def foo(x: Any) -> None: ...
+foo(A)
+foo(A.foo)
+[builtins fixtures/classmethod.pyi]
+
 [case testDisallowSubclassingAny]
 # flags: --config-file tmp/mypy.ini
 import m
@@ -1939,40 +2015,6 @@ no_implicit_optional = true
 module = 'm'
 no_implicit_optional = false
 
-
-[case testNoImplicitOptionalPerModulePython2]
-# flags: --config-file tmp/mypy.ini --python-version 2.7
-import m
-
-[file m.py]
-def f(a = None):
-    # type: (str) -> int
-    return 0
-
-[file mypy.ini]
-\[mypy]
-no_implicit_optional = True
-\[mypy-m]
-no_implicit_optional = False
-
-
-[case testNoImplicitOptionalPerModulePython2PyProjectTOML]
-# flags: --config-file tmp/pyproject.toml --python-version 2.7
-import m
-
-[file m.py]
-def f(a = None):
-    # type: (str) -> int
-    return 0
-
-[file pyproject.toml]
-\[tool.mypy]
-no_implicit_optional = true
-\[[tool.mypy.overrides]]
-module = 'm'
-no_implicit_optional = false
-
-
 [case testDisableErrorCode]
 # flags: --disable-error-code attr-defined
 x = 'should be fine'
@@ -2027,3 +2069,41 @@ def f(x):
 y = 1
 f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
                   # N: Revealed type is "builtins.int"
+
+[case testPerModuleErrorCodes]
+# flags: --config-file tmp/mypy.ini
+import tests.foo
+import bar
+[file bar.py]
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+[file tests/__init__.py]
+[file tests/foo.py]
+x = []  # OK
+[file mypy.ini]
+\[mypy]
+strict = True
+
+\[mypy-tests.*]
+allow_untyped_defs = True
+allow_untyped_calls = True
+disable_error_code = var-annotated
+
+[case testPerModuleErrorCodesOverride]
+# flags: --config-file tmp/mypy.ini
+import tests.foo
+import bar
+[file bar.py]
+def foo() -> int: ...
+if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+[file tests/__init__.py]
+[file tests/foo.py]
+def foo() -> int: ...
+if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+42 + "no"  # type: ignore
+[file mypy.ini]
+\[mypy]
+enable_error_code = ignore-without-code, truthy-bool
+
+\[mypy-tests.*]
+disable_error_code = ignore-without-code

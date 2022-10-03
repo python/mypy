@@ -1,24 +1,27 @@
 """Intermediate representation of modules."""
 
-from typing import List, Tuple, Dict
+from __future__ import annotations
+
+from typing import Dict
 
 from mypyc.common import JsonDict
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import RType, deserialize_type
-from mypyc.ir.func_ir import FuncIR, FuncDecl
-from mypyc.ir.class_ir import ClassIR
 
 
 class ModuleIR:
     """Intermediate representation of a module."""
 
     def __init__(
-            self,
-            fullname: str,
-            imports: List[str],
-            functions: List[FuncIR],
-            classes: List[ClassIR],
-            final_names: List[Tuple[str, RType]]) -> None:
+        self,
+        fullname: str,
+        imports: list[str],
+        functions: list[FuncIR],
+        classes: list[ClassIR],
+        final_names: list[tuple[str, RType]],
+    ) -> None:
         self.fullname = fullname
         self.imports = imports[:]
         self.functions = functions
@@ -27,25 +30,25 @@ class ModuleIR:
 
     def serialize(self) -> JsonDict:
         return {
-            'fullname': self.fullname,
-            'imports': self.imports,
-            'functions': [f.serialize() for f in self.functions],
-            'classes': [c.serialize() for c in self.classes],
-            'final_names': [(k, t.serialize()) for k, t in self.final_names],
+            "fullname": self.fullname,
+            "imports": self.imports,
+            "functions": [f.serialize() for f in self.functions],
+            "classes": [c.serialize() for c in self.classes],
+            "final_names": [(k, t.serialize()) for k, t in self.final_names],
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'ModuleIR':
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> ModuleIR:
         return ModuleIR(
-            data['fullname'],
-            data['imports'],
-            [ctx.functions[FuncDecl.get_id_from_json(f)] for f in data['functions']],
-            [ClassIR.deserialize(c, ctx) for c in data['classes']],
-            [(k, deserialize_type(t, ctx)) for k, t in data['final_names']],
+            data["fullname"],
+            data["imports"],
+            [ctx.functions[FuncDecl.get_id_from_json(f)] for f in data["functions"]],
+            [ClassIR.deserialize(c, ctx) for c in data["classes"]],
+            [(k, deserialize_type(t, ctx)) for k, t in data["final_names"]],
         )
 
 
-def deserialize_modules(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, ModuleIR]:
+def deserialize_modules(data: dict[str, JsonDict], ctx: DeserMaps) -> dict[str, ModuleIR]:
     """Deserialize a collection of modules.
 
     The modules can contain dependencies on each other.
@@ -62,18 +65,19 @@ def deserialize_modules(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, 
     """
     for mod in data.values():
         # First create ClassIRs for every class so that we can construct types and whatnot
-        for cls in mod['classes']:
-            ir = ClassIR(cls['name'], cls['module_name'])
+        for cls in mod["classes"]:
+            ir = ClassIR(cls["name"], cls["module_name"])
             assert ir.fullname not in ctx.classes, "Class %s already in map" % ir.fullname
             ctx.classes[ir.fullname] = ir
 
     for mod in data.values():
         # Then deserialize all of the functions so that methods are available
         # to the class deserialization.
-        for method in mod['functions']:
+        for method in mod["functions"]:
             func = FuncIR.deserialize(method, ctx)
             assert func.decl.id not in ctx.functions, (
-                "Method %s already in map" % func.decl.fullname)
+                "Method %s already in map" % func.decl.fullname
+            )
             ctx.functions[func.decl.id] = func
 
     return {k: ModuleIR.deserialize(v, ctx) for k, v in data.items()}

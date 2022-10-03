@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable
 from enum import IntEnum
 from types import FrameType
 from typing import Any, Union
-from typing_extensions import Final, TypeAlias, final
+from typing_extensions import Final, Never, TypeAlias, final
 
 NSIG: int
 
@@ -64,7 +64,7 @@ SIG_IGN: Handlers
 _SIGNUM: TypeAlias = int | Signals
 _HANDLER: TypeAlias = Union[Callable[[int, FrameType | None], Any], int, Handlers, None]
 
-def default_int_handler(__signalnum: int, __frame: FrameType | None) -> None: ...
+def default_int_handler(__signalnum: int, __frame: FrameType | None) -> Never: ...
 
 if sys.version_info >= (3, 10):  # arguments changed in 3.10.2
     def getsignal(signalnum: _SIGNUM) -> _HANDLER: ...
@@ -174,11 +174,7 @@ if sys.version_info >= (3, 8):
     def valid_signals() -> set[Signals]: ...
     def raise_signal(__signalnum: _SIGNUM) -> None: ...
 
-if sys.version_info >= (3, 7):
-    def set_wakeup_fd(fd: int, *, warn_on_full_buffer: bool = ...) -> int: ...
-
-else:
-    def set_wakeup_fd(fd: int) -> int: ...
+def set_wakeup_fd(fd: int, *, warn_on_full_buffer: bool = ...) -> int: ...
 
 if sys.version_info >= (3, 9):
     if sys.platform == "linux":

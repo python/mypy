@@ -54,10 +54,16 @@ python3 runtests.py
 You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
 ```
 tox -e py
+
+# Or some specific python version:
+tox -e py39
+
+# Or some specific command:
+tox -e lint
 ```
 
 Some useful commands for running specific tests include:
-```
+```bash
 # Use mypy to check mypy's own code
 python3 runtests.py self
 # or equivalently:
@@ -71,6 +77,9 @@ pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 
 # Run the linter
 flake8
+
+# Run formatters
+black . && isort .
 ```
 
 For an in-depth guide on running and writing tests,
@@ -131,10 +140,9 @@ advice about good pull requests for open-source projects applies; we
 have [our own writeup](https://github.com/python/mypy/wiki/Good-Pull-Request)
 of this advice.
 
-See also our [coding conventions](https://github.com/python/mypy/wiki/Code-Conventions) --
-which consist mainly of a reference to
-[PEP 8](https://www.python.org/dev/peps/pep-0008/) -- for the code you
-put in the pull request.
+We are using `black` and `isort` to enforce a consistent coding style.
+Run `black . && isort .` before your commits, otherwise you would receive
+a CI failure.
 
 Also, do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is merged.

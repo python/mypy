@@ -57,10 +57,10 @@ stubs.)
 If you have installed typed packages in another Python installation or
 environment, mypy won't automatically find them. One option is to
 install another copy of those packages in the environment in which you
-use to run mypy. Alternatively, you can use the
+installed mypy. Alternatively, you can use the
 :option:`--python-executable <mypy --python-executable>` flag to point
-to the target Python executable, and mypy will find packages installed
-for that Python executable.
+to the Python executable for another environment, and mypy will find
+packages installed for that Python executable.
 
 Note that mypy does not support some more advanced import features,
 such as zip imports and custom import hooks.
@@ -189,11 +189,6 @@ The ``setup.py`` might look like this:
         package_data={"package_c-stubs": ["__init__.pyi", "lib.pyi"]},
         packages=["package_c-stubs"]
     )
-
-If you have separate stubs for Python 2 and Python 3, you can place
-the Python 2 stubs in a directory with the suffix ``-python2-stubs``.
-We recommend that Python 2 and Python 3 stubs are bundled together for
-simplicity, instead of distributing them separately.
 
 The instructions above are enough to ensure that the built wheels
 contain the appropriate files. However, to ensure inclusion inside the

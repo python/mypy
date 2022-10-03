@@ -1,18 +1,25 @@
 """Simple type inference for decorated functions during semantic analysis."""
 
-from typing import Optional
+from __future__ import annotations
 
-from mypy.nodes import Expression, Decorator, CallExpr, FuncDef, RefExpr, Var, ARG_POS
-from mypy.types import (
-    Type, CallableType, AnyType, TypeOfAny, TypeVarType, ProperType, get_proper_type
-)
-from mypy.typeops import function_type
-from mypy.typevars import has_no_typevars
+from mypy.nodes import ARG_POS, CallExpr, Decorator, Expression, FuncDef, RefExpr, Var
 from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.typeops import function_type
+from mypy.types import (
+    AnyType,
+    CallableType,
+    ProperType,
+    Type,
+    TypeOfAny,
+    TypeVarType,
+    get_proper_type,
+)
+from mypy.typevars import has_no_typevars
 
 
-def infer_decorator_signature_if_simple(dec: Decorator,
-                                        analyzer: SemanticAnalyzerInterface) -> None:
+def infer_decorator_signature_if_simple(
+    dec: Decorator, analyzer: SemanticAnalyzerInterface
+) -> None:
     """Try to infer the type of the decorated function.
 
     This lets us resolve additional references to decorated functions
@@ -30,8 +37,9 @@ def infer_decorator_signature_if_simple(dec: Decorator,
                 [ARG_POS],
                 [None],
                 AnyType(TypeOfAny.special_form),
-                analyzer.named_type('builtins.function'),
-                name=dec.var.name)
+                analyzer.named_type("builtins.function"),
+                name=dec.var.name,
+            )
         elif isinstance(dec.func.type, CallableType):
             dec.var.type = dec.func.type
         return
@@ -47,7 +55,7 @@ def infer_decorator_signature_if_simple(dec: Decorator,
     if decorator_preserves_type:
         # No non-identity decorators left. We can trivially infer the type
         # of the function here.
-        dec.var.type = function_type(dec.func, analyzer.named_type('builtins.function'))
+        dec.var.type = function_type(dec.func, analyzer.named_type("builtins.function"))
     if dec.decorators:
         return_type = calculate_return_type(dec.decorators[0])
         if return_type and isinstance(return_type, AnyType):
@@ -58,7 +66,7 @@ def infer_decorator_signature_if_simple(dec: Decorator,
         if sig:
             # The outermost decorator always returns the same kind of function,
             # so we know that this is the type of the decorated function.
-            orig_sig = function_type(dec.func, analyzer.named_type('builtins.function'))
+            orig_sig = function_type(dec.func, analyzer.named_type("builtins.function"))
             sig.name = orig_sig.items[0].name
             dec.var.type = sig
 
@@ -72,7 +80,7 @@ def is_identity_signature(sig: Type) -> bool:
     return False
 
 
-def calculate_return_type(expr: Expression) -> Optional[ProperType]:
+def calculate_return_type(expr: Expression) -> ProperType | None:
     """Return the return type if we can calculate it.
 
     This only uses information available during semantic analysis so this
@@ -96,7 +104,7 @@ def calculate_return_type(expr: Expression) -> Optional[ProperType]:
     return None
 
 
-def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
+def find_fixed_callable_return(expr: Expression) -> CallableType | None:
     """Return the return type, if expression refers to a callable that returns a callable.
 
     But only do this if the return type has no type variables. Return None otherwise.

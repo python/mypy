@@ -1,13 +1,39 @@
+from __future__ import annotations
+
 from typing import Iterable
 
 from mypy_extensions import trait
 
 from mypy.types import (
-    Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneType, ErasedType, DeletedType,
-    TypeVarType, LiteralType, Instance, CallableType, TupleType, TypedDictType, UnionType,
-    Overloaded, TypeType, CallableArgument, UnboundType, TypeList, StarType, EllipsisType,
-    PlaceholderType, PartialType, RawExpressionType, TypeAliasType, ParamSpecType, Parameters,
-    UnpackType, TypeVarTupleType,
+    AnyType,
+    CallableArgument,
+    CallableType,
+    DeletedType,
+    EllipsisType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    PlaceholderType,
+    RawExpressionType,
+    StarType,
+    SyntheticTypeVisitor,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
 )
 
 

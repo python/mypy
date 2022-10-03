@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self
 from collections.abc import Iterable
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, overload
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -23,7 +23,10 @@ class SharedMemory:
 
 class ShareableList(Generic[_SLT]):
     shm: SharedMemory
-    def __init__(self, sequence: Iterable[_SLT] | None = ..., *, name: str | None = ...) -> None: ...
+    @overload
+    def __init__(self, sequence: None = ..., *, name: str | None = ...) -> None: ...
+    @overload
+    def __init__(self, sequence: Iterable[_SLT], *, name: str | None = ...) -> None: ...
     def __getitem__(self, position: int) -> _SLT: ...
     def __setitem__(self, position: int, value: _SLT) -> None: ...
     def __reduce__(self: Self) -> tuple[Self, tuple[_SLT, ...]]: ...
