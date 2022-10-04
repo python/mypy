@@ -218,7 +218,7 @@ class Options:
         # A comma-separated list packages for mypy to type check
         self.packages: list[str] | None = None
 
-        # A comma-separated list modules for mypy to type check
+        # A comma-separated list of modules for mypy to type check
         self.modules: list[str] | None = None
 
         # Write junit.xml to given file
