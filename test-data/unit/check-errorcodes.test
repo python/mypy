@@ -952,3 +952,15 @@ def bar() -> None: ...
 # This is inconsistent with how --warn-no-return behaves in general
 # but we want to minimize fallout of finally handling empty bodies.
 def baz() -> Optional[int]: ...  # OK
+
+[case testDedicatedErrorCodeTypeAbstract]
+import abc
+from typing import TypeVar, Type
+
+class C(abc.ABC):
+    @abc.abstractmethod
+    def foo(self) -> None: ...
+
+T = TypeVar("T")
+def test(tp: Type[T]) -> T: ...
+test(C)  # E: Only concrete class can be given where "Type[C]" is expected  [type-abstract]

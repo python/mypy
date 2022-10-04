@@ -1321,8 +1321,7 @@ def f(x: Union[A, B]) -> None:
         f(x)
 [builtins fixtures/isinstance.pyi]
 
-[case testIsinstanceWithOverlappingPromotionTypes-skip]
-# Currently disabled: see https://github.com/python/mypy/issues/6060 for context
+[case testIsinstanceWithOverlappingPromotionTypes]
 from typing import Union
 
 class FloatLike: pass
@@ -2890,6 +2889,13 @@ import mod
 
 if hasattr(mod, "y"):
     reveal_type(mod.y)  # N: Revealed type is "Any"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+else:
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+
+if hasattr(mod, "x"):
+    mod.y  # E: Module has no attribute "y"
     reveal_type(mod.x)  # N: Revealed type is "builtins.int"
 else:
     mod.y  # E: Module has no attribute "y"

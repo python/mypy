@@ -2394,9 +2394,9 @@ a: Union[int, float]
 b: int
 c: float
 
-reveal_type(a + a)  # N: Revealed type is "builtins.float"
-reveal_type(a + b)  # N: Revealed type is "builtins.float"
-reveal_type(b + a)  # N: Revealed type is "builtins.float"
+reveal_type(a + a)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+reveal_type(a + b)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+reveal_type(b + a)  # N: Revealed type is "Union[builtins.int, builtins.float]"
 reveal_type(a + c)  # N: Revealed type is "builtins.float"
 reveal_type(c + a)  # N: Revealed type is "builtins.float"
 [builtins fixtures/ops.pyi]
@@ -2535,8 +2535,8 @@ def sum(x: Iterable[T]) -> Union[T, int]: ...
 def len(x: Iterable[T]) -> int: ...
 
 x = [1.1, 2.2, 3.3]
-reveal_type(sum(x))  # N: Revealed type is "builtins.float"
-reveal_type(sum(x) / len(x))  # N: Revealed type is "builtins.float"
+reveal_type(sum(x))  # N: Revealed type is "Union[builtins.float, builtins.int]"
+reveal_type(sum(x) / len(x))  # N: Revealed type is "Union[builtins.float, builtins.int]"
 [builtins fixtures/floatdict.pyi]
 
 [case testOperatorWithEmptyListAndSum]

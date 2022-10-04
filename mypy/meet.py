@@ -121,7 +121,11 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return original_declared
     if isinstance(declared, UnionType):
         return make_simplified_union(
-            [narrow_declared_type(x, narrowed) for x in declared.relevant_items()]
+            [
+                narrow_declared_type(x, narrowed)
+                for x in declared.relevant_items()
+                if is_overlapping_types(x, narrowed, ignore_promotions=True)
+            ]
         )
     if is_enum_overlapping_union(declared, narrowed):
         return original_narrowed
