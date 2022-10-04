@@ -30,6 +30,7 @@ def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Insta
                 if isinstance(tuple_type, TupleType):
                     # Make the import here to avoid cyclic imports.
                     import mypy.typeops
+
                     return mypy.typeops.tuple_fallback(tuple_type)
 
     if not superclass.type_vars:
