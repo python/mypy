@@ -215,6 +215,12 @@ class Options:
         # supports globbing
         self.files: list[str] | None = None
 
+        # A list of packages for mypy to type check
+        self.packages: list[str] | None = None
+
+        # A list of modules for mypy to type check
+        self.modules: list[str] | None = None
+
         # Write junit.xml to given file
         self.junit_xml: str | None = None
 
