@@ -2542,9 +2542,9 @@ class PromoteExpr(Expression):
 
     __slots__ = ("type",)
 
-    type: mypy.types.Type
+    type: mypy.types.ProperType
 
-    def __init__(self, type: mypy.types.Type) -> None:
+    def __init__(self, type: mypy.types.ProperType) -> None:
         super().__init__()
         self.type = type
 
@@ -2769,7 +2769,7 @@ class TypeInfo(SymbolNode):
     # even though it's not a subclass in Python.  The non-standard
     # `@_promote` decorator introduces this, and there are also
     # several builtin examples, in particular `int` -> `float`.
-    _promote: list[mypy.types.Type]
+    _promote: list[mypy.types.ProperType]
 
     # This is used for promoting native integer types such as 'i64' to
     # 'int'. (_promote is used for the other direction.) This only
@@ -3100,7 +3100,12 @@ class TypeInfo(SymbolNode):
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data["bases"]]
-        ti._promote = [mypy.types.deserialize_type(p) for p in data["_promote"]]
+        _promote = []
+        for p in data["_promote"]:
+            t = mypy.types.deserialize_type(p)
+            assert isinstance(t, mypy.types.ProperType)
+            _promote.append(t)
+        ti._promote = _promote
         ti.declared_metaclass = (
             None
             if data["declared_metaclass"] is None

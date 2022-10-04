@@ -141,6 +141,7 @@ from mypy.types import (
     StarType,
     TupleType,
     Type,
+    TypeAliasType,
     TypedDictType,
     TypeOfAny,
     TypeType,
@@ -195,10 +196,12 @@ class TooManyUnions(Exception):
     """
 
 
-def allow_fast_container_literal(t: ProperType) -> bool:
+def allow_fast_container_literal(t: Type) -> bool:
+    if isinstance(t, TypeAliasType) and t.is_recursive:
+        return False
+    t = get_proper_type(t)
     return isinstance(t, Instance) or (
-        isinstance(t, TupleType)
-        and all(allow_fast_container_literal(get_proper_type(it)) for it in t.items)
+        isinstance(t, TupleType) and all(allow_fast_container_literal(it) for it in t.items)
     )
 
 
@@ -4603,7 +4606,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #
         # TODO: Always create a union or at least in more cases?
         if isinstance(get_proper_type(self.type_context[-1]), UnionType):
-            res = make_simplified_union([if_type, full_context_else_type])
+            res: Type = make_simplified_union([if_type, full_context_else_type])
         else:
             res = join.join_types(if_type, else_type)
 
