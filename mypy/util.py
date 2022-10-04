@@ -519,6 +519,10 @@ def parse_gray_color(cup: bytes) -> str:
     return gray
 
 
+def get_force_color_env_variable() -> int:
+    return int(os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0")))
+
+
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 
@@ -531,7 +535,7 @@ class FancyFormatter:
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
             return
-        force_color = int(os.getenv("MYPY_FORCE_COLOR", "0"))
+        force_color = get_force_color_env_variable()
         if not force_color and (not f_out.isatty() or not f_err.isatty()):
             self.dummy_term = True
             return
