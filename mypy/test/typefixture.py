@@ -66,6 +66,7 @@ class TypeFixture:
         self.s1 = make_type_var("S", 1, [], self.o, variance)  # S`1 (type variable)
         self.sf = make_type_var("S", -2, [], self.o, variance)  # S`-2 (type variable)
         self.sf1 = make_type_var("S", -1, [], self.o, variance)  # S`-1 (type variable)
+        self.u = make_type_var("U", 3, [], self.o, variance)  # U`3 (type variable)
 
         self.ts = make_type_var_tuple("Ts", 1, self.o)  # Ts`1 (type var tuple)
         self.ss = make_type_var_tuple("Ss", 2, self.o)  # Ss`2 (type var tuple)

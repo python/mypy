@@ -91,7 +91,7 @@ from mypyc.ir.ops import (
     SetMem,
     Unreachable,
 )
-from mypyc.ir.rtypes import RInstance
+from mypyc.ir.rtypes import RInstance, is_fixed_width_rtype
 
 # If True, print out all always-defined attributes of native classes (to aid
 # debugging and testing)
@@ -119,6 +119,11 @@ def analyze_always_defined_attrs(class_irs: list[ClassIR]) -> None:
     seen = set()
     for cl in class_irs:
         update_always_defined_attrs_using_subclasses(cl, seen)
+
+    # Final pass: detect attributes that need to use a bitmap to track definedness
+    seen = set()
+    for cl in class_irs:
+        detect_undefined_bitmap(cl, seen)
 
 
 def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> None:
@@ -407,3 +412,17 @@ def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: set[ClassIR]
                 removed.add(attr)
     cl._always_initialized_attrs -= removed
     seen.add(cl)
+
+
+def detect_undefined_bitmap(cl: ClassIR, seen: Set[ClassIR]) -> None:
+    if cl in seen:
+        return
+    seen.add(cl)
+    for base in cl.base_mro[1:]:
+        detect_undefined_bitmap(cl, seen)
+
+    if len(cl.base_mro) > 1:
+        cl.bitmap_attrs.extend(cl.base_mro[1].bitmap_attrs)
+    for n, t in cl.attributes.items():
+        if is_fixed_width_rtype(t) and not cl.is_always_defined(n):
+            cl.bitmap_attrs.append(n)

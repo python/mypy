@@ -79,8 +79,8 @@ package_data += find_package_data(os.path.join("mypy", "xml"), ["*.xsd", "*.xslt
 
 USE_MYPYC = False
 # To compile with mypyc, a mypyc checkout must be present on the PYTHONPATH
-if len(sys.argv) > 1 and sys.argv[1] == "--use-mypyc":
-    sys.argv.pop(1)
+if len(sys.argv) > 1 and "--use-mypyc" in sys.argv:
+    sys.argv.remove("--use-mypyc")
     USE_MYPYC = True
 if os.getenv("MYPY_USE_MYPYC", None) == "1":
     USE_MYPYC = True
@@ -220,6 +220,7 @@ setup(
         "dmypy": "psutil >= 4.0",
         "python2": "typed_ast >= 1.4.0, < 2",
         "reports": "lxml",
+        "install-types": "pip",
     },
     python_requires=">=3.7",
     include_package_data=True,

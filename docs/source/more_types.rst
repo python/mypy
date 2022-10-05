@@ -804,10 +804,9 @@ classes are generic, self-type allows giving them precise signatures:
 .. code-block:: python
 
    T = TypeVar('T')
+   Q = TypeVar('Q', bound='Base[Any]')
 
    class Base(Generic[T]):
-       Q = TypeVar('Q', bound='Base[T]')
-
        def __init__(self, item: T) -> None:
            self.item = item
 

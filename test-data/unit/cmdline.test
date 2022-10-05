@@ -130,17 +130,13 @@ two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_myp
 two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
-[case testFlagsFile-skip]
+-- Note that we use `----`, because this is how `--` is escaped while `--` is a comment starter.
+[case testFlagsFile]
 # cmd: mypy @flagsfile
 [file flagsfile]
---always-true=FLAG
+----always-true=FLAG
 main.py
 [file main.py]
-# TODO: this test case passes if you try the exact same thing
-# outside of the test suite. what's going on? it's not related
-# to the extra flags that testcmdline adds. and things work
-# in the test suite with py2 (perhaps because it's a
-# special option)
 x: int
 FLAG = False
 if not FLAG:

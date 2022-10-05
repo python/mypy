@@ -178,13 +178,11 @@ _ButtonCommand: TypeAlias = str | Callable[[], Any]  # accepts string of tcl cod
 _CanvasItemId: TypeAlias = int
 _Color: TypeAlias = str  # typically '#rrggbb', '#rgb' or color names.
 _Compound: TypeAlias = Literal["top", "left", "center", "right", "bottom", "none"]  # -compound in manual page named 'options'
-_Cursor: TypeAlias = Union[
-    str, tuple[str], tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]
-]  # manual page: Tk_GetCursor
-_EntryValidateCommand: TypeAlias = (
-    str | list[str] | tuple[str, ...] | Callable[[], bool]
-)  # example when it's sequence:  entry['invalidcommand'] = [entry.register(print), '%P']
-_GridIndex: TypeAlias = int | str | Literal["all"]
+# manual page: Tk_GetCursor
+_Cursor: TypeAlias = Union[str, tuple[str], tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]
+# example when it's sequence:  entry['invalidcommand'] = [entry.register(print), '%P']
+_EntryValidateCommand: TypeAlias = str | list[str] | tuple[str, ...] | Callable[[], bool]
+_GridIndex: TypeAlias = int | str
 _ImageSpec: TypeAlias = _Image | str  # str can be from e.g. tkinter.image_names()
 _Relief: TypeAlias = Literal["raised", "sunken", "flat", "ridge", "solid", "groove"]  # manual page: Tk_GetRelief
 _ScreenUnits: TypeAlias = str | float  # Often the right type instead of int. Manual page: Tk_GetPixels

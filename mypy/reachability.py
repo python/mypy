@@ -13,6 +13,7 @@ from mypy.nodes import (
     CallExpr,
     ComparisonExpr,
     Expression,
+    FuncDef,
     IfStmt,
     Import,
     ImportAll,
@@ -274,7 +275,7 @@ def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
     return TRUTH_VALUE_UNKNOWN
 
 
-def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int] | tuple[int, ...]:
+def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int, ...]:
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, TupleExpr):
@@ -356,4 +357,7 @@ class MarkImportsMypyOnlyVisitor(TraverserVisitor):
         node.is_mypy_only = True
 
     def visit_import_all(self, node: ImportAll) -> None:
+        node.is_mypy_only = True
+
+    def visit_func_def(self, node: FuncDef) -> None:
         node.is_mypy_only = True

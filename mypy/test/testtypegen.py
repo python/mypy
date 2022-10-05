@@ -34,6 +34,7 @@ class TypeExportSuite(DataSuite):
             options.show_traceback = True
             options.export_types = True
             options.preserve_asts = True
+            options.allow_empty_bodies = True
             result = build.build(
                 sources=[BuildSource("main", None, src)],
                 options=options,
@@ -53,7 +54,7 @@ class TypeExportSuite(DataSuite):
             # Filter nodes that should be included in the output.
             keys = []
             for node in nodes:
-                if node.line is not None and node.line != -1 and map[node]:
+                if node.line != -1 and map[node]:
                     if ignore_node(node) or node in ignored:
                         continue
                     if re.match(mask, short_type(node)) or (

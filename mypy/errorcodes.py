@@ -33,7 +33,9 @@ ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "Genera
 CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
-VALID_TYPE: Final = ErrorCode("valid-type", "Check that type (annotation) is valid", "General")
+VALID_TYPE: Final[ErrorCode] = ErrorCode(
+    "valid-type", "Check that type (annotation) is valid", "General"
+)
 VAR_ANNOTATED: Final = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
 )
@@ -46,7 +48,7 @@ RETURN: Final[ErrorCode] = ErrorCode(
 RETURN_VALUE: Final[ErrorCode] = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
-ASSIGNMENT: Final = ErrorCode(
+ASSIGNMENT: Final[ErrorCode] = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
 )
 TYPE_ARG: Final = ErrorCode("type-arg", "Check that generic type arguments are present", "General")
@@ -78,6 +80,9 @@ FUNC_RETURNS_VALUE: Final = ErrorCode(
 ABSTRACT: Final = ErrorCode(
     "abstract", "Prevent instantiation of classes with abstract attributes", "General"
 )
+TYPE_ABSTRACT: Final = ErrorCode(
+    "type-abstract", "Require only concrete classes where Type[...] is expected", "General"
+)
 VALID_NEWTYPE: Final = ErrorCode(
     "valid-newtype", "Check that argument 2 to NewType is valid", "General"
 )
@@ -93,6 +98,16 @@ EXIT_RETURN: Final = ErrorCode(
 LITERAL_REQ: Final = ErrorCode("literal-required", "Check that value is a literal", "General")
 UNUSED_COROUTINE: Final = ErrorCode(
     "unused-coroutine", "Ensure that all coroutines are used", "General"
+)
+# TODO: why do we need the explicit type here? Without it mypyc CI builds fail with
+# mypy/message_registry.py:37: error: Cannot determine type of "EMPTY_BODY"  [has-type]
+EMPTY_BODY: Final[ErrorCode] = ErrorCode(
+    "empty-body",
+    "A dedicated error code to opt out return errors for empty/trivial bodies",
+    "General",
+)
+SAFE_SUPER: Final = ErrorCode(
+    "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
 )
 
 # These error codes aren't enabled by default.
@@ -121,6 +136,12 @@ NO_ANY_RETURN: Final = ErrorCode(
 )
 UNREACHABLE: Final = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
+)
+PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
+    "partially-defined",
+    "Warn about variables that are defined only in some execution paths",
+    "General",
+    default_enabled=False,
 )
 REDUNDANT_EXPR: Final = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False

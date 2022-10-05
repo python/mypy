@@ -120,8 +120,10 @@ reveal_type(x)  # N: Revealed type is "mypy_extensions.i32"
 
 y = 1
 if int():
+    # We don't narrow an int down to i32, since they have different
+    # representations.
     y = i32(1)
-    reveal_type(y)  # N: Revealed type is "mypy_extensions.i32"
+    reveal_type(y)  # N: Revealed type is "builtins.int"
 reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
@@ -149,3 +151,36 @@ def fi32(x: i32) -> None: pass
 reveal_type(meet(ff, fi32))  # N: Revealed type is "<nothing>"
 reveal_type(meet(fi32, ff))  # N: Revealed type is "<nothing>"
 [builtins fixtures/dict.pyi]
+
+[case testNativeIntForLoopRange]
+from mypy_extensions import i64, i32
+
+for a in range(i64(5)):
+    reveal_type(a)  # N: Revealed type is "mypy_extensions.i64"
+
+for b in range(0, i32(5)):
+    reveal_type(b)  # N: Revealed type is "mypy_extensions.i32"
+
+for c in range(i64(0), 5):
+    reveal_type(c)  # N: Revealed type is "mypy_extensions.i64"
+
+for d in range(i64(0), i64(5)):
+    reveal_type(d)  # N: Revealed type is "mypy_extensions.i64"
+
+for e in range(i64(0), i32(5)):
+    reveal_type(e)  # N: Revealed type is "builtins.int"
+
+for f in range(0, i64(3), 2):
+    reveal_type(f)  # N: Revealed type is "mypy_extensions.i64"
+
+n = 5
+for g in range(0, n, i64(2)):
+    reveal_type(g)  # N: Revealed type is "mypy_extensions.i64"
+[builtins fixtures/primitives.pyi]
+
+[case testNativeIntComprehensionRange]
+from mypy_extensions import i64, i32
+
+reveal_type([a for a in range(i64(5))])  # N: Revealed type is "builtins.list[mypy_extensions.i64]"
+[reveal_type(a) for a in range(0, i32(5))]  # N: Revealed type is "mypy_extensions.i32"
+[builtins fixtures/primitives.pyi]

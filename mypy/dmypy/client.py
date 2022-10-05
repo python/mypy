@@ -19,7 +19,7 @@ from typing import Any, Callable, Mapping, NoReturn
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
-from mypy.util import check_python_version, get_terminal_width
+from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
@@ -653,7 +653,7 @@ def request(
     args["command"] = command
     # Tell the server whether this request was initiated from a human-facing terminal,
     # so that it can format the type checking output accordingly.
-    args["is_tty"] = sys.stdout.isatty() or int(os.getenv("MYPY_FORCE_COLOR", "0")) > 0
+    args["is_tty"] = sys.stdout.isatty() or should_force_color()
     args["terminal_width"] = get_terminal_width()
     bdata = json.dumps(args).encode("utf8")
     _, name = get_status(status_file)
@@ -665,6 +665,10 @@ def request(
         return {"error": str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
     else:
+        # Display debugging output written to stdout in the server process for convenience.
+        stdout = response.get("stdout")
+        if stdout:
+            sys.stdout.write(stdout)
         return response
 
 
