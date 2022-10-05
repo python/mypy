@@ -61,8 +61,8 @@ OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "pl
 }
 
 # Features that are currently incomplete/experimental
-TYPE_VAR_TUPLE = "TypeVarTuple"
-INCOMPLETE_FEATURES = {TYPE_VAR_TUPLE}
+TYPE_VAR_TUPLE: Final = "TypeVarTuple"
+INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE,))
 
 
 class Options:
