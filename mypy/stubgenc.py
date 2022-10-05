@@ -359,13 +359,6 @@ def generate_c_function_stub(
                         ret=strip_or_import(signature.ret_type, module, imports),
                     )
                 )
-            output.append(
-                "def {function}({args}) -> {ret}: ...".format(
-                    function=name,
-                    args=", ".join(args),
-                    ret=strip_or_import(signature.ret_type, module, imports),
-                )
-            )
 
 
 def strip_or_import(typ: str, module: ModuleType, imports: list[str]) -> str:
