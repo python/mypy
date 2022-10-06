@@ -2743,3 +2743,19 @@ def f():
     return 0
 [out]
 def f(): ...
+
+[case testClassNamedtuple_semanal]
+import typing
+import collections, x
+class X(typing.NamedTuple("X", [("a", int), ("b", int)])):
+    def m(self):
+       pass
+
+[out]
+from _typeshed import Incomplete
+from typing import NamedTuple
+
+class X(NamedTuple):
+    a: int
+    b: int
+    def m(self) -> None: ...

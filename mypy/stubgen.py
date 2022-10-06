@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping, cast
+from typing import Iterable, List, Mapping
 from typing_extensions import Final
 
 import mypy.build
@@ -94,6 +94,7 @@ from mypy.nodes import (
     ListExpr,
     MemberExpr,
     MypyFile,
+    NamedTupleExpr,
     NameExpr,
     OverloadedFuncDef,
     Statement,
@@ -939,6 +940,16 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add(f"({', '.join(base_types)})")
         self.add(":\n")
         n = len(self._output)
+
+        if "namedtuple" in base_types or "NamedTuple" in base_types:
+            for expr in o.base_type_exprs:
+                items: list[tuple[str | None, str | None]] = []
+                if isinstance(expr, CallExpr):
+                    parameters = self.process_namedtuple_parameters(expr.args[1])
+                    if parameters is not None:
+                        items.extend(parameters)
+                self.print_named_tuple(items)
+
         self._indent += "    "
         self._vars.append([])
         super().visit_class_def(o)
@@ -967,6 +978,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             elif isinstance(base, IndexExpr):
                 p = AliasPrinter(self)
                 base_types.append(base.accept(p))
+            elif isinstance(base, CallExpr) and isinstance(base.analyzed, NamedTupleExpr):
+                base_types.append("NamedTuple")
+
         return base_types
 
     def visit_block(self, o: Block) -> None:
@@ -1032,39 +1046,49 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             and (callee.name == "namedtuple" or callee.name == "NamedTuple")
         )
 
+    def process_namedtuple_parameters(
+        self, rvalue: Expression
+    ) -> list[tuple[str | None, str | None]] | None:
+        if isinstance(rvalue, StrExpr):
+            items: list[tuple[str | None, str | None]] = [
+                (key, "Incomplete") for key in rvalue.value.replace(",", " ").split()
+            ]
+        elif isinstance(rvalue, (ListExpr, TupleExpr)):
+            items = [self.process_namedtuple_type(item) for item in rvalue.items]
+        else:
+            return None
+        return list(filter(lambda v: v[0] is not None and v[0].isidentifier(), items))
+
     def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
         if self._state != EMPTY:
             self.add("\n")
-        if isinstance(rvalue.args[1], StrExpr):
-            items: list[tuple[str | None, str | None]] = [
-                (key, "Incomplete") for key in rvalue.args[1].value.replace(",", " ").split()
-            ]
-        elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
-            list_items = cast(List[StrExpr], rvalue.args[1].items)
-            items = [self.process_namedtuple_type(item) for item in list_items]
-        else:
+
+        items = self.process_namedtuple_parameters(rvalue.args[1])
+        if items is None:
             self.add(f"{self._indent}{lvalue.name}: Incomplete")
             self.import_tracker.require_name("Incomplete")
             return
+
         self.import_tracker.require_name("NamedTuple")
         self.add(f"{self._indent}class {lvalue.name}(NamedTuple):")
 
-        validitems = list(filter(lambda v: v[0] is not None and v[0].isidentifier(), items))
-
-        if len(validitems) == 0:
+        if len(items) == 0:
             self.add(" ...\n")
         else:
-            self.import_tracker.require_name("Incomplete")
             self.add("\n")
-            for item in validitems:
-                key, rtype = item
-                self.add(f"{self._indent}    {key}: {rtype}\n")
+            self.print_named_tuple(items)
         self._state = CLASS
 
-    def process_namedtuple_type(self, item: StrExpr | TupleExpr) -> tuple[str | None, str | None]:
+    def print_named_tuple(self, items: list[tuple[str | None, str | None]]) -> None:
+        self.import_tracker.require_name("Incomplete")
+        for item in items:
+            key, rtype = item
+            self.add(f"{self._indent}    {key}: {rtype}\n")
+
+    def process_namedtuple_type(self, item: Expression) -> tuple[str | None, str | None]:
         if isinstance(item, StrExpr):
             return item.value, "Incomplete"
-        elif isinstance(item.items[0], StrExpr):
+        elif isinstance(item, TupleExpr) and isinstance(item.items[0], StrExpr):
             p = AliasPrinter(self)
             return item.items[0].value, item.items[1].accept(p)
         return None, None
