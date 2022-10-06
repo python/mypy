@@ -36,6 +36,7 @@ __all__ = (
 )
 
 _T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
 _T1 = TypeVar("_T1")
 _T2 = TypeVar("_T2")
 _T3 = TypeVar("_T3")
@@ -265,21 +266,25 @@ else:
     ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
     async def wait_for(fut: _FutureLike[_T], timeout: float | None, *, loop: AbstractEventLoop | None = ...) -> _T: ...
 
-class Task(Future[_T], Generic[_T]):
+# pyright complains that a subclass of an invariant class shouldn't be covariant.
+# While this is true in general, here it's sort-of okay to have a covariant subclass,
+# since the only reason why `asyncio.Future` is invariant is the `set_result()` method,
+# and `asyncio.Task.set_result()` always raises.
+class Task(Future[_T_co], Generic[_T_co]):  # pyright: ignore[reportGeneralTypeIssues]
     if sys.version_info >= (3, 8):
         def __init__(
             self,
-            coro: Generator[_TaskYieldType, None, _T] | Awaitable[_T],
+            coro: Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co],
             *,
             loop: AbstractEventLoop = ...,
             name: str | None = ...,
         ) -> None: ...
     else:
         def __init__(
-            self, coro: Generator[_TaskYieldType, None, _T] | Awaitable[_T], *, loop: AbstractEventLoop = ...
+            self, coro: Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co], *, loop: AbstractEventLoop = ...
         ) -> None: ...
     if sys.version_info >= (3, 8):
-        def get_coro(self) -> Generator[_TaskYieldType, None, _T] | Awaitable[_T]: ...
+        def get_coro(self) -> Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co]: ...
         def get_name(self) -> str: ...
         def set_name(self, __value: object) -> None: ...
 

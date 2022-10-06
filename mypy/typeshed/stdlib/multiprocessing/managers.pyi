@@ -82,8 +82,8 @@ class DictProxy(BaseProxy, MutableMapping[_KT, _VT]):
     @overload
     def pop(self, __key: _KT, __default: _VT | _T) -> _VT | _T: ...
     def keys(self) -> list[_KT]: ...  # type: ignore[override]
-    def values(self) -> list[tuple[_KT, _VT]]: ...  # type: ignore[override]
-    def items(self) -> list[_VT]: ...  # type: ignore[override]
+    def items(self) -> list[tuple[_KT, _VT]]: ...  # type: ignore[override]
+    def values(self) -> list[_VT]: ...  # type: ignore[override]
 
 class BaseListProxy(BaseProxy, MutableSequence[_T]):
     __builtins__: ClassVar[dict[str, Any]]
