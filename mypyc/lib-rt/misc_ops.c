@@ -286,7 +286,9 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     Py_XDECREF(dummy_class);
 
-#if PY_MINOR_VERSION >= 11
+#if PY_MINOR_VERSION == 11
+    // This is a hack. Python 3.11 doesn't include good public APIs to work with managed
+    // dicts, which are the default for heap types. So we try to opt-out until Python 3.12.
     t->ht_type.tp_flags &= ~Py_TPFLAGS_MANAGED_DICT;
 #endif
     return (PyObject *)t;
