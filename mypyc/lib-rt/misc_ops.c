@@ -3,6 +3,7 @@
 // These are registered in mypyc.primitives.misc_ops.
 
 #include <Python.h>
+#include <patchlevel.h>
 #include "CPy.h"
 
 PyObject *CPy_GetCoro(PyObject *obj)
@@ -285,6 +286,9 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     Py_XDECREF(dummy_class);
 
+#if PY_MINOR_VERSION >= 11
+    t->ht_type.tp_flags &= ~Py_TPFLAGS_MANAGED_DICT;
+#endif
     return (PyObject *)t;
 
 error:
