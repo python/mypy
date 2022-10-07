@@ -32,7 +32,6 @@ class ParserGenerator:
 
 class NFAState:
     arcs: list[tuple[str | None, NFAState]]
-    def __init__(self) -> None: ...
     def addarc(self, next: NFAState, label: str | None = ...) -> None: ...
 
 class DFAState:
