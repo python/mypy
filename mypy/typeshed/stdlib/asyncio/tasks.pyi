@@ -266,11 +266,11 @@ else:
     ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
     async def wait_for(fut: _FutureLike[_T], timeout: float | None, *, loop: AbstractEventLoop | None = ...) -> _T: ...
 
-# pyright complains that a subclass of an invariant class shouldn't be covariant.
+# mypy and pyright complain that a subclass of an invariant class shouldn't be covariant.
 # While this is true in general, here it's sort-of okay to have a covariant subclass,
 # since the only reason why `asyncio.Future` is invariant is the `set_result()` method,
 # and `asyncio.Task.set_result()` always raises.
-class Task(Future[_T_co], Generic[_T_co]):  # pyright: ignore[reportGeneralTypeIssues]
+class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]
     if sys.version_info >= (3, 8):
         def __init__(
             self,
