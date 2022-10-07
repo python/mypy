@@ -104,6 +104,10 @@ def main() -> None:
             commit=commit
         )
     )
+    print("Commit typeshed changes? [yN]", end="")
+    answer = input()
+    if answer.lower() != "y":
+        sys.exit("Aborting")
     subprocess.run(["git", "add", "--all", os.path.join("mypy", "typeshed")], check=True)
     subprocess.run(["git", "commit", "-m", message], check=True)
     print("Created typeshed sync commit.")

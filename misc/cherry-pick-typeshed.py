@@ -58,6 +58,10 @@ def main() -> None:
             check=True,
         )
 
+        print("Commit typeshed changes? [yN]", end="")
+        answer = input()
+        if answer.lower() != "y":
+            sys.exit("Aborting")
         title = parse_commit_title(out.stdout)
         subprocess.run(["git", "commit", "-m", f"Typeshed cherry-pick: {title}"], check=True)
 
