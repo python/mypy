@@ -4945,6 +4945,7 @@ class SemanticAnalyzer(
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         analyzed = self.anal_type(expr.type)
         if analyzed is not None:
+            assert isinstance(analyzed, ProperType), "Cannot use type aliases for promotions"
             expr.type = analyzed
 
     def visit_yield_expr(self, e: YieldExpr) -> None:
