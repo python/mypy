@@ -2012,6 +2012,47 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testFinalTypedDictTagged]
+from __future__ import annotations
+from typing import Literal, TypedDict
+from typing_extensions import final
+
+@final
+class D1(TypedDict):
+    foo: int
+
+
+@final
+class D2(TypedDict):
+    bar: int
+
+d: D1 | D2
+val: int
+
+val = d['foo']  # E: TypedDict "D2" has no key "foo"
+if 'foo' in d:
+    val = d['foo']
+else:
+    val = d['bar']
+
+foo_or_bar: Literal['foo', 'bar']
+if foo_or_bar in d:
+    val = d['foo']  # E: TypedDict "D2" has no key "foo"
+    val = d['bar']  # E: TypedDict "D1" has no key "bar"
+else:
+    val = d['foo']  # E: TypedDict "D2" has no key "foo"
+    val = d['bar']  # E: TypedDict "D1" has no key "bar"
+
+foo_or_invalid: Literal['foo', 'invalid']
+if foo_or_invalid in d:
+    val = d['foo']
+else:
+    val = d['foo']  # E: TypedDict "D2" has no key "foo"
+    val = d['bar']  # E: TypedDict "D1" has no key "bar"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testCannotSubclassFinalTypedDict]
 from typing import TypedDict
 from typing_extensions import final
