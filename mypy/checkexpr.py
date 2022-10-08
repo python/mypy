@@ -3865,9 +3865,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
         else:
             if alias_definition:
-                return AnyType(TypeOfAny.special_form)
-            # This type is invalid in most runtime contexts, give it an 'object' type.
-            # TODO: Use typing._SpecialForm instead?
+                return AnyType(typing._SpecialForm)
             return self.named_type("builtins.object")
 
     def apply_type_arguments_to_callable(
