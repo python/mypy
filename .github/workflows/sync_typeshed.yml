@@ -1,0 +1,31 @@
+name: Sync typeshed
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1,15 * *"
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  stubsabot:
+    name: Upgrade stubs with stubsabot
+    if: github.repository == 'python/typeshed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        # TODO: use an ssh key so that checks automatically run on these PRs
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: git config
+        run: |
+          git config --global user.name mypybot
+          git config --global user.email '<>'
+      - name: Sync typeshed
+        run: |
+          python -m pip install requests
+          GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} python misc/sync-typeshed.py --make-pr
