@@ -18,7 +18,6 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-
 from collections.abc import Mapping
 
 import requests
@@ -198,9 +197,7 @@ def main() -> None:
         warning = "Note that you will need to close and re-open the PR in order to trigger CI."
 
         create_or_update_pull_request(
-            title="Sync typeshed",
-            body=message + "\n" + warning,
-            branch_name=branch_name,
+            title="Sync typeshed", body=message + "\n" + warning, branch_name=branch_name
         )
         print("Created PR.")
 
