@@ -2363,7 +2363,10 @@ class State:
 
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
-            self._patch_indirect_dependencies(self.type_checker().module_refs, self.type_map())
+            symbol_types = {sym.type for _, sym, _ in self.tree.local_definitions()} - {None}
+            self._patch_indirect_dependencies(
+                self.type_checker().module_refs, set(self.type_map().values()) | symbol_types
+            )
 
             if self.options.dump_inference_stats:
                 dump_type_stats(
@@ -2386,10 +2389,7 @@ class State:
             self._type_checker.reset()
             self._type_checker = None
 
-    def _patch_indirect_dependencies(
-        self, module_refs: set[str], type_map: dict[Expression, Type]
-    ) -> None:
-        types = set(type_map.values())
+    def _patch_indirect_dependencies(self, module_refs: set[str], types: set[Type]) -> None:
         assert None not in types
         valid = self.valid_references()
 
