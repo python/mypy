@@ -95,7 +95,7 @@ def create_or_update_pull_request(*, title: str, body: str, branch_name: str) ->
     fork_owner = get_origin_owner()
 
     with requests.post(
-        f"https://api.github.com/repos/python/mypy/pulls",
+        "https://api.github.com/repos/python/mypy/pulls",
         json={
             "title": title,
             "body": body,
@@ -111,7 +111,7 @@ def create_or_update_pull_request(*, title: str, body: str, branch_name: str) ->
         ):
             # Find the existing PR
             with requests.get(
-                f"https://api.github.com/repos/python/mypy/pulls",
+                "https://api.github.com/repos/python/mypy/pulls",
                 params={"state": "open", "head": f"{fork_owner}:{branch_name}", "base": "master"},
                 headers=get_github_api_headers(),
             ) as response:
