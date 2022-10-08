@@ -63,6 +63,12 @@ jobs:
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
+        - name: Test suite with py311-ubuntu
+          python: '3.11'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
         - name: mypyc runtime tests with py37-macos
           python: '3.7'
           arch: x64
@@ -128,7 +134,7 @@ jobs:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v4
       with:
-        python-version: '3.11-dev'
+        python-version: '3.12-dev'
     - name: Install tox
       run: pip install --upgrade 'setuptools!=50' tox==3.24.5
     - name: Setup tox environment
