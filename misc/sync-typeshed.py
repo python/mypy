@@ -195,9 +195,11 @@ def main() -> None:
         subprocess.run(["git", "push", "--force", "origin", branch_name], check=True)
         print("Pushed commit.")
 
+        warning = "Note that you will need to close and re-open the PR in order to trigger CI."
+
         create_or_update_pull_request(
             title="Sync typeshed",
-            body=message,
+            body=message + "\n" + warning,
             branch_name=branch_name,
         )
         print("Created PR.")
