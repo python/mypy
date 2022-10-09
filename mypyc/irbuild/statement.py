@@ -42,6 +42,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypy.patterns import AsPattern
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -904,12 +905,20 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
     assert len(m.bodies) == 1
 
-    block = BasicBlock()
+    blocks = [BasicBlock() for _ in range(len(m.bodies))]
+
+    for i, block in enumerate(blocks):
+        pattern = m.patterns[i]
+
+        if (
+            isinstance(pattern, AsPattern) and
+            pattern.pattern == pattern.name == None
+        ):
+            # Default case
+            builder.goto(block)
+            builder.activate_block(block)
+            builder.accept(m.bodies[0])
+
     next = BasicBlock()
-
-    builder.goto(block)
-    builder.activate_block(block)
-    builder.accept(m.bodies[0])
-
     builder.goto(next)
     builder.activate_block(next)
