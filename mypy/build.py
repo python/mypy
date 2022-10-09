@@ -48,7 +48,7 @@ from mypy.checker import TypeChecker
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
+from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable, TypeInfo
 from mypy.partially_defined import PartiallyDefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
@@ -2363,9 +2363,23 @@ class State:
 
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
-            symbol_types = {sym.type for _, sym, _ in self.tree.local_definitions()} - {None}
+            # TODO: find a more robust way to traverse *all* relevant types?
+            expr_types = set(self.type_map().values())
+            symbol_types = set()
+            for _, sym, _ in self.tree.local_definitions():
+                if sym.type is not None:
+                    symbol_types.add(sym.type)
+                if isinstance(sym.node, TypeInfo):
+                    # TypeInfo symbols have some extra relevant types.
+                    symbol_types.update(sym.node.bases)
+                    if sym.node.metaclass_type:
+                        symbol_types.add(sym.node.metaclass_type)
+                    if sym.node.typeddict_type:
+                        symbol_types.add(sym.node.typeddict_type)
+                    if sym.node.tuple_type:
+                        symbol_types.add(sym.node.tuple_type)
             self._patch_indirect_dependencies(
-                self.type_checker().module_refs, set(self.type_map().values()) | symbol_types
+                self.type_checker().module_refs, expr_types | symbol_types
             )
 
             if self.options.dump_inference_stats:
