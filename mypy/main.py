@@ -979,6 +979,10 @@ def process_options(
         action="store_true",
         help="Disable experimental support for recursive type aliases",
     )
+    # Deprecated reverse variant of the above.
+    internals_group.add_argument(
+        "--enable-recursive-aliases", action="store_true", help=argparse.SUPPRESS
+    )
     parser.add_argument(
         "--enable-incomplete-feature",
         action="append",
@@ -1335,6 +1339,12 @@ def process_options(
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
         options.cache_fine_grained = True
+
+    if options.enable_recursive_aliases:
+        print(
+            "Warning: --enable-recursive-aliases is deprecated;"
+            " recursive types are enabled by default"
+        )
 
     # Set target.
     if special_opts.modules + special_opts.packages:

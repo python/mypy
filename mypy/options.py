@@ -326,6 +326,8 @@ class Options:
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
         # Disable recursive type aliases (currently experimental)
         self.disable_recursive_aliases = False
+        # Deprecated reverse version of the above, do not use.
+        self.enable_recursive_aliases = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
