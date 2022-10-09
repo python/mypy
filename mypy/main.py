@@ -982,6 +982,7 @@ def process_options(
     parser.add_argument(
         "--enable-incomplete-feature",
         action="append",
+        metavar="FEATURE",
         help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
@@ -1111,6 +1112,10 @@ def process_options(
     # Must be followed by another flag or by '--' (and then only file args may follow).
     parser.add_argument(
         "--cache-map", nargs="+", dest="special-opts:cache_map", help=argparse.SUPPRESS
+    )
+    # This one is deprecated, but we will keep it for few releases.
+    parser.add_argument(
+        "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
     )
 
     # options specifying code to check
@@ -1275,6 +1280,12 @@ def process_options(
     for feature in options.enable_incomplete_feature:
         if feature not in INCOMPLETE_FEATURES:
             parser.error(f"Unknown incomplete feature: {feature}")
+    if options.enable_incomplete_features:
+        print(
+            "Warning: --enable-incomplete-features is deprecated, use"
+            " --enable-incomplete-feature=FEATURE instead"
+        )
+        options.enable_incomplete_feature = list(INCOMPLETE_FEATURES)
 
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:

@@ -10,7 +10,7 @@ from mypy import build
 from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
-from mypy.options import TYPE_VAR_TUPLE
+from mypy.options import TYPE_VAR_TUPLE, UNPACK
 from mypy.semanal_main import core_modules
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
@@ -112,7 +112,7 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         if not testcase.name.endswith("_no_incomplete"):
-            options.enable_incomplete_feature = [TYPE_VAR_TUPLE]
+            options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.

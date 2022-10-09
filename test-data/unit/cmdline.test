@@ -1430,6 +1430,14 @@ b \d+
 b\.c \d+
 .*
 
+[case testCmdlineEnableIncompleteFeatures]
+# cmd: mypy --enable-incomplete-features a.py
+[file a.py]
+pass
+[out]
+Warning: --enable-incomplete-features is deprecated, use --enable-incomplete-feature=FEATURE instead
+== Return code: 0
+
 [case testShadowTypingModuleEarlyLoad]
 # cmd: mypy dir
 [file dir/__init__.py]

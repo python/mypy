@@ -62,7 +62,8 @@ OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "pl
 
 # Features that are currently incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
-INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE,))
+UNPACK: Final = "Unpack"
+INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
 class Options:
@@ -266,6 +267,7 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
+        self.enable_incomplete_features = False  # deprecated
         self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
 
