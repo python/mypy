@@ -2704,6 +2704,17 @@ def for_function(callee: CallableType) -> str:
     return ""
 
 
+def wrong_type_arg_count(n: int, act: str, name: str) -> str:
+    s = f"{n} type arguments"
+    if n == 0:
+        s = "no type arguments"
+    elif n == 1:
+        s = "1 type argument"
+    if act == "0":
+        act = "none"
+    return f'"{name}" expects {s}, but {act} given'
+
+
 def find_defining_module(modules: dict[str, MypyFile], typ: CallableType) -> MypyFile | None:
     if not typ.definition:
         return None
