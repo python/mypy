@@ -2643,6 +2643,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         ):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
 
+        if s.unanalyzed_type and not self.in_checked_function():
+            self.msg.annotation_in_unchecked_function(context=s)
+
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
         if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == "|"):
             # We do this mostly for compatibility with old semantic analyzer.

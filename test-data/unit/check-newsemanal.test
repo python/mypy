@@ -2963,6 +2963,7 @@ def g() -> None:
     reveal_type(y)  # N: Revealed type is "__main__.G[Any]"
 
 [case testNewAnalyzerRedefinedNonlocal]
+# flags: --disable-error-code=annotation-unchecked
 import typing
 
 def f():
@@ -2977,7 +2978,7 @@ def g() -> None:
 
     def foo() -> None:
         nonlocal bar
-        bar = []  # type: typing.List[int] # E: Name "bar" already defined on line 11
+        bar = []  # type: typing.List[int] # E: Name "bar" already defined on line 12
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred]

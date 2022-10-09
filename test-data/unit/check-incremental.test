@@ -3544,11 +3544,11 @@ class Bar(Baz): pass
 
 [file c.py]
 class Baz:
-    def __init__(self):
+    def __init__(self) -> None:
         self.x = 12  # type: int
 [file c.py.2]
 class Baz:
-    def __init__(self):
+    def __init__(self) -> None:
         self.x = 'lol'  # type: str
 [out]
 [out2]
@@ -5730,6 +5730,7 @@ class C:
 tmp/a.py:2: error: "object" has no attribute "xyz"
 
 [case testIncrementalInvalidNamedTupleInUnannotatedFunction]
+# flags: --disable-error-code=annotation-unchecked
 import a
 
 [file a.py]

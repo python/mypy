@@ -137,6 +137,9 @@ NO_ANY_RETURN: Final = ErrorCode(
 UNREACHABLE: Final = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
 )
+ANNOTATION_UNCHECKED = ErrorCode(
+    "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
+)
 PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
     "partially-defined",
     "Warn about variables that are defined only in some execution paths",
