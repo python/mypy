@@ -17,7 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        # TODO: use an ssh key so that checks automatically run on these PRs
+        # TODO: use whatever solution ends up working for
+        # https://github.com/python/typeshed/issues/8434
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
