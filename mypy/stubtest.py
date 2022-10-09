@@ -136,7 +136,7 @@ class Error:
         if not isinstance(self.runtime_object, Missing):
             try:
                 runtime_line = inspect.getsourcelines(self.runtime_object)[1]
-            except (OSError, TypeError):
+            except (OSError, TypeError, SyntaxError):
                 pass
             try:
                 runtime_file = inspect.getsourcefile(self.runtime_object)
