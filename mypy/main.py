@@ -18,7 +18,7 @@ from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import BuildType, Options
+from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -979,6 +979,12 @@ def process_options(
         action="store_true",
         help="Disable experimental support for recursive type aliases",
     )
+    parser.add_argument(
+        "--enable-incomplete-feature",
+        action="append",
+        metavar="FEATURE",
+        help="Enable support of incomplete/experimental features for early preview",
+    )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
     )
@@ -1107,6 +1113,7 @@ def process_options(
     parser.add_argument(
         "--cache-map", nargs="+", dest="special-opts:cache_map", help=argparse.SUPPRESS
     )
+    # This one is deprecated, but we will keep it for few releases.
     parser.add_argument(
         "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
     )
@@ -1273,6 +1280,17 @@ def process_options(
 
     # Enabling an error code always overrides disabling
     options.disabled_error_codes -= options.enabled_error_codes
+
+    # Validate incomplete features.
+    for feature in options.enable_incomplete_feature:
+        if feature not in INCOMPLETE_FEATURES:
+            parser.error(f"Unknown incomplete feature: {feature}")
+    if options.enable_incomplete_features:
+        print(
+            "Warning: --enable-incomplete-features is deprecated, use"
+            " --enable-incomplete-feature=FEATURE instead"
+        )
+        options.enable_incomplete_feature = list(INCOMPLETE_FEATURES)
 
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:

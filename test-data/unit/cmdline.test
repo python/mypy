@@ -1419,7 +1419,6 @@ exclude = (?x)(
 [out]
 c/cpkg.py:1: error: "int" not callable
 
-
 [case testCmdlineTimingStats]
 # cmd: mypy --timing-stats timing.txt .
 [file b/__init__.py]
@@ -1435,6 +1434,9 @@ b\.c \d+
 # cmd: mypy --enable-incomplete-features a.py
 [file a.py]
 pass
+[out]
+Warning: --enable-incomplete-features is deprecated, use --enable-incomplete-feature=FEATURE instead
+== Return code: 0
 
 [case testShadowTypingModuleEarlyLoad]
 # cmd: mypy dir

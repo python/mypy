@@ -15,7 +15,7 @@ from typing import Any, Iterator, cast
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.options import Options
+from mypy.options import TYPE_VAR_TUPLE, UNPACK, Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
@@ -194,8 +194,7 @@ class TestRun(MypycDataSuite):
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
-        if "IncompleteFeature" in testcase.name:
-            options.enable_incomplete_features = True
+        options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.

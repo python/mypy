@@ -83,6 +83,10 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def incomplete_feature_enabled(self, feature: str, ctx: Context) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
     def record_incomplete_ref(self) -> None:
         raise NotImplementedError
 

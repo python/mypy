@@ -29,7 +29,7 @@ from mypy.dmypy_util import DEFAULT_STATUS_FILE
 from mypy.errors import CompileError
 from mypy.find_sources import create_source_list
 from mypy.modulefinder import BuildSource
-from mypy.options import Options
+from mypy.options import TYPE_VAR_TUPLE, UNPACK, Options
 from mypy.server.mergecheck import check_consistency
 from mypy.server.update import sort_messages_preserving_file_order
 from mypy.test.config import test_temp_dir
@@ -153,7 +153,7 @@ class FineGrainedSuite(DataSuite):
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
-        options.enable_incomplete_features = True
+        options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
         # Treat empty bodies safely for these test cases.
         options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
         if re.search("flags:.*--follow-imports", source) is None:
