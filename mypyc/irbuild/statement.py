@@ -28,6 +28,7 @@ from mypy.nodes import (
     ImportFrom,
     ListExpr,
     Lvalue,
+    MatchStmt,
     OperatorAssignmentStmt,
     RaiseStmt,
     ReturnStmt,
@@ -896,3 +897,19 @@ def transform_yield_from_expr(builder: IRBuilder, o: YieldFromExpr) -> Value:
 
 def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
     return emit_yield_from_or_await(builder, builder.accept(o.expr), o.line, is_await=True)
+
+
+def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
+    builder.accept(m.subject)
+
+    assert len(m.bodies) == 1
+
+    block = BasicBlock()
+    next = BasicBlock()
+
+    builder.goto(block)
+    builder.activate_block(block)
+    builder.accept(m.bodies[0])
+
+    builder.goto(next)
+    builder.activate_block(next)
