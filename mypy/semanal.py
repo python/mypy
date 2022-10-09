@@ -178,7 +178,7 @@ from mypy.nodes import (
     type_aliases_source_versions,
     typing_extensions_aliases,
 )
-from mypy.options import Options
+from mypy.options import TYPE_VAR_TUPLE, Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -3911,8 +3911,7 @@ class SemanticAnalyzer(
         if len(call.args) > 1:
             self.fail("Only the first argument to TypeVarTuple has defined semantics", s)
 
-        if not self.options.enable_incomplete_features:
-            self.fail('"TypeVarTuple" is not supported by mypy yet', s)
+        if not self.incomplete_feature_enabled(TYPE_VAR_TUPLE, s):
             return False
 
         name = self.extract_typevarlike_name(s, call)
@@ -5972,6 +5971,16 @@ class SemanticAnalyzer(
         if not self.in_checked_function():
             return
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity="note", code=code)
+
+    def incomplete_feature_enabled(self, feature: str, ctx: Context) -> bool:
+        if feature not in self.options.enable_incomplete_feature:
+            self.fail(
+                f'"{feature}" support is experimental,'
+                f" use --enable-incomplete-feature={feature} to enable",
+                ctx,
+            )
+            return False
+        return True
 
     def accept(self, node: Node) -> None:
         try:

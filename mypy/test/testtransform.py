@@ -7,6 +7,7 @@ import os.path
 from mypy import build
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource
+from mypy.options import TYPE_VAR_TUPLE, UNPACK
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages, parse_options
@@ -39,7 +40,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
         options = parse_options(src, testcase, 1)
         options.use_builtins_fixtures = True
         options.semantic_analysis_only = True
-        options.enable_incomplete_features = True
+        options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
         options.show_traceback = True
         result = build.build(
             sources=[BuildSource("main", None, src)], options=options, alt_lib_path=test_temp_dir

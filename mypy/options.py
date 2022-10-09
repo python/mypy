@@ -60,6 +60,11 @@ OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "pl
     "debug_cache"
 }
 
+# Features that are currently incomplete/experimental
+TYPE_VAR_TUPLE: Final = "TypeVarTuple"
+UNPACK: Final = "Unpack"
+INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
+
 
 class Options:
     """Options collected from flags."""
@@ -268,7 +273,8 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_features = False
+        self.enable_incomplete_features = False  # deprecated
+        self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
 
         # -- test options --

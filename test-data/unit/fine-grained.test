@@ -9901,7 +9901,6 @@ x = 0  # Arbitrary change to trigger reprocessing
 a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
 
 [case testUnpackKwargsUpdateFine]
-# flags: --enable-incomplete-features
 import m
 [file shared.py]
 from typing_extensions import TypedDict
