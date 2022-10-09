@@ -2148,6 +2148,14 @@ class MessageBuilder:
                 ctx,
             )
 
+    def annotation_in_unchecked_function(self, context: Context) -> None:
+        self.note(
+            "By default the bodies of untyped functions are not checked,"
+            " consider using --check-untyped-defs",
+            context,
+            code=codes.ANNOTATION_UNCHECKED,
+        )
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""

@@ -964,3 +964,8 @@ class C(abc.ABC):
 T = TypeVar("T")
 def test(tp: Type[T]) -> T: ...
 test(C)  # E: Only concrete class can be given where "Type[C]" is expected  [type-abstract]
+
+[case testUncheckedAnnotationSuppressed]
+# flags: --disable-error-code=annotation-unchecked
+def f():
+    x: int = "no"  # No warning here
