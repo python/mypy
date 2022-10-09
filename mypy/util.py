@@ -520,7 +520,9 @@ def parse_gray_color(cup: bytes) -> str:
 
 
 def should_force_color() -> bool:
-    return bool(int(os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0"))))
+    if "MYPY_FORCE_COLOR" in os.environ:
+        return bool(int(os.environ["MYPY_FORCE_COLOR"]))
+    return "FORCE_COLOR" in os.environ
 
 
 class FancyFormatter:
