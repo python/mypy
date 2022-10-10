@@ -17,6 +17,7 @@ from mypy.nodes import (
     AwaitExpr,
     Block,
     BreakStmt,
+    ComparisonExpr,
     ContinueStmt,
     DelStmt,
     Expression,
@@ -42,7 +43,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypy.patterns import AsPattern
+from mypy.patterns import AsPattern, ValuePattern
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -901,13 +902,13 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
 
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
-    builder.accept(m.subject)
+    subject = builder.accept(m.subject)
 
     assert len(m.bodies) == 1
 
-    blocks = [BasicBlock() for _ in range(len(m.bodies))]
+    blocks = [BasicBlock() for _ in range(len(m.bodies) + 1)]
 
-    for i, block in enumerate(blocks):
+    for i, block in enumerate(blocks[:1]):
         pattern = m.patterns[i]
 
         if (
@@ -919,6 +920,18 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.activate_block(block)
             builder.accept(m.bodies[0])
 
-    next = BasicBlock()
-    builder.goto(next)
-    builder.activate_block(next)
+        if isinstance(pattern, ValuePattern):
+            # eq check
+            cond = builder.accept(
+                ComparisonExpr(["=="], [m.subject, pattern.expr])
+            )
+
+            code_block = BasicBlock()
+
+            builder.add_bool_branch(cond, code_block, blocks[i + 1])
+            builder.goto(code_block)
+            builder.activate_block(code_block)
+            builder.accept(m.bodies[0])
+
+    builder.goto(blocks[-1])
+    builder.activate_block(blocks[-1])
