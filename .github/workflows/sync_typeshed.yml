@@ -11,8 +11,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  stubsabot:
-    name: Upgrade stubs with stubsabot
+  sync_typeshed:
+    name: Sync typeshed
     if: github.repository == 'python/typeshed'
     runs-on: ubuntu-latest
     steps:
