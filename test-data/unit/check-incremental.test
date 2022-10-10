@@ -6082,3 +6082,207 @@ class Base:
 [out]
 [out2]
 main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+
+[case testNoCrashDoubleReexportFunctionEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+def foo(arg: c.C) -> None: pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportBaseEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+class D(c.C): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportMetaEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+class D(metaclass=c.C): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C(type): ...
+[file pb2.py.2]
+class C(type): ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportTypedDictEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+from typing_extensions import TypedDict
+import c
+class D(TypedDict):
+    x: c.C
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[builtins fixtures/dict.pyi]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportTupleEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+from typing import Tuple
+import c
+class D(Tuple[c.C, int]): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportOverloadEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+from typing import Any, overload
+import c
+
+@overload
+def foo(arg: int) -> None: ...
+@overload
+def foo(arg: c.C) -> None: ...
+def foo(arg: Any) -> None:
+    pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
