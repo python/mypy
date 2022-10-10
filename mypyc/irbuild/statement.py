@@ -906,19 +906,20 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
     assert len(m.bodies) == 1
 
-    blocks = [BasicBlock() for _ in range(len(m.bodies) + 1)]
+    end_block = BasicBlock()
 
-    for i, block in enumerate(blocks[:1]):
-        pattern = m.patterns[i]
-
+    for pattern in m.patterns:
         if (
             isinstance(pattern, AsPattern) and
             pattern.pattern == pattern.name == None
         ):
+            block = BasicBlock()
+
             # Default case
             builder.goto(block)
             builder.activate_block(block)
             builder.accept(m.bodies[0])
+            builder.goto(end_block)
 
         if isinstance(pattern, ValuePattern):
             # eq check
@@ -927,11 +928,14 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             )
 
             code_block = BasicBlock()
+            next_block = BasicBlock()
 
-            builder.add_bool_branch(cond, code_block, blocks[i + 1])
-            builder.goto(code_block)
+            builder.add_bool_branch(cond, code_block, next_block)
             builder.activate_block(code_block)
             builder.accept(m.bodies[0])
+            builder.goto(end_block)
 
-    builder.goto(blocks[-1])
-    builder.activate_block(blocks[-1])
+            builder.activate_block(next_block)
+
+    builder.goto(end_block)
+    builder.activate_block(end_block)

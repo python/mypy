@@ -60,6 +60,8 @@ L1:
     r10 = load_address r9
     r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
     keep_alive r5
+    goto L3
 L2:
+L3:
     r12 = box(None, 1)
     return r12
