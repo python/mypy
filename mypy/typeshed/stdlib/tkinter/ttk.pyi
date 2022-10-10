@@ -937,7 +937,7 @@ class _TreeviewTagDict(TypedDict):
     foreground: tkinter._Color
     background: tkinter._Color
     font: _FontDescription
-    image: Literal[""] | str  # not wrapped in list :D
+    image: str  # not wrapped in list :D
 
 class _TreeviewHeaderDict(TypedDict):
     text: str
@@ -963,7 +963,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         class_: str = ...,
         columns: str | list[str] | tuple[str, ...] = ...,
         cursor: tkinter._Cursor = ...,
-        displaycolumns: str | list[str] | tuple[str, ...] | list[int] | tuple[int, ...] | Literal["#all"] = ...,
+        displaycolumns: str | list[str] | tuple[str, ...] | list[int] | tuple[int, ...] = ...,
         height: int = ...,
         name: str = ...,
         padding: _Padding = ...,
@@ -985,7 +985,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         *,
         columns: str | list[str] | tuple[str, ...] = ...,
         cursor: tkinter._Cursor = ...,
-        displaycolumns: str | list[str] | tuple[str, ...] | list[int] | tuple[int, ...] | Literal["#all"] = ...,
+        displaycolumns: str | list[str] | tuple[str, ...] | list[int] | tuple[int, ...] = ...,
         height: int = ...,
         padding: _Padding = ...,
         selectmode: Literal["extended", "browse", "none"] = ...,

@@ -1574,3 +1574,57 @@ L0:
     y = 11
     z = -3
     return 1
+
+[case testI64ForLoopOverRange]
+from mypy_extensions import i64
+
+def f() -> None:
+    for x in range(i64(4)):
+        y = x
+[out]
+def f():
+    r0, x :: int64
+    r1 :: bit
+    y, r2 :: int64
+L0:
+    r0 = 0
+    x = r0
+L1:
+    r1 = r0 < 4 :: signed
+    if r1 goto L2 else goto L4 :: bool
+L2:
+    y = x
+L3:
+    r2 = r0 + 1
+    r0 = r2
+    x = r2
+    goto L1
+L4:
+    return 1
+
+[case testI64ForLoopOverRange2]
+from mypy_extensions import i64
+
+def f() -> None:
+    for x in range(0, i64(4)):
+        y = x
+[out]
+def f():
+    r0, x :: int64
+    r1 :: bit
+    y, r2 :: int64
+L0:
+    r0 = 0
+    x = r0
+L1:
+    r1 = r0 < 4 :: signed
+    if r1 goto L2 else goto L4 :: bool
+L2:
+    y = x
+L3:
+    r2 = r0 + 1
+    r0 = r2
+    x = r2
+    goto L1
+L4:
+    return 1

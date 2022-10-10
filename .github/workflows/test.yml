@@ -26,11 +26,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - name: Test suite with py37-windows-32
-          python: '3.7'
-          arch: x86
-          os: windows-latest
-          toxenv: py37
         - name: Test suite with py37-windows-64
           python: '3.7'
           arch: x64
@@ -64,6 +59,12 @@ jobs:
           test_mypyc: true
         - name: Test suite with py310-ubuntu
           python: '3.10'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+        - name: Test suite with py311-ubuntu
+          python: '3.11-dev'
           arch: x64
           os: ubuntu-latest
           toxenv: py
@@ -120,26 +121,8 @@ jobs:
       if: ${{ matrix.test_mypyc }}
       run: |
         pip install -r test-requirements.txt
-        CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace
+        CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
     - name: Setup tox environment
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: Test
       run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
-
-  python-nightly:
-    runs-on: ubuntu-latest
-    name: Test suite with Python nightly
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.11-dev'
-    - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' tox==3.24.5
-    - name: Setup tox environment
-      run: tox -e py --notest
-    - name: Test
-      run: tox -e py --skip-pkg-install -- "-n 2"
-      continue-on-error: true
-    - name: Mark as a success
-      run: exit 0

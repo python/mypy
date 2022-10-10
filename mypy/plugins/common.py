@@ -217,6 +217,8 @@ def add_attribute_to_class(
     final: bool = False,
     no_serialize: bool = False,
     override_allow_incompatible: bool = False,
+    fullname: str | None = None,
+    is_classvar: bool = False,
 ) -> None:
     """
     Adds a new attribute to a class definition.
@@ -234,11 +236,17 @@ def add_attribute_to_class(
     node = Var(name, typ)
     node.info = info
     node.is_final = final
+    node.is_classvar = is_classvar
     if name in ALLOW_INCOMPATIBLE_OVERRIDE:
         node.allow_incompatible_override = True
     else:
         node.allow_incompatible_override = override_allow_incompatible
-    node._fullname = info.fullname + "." + name
+
+    if fullname:
+        node._fullname = fullname
+    else:
+        node._fullname = info.fullname + "." + name
+
     info.names[name] = SymbolTableNode(
         MDEF, node, plugin_generated=True, no_serialize=no_serialize
     )

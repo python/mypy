@@ -1242,7 +1242,7 @@ def g() -> None:
 
 g()
 
-[case testIncompleteFeatureUnpackKwargsCompiled]
+[case testUnpackKwargsCompiled]
 from typing_extensions import Unpack, TypedDict
 
 class Person(TypedDict):

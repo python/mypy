@@ -751,7 +751,12 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional"]
+FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
+    "is_decorated",
+    "is_conditional",
+    "is_trivial_body",
+    "is_mypy_only",
+]
 
 # Abstract status of a function
 NOT_ABSTRACT: Final = 0
@@ -774,6 +779,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "abstract_status",
         "original_def",
         "deco_line",
+        "is_trivial_body",
+        "is_mypy_only",
     )
 
     # Note that all __init__ args must have default values
@@ -789,11 +796,16 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.abstract_status = NOT_ABSTRACT
+        # Is this an abstract method with trivial body?
+        # Such methods can't be called via super().
+        self.is_trivial_body = False
         self.is_final = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
-        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        # Used for error reporting (to keep backward compatibility with pre-3.8)
         self.deco_line: int | None = None
+        # Definitions that appear in if TYPE_CHECKING are marked with this flag.
+        self.is_mypy_only = False
 
     @property
     def name(self) -> str:
@@ -2523,9 +2535,9 @@ class PromoteExpr(Expression):
 
     __slots__ = ("type",)
 
-    type: mypy.types.Type
+    type: mypy.types.ProperType
 
-    def __init__(self, type: mypy.types.Type) -> None:
+    def __init__(self, type: mypy.types.ProperType) -> None:
         super().__init__()
         self.type = type
 
@@ -2750,7 +2762,7 @@ class TypeInfo(SymbolNode):
     # even though it's not a subclass in Python.  The non-standard
     # `@_promote` decorator introduces this, and there are also
     # several builtin examples, in particular `int` -> `float`.
-    _promote: list[mypy.types.Type]
+    _promote: list[mypy.types.ProperType]
 
     # This is used for promoting native integer types such as 'i64' to
     # 'int'. (_promote is used for the other direction.) This only
@@ -2851,6 +2863,7 @@ class TypeInfo(SymbolNode):
         self.metadata = {}
 
     def add_type_vars(self) -> None:
+        self.has_type_var_tuple_type = False
         if self.defn.type_vars:
             for i, vd in enumerate(self.defn.type_vars):
                 if isinstance(vd, mypy.types.ParamSpecType):
@@ -3080,7 +3093,12 @@ class TypeInfo(SymbolNode):
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data["bases"]]
-        ti._promote = [mypy.types.deserialize_type(p) for p in data["_promote"]]
+        _promote = []
+        for p in data["_promote"]:
+            t = mypy.types.deserialize_type(p)
+            assert isinstance(t, mypy.types.ProperType)
+            _promote.append(t)
+        ti._promote = _promote
         ti.declared_metaclass = (
             None
             if data["declared_metaclass"] is None

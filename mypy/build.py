@@ -92,7 +92,12 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import is_legacy_bundled_package, legacy_bundled_packages
+from mypy.stubinfo import (
+    is_legacy_bundled_package,
+    legacy_bundled_packages,
+    non_bundled_packages,
+    stub_package_name,
+)
 from mypy.types import Type
 from mypy.typestate import TypeState, reset_global_state
 from mypy.version import __version__
@@ -232,7 +237,7 @@ def _build(
     errors = Errors(
         options.show_error_context,
         options.show_column_numbers,
-        options.show_error_codes,
+        options.hide_error_codes,
         options.pretty,
         options.show_error_end,
         lambda path: read_py_file(path, cached_read),
@@ -1396,8 +1401,8 @@ def validate_meta(
         st = manager.get_stat(path)
     except OSError:
         return None
-    if not (stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode)):
-        manager.log(f"Metadata abandoned for {id}: file {path} does not exist")
+    if not stat.S_ISDIR(st.st_mode) and not stat.S_ISREG(st.st_mode):
+        manager.log(f"Metadata abandoned for {id}: file or directory {path} does not exist")
         return None
 
     manager.add_stats(validate_stat_time=time.time() - t0)
@@ -1935,6 +1940,8 @@ class State:
                 raise
             if follow_imports == "silent":
                 self.ignore_all = True
+        elif path and is_silent_import_module(manager, path):
+            self.ignore_all = True
         self.path = path
         if path:
             self.abspath = os.path.abspath(path)
@@ -2331,13 +2338,15 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return result
 
-    def detect_partially_defined_vars(self) -> None:
+    def detect_partially_defined_vars(self, type_map: dict[Expression, Type]) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED):
             manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
             self.tree.accept(
-                PartiallyDefinedVariableVisitor(MessageBuilder(manager.errors, manager.modules))
+                PartiallyDefinedVariableVisitor(
+                    MessageBuilder(manager.errors, manager.modules), type_map
+                )
             )
 
     def finish_passes(self) -> None:
@@ -2585,11 +2594,11 @@ def find_module_and_diagnose(
         if (
             root_source  # Honor top-level modules
             or (
-                not result.endswith(".py")  # Stubs are always normal
-                and not options.follow_imports_for_stubs
-            )  # except when they aren't
-            or id in mypy.semanal_main.core_modules
-        ):  # core is always normal
+                result.endswith(".pyi")  # Stubs are always normal
+                and not options.follow_imports_for_stubs  # except when they aren't
+            )
+            or id in mypy.semanal_main.core_modules  # core is always normal
+        ):
             follow_imports = "normal"
         if skip_diagnose:
             pass
@@ -2606,11 +2615,8 @@ def find_module_and_diagnose(
                 else:
                     skipping_module(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
-        if not manager.options.no_silence_site_packages:
-            for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
-                if is_sub_path(result, dir):
-                    # Silence errors in site-package dirs and typeshed
-                    follow_imports = "silent"
+        if is_silent_import_module(manager, result):
+            follow_imports = "silent"
         return (result, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
@@ -2738,14 +2744,14 @@ def module_not_found(
         msg, notes = reason.error_message_templates(daemon)
         errors.report(line, 0, msg.format(module=target), code=codes.IMPORT)
         top_level, second_level = get_top_two_prefixes(target)
-        if second_level in legacy_bundled_packages:
+        if second_level in legacy_bundled_packages or second_level in non_bundled_packages:
             top_level = second_level
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=legacy_bundled_packages[top_level])
+                note = note.format(stub_dist=stub_package_name(top_level))
             errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
+            manager.missing_stub_packages.add(stub_package_name(top_level))
     errors.set_import_context(save_import_context)
 
 
@@ -3368,7 +3374,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         graph[id].type_check_first_pass()
         if not graph[id].type_checker().deferred_nodes:
             unfinished_modules.discard(id)
-            graph[id].detect_partially_defined_vars()
+            graph[id].detect_partially_defined_vars(graph[id].type_map())
             graph[id].finish_passes()
 
     while unfinished_modules:
@@ -3377,7 +3383,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
                 continue
             if not graph[id].type_check_second_pass():
                 unfinished_modules.discard(id)
-                graph[id].detect_partially_defined_vars()
+                graph[id].detect_partially_defined_vars(graph[id].type_map())
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
@@ -3553,3 +3559,12 @@ def record_missing_stub_packages(cache_dir: str, missing_stub_packages: set[str]
     else:
         if os.path.isfile(fnam):
             os.remove(fnam)
+
+
+def is_silent_import_module(manager: BuildManager, path: str) -> bool:
+    if not manager.options.no_silence_site_packages:
+        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
+            if is_sub_path(path, dir):
+                # Silence errors in site-package dirs and typeshed
+                return True
+    return False

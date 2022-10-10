@@ -448,7 +448,7 @@ g(None) # Ok
 f()     # Ok because not used to infer local variable type
 g(a)
 
-def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 def g(a: T) -> None: pass
 [out]
 
@@ -2355,7 +2355,7 @@ def main() -> None:
 [case testDontMarkUnreachableAfterInferenceUninhabited]
 from typing import TypeVar
 T = TypeVar('T')
-def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 
 class C:
     x = f() # E: Need type annotation for "x"
@@ -3372,3 +3372,13 @@ class B:
 [out]
 tmp/b.py:2: note: Revealed type is "builtins.int"
 tmp/a.py:2: note: Revealed type is "builtins.int"
+
+[case testUnionTypeCallableInference]
+from typing import Callable, Type, TypeVar, Union
+
+class A:
+    def __init__(self, x: str) -> None: ...
+
+T = TypeVar("T")
+def type_or_callable(value: T, tp: Union[Type[T], Callable[[int], T]]) -> T: ...
+reveal_type(type_or_callable(A("test"), A))  # N: Revealed type is "__main__.A"

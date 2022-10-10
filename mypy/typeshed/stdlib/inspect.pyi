@@ -401,7 +401,7 @@ class BoundArguments:
 # seem to be supporting this at the moment:
 # _ClassTreeItem = list[_ClassTreeItem] | Tuple[type, Tuple[type, ...]]
 def getclasstree(classes: list[type], unique: bool = ...) -> list[Any]: ...
-def walktree(classes: list[type], children: dict[type[Any], list[type]], parent: type[Any] | None) -> list[Any]: ...
+def walktree(classes: list[type], children: Mapping[type[Any], list[type]], parent: type[Any] | None) -> list[Any]: ...
 
 class Arguments(NamedTuple):
     args: list[str]
@@ -446,8 +446,8 @@ if sys.version_info < (3, 11):
         varkw: str | None = ...,
         defaults: tuple[Any, ...] | None = ...,
         kwonlyargs: Sequence[str] | None = ...,
-        kwonlydefaults: dict[str, Any] | None = ...,
-        annotations: dict[str, Any] = ...,
+        kwonlydefaults: Mapping[str, Any] | None = ...,
+        annotations: Mapping[str, Any] = ...,
         formatarg: Callable[[str], str] = ...,
         formatvarargs: Callable[[str], str] = ...,
         formatvarkw: Callable[[str], str] = ...,
@@ -460,7 +460,7 @@ def formatargvalues(
     args: list[str],
     varargs: str | None,
     varkw: str | None,
-    locals: dict[str, Any] | None,
+    locals: Mapping[str, Any] | None,
     formatarg: Callable[[str], str] | None = ...,
     formatvarargs: Callable[[str], str] | None = ...,
     formatvarkw: Callable[[str], str] | None = ...,

@@ -2,6 +2,7 @@ import sys
 from _typeshed import Self, SupportsGetItem, SupportsItemAccess
 from builtins import list as _list, type as _type
 from collections.abc import Iterable, Iterator, Mapping
+from email.message import Message
 from types import TracebackType
 from typing import IO, Any, Protocol
 
@@ -72,7 +73,7 @@ class FieldStorage:
     keep_blank_values: int
     strict_parsing: int
     qs_on_post: str | None
-    headers: Mapping[str, str]
+    headers: Mapping[str, str] | Message
     fp: IO[bytes]
     encoding: str
     errors: str
@@ -93,7 +94,7 @@ class FieldStorage:
     def __init__(
         self,
         fp: IO[Any] | None = ...,
-        headers: Mapping[str, str] | None = ...,
+        headers: Mapping[str, str] | Message | None = ...,
         outerboundary: bytes = ...,
         environ: SupportsGetItem[str, str] = ...,
         keep_blank_values: int = ...,

@@ -11,7 +11,7 @@ from typing_extensions import Final, Protocol
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
-from mypy.messages import MessageBuilder, format_type_bare, quote_type_string
+from mypy.messages import MessageBuilder, format_type_bare, quote_type_string, wrong_type_arg_count
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -38,7 +38,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import Options
+from mypy.options import UNPACK, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
 from mypy.tvar_scope import TypeVarLikeScope
@@ -404,7 +404,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         #       need access to MessageBuilder here. Also move the similar
         #       message generation logic in semanal.py.
         self.api.fail(f'Cannot resolve name "{t.name}" (possible cyclic definition)', t)
-        if self.options.enable_recursive_aliases and self.api.is_func_scope():
+        if not self.options.disable_recursive_aliases and self.api.is_func_scope():
             self.note("Recursive types are not allowed at function scope", t)
 
     def apply_concatenate_operator(self, t: UnboundType) -> Type:
@@ -571,9 +571,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type("builtins.bool")
         elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
-            # We don't want people to try to use this yet.
-            if not self.options.enable_incomplete_features:
-                self.fail('"Unpack" is not supported yet, use --enable-incomplete-features', t)
+            if not self.api.incomplete_feature_enabled(UNPACK, t):
+                return AnyType(TypeOfAny.from_error)
+            if len(t.args) != 1:
+                self.fail("Unpack[...] requires exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
         elif fullname in LITERAL_STRING_NAMES:
@@ -652,14 +653,28 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # The class has a Tuple[...] base class so it will be
             # represented as a tuple type.
             if info.special_alias:
-                return TypeAliasType(info.special_alias, self.anal_array(args))
+                return expand_type_alias(
+                    info.special_alias,
+                    self.anal_array(args),
+                    self.fail,
+                    False,
+                    ctx,
+                    use_standard_error=True,
+                )
             return tup.copy_modified(items=self.anal_array(tup.items), fallback=instance)
         td = info.typeddict_type
         if td is not None:
             # The class has a TypedDict[...] base class so it will be
             # represented as a typeddict type.
             if info.special_alias:
-                return TypeAliasType(info.special_alias, self.anal_array(args))
+                return expand_type_alias(
+                    info.special_alias,
+                    self.anal_array(args),
+                    self.fail,
+                    False,
+                    ctx,
+                    use_standard_error=True,
+                )
             # Create a named TypedDictType
             return td.copy_modified(
                 item_types=self.anal_array(list(td.items.values())), fallback=instance
@@ -1256,7 +1271,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # TODO: Once we start adding support for enums, make sure we report a custom
             # error for case 2 as well.
             if arg.type_of_any not in (TypeOfAny.from_error, TypeOfAny.special_form):
-                self.fail(f'Parameter {idx} of Literal[...] cannot be of type "Any"', ctx)
+                self.fail(
+                    f'Parameter {idx} of Literal[...] cannot be of type "Any"',
+                    ctx,
+                    code=codes.VALID_TYPE,
+                )
             return None
         elif isinstance(arg, RawExpressionType):
             # A raw literal. Convert it directly into a literal if we can.
@@ -1290,7 +1309,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 out.extend(union_result)
             return out
         else:
-            self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx)
+            self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx, code=codes.VALID_TYPE)
             return None
 
     def analyze_type(self, t: Type) -> Type:
@@ -1337,19 +1356,21 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     ) -> Sequence[TypeVarLikeType]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
         if fun_type.variables:
+            defs = []
             for var in fun_type.variables:
                 var_node = self.lookup_qualified(var.name, defn)
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarLikeExpr)
-                self.tvar_scope.bind_new(var.name, var_expr)
-            return fun_type.variables
+                binding = self.tvar_scope.bind_new(var.name, var_expr)
+                defs.append(binding)
+            return defs
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
         typevars = [
             (name, tvar) for name, tvar in typevars if not self.is_defined_type_var(name, defn)
         ]
-        defs: list[TypeVarLikeType] = []
+        defs = []
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail(
@@ -1357,9 +1378,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     defn,
                     code=codes.VALID_TYPE,
                 )
-            self.tvar_scope.bind_new(name, tvar)
-            binding = self.tvar_scope.get_binding(tvar.fullname)
-            assert binding is not None
+            binding = self.tvar_scope.bind_new(name, tvar)
             defs.append(binding)
 
         return defs
@@ -1539,16 +1558,11 @@ def fix_instance(
         t.args = (any_type,) * len(t.type.type_vars)
         return
     # Invalid number of type parameters.
-    n = len(t.type.type_vars)
-    s = f"{n} type arguments"
-    if n == 0:
-        s = "no type arguments"
-    elif n == 1:
-        s = "1 type argument"
-    act = str(len(t.args))
-    if act == "0":
-        act = "none"
-    fail(f'"{t.type.name}" expects {s}, but {act} given', t, code=codes.TYPE_ARG)
+    fail(
+        wrong_type_arg_count(len(t.type.type_vars), str(len(t.args)), t.type.name),
+        t,
+        code=codes.TYPE_ARG,
+    )
     # Construct the correct number of type arguments, as
     # otherwise the type checker may crash as it expects
     # things to be right.
@@ -1565,6 +1579,7 @@ def expand_type_alias(
     *,
     unexpanded_type: Type | None = None,
     disallow_any: bool = False,
+    use_standard_error: bool = False,
 ) -> Type:
     """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
 
@@ -1609,7 +1624,13 @@ def expand_type_alias(
         tp.column = ctx.column
         return tp
     if act_len != exp_len:
-        fail(f"Bad number of arguments for type alias, expected: {exp_len}, given: {act_len}", ctx)
+        if use_standard_error:
+            # This is used if type alias is an internal representation of another type,
+            # for example a generic TypedDict or NamedTuple.
+            msg = wrong_type_arg_count(exp_len, str(act_len), node.name)
+        else:
+            msg = f"Bad number of arguments for type alias, expected: {exp_len}, given: {act_len}"
+        fail(msg, ctx, code=codes.TYPE_ARG)
         return set_any_tvars(node, ctx.line, ctx.column, from_error=True)
     typ = TypeAliasType(node, args, ctx.line, ctx.column)
     assert typ.alias is not None

@@ -154,6 +154,7 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "plugins": lambda s: [p.strip() for p in s.split(",")],
     "always_true": lambda s: [p.strip() for p in s.split(",")],
     "always_false": lambda s: [p.strip() for p in s.split(",")],
+    "enable_incomplete_feature": lambda s: [p.strip() for p in s.split(",")],
     "disable_error_code": lambda s: validate_codes([p.strip() for p in s.split(",")]),
     "enable_error_code": lambda s: validate_codes([p.strip() for p in s.split(",")]),
     "package_root": lambda s: [p.strip() for p in s.split(",")],
@@ -161,6 +162,8 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "python_executable": expand_path,
     "strict": bool,
     "exclude": lambda s: [s.strip()],
+    "packages": try_split,
+    "modules": try_split,
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -174,10 +177,13 @@ toml_config_types.update(
         "plugins": try_split,
         "always_true": try_split,
         "always_false": try_split,
+        "enable_incomplete_feature": try_split,
         "disable_error_code": lambda s: validate_codes(try_split(s)),
         "enable_error_code": lambda s: validate_codes(try_split(s)),
         "package_root": try_split,
         "exclude": str_or_array_as_list,
+        "packages": try_split,
+        "modules": try_split,
     }
 )
 
@@ -430,6 +436,9 @@ def parse_section(
                     invert = True
                 elif key.startswith("disallow") and hasattr(template, key[3:]):
                     options_key = key[3:]
+                    invert = True
+                elif key.startswith("show_") and hasattr(template, "hide_" + key[5:]):
+                    options_key = "hide_" + key[5:]
                     invert = True
                 elif key == "strict":
                     pass  # Special handling below

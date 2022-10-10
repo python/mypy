@@ -18,7 +18,7 @@ from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import BuildType, Options
+from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -67,7 +67,7 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -151,7 +151,7 @@ def run_build(
     stdout: TextIO,
     stderr: TextIO,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
 
@@ -544,8 +544,9 @@ def process_options(
         title="Import discovery", description="Configure how imports are discovered and followed."
     )
     add_invertible_flag(
-        "--namespace-packages",
-        default=False,
+        "--no-namespace-packages",
+        dest="namespace_packages",
+        default=True,
         help="Support namespace packages (PEP 420, __init__.py-less)",
         group=imports_group,
     )
@@ -720,10 +721,9 @@ def process_options(
         "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional",
     )
     add_invertible_flag(
-        "--no-implicit-optional",
+        "--implicit-optional",
         default=False,
-        strict_flag=True,
-        help="Don't assume arguments with default values of None are Optional",
+        help="Assume arguments with default values of None are Optional",
         group=none_group,
     )
     none_group.add_argument("--strict-optional", action="store_true", help=argparse.SUPPRESS)
@@ -871,9 +871,9 @@ def process_options(
         group=error_group,
     )
     add_invertible_flag(
-        "--show-error-codes",
+        "--hide-error-codes",
         default=False,
-        help="Show error codes in error messages",
+        help="Hide error codes in error messages",
         group=error_group,
     )
     add_invertible_flag(
@@ -975,9 +975,19 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--enable-recursive-aliases",
+        "--disable-recursive-aliases",
         action="store_true",
-        help="Experimental support for recursive type aliases",
+        help="Disable experimental support for recursive type aliases",
+    )
+    # Deprecated reverse variant of the above.
+    internals_group.add_argument(
+        "--enable-recursive-aliases", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--enable-incomplete-feature",
+        action="append",
+        metavar="FEATURE",
+        help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
@@ -999,6 +1009,11 @@ def process_options(
         "the contents of SHADOW_FILE instead.",
     )
     add_invertible_flag("--fast-exit", default=True, help=argparse.SUPPRESS, group=internals_group)
+    # This flag is useful for mypy tests, where function bodies may be omitted. Plugin developers
+    # may want to use this as well in their tests.
+    add_invertible_flag(
+        "--allow-empty-bodies", default=False, help=argparse.SUPPRESS, group=internals_group
+    )
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."
@@ -1102,6 +1117,7 @@ def process_options(
     parser.add_argument(
         "--cache-map", nargs="+", dest="special-opts:cache_map", help=argparse.SUPPRESS
     )
+    # This one is deprecated, but we will keep it for few releases.
     parser.add_argument(
         "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
     )
@@ -1217,8 +1233,13 @@ def process_options(
 
     # Paths listed in the config file will be ignored if any paths, modules or packages
     # are passed on the command line.
-    if options.files and not (special_opts.files or special_opts.packages or special_opts.modules):
-        special_opts.files = options.files
+    if not (special_opts.files or special_opts.packages or special_opts.modules):
+        if options.files:
+            special_opts.files = options.files
+        if options.packages:
+            special_opts.packages = options.packages
+        if options.modules:
+            special_opts.modules = options.modules
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -1264,6 +1285,17 @@ def process_options(
     # Enabling an error code always overrides disabling
     options.disabled_error_codes -= options.enabled_error_codes
 
+    # Validate incomplete features.
+    for feature in options.enable_incomplete_feature:
+        if feature not in INCOMPLETE_FEATURES:
+            parser.error(f"Unknown incomplete feature: {feature}")
+    if options.enable_incomplete_features:
+        print(
+            "Warning: --enable-incomplete-features is deprecated, use"
+            " --enable-incomplete-feature=FEATURE instead"
+        )
+        options.enable_incomplete_feature = list(INCOMPLETE_FEATURES)
+
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:
         options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
@@ -1307,6 +1339,12 @@ def process_options(
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
         options.cache_fine_grained = True
+
+    if options.enable_recursive_aliases:
+        print(
+            "Warning: --enable-recursive-aliases is deprecated;"
+            " recursive types are enabled by default"
+        )
 
     # Set target.
     if special_opts.modules + special_opts.packages:

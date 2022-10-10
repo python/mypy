@@ -203,7 +203,7 @@ class NewTypeAnalyzer:
             self.api.anal_type(
                 unanalyzed_type,
                 report_invalid_types=False,
-                allow_placeholder=self.options.enable_recursive_aliases
+                allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
             )
         )
