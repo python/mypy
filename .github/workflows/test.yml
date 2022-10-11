@@ -15,7 +15,7 @@ on:
     - CREDITS
     - LICENSE
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
@@ -63,12 +63,13 @@ jobs:
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
-        - name: Test suite with py311-ubuntu
+        - name: Test suite with py311-ubuntu, mypyc-compiled
           python: '3.11-dev'
           arch: x64
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
+          test_mypyc: true
         - name: mypyc runtime tests with py37-macos
           python: '3.7'
           arch: x64
