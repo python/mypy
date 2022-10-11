@@ -933,11 +933,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             )
             builder.add_bool_branch(cond, code_block, next_block)
 
-            # TODO: move down below
-            builder.activate_block(code_block)
-            builder.accept(m.bodies[i])
-            builder.goto(end_block)
-
             for p in pattern.patterns[1:]:
                 builder.activate_block(next_block)
                 next_block = BasicBlock()
@@ -948,4 +943,9 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.activate_block(next_block)
             builder.goto(end_block)
+
+            builder.activate_block(code_block)
+            builder.accept(m.bodies[i])
+            builder.goto(end_block)
+
             builder.activate_block(end_block)
