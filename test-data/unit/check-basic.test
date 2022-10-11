@@ -350,7 +350,8 @@ from typing import Union
 class A: ...
 class B: ...
 
-x: Union[mock, A]  # E: Module "mock" is not valid as a type
+x: Union[mock, A]  # E: Module "mock" is not valid as a type \
+                   # N: Perhaps you meant to use a protocol matching the module structure?
 
 if isinstance(x, B):
     pass
@@ -366,7 +367,8 @@ from typing import overload, Any, Union
 @overload
 def f(x: int) -> int: ...
 @overload
-def f(x: str) -> Union[mock, str]: ...  # E: Module "mock" is not valid as a type
+def f(x: str) -> Union[mock, str]: ...  # E: Module "mock" is not valid as a type \
+                                        # N: Perhaps you meant to use a protocol matching the module structure?
 def f(x):
     pass
 

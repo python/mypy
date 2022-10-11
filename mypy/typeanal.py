@@ -761,8 +761,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
         elif isinstance(sym.node, MypyFile):
-            # TODO: suggest a protocol when supported.
             message = 'Module "{}" is not valid as a type'
+            notes.append("Perhaps you meant to use a protocol matching the module structure?")
         elif unbound_tvar:
             message = 'Type variable "{}" is unbound'
             short = name.split(".")[-1]
