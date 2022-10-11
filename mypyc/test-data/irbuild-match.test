@@ -90,8 +90,8 @@ L4:
     return r17
 [case testMatchOrPatternManyPatterns_python3_10]
 def f():
-    match 123:
-        case 123 | 456 | 789 | 999:
+    match 1:
+        case 1 | 2 | 3 | 4:
             print("matched")
 [out]
 def f():
@@ -123,28 +123,28 @@ def f():
     r25 :: object_ptr
     r26, r27 :: object
 L0:
-    r0 = 246 == 246
+    r0 = 2 == 2
     r1 = box(bit, r0)
     r2 = PyObject_IsTrue(r1)
     r3 = r2 >= 0 :: signed
     r4 = truncate r2: int32 to builtins.bool
     if r4 goto L5 else goto L1 :: bool
 L1:
-    r5 = 246 == 912
+    r5 = 2 == 4
     r6 = box(bit, r5)
     r7 = PyObject_IsTrue(r6)
     r8 = r7 >= 0 :: signed
     r9 = truncate r7: int32 to builtins.bool
     if r9 goto L5 else goto L2 :: bool
 L2:
-    r10 = 246 == 1578
+    r10 = 2 == 6
     r11 = box(bit, r10)
     r12 = PyObject_IsTrue(r11)
     r13 = r12 >= 0 :: signed
     r14 = truncate r12: int32 to builtins.bool
     if r14 goto L5 else goto L3 :: bool
 L3:
-    r15 = 246 == 1998
+    r15 = 2 == 8
     r16 = box(bit, r15)
     r17 = PyObject_IsTrue(r16)
     r18 = r17 >= 0 :: signed
