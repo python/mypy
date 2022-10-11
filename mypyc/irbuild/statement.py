@@ -921,7 +921,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.activate_block(next_block)
 
         if isinstance(pattern, OrPattern):
-            assert len(pattern.patterns) == 4
+            # assert len(pattern.patterns) == 4
             assert all(isinstance(p, ValuePattern) for p in pattern.patterns)
 
             code_block = BasicBlock()
@@ -938,26 +938,18 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.accept(m.bodies[i])
             builder.goto(end_block)
 
-            builder.activate_block(next_block)
-            next_block = BasicBlock()
-            cond = builder.accept(
-                ComparisonExpr(["=="], [m.subject, pattern.patterns[1].expr])  # type: ignore
-            )
-            builder.add_bool_branch(cond, code_block, next_block)
-            # builder.activate_block(next_block)
+            for p in pattern.patterns[1:-1]:
+                builder.activate_block(next_block)
+                next_block = BasicBlock()
+                cond = builder.accept(
+                    ComparisonExpr(["=="], [m.subject, p.expr])  # type: ignore
+                )
+                builder.add_bool_branch(cond, code_block, next_block)
 
             builder.activate_block(next_block)
             next_block = BasicBlock()
             cond = builder.accept(
-                ComparisonExpr(["=="], [m.subject, pattern.patterns[2].expr])  # type: ignore
-            )
-            builder.add_bool_branch(cond, code_block, next_block)
-            # builder.activate_block(next_block)
-
-            builder.activate_block(next_block)
-            next_block = BasicBlock()
-            cond = builder.accept(
-                ComparisonExpr(["=="], [m.subject, pattern.patterns[3].expr])  # type: ignore
+                ComparisonExpr(["=="], [m.subject, pattern.patterns[-1].expr])  # type: ignore
             )
             builder.add_bool_branch(cond, code_block, end_block)
             builder.activate_block(end_block)
