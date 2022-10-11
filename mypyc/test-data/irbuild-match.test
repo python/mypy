@@ -91,7 +91,7 @@ L3:
 [case testMatchOrPatternManyPatterns_python3_10]
 def f():
     match 123:
-        case 123 | 456 | 789:
+        case 123 | 456 | 789 | 999:
             print("matched")
 [out]
 def f():
@@ -117,7 +117,12 @@ def f():
     r19 :: int32
     r20 :: bit
     r21 :: bool
-    r22 :: object
+    r22 :: bit
+    r23 :: object
+    r24 :: int32
+    r25 :: bit
+    r26 :: bool
+    r27 :: object
 L0:
     r0 = 246 == 246
     r1 = box(bit, r0)
@@ -134,7 +139,7 @@ L1:
     r10 = load_address r9
     r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
     keep_alive r5
-    goto L4
+    goto L5
 L2:
     r12 = 246 == 912
     r13 = box(bit, r12)
@@ -150,5 +155,12 @@ L3:
     r21 = truncate r19: int32 to builtins.bool
     if r21 goto L1 else goto L4 :: bool
 L4:
-    r22 = box(None, 1)
-    return r22
+    r22 = 246 == 1998
+    r23 = box(bit, r22)
+    r24 = PyObject_IsTrue(r23)
+    r25 = r24 >= 0 :: signed
+    r26 = truncate r24: int32 to builtins.bool
+    if r26 goto L1 else goto L5 :: bool
+L5:
+    r27 = box(None, 1)
+    return r27
