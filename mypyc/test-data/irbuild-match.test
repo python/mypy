@@ -88,3 +88,67 @@ L2:
 L3:
     r17 = box(None, 1)
     return r17
+[case testMatchOrPatternManyPatterns_python3_10]
+def f():
+    match 123:
+        case 123 | 456 | 789:
+            print("matched")
+[out]
+def f():
+    r0 :: bit
+    r1 :: object
+    r2 :: int32
+    r3 :: bit
+    r4 :: bool
+    r5 :: str
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: bit
+    r13 :: object
+    r14 :: int32
+    r15 :: bit
+    r16 :: bool
+    r17 :: bit
+    r18 :: object
+    r19 :: int32
+    r20 :: bit
+    r21 :: bool
+    r22 :: object
+L0:
+    r0 = 246 == 246
+    r1 = box(bit, r0)
+    r2 = PyObject_IsTrue(r1)
+    r3 = r2 >= 0 :: signed
+    r4 = truncate r2: int32 to builtins.bool
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = 'matched'
+    r6 = builtins :: module
+    r7 = 'print'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [r5]
+    r10 = load_address r9
+    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
+    keep_alive r5
+    goto L4
+L2:
+    r12 = 246 == 912
+    r13 = box(bit, r12)
+    r14 = PyObject_IsTrue(r13)
+    r15 = r14 >= 0 :: signed
+    r16 = truncate r14: int32 to builtins.bool
+    if r16 goto L1 else goto L3 :: bool
+L3:
+    r17 = 246 == 1578
+    r18 = box(bit, r17)
+    r19 = PyObject_IsTrue(r18)
+    r20 = r19 >= 0 :: signed
+    r21 = truncate r19: int32 to builtins.bool
+    if r21 goto L1 else goto L4 :: bool
+L4:
+    r22 = box(None, 1)
+    return r22
