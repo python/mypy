@@ -921,27 +921,20 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.activate_block(next_block)
 
         if isinstance(pattern, OrPattern):
-            # assert len(pattern.patterns) == 4
             assert all(isinstance(p, ValuePattern) for p in pattern.patterns)
 
             code_block = BasicBlock()
             next_block = BasicBlock()
-            end_block = BasicBlock()
 
-            cond = builder.accept(
-                ComparisonExpr(["=="], [m.subject, pattern.patterns[0].expr])  # type: ignore
-            )
-            builder.add_bool_branch(cond, code_block, next_block)
-
-            for p in pattern.patterns[1:]:
-                builder.activate_block(next_block)
-                next_block = BasicBlock()
+            for p in pattern.patterns:
                 cond = builder.accept(
                     ComparisonExpr(["=="], [m.subject, p.expr])  # type: ignore
                 )
                 builder.add_bool_branch(cond, code_block, next_block)
+                builder.activate_block(next_block)
+                next_block = BasicBlock()
 
-            builder.activate_block(next_block)
+            end_block = BasicBlock()
             builder.goto(end_block)
 
             builder.activate_block(code_block)
