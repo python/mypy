@@ -906,9 +906,16 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
     assert len(m.bodies) == 1
 
-    for pattern in m.patterns:
-        if (
-            isinstance(pattern, AsPattern) and
-            pattern.pattern == pattern.name == None
-        ):
-            pass
+    for i, pattern in enumerate(m.patterns):
+        if isinstance(pattern, ValuePattern):
+            code_block = BasicBlock()
+            next_block = BasicBlock()
+
+            cond = builder.accept(ComparisonExpr(["=="], [m.subject, pattern.expr]))
+            builder.add_bool_branch(cond, code_block, next_block)
+
+            builder.activate_block(code_block)
+            builder.accept(m.bodies[i])
+            builder.goto(next_block)
+
+            builder.activate_block(next_block)
