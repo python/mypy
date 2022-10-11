@@ -77,7 +77,7 @@ L1:
     r10 = load_address r9
     r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
     keep_alive r5
-    goto L3
+    goto L4
 L2:
     r12 = 246 == 912
     r13 = box(bit, r12)
@@ -86,6 +86,7 @@ L2:
     r16 = truncate r14: int32 to builtins.bool
     if r16 goto L1 else goto L3 :: bool
 L3:
+L4:
     r17 = box(None, 1)
     return r17
 [case testMatchOrPatternManyPatterns_python3_10]
@@ -139,7 +140,7 @@ L1:
     r10 = load_address r9
     r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
     keep_alive r5
-    goto L5
+    goto L6
 L2:
     r12 = 246 == 912
     r13 = box(bit, r12)
@@ -162,5 +163,6 @@ L4:
     r26 = truncate r24: int32 to builtins.bool
     if r26 goto L1 else goto L5 :: bool
 L5:
+L6:
     r27 = box(None, 1)
     return r27

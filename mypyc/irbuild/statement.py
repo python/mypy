@@ -938,7 +938,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.accept(m.bodies[i])
             builder.goto(end_block)
 
-            for p in pattern.patterns[1:-1]:
+            for p in pattern.patterns[1:]:
                 builder.activate_block(next_block)
                 next_block = BasicBlock()
                 cond = builder.accept(
@@ -947,9 +947,5 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
                 builder.add_bool_branch(cond, code_block, next_block)
 
             builder.activate_block(next_block)
-            next_block = BasicBlock()
-            cond = builder.accept(
-                ComparisonExpr(["=="], [m.subject, pattern.patterns[-1].expr])  # type: ignore
-            )
-            builder.add_bool_branch(cond, code_block, end_block)
+            builder.goto(end_block)
             builder.activate_block(end_block)
