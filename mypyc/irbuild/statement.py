@@ -12,11 +12,13 @@ import importlib.util
 from typing import Callable, Sequence
 
 from mypy.nodes import (
+    ArgKind,
     AssertStmt,
     AssignmentStmt,
     AwaitExpr,
     Block,
     BreakStmt,
+    CallExpr,
     ComparisonExpr,
     ContinueStmt,
     DelStmt,
@@ -30,6 +32,7 @@ from mypy.nodes import (
     ListExpr,
     Lvalue,
     MatchStmt,
+    NameExpr,
     OperatorAssignmentStmt,
     RaiseStmt,
     ReturnStmt,
@@ -43,7 +46,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypy.patterns import AsPattern, OrPattern, ValuePattern
+from mypy.patterns import ClassPattern, OrPattern, ValuePattern
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -98,6 +101,7 @@ from mypyc.primitives.misc_ops import (
     coro_op,
     import_from_op,
     send_op,
+    slow_isinstance_op,
     type_op,
     yield_from_except_op,
 )
@@ -902,7 +906,7 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
 
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
-    builder.accept(m.subject)
+    subject = builder.accept(m.subject)
 
     assert len(m.bodies) == 1
 
@@ -936,6 +940,28 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             end_block = BasicBlock()
             builder.goto(end_block)
+
+            builder.activate_block(code_block)
+            builder.accept(m.bodies[i])
+            builder.goto(end_block)
+
+            builder.activate_block(end_block)
+
+        if isinstance(pattern, ClassPattern):
+            assert not pattern.positionals
+            assert not pattern.keyword_keys
+            assert not pattern.keyword_values
+
+            code_block = BasicBlock()
+            end_block = BasicBlock()
+
+            cond = builder.call_c(
+                slow_isinstance_op,
+                [subject, builder.accept(pattern.class_ref)],
+                pattern.line
+            )
+
+            builder.add_bool_branch(cond, code_block, end_block)
 
             builder.activate_block(code_block)
             builder.accept(m.bodies[i])
