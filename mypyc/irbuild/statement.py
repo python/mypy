@@ -908,7 +908,7 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
     subject = builder.accept(m.subject)
 
-    assert len(m.bodies) == 1
+    final_block = BasicBlock()
 
     for i, pattern in enumerate(m.patterns):
         if isinstance(pattern, ValuePattern):
@@ -920,7 +920,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.activate_block(code_block)
             builder.accept(m.bodies[i])
-            builder.goto(next_block)
+            builder.goto(final_block)
 
             builder.activate_block(next_block)
 
@@ -980,3 +980,5 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.activate_block(code_block)
             builder.accept(m.bodies[i])
             builder.goto_and_activate(next_block)
+
+    builder.goto_and_activate(final_block)
