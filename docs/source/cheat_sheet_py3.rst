@@ -34,8 +34,6 @@ Useful built-in types
 
 .. code-block:: python
 
-   from typing import List, Set, Dict, Tuple, Optional
-
    # For most types, just use the name of the type
    x: int = 1
    x: float = 1.0
@@ -43,27 +41,20 @@ Useful built-in types
    x: str = "test"
    x: bytes = b"test"
 
-   # For collections, the type of the collection item is in brackets
-   # (Python 3.9+)
+   # For collections on Python 3.9+, the type of the collection item is in brackets
    x: list[int] = [1]
    x: set[int] = {6, 7}
 
-   # In Python 3.8 and earlier, the name of the collection type is
-   # capitalized, and the type is imported from the 'typing' module
-   x: List[int] = [1]
-   x: Set[int] = {6, 7}
-
    # For mappings, we need the types of both keys and values
    x: dict[str, float] = {"field": 2.0}  # Python 3.9+
-   x: Dict[str, float] = {"field": 2.0}
 
    # For tuples of fixed size, we specify the types of all the elements
    x: tuple[int, str, float] = (3, "yes", 7.5)  # Python 3.9+
-   x: Tuple[int, str, float] = (3, "yes", 7.5)
 
    # For tuples of variable size, we use one type and ellipsis
    x: tuple[int, ...] = (1, 2, 3)  # Python 3.9+
-   x: Tuple[int, ...] = (1, 2, 3)
+
+   from typing import Optional
 
    # Use Optional[] for values that could be None
    x: Optional[str] = some_function()
@@ -73,6 +64,16 @@ Useful built-in types
    # If a value can never be None due to some invariants, use an assert
    assert x is not None
    print(x.upper())
+
+   from typing import List, Set, Dict, Tuple
+
+   # In Python 3.8 and earlier, the name of the collection type is
+   # capitalized, and the type is imported from the 'typing' module
+   x: List[int] = [1]
+   x: Set[int] = {6, 7}
+   x: Dict[str, float] = {"field": 2.0}
+   x: Tuple[int, str, float] = (3, "yes", 7.5)
+   x: Tuple[int, ...] = (1, 2, 3)
 
 Functions
 *********
@@ -143,7 +144,9 @@ When you're puzzled or when things are complicated
    # message with the type; remove it again before running the code.
    reveal_type(1)  # Revealed type is "builtins.int"
 
-   # Use Union when something could be one of a few types
+   # On Python 3.10, use the | operator when something could be one of a few types
+   x: list[int | str] = [3, 5, "test", "fun"]
+   # On earlier versions, use Union
    x: list[Union[int, str]] = [3, 5, "test", "fun"]
 
    # If you initialize a variable with an empty container or "None"
