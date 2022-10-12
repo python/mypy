@@ -252,11 +252,10 @@ Classes
        def __init__(self) -> None:
            self.items: list[str] = []
 
-   # If you want dynamic attributes on your class, have it override "__setattr__"
-   # or "__getattr__" in a stub or in your source code.
-   #
-   # "__setattr__" allows for dynamic assignment to names
-   # "__getattr__" allows for dynamic access to names
+   # If you want dynamic attributes on your class, have it
+   # override "__setattr__" or "__getattr__":
+   # - "__getattr__" allows for dynamic access to names
+   # - "__setattr__" allows for dynamic assignment to names
    class A:
        # This will allow assignment to any A.x, if x is the same type as "value"
        # (use "value: Any" to allow arbitrary types)
