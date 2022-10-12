@@ -201,3 +201,30 @@ L1:
 L2:
     r12 = box(None, 1)
     return r12
+[case testMatchExaustivePattern_python3_10]
+def f():
+    match 123:
+        case _:
+            print("matched")
+[out]
+def f():
+    r0 :: str
+    r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6, r7 :: object
+L0:
+L1:
+    r0 = 'matched'
+    r1 = builtins :: module
+    r2 = 'print'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = [r0]
+    r5 = load_address r4
+    r6 = _PyObject_Vectorcall(r3, r5, 1, 0)
+    keep_alive r0
+L2:
+    r7 = box(None, 1)
+    return r7

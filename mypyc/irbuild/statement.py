@@ -46,7 +46,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypy.patterns import ClassPattern, OrPattern, ValuePattern
+from mypy.patterns import AsPattern, ClassPattern, OrPattern, ValuePattern
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -968,3 +968,15 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.goto(end_block)
 
             builder.activate_block(end_block)
+
+        if isinstance(pattern, AsPattern):
+            assert not pattern.pattern
+            assert not pattern.name
+
+            code_block = BasicBlock()
+            next_block = BasicBlock()
+
+            builder.goto(code_block)
+            builder.activate_block(code_block)
+            builder.accept(m.bodies[i])
+            builder.goto_and_activate(next_block)
