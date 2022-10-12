@@ -205,6 +205,8 @@ When you're puzzled or when things are complicated
    # Use Any if you don't know the type of something or it's too
    # dynamic to write a type for
    x: Any = mystery_function()
+   # Mypy will let you do anything with x!
+   x.whatever() * x["you"] + x("want") - any(x) and all(x) is super  # no errors
 
    # Use a "type: ignore" comment to suppress errors on a given line,
    # when your code confuses mypy or runs into an outright bug in mypy.
