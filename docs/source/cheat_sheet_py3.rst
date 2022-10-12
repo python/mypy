@@ -126,7 +126,7 @@ Functions
    quux(3, 5)  # error: Too many positional arguments for "quux"
    quux(x=3, y=5)  # error: Unexpected keyword argument "x" for "quux"
 
-   # This makes each positional arg and each keyword arg a "str"
+   # This says each positional arg and each keyword arg a "str"
    def call(self, *args: str, **kwargs: str) -> str:
        reveal_type(args)  # Revealed type is "tuple[str, ...]"
        reveal_type(kwargs)  # Revealed type is "dict[str, str]"
