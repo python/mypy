@@ -291,11 +291,7 @@ Miscellaneous
 .. code-block:: python
 
    import sys
-   import re
-   from typing import Match, IO
-
-   # "typing.Match" describes regex matches from the re module
-   x: Match[str] = re.match(r'[0-9]+', "15")
+   from typing import IO
 
    # Use IO[] for functions that should accept or return any
    # object that comes from an open() call (IO[] does not
@@ -310,7 +306,7 @@ Miscellaneous
 
    # Forward references are useful if you want to reference a class before
    # it is defined
-   def f(foo: A) -> int:  # This will fail
+   def f(foo: A) -> int:  # This will fail at runtime with 'A' is not defined
        ...
 
    class A:
