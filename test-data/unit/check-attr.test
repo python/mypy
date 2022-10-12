@@ -1514,7 +1514,6 @@ reveal_type(A)  # N: Revealed type is "def (bc: Tuple[builtins.int, builtins.str
 reveal_type(A.__init__)  # N: Revealed type is "def (self: __main__.A, bc: Tuple[builtins.int, builtins.str])"
 reveal_type(A.__attrs_init__)  # N: Revealed type is "def (self: __main__.A, b: builtins.int, c: builtins.str)"
 
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/attr.pyi]
 
 [case testAttrsClassWithSlots]
