@@ -54,10 +54,19 @@ Useful built-in types
    # For tuples of variable size, we use one type and ellipsis
    x: tuple[int, ...] = (1, 2, 3)  # Python 3.9+
 
+   # In Python 3.8 and earlier, the name of the collection type is
+   # capitalized, and the type is imported from the 'typing' module
+   from typing import List, Set, Dict, Tuple
+   x: List[int] = [1]
+   x: Set[int] = {6, 7}
+   x: Dict[str, float] = {"field": 2.0}
+   x: Tuple[int, str, float] = (3, "yes", 7.5)
+   x: Tuple[int, ...] = (1, 2, 3)
+
    from typing import Union, Optional
 
    # On Python 3.10+, use the | operator when something could be one of a few types
-   x: list[int | str] = [3, 5, "test", "fun"]
+   x: list[int | str] = [3, 5, "test", "fun"]  # Python 3.10+
    # On earlier versions, use Union
    x: list[Union[int, str]] = [3, 5, "test", "fun"]
 
@@ -70,16 +79,6 @@ Useful built-in types
    # If a value can never be None due to some invariants, use an assert
    assert x is not None
    print(x.upper())
-
-   from typing import List, Set, Dict, Tuple
-
-   # In Python 3.8 and earlier, the name of the collection type is
-   # capitalized, and the type is imported from the 'typing' module
-   x: List[int] = [1]
-   x: Set[int] = {6, 7}
-   x: Dict[str, float] = {"field": 2.0}
-   x: Tuple[int, str, float] = (3, "yes", 7.5)
-   x: Tuple[int, ...] = (1, 2, 3)
 
 Functions
 *********
