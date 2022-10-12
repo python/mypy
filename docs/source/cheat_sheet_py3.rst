@@ -155,15 +155,15 @@ Classes
    # User-defined classes are valid as types in annotations
    x: MyClass = MyClass()
 
-   # You can use the ClassVar annotation to declare a class variable
-   class Car:
-       seats: ClassVar[int] = 4
-       passengers: ClassVar[list[str]]
-
    # You can also declare the type of an attribute in "__init__"
    class Box:
        def __init__(self) -> None:
            self.items: list[str] = []
+
+   # You can use the ClassVar annotation to declare a class variable
+   class Car:
+       seats: ClassVar[int] = 4
+       passengers: ClassVar[list[str]]
 
    # If you want dynamic attributes on your class, have it
    # override "__setattr__" or "__getattr__":
