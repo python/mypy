@@ -309,3 +309,119 @@ L4:
 L5:
     r24 = box(None, 1)
     return r24
+[case testMatchMultiBodyAndComplexOr_python3_10]
+def f():
+    match 123:
+        case 1:
+            print("here 1")
+        case 2 | 3:
+            print("here 2 | 3")
+        case 123:
+            print("here 123")
+[out]
+def f():
+    r0 :: bit
+    r1 :: object
+    r2 :: int32
+    r3 :: bit
+    r4 :: bool
+    r5 :: str
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: bit
+    r13 :: object
+    r14 :: int32
+    r15 :: bit
+    r16 :: bool
+    r17 :: bit
+    r18 :: object
+    r19 :: int32
+    r20 :: bit
+    r21 :: bool
+    r22 :: str
+    r23 :: object
+    r24 :: str
+    r25 :: object
+    r26 :: object[1]
+    r27 :: object_ptr
+    r28 :: object
+    r29 :: bit
+    r30 :: object
+    r31 :: int32
+    r32 :: bit
+    r33 :: bool
+    r34 :: str
+    r35 :: object
+    r36 :: str
+    r37 :: object
+    r38 :: object[1]
+    r39 :: object_ptr
+    r40, r41 :: object
+L0:
+    r0 = 246 == 2
+    r1 = box(bit, r0)
+    r2 = PyObject_IsTrue(r1)
+    r3 = r2 >= 0 :: signed
+    r4 = truncate r2: int32 to builtins.bool
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = 'here 1'
+    r6 = builtins :: module
+    r7 = 'print'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [r5]
+    r10 = load_address r9
+    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
+    keep_alive r5
+    goto L9
+L2:
+    r12 = 246 == 4
+    r13 = box(bit, r12)
+    r14 = PyObject_IsTrue(r13)
+    r15 = r14 >= 0 :: signed
+    r16 = truncate r14: int32 to builtins.bool
+    if r16 goto L5 else goto L3 :: bool
+L3:
+    r17 = 246 == 6
+    r18 = box(bit, r17)
+    r19 = PyObject_IsTrue(r18)
+    r20 = r19 >= 0 :: signed
+    r21 = truncate r19: int32 to builtins.bool
+    if r21 goto L5 else goto L4 :: bool
+L4:
+    goto L6
+L5:
+    r22 = 'here 2 | 3'
+    r23 = builtins :: module
+    r24 = 'print'
+    r25 = CPyObject_GetAttr(r23, r24)
+    r26 = [r22]
+    r27 = load_address r26
+    r28 = _PyObject_Vectorcall(r25, r27, 1, 0)
+    keep_alive r22
+    goto L9
+L6:
+    r29 = 246 == 246
+    r30 = box(bit, r29)
+    r31 = PyObject_IsTrue(r30)
+    r32 = r31 >= 0 :: signed
+    r33 = truncate r31: int32 to builtins.bool
+    if r33 goto L7 else goto L8 :: bool
+L7:
+    r34 = 'here 123'
+    r35 = builtins :: module
+    r36 = 'print'
+    r37 = CPyObject_GetAttr(r35, r36)
+    r38 = [r34]
+    r39 = load_address r38
+    r40 = _PyObject_Vectorcall(r37, r39, 1, 0)
+    keep_alive r34
+    goto L9
+L8:
+L9:
+    r41 = box(None, 1)
+    return r41
