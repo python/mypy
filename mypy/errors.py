@@ -17,6 +17,9 @@ from mypy.version import __version__ as mypy_version
 
 T = TypeVar("T")
 
+# Show error codes for some note-level messages (these usually appear alone
+# and not as a comment for a previous error-level message).
+SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED}
 allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
 
 # Keep track of the original error code when the error code of a message is changed.
@@ -782,7 +785,11 @@ class Errors:
                 s = f"{srcloc}: {severity}: {message}"
             else:
                 s = message
-            if not self.hide_error_codes and code and severity != "note":
+            if (
+                not self.hide_error_codes
+                and code
+                and (severity != "note" or code in SHOW_NOTE_CODES)
+            ):
                 # If note has an error code, it is related to a previous error. Avoid
                 # displaying duplicate error codes.
                 s = f"{s}  [{code.code}]"
