@@ -17,7 +17,6 @@ from mypy.nodes import (
     AwaitExpr,
     Block,
     BreakStmt,
-    ComparisonExpr,
     ContinueStmt,
     DelStmt,
     Expression,
@@ -929,7 +928,9 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             code_block = BasicBlock()
             next_block = BasicBlock()
 
-            cond = builder.accept(ComparisonExpr(["=="], [m.subject, pattern.expr]))
+            cond = builder.binary_op(
+                subject, builder.accept(pattern.expr), "==", pattern.expr.line
+            )
             builder.add_bool_branch(cond, code_block, next_block)
 
             build_match_body(i, code_block, next_block)
@@ -943,9 +944,8 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             next_block = BasicBlock()
 
             for p in pattern.patterns:
-                cond = builder.accept(
-                    ComparisonExpr(["=="], [m.subject, p.expr])  # type: ignore
-                )
+                cond = builder.binary_op(subject, builder.accept(p.expr), "==", p.expr.line)  # type: ignore
+
                 builder.add_bool_branch(cond, code_block, next_block)
                 builder.activate_block(next_block)
                 next_block = BasicBlock()

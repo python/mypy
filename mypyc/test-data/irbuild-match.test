@@ -6,38 +6,30 @@ def f():
 [out]
 def f():
     r0 :: bit
-    r1 :: object
-    r2 :: int32
-    r3 :: bit
-    r4 :: bool
-    r5 :: str
-    r6 :: object
-    r7 :: str
-    r8 :: object
-    r9 :: object[1]
-    r10 :: object_ptr
-    r11, r12 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7, r8 :: object
 L0:
     r0 = 246 == 246
-    r1 = box(bit, r0)
-    r2 = PyObject_IsTrue(r1)
-    r3 = r2 >= 0 :: signed
-    r4 = truncate r2: int32 to builtins.bool
-    if r4 goto L1 else goto L2 :: bool
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r5 = 'matched'
-    r6 = builtins :: module
-    r7 = 'print'
-    r8 = CPyObject_GetAttr(r6, r7)
-    r9 = [r5]
-    r10 = load_address r9
-    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
-    keep_alive r5
+    r1 = 'matched'
+    r2 = builtins :: module
+    r3 = 'print'
+    r4 = CPyObject_GetAttr(r2, r3)
+    r5 = [r1]
+    r6 = load_address r5
+    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    keep_alive r1
     goto L3
 L2:
 L3:
-    r12 = box(None, 1)
-    return r12
+    r8 = box(None, 1)
+    return r8
 [case testMatchOrPattern_python3_10]
 def f():
     match 123:
@@ -45,53 +37,36 @@ def f():
             print("matched")
 [out]
 def f():
-    r0 :: bit
-    r1 :: object
-    r2 :: int32
-    r3 :: bit
-    r4 :: bool
-    r5 :: bit
-    r6 :: object
-    r7 :: int32
-    r8 :: bit
-    r9 :: bool
-    r10 :: str
-    r11 :: object
-    r12 :: str
-    r13 :: object
-    r14 :: object[1]
-    r15 :: object_ptr
-    r16, r17 :: object
+    r0, r1 :: bit
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8, r9 :: object
 L0:
     r0 = 246 == 246
-    r1 = box(bit, r0)
-    r2 = PyObject_IsTrue(r1)
-    r3 = r2 >= 0 :: signed
-    r4 = truncate r2: int32 to builtins.bool
-    if r4 goto L3 else goto L1 :: bool
+    if r0 goto L3 else goto L1 :: bool
 L1:
-    r5 = 246 == 912
-    r6 = box(bit, r5)
-    r7 = PyObject_IsTrue(r6)
-    r8 = r7 >= 0 :: signed
-    r9 = truncate r7: int32 to builtins.bool
-    if r9 goto L3 else goto L2 :: bool
+    r1 = 246 == 912
+    if r1 goto L3 else goto L2 :: bool
 L2:
     goto L4
 L3:
-    r10 = 'matched'
-    r11 = builtins :: module
-    r12 = 'print'
-    r13 = CPyObject_GetAttr(r11, r12)
-    r14 = [r10]
-    r15 = load_address r14
-    r16 = _PyObject_Vectorcall(r13, r15, 1, 0)
-    keep_alive r10
+    r2 = 'matched'
+    r3 = builtins :: module
+    r4 = 'print'
+    r5 = CPyObject_GetAttr(r3, r4)
+    r6 = [r2]
+    r7 = load_address r6
+    r8 = _PyObject_Vectorcall(r5, r7, 1, 0)
+    keep_alive r2
     goto L5
 L4:
 L5:
-    r17 = box(None, 1)
-    return r17
+    r9 = box(None, 1)
+    return r9
 [case testMatchOrPatternManyPatterns_python3_10]
 def f():
     match 1:
@@ -99,77 +74,42 @@ def f():
             print("matched")
 [out]
 def f():
-    r0 :: bit
-    r1 :: object
-    r2 :: int32
-    r3 :: bit
-    r4 :: bool
-    r5 :: bit
-    r6 :: object
-    r7 :: int32
-    r8 :: bit
-    r9 :: bool
-    r10 :: bit
-    r11 :: object
-    r12 :: int32
-    r13 :: bit
-    r14 :: bool
-    r15 :: bit
-    r16 :: object
-    r17 :: int32
-    r18 :: bit
-    r19 :: bool
-    r20 :: str
-    r21 :: object
-    r22 :: str
-    r23 :: object
-    r24 :: object[1]
-    r25 :: object_ptr
-    r26, r27 :: object
+    r0, r1, r2, r3 :: bit
+    r4 :: str
+    r5 :: object
+    r6 :: str
+    r7 :: object
+    r8 :: object[1]
+    r9 :: object_ptr
+    r10, r11 :: object
 L0:
     r0 = 2 == 2
-    r1 = box(bit, r0)
-    r2 = PyObject_IsTrue(r1)
-    r3 = r2 >= 0 :: signed
-    r4 = truncate r2: int32 to builtins.bool
-    if r4 goto L5 else goto L1 :: bool
+    if r0 goto L5 else goto L1 :: bool
 L1:
-    r5 = 2 == 4
-    r6 = box(bit, r5)
-    r7 = PyObject_IsTrue(r6)
-    r8 = r7 >= 0 :: signed
-    r9 = truncate r7: int32 to builtins.bool
-    if r9 goto L5 else goto L2 :: bool
+    r1 = 2 == 4
+    if r1 goto L5 else goto L2 :: bool
 L2:
-    r10 = 2 == 6
-    r11 = box(bit, r10)
-    r12 = PyObject_IsTrue(r11)
-    r13 = r12 >= 0 :: signed
-    r14 = truncate r12: int32 to builtins.bool
-    if r14 goto L5 else goto L3 :: bool
+    r2 = 2 == 6
+    if r2 goto L5 else goto L3 :: bool
 L3:
-    r15 = 2 == 8
-    r16 = box(bit, r15)
-    r17 = PyObject_IsTrue(r16)
-    r18 = r17 >= 0 :: signed
-    r19 = truncate r17: int32 to builtins.bool
-    if r19 goto L5 else goto L4 :: bool
+    r3 = 2 == 8
+    if r3 goto L5 else goto L4 :: bool
 L4:
     goto L6
 L5:
-    r20 = 'matched'
-    r21 = builtins :: module
-    r22 = 'print'
-    r23 = CPyObject_GetAttr(r21, r22)
-    r24 = [r20]
-    r25 = load_address r24
-    r26 = _PyObject_Vectorcall(r23, r25, 1, 0)
-    keep_alive r20
+    r4 = 'matched'
+    r5 = builtins :: module
+    r6 = 'print'
+    r7 = CPyObject_GetAttr(r5, r6)
+    r8 = [r4]
+    r9 = load_address r8
+    r10 = _PyObject_Vectorcall(r7, r9, 1, 0)
+    keep_alive r4
     goto L7
 L6:
 L7:
-    r27 = box(None, 1)
-    return r27
+    r11 = box(None, 1)
+    return r11
 [case testMatchClassPattern_python3_10]
 def f():
     match 123:
@@ -248,67 +188,51 @@ def f():
 [out]
 def f():
     r0 :: bit
-    r1 :: object
-    r2 :: int32
-    r3 :: bit
-    r4 :: bool
-    r5 :: str
-    r6 :: object
-    r7 :: str
-    r8 :: object
-    r9 :: object[1]
-    r10 :: object_ptr
-    r11 :: object
-    r12 :: bit
-    r13 :: object
-    r14 :: int32
-    r15 :: bit
-    r16 :: bool
-    r17 :: str
-    r18 :: object
-    r19 :: str
-    r20 :: object
-    r21 :: object[1]
-    r22 :: object_ptr
-    r23, r24 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7 :: object
+    r8 :: bit
+    r9 :: str
+    r10 :: object
+    r11 :: str
+    r12 :: object
+    r13 :: object[1]
+    r14 :: object_ptr
+    r15, r16 :: object
 L0:
     r0 = 246 == 246
-    r1 = box(bit, r0)
-    r2 = PyObject_IsTrue(r1)
-    r3 = r2 >= 0 :: signed
-    r4 = truncate r2: int32 to builtins.bool
-    if r4 goto L1 else goto L2 :: bool
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r5 = 'matched'
-    r6 = builtins :: module
-    r7 = 'print'
-    r8 = CPyObject_GetAttr(r6, r7)
-    r9 = [r5]
-    r10 = load_address r9
-    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
-    keep_alive r5
+    r1 = 'matched'
+    r2 = builtins :: module
+    r3 = 'print'
+    r4 = CPyObject_GetAttr(r2, r3)
+    r5 = [r1]
+    r6 = load_address r5
+    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    keep_alive r1
     goto L5
 L2:
-    r12 = 246 == 912
-    r13 = box(bit, r12)
-    r14 = PyObject_IsTrue(r13)
-    r15 = r14 >= 0 :: signed
-    r16 = truncate r14: int32 to builtins.bool
-    if r16 goto L3 else goto L4 :: bool
+    r8 = 246 == 912
+    if r8 goto L3 else goto L4 :: bool
 L3:
-    r17 = 'no match'
-    r18 = builtins :: module
-    r19 = 'print'
-    r20 = CPyObject_GetAttr(r18, r19)
-    r21 = [r17]
-    r22 = load_address r21
-    r23 = _PyObject_Vectorcall(r20, r22, 1, 0)
-    keep_alive r17
+    r9 = 'no match'
+    r10 = builtins :: module
+    r11 = 'print'
+    r12 = CPyObject_GetAttr(r10, r11)
+    r13 = [r9]
+    r14 = load_address r13
+    r15 = _PyObject_Vectorcall(r12, r14, 1, 0)
+    keep_alive r9
     goto L5
 L4:
 L5:
-    r24 = box(None, 1)
-    return r24
+    r16 = box(None, 1)
+    return r16
 [case testMatchMultiBodyAndComplexOr_python3_10]
 def f():
     match 123:
@@ -321,110 +245,77 @@ def f():
 [out]
 def f():
     r0 :: bit
-    r1 :: object
-    r2 :: int32
-    r3 :: bit
-    r4 :: bool
-    r5 :: str
-    r6 :: object
-    r7 :: str
-    r8 :: object
-    r9 :: object[1]
-    r10 :: object_ptr
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7 :: object
+    r8, r9 :: bit
+    r10 :: str
     r11 :: object
-    r12 :: bit
+    r12 :: str
     r13 :: object
-    r14 :: int32
-    r15 :: bit
-    r16 :: bool
+    r14 :: object[1]
+    r15 :: object_ptr
+    r16 :: object
     r17 :: bit
-    r18 :: object
-    r19 :: int32
-    r20 :: bit
-    r21 :: bool
-    r22 :: str
-    r23 :: object
-    r24 :: str
-    r25 :: object
-    r26 :: object[1]
-    r27 :: object_ptr
-    r28 :: object
-    r29 :: bit
-    r30 :: object
-    r31 :: int32
-    r32 :: bit
-    r33 :: bool
-    r34 :: str
-    r35 :: object
-    r36 :: str
-    r37 :: object
-    r38 :: object[1]
-    r39 :: object_ptr
-    r40, r41 :: object
+    r18 :: str
+    r19 :: object
+    r20 :: str
+    r21 :: object
+    r22 :: object[1]
+    r23 :: object_ptr
+    r24, r25 :: object
 L0:
     r0 = 246 == 2
-    r1 = box(bit, r0)
-    r2 = PyObject_IsTrue(r1)
-    r3 = r2 >= 0 :: signed
-    r4 = truncate r2: int32 to builtins.bool
-    if r4 goto L1 else goto L2 :: bool
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r5 = 'here 1'
-    r6 = builtins :: module
-    r7 = 'print'
-    r8 = CPyObject_GetAttr(r6, r7)
-    r9 = [r5]
-    r10 = load_address r9
-    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
-    keep_alive r5
+    r1 = 'here 1'
+    r2 = builtins :: module
+    r3 = 'print'
+    r4 = CPyObject_GetAttr(r2, r3)
+    r5 = [r1]
+    r6 = load_address r5
+    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    keep_alive r1
     goto L9
 L2:
-    r12 = 246 == 4
-    r13 = box(bit, r12)
-    r14 = PyObject_IsTrue(r13)
-    r15 = r14 >= 0 :: signed
-    r16 = truncate r14: int32 to builtins.bool
-    if r16 goto L5 else goto L3 :: bool
+    r8 = 246 == 4
+    if r8 goto L5 else goto L3 :: bool
 L3:
-    r17 = 246 == 6
-    r18 = box(bit, r17)
-    r19 = PyObject_IsTrue(r18)
-    r20 = r19 >= 0 :: signed
-    r21 = truncate r19: int32 to builtins.bool
-    if r21 goto L5 else goto L4 :: bool
+    r9 = 246 == 6
+    if r9 goto L5 else goto L4 :: bool
 L4:
     goto L6
 L5:
-    r22 = 'here 2 | 3'
-    r23 = builtins :: module
-    r24 = 'print'
-    r25 = CPyObject_GetAttr(r23, r24)
-    r26 = [r22]
-    r27 = load_address r26
-    r28 = _PyObject_Vectorcall(r25, r27, 1, 0)
-    keep_alive r22
+    r10 = 'here 2 | 3'
+    r11 = builtins :: module
+    r12 = 'print'
+    r13 = CPyObject_GetAttr(r11, r12)
+    r14 = [r10]
+    r15 = load_address r14
+    r16 = _PyObject_Vectorcall(r13, r15, 1, 0)
+    keep_alive r10
     goto L9
 L6:
-    r29 = 246 == 246
-    r30 = box(bit, r29)
-    r31 = PyObject_IsTrue(r30)
-    r32 = r31 >= 0 :: signed
-    r33 = truncate r31: int32 to builtins.bool
-    if r33 goto L7 else goto L8 :: bool
+    r17 = 246 == 246
+    if r17 goto L7 else goto L8 :: bool
 L7:
-    r34 = 'here 123'
-    r35 = builtins :: module
-    r36 = 'print'
-    r37 = CPyObject_GetAttr(r35, r36)
-    r38 = [r34]
-    r39 = load_address r38
-    r40 = _PyObject_Vectorcall(r37, r39, 1, 0)
-    keep_alive r34
+    r18 = 'here 123'
+    r19 = builtins :: module
+    r20 = 'print'
+    r21 = CPyObject_GetAttr(r19, r20)
+    r22 = [r18]
+    r23 = load_address r22
+    r24 = _PyObject_Vectorcall(r21, r23, 1, 0)
+    keep_alive r18
     goto L9
 L8:
 L9:
-    r41 = box(None, 1)
-    return r41
+    r25 = box(None, 1)
+    return r25
 [case testMatchWithGuard_python3_10]
 def f():
     match 123:
@@ -433,40 +324,32 @@ def f():
 [out]
 def f():
     r0 :: bit
-    r1 :: object
-    r2 :: int32
-    r3 :: bit
-    r4 :: bool
-    r5 :: str
-    r6 :: object
-    r7 :: str
-    r8 :: object
-    r9 :: object[1]
-    r10 :: object_ptr
-    r11, r12 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7, r8 :: object
 L0:
     r0 = 246 == 246
-    r1 = box(bit, r0)
-    r2 = PyObject_IsTrue(r1)
-    r3 = r2 >= 0 :: signed
-    r4 = truncate r2: int32 to builtins.bool
-    if r4 goto L1 else goto L3 :: bool
+    if r0 goto L1 else goto L3 :: bool
 L1:
     if 1 goto L2 else goto L3 :: bool
 L2:
-    r5 = 'matched'
-    r6 = builtins :: module
-    r7 = 'print'
-    r8 = CPyObject_GetAttr(r6, r7)
-    r9 = [r5]
-    r10 = load_address r9
-    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
-    keep_alive r5
+    r1 = 'matched'
+    r2 = builtins :: module
+    r3 = 'print'
+    r4 = CPyObject_GetAttr(r2, r3)
+    r5 = [r1]
+    r6 = load_address r5
+    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    keep_alive r1
     goto L4
 L3:
 L4:
-    r12 = box(None, 1)
-    return r12
+    r8 = box(None, 1)
+    return r8
 [case testMatchSingleton_python3_10]
 def f():
     match 123:
