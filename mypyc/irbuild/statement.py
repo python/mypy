@@ -943,7 +943,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.activate_block(code_block)
             builder.accept(m.bodies[i])
-            builder.goto(end_block)
+            builder.goto(final_block)
 
             builder.activate_block(end_block)
 
@@ -965,7 +965,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.activate_block(code_block)
             builder.accept(m.bodies[i])
-            builder.goto(end_block)
+            builder.goto(final_block)
 
             builder.activate_block(end_block)
 
@@ -979,6 +979,8 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.goto(code_block)
             builder.activate_block(code_block)
             builder.accept(m.bodies[i])
-            builder.goto_and_activate(next_block)
+            builder.goto(final_block)
+
+            builder.activate_block(next_block)
 
     builder.goto_and_activate(final_block)
