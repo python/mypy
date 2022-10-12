@@ -12,13 +12,11 @@ import importlib.util
 from typing import Callable, Sequence
 
 from mypy.nodes import (
-    ArgKind,
     AssertStmt,
     AssignmentStmt,
     AwaitExpr,
     Block,
     BreakStmt,
-    CallExpr,
     ComparisonExpr,
     ContinueStmt,
     DelStmt,
@@ -32,7 +30,6 @@ from mypy.nodes import (
     ListExpr,
     Lvalue,
     MatchStmt,
-    NameExpr,
     OperatorAssignmentStmt,
     RaiseStmt,
     ReturnStmt,
@@ -46,7 +43,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypy.patterns import AsPattern, ClassPattern, OrPattern, ValuePattern
+from mypy.patterns import AsPattern, ClassPattern, OrPattern, SingletonPattern, ValuePattern
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -100,6 +97,7 @@ from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
     import_from_op,
+    none_object_op,
     send_op,
     slow_isinstance_op,
     type_op,
@@ -985,6 +983,27 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             code_block = BasicBlock()
             next_block = BasicBlock()
+
+            builder.goto(code_block)
+
+            build_match_body(i, code_block, next_block)
+
+            builder.activate_block(next_block)
+
+        if isinstance(pattern, SingletonPattern):
+            code_block = BasicBlock()
+            next_block = BasicBlock()
+
+            if pattern.value is None:
+                obj = builder.none_object()
+            elif pattern.value is True:
+                obj = builder.true()
+            else:
+                obj = builder.false()
+
+            cond = builder.binary_op(subject, obj, "is", pattern.line)
+
+            builder.add_bool_branch(cond, code_block, next_block)
 
             builder.goto(code_block)
 
