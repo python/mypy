@@ -910,6 +910,22 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
     final_block = BasicBlock()
 
+    def build_match_body(
+        index: int, code_block: BasicBlock, next_block: BasicBlock
+    ) -> None:
+        builder.activate_block(code_block)
+
+        if guard := m.guards[index]:
+            new_code_block = BasicBlock()
+
+            cond = builder.accept(guard)
+            builder.add_bool_branch(cond, new_code_block, next_block)
+
+            builder.activate_block(new_code_block)
+
+        builder.accept(m.bodies[index])
+        builder.goto(final_block)
+
     for i, pattern in enumerate(m.patterns):
         if isinstance(pattern, ValuePattern):
             code_block = BasicBlock()
@@ -918,18 +934,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             cond = builder.accept(ComparisonExpr(["=="], [m.subject, pattern.expr]))
             builder.add_bool_branch(cond, code_block, next_block)
 
-            builder.activate_block(code_block)
-
-            if guard := m.guards[i]:
-                new_code_block = BasicBlock()
-
-                cond = builder.accept(guard)
-                builder.add_bool_branch(cond, new_code_block, next_block)
-
-                builder.activate_block(new_code_block)
-
-            builder.accept(m.bodies[i])
-            builder.goto(final_block)
+            build_match_body(i, code_block, next_block)
 
             builder.activate_block(next_block)
 
@@ -950,9 +955,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             end_block = BasicBlock()
             builder.goto(end_block)
 
-            builder.activate_block(code_block)
-            builder.accept(m.bodies[i])
-            builder.goto(final_block)
+            build_match_body(i, code_block, end_block)
 
             builder.activate_block(end_block)
 
@@ -972,9 +975,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.add_bool_branch(cond, code_block, end_block)
 
-            builder.activate_block(code_block)
-            builder.accept(m.bodies[i])
-            builder.goto(final_block)
+            build_match_body(i, code_block, end_block)
 
             builder.activate_block(end_block)
 
@@ -986,9 +987,8 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             next_block = BasicBlock()
 
             builder.goto(code_block)
-            builder.activate_block(code_block)
-            builder.accept(m.bodies[i])
-            builder.goto(final_block)
+
+            build_match_body(i, code_block, next_block)
 
             builder.activate_block(next_block)
 
