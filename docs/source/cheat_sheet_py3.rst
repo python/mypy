@@ -90,9 +90,10 @@ Functions
    def plus(num1: int, num2: int) -> int:
        return num1 + num2
 
-   # Add default value for an argument after the type annotation
-   def f(num1: int, my_float: float = 3.5) -> float:
-       return num1 + my_float
+   # If a function does not return a value, use None as the return type
+   # Default value for an argument goes after the type annotation
+   def show(value: str, excitement: int = 10) -> None:
+       print(value + "!" * excitement)
 
    # This is how you annotate a callable (function) value
    x: Callable[[int, float], float] = f
