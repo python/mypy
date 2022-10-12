@@ -1,0 +1,16 @@
+[case testMatchBasic_python3_10]
+def f(x):
+    match x:
+        case 123:
+            print("matched!")
+        case _:
+            print("no match")
+[file driver.py]
+from native import f
+
+f(123)
+f(321)
+
+[out]
+matched!
+no match
