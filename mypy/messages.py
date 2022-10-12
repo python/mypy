@@ -751,6 +751,7 @@ class MessageBuilder:
                 )
             if (
                 isinstance(callee_type, TypeType)
+                and not isinstance(callee_type.item, AnyType)
                 and isinstance(original_caller_type, CallableType)
                 and callee_type.item.type.is_protocol
             ):
