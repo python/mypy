@@ -54,7 +54,7 @@ Useful built-in types
    # For tuples of variable size, we use one type and ellipsis
    x: tuple[int, ...] = (1, 2, 3)  # Python 3.9+
 
-   # In Python 3.8 and earlier, the name of the collection type is
+   # On Python 3.8 and earlier, the name of the collection type is
    # capitalized, and the type is imported from the 'typing' module
    from typing import List, Set, Dict, Tuple
    x: List[int] = [1]
