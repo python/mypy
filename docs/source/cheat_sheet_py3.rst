@@ -54,10 +54,16 @@ Useful built-in types
    # For tuples of variable size, we use one type and ellipsis
    x: tuple[int, ...] = (1, 2, 3)  # Python 3.9+
 
-   from typing import Optional
+   from typing import Union, Optional
 
-   # Use Optional[] for values that could be None
-   x: Optional[str] = some_function()
+   # On Python 3.10+, use the | operator when something could be one of a few types
+   x: list[int | str] = [3, 5, "test", "fun"]
+   # On earlier versions, use Union
+   x: list[Union[int, str]] = [3, 5, "test", "fun"]
+
+   # Use Optional[X] for a value that could be None
+   # Optional[X] is the same as X | None or Union[X, None]
+   x: Optional[str] = "something" if some_condition() else None
    # Mypy understands a value can't be None in an if-statement
    if x is not None:
        print(x.upper())
@@ -192,11 +198,6 @@ When you're puzzled or when things are complicated
    # your program, wrap it in reveal_type().  Mypy will print an error
    # message with the type; remove it again before running the code.
    reveal_type(1)  # Revealed type is "builtins.int"
-
-   # On Python 3.10, use the | operator when something could be one of a few types
-   x: list[int | str] = [3, 5, "test", "fun"]
-   # On earlier versions, use Union
-   x: list[Union[int, str]] = [3, 5, "test", "fun"]
 
    # If you initialize a variable with an empty container or "None"
    # you may have to help mypy a bit by providing an explicit type annotation
