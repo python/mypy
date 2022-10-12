@@ -1484,3 +1484,12 @@ pass
 [out]
 Warning: --enable-recursive-aliases is deprecated; recursive types are enabled by default
 == Return code: 0
+
+[case testNotesOnlyResultInExitSuccess]
+# cmd: mypy a.py
+[file a.py]
+def f():
+    x: int = "no"
+[out]
+a.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+== Return code: 0

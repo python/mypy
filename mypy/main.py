@@ -110,10 +110,10 @@ def main(
         print_memory_profile()
 
     code = 0
-    if messages:
+    n_errors, n_notes, n_files = util.count_stats(messages)
+    if messages and n_notes < len(messages):
         code = 2 if blockers else 1
     if options.error_summary:
-        n_errors, n_notes, n_files = util.count_stats(messages)
         if n_errors:
             summary = formatter.format_error(
                 n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
