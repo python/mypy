@@ -132,6 +132,54 @@ Functions
        request = make_request(*args, **kwargs)
        return self.do_api_query(request)
 
+Classes
+*******
+
+.. code-block:: python
+
+   class MyClass:
+       # You can optionally declare instance variables in the class body
+       attr: int
+       # This is an instance variable with a default value
+       charge_percent: int = 100
+
+       # The "__init__" method doesn't return anything, so it gets return
+       # type "None" just like any other method that doesn't return anything
+       def __init__(self) -> None:
+           ...
+
+       # For instance methods, omit type for "self"
+       def my_method(self, num: int, str1: str) -> str:
+           return num * str1
+
+   # User-defined classes are valid as types in annotations
+   x: MyClass = MyClass()
+
+   # You can use the ClassVar annotation to declare a class variable
+   class Car:
+       seats: ClassVar[int] = 4
+       passengers: ClassVar[list[str]]
+
+   # You can also declare the type of an attribute in "__init__"
+   class Box:
+       def __init__(self) -> None:
+           self.items: list[str] = []
+
+   # If you want dynamic attributes on your class, have it
+   # override "__setattr__" or "__getattr__":
+   # - "__getattr__" allows for dynamic access to names
+   # - "__setattr__" allows for dynamic assignment to names
+   class A:
+       # This will allow assignment to any A.x, if x is the same type as "value"
+       # (use "value: Any" to allow arbitrary types)
+       def __setattr__(self, name: str, value: int) -> None: ...
+
+       # This will allow access to any A.x, if x is compatible with the return type
+       def __getattr__(self, name: str) -> int: ...
+
+   a.foo = 42  # Works
+   a.bar = 'Ex-parrot'  # Fails type checking
+
 When you're puzzled or when things are complicated
 **************************************************
 
@@ -218,55 +266,6 @@ that are common in idiomatic Python are standardized.
 
 
 You can even make your own duck types using :ref:`protocol-types`.
-
-Classes
-*******
-
-.. code-block:: python
-
-   class MyClass:
-       # You can optionally declare instance variables in the class body
-       attr: int
-       # This is an instance variable with a default value
-       charge_percent: int = 100
-
-       # The "__init__" method doesn't return anything, so it gets return
-       # type "None" just like any other method that doesn't return anything
-       def __init__(self) -> None:
-           ...
-
-       # For instance methods, omit type for "self"
-       def my_method(self, num: int, str1: str) -> str:
-           return num * str1
-
-   # User-defined classes are valid as types in annotations
-   x: MyClass = MyClass()
-
-   # You can use the ClassVar annotation to declare a class variable
-   class Car:
-       seats: ClassVar[int] = 4
-       passengers: ClassVar[list[str]]
-
-   # You can also declare the type of an attribute in "__init__"
-   class Box:
-       def __init__(self) -> None:
-           self.items: list[str] = []
-
-   # If you want dynamic attributes on your class, have it
-   # override "__setattr__" or "__getattr__":
-   # - "__getattr__" allows for dynamic access to names
-   # - "__setattr__" allows for dynamic assignment to names
-   class A:
-       # This will allow assignment to any A.x, if x is the same type as "value"
-       # (use "value: Any" to allow arbitrary types)
-       def __setattr__(self, name: str, value: int) -> None: ...
-
-       # This will allow access to any A.x, if x is compatible with the return type
-       def __getattr__(self, name: str) -> int: ...
-
-   a.foo = 42  # Works
-   a.bar = 'Ex-parrot'  # Fails type checking
-
 
 Coroutines and asyncio
 **********************
