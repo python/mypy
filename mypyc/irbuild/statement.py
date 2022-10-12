@@ -919,6 +919,15 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.add_bool_branch(cond, code_block, next_block)
 
             builder.activate_block(code_block)
+
+            if guard := m.guards[i]:
+                new_code_block = BasicBlock()
+
+                cond = builder.accept(guard)
+                builder.add_bool_branch(cond, new_code_block, next_block)
+
+                builder.activate_block(new_code_block)
+
             builder.accept(m.bodies[i])
             builder.goto(final_block)
 
