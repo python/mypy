@@ -33,7 +33,9 @@ L1:
     r10 = load_address r9
     r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
     keep_alive r5
+    goto L3
 L2:
+L3:
     r12 = box(None, 1)
     return r12
 [case testMatchOrPattern_python3_10]
@@ -86,6 +88,7 @@ L3:
     r16 = _PyObject_Vectorcall(r13, r15, 1, 0)
     keep_alive r10
 L4:
+L5:
     r17 = box(None, 1)
     return r17
 [case testMatchOrPatternManyPatterns_python3_10]
@@ -162,6 +165,7 @@ L5:
     r26 = _PyObject_Vectorcall(r23, r25, 1, 0)
     keep_alive r20
 L6:
+L7:
     r27 = box(None, 1)
     return r27
 [case testMatchClassPattern_python3_10]
@@ -199,6 +203,7 @@ L1:
     r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
     keep_alive r5
 L2:
+L3:
     r12 = box(None, 1)
     return r12
 [case testMatchExaustivePattern_python3_10]
@@ -226,6 +231,7 @@ L1:
     r6 = _PyObject_Vectorcall(r3, r5, 1, 0)
     keep_alive r0
 L2:
+L3:
     r7 = box(None, 1)
     return r7
 [case testMatchMultipleBodies_python3_10]
