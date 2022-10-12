@@ -1498,6 +1498,24 @@ takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible
 takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
 [builtins fixtures/attr.pyi]
 
+[case testAttrsInitMethodAlwaysGenerates]
+from typing import Tuple
+import attr
+
+@attr.define(init=False)
+class A:
+    b: int
+    c: str
+    def __init__(self, bc: Tuple[int, str]) -> None:
+        b, c = bc
+        self.__attrs_init__(b, c)
+
+reveal_type(A)  # N: Revealed type is "def (bc: Tuple[builtins.int, builtins.str]) -> __main__.A"
+reveal_type(A.__init__)  # N: Revealed type is "def (self: __main__.A, bc: Tuple[builtins.int, builtins.str])"
+reveal_type(A.__attrs_init__)  # N: Revealed type is "def (self: __main__.A, b: builtins.int, c: builtins.str)"
+
+[builtins fixtures/attr.pyi]
+
 [case testAttrsClassWithSlots]
 import attr
 
