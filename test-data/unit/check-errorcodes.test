@@ -966,6 +966,10 @@ T = TypeVar("T")
 def test(tp: Type[T]) -> T: ...
 test(C)  # E: Only concrete class can be given where "Type[C]" is expected  [type-abstract]
 
+[case testUncheckedAnnotationCodeShown]
+def f():
+    x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+
 [case testUncheckedAnnotationSuppressed]
 # flags: --disable-error-code=annotation-unchecked
 def f():
