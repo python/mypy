@@ -347,3 +347,19 @@ expect_variadic_array_2(u)
 
 
 [builtins fixtures/tuple.pyi]
+
+[case testPep646TypeVarStarArgs]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+# TODO: add less trivial tests with prefix/suffix etc.
+# TODO: add tests that call with a type var tuple instead of just args.
+def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
+    reveal_type(args)  # N: Revealed type is "Tuple[Unpack[Ts`-1]]"
+    return args
+
+reveal_type(args_to_tuple(1, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Literal['a']?]"
+
+[builtins fixtures/tuple.pyi]
