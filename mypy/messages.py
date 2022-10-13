@@ -84,6 +84,7 @@ from mypy.types import (
     UnboundType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     get_proper_type,
     get_proper_types,
 )
@@ -2257,6 +2258,8 @@ def format_type_inner(
         else:
             # There are type arguments. Convert the arguments to strings.
             return f"{base_str}[{format_list(itype.args)}]"
+    elif isinstance(typ, UnpackType):
+        return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name

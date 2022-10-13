@@ -53,13 +53,70 @@ def split_with_mapped_and_template(
     tuple[Type, ...],
     tuple[Type, ...],
     tuple[Type, ...],
-]:
+] | None:
+    split_result = fully_split_with_mapped_and_template(mapped, template)
+    if split_result is None:
+        return None
+
+    (
+        mapped_prefix,
+        mapped_middle_prefix,
+        mapped_middle_middle,
+        mapped_middle_suffix,
+        mapped_suffix,
+        template_prefix,
+        template_middle_prefix,
+        template_middle_middle,
+        template_middle_suffix,
+        template_suffix,
+    ) = split_result
+
+    return (
+        mapped_prefix + mapped_middle_prefix,
+        mapped_middle_middle,
+        mapped_middle_suffix + mapped_suffix,
+        template_prefix + template_middle_prefix,
+        template_middle_middle,
+        template_middle_suffix + template_suffix,
+    )
+
+
+def fully_split_with_mapped_and_template(
+    mapped: Instance, template: Instance
+) -> tuple[
+    tuple[Type, ...],
+    tuple[Type, ...],
+    tuple[Type, ...],
+    tuple[Type, ...],
+    tuple[Type, ...],
+    tuple[Type, ...],
+    tuple[Type, ...],
+    tuple[Type, ...],
+    tuple[Type, ...],
+    tuple[Type, ...],
+] | None:
     mapped_prefix, mapped_middle, mapped_suffix = split_with_instance(mapped)
     template_prefix, template_middle, template_suffix = split_with_instance(template)
 
     unpack_prefix = find_unpack_in_list(template_middle)
-    assert unpack_prefix is not None
+    if unpack_prefix is None:
+        return (
+            mapped_prefix,
+            (),
+            mapped_middle,
+            (),
+            mapped_suffix,
+            template_prefix,
+            (),
+            template_middle,
+            (),
+            template_suffix,
+        )
+
     unpack_suffix = len(template_middle) - unpack_prefix - 1
+    # mapped_middle is too short to do the unpack
+    if unpack_prefix + unpack_suffix > len(mapped_middle):
+        return None
 
     (
         mapped_middle_prefix,
@@ -73,12 +130,16 @@ def split_with_mapped_and_template(
     ) = split_with_prefix_and_suffix(template_middle, unpack_prefix, unpack_suffix)
 
     return (
-        mapped_prefix + mapped_middle_prefix,
+        mapped_prefix,
+        mapped_middle_prefix,
         mapped_middle_middle,
-        mapped_middle_suffix + mapped_suffix,
-        template_prefix + template_middle_prefix,
+        mapped_middle_suffix,
+        mapped_suffix,
+        template_prefix,
+        template_middle_prefix,
         template_middle_middle,
-        template_middle_suffix + template_suffix,
+        template_middle_suffix,
+        template_suffix,
     )
 
 
