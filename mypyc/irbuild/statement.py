@@ -932,16 +932,12 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
     def build_pattern(
         pattern: Pattern, code_block: BasicBlock, next_block: BasicBlock
-    ) -> None:
+    ) -> BasicBlock:
         if isinstance(pattern, ValuePattern):
             cond = builder.binary_op(
                 subject, builder.accept(pattern.expr), "==", pattern.expr.line
             )
             builder.add_bool_branch(cond, code_block, next_block)
-
-            build_match_body(i, code_block, next_block)
-
-            builder.activate_block(next_block)
 
         elif isinstance(pattern, OrPattern):
             assert all(isinstance(p, ValuePattern) for p in pattern.patterns)
@@ -954,10 +950,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
                 next_block = BasicBlock()
 
             builder.goto(next_block)
-
-            build_match_body(i, code_block, next_block)
-
-            builder.activate_block(next_block)
 
         elif isinstance(pattern, ClassPattern):
             assert not pattern.positionals
@@ -972,19 +964,11 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.add_bool_branch(cond, code_block, next_block)
 
-            build_match_body(i, code_block, next_block)
-
-            builder.activate_block(next_block)
-
         elif isinstance(pattern, AsPattern):
             assert not pattern.pattern
             assert not pattern.name
 
             builder.goto(code_block)
-
-            build_match_body(i, code_block, next_block)
-
-            builder.activate_block(next_block)
 
         elif isinstance(pattern, SingletonPattern):
             if pattern.value is None:
@@ -998,16 +982,15 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.add_bool_branch(cond, code_block, next_block)
 
-            builder.goto(code_block)
-
-            build_match_body(i, code_block, next_block)
-
-            builder.activate_block(next_block)
+        return next_block
 
     for i, pattern in enumerate(m.patterns):
         code_block = BasicBlock()
         next_block = BasicBlock()
 
-        build_pattern(pattern, code_block, next_block)
+        next_block = build_pattern(pattern, code_block, next_block)
+
+        build_match_body(i, code_block, next_block)
+        builder.activate_block(next_block)
 
     builder.goto_and_activate(final_block)
