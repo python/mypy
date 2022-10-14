@@ -925,10 +925,9 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
     for i, pattern in enumerate(m.patterns):
         code_block = BasicBlock()
+        next_block = BasicBlock()
 
         if isinstance(pattern, ValuePattern):
-            next_block = BasicBlock()
-
             cond = builder.binary_op(
                 subject, builder.accept(pattern.expr), "==", pattern.expr.line
             )
@@ -940,8 +939,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
         if isinstance(pattern, OrPattern):
             assert all(isinstance(p, ValuePattern) for p in pattern.patterns)
-
-            next_block = BasicBlock()
 
             for p in pattern.patterns:
                 cond = builder.binary_op(subject, builder.accept(p.expr), "==", p.expr.line)  # type: ignore
@@ -980,8 +977,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             assert not pattern.pattern
             assert not pattern.name
 
-            next_block = BasicBlock()
-
             builder.goto(code_block)
 
             build_match_body(i, code_block, next_block)
@@ -989,8 +984,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.activate_block(next_block)
 
         if isinstance(pattern, SingletonPattern):
-            next_block = BasicBlock()
-
             if pattern.value is None:
                 obj = builder.none_object()
             elif pattern.value is True:
