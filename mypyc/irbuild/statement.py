@@ -947,19 +947,16 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
                 builder.activate_block(next_block)
                 next_block = BasicBlock()
 
-            end_block = BasicBlock()
-            builder.goto(end_block)
+            builder.goto(next_block)
 
-            build_match_body(i, code_block, end_block)
+            build_match_body(i, code_block, next_block)
 
-            builder.activate_block(end_block)
+            builder.activate_block(next_block)
 
         if isinstance(pattern, ClassPattern):
             assert not pattern.positionals
             assert not pattern.keyword_keys
             assert not pattern.keyword_values
-
-            end_block = BasicBlock()
 
             cond = builder.call_c(
                 slow_isinstance_op,
@@ -967,11 +964,11 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
                 pattern.line
             )
 
-            builder.add_bool_branch(cond, code_block, end_block)
+            builder.add_bool_branch(cond, code_block, next_block)
 
-            build_match_body(i, code_block, end_block)
+            build_match_body(i, code_block, next_block)
 
-            builder.activate_block(end_block)
+            builder.activate_block(next_block)
 
         if isinstance(pattern, AsPattern):
             assert not pattern.pattern
