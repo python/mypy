@@ -843,6 +843,7 @@ class SemanticAnalyzer(
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
+                self.check_paramspec_definition(defn.type)
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
@@ -1281,6 +1282,28 @@ class SemanticAnalyzer(
             sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail("Type signature has too many arguments", fdef, blocker=True)
+
+    def check_paramspec_definition(self, func: CallableType) -> None:
+        param_spec_var = next(
+            (var for var in func.variables if isinstance(var, ParamSpecType)), None
+        )
+        if param_spec_var:
+            args = func.var_arg()
+            kwargs = func.kw_arg()
+            if args is None and kwargs is None:
+                return  # Looks like this function does not have starred args
+
+            args_type = args.typ if args is not None else None
+            kwargs_type = kwargs.typ if kwargs is not None else None
+
+            if not isinstance(args_type, ParamSpecType) or not isinstance(
+                kwargs_type, ParamSpecType
+            ):
+                self.fail(
+                    f'ParamSpec must have "*args" typed as "{param_spec_var.name}.args" and "**kwargs" typed as "{param_spec_var.name}.kwargs"',
+                    func,
+                    code=codes.VALID_TYPE,
+                )
 
     def visit_decorator(self, dec: Decorator) -> None:
         self.statement = dec

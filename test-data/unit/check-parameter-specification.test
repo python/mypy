@@ -1166,3 +1166,24 @@ def func3(callback: Callable[P1, str]) -> Callable[P1, str]:
         return "foo"
     return inner
 [builtins fixtures/paramspec.pyi]
+
+
+[case testInvalidDefinitions]
+from typing import Callable, ParamSpec
+
+P = ParamSpec('P')
+
+def c1(f: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> int: ...
+def c2(f: Callable[P, int]) -> int: ...
+
+def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f2(f: Callable[P, int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f3(f: Callable[P, int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f4(f: Callable[P, int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f5(f: Callable[P, int], *args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+
+# Error message test:
+P1 = ParamSpec('P1')
+
+def m1(f: Callable[P1, int], *a, **k: P1.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+[builtins fixtures/paramspec.pyi]
