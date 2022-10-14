@@ -42,7 +42,14 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypy.patterns import AsPattern, ClassPattern, OrPattern, SingletonPattern, ValuePattern
+from mypy.patterns import (
+    AsPattern,
+    ClassPattern,
+    OrPattern,
+    Pattern,
+    SingletonPattern,
+    ValuePattern,
+)
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -923,10 +930,9 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
         builder.accept(m.bodies[index])
         builder.goto(final_block)
 
-    for i, pattern in enumerate(m.patterns):
-        code_block = BasicBlock()
-        next_block = BasicBlock()
-
+    def build_pattern(
+        pattern: Pattern, code_block: BasicBlock, next_block: BasicBlock
+    ) -> None:
         if isinstance(pattern, ValuePattern):
             cond = builder.binary_op(
                 subject, builder.accept(pattern.expr), "==", pattern.expr.line
@@ -997,5 +1003,11 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             build_match_body(i, code_block, next_block)
 
             builder.activate_block(next_block)
+
+    for i, pattern in enumerate(m.patterns):
+        code_block = BasicBlock()
+        next_block = BasicBlock()
+
+        build_pattern(pattern, code_block, next_block)
 
     builder.goto_and_activate(final_block)
