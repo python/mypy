@@ -435,3 +435,48 @@ L6:
 L7:
     r30 = box(None, 1)
     return r30
+[case testMatchRecursiveOrPattern_python3_10]
+def f():
+    match 1:
+        case 1 | int():
+            print("matched")
+[out]
+def f():
+    r0 :: bit
+    r1, r2 :: object
+    r3 :: int32
+    r4 :: bit
+    r5 :: bool
+    r6 :: str
+    r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: object[1]
+    r11 :: object_ptr
+    r12, r13 :: object
+L0:
+    r0 = 2 == 2
+    if r0 goto L3 else goto L1 :: bool
+L1:
+    r1 = load_address PyLong_Type
+    r2 = object 1
+    r3 = PyObject_IsInstance(r2, r1)
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    if r5 goto L3 else goto L2 :: bool
+L2:
+    goto L4
+L3:
+    r6 = 'matched'
+    r7 = builtins :: module
+    r8 = 'print'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = [r6]
+    r11 = load_address r10
+    r12 = _PyObject_Vectorcall(r9, r11, 1, 0)
+    keep_alive r6
+    goto L5
+L4:
+L5:
+    r13 = box(None, 1)
+    return r13

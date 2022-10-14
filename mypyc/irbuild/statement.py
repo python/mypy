@@ -940,12 +940,9 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.add_bool_branch(cond, code_block, next_block)
 
         elif isinstance(pattern, OrPattern):
-            assert all(isinstance(p, ValuePattern) for p in pattern.patterns)
-
             for p in pattern.patterns:
-                cond = builder.binary_op(subject, builder.accept(p.expr), "==", p.expr.line)  # type: ignore
+                build_pattern(p, code_block, next_block)
 
-                builder.add_bool_branch(cond, code_block, next_block)
                 builder.activate_block(next_block)
                 next_block = BasicBlock()
 
