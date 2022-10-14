@@ -1343,9 +1343,7 @@ class SemanticAnalyzer(
             # It might be something else, skipping.
             return
 
-        if not isinstance(args_type, ParamSpecType) or not isinstance(
-            kwargs_type, ParamSpecType
-        ):
+        if not isinstance(args_type, ParamSpecType) or not isinstance(kwargs_type, ParamSpecType):
             self.fail(
                 f'ParamSpec must have "*args" typed as "{param_spec_var.name}.args" and "**kwargs" typed as "{param_spec_var.name}.kwargs"',
                 func,
