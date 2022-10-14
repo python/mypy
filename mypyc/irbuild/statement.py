@@ -924,8 +924,9 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
         builder.goto(final_block)
 
     for i, pattern in enumerate(m.patterns):
+        code_block = BasicBlock()
+
         if isinstance(pattern, ValuePattern):
-            code_block = BasicBlock()
             next_block = BasicBlock()
 
             cond = builder.binary_op(
@@ -940,7 +941,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
         if isinstance(pattern, OrPattern):
             assert all(isinstance(p, ValuePattern) for p in pattern.patterns)
 
-            code_block = BasicBlock()
             next_block = BasicBlock()
 
             for p in pattern.patterns:
@@ -962,7 +962,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             assert not pattern.keyword_keys
             assert not pattern.keyword_values
 
-            code_block = BasicBlock()
             end_block = BasicBlock()
 
             cond = builder.call_c(
@@ -981,7 +980,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             assert not pattern.pattern
             assert not pattern.name
 
-            code_block = BasicBlock()
             next_block = BasicBlock()
 
             builder.goto(code_block)
@@ -991,7 +989,6 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.activate_block(next_block)
 
         if isinstance(pattern, SingletonPattern):
-            code_block = BasicBlock()
             next_block = BasicBlock()
 
             if pattern.value is None:
