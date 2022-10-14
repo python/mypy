@@ -863,7 +863,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 ]
             else:
                 arg_types = self.anal_array(t.arg_types, nested=nested)
-
             ret = t.copy_modified(
                 arg_types=arg_types,
                 ret_type=self.anal_type(t.ret_type, nested=nested),
