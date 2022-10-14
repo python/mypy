@@ -1168,22 +1168,75 @@ def func3(callback: Callable[P1, str]) -> Callable[P1, str]:
 [builtins fixtures/paramspec.pyi]
 
 
-[case testInvalidDefinitions]
+[case testInvalidParamSpecDefinitionsWithArgsKwargs]
 from typing import Callable, ParamSpec
 
 P = ParamSpec('P')
 
 def c1(f: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> int: ...
 def c2(f: Callable[P, int]) -> int: ...
+def c3(f: Callable[P, int], *args, **kwargs) -> int: ...
+
+# It is ok to define,
+def c4(f: Callable[P, int], *args: int, **kwargs: str) -> int:
+    # but not ok to call:
+    f(*args, **kwargs)  # E: Argument 1 has incompatible type "*Tuple[int, ...]"; expected "P.args" \
+                        # E: Argument 2 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    return 1
 
 def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f2(f: Callable[P, int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f3(f: Callable[P, int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f4(f: Callable[P, int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
-def f5(f: Callable[P, int], *args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 
 # Error message test:
 P1 = ParamSpec('P1')
 
 def m1(f: Callable[P1, int], *a, **k: P1.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+[builtins fixtures/paramspec.pyi]
+
+
+[case testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs]
+from typing import Callable, ParamSpec
+from typing_extensions import Concatenate
+
+P = ParamSpec('P')
+
+def c1(f: Callable[Concatenate[int, P], int], *args: P.args, **kwargs: P.kwargs) -> int: ...
+def c2(f: Callable[Concatenate[int, P], int]) -> int: ...
+def c3(f: Callable[Concatenate[int, P], int], *args, **kwargs) -> int: ...
+
+# It is ok to define,
+def c4(f: Callable[Concatenate[int, P], int], *args: int, **kwargs: str) -> int:
+    # but not ok to call:
+    f(1, *args, **kwargs)  # E: Argument 2 has incompatible type "*Tuple[int, ...]"; expected "P.args" \
+                           # E: Argument 3 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    return 1
+
+def f1(f: Callable[Concatenate[int, P], int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f2(f: Callable[Concatenate[int, P], int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f3(f: Callable[Concatenate[int, P], int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f4(f: Callable[Concatenate[int, P], int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+[builtins fixtures/paramspec.pyi]
+
+
+[case testValidParamSpecInsideGenericWithoutArgsAndKwargs]
+from typing import Callable, ParamSpec, Generic
+from typing_extensions import Concatenate
+
+P = ParamSpec('P')
+
+class Some(Generic[P]): ...
+
+def create(s: Some[P], *args: int): ...
+def update(s: Some[P], **kwargs: int): ...
+def delete(s: Some[P]): ...
+
+def from_callable1(c: Callable[P, int], *args: int, **kwargs: int) -> Some[P]: ...
+def from_callable2(c: Callable[P, int], **kwargs: int) -> Some[P]: ...
+def from_callable3(c: Callable[P, int], *args: int) -> Some[P]: ...
+
+def from_extra1(c: Callable[Concatenate[int, P], int], *args: int, **kwargs: int) -> Some[P]: ...
+def from_extra2(c: Callable[Concatenate[int, P], int], **kwargs: int) -> Some[P]: ...
+def from_extra3(c: Callable[Concatenate[int, P], int], *args: int) -> Some[P]: ...
 [builtins fixtures/paramspec.pyi]

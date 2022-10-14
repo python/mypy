@@ -69,6 +69,8 @@ from mypy.mro import MroError, calculate_mro
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
     CONTRAVARIANT,
     COVARIANT,
     GDEF,
@@ -843,7 +845,7 @@ class SemanticAnalyzer(
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
-                self.check_paramspec_definition(defn.type)
+                self.check_paramspec_definition(defn)
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
@@ -1283,8 +1285,18 @@ class SemanticAnalyzer(
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail("Type signature has too many arguments", fdef, blocker=True)
 
-    def check_paramspec_definition(self, func: ProperType) -> None:
+    def check_paramspec_definition(self, defn: FuncDef) -> None:
+        func = defn.type
         assert isinstance(func, CallableType)
+        has_paramspec_callable = any(
+            arg.from_concatenate
+            or (arg.arg_types and isinstance(get_proper_type(arg.arg_types[0]), ParamSpecType))
+            for arg in get_proper_types(func.arg_types)
+            if isinstance(arg, CallableType)
+        )
+        if not has_paramspec_callable:
+            return  # Callable[ParamSpec, ...] was not found
+
         param_spec_var = next(
             (var for var in func.variables if isinstance(var, ParamSpecType)), None
         )
@@ -1296,6 +1308,37 @@ class SemanticAnalyzer(
 
             args_type = args.typ if args is not None else None
             kwargs_type = kwargs.typ if kwargs is not None else None
+
+            args_defn = next(
+                (
+                    arg_def
+                    for arg_def, arg_kind in zip(defn.arguments, defn.arg_kinds)
+                    if arg_kind == ARG_STAR
+                ),
+                None,
+            )
+            kwargs_defn = next(
+                (
+                    arg_def
+                    for arg_def, arg_kind in zip(defn.arguments, defn.arg_kinds)
+                    if arg_kind == ARG_STAR2
+                ),
+                None,
+            )
+
+            args_defn_type = args_defn.type_annotation if args_defn is not None else None
+            kwargs_defn_type = kwargs_defn.type_annotation if kwargs_defn is not None else None
+
+            # This may happen on invalid `ParamSpec` args / kwargs definition:
+            if not (
+                isinstance(args_defn_type, UnboundType)
+                and args_defn_type.name.endswith(".args")
+                or isinstance(kwargs_defn_type, UnboundType)
+                and kwargs_defn_type.name.endswith(".kwargs")
+            ):
+                # Looks like both `*args` and `**kwargs` are not `ParamSpec`
+                # It might be something else, skipping.
+                return
 
             if not isinstance(args_type, ParamSpecType) or not isinstance(
                 kwargs_type, ParamSpecType
