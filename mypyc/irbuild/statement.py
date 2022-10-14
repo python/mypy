@@ -937,7 +937,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.activate_block(next_block)
 
-        if isinstance(pattern, OrPattern):
+        elif isinstance(pattern, OrPattern):
             assert all(isinstance(p, ValuePattern) for p in pattern.patterns)
 
             for p in pattern.patterns:
@@ -953,7 +953,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.activate_block(next_block)
 
-        if isinstance(pattern, ClassPattern):
+        elif isinstance(pattern, ClassPattern):
             assert not pattern.positionals
             assert not pattern.keyword_keys
             assert not pattern.keyword_values
@@ -970,7 +970,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.activate_block(next_block)
 
-        if isinstance(pattern, AsPattern):
+        elif isinstance(pattern, AsPattern):
             assert not pattern.pattern
             assert not pattern.name
 
@@ -980,7 +980,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.activate_block(next_block)
 
-        if isinstance(pattern, SingletonPattern):
+        elif isinstance(pattern, SingletonPattern):
             if pattern.value is None:
                 obj = builder.none_object()
             elif pattern.value is True:
