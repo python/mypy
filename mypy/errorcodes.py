@@ -155,6 +155,11 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
     "General",
     default_enabled=False,
 )
+TRUTHY_FUNCTION: Final[ErrorCode] = ErrorCode(
+    "truthy-function",
+    "Warn about function that always evaluate to true in boolean contexts",
+    "General",
+)
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )

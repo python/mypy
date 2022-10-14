@@ -148,7 +148,7 @@ TYPE_ALWAYS_TRUE_UNIONTYPE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
-    "Function {} could always be true in boolean context", code=codes.TRUTHY_BOOL
+    "Function {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 NOT_CALLABLE: Final = "{} not callable"
 TYPE_MUST_BE_USED: Final = "Value of type {} must be used"

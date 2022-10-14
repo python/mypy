@@ -6017,12 +6017,15 @@ tmp/m.py:2: error: Argument "age" to "foo" has incompatible type "str"; expected
 [case testDisableEnableErrorCodesIncremental]
 # flags: --disable-error-code truthy-bool
 # flags2: --enable-error-code truthy-bool
-def foo() -> int: ...
+class Foo:
+    pass
+
+foo = Foo()
 if foo:
     ...
 [out]
 [out2]
-main:4: error: Function "Callable[[], int]" could always be true in boolean context
+main:7: error: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
 
 [case testModuleAsProtocolImplementationSerialize]
 import m
