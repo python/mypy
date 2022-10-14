@@ -1283,7 +1283,8 @@ class SemanticAnalyzer(
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail("Type signature has too many arguments", fdef, blocker=True)
 
-    def check_paramspec_definition(self, func: CallableType) -> None:
+    def check_paramspec_definition(self, func: Type) -> None:
+        assert isinstance(func, CallableType)
         param_spec_var = next(
             (var for var in func.variables if isinstance(var, ParamSpecType)), None
         )
