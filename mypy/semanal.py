@@ -1327,9 +1327,11 @@ class SemanticAnalyzer(
             or not isinstance(kwargs_type, ParamSpecType)
             or args_type.name != kwargs_type.name
         ):
-            if args_defn_type is not None and args_defn_type.name.endswith(".args"):
+            if isinstance(args_defn_type, UnboundType) and args_defn_type.name.endswith(".args"):
                 param_name = args_defn_type.name.split(".")[0]
-            elif kwargs_defn_type is not None and kwargs_defn_type.name.endswith(".kwargs"):
+            elif isinstance(kwargs_defn_type, UnboundType) and kwargs_defn_type.name.endswith(
+                ".kwargs"
+            ):
                 param_name = kwargs_defn_type.name.split(".")[0]
             else:
                 # Fallback for cases that probably should not ever happen:
