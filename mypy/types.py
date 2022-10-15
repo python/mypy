@@ -2290,6 +2290,10 @@ class TypedDictType(ProperType):
             Instance.deserialize(data["fallback"]),
         )
 
+    @property
+    def is_final(self) -> bool:
+        return self.fallback.type.is_final
+
     def is_anonymous(self) -> bool:
         return self.fallback.type.fullname in TPDICT_FB_NAMES
 

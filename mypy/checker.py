@@ -5037,7 +5037,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for key in item_strs:
                 if key in t.required_keys:
                     if_types.append(t)
-                elif key in t.items:
+                elif key in t.items or not t.is_final:
                     if_types.append(t)
                     else_types.append(t)
                 else:

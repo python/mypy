@@ -2017,7 +2017,6 @@ from __future__ import annotations
 from typing import assert_type, TypedDict, Union
 from typing_extensions import final
 
-
 @final
 class D(TypedDict):
     foo: int
@@ -2030,10 +2029,10 @@ if 'foo' in d:
 else:
     assert_type(d, list[str])
 
-[builtins fixtures / dict.pyi]
-[typing fixtures / typing - typeddict.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
-[case testOperatorContainsNarrowsTotalTypedDicts]
+[case testOperatorContainsNarrowsTypedDicts_total]
 from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, TypeVar, Union
 from typing_extensions import final
@@ -2048,6 +2047,13 @@ class D2(TypedDict):
     bar: int
 
 d: D1 | D2
+opt_d: D1 | None
+
+if 'foo' in opt_d:
+    assert_type(opt_d, D1)
+else:
+    assert_type(opt_d, None)
+
 
 if 'foo' in d:
     assert_type(d, D1)
@@ -2081,7 +2087,44 @@ def f(arg: TD) -> None:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testOperatorContainsNarrowsPartialTypedDicts]
+[case testOperatorContainsNarrowsTypedDicts_final]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing import assert_type, Literal, TypedDict, TypeVar, Union
+from typing_extensions import final
+
+@final
+class DFinal(TypedDict):
+    foo: int
+
+
+class DNotFinal(TypedDict):
+    bar: int
+
+
+d_not_final: DNotFinal
+
+if 'bar' in d_not_final:
+    assert_type(d_not_final, DNotFinal)
+else:
+    spam = 'ham'  # E: Statement is unreachable
+
+if 'spam' in d_not_final:
+    assert_type(d_not_final, DNotFinal)
+else:
+    assert_type(d_not_final, DNotFinal)
+
+d_union: DFinal | DNotFinal
+
+if 'foo' in d_union:
+    assert_type(d_union, Union[DFinal, DNotFinal])
+else:
+    assert_type(d_union, DNotFinal)
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partial]
 from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, Union
 from typing_extensions import final
