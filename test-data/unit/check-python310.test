@@ -1728,6 +1728,12 @@ def my_func(pairs: Iterable[tuple[S, S]]) -> None:
 
 [case testPartiallyDefinedMatch]
 # flags: --enable-error-code partially-defined
+def f0(x: int | str) -> int:
+    match x:
+        case int():
+            y = 1
+    return y  # E: Name "y" may be undefined
+
 def f1(a: object) -> None:
     match a:
         case [y]: pass
