@@ -1289,63 +1289,54 @@ class SemanticAnalyzer(
         func = defn.type
         assert isinstance(func, CallableType)
 
-        param_spec_var = next(
-            (var for var in func.variables if isinstance(var, ParamSpecType)), None
-        )
-        if param_spec_var is None:
-            return
+        if not any(isinstance(var, ParamSpecType) for var in func.variables):
+            return  # Function does not have param spec variables
 
         args = func.var_arg()
         kwargs = func.kw_arg()
         if args is None and kwargs is None:
             return  # Looks like this function does not have starred args
 
-        has_paramspec_callable = any(
-            arg.from_concatenate
-            or (arg.arg_types and isinstance(get_proper_type(arg.arg_types[0]), ParamSpecType))
-            for arg in get_proper_types(func.arg_types)
-            if isinstance(arg, CallableType)
-        )
-        if not has_paramspec_callable:
-            return  # Callable[ParamSpec, ...] was not found
+        args_defn_type = None
+        kwargs_defn_type = None
+        for arg_def, arg_kind in zip(defn.arguments, defn.arg_kinds):
+            if arg_kind == ARG_STAR:
+                args_defn_type = arg_def.type_annotation
+            elif arg_kind == ARG_STAR2:
+                kwargs_defn_type = arg_def.type_annotation
 
-        args_type = args.typ if args is not None else None
-        kwargs_type = kwargs.typ if kwargs is not None else None
-
-        args_defn = next(
-            (
-                arg_def
-                for arg_def, arg_kind in zip(defn.arguments, defn.arg_kinds)
-                if arg_kind == ARG_STAR
-            ),
-            None,
-        )
-        kwargs_defn = next(
-            (
-                arg_def
-                for arg_def, arg_kind in zip(defn.arguments, defn.arg_kinds)
-                if arg_kind == ARG_STAR2
-            ),
-            None,
-        )
-
-        args_defn_type = args_defn.type_annotation if args_defn is not None else None
-        kwargs_defn_type = kwargs_defn.type_annotation if kwargs_defn is not None else None
-
-        # This may happen on invalid `ParamSpec` args / kwargs definition:
+        # This may happen on invalid `ParamSpec` args / kwargs definition,
+        # type analyzer sets types of arguments to `Any`, but keeps
+        # definition types as `UnboundType` for now.
         if not (
-            isinstance(args_defn_type, UnboundType)
-            and args_defn_type.name.endswith(".args")
-            or isinstance(kwargs_defn_type, UnboundType)
-            and kwargs_defn_type.name.endswith(".kwargs")
+            (isinstance(args_defn_type, UnboundType) and args_defn_type.name.endswith(".args"))
+            or (
+                isinstance(kwargs_defn_type, UnboundType)
+                and kwargs_defn_type.name.endswith(".kwargs")
+            )
         ):
             # Looks like both `*args` and `**kwargs` are not `ParamSpec`
             # It might be something else, skipping.
             return
 
-        if not isinstance(args_type, ParamSpecType) or not isinstance(kwargs_type, ParamSpecType):
+        args_type = args.typ if args is not None else None
+        kwargs_type = kwargs.typ if kwargs is not None else None
+
+        if (
+            not isinstance(args_type, ParamSpecType)
+            or not isinstance(kwargs_type, ParamSpecType)
+            or args_type.name != kwargs_type.name
+        ):
+            if args_defn_type is not None and args_defn_type.name.endswith(".args"):
+                param_name = args_defn_type.name.split(".")[0]
+            elif kwargs_defn_type is not None and kwargs_defn_type.name.endswith(".kwargs"):
+                param_name = kwargs_defn_type.name.split(".")[0]
+            else:
+                # Fallback for cases that probably should not ever happen:
+                param_name = "P"
+
             self.fail(
-                f'ParamSpec must have "*args" typed as "{param_spec_var.name}.args" and "**kwargs" typed as "{param_spec_var.name}.kwargs"',
+                f'ParamSpec must have "*args" typed as "{param_name}.args" and "**kwargs" typed as "{param_name}.kwargs"',
                 func,
                 code=codes.VALID_TYPE,
             )

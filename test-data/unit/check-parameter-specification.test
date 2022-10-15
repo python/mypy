@@ -1240,3 +1240,42 @@ def from_extra1(c: Callable[Concatenate[int, P], int], *args: int, **kwargs: int
 def from_extra2(c: Callable[Concatenate[int, P], int], **kwargs: int) -> Some[P]: ...
 def from_extra3(c: Callable[Concatenate[int, P], int], *args: int) -> Some[P]: ...
 [builtins fixtures/paramspec.pyi]
+
+
+[case testUnboundParamSpec]
+from typing import Callable, ParamSpec
+
+P1 = ParamSpec('P1')
+P2 = ParamSpec('P2')
+
+def f0(f: Callable[P1, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+
+def f1(*args: P1.args): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f2(**kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f3(*args: P1.args, **kwargs: int): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f4(*args: int, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+
+# Error message is based on the `args` definition:
+def f5(*args: P2.args, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P2.args" and "**kwargs" typed as "P2.kwargs"
+def f6(*args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+
+# Multiple `ParamSpec` variables can be found, they should not affect error message:
+P3 = ParamSpec('P3')
+
+def f7(first: Callable[P3, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f8(first: Callable[P3, int], *args: P2.args, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P2.args" and "**kwargs" typed as "P2.kwargs"
+[builtins fixtures/paramspec.pyi]
+
+
+[case testArgsKwargsWithoutParamSpecVar]
+from typing import Generic, Callable, ParamSpec
+
+P = ParamSpec('P')
+
+# This must be allowed:
+class Some(Generic[P]):
+    def call(self, *args: P.args, **kwargs: P.kwargs): ...
+
+# TODO: this probably should be reported.
+def call(*args: P.args, **kwargs: P.kwargs): ...
+[builtins fixtures/paramspec.pyi]
