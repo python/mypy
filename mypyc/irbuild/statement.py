@@ -962,8 +962,8 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
             builder.add_bool_branch(cond, code_block, next_block)
 
         elif isinstance(pattern, AsPattern):
-            assert not pattern.pattern
-            assert not pattern.name
+            if pattern.pattern:
+                build_pattern(pattern.pattern, code_block, next_block)
 
             builder.goto(code_block)
 
