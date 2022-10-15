@@ -5020,7 +5020,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         item_strs = try_getting_str_literals_from_type(item_type)
         if item_strs:
             if_types, else_types = self._contains_string_right_operand_type_map(
-                set(item_strs), collection_type
+                item_strs, collection_type
             )
         return (
             UnionType.make_union(if_types) if if_types else None,
@@ -5028,19 +5028,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def _contains_string_right_operand_type_map(
-        self, item_strs: set[str], t: Type
+        self, item_strs: Iterable[str], t: Type
     ) -> tuple[list[Type], list[Type]]:
         t = get_proper_type(t)
         if_types: list[Type] = []
         else_types: list[Type] = []
         if isinstance(t, TypedDictType):
-            if item_strs <= t.items.keys():
-                if_types.append(t)
-            elif item_strs.isdisjoint(t.items.keys()):
-                else_types.append(t)
-            else:
-                if_types.append(t)
-                else_types.append(t)
+            for key in item_strs:
+                if key in t.required_keys:
+                    if_types.append(t)
+                elif key in t.items:
+                    if_types.append(t)
+                    else_types.append(t)
+                else:
+                    else_types.append(t)
         elif isinstance(t, UnionType):
             for union_item in t.items:
                 a, b = self._contains_string_right_operand_type_map(item_strs, union_item)

@@ -2014,7 +2014,7 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 
 [case testFinalTypedDictTagged]
 from __future__ import annotations
-from typing import Literal, TypedDict, TypeVar
+from typing import assert_type, Literal, TypedDict, TypeVar, Union
 from typing_extensions import final
 
 @final
@@ -2029,35 +2029,70 @@ class D2(TypedDict):
 d: D1 | D2
 val: int
 
-val = d['foo']  # E: TypedDict "D2" has no key "foo"
 if 'foo' in d:
-    val = d['foo']
+    assert_type(d, D1)
 else:
-    val = d['bar']
+    assert_type(d, D2)
 
 foo_or_bar: Literal['foo', 'bar']
 if foo_or_bar in d:
-    val = d['foo']  # E: TypedDict "D2" has no key "foo"
-    val = d['bar']  # E: TypedDict "D1" has no key "bar"
+    assert_type(d, Union[D1, D2])
 else:
-    val = d['foo']  # E: TypedDict "D2" has no key "foo"
-    val = d['bar']  # E: TypedDict "D1" has no key "bar"
+    assert_type(d, Union[D1, D2])
 
 foo_or_invalid: Literal['foo', 'invalid']
 if foo_or_invalid in d:
-    val = d['foo']
+    assert_type(d, D1)
 else:
-    val = d['foo']  # E: TypedDict "D2" has no key "foo"
-    val = d['bar']  # E: TypedDict "D1" has no key "bar"
+    assert_type(d, Union[D1, D2])
 
 TD = TypeVar('TD', D1, D2)
 
 def f(arg: TD) -> None:
     if 'foo' in arg:
-        val = arg['foo']
+        assert_type(d, Union[D1, D2])  # strangely enough it's seen as a union
+        val = arg['foo']               # but acts here as D1
     else:
+        assert_type(d, Union[D1, D2])  # ditto here, but D2
         val = arg['bar']
 
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testFinalTypedDictTaggedNotRequired]
+from __future__ import annotations
+from typing import assert_type, Literal, TypedDict, Union
+from typing_extensions import final
+
+@final
+class DTotal(TypedDict):
+    required_key: int
+
+
+@final
+class DNotTotal(TypedDict, total=False):
+    optional_key: int
+
+
+d: DTotal | DNotTotal
+val: int
+
+if 'required_key' in d:
+    assert_type(d, DTotal)
+else:
+    assert_type(d, DNotTotal)
+
+if 'optional_key' in d:
+    assert_type(d, DNotTotal)
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+
+key: Literal['optional_key', 'required_key']
+if key in d:
+    assert_type(d, Union[DTotal, DNotTotal])
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
