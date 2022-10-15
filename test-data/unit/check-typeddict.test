@@ -2012,7 +2012,7 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testFinalTypedDictTagged]
+[case testOperatorContainsNarrowsTotalTypedDicts]
 from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, TypeVar, Union
 from typing_extensions import final
@@ -2027,7 +2027,6 @@ class D2(TypedDict):
     bar: int
 
 d: D1 | D2
-val: int
 
 if 'foo' in d:
     assert_type(d, D1)
@@ -2049,18 +2048,19 @@ else:
 TD = TypeVar('TD', D1, D2)
 
 def f(arg: TD) -> None:
+    value: int
     if 'foo' in arg:
         assert_type(d, Union[D1, D2])  # strangely enough it's seen as a union
-        val = arg['foo']               # but acts here as D1
+        value = arg['foo']               # but acts here as D1
     else:
         assert_type(d, Union[D1, D2])  # ditto here, but D2
-        val = arg['bar']
+        value = arg['bar']
 
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testFinalTypedDictTaggedNotRequired]
+[case testOperatorContainsNarrowsPartialTypedDicts]
 from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, Union
 from typing_extensions import final
