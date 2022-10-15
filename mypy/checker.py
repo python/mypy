@@ -5011,7 +5011,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def contains_operator_right_operand_type_map(
         self, item_type: Type, collection_type: Type
-    ) -> tuple[Type, Type]:
+    ) -> tuple[Type | None, Type | None]:
         """
         Deduces the type of the right operand of the `in` operator.
         For now, we only support narrowing unions of TypedDicts based on left operand being literal string(s).
@@ -5022,7 +5022,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if_types, else_types = self._contains_string_right_operand_type_map(
                 set(item_strs), collection_type
             )
-        return UnionType.make_union(if_types), UnionType.make_union(else_types)
+        return (
+            UnionType.make_union(if_types) if if_types else None,
+            UnionType.make_union(else_types) if else_types else None,
+        )
 
     def _contains_string_right_operand_type_map(
         self, item_strs: set[str], t: Type
@@ -5377,15 +5380,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 if_map[operands[left_index]] = remove_optional(item_type)
 
                     if right_index in narrowable_operand_index_to_hash:
-                        (
-                            right_if_type,
-                            right_else_type,
-                        ) = self.contains_operator_right_operand_type_map(
+                        (if_type, else_type) = self.contains_operator_right_operand_type_map(
                             item_type, collection_type
                         )
                         expr = operands[right_index]
-                        if_map[expr] = right_if_type
-                        else_map[expr] = right_else_type
+                        if if_type is None:
+                            if_map = None
+                        else:
+                            if_map[expr] = if_type
+                        if else_type is None:
+                            else_map = None
+                        else:
+                            else_map[expr] = else_type
 
                 else:
                     if_map = {}

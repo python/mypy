@@ -2014,7 +2014,7 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 
 [case testFinalTypedDictTagged]
 from __future__ import annotations
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, TypeVar
 from typing_extensions import final
 
 @final
@@ -2049,6 +2049,15 @@ if foo_or_invalid in d:
 else:
     val = d['foo']  # E: TypedDict "D2" has no key "foo"
     val = d['bar']  # E: TypedDict "D1" has no key "bar"
+
+TD = TypeVar('TD', D1, D2)
+
+def f(arg: TD) -> None:
+    if 'foo' in arg:
+        val = arg['foo']
+    else:
+        val = arg['bar']
+
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
