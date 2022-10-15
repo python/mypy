@@ -2012,6 +2012,27 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testOperatorContainsNarrowsTypedDicts_unionWithList]
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+from typing_extensions import final
+
+
+@final
+class D(TypedDict):
+    foo: int
+
+
+d: D | list[str]
+
+if 'foo' in d:
+    assert_type(d, Union[D, list[str]])
+else:
+    assert_type(d, list[str])
+
+[builtins fixtures / dict.pyi]
+[typing fixtures / typing - typeddict.pyi]
+
 [case testOperatorContainsNarrowsTotalTypedDicts]
 from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, TypeVar, Union
