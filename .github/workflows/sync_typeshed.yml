@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
         # TODO: use whatever solution ends up working for
         # https://github.com/python/typeshed/issues/8434
       - uses: actions/setup-python@v4
