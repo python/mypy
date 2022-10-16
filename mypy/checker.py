@@ -5446,10 +5446,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 or_conditional_maps(left_if_vars, right_if_vars),
                 and_conditional_maps(left_else_vars, right_else_vars),
             )
-        elif isinstance(node, OpExpr) and node.op == "in":
-            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
-            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
-
         elif isinstance(node, UnaryExpr) and node.op == "not":
             left, right = self.find_isinstance_check(node.expr)
             return right, left
