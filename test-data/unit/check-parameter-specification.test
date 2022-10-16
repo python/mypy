@@ -758,10 +758,10 @@ class C(Generic[P]):
     phantom: Optional[Callable[P, None]]
 
     def add_str(self) -> C[Concatenate[str, P]]:
-        return C[Concatenate[int, P]]()
+        return C[Concatenate[str, P]]()
 
     def add_int(self) -> C[Concatenate[int, P]]:
-        return C[Concatenate[str, P]]()
+        return C[Concatenate[int, P]]()
 
 def f(c: C[P]) -> None:
     reveal_type(c)  # N: Revealed type is "__main__.C[P`-1]"
