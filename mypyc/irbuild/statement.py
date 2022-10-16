@@ -970,9 +970,7 @@ class MatchVisitor(TraverserVisitor):
             pattern.expr.line
         )
 
-        if self.as_pattern and self.as_pattern.name:
-            target = self.builder.get_assignment_target(self.as_pattern.name)
-            self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
+        self.bind_as_pattern(value)
 
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
@@ -996,13 +994,8 @@ class MatchVisitor(TraverserVisitor):
             pattern.line
         )
 
-        if self.as_pattern and self.as_pattern.name:
-            # TODO: add ability to handle class pattern when not at top level
-            value = self.subject
-
-            target = self.builder.get_assignment_target(self.as_pattern.name)
-            self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
-
+        # TODO: add ability to handle class pattern when not at top level
+        self.bind_as_pattern(self.subject)
 
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
@@ -1025,6 +1018,11 @@ class MatchVisitor(TraverserVisitor):
         cond = self.builder.binary_op(self.subject, obj, "is", pattern.line)
 
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
+
+    def bind_as_pattern(self, value: Value) -> None:
+        if self.as_pattern and self.as_pattern.name:
+            target = self.builder.get_assignment_target(self.as_pattern.name)
+            self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
 
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
