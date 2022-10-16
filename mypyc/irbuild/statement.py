@@ -920,6 +920,8 @@ class MatchVisitor(TraverserVisitor):
     subject: Value
     match: MatchStmt
 
+    as_pattern: AsPattern | None = None
+
     def __init__(self, builder: IRBuilder, match_node: MatchStmt) -> None:
         self.builder = builder
 
@@ -959,12 +961,21 @@ class MatchVisitor(TraverserVisitor):
         self.builder.goto_and_activate(self.final_block)
 
     def visit_value_pattern(self, pattern: ValuePattern) -> None:
+        value = self.builder.accept(pattern.expr)
+
         cond = self.builder.binary_op(
             self.subject,
-            self.builder.accept(pattern.expr),
+            value,
             "==",
             pattern.expr.line
         )
+
+        if self.as_pattern and self.as_pattern.name:
+            target = self.builder.get_assignment_target(self.as_pattern.name)
+            self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
+
+            self.as_pattern = None
+
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_or_pattern(self, pattern: OrPattern) -> None:
@@ -991,6 +1002,7 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
         if pattern.pattern:
+            self.as_pattern = pattern
             pattern.pattern.accept(self)
 
         self.builder.goto(self.code_block)

@@ -484,13 +484,11 @@ L5:
 def f():
     match 123:
         case 123 as x:
-            # print(x)
-            print("matched")
+            print(x)
 [out]
 def f():
     r0 :: bit
-    r1 :: str
-    r2 :: object
+    r1, x, r2 :: object
     r3 :: str
     r4 :: object
     r5 :: object[1]
@@ -498,16 +496,17 @@ def f():
     r7, r8 :: object
 L0:
     r0 = 246 == 246
+    r1 = object 123
+    x = r1
     if r0 goto L1 else goto L2 :: bool
 L1:
-    r1 = 'matched'
     r2 = builtins :: module
     r3 = 'print'
     r4 = CPyObject_GetAttr(r2, r3)
-    r5 = [r1]
+    r5 = [x]
     r6 = load_address r5
     r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
-    keep_alive r1
+    keep_alive x
     goto L3
 L2:
 L3:
