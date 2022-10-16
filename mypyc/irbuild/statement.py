@@ -47,6 +47,7 @@ from mypy.patterns import (
     ClassPattern,
     OrPattern,
     Pattern,
+    PatternVisitor,
     SingletonPattern,
     ValuePattern,
 )
@@ -909,9 +910,77 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
     return emit_yield_from_or_await(builder, builder.accept(o.expr), o.line, is_await=True)
 
 
-def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
-    subject = builder.accept(m.subject)
+class MatchVisitor(PatternVisitor[None]):
+    builder: IRBuilder
+    code_block: BasicBlock
+    next_block: BasicBlock
+    final_block: BasicBlock
+    subject: Value
 
+    def __init__(
+        self,
+        builder: IRBuilder,
+        match_node: MatchStmt,
+    ) -> None:
+        self.builder = builder
+
+        self.code_block = BasicBlock()
+        self.next_block = BasicBlock()
+        self.final_block = BasicBlock()
+
+        self.subject = builder.accept(match_node.subject)
+
+    def visit_value_pattern(self, pattern: ValuePattern) -> None:
+        cond = self.builder.binary_op(
+            self.subject,
+            self.builder.accept(pattern.expr),
+            "==",
+            pattern.expr.line
+        )
+        self.builder.add_bool_branch(cond, self.code_block, self.next_block)
+
+    def visit_or_pattern(self, pattern: OrPattern) -> None:
+        for p in pattern.patterns:
+            p.accept(self)
+
+            self.builder.activate_block(self.next_block)
+            self.next_block = BasicBlock()
+
+        self.builder.goto(self.next_block)
+
+    def visit_class_pattern(self, pattern: ClassPattern) -> None:
+        assert not pattern.positionals
+        assert not pattern.keyword_keys
+        assert not pattern.keyword_values
+
+        cond = self.builder.call_c(
+            slow_isinstance_op,
+            [self.subject, self.builder.accept(pattern.class_ref)],
+            pattern.line
+        )
+
+        self.builder.add_bool_branch(cond, self.code_block, self.next_block)
+
+    def visit_as_pattern(self, pattern: AsPattern) -> None:
+        if pattern.pattern:
+            pattern.pattern.accept(self)
+
+        self.builder.goto(self.code_block)
+
+    def visit_singleton_pattern(self, pattern: SingletonPattern) -> None:
+        if pattern.value is None:
+            obj = self.builder.none_object()
+        elif pattern.value is True:
+            obj = self.builder.true()
+        else:
+            obj = self.builder.false()
+
+        cond = self.builder.binary_op(self.subject, obj, "is", pattern.line)
+
+        self.builder.add_bool_branch(cond, self.code_block, self.next_block)
+
+
+def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
     final_block = BasicBlock()
 
     def build_match_body(
@@ -930,66 +999,15 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
         builder.accept(m.bodies[index])
         builder.goto(final_block)
 
-    def build_pattern(
-        pattern: Pattern, code_block: BasicBlock, next_block: BasicBlock
-    ) -> tuple[BasicBlock, list[Pattern]]:
-        captured: list[Pattern] = []
-
-        if isinstance(pattern, ValuePattern):
-            cond = builder.binary_op(
-                subject, builder.accept(pattern.expr), "==", pattern.expr.line
-            )
-            builder.add_bool_branch(cond, code_block, next_block)
-
-        elif isinstance(pattern, OrPattern):
-            for p in pattern.patterns:
-                next_block, captured = build_pattern(p, code_block, next_block)
-
-                builder.activate_block(next_block)
-                next_block = BasicBlock()
-
-            builder.goto(next_block)
-
-        elif isinstance(pattern, ClassPattern):
-            assert not pattern.positionals
-            assert not pattern.keyword_keys
-            assert not pattern.keyword_values
-
-            cond = builder.call_c(
-                slow_isinstance_op,
-                [subject, builder.accept(pattern.class_ref)],
-                pattern.line
-            )
-
-            builder.add_bool_branch(cond, code_block, next_block)
-
-        elif isinstance(pattern, AsPattern):
-            if pattern.pattern:
-                next_block, captured = build_pattern(pattern.pattern, code_block, next_block)
-
-            builder.goto(code_block)
-
-        elif isinstance(pattern, SingletonPattern):
-            if pattern.value is None:
-                obj = builder.none_object()
-            elif pattern.value is True:
-                obj = builder.true()
-            else:
-                obj = builder.false()
-
-            cond = builder.binary_op(subject, obj, "is", pattern.line)
-
-            builder.add_bool_branch(cond, code_block, next_block)
-
-        return next_block, captured
+    mv = MatchVisitor(builder, m)
 
     for i, pattern in enumerate(m.patterns):
-        code_block = BasicBlock()
-        next_block = BasicBlock()
+        mv.code_block = BasicBlock()
+        mv.next_block = BasicBlock()
 
-        next_block, _ = build_pattern(pattern, code_block, next_block)
+        pattern.accept(mv)
 
-        build_match_body(i, code_block, next_block)
-        builder.activate_block(next_block)
+        build_match_body(i, mv.code_block, mv.next_block)
+        builder.activate_block(mv.next_block)
 
     builder.goto_and_activate(final_block)
