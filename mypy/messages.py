@@ -752,14 +752,14 @@ class MessageBuilder:
             if (
                 isinstance(callee_type, TypeType)
                 and isinstance(callee_type.item, Instance)
-                and not isinstance(callee_type.item, AnyType)
                 and isinstance(original_caller_type, CallableType)
-                and isinstance(original_caller_type.ret_type, Instance)
                 and callee_type.item.type.is_protocol
             ):
-                self.report_protocol_problems(
-                    original_caller_type.ret_type, callee_type.item, context, code=code
-                )
+                proper_ret_type = get_proper_type(original_caller_type.ret_type)
+                if isinstance(proper_ret_type, Instance):
+                    self.report_protocol_problems(
+                        proper_ret_type, callee_type.item, context, code=code
+                    )
             if isinstance(callee_type, UnionType):
                 for item in callee_type.items:
                     item = get_proper_type(item)
