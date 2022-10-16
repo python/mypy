@@ -520,3 +520,33 @@ class A:
 
 [file test.py]
 def foo(s: str) -> None: ...
+
+[case testXXX]
+# mypy: ignore-errors=True
+
+def f() -> None:
+    while 1():
+        pass
+
+[case testXXX2]
+from m import C
+c = C()
+reveal_type(c.x)  # N: Revealed type is "builtins.int"
+
+[file m.py]
+# mypy: ignore-errors=True
+
+class C:
+    def f(self) -> None:
+        self.x = 1
+
+[case testXXX3]
+# mypy: ignore-errors=True
+
+def f(self, x=lambda: 1) -> None:
+    pass
+
+class C:
+    def f(self) -> None:
+        l = lambda: 1
+        self.x = 1

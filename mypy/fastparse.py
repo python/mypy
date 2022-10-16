@@ -115,6 +115,7 @@ from mypy.types import (
     UnionType,
 )
 from mypy.util import bytes_to_human_readable_repr, unnamed_function
+from mypy.traverser import TraverserVisitor
 
 try:
     # pull this into a final variable to make mypyc be quiet about the
@@ -261,6 +262,11 @@ def parse(
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
     """
+    if int():
+        1 + ''
+    ignore_errors = options.ignore_errors or (errors and fnam in errors.ignored_files)
+    if ignore_errors:
+        print(fnam, fnam in errors.ignored_files, len(errors.ignored_files))
     raise_on_error = False
     if options is None:
         options = Options()
@@ -282,7 +288,7 @@ def parse(
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
-        tree = ASTConverter(options=options, is_stub=is_stub_file, errors=errors).visit(ast)
+        tree = ASTConverter(options=options, is_stub=is_stub_file, errors=errors, ignore_errors=ignore_errors).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
@@ -402,14 +408,15 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
 
 
 class ASTConverter:
-    def __init__(self, options: Options, is_stub: bool, errors: Errors) -> None:
-        # 'C' for class, 'F' for function
-        self.class_and_function_stack: list[Literal["C", "F"]] = []
+    def __init__(self, options: Options, is_stub: bool, errors: Errors, ignore_errors: bool) -> None:
+        # 'C' for class, 'F' for function, 'L' for lambda
+        self.class_and_function_stack: list[Literal["C", "F", "L"]] = []
         self.imports: list[ImportBase] = []
 
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
+        self.ignore_errors = ignore_errors
 
         self.type_ignores: dict[int, list[str]] = {}
 
@@ -504,11 +511,23 @@ class ASTConverter:
             mark_block_unreachable(block)
             return [block]
 
+        stack = self.class_and_function_stack
+        if self.ignore_errors and len(stack) == 1 and stack[0] == "F":
+            return []
+
         res: list[Statement] = []
         for stmt in stmts:
             node = self.visit(stmt)
             res.append(node)
 
+        if self.ignore_errors and len(stack) == 2 and stack[-2:] == ["C", "F"]:
+            v = FindAttributeAssign()
+            for n in res:
+                n.accept(v)
+                if v.found:
+                    break
+            else:
+                return []
         return res
 
     def translate_type_comment(
@@ -829,9 +848,6 @@ class ASTConverter:
         # For elif, IfStmt are stored recursively in else_body
         return self._is_stripped_if_stmt(stmt.else_body.body[0])
 
-    def in_method_scope(self) -> bool:
-        return self.class_and_function_stack[-2:] == ["C", "F"]
-
     def translate_module_id(self, id: str) -> str:
         """Return the actual, internal module id for a source text id."""
         if id == self.options.custom_typing_module:
@@ -866,7 +882,6 @@ class ASTConverter:
         self, n: ast3.FunctionDef | ast3.AsyncFunctionDef, is_coroutine: bool = False
     ) -> FuncDef | Decorator:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
-        self.class_and_function_stack.append("F")
         no_type_check = bool(
             n.decorator_list and any(is_no_type_check_decorator(d) for d in n.decorator_list)
         )
@@ -913,7 +928,8 @@ class ASTConverter:
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
-                if self.in_method_scope() and len(arg_types) < len(args):
+                in_method_scope = self.class_and_function_stack[-2:] == ["C"]
+                if in_method_scope and len(arg_types) < len(args):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = n.type_comment.split("#", 2)[0].strip()
@@ -963,7 +979,9 @@ class ASTConverter:
         end_line = getattr(n, "end_lineno", None)
         end_column = getattr(n, "end_col_offset", None)
 
-        func_def = FuncDef(n.name, args, self.as_required_block(n.body, lineno), func_type)
+        self.class_and_function_stack.append("F")
+        body = self.as_required_block(n.body, lineno)
+        func_def = FuncDef(n.name, args, body, func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
@@ -1400,9 +1418,11 @@ class ASTConverter:
         body.lineno = n.body.lineno
         body.col_offset = n.body.col_offset
 
+        self.class_and_function_stack.append("L")
         e = LambdaExpr(
             self.transform_args(n.args, n.lineno), self.as_required_block([body], n.lineno)
         )
+        self.class_and_function_stack.pop()
         e.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
         return e
 
@@ -2072,3 +2092,27 @@ def stringify_name(n: AST) -> str | None:
         if sv is not None:
             return f"{sv}.{n.attr}"
     return None  # Can't do it.
+
+
+class FindAttributeAssign(TraverserVisitor):
+    def __init__(self) -> None:
+        self.lval = False
+        self.found = False
+
+    def visit_assignment_stmt(self, x: AssignmentStmt) -> None:
+        self.lval = True
+        for lv in x.lvalues:
+            lv.accept(self)
+        self.lval = False
+
+    def visit_expression_stmt(self, e: ExpressionStmt) -> None:
+        # No need to look inside these
+        pass
+
+    def visit_call_expr(self, e: CallExpr) -> None:
+        # No need to look inside these
+        pass
+
+    def visit_member_expr(self, x: MemberExpr) -> None:
+        if self.lval:
+            self.found = True
