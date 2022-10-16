@@ -996,6 +996,14 @@ class MatchVisitor(TraverserVisitor):
             pattern.line
         )
 
+        if self.as_pattern and self.as_pattern.name:
+            # TODO: add ability to handle class pattern when not at top level
+            value = self.subject
+
+            target = self.builder.get_assignment_target(self.as_pattern.name)
+            self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
+
+
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
