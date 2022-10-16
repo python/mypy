@@ -974,8 +974,6 @@ class MatchVisitor(TraverserVisitor):
             target = self.builder.get_assignment_target(self.as_pattern.name)
             self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
 
-            self.as_pattern = None
-
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_or_pattern(self, pattern: OrPattern) -> None:
@@ -1004,6 +1002,7 @@ class MatchVisitor(TraverserVisitor):
         if pattern.pattern:
             self.as_pattern = pattern
             pattern.pattern.accept(self)
+            self.as_pattern = None
 
         self.builder.goto(self.code_block)
 
