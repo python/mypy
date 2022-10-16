@@ -932,7 +932,9 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
     def build_pattern(
         pattern: Pattern, code_block: BasicBlock, next_block: BasicBlock
-    ) -> BasicBlock:
+    ) -> tuple[BasicBlock, list[Pattern]]:
+        captured: list[Pattern] = []
+
         if isinstance(pattern, ValuePattern):
             cond = builder.binary_op(
                 subject, builder.accept(pattern.expr), "==", pattern.expr.line
@@ -941,7 +943,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
         elif isinstance(pattern, OrPattern):
             for p in pattern.patterns:
-                build_pattern(p, code_block, next_block)
+                next_block, captured = build_pattern(p, code_block, next_block)
 
                 builder.activate_block(next_block)
                 next_block = BasicBlock()
@@ -963,7 +965,7 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
         elif isinstance(pattern, AsPattern):
             if pattern.pattern:
-                build_pattern(pattern.pattern, code_block, next_block)
+                next_block, captured = build_pattern(pattern.pattern, code_block, next_block)
 
             builder.goto(code_block)
 
@@ -979,13 +981,13 @@ def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
 
             builder.add_bool_branch(cond, code_block, next_block)
 
-        return next_block
+        return next_block, captured
 
     for i, pattern in enumerate(m.patterns):
         code_block = BasicBlock()
         next_block = BasicBlock()
 
-        next_block = build_pattern(pattern, code_block, next_block)
+        next_block, _ = build_pattern(pattern, code_block, next_block)
 
         build_match_body(i, code_block, next_block)
         builder.activate_block(next_block)
