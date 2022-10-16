@@ -51,6 +51,7 @@ from mypy.patterns import (
     SingletonPattern,
     ValuePattern,
 )
+from mypy.traverser import TraverserVisitor
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -910,25 +911,52 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
     return emit_yield_from_or_await(builder, builder.accept(o.expr), o.line, is_await=True)
 
 
-class MatchVisitor(PatternVisitor[None]):
+
+class MatchVisitor(TraverserVisitor):
     builder: IRBuilder
     code_block: BasicBlock
     next_block: BasicBlock
     final_block: BasicBlock
     subject: Value
+    match: MatchStmt
 
-    def __init__(
-        self,
-        builder: IRBuilder,
-        match_node: MatchStmt,
-    ) -> None:
+    def __init__(self, builder: IRBuilder, match_node: MatchStmt) -> None:
         self.builder = builder
 
         self.code_block = BasicBlock()
         self.next_block = BasicBlock()
         self.final_block = BasicBlock()
 
+        self.match = match_node
         self.subject = builder.accept(match_node.subject)
+
+    def build_match_body(
+        self, index: int, code_block: BasicBlock, next_block: BasicBlock
+    ) -> None:
+        self.builder.activate_block(code_block)
+
+        if guard := self.match.guards[index]:
+            new_code_block = BasicBlock()
+
+            cond = self.builder.accept(guard)
+            self.builder.add_bool_branch(cond, new_code_block, next_block)
+
+            self.builder.activate_block(new_code_block)
+
+        self.builder.accept(self.match.bodies[index])
+        self.builder.goto(self.final_block)
+
+    def visit_match_stmt(self, m: MatchStmt) -> None:
+        for i, pattern in enumerate(m.patterns):
+            self.code_block = BasicBlock()
+            self.next_block = BasicBlock()
+
+            pattern.accept(self)
+
+            self.build_match_body(i, self.code_block, self.next_block)
+            self.builder.activate_block(self.next_block)
+
+        self.builder.goto_and_activate(self.final_block)
 
     def visit_value_pattern(self, pattern: ValuePattern) -> None:
         cond = self.builder.binary_op(
@@ -981,33 +1009,4 @@ class MatchVisitor(PatternVisitor[None]):
 
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
-    final_block = BasicBlock()
-
-    def build_match_body(
-        index: int, code_block: BasicBlock, next_block: BasicBlock
-    ) -> None:
-        builder.activate_block(code_block)
-
-        if guard := m.guards[index]:
-            new_code_block = BasicBlock()
-
-            cond = builder.accept(guard)
-            builder.add_bool_branch(cond, new_code_block, next_block)
-
-            builder.activate_block(new_code_block)
-
-        builder.accept(m.bodies[index])
-        builder.goto(final_block)
-
-    mv = MatchVisitor(builder, m)
-
-    for i, pattern in enumerate(m.patterns):
-        mv.code_block = BasicBlock()
-        mv.next_block = BasicBlock()
-
-        pattern.accept(mv)
-
-        build_match_body(i, mv.code_block, mv.next_block)
-        builder.activate_block(mv.next_block)
-
-    builder.goto_and_activate(final_block)
+    m.accept(MatchVisitor(builder, m))
