@@ -80,6 +80,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarTupleType,
     TypeVarType,
     UnboundType,
     UninhabitedType,
@@ -2261,6 +2262,9 @@ def format_type_inner(
     elif isinstance(typ, UnpackType):
         return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
+        # This is similar to non-generic instance types.
+        return typ.name
+    elif isinstance(typ, TypeVarTupleType):
         # This is similar to non-generic instance types.
         return typ.name
     elif isinstance(typ, ParamSpecType):

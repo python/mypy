@@ -145,6 +145,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarTupleType,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -1397,7 +1398,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
 
         if callee.is_generic():
-            need_refresh = any(isinstance(v, ParamSpecType) for v in callee.variables)
+            need_refresh = any(
+                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
+            )
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
             callee = self.infer_function_type_arguments(
