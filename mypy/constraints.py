@@ -134,9 +134,7 @@ def infer_constraints_for_callable(
                 )
 
             assert isinstance(unpack_type.type, TypeVarTupleType)
-            constraints.append(
-                Constraint(unpack_type.type, SUPERTYPE_OF, TypeList(actual_types))
-            )
+            constraints.append(Constraint(unpack_type.type, SUPERTYPE_OF, TypeList(actual_types)))
         else:
             for actual in actuals:
                 actual_arg_type = arg_types[actual]
