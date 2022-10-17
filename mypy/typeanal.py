@@ -976,7 +976,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if t.partial_fallback.type
             else self.named_type("builtins.tuple", [any_type])
         )
-        items = self.anal_array(t.items)
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
