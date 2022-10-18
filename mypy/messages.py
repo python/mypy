@@ -408,10 +408,13 @@ class MessageBuilder:
             if not self.are_type_names_disabled():
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
-                    if module_symbol_table is not None and member in module_symbol_table:
-                        assert not module_symbol_table[member].module_public
+                    if (
+                        module_symbol_table is not None
+                        and member in module_symbol_table
+                        and not module_symbol_table[member].module_public
+                    ):
                         self.fail(
-                            f'{format_type(original_type, module_names=True)} does not '
+                            f"{format_type(original_type, module_names=True)} does not "
                             f'explicitly export attribute "{member}"',
                             context,
                             code=codes.ATTR_DEFINED,
@@ -419,11 +422,12 @@ class MessageBuilder:
                         failed = True
                     else:
                         alternatives = set(original_type.type.names.keys())
-
                         if module_symbol_table is not None:
                             alternatives |= {
                                 k for k, v in module_symbol_table.items() if v.module_public
                             }
+                        # Rare but possible, see e.g. testNewAnalyzerCyclicDefinitionCrossModule
+                        alternatives.discard(member)
 
                         matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                         matches.extend(best_matches(member, alternatives)[:3])
