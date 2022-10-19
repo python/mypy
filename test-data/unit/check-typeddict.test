@@ -2124,7 +2124,7 @@ else:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testOperatorContainsNarrowsTypedDicts_partial]
+[case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse]
 from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, Union
 from typing_extensions import final
@@ -2156,6 +2156,38 @@ if key in d:
     assert_type(d, Union[DTotal, DNotTotal])
 else:
     assert_type(d, Union[DTotal, DNotTotal])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired]
+from __future__ import annotations
+from typing import assert_type, Required, NotRequired, TypedDict, Union
+from typing_extensions import final
+
+@final
+class D1(TypedDict):
+    required_key: Required[int]
+    optional_key: NotRequired[int]
+
+
+@final
+class D2(TypedDict):
+    abc: int
+    xyz: int
+
+
+d: D1 | D2
+
+if 'required_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+if 'optional_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, Union[D1, D2])
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
