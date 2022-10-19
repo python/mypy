@@ -2114,6 +2114,13 @@ if 'spam' in d_not_final:
 else:
     assert_type(d_not_final, DNotFinal)
 
+d_final: DFinal
+
+if 'spam' in d_final:
+    spam = 'ham'  # E: Statement is unreachable
+else:
+    assert_type(d_final, DFinal)
+
 d_union: DFinal | DNotFinal
 
 if 'foo' in d_union:
