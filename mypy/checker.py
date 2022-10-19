@@ -5048,7 +5048,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if_types.extend(a)
                 else_types.extend(b)
         else:
-            if_types = else_types = [t]
+            if_types, else_types = [t], [t]
         return if_types, else_types
 
     def _is_truthy_type(self, t: ProperType) -> bool:
