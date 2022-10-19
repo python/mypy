@@ -60,8 +60,10 @@ class StubgenCmdLineSuite(unittest.TestCase):
                 self.make_file("subdir", "b.py")
                 os.mkdir(os.path.join("subdir", "pack"))
                 self.make_file("subdir", "pack", "__init__.py")
+                os.mkdir(os.path.join("subdir", "vendor"))
+                self.make_file("subdir", "vendor", "a.py")
                 opts = parse_options(["subdir"])
-                py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+                py_mods, c_mods, ignored_py_mods = collect_build_targets(opts, mypy_options(opts))
                 assert_equal(c_mods, [])
                 files = {mod.path for mod in py_mods}
                 assert_equal(
@@ -72,6 +74,8 @@ class StubgenCmdLineSuite(unittest.TestCase):
                         os.path.join("subdir", "b.py"),
                     },
                 )
+                ignored_files = {mod.path for mod in ignored_py_mods}
+                assert_equal(ignored_files, {os.path.join("subdir", "vendor", "a.py")})
             finally:
                 os.chdir(current)
 
@@ -85,8 +89,11 @@ class StubgenCmdLineSuite(unittest.TestCase):
                 self.make_file("pack", "__init__.py", content="from . import a, b")
                 self.make_file("pack", "a.py")
                 self.make_file("pack", "b.py")
+                os.mkdir(os.path.join("pack", "vendor"))
+                self.make_file("pack", "vendor", "__init__.py")
+                self.make_file("pack", "vendor", "a.py")
                 opts = parse_options(["-p", "pack"])
-                py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+                py_mods, c_mods, ignored_py_mods = collect_build_targets(opts, mypy_options(opts))
                 assert_equal(c_mods, [])
                 files = {os.path.relpath(mod.path or "FAIL") for mod in py_mods}
                 assert_equal(
@@ -95,6 +102,14 @@ class StubgenCmdLineSuite(unittest.TestCase):
                         os.path.join("pack", "__init__.py"),
                         os.path.join("pack", "a.py"),
                         os.path.join("pack", "b.py"),
+                    },
+                )
+                ignored_files = {os.path.relpath(mod.path or "FAIL") for mod in ignored_py_mods}
+                assert_equal(
+                    ignored_files,
+                    {
+                        os.path.join("pack", "vendor", "__init__.py"),
+                        os.path.join("pack", "vendor", "a.py"),
                     },
                 )
             finally:
@@ -110,7 +125,7 @@ class StubgenCmdLineSuite(unittest.TestCase):
                 os.chdir(tmp)
                 self.make_file(tmp, "mymodule.py", content="import a")
                 opts = parse_options(["-m", "mymodule"])
-                py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+                py_mods, c_mods, ignored_py_mods = collect_build_targets(opts, mypy_options(opts))
                 assert captured_output.getvalue() == ""
             finally:
                 sys.stdout = sys.__stdout__
