@@ -1787,8 +1787,8 @@ m = n  # E: Cannot assign multiple modules to name "m" without explicit "types.M
 [builtins fixtures/module.pyi]
 
 [case testNoReExportFromStubs]
-from stub import Iterable  # E: Module "stub" has no attribute "Iterable"
-from stub import D  # E: Module "stub" has no attribute "D"
+from stub import Iterable  # E: Module "stub" does not explicitly export attribute "Iterable"
+from stub import D  # E: Module "stub" does not explicitly export attribute "D"
 from stub import C
 
 c = C()
@@ -1884,7 +1884,7 @@ class C:
 from util import mod
 reveal_type(mod)  # N: Revealed type is "def () -> package.mod.mod"
 
-from util import internal_detail  # E: Module "util" has no attribute "internal_detail"
+from util import internal_detail  # E: Module "util" does not explicitly export attribute "internal_detail"
 
 [file package/__init__.pyi]
 from .mod import mod as mod
@@ -1899,7 +1899,7 @@ from package import mod as internal_detail
 [builtins fixtures/module.pyi]
 
 [case testNoReExportUnrelatedModule]
-from mod2 import unrelated  # E: Module "mod2" has no attribute "unrelated"
+from mod2 import unrelated  # E: Module "mod2" does not explicitly export attribute "unrelated"
 
 [file mod1/__init__.pyi]
 [file mod1/unrelated.pyi]
@@ -1910,7 +1910,7 @@ from mod1 import unrelated
 [builtins fixtures/module.pyi]
 
 [case testNoReExportUnrelatedSiblingPrefix]
-from pkg.unrel import unrelated  # E: Module "pkg.unrel" has no attribute "unrelated"
+from pkg.unrel import unrelated  # E: Module "pkg.unrel" does not explicitly export attribute "unrelated"
 
 [file pkg/__init__.pyi]
 [file pkg/unrelated.pyi]
@@ -1922,7 +1922,7 @@ from pkg import unrelated
 
 [case testNoReExportChildStubs]
 import mod
-from mod import C, D  # E: Module "mod" has no attribute "C"
+from mod import C, D  # E: Module "mod" does not explicitly export attribute "C"
 
 reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
 mod.C  # E: "Module mod" does not explicitly export attribute "C"
@@ -1940,7 +1940,7 @@ class D:
 [builtins fixtures/module.pyi]
 
 [case testNoReExportNestedStub]
-from stub import substub  # E: Module "stub" has no attribute "substub"
+from stub import substub  # E: Module "stub" does not explicitly export attribute "substub"
 
 [file stub.pyi]
 import substub
@@ -2887,10 +2887,10 @@ CustomDict = TypedDict(
 [builtins fixtures/tuple.pyi]
 
 [case testNoReExportFromMissingStubs]
-from stub import a  # E: Module "stub" has no attribute "a"
+from stub import a  # E: Module "stub" does not explicitly export attribute "a"
 from stub import b
 from stub import c  # E: Module "stub" has no attribute "c"
-from stub import d  # E: Module "stub" has no attribute "d"
+from stub import d  # E: Module "stub" does not explicitly export attribute "d"
 
 [file stub.pyi]
 from mystery import a, b as b, c as d
