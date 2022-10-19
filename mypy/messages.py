@@ -409,32 +409,43 @@ class MessageBuilder:
             if not self.are_type_names_disabled():
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
-                    alternatives = set(original_type.type.names.keys())
-
-                    if module_symbol_table is not None:
-                        alternatives |= {key for key in module_symbol_table.keys()}
-
-                    # in some situations, the member is in the alternatives set
-                    # but since we're in this function, we shouldn't suggest it
-                    if member in alternatives:
-                        alternatives.remove(member)
-
-                    matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
-                    matches.extend(best_matches(member, alternatives)[:3])
-                    if member == "__aiter__" and matches == ["__iter__"]:
-                        matches = []  # Avoid misleading suggestion
-                    if matches:
+                    if (
+                        module_symbol_table is not None
+                        and member in module_symbol_table
+                        and not module_symbol_table[member].module_public
+                    ):
                         self.fail(
-                            '{} has no attribute "{}"; maybe {}?{}'.format(
-                                format_type(original_type),
-                                member,
-                                pretty_seq(matches, "or"),
-                                extra,
-                            ),
+                            f"{format_type(original_type, module_names=True)} does not "
+                            f'explicitly export attribute "{member}"',
                             context,
                             code=codes.ATTR_DEFINED,
                         )
                         failed = True
+                    else:
+                        alternatives = set(original_type.type.names.keys())
+                        if module_symbol_table is not None:
+                            alternatives |= {
+                                k for k, v in module_symbol_table.items() if v.module_public
+                            }
+                        # Rare but possible, see e.g. testNewAnalyzerCyclicDefinitionCrossModule
+                        alternatives.discard(member)
+
+                        matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
+                        matches.extend(best_matches(member, alternatives)[:3])
+                        if member == "__aiter__" and matches == ["__iter__"]:
+                            matches = []  # Avoid misleading suggestion
+                        if matches:
+                            self.fail(
+                                '{} has no attribute "{}"; maybe {}?{}'.format(
+                                    format_type(original_type),
+                                    member,
+                                    pretty_seq(matches, "or"),
+                                    extra,
+                                ),
+                                context,
+                                code=codes.ATTR_DEFINED,
+                            )
+                            failed = True
                 if not failed:
                     self.fail(
                         '{} has no attribute "{}"{}'.format(
