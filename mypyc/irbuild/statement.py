@@ -1054,7 +1054,7 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
         if pattern.pattern:
-            with self.enter_subpattern(pattern, self.subject):
+            with self.enter_as_pattern(pattern):
                 pattern.pattern.accept(self)
 
         self.builder.goto(self.code_block)
@@ -1077,13 +1077,17 @@ class MatchVisitor(TraverserVisitor):
             self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
 
     @contextmanager
-    def enter_subpattern(self, pattern: AsPattern, subject: Value) -> Generator[None, None, None]:
-        old_pattern = self.as_pattern
+    def enter_subpattern(self, subject: Value) -> Generator[None, None, None]:
         old_subject = self.subject
-        self.as_pattern = pattern
         self.subject = subject
         yield
         self.subject = old_subject
+
+    @contextmanager
+    def enter_as_pattern(self, pattern: AsPattern) -> Generator[None, None, None]:
+        old_pattern = self.as_pattern
+        self.as_pattern = pattern
+        yield
         self.as_pattern = old_pattern
 
 
