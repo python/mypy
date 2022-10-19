@@ -941,12 +941,12 @@ class MatchVisitor(TraverserVisitor):
         self.builder.activate_block(code_block)
 
         if guard := self.match.guards[index]:
-            new_code_block = BasicBlock()
+            self.code_block = BasicBlock()
 
             cond = self.builder.accept(guard)
-            self.builder.add_bool_branch(cond, new_code_block, next_block)
+            self.builder.add_bool_branch(cond, self.code_block, next_block)
 
-            self.builder.activate_block(new_code_block)
+            self.builder.activate_block(self.code_block)
 
         self.builder.accept(self.match.bodies[index])
         self.builder.goto(self.final_block)
