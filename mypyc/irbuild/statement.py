@@ -987,9 +987,6 @@ class MatchVisitor(TraverserVisitor):
         self.builder.goto(self.next_block)
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:
-        assert not pattern.keyword_keys
-        assert not pattern.keyword_values
-
         # TODO: add ability to handle class pattern when not at top level
         cond = self.builder.call_c(
             slow_isinstance_op,
@@ -1036,6 +1033,23 @@ class MatchVisitor(TraverserVisitor):
                 )
 
                 self.builder.add_bool_branch(cond, self.code_block, self.next_block)
+
+        for key, value in zip(pattern.keyword_keys, pattern.keyword_values):
+            assert isinstance(value, ValuePattern)
+
+            self.builder.activate_block(self.code_block)
+            self.code_block = BasicBlock()
+
+            attr = self.builder.py_get_attr(self.subject, key, value.line)
+
+            cond = self.builder.binary_op(
+                attr,
+                self.builder.accept(value.expr),
+                "==",
+                value.line,
+            )
+
+            self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
         if pattern.pattern:

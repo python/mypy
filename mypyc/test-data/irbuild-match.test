@@ -691,3 +691,88 @@ L5:
 L6:
     r32 = box(None, 1)
     return r32
+[case testMatchClassPatternWithKeywordPatterns_python3_10]
+class Position:
+    x: int
+    y: int
+    z: int
+
+def f(x):
+    match x:
+        case Position(z=1, y=2, x=3):
+            print("matched")
+[out]
+def f(x):
+    x, r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: str
+    r5, r6, r7 :: object
+    r8 :: int32
+    r9 :: bit
+    r10 :: bool
+    r11 :: str
+    r12, r13, r14 :: object
+    r15 :: int32
+    r16 :: bit
+    r17 :: bool
+    r18 :: str
+    r19, r20, r21 :: object
+    r22 :: int32
+    r23 :: bit
+    r24 :: bool
+    r25 :: str
+    r26 :: object
+    r27 :: str
+    r28 :: object
+    r29 :: object[1]
+    r30 :: object_ptr
+    r31, r32 :: object
+L0:
+    r0 = __main__.Position :: type
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L5 :: bool
+L1:
+    r4 = 'z'
+    r5 = CPyObject_GetAttr(x, r4)
+    r6 = object 1
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    if r10 goto L2 else goto L5 :: bool
+L2:
+    r11 = 'y'
+    r12 = CPyObject_GetAttr(x, r11)
+    r13 = object 2
+    r14 = PyObject_RichCompare(r12, r13, 2)
+    r15 = PyObject_IsTrue(r14)
+    r16 = r15 >= 0 :: signed
+    r17 = truncate r15: int32 to builtins.bool
+    if r17 goto L3 else goto L5 :: bool
+L3:
+    r18 = 'x'
+    r19 = CPyObject_GetAttr(x, r18)
+    r20 = object 3
+    r21 = PyObject_RichCompare(r19, r20, 2)
+    r22 = PyObject_IsTrue(r21)
+    r23 = r22 >= 0 :: signed
+    r24 = truncate r22: int32 to builtins.bool
+    if r24 goto L4 else goto L5 :: bool
+L4:
+    r25 = 'matched'
+    r26 = builtins :: module
+    r27 = 'print'
+    r28 = CPyObject_GetAttr(r26, r27)
+    r29 = [r25]
+    r30 = load_address r29
+    r31 = _PyObject_Vectorcall(r28, r30, 1, 0)
+    keep_alive r25
+    goto L6
+L5:
+L6:
+    r32 = box(None, 1)
+    return r32
