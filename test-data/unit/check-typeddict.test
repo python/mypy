@@ -2046,14 +2046,14 @@ class D1(TypedDict):
 class D2(TypedDict):
     bar: int
 
-d: D1 | D2
-opt_d: D1 | None
+d_or_list: D1 | list[str]
 
-if 'foo' in opt_d:
-    assert_type(opt_d, D1)
+if 'foo' in d_or_list:
+    assert_type(d_or_list, Union[D1, list[str]])
 else:
-    assert_type(opt_d, None)
+    assert_type(d_or_list, list[str])
 
+d: D1 | D2
 
 if 'foo' in d:
     assert_type(d, D1)
