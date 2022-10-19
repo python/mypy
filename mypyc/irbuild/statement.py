@@ -7,9 +7,10 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 """
 
 from __future__ import annotations
+from contextlib import contextmanager
 
 import importlib.util
-from typing import Callable, Sequence
+from typing import Callable, Generator, Sequence
 
 from mypy.nodes import (
     AssertStmt,
@@ -1053,9 +1054,8 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
         if pattern.pattern:
-            self.as_pattern = pattern
-            pattern.pattern.accept(self)
-            self.as_pattern = None
+            with self.enter_subpattern(pattern, self.subject):
+                pattern.pattern.accept(self)
 
         self.builder.goto(self.code_block)
 
@@ -1075,6 +1075,16 @@ class MatchVisitor(TraverserVisitor):
         if self.as_pattern and self.as_pattern.name:
             target = self.builder.get_assignment_target(self.as_pattern.name)
             self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
+
+    @contextmanager
+    def enter_subpattern(self, pattern: AsPattern, subject: Value) -> Generator[None, None, None]:
+        old_pattern = self.as_pattern
+        old_subject = self.subject
+        self.as_pattern = pattern
+        self.subject = subject
+        yield
+        self.subject = old_subject
+        self.as_pattern = old_pattern
 
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
