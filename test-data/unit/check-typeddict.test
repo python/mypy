@@ -1443,7 +1443,7 @@ reveal_type(x['a']['b']) # N: Revealed type is "builtins.int"
 [case testSelfRecursiveTypedDictInheriting]
 
 from mypy_extensions import TypedDict
-
+# flags: --disable-recursive-aliases
 class MovieBase(TypedDict):
     name: str
     year: int
@@ -1457,7 +1457,7 @@ reveal_type(m['director']['name']) # N: Revealed type is "Any"
 [out]
 
 [case testSubclassOfRecursiveTypedDict]
-
+# flags: --disable-recursive-aliases
 from typing import List
 from mypy_extensions import TypedDict
 
@@ -2012,15 +2012,34 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testCannotUseFinalDecoratorWithTypedDict]
+[case testCannotSubclassFinalTypedDict]
 from typing import TypedDict
 from typing_extensions import final
 
-@final  # E: @final cannot be used with TypedDict
+@final
 class DummyTypedDict(TypedDict):
     int_val: int
     float_val: float
     str_val: str
+
+class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedDict"
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCannotSubclassFinalTypedDictWithForwardDeclarations]
+from typing import TypedDict
+from typing_extensions import final
+
+@final
+class DummyTypedDict(TypedDict):
+    forward_declared: "ForwardDeclared"
+
+class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedDict"
+    pass
+
+class ForwardDeclared: pass
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -2526,12 +2545,28 @@ Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testGenericTypedDictMultipleGenerics]
+# See https://github.com/python/mypy/issues/13755
+from typing import Generic, TypeVar, TypedDict
+
+T = TypeVar("T")
+Foo = TypedDict("Foo", {"bar": T})
+class Stack(Generic[T]): pass
+
+a = Foo[str]
+b = Foo[int]
+reveal_type(a)  # N: Revealed type is "def (*, bar: builtins.str) -> TypedDict('__main__.Foo', {'bar': builtins.str})"
+reveal_type(b)  # N: Revealed type is "def (*, bar: builtins.int) -> TypedDict('__main__.Foo', {'bar': builtins.int})"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testGenericTypedDictCallSyntax]
 from typing import TypedDict, TypeVar
 
 T = TypeVar("T")
 TD = TypedDict("TD", {"key": int, "value": T})
-reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`-1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`-1})"
+reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`1})"
 
 tds: TD[str]
 reveal_type(tds)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.str})"

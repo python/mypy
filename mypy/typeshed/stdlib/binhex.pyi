@@ -10,7 +10,6 @@ LINELEN: Literal[64]
 RUNCHAR: Literal[b"\x90"]
 
 class FInfo:
-    def __init__(self) -> None: ...
     Type: str
     Creator: str
     Flags: int

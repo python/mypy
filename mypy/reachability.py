@@ -13,6 +13,7 @@ from mypy.nodes import (
     CallExpr,
     ComparisonExpr,
     Expression,
+    FuncDef,
     IfStmt,
     Import,
     ImportAll,
@@ -356,4 +357,7 @@ class MarkImportsMypyOnlyVisitor(TraverserVisitor):
         node.is_mypy_only = True
 
     def visit_import_all(self, node: ImportAll) -> None:
+        node.is_mypy_only = True
+
+    def visit_func_def(self, node: FuncDef) -> None:
         node.is_mypy_only = True

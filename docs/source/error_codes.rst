@@ -23,12 +23,12 @@ Error codes may change in future mypy releases.
 Displaying error codes
 ----------------------
 
-Error codes are not displayed by default.  Use :option:`--show-error-codes <mypy --show-error-codes>`
-or config ``show_error_codes = True`` to display error codes. Error codes are shown inside square brackets:
+Error codes are displayed by default.  Use :option:`--hide-error-codes <mypy --hide-error-codes>`
+or config ``hide_error_codes = True`` to hide error codes. Error codes are shown inside square brackets:
 
 .. code-block:: text
 
-   $ mypy --show-error-codes prog.py
+   $ mypy prog.py
    prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
 
 It's also possible to require error codes for ``type: ignore`` comments.
@@ -69,3 +69,47 @@ which enables the ``no-untyped-def`` error code.
 You can use :option:`--enable-error-code <mypy --enable-error-code>` to
 enable specific error codes that don't have a dedicated command-line
 flag or config file setting.
+
+Per-module enabling/disabling error codes
+-----------------------------------------
+
+You can use :ref:`configuration file <config-file>` sections to enable or
+disable specific error codes only in some modules. For example, this ``mypy.ini``
+config will enable non-annotated empty containers in tests, while keeping
+other parts of code checked in strict mode:
+
+.. code-block:: ini
+
+   [mypy]
+   strict = True
+
+   [mypy-tests.*]
+   allow_untyped_defs = True
+   allow_untyped_calls = True
+   disable_error_code = var-annotated, has-type
+
+Note that per-module enabling/disabling acts as override over the global
+options. So that you don't need to repeat the error code lists for each
+module if you have them in global config section. For example:
+
+.. code-block:: ini
+
+   [mypy]
+   enable_error_code = truthy-bool, ignore-without-code, unused-awaitable
+
+   [mypy-extensions.*]
+   disable_error_code = unused-awaitable
+
+The above config will allow unused awaitables in extension modules, but will
+still keep the other two error codes enabled. The overall logic is following:
+
+* Command line and/or config main section set global error codes
+
+* Individual config sections *adjust* them per glob/module
+
+* Inline ``# mypy: ...`` comments can further *adjust* them for a specific
+  module
+
+So one can e.g. enable some code globally, disable it for all tests in
+the corresponding config section, and then re-enable it with an inline
+comment in some specific test.

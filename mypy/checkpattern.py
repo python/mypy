@@ -33,6 +33,7 @@ from mypy.typeops import (
     coerce_to_literal,
     make_simplified_union,
     try_getting_str_literals_from_type,
+    tuple_fallback,
 )
 from mypy.types import (
     AnyType,
@@ -256,16 +257,13 @@ class PatternChecker(PatternVisitor[PatternType]):
         contracted_inner_types = self.contract_starred_pattern_types(
             inner_types, star_position, required_patterns
         )
-        can_match = True
         for p, t in zip(o.patterns, contracted_inner_types):
             pattern_type = self.accept(p, t)
             typ, rest, type_map = pattern_type
-            if is_uninhabited(typ):
-                can_match = False
-            else:
-                contracted_new_inner_types.append(typ)
-                contracted_rest_inner_types.append(rest)
+            contracted_new_inner_types.append(typ)
+            contracted_rest_inner_types.append(rest)
             self.update_type_map(captures, type_map)
+
         new_inner_types = self.expand_starred_pattern_types(
             contracted_new_inner_types, star_position, len(inner_types)
         )
@@ -278,9 +276,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         new_type: Type
         rest_type: Type = current_type
-        if not can_match:
-            new_type = UninhabitedType()
-        elif isinstance(current_type, TupleType):
+        if isinstance(current_type, TupleType):
             narrowed_inner_types = []
             inner_rest_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
@@ -325,7 +321,9 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 return None
 
-        if self.chk.type_is_iterable(t) and isinstance(t, Instance):
+        if self.chk.type_is_iterable(t) and isinstance(t, (Instance, TupleType)):
+            if isinstance(t, TupleType):
+                t = tuple_fallback(t)
             return self.chk.iterable_item_type(t)
         else:
             return None
@@ -645,6 +643,9 @@ class PatternChecker(PatternVisitor[PatternType]):
 
         For example:
         construct_sequence_child(List[int], str) = List[str]
+
+        TODO: this doesn't make sense. For example if one has class S(Sequence[int], Generic[T])
+        or class T(Sequence[Tuple[T, T]]), there is no way any of those can map to Sequence[str].
         """
         proper_type = get_proper_type(outer_type)
         if isinstance(proper_type, UnionType):
@@ -657,6 +658,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
         if is_subtype(outer_type, self.chk.named_type("typing.Sequence")):
             proper_type = get_proper_type(outer_type)
+            if isinstance(proper_type, TupleType):
+                proper_type = tuple_fallback(proper_type)
             assert isinstance(proper_type, Instance)
             empty_type = fill_typevars(proper_type.type)
             partial_type = expand_type_by_instance(empty_type, sequence)

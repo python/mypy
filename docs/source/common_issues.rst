@@ -187,7 +187,13 @@ Ignoring a whole file
 ---------------------
 
 A ``# type: ignore`` comment at the top of a module (before any statements,
-including imports or docstrings) has the effect of ignoring the *entire* module.
+including imports or docstrings) has the effect of ignoring the entire contents of the module.
+
+To only ignore errors, use a top-level ``# mypy: ignore-errors`` comment instead.
+To only ignore errors with a specific error code, use a top-level
+``# mypy: disable-error-code=...`` comment.
+To replace the contents of the module with ``Any``, use a per-module ``follow_imports = skip``.
+See :ref:`Following imports <follow-imports>` for details.
 
 .. code-block:: python
 

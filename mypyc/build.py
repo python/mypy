@@ -533,10 +533,8 @@ def mypycify(
             "-Wno-unused-variable",
             "-Wno-unused-command-line-argument",
             "-Wno-unknown-warning-option",
+            "-Wno-unused-but-set-variable",
         ]
-        if "gcc" in compiler.compiler[0] or "gnu-cc" in compiler.compiler[0]:
-            # This flag is needed for gcc but does not exist on clang.
-            cflags += ["-Wno-unused-but-set-variable"]
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":

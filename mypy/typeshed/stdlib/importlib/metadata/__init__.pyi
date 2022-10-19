@@ -41,6 +41,9 @@ class _EntryPointBase(NamedTuple):
 
 class EntryPoint(_EntryPointBase):
     pattern: ClassVar[Pattern[str]]
+    if sys.version_info >= (3, 11):
+        def __init__(self, name: str, value: str, group: str) -> None: ...
+
     def load(self) -> Any: ...  # Callable[[], Any] or an importable module
     @property
     def extras(self) -> list[str]: ...

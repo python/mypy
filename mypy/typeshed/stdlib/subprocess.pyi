@@ -1828,8 +1828,8 @@ class TimeoutExpired(SubprocessError):
     timeout: float
     # morally: _TXT | None
     output: Any
-    stdout: Any
-    stderr: Any
+    stdout: bytes | None
+    stderr: bytes | None
 
 class CalledProcessError(SubprocessError):
     returncode: int

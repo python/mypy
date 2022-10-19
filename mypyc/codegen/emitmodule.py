@@ -409,7 +409,6 @@ def compile_modules_to_c(
         compiler_options: The compilation options
         errors: Where to report any errors encountered
         groups: The groups that we are compiling. See documentation of Groups type above.
-        ops: Optionally, where to dump stringified ops for debugging.
 
     Returns the IR of the modules and a list containing the generated files for each group.
     """
@@ -419,7 +418,9 @@ def compile_modules_to_c(
 
     # Sometimes when we call back into mypy, there might be errors.
     # We don't want to crash when that happens.
-    result.manager.errors.set_file("<mypyc>", module=None, scope=None)
+    result.manager.errors.set_file(
+        "<mypyc>", module=None, scope=None, options=result.manager.options
+    )
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)

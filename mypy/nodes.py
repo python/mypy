@@ -774,7 +774,12 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional"]
+FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
+    "is_decorated",
+    "is_conditional",
+    "is_trivial_body",
+    "is_mypy_only",
+]
 
 # Abstract status of a function
 NOT_ABSTRACT: Final = 0
@@ -797,6 +802,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "abstract_status",
         "original_def",
         "deco_line",
+        "is_trivial_body",
+        "is_mypy_only",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -814,11 +821,16 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.abstract_status = NOT_ABSTRACT
+        # Is this an abstract method with trivial body?
+        # Such methods can't be called via super().
+        self.is_trivial_body = False
         self.is_final = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
-        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        # Used for error reporting (to keep backward compatibility with pre-3.8)
         self.deco_line: int | None = None
+        # Definitions that appear in if TYPE_CHECKING are marked with this flag.
+        self.is_mypy_only = False
 
     @property
     def name(self) -> str:
@@ -959,6 +971,7 @@ VAR_FLAGS: Final = [
     "explicit_self_type",
     "is_ready",
     "is_inferred",
+    "invalid_partial_type",
     "from_module_getattr",
     "has_explicit_value",
     "allow_incompatible_override",
@@ -995,6 +1008,7 @@ class Var(SymbolNode):
         "from_module_getattr",
         "has_explicit_value",
         "allow_incompatible_override",
+        "invalid_partial_type",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1046,6 +1060,9 @@ class Var(SymbolNode):
         self.has_explicit_value = False
         # If True, subclasses can override this with an incompatible type.
         self.allow_incompatible_override = False
+        # If True, this means we didn't manage to infer full type and fall back to
+        # something like list[Any]. We may decide to not use such types as context.
+        self.invalid_partial_type = False
 
     @property
     def name(self) -> str:
@@ -1132,7 +1149,7 @@ class ClassDef(Statement):
     ) -> None:
         super().__init__()
         self.name = name
-        self.fullname = None  # type: ignore
+        self.fullname = None  # type: ignore[assignment]
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
@@ -2661,9 +2678,9 @@ class PromoteExpr(Expression):
 
     __match_args__ = ("type",)
 
-    type: mypy.types.Type
+    type: mypy.types.ProperType
 
-    def __init__(self, type: mypy.types.Type) -> None:
+    def __init__(self, type: mypy.types.ProperType) -> None:
         super().__init__()
         self.type = type
 
@@ -2892,7 +2909,7 @@ class TypeInfo(SymbolNode):
     # even though it's not a subclass in Python.  The non-standard
     # `@_promote` decorator introduces this, and there are also
     # several builtin examples, in particular `int` -> `float`.
-    _promote: list[mypy.types.Type]
+    _promote: list[mypy.types.ProperType]
 
     # This is used for promoting native integer types such as 'i64' to
     # 'int'. (_promote is used for the other direction.) This only
@@ -2993,6 +3010,7 @@ class TypeInfo(SymbolNode):
         self.metadata = {}
 
     def add_type_vars(self) -> None:
+        self.has_type_var_tuple_type = False
         if self.defn.type_vars:
             for i, vd in enumerate(self.defn.type_vars):
                 if isinstance(vd, mypy.types.ParamSpecType):
@@ -3041,7 +3059,10 @@ class TypeInfo(SymbolNode):
         assert self.mro, "This property can be only accessed after MRO is (re-)calculated"
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
-                for name in base.names:
+                for name, node in base.names.items():
+                    if isinstance(node.node, (TypeAlias, TypeVarExpr)):
+                        # These are auxiliary definitions (and type aliases are prohibited).
+                        continue
                     members.add(name)
         return sorted(list(members))
 
@@ -3219,7 +3240,12 @@ class TypeInfo(SymbolNode):
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data["bases"]]
-        ti._promote = [mypy.types.deserialize_type(p) for p in data["_promote"]]
+        _promote = []
+        for p in data["_promote"]:
+            t = mypy.types.deserialize_type(p)
+            assert isinstance(t, mypy.types.ProperType)
+            _promote.append(t)
+        ti._promote = _promote
         ti.declared_metaclass = (
             None
             if data["declared_metaclass"] is None
@@ -3285,10 +3311,10 @@ class FakeInfo(TypeInfo):
     def __init__(self, msg: str) -> None:
         self.msg = msg
 
-    def __getattribute__(self, attr: str) -> None:
+    def __getattribute__(self, attr: str) -> type:
         # Handle __class__ so that isinstance still works...
         if attr == "__class__":
-            return object.__getattribute__(self, attr)
+            return object.__getattribute__(self, attr)  # type: ignore[no-any-return]
         raise AssertionError(object.__getattribute__(self, "msg"))
 
 
@@ -3714,7 +3740,10 @@ class SymbolTableNode:
             if prefix is not None:
                 fullname = self.node.fullname
                 if (
-                    fullname is not None
+                    # See the comment above SymbolNode.fullname -- fullname can often be None,
+                    # but for complex reasons it's annotated as being `Bogus[str]` instead of `str | None`,
+                    # meaning mypy erroneously thinks the `fullname is not None` check here is redundant
+                    fullname is not None  # type: ignore[redundant-expr]
                     and "." in fullname
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
@@ -3846,7 +3875,7 @@ def check_arg_kinds(
         if kind == ARG_POS:
             if is_var_arg or is_kw_arg or seen_named or seen_opt:
                 fail(
-                    "Required positional args may not appear " "after default, named or var args",
+                    "Required positional args may not appear after default, named or var args",
                     node,
                 )
                 break

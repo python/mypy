@@ -191,6 +191,28 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+.. confval:: modules
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of packages which should be checked by mypy if none are given on the command
+    line. Mypy *will not* recursively type check any submodules of the provided
+    module.
+
+    This option may only be set in the global section (``[mypy]``).
+
+
+.. confval:: packages
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of packages which should be checked by mypy if none are given on the command
+    line.  Mypy *will* recursively type check any submodules of the provided
+    package. This flag is identical to :confval:`modules` apart from this
+    behavior.
+    
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: exclude
 
     :type: regular expression
@@ -254,10 +276,11 @@ section of the command line docs.
 .. confval:: namespace_packages
 
     :type: boolean
-    :default: False
+    :default: True
 
     Enables :pep:`420` style namespace packages.  See the
-    corresponding flag :option:`--namespace-packages <mypy --namespace-packages>` for more information.
+    corresponding flag :option:`--no-namespace-packages <mypy --no-namespace-packages>`
+    for more information.
 
     This option may only be set in the global section (``[mypy]``).
 
@@ -269,7 +292,7 @@ section of the command line docs.
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
     :confval:`mypy_path` config option. This option is only useful in
-    conjunction with :confval:`namespace_packages`. See :ref:`Mapping file
+    the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
     This option may only be set in the global section (``[mypy]``).
@@ -503,13 +526,15 @@ None and Optional handling
 For more information, see the :ref:`None and Optional handling <none-and-optional-handling>`
 section of the command line docs.
 
-.. confval:: no_implicit_optional
+.. confval:: implicit_optional
 
     :type: boolean
     :default: False
 
-    Changes the treatment of arguments with a default value of ``None`` by not implicitly
-    making their type :py:data:`~typing.Optional`.
+    Causes mypy to treat arguments with a ``None``
+    default value as having an implicit :py:data:`~typing.Optional` type.
+
+    **Note:** This was True by default in mypy versions 0.980 and earlier.
 
 .. confval:: strict_optional
 
@@ -573,14 +598,6 @@ Suppressing errors
 
 Note: these configuration options are available in the config file only. There is
 no analog available via the command line options.
-
-.. confval:: show_none_errors
-
-    :type: boolean
-    :default: True
-
-    Shows errors related to strict ``None`` checking, if the global :confval:`strict_optional`
-    flag is enabled.
 
 .. confval:: ignore_errors
 
@@ -722,12 +739,12 @@ These options may only be set in the global section (``[mypy]``).
 
     Shows column numbers in error messages.
 
-.. confval:: show_error_codes
+.. confval:: hide_error_codes
 
     :type: boolean
     :default: False
 
-    Shows error codes in error messages. See :ref:`error-codes` for more information.
+    Hides error codes in error messages. See :ref:`error-codes` for more information.
 
 .. confval:: pretty
 
@@ -858,9 +875,16 @@ These options may only be set in the global section (``[mypy]``).
 
     :type: string
 
-    Specifies an alternative directory to look for stubs instead of the
-    default ``typeshed`` directory. User home directory and environment
-    variables will be expanded.
+    This specifies the directory where mypy looks for standard library typeshed
+    stubs, instead of the typeshed that ships with mypy.  This is
+    primarily intended to make it easier to test typeshed changes before
+    submitting them upstream, but also allows you to use a forked version of
+    typeshed.
+
+    User home directory and environment variables will be expanded.
+
+    Note that this doesn't affect third-party library stubs. To test third-party stubs,
+    for example try ``MYPYPATH=stubs/six mypy ...``.
 
 .. confval:: warn_incomplete_stub
 

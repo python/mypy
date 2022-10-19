@@ -52,13 +52,15 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
+from mypy.expandtype import expand_type
 from mypy.nodes import (
     UNBOUND_IMPORTED,
     Decorator,
     FuncBase,
+    FuncDef,
     FuncItem,
     MypyFile,
     OverloadedFuncDef,
@@ -68,6 +70,7 @@ from mypy.nodes import (
     TypeAlias,
     TypeInfo,
     TypeVarExpr,
+    TypeVarTupleExpr,
     Var,
 )
 from mypy.types import (
@@ -87,6 +90,8 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeType,
+    TypeVarId,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
@@ -189,6 +194,8 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sna
             )
         elif isinstance(node, ParamSpecExpr):
             result[name] = ("ParamSpec", node.variance, snapshot_type(node.upper_bound))
+        elif isinstance(node, TypeVarTupleExpr):
+            result[name] = ("TypeVarTuple", node.variance, snapshot_type(node.upper_bound))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
@@ -211,6 +218,12 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
             signature = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
+        impl: FuncDef | None = None
+        if isinstance(node, FuncDef):
+            impl = node
+        elif isinstance(node, OverloadedFuncDef) and node.impl:
+            impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
+        is_trivial_body = impl.is_trivial_body if impl else False
         return (
             "Func",
             common,
@@ -219,6 +232,7 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
             node.is_class,
             node.is_static,
             signature,
+            is_trivial_body,
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)
@@ -385,7 +399,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         )
 
     def visit_callable_type(self, typ: CallableType) -> SnapshotItem:
-        # FIX generics
+        if typ.is_generic():
+            typ = self.normalize_callable_variables(typ)
         return (
             "CallableType",
             snapshot_types(typ.arg_types),
@@ -394,7 +409,25 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             tuple(typ.arg_kinds),
             typ.is_type_obj(),
             typ.is_ellipsis_args,
+            snapshot_types(typ.variables),
         )
+
+    def normalize_callable_variables(self, typ: CallableType) -> CallableType:
+        """Normalize all type variable ids to run from -1 to -len(variables)."""
+        tvs = []
+        tvmap: dict[TypeVarId, Type] = {}
+        for i, v in enumerate(typ.variables):
+            tid = TypeVarId(-1 - i)
+            if isinstance(v, TypeVarType):
+                tv: TypeVarLikeType = v.copy_modified(id=tid)
+            elif isinstance(v, TypeVarTupleType):
+                tv = v.copy_modified(id=tid)
+            else:
+                assert isinstance(v, ParamSpecType)
+                tv = v.copy_modified(id=tid)
+            tvs.append(tv)
+            tvmap[v.id] = tv
+        return cast(CallableType, expand_type(typ, tvmap)).copy_modified(variables=tvs)
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))

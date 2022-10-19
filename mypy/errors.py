@@ -17,6 +17,9 @@ from mypy.version import __version__ as mypy_version
 
 T = TypeVar("T")
 
+# Show error codes for some note-level messages (these usually appear alone
+# and not as a comment for a previous error-level message).
+SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED}
 allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
 
 # Keep track of the original error code when the error code of a message is changed.
@@ -257,18 +260,17 @@ class Errors:
         self,
         show_error_context: bool = False,
         show_column_numbers: bool = False,
-        show_error_codes: bool = False,
+        hide_error_codes: bool = False,
         pretty: bool = False,
         show_error_end: bool = False,
         read_source: Callable[[str], list[str] | None] | None = None,
         show_absolute_path: bool = False,
-        enabled_error_codes: set[ErrorCode] | None = None,
-        disabled_error_codes: set[ErrorCode] | None = None,
         many_errors_threshold: int = -1,
+        options: Options | None = None,
     ) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
-        self.show_error_codes = show_error_codes
+        self.hide_error_codes = hide_error_codes
         self.show_absolute_path = show_absolute_path
         self.pretty = pretty
         self.show_error_end = show_error_end
@@ -276,9 +278,8 @@ class Errors:
             assert show_column_numbers, "Inconsistent formatting, must be prevented by argparse"
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.enabled_error_codes = enabled_error_codes or set()
-        self.disabled_error_codes = disabled_error_codes or set()
         self.many_errors_threshold = many_errors_threshold
+        self.options = options
         self.initialize()
 
     def initialize(self) -> None:
@@ -313,7 +314,9 @@ class Errors:
             file = os.path.normpath(file)
             return remove_path_prefix(file, self.ignore_prefix)
 
-    def set_file(self, file: str, module: str | None, scope: Scope | None = None) -> None:
+    def set_file(
+        self, file: str, module: str | None, options: Options, scope: Scope | None = None
+    ) -> None:
         """Set the path and module id of the current file."""
         # The path will be simplified later, in render_messages. That way
         #  * 'file' is always a key that uniquely identifies a source file
@@ -324,6 +327,7 @@ class Errors:
         self.file = file
         self.target_module = module
         self.scope = scope
+        self.options = options
 
     def set_file_ignored_lines(
         self, file: str, ignored_lines: dict[int, list[str]], ignore_all: bool = False
@@ -586,9 +590,16 @@ class Errors:
         return False
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
-        if error_code in self.disabled_error_codes:
+        if self.options:
+            current_mod_disabled = self.options.disabled_error_codes
+            current_mod_enabled = self.options.enabled_error_codes
+        else:
+            current_mod_disabled = set()
+            current_mod_enabled = set()
+
+        if error_code in current_mod_disabled:
             return False
-        elif error_code in self.enabled_error_codes:
+        elif error_code in current_mod_enabled:
             return True
         else:
             return error_code.default_enabled
@@ -609,7 +620,10 @@ class Errors:
                 self.has_blockers.remove(path)
 
     def generate_unused_ignore_errors(self, file: str) -> None:
-        if is_typeshed_file(file) or file in self.ignored_files:
+        if (
+            is_typeshed_file(self.options.abs_custom_typeshed_dir if self.options else None, file)
+            or file in self.ignored_files
+        ):
             return
         ignored_lines = self.ignored_lines[file]
         used_ignored_lines = self.used_ignored_lines[file]
@@ -650,7 +664,10 @@ class Errors:
     def generate_ignore_without_code_errors(
         self, file: str, is_warning_unused_ignores: bool
     ) -> None:
-        if is_typeshed_file(file) or file in self.ignored_files:
+        if (
+            is_typeshed_file(self.options.abs_custom_typeshed_dir if self.options else None, file)
+            or file in self.ignored_files
+        ):
             return
 
         used_ignored_lines = self.used_ignored_lines[file]
@@ -768,7 +785,11 @@ class Errors:
                 s = f"{srcloc}: {severity}: {message}"
             else:
                 s = message
-            if self.show_error_codes and code and severity != "note":
+            if (
+                not self.hide_error_codes
+                and code
+                and (severity != "note" or code in SHOW_NOTE_CODES)
+            ):
                 # If note has an error code, it is related to a previous error. Avoid
                 # displaying duplicate error codes.
                 s = f"{s}  [{code.code}]"

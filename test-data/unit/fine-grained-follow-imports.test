@@ -587,8 +587,8 @@ def f() -> None:
 main.py:2: error: Cannot find implementation or library stub for module named "p"
 main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-p/m.py:1: error: "str" not callable
 p/__init__.py:1: error: "int" not callable
+p/m.py:1: error: "str" not callable
 
 [case testFollowImportsNormalPackageInitFileStub]
 # flags: --follow-imports=normal
@@ -610,11 +610,11 @@ x x x
 main.py:1: error: Cannot find implementation or library stub for module named "p"
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-p/m.pyi:1: error: "str" not callable
 p/__init__.pyi:1: error: "int" not callable
+p/m.pyi:1: error: "str" not callable
 ==
-p/m.pyi:1: error: "str" not callable
 p/__init__.pyi:1: error: "int" not callable
+p/m.pyi:1: error: "str" not callable
 
 [case testFollowImportsNormalNamespacePackages]
 # flags: --follow-imports=normal --namespace-packages
@@ -638,12 +638,12 @@ main.py:2: error: Cannot find implementation or library stub for module named "p
 main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:2: error: Cannot find implementation or library stub for module named "p2"
 ==
-p2/m2.py:1: error: "str" not callable
 p1/m1.py:1: error: "int" not callable
+p2/m2.py:1: error: "str" not callable
 ==
+p1/m1.py:1: error: "int" not callable
 main.py:2: error: Cannot find implementation or library stub for module named "p2.m2"
 main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-p1/m1.py:1: error: "int" not callable
 
 [case testFollowImportsNormalNewFileOnCommandLine]
 # flags: --follow-imports=normal
@@ -659,8 +659,8 @@ p1/m1.py:1: error: "int" not callable
 [out]
 main.py:1: error: "int" not callable
 ==
-x.py:1: error: "str" not callable
 main.py:1: error: "int" not callable
+x.py:1: error: "str" not callable
 
 [case testFollowImportsNormalSearchPathUpdate-only_when_nocache]
 # flags: --follow-imports=normal
@@ -678,8 +678,8 @@ import bar
 
 [out]
 ==
-src/bar.py:1: error: "int" not callable
 src/foo.py:2: error: "str" not callable
+src/bar.py:1: error: "int" not callable
 
 [case testFollowImportsNormalSearchPathUpdate2-only_when_cache]
 # flags: --follow-imports=normal

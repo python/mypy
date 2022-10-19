@@ -25,11 +25,14 @@ except ImportError:
 
 T = TypeVar("T")
 
-with importlib_resources.path(
-    "mypy",  # mypy-c doesn't support __package__
-    "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
-) as _resource:
-    TYPESHED_DIR: Final = str(_resource.parent / "typeshed")
+if sys.version_info >= (3, 9):
+    TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
+else:
+    with importlib_resources.path(
+        "mypy",  # mypy-c doesn't support __package__
+        "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
+    ) as _resource:
+        TYPESHED_DIR = str(_resource.parent / "typeshed")
 
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
@@ -516,24 +519,29 @@ def parse_gray_color(cup: bytes) -> str:
     return gray
 
 
+def should_force_color() -> bool:
+    return bool(int(os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0"))))
+
+
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 
     This currently only works on Linux and Mac.
     """
 
-    def __init__(self, f_out: IO[str], f_err: IO[str], show_error_codes: bool) -> None:
-        self.show_error_codes = show_error_codes
+    def __init__(self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool) -> None:
+        self.hide_error_codes = hide_error_codes
         # Check if we are in a human-facing terminal on a supported platform.
-        if sys.platform not in ("linux", "darwin", "win32"):
+        if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
             return
-        force_color = int(os.getenv("MYPY_FORCE_COLOR", "0"))
-        if not force_color and (not f_out.isatty() or not f_err.isatty()):
+        if not should_force_color() and (not f_out.isatty() or not f_err.isatty()):
             self.dummy_term = True
             return
         if sys.platform == "win32":
             self.dummy_term = not self.initialize_win_colors()
+        elif sys.platform == "emscripten":
+            self.dummy_term = not self.initialize_vt100_colors()
         else:
             self.dummy_term = not self.initialize_unix_colors()
         if not self.dummy_term:
@@ -544,6 +552,20 @@ class FancyFormatter:
                 "yellow": self.YELLOW,
                 "none": "",
             }
+
+    def initialize_vt100_colors(self) -> bool:
+        """Return True if initialization was successful and we can use colors, False otherwise"""
+        # Windows and Emscripten can both use ANSI/VT100 escape sequences for color
+        assert sys.platform in ("win32", "emscripten")
+        self.BOLD = "\033[1m"
+        self.UNDER = "\033[4m"
+        self.BLUE = "\033[94m"
+        self.GREEN = "\033[92m"
+        self.RED = "\033[91m"
+        self.YELLOW = "\033[93m"
+        self.NORMAL = "\033[0m"
+        self.DIM = "\033[2m"
+        return True
 
     def initialize_win_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
@@ -571,14 +593,7 @@ class FancyFormatter:
                 | ENABLE_WRAP_AT_EOL_OUTPUT
                 | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
             )
-            self.BOLD = "\033[1m"
-            self.UNDER = "\033[4m"
-            self.BLUE = "\033[94m"
-            self.GREEN = "\033[92m"
-            self.RED = "\033[91m"
-            self.YELLOW = "\033[93m"
-            self.NORMAL = "\033[0m"
-            self.DIM = "\033[2m"
+            self.initialize_vt100_colors()
             return True
         return False
 
@@ -681,7 +696,7 @@ class FancyFormatter:
         """Colorize an output line by highlighting the status and error code."""
         if ": error:" in error:
             loc, msg = error.split("error:", maxsplit=1)
-            if not self.show_error_codes:
+            if self.hide_error_codes:
                 return (
                     loc + self.style("error:", "red", bold=True) + self.highlight_quote_groups(msg)
                 )
@@ -769,9 +784,10 @@ class FancyFormatter:
         return self.style(msg, "red", bold=True)
 
 
-def is_typeshed_file(file: str) -> bool:
+def is_typeshed_file(typeshed_dir: str | None, file: str) -> bool:
+    typeshed_dir = typeshed_dir if typeshed_dir is not None else TYPESHED_DIR
     try:
-        return os.path.commonpath((TYPESHED_DIR, os.path.abspath(file))) == TYPESHED_DIR
+        return os.path.commonpath((typeshed_dir, os.path.abspath(file))) == typeshed_dir
     except ValueError:  # Different drives on Windows
         return False
 

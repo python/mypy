@@ -25,7 +25,7 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree  # type: ignore
+    from lxml import etree  # type: ignore[import]
 
     LXML_INSTALLED = True
 except ImportError:
@@ -140,8 +140,12 @@ def should_skip_path(path: str) -> bool:
 
 def iterate_python_lines(path: str) -> Iterator[tuple[int, str]]:
     """Return an iterator over (line number, line text) from a Python file."""
-    with tokenize.open(path) as input_file:
-        yield from enumerate(input_file, 1)
+    try:
+        with tokenize.open(path) as input_file:
+            yield from enumerate(input_file, 1)
+    except IsADirectoryError:
+        # can happen with namespace packages
+        pass
 
 
 class FuncCounterVisitor(TraverserVisitor):
@@ -372,7 +376,7 @@ class LineCoverageVisitor(TraverserVisitor):
             if cur_indent is None:
                 # Consume the line, but don't mark it as belonging to the function yet.
                 cur_line += 1
-            elif start_indent is not None and cur_indent > start_indent:
+            elif cur_indent > start_indent:
                 # A non-blank line that belongs to the function.
                 cur_line += 1
                 end_line = cur_line

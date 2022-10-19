@@ -92,7 +92,10 @@ def add_call_to_callable_class(
     given callable class, used to represent that function.
     """
     # Since we create a method, we also add a 'self' parameter.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args, sig.ret_type)
+    nargs = len(sig.args) - sig.num_bitmap_args
+    sig = FuncSignature(
+        (RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args[:nargs], sig.ret_type
+    )
     call_fn_decl = FuncDecl("__call__", fn_info.callable_class.ir.name, builder.module_name, sig)
     call_fn_ir = FuncIR(
         call_fn_decl, args, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name

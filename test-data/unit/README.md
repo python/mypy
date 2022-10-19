@@ -176,6 +176,10 @@ full builtins and library stubs instead of minimal ones. Run them using
 Note that running more processes than logical cores is likely to
 significantly decrease performance.
 
+To run tests with coverage:
+
+    python3 -m pytest --cov mypy --cov-config setup.cfg  --cov-report=term-missing:skip-covered --cov-report=html
+
 
 Debugging
 ---------

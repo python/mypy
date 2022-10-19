@@ -14,6 +14,7 @@ class function: pass
 
 def isinstance(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
 def issubclass(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
+def hasattr(x: object, name: str) -> bool: pass
 
 class int:
     def __add__(self, other: 'int') -> 'int': pass

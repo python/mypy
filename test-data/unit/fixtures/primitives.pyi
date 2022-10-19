@@ -57,10 +57,7 @@ class function: pass
 class ellipsis: pass
 
 class range(Sequence[int]):
-    @overload
-    def __init__(self, stop: int) -> None: pass
-    @overload
-    def __init__(self, start: int, stop: int, step: int = ...) -> None: pass
+    def __init__(self, __x: int, __y: int = ..., __z: int = ...) -> None: pass
     def count(self, value: int) -> int: pass
     def index(self, value: int) -> int: pass
     def __getitem__(self, i: int) -> int: pass

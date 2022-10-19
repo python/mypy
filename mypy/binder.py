@@ -8,11 +8,21 @@ from typing_extensions import TypeAlias as _TypeAlias
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.join import join_simple
 from mypy.literals import Key, literal, literal_hash, subkeys
-from mypy.nodes import AssignmentExpr, Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, Var
+from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
-from mypy.types import AnyType, NoneType, PartialType, Type, TypeOfAny, UnionType, get_proper_type
+from mypy.types import (
+    AnyType,
+    NoneType,
+    PartialType,
+    Type,
+    TypeOfAny,
+    TypeType,
+    UnionType,
+    get_proper_type,
+)
+from mypy.typevars import fill_typevars_with_any
 
-BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
+BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, NameExpr]
 
 
 class Frame:
@@ -133,7 +143,7 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        if not isinstance(expr, (IndexExpr, MemberExpr, AssignmentExpr, NameExpr)):
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
             return
@@ -439,8 +449,11 @@ class ConditionalTypeBinder:
 
 
 def get_declaration(expr: BindableExpression) -> Type | None:
-    if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
-        type = expr.node.type
-        if not isinstance(get_proper_type(type), PartialType):
-            return type
+    if isinstance(expr, RefExpr):
+        if isinstance(expr.node, Var):
+            type = expr.node.type
+            if not isinstance(get_proper_type(type), PartialType):
+                return type
+        elif isinstance(expr.node, TypeInfo):
+            return TypeType(fill_typevars_with_any(expr.node))
     return None
