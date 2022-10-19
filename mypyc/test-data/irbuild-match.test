@@ -593,3 +593,74 @@ L2:
 L3:
     r12 = box(None, 1)
     return r12
+[case testMatchClassPatternWithPositionalArgs_python3_10]
+class Position:
+    __match_args__ = ("x", "y", "z")
+
+    x: int
+    y: int
+    z: int
+
+def f(x):
+    match x:
+        # case Position(1, 2, 3):
+        case Position(1):
+            print("matched")
+[out]
+def Position.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.Position
+    r0, r1, r2 :: str
+    r3 :: tuple[str, str, str]
+L0:
+    r0 = 'x'
+    r1 = 'y'
+    r2 = 'z'
+    r3 = (r0, r1, r2)
+    __mypyc_self__.__match_args__ = r3
+    return 1
+def f(x):
+    x, r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: str
+    r5, r6, r7 :: object
+    r8 :: int32
+    r9 :: bit
+    r10 :: bool
+    r11 :: str
+    r12 :: object
+    r13 :: str
+    r14 :: object
+    r15 :: object[1]
+    r16 :: object_ptr
+    r17, r18 :: object
+L0:
+    r0 = __main__.Position :: type
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L3 :: bool
+L1:
+    r4 = 'x'
+    r5 = CPyObject_GetAttr(x, r4)
+    r6 = object 1
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    if r10 goto L2 else goto L3 :: bool
+L2:
+    r11 = 'matched'
+    r12 = builtins :: module
+    r13 = 'print'
+    r14 = CPyObject_GetAttr(r12, r13)
+    r15 = [r11]
+    r16 = load_address r15
+    r17 = _PyObject_Vectorcall(r14, r16, 1, 0)
+    keep_alive r11
+    goto L4
+L3:
+L4:
+    r18 = box(None, 1)
+    return r18

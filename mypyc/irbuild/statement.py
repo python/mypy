@@ -37,6 +37,8 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
+    TypeInfo,
+    Var,
     WhileStmt,
     WithStmt,
     YieldExpr,
@@ -52,6 +54,7 @@ from mypy.patterns import (
     ValuePattern,
 )
 from mypy.traverser import TraverserVisitor
+from mypy.types import Instance, LiteralType, TupleType
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -984,20 +987,52 @@ class MatchVisitor(TraverserVisitor):
         self.builder.goto(self.next_block)
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:
-        assert not pattern.positionals
         assert not pattern.keyword_keys
         assert not pattern.keyword_values
 
+        # TODO: add ability to handle class pattern when not at top level
         cond = self.builder.call_c(
             slow_isinstance_op,
             [self.subject, self.builder.accept(pattern.class_ref)],
             pattern.line
         )
 
-        # TODO: add ability to handle class pattern when not at top level
         self.bind_as_pattern(self.subject)
 
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
+
+        if pattern.positionals:
+            self.builder.activate_block(self.code_block)
+            self.code_block = BasicBlock()
+
+            assert len(pattern.positionals) == 1
+
+            expr = pattern.positionals[0]
+            assert isinstance(expr, ValuePattern)
+
+            node = pattern.class_ref.node
+            assert isinstance(node, TypeInfo)
+
+            ty = node.names.get("__match_args__")
+            assert ty and isinstance(ty.type, TupleType)
+
+            match_args = []
+
+            for item in ty.type.items:
+                assert isinstance(item, Instance) and item.last_known_value
+                match_args.append(item.last_known_value.value)
+
+
+            value = self.builder.py_get_attr(self.subject, match_args[0], expr.line)
+
+            cond2 = self.builder.binary_op(
+                value,
+                self.builder.accept(expr.expr),
+                "==",
+                expr.line,
+            )
+
+            self.builder.add_bool_branch(cond2, self.code_block, self.next_block)
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
         if pattern.pattern:
