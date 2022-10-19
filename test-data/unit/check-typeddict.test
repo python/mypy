@@ -2090,7 +2090,7 @@ def f(arg: TD) -> None:
 [case testOperatorContainsNarrowsTypedDicts_final]
 # flags: --warn-unreachable
 from __future__ import annotations
-from typing import assert_type, Literal, TypedDict, TypeVar, Union
+from typing import assert_type, TypedDict, Union
 from typing_extensions import final
 
 @final
@@ -2140,7 +2140,6 @@ class DNotTotal(TypedDict, total=False):
 
 
 d: DTotal | DNotTotal
-val: int
 
 if 'required_key' in d:
     assert_type(d, DTotal)
