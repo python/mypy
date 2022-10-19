@@ -288,7 +288,8 @@ def prepare_class_def(
                 init_sig.ret_type,
             )
 
-        ctor_sig = FuncSignature(init_sig.args[1:], RInstance(ir))
+        last_arg = len(init_sig.args) - init_sig.num_bitmap_args
+        ctor_sig = FuncSignature(init_sig.args[1:last_arg], RInstance(ir))
         ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
         mapper.func_to_decl[cdef.info] = ir.ctor
 
