@@ -1002,37 +1002,40 @@ class MatchVisitor(TraverserVisitor):
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
         if pattern.positionals:
-            self.builder.activate_block(self.code_block)
-            self.code_block = BasicBlock()
-
-            assert len(pattern.positionals) == 1
-
-            expr = pattern.positionals[0]
-            assert isinstance(expr, ValuePattern)
-
             node = pattern.class_ref.node
             assert isinstance(node, TypeInfo)
 
             ty = node.names.get("__match_args__")
             assert ty and isinstance(ty.type, TupleType)
 
-            match_args = []
+            match_args: list[str] = []
 
             for item in ty.type.items:
                 assert isinstance(item, Instance) and item.last_known_value
-                match_args.append(item.last_known_value.value)
 
+                value = item.last_known_value.value
+                assert isinstance(value, str)
 
-            value = self.builder.py_get_attr(self.subject, match_args[0], expr.line)
+                match_args.append(value)
 
-            cond2 = self.builder.binary_op(
-                value,
-                self.builder.accept(expr.expr),
-                "==",
-                expr.line,
-            )
+            for i, expr in enumerate(pattern.positionals):
+                self.builder.activate_block(self.code_block)
+                self.code_block = BasicBlock()
 
-            self.builder.add_bool_branch(cond2, self.code_block, self.next_block)
+                assert isinstance(expr, ValuePattern)
+
+                value = self.builder.py_get_attr(
+                    self.subject, match_args[i], expr.line
+                )
+
+                cond = self.builder.binary_op(
+                    value,
+                    self.builder.accept(expr.expr),
+                    "==",
+                    expr.line,
+                )
+
+                self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
         if pattern.pattern:
