@@ -39,9 +39,7 @@ class DefaultPlugin(Plugin):
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         from mypy.plugins import ctypes, singledispatch
 
-        if fullname in ("contextlib.contextmanager", "contextlib.asynccontextmanager"):
-            return contextmanager_callback
-        elif fullname == "ctypes.Array":
+        if fullname == "ctypes.Array":
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
@@ -146,25 +144,6 @@ class DefaultPlugin(Plugin):
             return partial(attrs.attr_class_maker_callback, auto_attribs_default=None)
 
         return None
-
-
-def contextmanager_callback(ctx: FunctionContext) -> Type:
-    """Infer a better return type for 'contextlib.contextmanager'."""
-    # Be defensive, just in case.
-    if ctx.arg_types and len(ctx.arg_types[0]) == 1:
-        arg_type = get_proper_type(ctx.arg_types[0][0])
-        default_return = get_proper_type(ctx.default_return_type)
-        if isinstance(arg_type, CallableType) and isinstance(default_return, CallableType):
-            # The stub signature doesn't preserve information about arguments so
-            # add them back here.
-            return default_return.copy_modified(
-                arg_types=arg_type.arg_types,
-                arg_kinds=arg_type.arg_kinds,
-                arg_names=arg_type.arg_names,
-                variables=arg_type.variables,
-                is_ellipsis_args=arg_type.is_ellipsis_args,
-            )
-    return ctx.default_return_type
 
 
 def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
