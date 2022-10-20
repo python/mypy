@@ -2346,7 +2346,7 @@ class SemanticAnalyzer(
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:
-            if source_id in module.names.keys():
+            if source_id in module.names.keys() and not module.names[source_id].module_public:
                 message = (
                     f'Module "{import_id}" does not explicitly export attribute "{source_id}"'
                 )
