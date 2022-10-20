@@ -41,6 +41,11 @@ stubs and implementation or to check for stub completeness. It's used to
 test Python's official collection of library stubs,
 `typeshed <https://github.com/python/typeshed>`_.
 
+.. warning:
+    
+    stubtest attempts to import specified python modules.
+    It will execute all module level code. Please, keep this in mind.
+
 Example
 *******
 
