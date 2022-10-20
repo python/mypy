@@ -980,7 +980,11 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_or_pattern(self, pattern: OrPattern) -> None:
         for p in pattern.patterns:
+            # Hack to ensure the as pattern is bound to each pattern in the
+            # "or" pattern, but not every subpattern
+            backup = self.as_pattern
             p.accept(self)
+            self.as_pattern = backup
 
             self.builder.activate_block(self.next_block)
             self.next_block = BasicBlock()
@@ -1059,6 +1063,8 @@ class MatchVisitor(TraverserVisitor):
         if self.as_pattern and self.as_pattern.name:
             target = self.builder.get_assignment_target(self.as_pattern.name)
             self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
+
+            self.as_pattern = None
 
     @contextmanager
     def enter_subpattern(self, subject: Value) -> Generator[None, None, None]:
