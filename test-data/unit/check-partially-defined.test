@@ -18,6 +18,13 @@ else:
 
 z = a + 1  # E: Name "a" may be undefined
 
+[case testUsedInIf]
+# flags: --enable-error-code partially-defined
+if int():
+    y = 1
+if int():
+    x = y  # E: Name "y" may be undefined
+
 [case testDefinedInAllBranches]
 # flags: --enable-error-code partially-defined
 if int():
