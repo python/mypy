@@ -238,3 +238,11 @@ register_function = custom_op(
     c_function_name="CPySingledispatch_RegisterFunction",
     error_kind=ERR_MAGIC,
 )
+
+# Check that object supports Mapping protocol
+check_mapping_protocol = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="PyMapping_Check",
+    error_kind=ERR_NEVER,
+)

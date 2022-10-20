@@ -39,7 +39,6 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     TypeInfo,
-    Var,
     WhileStmt,
     WithStmt,
     YieldExpr,
@@ -49,13 +48,12 @@ from mypy.patterns import (
     AsPattern,
     ClassPattern,
     OrPattern,
-    Pattern,
-    PatternVisitor,
+    MappingPattern,
     SingletonPattern,
     ValuePattern,
 )
 from mypy.traverser import TraverserVisitor
-from mypy.types import Instance, LiteralType, TupleType
+from mypy.types import Instance, TupleType
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -106,10 +104,10 @@ from mypyc.primitives.exc_ops import (
 )
 from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
 from mypyc.primitives.misc_ops import (
+    check_mapping_protocol,
     check_stop_op,
     coro_op,
     import_from_op,
-    none_object_op,
     send_op,
     slow_isinstance_op,
     type_op,
@@ -1063,6 +1061,17 @@ class MatchVisitor(TraverserVisitor):
         cond = self.builder.binary_op(self.subject, obj, "is", pattern.line)
 
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
+
+    def visit_mapping_pattern(self, pattern: MappingPattern) -> None:
+        assert not pattern.rest
+
+        is_map = self.builder.call_c(
+            check_mapping_protocol,
+            [self.subject],
+            pattern.line,
+        )
+
+        self.builder.add_bool_branch(is_map, self.code_block, self.next_block)
 
     def bind_as_pattern(self, value: Value) -> None:
         if self.as_pattern and self.as_pattern.name:
