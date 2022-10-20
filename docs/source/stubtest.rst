@@ -43,8 +43,7 @@ test Python's official collection of library stubs,
 
 .. warning::
     
-    stubtest attempts to import specified python modules.
-    It will execute all module level code. Please, keep this in mind.
+    stubtest will import and execute Python code from the packages it checks.
 
 Example
 *******
