@@ -1045,6 +1045,11 @@ class MatchVisitor(TraverserVisitor):
             with self.enter_as_pattern(pattern):
                 pattern.pattern.accept(self)
 
+        elif pattern.name:
+            target = self.builder.get_assignment_target(pattern.name)
+
+            self.builder.assign(target, self.subject, pattern.line)
+
         self.builder.goto(self.code_block)
 
     def visit_singleton_pattern(self, pattern: SingletonPattern) -> None:

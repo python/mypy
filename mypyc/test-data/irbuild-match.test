@@ -928,3 +928,63 @@ L4:
 L5:
     r26 = box(None, 1)
     return r26
+[case testMatchClassPatternPositionalCapture_python3_10]
+class C:
+    __match_args__ = ("x",)
+
+    x: int
+
+def f(x):
+    match x:
+        case C(num):
+            print("matched")
+[out]
+def C.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.C
+    r0 :: str
+    r1 :: tuple[str]
+L0:
+    r0 = 'x'
+    r1 = (r0)
+    __mypyc_self__.__match_args__ = r1
+    return 1
+def f(x):
+    x, r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: str
+    r5 :: object
+    r6, num :: int
+    r7 :: str
+    r8 :: object
+    r9 :: str
+    r10 :: object
+    r11 :: object[1]
+    r12 :: object_ptr
+    r13, r14 :: object
+L0:
+    r0 = __main__.C :: type
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L3 :: bool
+L1:
+    r4 = 'x'
+    r5 = CPyObject_GetAttr(x, r4)
+    r6 = unbox(int, r5)
+    num = r6
+L2:
+    r7 = 'matched'
+    r8 = builtins :: module
+    r9 = 'print'
+    r10 = CPyObject_GetAttr(r8, r9)
+    r11 = [r7]
+    r12 = load_address r11
+    r13 = _PyObject_Vectorcall(r10, r12, 1, 0)
+    keep_alive r7
+    goto L4
+L3:
+L4:
+    r14 = box(None, 1)
+    return r14
