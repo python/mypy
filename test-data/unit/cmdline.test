@@ -425,6 +425,7 @@ follow_imports = skip
 [out]
 main.py:2: note: Revealed type is "Any"
 main.py:4: note: Revealed type is "Any"
+== Return code: 0
 
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
@@ -517,7 +518,7 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = True
 [out]
 main.py:2: note: Revealed type is "Any"
-
+== Return code: 0
 
 [case testFailedImportOnWrongCWD]
 # cmd: mypy main.py
@@ -654,15 +655,26 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is "Literal[1]"
-reveal_type(a**1) # N: Revealed type is "builtins.int"
-reveal_type(a**2) # N: Revealed type is "builtins.int"
-reveal_type(a**-0) # N: Revealed type is "Literal[1]"
-reveal_type(a**-1) # N: Revealed type is "builtins.float"
-reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
-reveal_type(a**b) # N: Revealed type is "Any"
-reveal_type(a.__pow__(2)) # N: Revealed type is "builtins.int"
-reveal_type(a.__pow__(a)) # N: Revealed type is "Any"
+reveal_type(a**0)
+reveal_type(a**1)
+reveal_type(a**2)
+reveal_type(a**-0)
+reveal_type(a**-1)
+reveal_type(a**(-2))
+reveal_type(a**b)
+reveal_type(a.__pow__(2))
+reveal_type(a.__pow__(a))
+[out]
+int_pow.py:3: note: Revealed type is "Literal[1]"
+int_pow.py:4: note: Revealed type is "builtins.int"
+int_pow.py:5: note: Revealed type is "builtins.int"
+int_pow.py:6: note: Revealed type is "Literal[1]"
+int_pow.py:7: note: Revealed type is "builtins.float"
+int_pow.py:8: note: Revealed type is "builtins.float"
+int_pow.py:9: note: Revealed type is "Any"
+int_pow.py:10: note: Revealed type is "builtins.int"
+int_pow.py:11: note: Revealed type is "Any"
+== Return code: 0
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
@@ -1419,7 +1431,6 @@ exclude = (?x)(
 [out]
 c/cpkg.py:1: error: "int" not callable
 
-
 [case testCmdlineTimingStats]
 # cmd: mypy --timing-stats timing.txt .
 [file b/__init__.py]
@@ -1435,6 +1446,9 @@ b\.c \d+
 # cmd: mypy --enable-incomplete-features a.py
 [file a.py]
 pass
+[out]
+Warning: --enable-incomplete-features is deprecated, use --enable-incomplete-feature=FEATURE instead
+== Return code: 0
 
 [case testShadowTypingModuleEarlyLoad]
 # cmd: mypy dir
@@ -1474,3 +1488,20 @@ note: A user-defined top-level module with name "typing" is not supported
 [out]
 Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
 == Return code: 2
+
+[case testRecursiveAliasesFlagDeprecated]
+# cmd: mypy --enable-recursive-aliases a.py
+[file a.py]
+pass
+[out]
+Warning: --enable-recursive-aliases is deprecated; recursive types are enabled by default
+== Return code: 0
+
+[case testNotesOnlyResultInExitSuccess]
+# cmd: mypy a.py
+[file a.py]
+def f():
+    x: int = "no"
+[out]
+a.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+== Return code: 0

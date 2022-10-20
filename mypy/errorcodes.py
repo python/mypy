@@ -137,6 +137,9 @@ NO_ANY_RETURN: Final = ErrorCode(
 UNREACHABLE: Final = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
 )
+ANNOTATION_UNCHECKED = ErrorCode(
+    "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
+)
 PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
     "partially-defined",
     "Warn about variables that are defined only in some execution paths",
@@ -151,6 +154,11 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
     "Warn about expressions that could always evaluate to true in boolean contexts",
     "General",
     default_enabled=False,
+)
+TRUTHY_FUNCTION: Final[ErrorCode] = ErrorCode(
+    "truthy-function",
+    "Warn about function that always evaluate to true in boolean contexts",
+    "General",
 )
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"

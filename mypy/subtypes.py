@@ -62,7 +62,7 @@ from mypy.types import (
 )
 from mypy.typestate import SubtypeKind, TypeState
 from mypy.typevars import fill_typevars_with_any
-from mypy.typevartuples import extract_unpack, split_with_instance
+from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -485,8 +485,22 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     t = erased
                 nominal = True
                 if right.type.has_type_var_tuple_type:
-                    left_prefix, left_middle, left_suffix = split_with_instance(left)
-                    right_prefix, right_middle, right_suffix = split_with_instance(right)
+                    split_result = fully_split_with_mapped_and_template(left, right)
+                    if split_result is None:
+                        return False
+
+                    (
+                        left_prefix,
+                        left_mprefix,
+                        left_middle,
+                        left_msuffix,
+                        left_suffix,
+                        right_prefix,
+                        right_mprefix,
+                        right_middle,
+                        right_msuffix,
+                        right_suffix,
+                    ) = split_result
 
                     left_unpacked = extract_unpack(left_middle)
                     right_unpacked = extract_unpack(right_middle)
@@ -495,6 +509,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     def check_mixed(
                         unpacked_type: ProperType, compare_to: tuple[Type, ...]
                     ) -> bool:
+                        if (
+                            isinstance(unpacked_type, Instance)
+                            and unpacked_type.type.fullname == "builtins.tuple"
+                        ):
+                            if not all(
+                                is_equivalent(l, unpacked_type.args[0]) for l in compare_to
+                            ):
+                                return False
+                            return True
                         if isinstance(unpacked_type, TypeVarTupleType):
                             return False
                         if isinstance(unpacked_type, AnyType):
@@ -521,13 +544,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         if not check_mixed(left_unpacked, right_middle):
                             return False
                     elif left_unpacked is None and right_unpacked is not None:
-                        if (
-                            isinstance(right_unpacked, Instance)
-                            and right_unpacked.type.fullname == "builtins.tuple"
-                        ):
-                            return all(
-                                is_equivalent(l, right_unpacked.args[0]) for l in left_middle
-                            )
                         if not check_mixed(right_unpacked, left_middle):
                             return False
 
@@ -540,16 +556,24 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             if not is_equivalent(left_t, right_t):
                                 return False
 
+                    assert len(left_mprefix) == len(right_mprefix)
+                    assert len(left_msuffix) == len(right_msuffix)
+
+                    for left_item, right_item in zip(
+                        left_mprefix + left_msuffix, right_mprefix + right_msuffix
+                    ):
+                        if not is_equivalent(left_item, right_item):
+                            return False
+
                     left_items = t.args[: right.type.type_var_tuple_prefix]
                     right_items = right.args[: right.type.type_var_tuple_prefix]
                     if right.type.type_var_tuple_suffix:
                         left_items += t.args[-right.type.type_var_tuple_suffix :]
                         right_items += right.args[-right.type.type_var_tuple_suffix :]
-
                     unpack_index = right.type.type_var_tuple_prefix
                     assert unpack_index is not None
                     type_params = zip(
-                        left_prefix + right_suffix,
+                        left_prefix + left_suffix,
                         right_prefix + right_suffix,
                         right.type.defn.type_vars[:unpack_index]
                         + right.type.defn.type_vars[unpack_index + 1 :],

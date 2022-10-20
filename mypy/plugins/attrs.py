@@ -324,8 +324,8 @@ def attr_class_maker_callback(
     }
 
     adder = MethodAdder(ctx)
-    if init:
-        _add_init(ctx, attributes, adder)
+    # If  __init__ is not being generated, attrs still generates it as __attrs_init__ instead.
+    _add_init(ctx, attributes, adder, "__init__" if init else "__attrs_init__")
     if order:
         _add_order(ctx, adder)
     if frozen:
@@ -749,7 +749,10 @@ def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) 
 
 
 def _add_init(
-    ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute], adder: MethodAdder
+    ctx: mypy.plugin.ClassDefContext,
+    attributes: list[Attribute],
+    adder: MethodAdder,
+    method_name: str,
 ) -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
     # Convert attributes to arguments with kw_only arguments at the  end of
@@ -777,7 +780,7 @@ def _add_init(
         for a in args:
             a.variable.type = AnyType(TypeOfAny.implementation_artifact)
             a.type_annotation = AnyType(TypeOfAny.implementation_artifact)
-    adder.add_method("__init__", args, NoneType())
+    adder.add_method(method_name, args, NoneType())
 
 
 def _add_attrs_magic_attribute(

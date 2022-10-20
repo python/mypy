@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import overload
+
 import mypy.typeops
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
@@ -131,7 +133,6 @@ class InstanceJoiner:
                 best = res
         assert best is not None
         for promote in t.type._promote:
-            promote = get_proper_type(promote)
             if isinstance(promote, Instance):
                 res = self.join_instances(promote, s)
                 if is_better(res, best):
@@ -182,17 +183,29 @@ def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
     return declaration
 
 
-def trivial_join(s: Type, t: Type) -> ProperType:
+def trivial_join(s: Type, t: Type) -> Type:
     """Return one of types (expanded) if it is a supertype of other, otherwise top type."""
     if is_subtype(s, t):
-        return get_proper_type(t)
+        return t
     elif is_subtype(t, s):
-        return get_proper_type(s)
+        return s
     else:
         return object_or_any_from_type(get_proper_type(t))
 
 
-def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> ProperType:
+@overload
+def join_types(
+    s: ProperType, t: ProperType, instance_joiner: InstanceJoiner | None = None
+) -> ProperType:
+    ...
+
+
+@overload
+def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type:
+    ...
+
+
+def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type:
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
@@ -443,7 +456,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if self.s.length() == t.length():
                 items: list[Type] = []
                 for i in range(t.length()):
-                    items.append(self.join(t.items[i], self.s.items[i]))
+                    items.append(join_types(t.items[i], self.s.items[i]))
                 return TupleType(items, fallback)
             else:
                 return fallback
@@ -487,7 +500,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         if isinstance(self.s, TypeType):
-            return TypeType.make_normalized(self.join(t.item, self.s.item), line=t.line)
+            return TypeType.make_normalized(join_types(t.item, self.s.item), line=t.line)
         elif isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":
             return self.s
         else:
@@ -495,9 +508,6 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         assert False, f"This should be never called, got {t}"
-
-    def join(self, s: Type, t: Type) -> ProperType:
-        return join_types(s, t)
 
     def default(self, typ: Type) -> ProperType:
         typ = get_proper_type(typ)
@@ -654,19 +664,19 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
     return AnyType(TypeOfAny.implementation_artifact)
 
 
-def join_type_list(types: list[Type]) -> ProperType:
+def join_type_list(types: list[Type]) -> Type:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
         # with all variable length tuples, and this makes it possible.
         return UninhabitedType()
-    joined = get_proper_type(types[0])
+    joined = types[0]
     for t in types[1:]:
         joined = join_types(joined, t)
     return joined
 
 
-def unpack_callback_protocol(t: Instance) -> Type | None:
+def unpack_callback_protocol(t: Instance) -> ProperType | None:
     assert t.type.is_protocol
     if t.type.protocol_members == ["__call__"]:
-        return find_member("__call__", t, t, is_operator=True)
+        return get_proper_type(find_member("__call__", t, t, is_operator=True))
     return None

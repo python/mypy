@@ -4,7 +4,7 @@ import types
 from builtins import type as Type  # alias to avoid name clashes with fields named "type"
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any, Generic, Protocol, TypeVar, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -217,7 +217,14 @@ def is_dataclass(obj: Any) -> bool: ...
 
 class FrozenInstanceError(AttributeError): ...
 
-class InitVar(Generic[_T]):
+if sys.version_info >= (3, 9):
+    _InitVarMeta: TypeAlias = type
+else:
+    class _InitVarMeta(type):
+        # Not used, instead `InitVar.__class_getitem__` is called.
+        def __getitem__(self, params: Any) -> InitVar[Any]: ...
+
+class InitVar(Generic[_T], metaclass=_InitVarMeta):
     type: Type[_T]
     def __init__(self, type: Type[_T]) -> None: ...
     if sys.version_info >= (3, 9):

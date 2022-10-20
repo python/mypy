@@ -111,16 +111,41 @@ def infer_constraints_for_callable(
     mapper = ArgTypeExpander(context)
 
     for i, actuals in enumerate(formal_to_actual):
-        for actual in actuals:
-            actual_arg_type = arg_types[actual]
-            if actual_arg_type is None:
-                continue
+        if isinstance(callee.arg_types[i], UnpackType):
+            unpack_type = callee.arg_types[i]
+            assert isinstance(unpack_type, UnpackType)
 
-            actual_type = mapper.expand_actual_type(
-                actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
-            )
-            c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
-            constraints.extend(c)
+            # In this case we are binding all of the actuals to *args
+            # and we want a constraint that the typevar tuple being unpacked
+            # is equal to a type list of all the actuals.
+            actual_types = []
+            for actual in actuals:
+                actual_arg_type = arg_types[actual]
+                if actual_arg_type is None:
+                    continue
+
+                actual_types.append(
+                    mapper.expand_actual_type(
+                        actual_arg_type,
+                        arg_kinds[actual],
+                        callee.arg_names[i],
+                        callee.arg_kinds[i],
+                    )
+                )
+
+            assert isinstance(unpack_type.type, TypeVarTupleType)
+            constraints.append(Constraint(unpack_type.type, SUPERTYPE_OF, TypeList(actual_types)))
+        else:
+            for actual in actuals:
+                actual_arg_type = arg_types[actual]
+                if actual_arg_type is None:
+                    continue
+
+                actual_type = mapper.expand_actual_type(
+                    actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
+                )
+                c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
+                constraints.extend(c)
 
     return constraints
 
@@ -165,7 +190,6 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> list[Cons
 
 
 def _infer_constraints(template: Type, actual: Type, direction: int) -> list[Constraint]:
-
     orig_template = template
     template = get_proper_type(template)
     actual = get_proper_type(actual)
@@ -678,6 +702,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 mapped = map_instance_to_supertype(instance, template.type)
                 tvars = template.type.defn.type_vars
                 if template.type.has_type_var_tuple_type:
+                    mapped_prefix, mapped_middle, mapped_suffix = split_with_instance(mapped)
+                    template_prefix, template_middle, template_suffix = split_with_instance(
+                        template
+                    )
+                    split_result = split_with_mapped_and_template(mapped, template)
+                    assert split_result is not None
                     (
                         mapped_prefix,
                         mapped_middle,
@@ -685,7 +715,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         template_prefix,
                         template_middle,
                         template_suffix,
-                    ) = split_with_mapped_and_template(mapped, template)
+                    ) = split_result
 
                     # Add a constraint for the type var tuple, and then
                     # remove it for the case below.

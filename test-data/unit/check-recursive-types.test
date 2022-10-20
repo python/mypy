@@ -532,7 +532,14 @@ m: A
 s: str = n.x  # E: Incompatible types in assignment (expression has type "Tuple[A, int]", variable has type "str")
 reveal_type(m[0]) # N: Revealed type is "builtins.str"
 lst = [m, n]
-reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.object]"
+
+# Unfortunately, join of two recursive types is not very precise.
+reveal_type(lst[0]) # N: Revealed type is "builtins.object"
+
+# These just should not crash
+lst1 = [m]
+lst2 = [m, m]
+lst3 = [m, m, m]
 [builtins fixtures/tuple.pyi]
 
 [case testMutuallyRecursiveNamedTuplesClasses]
@@ -785,4 +792,19 @@ class B:
     Bar = Sequence[Foo]
 y: B.Foo
 reveal_type(y)  # N: Revealed type is "typing.Sequence[typing.Sequence[...]]"
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnRecursiveTupleFallback]
+from typing import Union, Tuple
+
+Tree1 = Union[str, Tuple[Tree1]]
+Tree2 = Union[str, Tuple[Tree2, Tree2]]
+Tree3 = Union[str, Tuple[Tree3, Tree3, Tree3]]
+
+def test1() -> Tree1:
+    return 42  # E: Incompatible return value type (got "int", expected "Union[str, Tuple[Tree1]]")
+def test2() -> Tree2:
+    return 42  # E: Incompatible return value type (got "int", expected "Union[str, Tuple[Tree2, Tree2]]")
+def test3() -> Tree3:
+    return 42  # E: Incompatible return value type (got "int", expected "Union[str, Tuple[Tree3, Tree3, Tree3]]")
 [builtins fixtures/tuple.pyi]

@@ -1833,7 +1833,7 @@ class C:
 import stub
 
 reveal_type(stub.y)  # N: Revealed type is "builtins.int"
-reveal_type(stub.z)  # E: Module has no attribute "z" \
+reveal_type(stub.z)  # E: "Module stub" does not explicitly export attribute "z" \
                      # N: Revealed type is "Any"
 
 [file stub.pyi]
@@ -1925,7 +1925,7 @@ import mod
 from mod import C, D  # E: Module "mod" has no attribute "C"
 
 reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
-mod.C  # E: Module has no attribute "C"
+mod.C  # E: "Module mod" does not explicitly export attribute "C"
 y = mod.D()
 reveal_type(y.a)  # N: Revealed type is "builtins.str"
 

@@ -15,7 +15,7 @@ on:
     - CREDITS
     - LICENSE
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
@@ -63,6 +63,13 @@ jobs:
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
+        - name: Test suite with py311-ubuntu, mypyc-compiled
+          python: '3.11-dev'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+          test_mypyc: true
         - name: mypyc runtime tests with py37-macos
           python: '3.7'
           arch: x64
@@ -120,21 +127,3 @@ jobs:
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: Test
       run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
-
-  python-nightly:
-    runs-on: ubuntu-latest
-    name: Test suite with Python nightly
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.11-dev'
-    - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' tox==3.24.5
-    - name: Setup tox environment
-      run: tox -e py --notest
-    - name: Test
-      run: tox -e py --skip-pkg-install -- "-n 2"
-      continue-on-error: true
-    - name: Mark as a success
-      run: exit 0

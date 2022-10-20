@@ -95,7 +95,7 @@ reveal_type(h(args))  # N: Revealed type is "Tuple[builtins.str, builtins.str, b
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleGenericClassDefn]
-from typing import Generic, TypeVar, Tuple
+from typing import Generic, TypeVar, Tuple, Union
 from typing_extensions import TypeVarTuple, Unpack
 
 T = TypeVar("T")
@@ -119,6 +119,13 @@ reveal_type(variadic_single)  # N: Revealed type is "__main__.Variadic[builtins.
 empty: Variadic[()]
 # TODO: fix pretty printer to be better.
 reveal_type(empty)  # N: Revealed type is "__main__.Variadic"
+
+bad: Variadic[Unpack[Tuple[int, ...]], str, Unpack[Tuple[bool, ...]]]  # E: More than one Unpack in a type is not allowed
+reveal_type(bad)  # N: Revealed type is "__main__.Variadic[Unpack[builtins.tuple[builtins.int, ...]], builtins.str]"
+
+# TODO: This is tricky to fix because we need typeanal to know whether the current
+# location is valid for an Unpack or not.
+# bad2: Unpack[Tuple[int, ...]]
 
 m1: Mixed1[int, str, bool]
 reveal_type(m1)  # N: Revealed type is "__main__.Mixed1[builtins.int, builtins.str, builtins.bool]"
@@ -303,4 +310,75 @@ def prefix_tuple(
 
 z = prefix_tuple(x=0, y=(True, 'a'))
 reveal_type(z)  # N: Revealed type is "Tuple[builtins.int, builtins.bool, builtins.str]"
+[builtins fixtures/tuple.pyi]
+[case testPep646TypeVarTupleUnpacking]
+from typing import Generic, TypeVar, NewType, Any, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Shape = TypeVarTuple('Shape')
+
+Channels = NewType("Channels", int)
+Batch = NewType("Batch", int)
+Height = NewType('Height', int)
+Width = NewType('Width', int)
+
+class Array(Generic[Unpack[Shape]]):
+    pass
+
+def process_batch_channels(
+    x: Array[Batch, Unpack[Tuple[Any, ...]], Channels]
+) -> None:
+    ...
+
+x: Array[Batch, Height, Width, Channels]
+process_batch_channels(x)
+y: Array[Batch, Channels]
+process_batch_channels(y)
+z: Array[Batch]
+process_batch_channels(z)  # E: Argument 1 to "process_batch_channels" has incompatible type "Array[Batch]"; expected "Array[Batch, Unpack[Tuple[Any, ...]], Channels]"
+
+u: Array[Unpack[Tuple[Any, ...]]]
+
+def expect_variadic_array(
+    x: Array[Batch, Unpack[Shape]]
+) -> None:
+    ...
+
+def expect_variadic_array_2(
+    x: Array[Batch, Height, Width, Channels]
+) -> None:
+    ...
+
+expect_variadic_array(u)
+expect_variadic_array_2(u)
+
+Ts = TypeVarTuple("Ts")
+Ts2 = TypeVarTuple("Ts2")
+
+def bad(x: Tuple[int, Unpack[Ts], str, Unpack[Ts2]]) -> None: # E: More than one Unpack in a type is not allowed
+
+    ...
+reveal_type(bad)  # N: Revealed type is "def [Ts, Ts2] (x: Tuple[builtins.int, Unpack[Ts`-1], builtins.str])"
+
+def bad2(x: Tuple[int, Unpack[Tuple[int, ...]], str, Unpack[Tuple[str, ...]]]) -> None:  # E: More than one Unpack in a type is not allowed
+    ...
+reveal_type(bad2)  # N: Revealed type is "def (x: Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]], builtins.str])"
+
+
+[builtins fixtures/tuple.pyi]
+
+[case testPep646TypeVarStarArgs]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+# TODO: add less trivial tests with prefix/suffix etc.
+# TODO: add tests that call with a type var tuple instead of just args.
+def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
+    reveal_type(args)  # N: Revealed type is "Tuple[Unpack[Ts`-1]]"
+    return args
+
+reveal_type(args_to_tuple(1, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Literal['a']?]"
+
 [builtins fixtures/tuple.pyi]

@@ -202,6 +202,7 @@ from mypy.types import (
     UnboundType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -1170,7 +1171,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 ctx = typ
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
-                        if not isinstance(arg_type, ParamSpecType):
+                        if isinstance(arg_type, ParamSpecType):
+                            pass
+                        elif isinstance(arg_type, UnpackType):
+                            arg_type = TupleType(
+                                [arg_type],
+                                fallback=self.named_generic_type(
+                                    "builtins.tuple", [self.named_type("builtins.object")]
+                                ),
+                            )
+                        else:
                             # builtins.tuple[T] is typing.Tuple[T, ...]
                             arg_type = self.named_generic_type("builtins.tuple", [arg_type])
                     elif typ.arg_kinds[i] == nodes.ARG_STAR2:
@@ -2642,6 +2652,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and self.scope.active_class() is not None
         ):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
+
+        if s.unanalyzed_type and not self.in_checked_function():
+            self.msg.annotation_in_unchecked_function(context=s)
 
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
         if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == "|"):

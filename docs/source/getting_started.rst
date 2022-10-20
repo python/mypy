@@ -44,8 +44,8 @@ easy to adopt mypy incrementally.
 In order to get useful diagnostics from mypy, you must add *type annotations*
 to your code. See the section below for details.
 
-Function signatures and dynamic vs static typing
-************************************************
+Dynamic vs static typing
+************************
 
 A function without type annotations is considered to be *dynamically typed* by mypy:
 
@@ -57,22 +57,32 @@ A function without type annotations is considered to be *dynamically typed* by m
 By default, mypy will **not** type check dynamically typed functions. This means
 that with a few exceptions, mypy will not report any errors with regular unannotated Python.
 
-This is the case even if you misuse the function: for example, mypy would currently
-not report any errors if you tried running ``greeting(3)`` or ``greeting(b"Alice")``
-even though those function calls would result in errors at runtime.
+This is the case even if you misuse the function!
 
-You can teach mypy to detect these kinds of bugs by adding *type annotations* (also
-known as *type hints*). For example, you can teach mypy that ``greeting`` both accepts
+.. code-block:: python
+
+   def greeting(name):
+       return 'Hello ' + name
+
+   # These calls will fail when the program run, but mypy does not report an error
+   # because "greeting" does not have type annotations.
+   greeting(123)
+   greeting(b"Alice")
+
+We can get mypy to detect these kinds of bugs by adding *type annotations* (also
+known as *type hints*). For example, you can tell mypy that ``greeting`` both accepts
 and returns a string like so:
 
 .. code-block:: python
 
+   # The "name: str" annotation says that the "name" argument should be a string
+   # The "-> str" annotation says that "greeting" will return a string
    def greeting(name: str) -> str:
        return 'Hello ' + name
 
-This function is now *statically typed*: mypy can use the provided type hints to detect
-incorrect usages of the ``greeting`` function. For example, it will reject the following
-calls since the arguments have invalid types:
+This function is now *statically typed*: mypy will use the provided type hints
+to detect incorrect use of the ``greeting`` function and incorrect use of
+variables within the ``greeting`` function. For example:
 
 .. code-block:: python
 
@@ -81,6 +91,10 @@ calls since the arguments have invalid types:
 
    greeting(3)         # Argument 1 to "greeting" has incompatible type "int"; expected "str"
    greeting(b'Alice')  # Argument 1 to "greeting" has incompatible type "bytes"; expected "str"
+   greeting("World!")  # No error
+
+   def bad_greeting(name: str) -> str:
+       return 'Hello ' * name  # Unsupported operand types for * ("str" and "str")
 
 Being able to pick whether you want a function to be dynamically or statically
 typed can be very helpful. For example, if you are migrating an existing
@@ -91,56 +105,32 @@ the code using dynamic typing and only add type hints later once the code is mor
 
 Once you are finished migrating or prototyping your code, you can make mypy warn you
 if you add a dynamic function by mistake by using the :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`
-flag. See :ref:`command-line` for more information on configuring mypy.
+flag. You can also get mypy to provide some limited checking of dynamically typed
+functions by using the :option:`--check-untyped-defs <mypy --check-untyped-defs>` flag.
+See :ref:`command-line` for more information on configuring mypy.
 
-More function signatures
-************************
+Strict mode and configuration
+*****************************
 
-Here are a few more examples of adding type hints to function signatures.
+Mypy has a *strict mode* that enables a number of additional checks,
+like :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`.
 
-If a function does not explicitly return a value, give it a return
-type of ``None``. Using a ``None`` result in a statically typed
-context results in a type check error:
+If you run mypy with the :option:`--strict <mypy --strict>` flag, you
+will basically never get a type related error at runtime without a corresponding
+mypy error, unless you explicitly circumvent mypy somehow.
 
-.. code-block:: python
+However, this flag will probably be too aggressive if you are trying
+to add static types to a large, existing codebase. See :ref:`existing-code`
+for suggestions on how to handle that case.
 
-   def p() -> None:
-       print('hello')
+Mypy is very configurable, so you can start with using ``--strict``
+and toggle off individual checks. For instance, if you use many third
+party libraries that do not have types,
+:option:`--ignore-missing-imports <mypy --ignore-missing-imports>`
+may be useful. See :ref:`getting-to-strict` for how to build up to ``--strict``.
 
-   a = p()  # Error: "p" does not return a value
-
-Make sure to remember to include ``None``: if you don't, the function
-will be dynamically typed. For example:
-
-.. code-block:: python
-
-   def f():
-       1 + 'x'  # No static type error (dynamically typed)
-
-   def g() -> None:
-       1 + 'x'  # Type check error (statically typed)
-
-Arguments with default values can be annotated like so:
-
-.. code-block:: python
-
-   def greeting(name: str, excited: bool = False) -> str:
-       message = f'Hello, {name}'
-       if excited:
-           message += '!!!'
-       return message
-
-``*args`` and ``**kwargs`` arguments can be annotated like so:
-
-.. code-block:: python
-
-   def stars(*args: int, **kwargs: float) -> None:
-       # 'args' has type 'tuple[int, ...]' (a tuple of ints)
-       # 'kwargs' has type 'dict[str, float]' (a dict of strs to floats)
-       for arg in args:
-           print(arg)
-       for key, value in kwargs.items():
-           print(key, value)
+See :ref:`command-line` and :ref:`config-file` for a complete reference on
+configuration options.
 
 Additional types, and the typing module
 ***************************************
@@ -439,28 +429,6 @@ often suggest the name of the stub distribution:
 You can also :ref:`create
 stubs <stub-files>` easily. We discuss strategies for handling errors
 about missing stubs in :ref:`ignore-missing-imports`.
-
-Configuring mypy
-****************
-
-Mypy supports many command line options that you can use to tweak how
-mypy behaves: see :ref:`command-line` for more details.
-
-For example, suppose you want to make sure *all* functions within your
-codebase are using static typing and make mypy report an error if you
-add a dynamically-typed function by mistake. You can make mypy do this
-by running mypy with the :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>` flag.
-
-Another potentially useful flag is :option:`--strict <mypy --strict>`, which enables many
-(though not all) of the available strictness options -- including
-:option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`.
-
-This flag is mostly useful if you're starting a new project from scratch
-and want to maintain a high degree of type safety from day one. However,
-this flag will probably be too aggressive if you either plan on using
-many untyped third party libraries or are trying to add static types to
-a large, existing codebase. See :ref:`existing-code` for more suggestions
-on how to handle the latter case.
 
 Next steps
 **********
