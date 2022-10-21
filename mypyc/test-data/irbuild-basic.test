@@ -2197,26 +2197,28 @@ L0:
     r0 = self.is_add
     if r0 goto L1 else goto L2 :: bool
 L1:
-    r1 = self.left
-    r2 = self.right
+    r1 = borrow self.left
+    r2 = borrow self.right
     r3 = CPyTagged_Add(r1, r2)
+    keep_alive self, self
     r4 = r3
     goto L3
 L2:
-    r5 = self.left
-    r6 = self.right
+    r5 = borrow self.left
+    r6 = borrow self.right
     r7 = CPyTagged_Subtract(r5, r6)
+    keep_alive self, self
     r4 = r7
 L3:
     return r4
 def PropertyHolder.__init__(self, left, right, is_add):
     self :: __main__.PropertyHolder
     left, right :: int
-    is_add, r0, r1, r2 :: bool
+    is_add :: bool
 L0:
-    self.left = left; r0 = is_error
-    self.right = right; r1 = is_error
-    self.is_add = is_add; r2 = is_error
+    self.left = left
+    self.right = right
+    self.is_add = is_add
     return 1
 def PropertyHolder.twice_value(self):
     self :: __main__.PropertyHolder
@@ -2292,16 +2294,16 @@ def BaseProperty.next(self):
     r0, r1 :: int
     r2 :: __main__.BaseProperty
 L0:
-    r0 = self._incrementer
+    r0 = borrow self._incrementer
     r1 = CPyTagged_Add(r0, 2)
+    keep_alive self
     r2 = BaseProperty(r1)
     return r2
 def BaseProperty.__init__(self, value):
     self :: __main__.BaseProperty
     value :: int
-    r0 :: bool
 L0:
-    self._incrementer = value; r0 = is_error
+    self._incrementer = value
     return 1
 def DerivedProperty.value(self):
     self :: __main__.DerivedProperty
@@ -2351,10 +2353,9 @@ def DerivedProperty.__init__(self, incr_func, value):
     incr_func :: object
     value :: int
     r0 :: None
-    r1 :: bool
 L0:
     r0 = BaseProperty.__init__(self, value)
-    self._incr_func = incr_func; r1 = is_error
+    self._incr_func = incr_func
     return 1
 def AgainProperty.next(self):
     self :: __main__.AgainProperty
@@ -2485,9 +2486,10 @@ def g(a, b, c):
     r2, r3 :: int
 L0:
     r0 = a.__getitem__(c)
-    r1 = CPyList_GetItem(b, c)
+    r1 = CPyList_GetItemBorrow(b, c)
     r2 = unbox(int, r1)
     r3 = CPyTagged_Add(r0, r2)
+    keep_alive b, c
     return r3
 
 [case testTypeAlias_toplevel]
@@ -3444,10 +3446,9 @@ def f(a: bool) -> int:
 [out]
 def C.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.C
-    r0, r1 :: bool
 L0:
-    __mypyc_self__.x = 2; r0 = is_error
-    __mypyc_self__.y = 4; r1 = is_error
+    __mypyc_self__.x = 2
+    __mypyc_self__.y = 4
     return 1
 def f(a):
     a :: bool

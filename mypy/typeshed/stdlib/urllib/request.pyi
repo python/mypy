@@ -3,11 +3,12 @@ import sys
 from _typeshed import StrOrBytesPath, SupportsRead
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from email.message import Message
-from http.client import HTTPMessage, HTTPResponse, _HTTPConnectionProtocol
+from http.client import HTTPConnection, HTTPMessage, HTTPResponse
 from http.cookiejar import CookieJar
-from typing import IO, Any, ClassVar, NoReturn, Pattern, TypeVar, overload
+from re import Pattern
+from typing import IO, Any, ClassVar, NoReturn, Protocol, TypeVar, overload
 from typing_extensions import TypeAlias
-from urllib.error import HTTPError
+from urllib.error import HTTPError as HTTPError
 from urllib.response import addclosehook, addinfourl
 
 __all__ = [
@@ -150,6 +151,10 @@ class HTTPRedirectHandler(BaseHandler):
     def http_error_302(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
     def http_error_303(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
     def http_error_307(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
+    if sys.version_info >= (3, 11):
+        def http_error_308(
+            self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage
+        ) -> _UrlopenRet | None: ...
 
 class HTTPCookieProcessor(BaseHandler):
     cookiejar: CookieJar
@@ -219,6 +224,16 @@ class ProxyDigestAuthHandler(BaseHandler, AbstractDigestAuthHandler):
     auth_header: ClassVar[str]  # undocumented
     def http_error_407(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
 
+class _HTTPConnectionProtocol(Protocol):
+    def __call__(
+        self,
+        host: str,
+        port: int | None = ...,
+        timeout: float = ...,
+        source_address: tuple[str, int] | None = ...,
+        blocksize: int = ...,
+    ) -> HTTPConnection: ...
+
 class AbstractHTTPHandler(BaseHandler):  # undocumented
     def __init__(self, debuglevel: int = ...) -> None: ...
     def set_http_debuglevel(self, level: int) -> None: ...
@@ -267,9 +282,6 @@ class CacheFTPHandler(FTPHandler):
     def setMaxConns(self, m: int) -> None: ...
     def check_cache(self) -> None: ...  # undocumented
     def clear_cache(self) -> None: ...  # undocumented
-    def connect_ftp(
-        self, user: str, passwd: str, host: str, port: int, dirs: str, timeout: float
-    ) -> ftpwrapper: ...  # undocumented
 
 class UnknownHandler(BaseHandler):
     def unknown_open(self, req: Request) -> NoReturn: ...
@@ -281,7 +293,7 @@ class HTTPErrorProcessor(BaseHandler):
 def urlretrieve(
     url: str,
     filename: StrOrBytesPath | None = ...,
-    reporthook: Callable[[int, int, int], None] | None = ...,
+    reporthook: Callable[[int, int, int], object] | None = ...,
     data: _DataType = ...,
 ) -> tuple[str, HTTPMessage]: ...
 def urlcleanup() -> None: ...
@@ -295,7 +307,7 @@ class URLopener:
         self,
         url: str,
         filename: str | None = ...,
-        reporthook: Callable[[int, int, int], None] | None = ...,
+        reporthook: Callable[[int, int, int], object] | None = ...,
         data: bytes | None = ...,
     ) -> tuple[str, Message | None]: ...
     def addheader(self, *args: tuple[str, str]) -> None: ...  # undocumented
@@ -330,6 +342,11 @@ class FancyURLopener(URLopener):
     def http_error_307(
         self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
     ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
+    if sys.version_info >= (3, 11):
+        def http_error_308(
+            self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
+        ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
+
     def http_error_401(
         self,
         url: str,

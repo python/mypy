@@ -1,7 +1,8 @@
+import sys
 from _warnings import warn as warn, warn_explicit as warn_explicit
 from collections.abc import Sequence
 from types import ModuleType, TracebackType
-from typing import Any, TextIO, overload
+from typing import Any, Generic, TextIO, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "catch_warnings",
 ]
 
+_W = TypeVar("_W", bound=list[WarningMessage] | None)
 _ActionKind: TypeAlias = Literal["default", "error", "ignore", "always", "module", "once"]
 
 filters: Sequence[tuple[str, str | None, type[Warning], str | None, int]]  # undocumented, do not mutate
@@ -55,20 +57,54 @@ class WarningMessage:
         source: Any | None = ...,
     ) -> None: ...
 
-class catch_warnings:
-    @overload
-    def __new__(cls, *, record: Literal[False] = ..., module: ModuleType | None = ...) -> _catch_warnings_without_records: ...
-    @overload
-    def __new__(cls, *, record: Literal[True], module: ModuleType | None = ...) -> _catch_warnings_with_records: ...
-    @overload
-    def __new__(cls, *, record: bool, module: ModuleType | None = ...) -> catch_warnings: ...
-    def __enter__(self) -> list[WarningMessage] | None: ...
+class catch_warnings(Generic[_W]):
+    if sys.version_info >= (3, 11):
+        @overload
+        def __init__(
+            self: catch_warnings[None],
+            *,
+            record: Literal[False] = ...,
+            module: ModuleType | None = ...,
+            action: _ActionKind | None = ...,
+            category: type[Warning] = ...,
+            lineno: int = ...,
+            append: bool = ...,
+        ) -> None: ...
+        @overload
+        def __init__(
+            self: catch_warnings[list[WarningMessage]],
+            *,
+            record: Literal[True],
+            module: ModuleType | None = ...,
+            action: _ActionKind | None = ...,
+            category: type[Warning] = ...,
+            lineno: int = ...,
+            append: bool = ...,
+        ) -> None: ...
+        @overload
+        def __init__(
+            self: catch_warnings[list[WarningMessage] | None],
+            *,
+            record: bool,
+            module: ModuleType | None = ...,
+            action: _ActionKind | None = ...,
+            category: type[Warning] = ...,
+            lineno: int = ...,
+            append: bool = ...,
+        ) -> None: ...
+    else:
+        @overload
+        def __init__(self: catch_warnings[None], *, record: Literal[False] = ..., module: ModuleType | None = ...) -> None: ...
+        @overload
+        def __init__(
+            self: catch_warnings[list[WarningMessage]], *, record: Literal[True], module: ModuleType | None = ...
+        ) -> None: ...
+        @overload
+        def __init__(
+            self: catch_warnings[list[WarningMessage] | None], *, record: bool, module: ModuleType | None = ...
+        ) -> None: ...
+
+    def __enter__(self) -> _W: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
-
-class _catch_warnings_without_records(catch_warnings):
-    def __enter__(self) -> None: ...
-
-class _catch_warnings_with_records(catch_warnings):
-    def __enter__(self) -> list[WarningMessage]: ...

@@ -894,10 +894,9 @@ def delAttributeMultiple() -> None:
 def Dummy.__init__(self, x, y):
     self :: __main__.Dummy
     x, y :: int
-    r0, r1 :: bool
 L0:
-    self.x = x; r0 = is_error
-    self.y = y; r1 = is_error
+    self.x = x
+    self.y = y
     return 1
 def delAttribute():
     r0, dummy :: __main__.Dummy

@@ -31,26 +31,48 @@ Notes:
   even though some identities are preserved.
 """
 
-import contextlib
-from typing import Union, Iterator, Optional, Dict, Tuple
+from __future__ import annotations
 
-from mypy.backports import nullcontext
+from contextlib import contextmanager, nullcontext
+from typing import Dict, Iterator, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
+
 from mypy.nodes import (
-    FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
-    ImportFrom, CallExpr, Decorator, OverloadedFuncDef, Node, TupleExpr, ListExpr,
-    SuperExpr, IndexExpr, ImportAll, ForStmt, Block, CLASSDEF_NO_INFO, TypeInfo,
-    StarExpr, Var, SymbolTableNode
+    CLASSDEF_NO_INFO,
+    AssignmentStmt,
+    Block,
+    CallExpr,
+    ClassDef,
+    Decorator,
+    ForStmt,
+    FuncDef,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    ListExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    OverloadedFuncDef,
+    RefExpr,
+    StarExpr,
+    SuperExpr,
+    SymbolTableNode,
+    TupleExpr,
+    TypeInfo,
+    Var,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
 from mypy.typestate import TypeState
 
+SavedAttributes: _TypeAlias = Dict[Tuple[ClassDef, str], SymbolTableNode]
 
-SavedAttributes = Dict[Tuple[ClassDef, str], SymbolTableNode]
 
-
-def strip_target(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
-                 saved_attrs: SavedAttributes) -> None:
+def strip_target(
+    node: MypyFile | FuncDef | OverloadedFuncDef, saved_attrs: SavedAttributes
+) -> None:
     """Reset a fine-grained incremental target to state before semantic analysis.
 
     All TypeInfos are killed. Therefore we need to preserve the variables
@@ -72,7 +94,7 @@ def strip_target(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self, saved_class_attrs: SavedAttributes) -> None:
         # The current active class.
-        self.type: Optional[TypeInfo] = None
+        self.type: TypeInfo | None = None
         # This is True at class scope, but not in methods.
         self.is_class_body = False
         # By default, process function definitions. If False, don't -- this is used for
@@ -91,7 +113,7 @@ class NodeStripVisitor(TraverserVisitor):
         for name in file_node.names.copy():
             # TODO: this is a hot fix, we should delete all names,
             # see https://github.com/python/mypy/issues/6422.
-            if '@' not in name:
+            if "@" not in name:
                 del file_node.names[name]
 
     def visit_block(self, b: Block) -> None:
@@ -113,13 +135,15 @@ class NodeStripVisitor(TraverserVisitor):
         node.type_vars = []
         node.base_type_exprs.extend(node.removed_base_type_exprs)
         node.removed_base_type_exprs = []
-        node.defs.body = [s for s in node.defs.body
-                          if s not in to_delete]  # type: ignore[comparison-overlap]
+        node.defs.body = [
+            s for s in node.defs.body if s not in to_delete  # type: ignore[comparison-overlap]
+        ]
         with self.enter_class(node.info):
             super().visit_class_def(node)
         TypeState.reset_subtype_caches_for(node.info)
         # Kill the TypeInfo, since there is none before semantic analysis.
         node.info = CLASSDEF_NO_INFO
+        node.analyzed = None
 
     def save_implicit_attributes(self, node: ClassDef) -> None:
         """Produce callbacks that re-add attributes defined on self."""
@@ -229,7 +253,7 @@ class NodeStripVisitor(TraverserVisitor):
         elif isinstance(lvalue, StarExpr):
             self.process_lvalue_in_method(lvalue.expr)
 
-    @contextlib.contextmanager
+    @contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:
         old_type = self.type
         old_is_class_body = self.is_class_body
@@ -239,7 +263,7 @@ class NodeStripVisitor(TraverserVisitor):
         self.type = old_type
         self.is_class_body = old_is_class_body
 
-    @contextlib.contextmanager
+    @contextmanager
     def enter_method(self, info: TypeInfo) -> Iterator[None]:
         old_type = self.type
         old_is_class_body = self.is_class_body

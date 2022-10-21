@@ -3,16 +3,24 @@
 Model how these behave differently in different contexts.
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Optional, Union
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from mypyc.ir.ops import (
-    Branch, BasicBlock, Unreachable, Value, Goto, Integer, Assign, Register, Return,
-    NO_TRACEBACK_LINE_NO
+    NO_TRACEBACK_LINE_NO,
+    BasicBlock,
+    Branch,
+    Goto,
+    Integer,
+    Register,
+    Return,
+    Unreachable,
+    Value,
 )
-from mypyc.primitives.exc_ops import set_stop_iteration_value, restore_exc_info_op
 from mypyc.irbuild.targets import AssignmentTarget
+from mypyc.primitives.exc_ops import restore_exc_info_op, set_stop_iteration_value
 
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder
@@ -31,59 +39,59 @@ class NonlocalControl:
     """
 
     @abstractmethod
-    def gen_break(self, builder: 'IRBuilder', line: int) -> None: pass
+    def gen_break(self, builder: IRBuilder, line: int) -> None:
+        pass
 
     @abstractmethod
-    def gen_continue(self, builder: 'IRBuilder', line: int) -> None: pass
+    def gen_continue(self, builder: IRBuilder, line: int) -> None:
+        pass
 
     @abstractmethod
-    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None: pass
+    def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
+        pass
 
 
 class BaseNonlocalControl(NonlocalControl):
     """Default nonlocal control outside any statements that affect it."""
 
-    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_break(self, builder: IRBuilder, line: int) -> None:
         assert False, "break outside of loop"
 
-    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_continue(self, builder: IRBuilder, line: int) -> None:
         assert False, "continue outside of loop"
 
-    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+    def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         builder.add(Return(value))
 
 
 class LoopNonlocalControl(NonlocalControl):
     """Nonlocal control within a loop."""
 
-    def __init__(self,
-                 outer: NonlocalControl,
-                 continue_block: BasicBlock,
-                 break_block: BasicBlock) -> None:
+    def __init__(
+        self, outer: NonlocalControl, continue_block: BasicBlock, break_block: BasicBlock
+    ) -> None:
         self.outer = outer
         self.continue_block = continue_block
         self.break_block = break_block
 
-    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_break(self, builder: IRBuilder, line: int) -> None:
         builder.add(Goto(self.break_block))
 
-    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_continue(self, builder: IRBuilder, line: int) -> None:
         builder.add(Goto(self.continue_block))
 
-    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+    def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         self.outer.gen_return(builder, value, line)
 
 
 class GeneratorNonlocalControl(BaseNonlocalControl):
     """Default nonlocal control in a generator function outside statements."""
 
-    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+    def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         # Assign an invalid next label number so that the next time
         # __next__ is called, we jump to the case in which
         # StopIteration is raised.
-        builder.assign(builder.fn_info.generator_class.next_label_target,
-                       Integer(-1),
-                       line)
+        builder.assign(builder.fn_info.generator_class.next_label_target, Integer(-1), line)
 
         # Raise a StopIteration containing a field for the value that
         # should be returned. Before doing so, create a new block
@@ -106,23 +114,24 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
 
 
 class CleanupNonlocalControl(NonlocalControl):
-    """Abstract nonlocal control that runs some cleanup code. """
+    """Abstract nonlocal control that runs some cleanup code."""
 
     def __init__(self, outer: NonlocalControl) -> None:
         self.outer = outer
 
     @abstractmethod
-    def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None: ...
+    def gen_cleanup(self, builder: IRBuilder, line: int) -> None:
+        ...
 
-    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_break(self, builder: IRBuilder, line: int) -> None:
         self.gen_cleanup(builder, line)
         self.outer.gen_break(builder, line)
 
-    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_continue(self, builder: IRBuilder, line: int) -> None:
         self.gen_cleanup(builder, line)
         self.outer.gen_continue(builder, line)
 
-    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+    def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         self.gen_cleanup(builder, line)
         self.outer.gen_return(builder, value, line)
 
@@ -132,19 +141,25 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def __init__(self, target: BasicBlock) -> None:
         self.target = target
-        self.ret_reg: Optional[Register] = None
+        self.ret_reg: None | Register | AssignmentTarget = None
 
-    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_break(self, builder: IRBuilder, line: int) -> None:
         builder.error("break inside try/finally block is unimplemented", line)
 
-    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_continue(self, builder: IRBuilder, line: int) -> None:
         builder.error("continue inside try/finally block is unimplemented", line)
 
-    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+    def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         if self.ret_reg is None:
-            self.ret_reg = Register(builder.ret_types[-1])
+            if builder.fn_info.is_generator:
+                self.ret_reg = builder.make_spill_target(builder.ret_types[-1])
+            else:
+                self.ret_reg = Register(builder.ret_types[-1])
+        # assert needed because of apparent mypy bug... it loses track of the union
+        # and infers the type as object
+        assert isinstance(self.ret_reg, (Register, AssignmentTarget))
+        builder.assign(self.ret_reg, value, line)
 
-        builder.add(Assign(self.ret_reg, value))
         builder.add(Goto(self.target))
 
 
@@ -155,11 +170,11 @@ class ExceptNonlocalControl(CleanupNonlocalControl):
     This is super annoying.
     """
 
-    def __init__(self, outer: NonlocalControl, saved: Union[Value, AssignmentTarget]) -> None:
+    def __init__(self, outer: NonlocalControl, saved: Value | AssignmentTarget) -> None:
         super().__init__(outer)
         self.saved = saved
 
-    def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_cleanup(self, builder: IRBuilder, line: int) -> None:
         builder.call_c(restore_exc_info_op, [builder.read(self.saved)], line)
 
 
@@ -170,12 +185,11 @@ class FinallyNonlocalControl(CleanupNonlocalControl):
     leave and the return register is decrefed if it isn't null.
     """
 
-    def __init__(self, outer: NonlocalControl, ret_reg: Optional[Value], saved: Value) -> None:
+    def __init__(self, outer: NonlocalControl, saved: Value) -> None:
         super().__init__(outer)
-        self.ret_reg = ret_reg
         self.saved = saved
 
-    def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
+    def gen_cleanup(self, builder: IRBuilder, line: int) -> None:
         # Restore the old exc_info
         target, cleanup = BasicBlock(), BasicBlock()
         builder.add(Branch(self.saved, target, cleanup, Branch.IS_ERROR))

@@ -300,12 +300,15 @@ main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "i
 main:5: error: Incompatible return value type (got "int", expected "str")
 main:6: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
-[case testTrailingCommaParsing-skip]
+[case testTrailingCommaParsing]
 x = 1
-x in 1,
-if x in 1, :
-    pass
+x in 1,  # E: Unsupported right operand type for in ("int")
+[builtins fixtures/tuple.pyi]
+
+[case testTrailingCommaInIfParsing]
+if x in 1, : pass
 [out]
+main:1: error: invalid syntax
 
 [case testInitReturnTypeError]
 class C:
@@ -347,7 +350,8 @@ from typing import Union
 class A: ...
 class B: ...
 
-x: Union[mock, A]  # E: Module "mock" is not valid as a type
+x: Union[mock, A]  # E: Module "mock" is not valid as a type \
+                   # N: Perhaps you meant to use a protocol matching the module structure?
 
 if isinstance(x, B):
     pass
@@ -363,7 +367,8 @@ from typing import overload, Any, Union
 @overload
 def f(x: int) -> int: ...
 @overload
-def f(x: str) -> Union[mock, str]: ...  # E: Module "mock" is not valid as a type
+def f(x: str) -> Union[mock, str]: ...  # E: Module "mock" is not valid as a type \
+                                        # N: Perhaps you meant to use a protocol matching the module structure?
 def f(x):
     pass
 
@@ -387,15 +392,6 @@ none = None
 b = none.__bool__()
 reveal_type(b)  # N: Revealed type is "Literal[False]"
 [builtins fixtures/bool.pyi]
-
-[case testNoneHasBoolShowNoneErrorsFalse]
-none = None
-b = none.__bool__()
-reveal_type(b)  # N: Revealed type is "Literal[False]"
-[builtins fixtures/bool.pyi]
-[file mypy.ini]
-\[mypy]
-show_none_errors = False
 
 [case testAssignmentInvariantNoteForList]
 from typing import List

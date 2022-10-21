@@ -114,8 +114,8 @@ import a
 [file a.py]
 # mypy: no-warn-no-return
 
-from typing import List
-def foo() -> List:
+from typing import Optional, List
+def foo() -> Optional[List]:
     20
 
 [file b.py.2]
@@ -162,3 +162,51 @@ main:1: error: Unrecognized option: skip_file = True
 # mypy: strict
 [out]
 main:1: error: Setting "strict" not supported in inline configuration: specify it in a configuration file instead, or set individual inline flags (see "mypy -h" for the list of flags enabled in strict mode)
+
+[case testInlineErrorCodes]
+# flags: --strict-optional
+# mypy: enable-error-code="ignore-without-code,truthy-bool"
+class Foo:
+    pass
+
+foo = Foo()
+if foo: ...  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+
+[case testInlineErrorCodesOverrideConfig]
+# flags: --strict-optional --config-file tmp/mypy.ini
+import foo
+import tests.bar
+import tests.baz
+[file foo.py]
+# mypy: disable-error-code="truthy-bool"
+class Foo:
+    pass
+
+foo = Foo()
+if foo: ...
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+
+[file tests/__init__.py]
+[file tests/bar.py]
+# mypy: enable-error-code="ignore-without-code"
+
+def foo() -> int: ...
+if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+
+[file tests/baz.py]
+# mypy: disable-error-code="truthy-bool"
+class Foo:
+    pass
+
+foo = Foo()
+if foo: ...
+42 + "no"  # type: ignore
+
+[file mypy.ini]
+\[mypy]
+enable_error_code = ignore-without-code, truthy-bool
+
+\[mypy-tests.*]
+disable_error_code = ignore-without-code

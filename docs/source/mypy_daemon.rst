@@ -152,6 +152,12 @@ Additional daemon flags
    Write performance profiling information to ``FILE``. This is only available
    for the ``check``, ``recheck``, and ``run`` commands.
 
+.. option:: --export-types
+
+   Store all expression types in memory for future use. This is useful to speed
+   up future calls to ``dmypy inspect`` (but uses more memory). Only valid for
+   ``check``, ``recheck``, and ``run`` command.
+
 Static inference of annotations
 *******************************
 
@@ -171,7 +177,7 @@ In this example, the function ``format_id()`` has no annotation:
 .. code-block:: python
 
    def format_id(user):
-       return "User: {}".format(user)
+       return f"User: {user}"
 
    root = format_id(0)
 
@@ -222,11 +228,6 @@ command.
    Only allow some fraction of types in the suggested signature to be ``Any`` types.
    The fraction ranges from ``0`` (same as ``--no-any``) to ``1``.
 
-.. option:: --try-text
-
-   Try also using ``unicode`` wherever ``str`` is inferred. This flag may be useful
-   for annotating Python 2/3 straddling code.
-
 .. option:: --callsites
 
    Only find call sites for a given function instead of suggesting a type.
@@ -243,8 +244,129 @@ command.
 
    Set the maximum number of types to try for a function (default: ``64``).
 
-.. TODO: Add similar sections about go to definition, find usages, and
-   reveal type when added, and then move this to a separate file.
+Statically inspect expressions
+******************************
+
+The daemon allows to get declared or inferred type of an expression (or other
+information about an expression, such as known attributes or definition location)
+using ``dmypy inspect LOCATION`` command. The location of the expression should be
+specified in the format ``path/to/file.py:line:column[:end_line:end_column]``.
+Both line and column are 1-based. Both start and end position are inclusive.
+These rules match how mypy prints the error location in error messages.
+
+If a span is given (i.e. all 4 numbers), then only an exactly matching expression
+is inspected. If only a position is given (i.e. 2 numbers, line and column), mypy
+will inspect all *expressions*, that include this position, starting from the
+innermost one.
+
+Consider this Python code snippet:
+
+.. code-block:: python
+
+   def foo(x: int, longer_name: str) -> None:
+       x
+       longer_name
+
+Here to find the type of ``x`` one needs to call ``dmypy inspect src.py:2:5:2:5``
+or ``dmypy inspect src.py:2:5``. While for ``longer_name`` one needs to call
+``dmypy inspect src.py:3:5:3:15`` or, for example, ``dmypy inspect src.py:3:10``.
+Please note that this command is only valid after daemon had a successful type
+check (without parse errors), so that types are populated, e.g. using
+``dmypy check``. In case where multiple expressions match the provided location,
+their types are returned separated by a newline.
+
+Important note: it is recommended to check files with :option:`--export-types`
+since otherwise most inspections will not work without :option:`--force-reload`.
+
+.. option:: --show INSPECTION
+
+   What kind of inspection to run for expression(s) found. Currently the supported
+   inspections are:
+
+   * ``type`` (default): Show the best known type of a given expression.
+   * ``attrs``: Show which attributes are valid for an expression (e.g. for
+     auto-completion). Format is ``{"Base1": ["name_1", "name_2", ...]; "Base2": ...}``.
+     Names are sorted by method resolution order. If expression refers to a module,
+     then module attributes will be under key like ``"<full.module.name>"``.
+   * ``definition`` (experimental): Show the definition location for a name
+     expression or member expression. Format is ``path/to/file.py:line:column:Symbol``.
+     If multiple definitions are found (e.g. for a Union attribute), they are
+     separated by comma.
+
+.. option:: --verbose
+
+   Increase verbosity of types string representation (can be repeated).
+   For example, this will print fully qualified names of instance types (like
+   ``"builtins.str"``), instead of just a short name (like ``"str"``).
+
+.. option:: --limit NUM
+
+   If the location is given as ``line:column``, this will cause daemon to
+   return only at most ``NUM`` inspections of innermost expressions.
+   Value of 0 means no limit (this is the default). For example, if one calls
+   ``dmypy inspect src.py:4:10 --limit=1`` with this code
+
+   .. code-block:: python
+
+      def foo(x: int) -> str: ..
+      def bar(x: str) -> None: ...
+      baz: int
+      bar(foo(baz))
+
+   This will output just one type ``"int"`` (for ``baz`` name expression).
+   While without the limit option, it would output all three types: ``"int"``,
+   ``"str"``, and ``"None"``.
+
+.. option:: --include-span
+
+   With this option on, the daemon will prepend each inspection result with
+   the full span of corresponding expression, formatted as ``1:2:1:4 -> "int"``.
+   This may be useful in case multiple expressions match a location.
+
+.. option:: --include-kind
+
+   With this option on, the daemon will prepend each inspection result with
+   the kind of corresponding expression, formatted as ``NameExpr -> "int"``.
+   If both this option and :option:`--include-span` are on, the kind will
+   appear first, for example ``NameExpr:1:2:1:4 -> "int"``.
+
+.. option:: --include-object-attrs
+
+   This will make the daemon include attributes of ``object`` (excluded by
+   default) in case of an ``atts`` inspection.
+
+.. option:: --union-attrs
+
+   Include attributes valid for some of possible expression types (by default
+   an intersection is returned). This is useful for union types of type variables
+   with values. For example, with this code:
+
+   .. code-block:: python
+
+      from typing import Union
+
+      class A:
+          x: int
+          z: int
+      class B:
+          y: int
+          z: int
+      var: Union[A, B]
+      var
+
+   The command ``dmypy inspect --show attrs src.py:10:1`` will return
+   ``{"A": ["z"], "B": ["z"]}``, while with ``--union-attrs`` it will return
+   ``{"A": ["x", "z"], "B": ["y", "z"]}``.
+
+.. option:: --force-reload
+
+   Force re-parsing and re-type-checking file before inspection. By default
+   this is done only when needed (for example file was not loaded from cache
+   or daemon was initially run without ``--export-types`` mypy option),
+   since reloading may be slow (up to few seconds for very large files).
+
+.. TODO: Add similar section about find usages when added, and then move
+   this to a separate file.
 
 
 .. _watchman: https://facebook.github.io/watchman/

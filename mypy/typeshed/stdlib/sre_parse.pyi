@@ -1,8 +1,9 @@
 import sys
 from collections.abc import Iterable
+from re import Match, Pattern as _Pattern
 from sre_constants import *
 from sre_constants import _NamedIntConstant as _NIC, error as _Error
-from typing import Any, Match, Pattern as _Pattern, overload
+from typing import Any, overload
 from typing_extensions import TypeAlias
 
 SPECIAL_CHARS: str
@@ -15,18 +16,17 @@ WHITESPACE: frozenset[str]
 ESCAPES: dict[str, tuple[_NIC, int]]
 CATEGORIES: dict[str, tuple[_NIC, _NIC] | tuple[_NIC, list[tuple[_NIC, _NIC]]]]
 FLAGS: dict[str, int]
-if sys.version_info >= (3, 7):
-    TYPE_FLAGS: int
+TYPE_FLAGS: int
 GLOBAL_FLAGS: int
 
-class Verbose(Exception): ...
+if sys.version_info < (3, 11):
+    class Verbose(Exception): ...
 
 class _State:
     flags: int
     groupdict: dict[str, int]
     groupwidths: list[int | None]
     lookbehindgroups: int | None
-    def __init__(self) -> None: ...
     @property
     def groups(self) -> int: ...
     def opengroup(self, name: str | None = ...) -> int: ...
@@ -64,7 +64,7 @@ class SubPattern:
     def __setitem__(self, index: int | slice, code: _CodeType) -> None: ...
     def insert(self, index: int, code: _CodeType) -> None: ...
     def append(self, code: _CodeType) -> None: ...
-    def getwidth(self) -> int: ...
+    def getwidth(self) -> tuple[int, int]: ...
 
 class Tokenizer:
     istext: bool
@@ -86,6 +86,9 @@ class Tokenizer:
     def tell(self) -> int: ...
     def seek(self, index: int) -> None: ...
     def error(self, msg: str, offset: int = ...) -> _Error: ...
+
+    if sys.version_info >= (3, 11):
+        def checkgroupname(self, name: str, offset: int, nested: int) -> None: ...
 
 def fix_flags(src: str | bytes, flags: int) -> int: ...
 

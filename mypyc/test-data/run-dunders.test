@@ -332,6 +332,13 @@ class C:
     def __float__(self) -> float:
         return float(self.x + 4)
 
+    def __pos__(self) -> int:
+        return self.x + 5
+
+    def __abs__(self) -> int:
+        return abs(self.x) + 6
+
+
 def test_unary_dunders_generic() -> None:
     a: Any = C(10)
 
@@ -339,6 +346,8 @@ def test_unary_dunders_generic() -> None:
     assert ~a == 12
     assert int(a) == 13
     assert float(a) == 14.0
+    assert +a == 15
+    assert abs(a) == 16
 
 def test_unary_dunders_native() -> None:
     c = C(10)
@@ -347,6 +356,8 @@ def test_unary_dunders_native() -> None:
     assert ~c == 12
     assert int(c) == 13
     assert float(c) == 14.0
+    assert +c == 15
+    assert abs(c) == 16
 
 [case testDundersBinarySimple]
 from typing import Any

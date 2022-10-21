@@ -45,29 +45,78 @@ Discussion of some notable special cases:
 See the main entry point merge_asts for more details.
 """
 
-from typing import Dict, List, cast, TypeVar, Optional
+from __future__ import annotations
+
+from typing import TypeVar, cast
 
 from mypy.nodes import (
-    MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
-    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
-    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
-    CastExpr, TypeAlias, AssertTypeExpr,
-    MDEF
+    MDEF,
+    AssertTypeExpr,
+    AssignmentStmt,
+    Block,
+    CallExpr,
+    CastExpr,
+    ClassDef,
+    EnumCallExpr,
+    FuncBase,
+    FuncDef,
+    LambdaExpr,
+    MemberExpr,
+    MypyFile,
+    NamedTupleExpr,
+    NameExpr,
+    NewTypeExpr,
+    OverloadedFuncDef,
+    RefExpr,
+    Statement,
+    SuperExpr,
+    SymbolNode,
+    SymbolTable,
+    TypeAlias,
+    TypeAliasExpr,
+    TypedDictExpr,
+    TypeInfo,
+    Var,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
-    TupleType, TypeType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarType, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, ParamSpecType, Parameters,
-    UnpackType, TypeVarTupleType,
+    AnyType,
+    CallableArgument,
+    CallableType,
+    DeletedType,
+    EllipsisType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    PlaceholderType,
+    RawExpressionType,
+    StarType,
+    SyntheticTypeVisitor,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
 )
-from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
+from mypy.util import get_prefix, replace_object_state
 
 
-def merge_asts(old: MypyFile, old_symbols: SymbolTable,
-               new: MypyFile, new_symbols: SymbolTable) -> None:
+def merge_asts(
+    old: MypyFile, old_symbols: SymbolTable, new: MypyFile, new_symbols: SymbolTable
+) -> None:
     """Merge a new version of a module AST to a previous version.
 
     The main idea is to preserve the identities of externally visible
@@ -82,7 +131,8 @@ def merge_asts(old: MypyFile, old_symbols: SymbolTable,
     # Find the mapping from new to old node identities for all nodes
     # whose identities should be preserved.
     replacement_map = replacement_map_from_symbol_table(
-        old_symbols, new_symbols, prefix=old.fullname)
+        old_symbols, new_symbols, prefix=old.fullname
+    )
     # Also replace references to the new MypyFile node.
     replacement_map[new] = old
     # Perform replacements to everywhere within the new AST (not including symbol
@@ -96,7 +146,8 @@ def merge_asts(old: MypyFile, old_symbols: SymbolTable,
 
 
 def replacement_map_from_symbol_table(
-        old: SymbolTable, new: SymbolTable, prefix: str) -> Dict[SymbolNode, SymbolNode]:
+    old: SymbolTable, new: SymbolTable, prefix: str
+) -> dict[SymbolNode, SymbolNode]:
     """Create a new-to-old object identity map by comparing two symbol table revisions.
 
     Both symbol tables must refer to revisions of the same module id. The symbol tables
@@ -104,27 +155,33 @@ def replacement_map_from_symbol_table(
     the given module prefix. Don't recurse into other modules accessible through the symbol
     table.
     """
-    replacements: Dict[SymbolNode, SymbolNode] = {}
+    replacements: dict[SymbolNode, SymbolNode] = {}
     for name, node in old.items():
-        if (name in new and (node.kind == MDEF
-                             or node.node and get_prefix(node.node.fullname) == prefix)):
+        if name in new and (
+            node.kind == MDEF or node.node and get_prefix(node.node.fullname) == prefix
+        ):
             new_node = new[name]
-            if (type(new_node.node) == type(node.node)  # noqa
-                    and new_node.node and node.node and
-                    new_node.node.fullname == node.node.fullname and
-                    new_node.kind == node.kind):
+            if (
+                type(new_node.node) == type(node.node)  # noqa: E721
+                and new_node.node
+                and node.node
+                and new_node.node.fullname == node.node.fullname
+                and new_node.kind == node.kind
+            ):
                 replacements[new_node.node] = node.node
                 if isinstance(node.node, TypeInfo) and isinstance(new_node.node, TypeInfo):
                     type_repl = replacement_map_from_symbol_table(
-                        node.node.names,
-                        new_node.node.names,
-                        prefix)
+                        node.node.names, new_node.node.names, prefix
+                    )
                     replacements.update(type_repl)
+                    if node.node.special_alias and new_node.node.special_alias:
+                        replacements[new_node.node.special_alias] = node.node.special_alias
     return replacements
 
 
-def replace_nodes_in_ast(node: SymbolNode,
-                         replacements: Dict[SymbolNode, SymbolNode]) -> SymbolNode:
+def replace_nodes_in_ast(
+    node: SymbolNode, replacements: dict[SymbolNode, SymbolNode]
+) -> SymbolNode:
     """Replace all references to replacement map keys within an AST node, recursively.
 
     Also replace the *identity* of any nodes that have replacements. Return the
@@ -136,7 +193,7 @@ def replace_nodes_in_ast(node: SymbolNode,
     return replacements.get(node, node)
 
 
-SN = TypeVar('SN', bound=SymbolNode)
+SN = TypeVar("SN", bound=SymbolNode)
 
 
 class NodeReplaceVisitor(TraverserVisitor):
@@ -147,7 +204,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     replace all references to the old identities.
     """
 
-    def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
+    def __init__(self, replacements: dict[SymbolNode, SymbolNode]) -> None:
         self.replacements = replacements
 
     def visit_mypy_file(self, node: MypyFile) -> None:
@@ -281,7 +338,13 @@ class NodeReplaceVisitor(TraverserVisitor):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
-            replace_object_state(new, node)
+            skip_slots: tuple[str, ...] = ()
+            if isinstance(node, TypeInfo) and isinstance(new, TypeInfo):
+                # Special case: special_alias is not exposed in symbol tables, but may appear
+                # in external types (e.g. named tuples), so we need to update it manually.
+                skip_slots = ("special_alias",)
+                replace_object_state(new.special_alias, node.special_alias)
+            replace_object_state(new, node, skip_slots=skip_slots)
             return cast(SN, new)
         return node
 
@@ -298,18 +361,21 @@ class NodeReplaceVisitor(TraverserVisitor):
             TypeState.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 
-    def fixup_type(self, typ: Optional[Type]) -> None:
+    def fixup_type(self, typ: Type | None) -> None:
         if typ is not None:
             typ.accept(TypeReplaceVisitor(self.replacements))
 
-    def process_type_info(self, info: Optional[TypeInfo]) -> None:
+    def process_type_info(self, info: TypeInfo | None) -> None:
         if info is None:
             return
         self.fixup_type(info.declared_metaclass)
         self.fixup_type(info.metaclass_type)
-        self.fixup_type(info._promote)
+        for target in info._promote:
+            self.fixup_type(target)
         self.fixup_type(info.tuple_type)
         self.fixup_type(info.typeddict_type)
+        if info.special_alias:
+            self.fixup_type(info.special_alias.target)
         info.defn.info = self.fixup(info)
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
@@ -326,7 +392,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             if node.node:
                 node.node.accept(self)
 
-    def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
+    def replace_statements(self, nodes: list[Statement]) -> list[Statement]:
         result = []
         for node in nodes:
             if isinstance(node, SymbolNode):
@@ -343,7 +409,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     NodeReplaceVisitor.process_base_func.
     """
 
-    def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
+    def __init__(self, replacements: dict[SymbolNode, SymbolNode]) -> None:
         self.replacements = replacements
 
     def visit_instance(self, typ: Instance) -> None:
@@ -474,14 +540,16 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         return node
 
 
-def replace_nodes_in_symbol_table(symbols: SymbolTable,
-                                  replacements: Dict[SymbolNode, SymbolNode]) -> None:
+def replace_nodes_in_symbol_table(
+    symbols: SymbolTable, replacements: dict[SymbolNode, SymbolNode]
+) -> None:
     for name, node in symbols.items():
         if node.node:
             if node.node in replacements:
                 new = replacements[node.node]
                 old = node.node
-                replace_object_state(new, old)
+                # Needed for TypeInfo, see comment in fixup() above.
+                replace_object_state(new, old, skip_slots=("special_alias",))
                 node.node = new
             if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.

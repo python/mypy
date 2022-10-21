@@ -10,7 +10,7 @@ class MIMEAudio(MIMENonMultipart):
         self,
         _audiodata: str | bytes,
         _subtype: str | None = ...,
-        _encoder: Callable[[MIMEAudio], None] = ...,
+        _encoder: Callable[[MIMEAudio], object] = ...,
         *,
         policy: Policy | None = ...,
         **_params: _ParamsType,

@@ -1182,6 +1182,43 @@ IntExpr(2) : Literal[1]?
 OpExpr(2) : builtins.str
 StrExpr(2) : Literal['%d']?
 
+[case testExportOverloadArgType]
+## LambdaExpr|NameExpr
+from typing import List, overload, Callable
+@overload
+def f(x: int, f: Callable[[int], int]) -> None: ...
+@overload
+def f(x: str, f: Callable[[str], str]) -> None: ...
+def f(x): ...
+f(
+    1, lambda x: x)
+[builtins fixtures/list.pyi]
+[out]
+NameExpr(8) : Overload(def (x: builtins.int, f: def (builtins.int) -> builtins.int), def (x: builtins.str, f: def (builtins.str) -> builtins.str))
+LambdaExpr(9) : def (builtins.int) -> builtins.int
+NameExpr(9) : builtins.int
+
+[case testExportOverloadArgTypeNested]
+## LambdaExpr
+from typing import overload, Callable
+@overload
+def f(x: int, f: Callable[[int], int]) -> int: ...
+@overload
+def f(x: str, f: Callable[[str], str]) -> str: ...
+def f(x): ...
+f(
+    f(1, lambda y: y),
+    lambda x: x)
+f(
+    f('x', lambda y: y),
+    lambda x: x)
+[builtins fixtures/list.pyi]
+[out]
+LambdaExpr(9) : def (builtins.int) -> builtins.int
+LambdaExpr(10) : def (builtins.int) -> builtins.int
+LambdaExpr(12) : def (builtins.str) -> builtins.str
+LambdaExpr(13) : def (builtins.str) -> builtins.str
+
 -- TODO
 --
 -- test expressions
@@ -1193,7 +1230,6 @@ StrExpr(2) : Literal['%d']?
 --   more complex lambda (multiple arguments etc.)
 --   list comprehension
 --   generator expression
--- overloads
 -- other things
 --   type inference
 --   default argument value

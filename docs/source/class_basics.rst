@@ -1,3 +1,5 @@
+.. _class-basics:
+
 Class basics
 ============
 
@@ -41,19 +43,6 @@ a type annotation:
 As in Python generally, a variable defined in the class body can be used
 as a class or an instance variable. (As discussed in the next section, you
 can override this with a :py:data:`~typing.ClassVar` annotation.)
-
-Type comments work as well, if you need to support Python versions earlier
-than 3.6:
-
-.. code-block:: python
-
-   class A:
-       x = None  # type: list[int]  # Declare attribute 'x' of type list[int]
-
-Note that attribute definitions in the class body that use a type comment
-are special: a ``None`` value is valid as the initializer, even though
-the declared type is not optional. This should be used sparingly, as this can
-result in ``None``-related runtime errors that mypy can't detect.
 
 Similarly, you can give explicit types to instance variables defined
 in a method:
@@ -158,6 +147,22 @@ a :py:data:`~typing.ClassVar` annotation, but this might not do what you'd expec
 In this case the type of the attribute will be implicitly ``Any``.
 This behavior will change in the future, since it's surprising.
 
+An explicit :py:data:`~typing.ClassVar` may be particularly handy to distinguish
+between class and instance variables with callable types. For example:
+
+.. code-block:: python
+
+   from typing import Callable, ClassVar
+
+   class A:
+       foo: Callable[[int], None]
+       bar: ClassVar[Callable[[A, int], None]]
+       bad: Callable[[A], None]
+
+   A().foo(42)  # OK
+   A().bar(42)  # OK
+   A().bad()  # Error: Too few arguments
+
 .. note::
    A :py:data:`~typing.ClassVar` type parameter cannot include type variables:
    ``ClassVar[T]`` and ``ClassVar[list[T]]``
@@ -255,11 +260,6 @@ function decorator. Example:
    x = Animal()  # Error: 'Animal' is abstract due to 'eat' and 'can_walk'
    y = Cat()     # OK
 
-.. note::
-
-   In Python 2.7 you have to use :py:func:`@abc.abstractproperty <abc.abstractproperty>` to define
-   an abstract property.
-
 Note that mypy performs checking for unimplemented abstract methods
 even if you omit the :py:class:`~abc.ABCMeta` metaclass. This can be useful if the
 metaclass would cause runtime metaclass conflicts.
@@ -307,6 +307,26 @@ however:
    As shown above, the class definition will not generate an error
    in this case, but any attempt to construct an instance will be
    flagged as an error.
+
+Mypy allows you to omit the body for an abstract method, but if you do so,
+it is unsafe to call such method via ``super()``. For example:
+
+.. code-block:: python
+
+   from abc import abstractmethod
+   class Base:
+       @abstractmethod
+       def foo(self) -> int: pass
+       @abstractmethod
+       def bar(self) -> int:
+           return 0
+   class Sub(Base):
+       def foo(self) -> int:
+           return super().foo() + 1  # error: Call to abstract method "foo" of "Base"
+                                     # with trivial body via super() is unsafe
+       @abstractmethod
+       def bar(self) -> int:
+           return super().bar() + 1  # This is OK however.
 
 A class can inherit any number of classes, both abstract and
 concrete. As with normal overrides, a dynamically typed method can

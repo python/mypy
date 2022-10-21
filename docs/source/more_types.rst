@@ -60,12 +60,6 @@ pip to use :py:data:`~typing.NoReturn` in your code. Python 3 command line:
 
     python3 -m pip install --upgrade typing-extensions
 
-This works for Python 2:
-
-.. code-block:: text
-
-    pip install --upgrade typing-extensions
-
 .. _newtypes:
 
 NewTypes
@@ -120,7 +114,7 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
     name_by_id(42)          # Fails type check
     name_by_id(UserId(42))  # OK
 
-    num = UserId(5) + 1     # type: int
+    num: int = UserId(5) + 1
 
 :py:func:`NewType <typing.NewType>` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
@@ -810,10 +804,9 @@ classes are generic, self-type allows giving them precise signatures:
 .. code-block:: python
 
    T = TypeVar('T')
+   Q = TypeVar('Q', bound='Base[Any]')
 
    class Base(Generic[T]):
-       Q = TypeVar('Q', bound='Base[T]')
-
        def __init__(self, item: T) -> None:
            self.item = item
 
@@ -846,7 +839,7 @@ expect to get back when ``await``-ing the coroutine.
    import asyncio
 
    async def format_string(tag: str, count: int) -> str:
-       return 'T-minus {} ({})'.format(count, tag)
+       return f'T-minus {count} ({tag})'
 
    async def countdown_1(tag: str, count: int) -> str:
        while count > 0:
@@ -888,7 +881,7 @@ You may also choose to create a subclass of :py:class:`~typing.Awaitable` instea
 
        def __await__(self) -> Generator[Any, None, str]:
            for i in range(n, 0, -1):
-               print('T-minus {} ({})'.format(i, tag))
+               print(f'T-minus {i} ({tag})')
                yield from asyncio.sleep(0.1)
            return "Blastoff!"
 
@@ -925,7 +918,7 @@ To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
 
    async def countdown_4(tag: str, n: int) -> str:
        async for i in arange(n, 0, -1):
-           print('T-minus {} ({})'.format(i, tag))
+           print(f'T-minus {i} ({tag})')
            await asyncio.sleep(0.1)
        return "Blastoff!"
 
@@ -947,7 +940,7 @@ generator type as the return type:
    @asyncio.coroutine
    def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
        while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
+           print(f'T-minus {count} ({tag})')
            yield from asyncio.sleep(0.1)
            count -= 1
        return "Blastoff!"
@@ -985,7 +978,7 @@ dictionary value depends on the key:
 
    Movie = TypedDict('Movie', {'name': str, 'year': int})
 
-   movie = {'name': 'Blade Runner', 'year': 1982}  # type: Movie
+   movie: Movie = {'name': 'Blade Runner', 'year': 1982}
 
 ``Movie`` is a ``TypedDict`` type with two items: ``'name'`` (with type ``str``)
 and ``'year'`` (with type ``int``). Note that we used an explicit type
@@ -1051,7 +1044,7 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 
    def print_typed_dict(obj: Mapping[str, object]) -> None:
        for key, value in obj.items():
-           print('{}: {}'.format(key, value))
+           print(f'{key}: {value}')
 
    print_typed_dict(Movie(name='Toy Story', year=1995))  # OK
 
@@ -1065,12 +1058,6 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 
       python3 -m pip install --upgrade typing-extensions
 
-   Or, if you are using Python 2:
-
-   .. code-block:: text
-
-      pip install --upgrade typing-extensions
-
 Totality
 --------
 
@@ -1080,7 +1067,7 @@ keys. This will be flagged as an error:
 .. code-block:: python
 
    # Error: 'year' missing
-   toy_story = {'name': 'Toy Story'}  # type: Movie
+   toy_story: Movie = {'name': 'Toy Story'}
 
 Sometimes you want to allow keys to be left out when creating a
 ``TypedDict`` object. You can provide the ``total=False`` argument to
@@ -1090,7 +1077,7 @@ Sometimes you want to allow keys to be left out when creating a
 
    GuiOptions = TypedDict(
        'GuiOptions', {'language': str, 'color': str}, total=False)
-   options = {}  # type: GuiOptions  # Okay
+   options: GuiOptions = {}  # Okay
    options['language'] = 'en'
 
 You may need to use :py:meth:`~dict.get` to access items of a partial (non-total)
@@ -1136,13 +1123,6 @@ of supported operations:
 * :py:meth:`d1.update(d2) <dict.update>`
 * :py:meth:`d.pop(key[, default]) <dict.pop>` (partial ``TypedDict``\s only)
 * ``del d[key]`` (partial ``TypedDict``\s only)
-
-In Python 2 code, these methods are also supported:
-
-* ``has_key(key)``
-* ``viewitems()``
-* ``viewkeys()``
-* ``viewvalues()``
 
 .. note::
 

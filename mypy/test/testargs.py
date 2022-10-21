@@ -4,12 +4,14 @@ In particular, verify that the argparse defaults are the same as the Options
 defaults, and that argparse doesn't assign any new members to the Options
 object it creates.
 """
+from __future__ import annotations
+
 import argparse
 import sys
 
-from mypy.test.helpers import Suite, assert_equal
+from mypy.main import infer_python_executable, process_options
 from mypy.options import Options
-from mypy.main import process_options, infer_python_executable
+from mypy.test.helpers import Suite, assert_equal
 
 
 class ArgSuite(Suite):
@@ -22,31 +24,32 @@ class ArgSuite(Suite):
 
     def test_executable_inference(self) -> None:
         """Test the --python-executable flag with --python-version"""
-        sys_ver_str = '{ver.major}.{ver.minor}'.format(ver=sys.version_info)
+        sys_ver_str = "{ver.major}.{ver.minor}".format(ver=sys.version_info)
 
-        base = ['file.py']  # dummy file
+        base = ["file.py"]  # dummy file
 
         # test inference given one (infer the other)
-        matching_version = base + ['--python-version={}'.format(sys_ver_str)]
+        matching_version = base + [f"--python-version={sys_ver_str}"]
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
 
-        matching_version = base + ['--python-executable={}'.format(sys.executable)]
+        matching_version = base + [f"--python-executable={sys.executable}"]
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
 
         # test inference given both
-        matching_version = base + ['--python-version={}'.format(sys_ver_str),
-                                   '--python-executable={}'.format(sys.executable)]
+        matching_version = base + [
+            f"--python-version={sys_ver_str}",
+            f"--python-executable={sys.executable}",
+        ]
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
 
         # test that --no-site-packages will disable executable inference
-        matching_version = base + ['--python-version={}'.format(sys_ver_str),
-                                   '--no-site-packages']
+        matching_version = base + [f"--python-version={sys_ver_str}", "--no-site-packages"]
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable is None

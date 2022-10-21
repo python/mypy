@@ -1,6 +1,0 @@
-from typing import Text
-
-_SndHeaders = tuple[str, int, int, int, int | str]
-
-def what(filename: Text) -> _SndHeaders | None: ...
-def whathdr(filename: Text) -> _SndHeaders | None: ...

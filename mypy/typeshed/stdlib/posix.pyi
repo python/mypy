@@ -269,6 +269,9 @@ if sys.platform != "win32":
         if sys.version_info >= (3, 10):
             from os import RWF_APPEND as RWF_APPEND
 
+    if sys.version_info >= (3, 11):
+        from os import login_tty as login_tty
+
     if sys.version_info >= (3, 9):
         from os import CLD_KILLED as CLD_KILLED, CLD_STOPPED as CLD_STOPPED, waitstatus_to_exitcode as waitstatus_to_exitcode
 
@@ -306,18 +309,10 @@ if sys.platform != "win32":
                 copy_file_range as copy_file_range,
                 memfd_create as memfd_create,
             )
-    if sys.version_info >= (3, 7):
-        from os import register_at_fork as register_at_fork
+    from os import preadv as preadv, pwritev as pwritev, register_at_fork as register_at_fork
 
-        if sys.platform != "darwin":
-            from os import (
-                RWF_DSYNC as RWF_DSYNC,
-                RWF_HIPRI as RWF_HIPRI,
-                RWF_NOWAIT as RWF_NOWAIT,
-                RWF_SYNC as RWF_SYNC,
-                preadv as preadv,
-                pwritev as pwritev,
-            )
+    if sys.platform != "darwin":
+        from os import RWF_DSYNC as RWF_DSYNC, RWF_HIPRI as RWF_HIPRI, RWF_NOWAIT as RWF_NOWAIT, RWF_SYNC as RWF_SYNC
 
     # Not same as os.environ or os.environb
     # Because of this variable, we can't do "from posix import *" in os/__init__.pyi

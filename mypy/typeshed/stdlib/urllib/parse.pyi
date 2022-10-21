@@ -1,7 +1,6 @@
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, AnyStr, Generic, NamedTuple, overload
-from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -30,8 +29,6 @@ __all__ = [
     "SplitResultBytes",
 ]
 
-_Str: TypeAlias = bytes | str
-
 uses_relative: list[str]
 uses_netloc: list[str]
 uses_params: list[str]
@@ -39,7 +36,8 @@ non_hierarchical: list[str]
 uses_query: list[str]
 uses_fragment: list[str]
 scheme_chars: str
-MAX_CACHE_SIZE: int
+if sys.version_info < (3, 11):
+    MAX_CACHE_SIZE: int
 
 class _ResultMixinBase(Generic[AnyStr]):
     def geturl(self) -> AnyStr: ...
@@ -65,7 +63,9 @@ class _NetlocResultMixinBase(Generic[AnyStr]):
 class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): ...
 class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes): ...
 
-class _DefragResultBase(tuple[Any, ...], Generic[AnyStr]):
+# Ideally this would be a generic fixed-length tuple,
+# but mypy doesn't support that yet: https://github.com/python/mypy/issues/685#issuecomment-992014179
+class _DefragResultBase(tuple[AnyStr, ...], Generic[AnyStr]):
     if sys.version_info >= (3, 10):
         __match_args__ = ("url", "fragment")
     @property
@@ -132,16 +132,22 @@ def parse_qsl(
     separator: str = ...,
 ) -> list[tuple[AnyStr, AnyStr]]: ...
 @overload
-def quote(string: str, safe: _Str = ..., encoding: str | None = ..., errors: str | None = ...) -> str: ...
+def quote(string: str, safe: str | bytes = ..., encoding: str | None = ..., errors: str | None = ...) -> str: ...
 @overload
-def quote(string: bytes, safe: _Str = ...) -> str: ...
-def quote_from_bytes(bs: bytes, safe: _Str = ...) -> str: ...
+def quote(string: bytes, safe: str | bytes = ...) -> str: ...
+def quote_from_bytes(bs: bytes, safe: str | bytes = ...) -> str: ...
 @overload
-def quote_plus(string: str, safe: _Str = ..., encoding: str | None = ..., errors: str | None = ...) -> str: ...
+def quote_plus(string: str, safe: str | bytes = ..., encoding: str | None = ..., errors: str | None = ...) -> str: ...
 @overload
-def quote_plus(string: bytes, safe: _Str = ...) -> str: ...
-def unquote(string: str, encoding: str = ..., errors: str = ...) -> str: ...
-def unquote_to_bytes(string: _Str) -> bytes: ...
+def quote_plus(string: bytes, safe: str | bytes = ...) -> str: ...
+
+if sys.version_info >= (3, 9):
+    def unquote(string: str | bytes, encoding: str = ..., errors: str = ...) -> str: ...
+
+else:
+    def unquote(string: str, encoding: str = ..., errors: str = ...) -> str: ...
+
+def unquote_to_bytes(string: str | bytes) -> bytes: ...
 def unquote_plus(string: str, encoding: str = ..., errors: str = ...) -> str: ...
 @overload
 def urldefrag(url: str) -> DefragResult: ...
@@ -150,10 +156,10 @@ def urldefrag(url: bytes | None) -> DefragResultBytes: ...
 def urlencode(
     query: Mapping[Any, Any] | Mapping[Any, Sequence[Any]] | Sequence[tuple[Any, Any]] | Sequence[tuple[Any, Sequence[Any]]],
     doseq: bool = ...,
-    safe: _Str = ...,
+    safe: str | bytes = ...,
     encoding: str = ...,
     errors: str = ...,
-    quote_via: Callable[[AnyStr, _Str, str, str], str] = ...,
+    quote_via: Callable[[AnyStr, str | bytes, str, str], str] = ...,
 ) -> str: ...
 def urljoin(base: AnyStr, url: AnyStr | None, allow_fragments: bool = ...) -> AnyStr: ...
 @overload
