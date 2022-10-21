@@ -316,14 +316,14 @@ a default value is specified for only one of them.
 
     from typing import overload, Literal
 
-    # This overload variant applies when "rounded" is omitted or set to False.
-    @overload
-    def pi(rounded: Literal[False] = ...) -> float: ...
-
     # This overload variant applies only when the "rounded" argument was
     # specified explicitly.
     @overload
     def pi(rounded: Literal[True]) -> int: ...
+
+    # This overload variant applies when "rounded" is omitted or set to False.
+    @overload
+    def pi(rounded: Literal[False] = ...) -> float: ...
 
     def pi(rounded=False):
         return 3 if rounded else 3.14159
