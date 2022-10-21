@@ -102,7 +102,12 @@ from mypyc.primitives.exc_ops import (
     reraise_exception_op,
     restore_exc_info_op,
 )
-from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
+from mypyc.primitives.generic_ops import (
+    iter_op,
+    next_raw_op,
+    py_delattr_op,
+    py_getattr_op,
+)
 from mypyc.primitives.misc_ops import (
     check_mapping_protocol,
     check_stop_op,
@@ -990,7 +995,6 @@ class MatchVisitor(TraverserVisitor):
         self.builder.goto(self.next_block)
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:
-        # TODO: add ability to handle class pattern when not at top level
         cond = self.builder.call_c(
             slow_isinstance_op,
             [self.subject, self.builder.accept(pattern.class_ref)],
@@ -1072,6 +1076,19 @@ class MatchVisitor(TraverserVisitor):
         )
 
         self.builder.add_bool_branch(is_map, self.code_block, self.next_block)
+
+        for key, value in zip(pattern.keys, pattern.values):
+            self.builder.activate_block(self.code_block)
+            self.code_block = BasicBlock()
+
+            attr = self.builder.call_c(
+                py_getattr_op,
+                [self.subject, self.builder.accept(key)],
+                pattern.line
+            )
+
+            with self.enter_subpattern(attr):
+                value.accept(self)
 
     def bind_as_pattern(self, value: Value) -> None:
         if self.as_pattern and self.as_pattern.name:

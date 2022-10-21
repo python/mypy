@@ -844,7 +844,7 @@ L5:
 L6:
     r23 = box(None, 1)
     return r23
-[case testing_python3_10]
+[case testAsPatternDoesntBleedIntoSubPatterns_python3_10]
 class C:
     __match_args__ = ("a", "b")
     a: int
@@ -1023,3 +1023,54 @@ L2:
 L3:
     r9 = box(None, 1)
     return r9
+[case testing_python3_10]
+def f(x):
+    match x:
+        case {"key": "value"}:
+            print("matched")
+[out]
+def f(x):
+    x :: object
+    r0 :: int
+    r1 :: bit
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object
+    r6 :: int32
+    r7 :: bit
+    r8 :: bool
+    r9 :: str
+    r10 :: object
+    r11 :: str
+    r12 :: object
+    r13 :: object[1]
+    r14 :: object_ptr
+    r15, r16 :: object
+L0:
+    r0 = PyMapping_Check(x)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = 'key'
+    r3 = CPyObject_GetAttr(x, r2)
+    r4 = 'value'
+    r5 = PyObject_RichCompare(r3, r4, 2)
+    r6 = PyObject_IsTrue(r5)
+    r7 = r6 >= 0 :: signed
+    r8 = truncate r6: int32 to builtins.bool
+    if r8 goto L2 else goto L3 :: bool
+L2:
+    r9 = 'matched'
+    r10 = builtins :: module
+    r11 = 'print'
+    r12 = CPyObject_GetAttr(r10, r11)
+    r13 = [r9]
+    r14 = load_address r13
+    r15 = _PyObject_Vectorcall(r12, r14, 1, 0)
+    keep_alive r9
+    goto L4
+L3:
+L4:
+    r16 = box(None, 1)
+    return r16
