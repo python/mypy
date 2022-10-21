@@ -112,6 +112,7 @@ from mypyc.primitives.misc_ops import (
     check_mapping_protocol,
     check_stop_op,
     coro_op,
+    dict_copy,
     import_from_op,
     send_op,
     slow_isinstance_op,
@@ -1067,8 +1068,6 @@ class MatchVisitor(TraverserVisitor):
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_mapping_pattern(self, pattern: MappingPattern) -> None:
-        assert not pattern.rest
-
         is_map = self.builder.call_c(
             check_mapping_protocol,
             [self.subject],
@@ -1089,6 +1088,21 @@ class MatchVisitor(TraverserVisitor):
 
             with self.enter_subpattern(attr):
                 value.accept(self)
+
+        if pattern.rest:
+            self.builder.activate_block(self.code_block)
+            self.code_block = BasicBlock()
+
+            copy = self.builder.call_c(
+                dict_copy,
+                [self.subject],
+                pattern.rest.line,
+            )
+
+            target = self.builder.get_assignment_target(pattern.rest)
+
+            self.builder.assign(target, copy, pattern.rest.line)
+            self.builder.goto(self.code_block)
 
     def bind_as_pattern(self, value: Value) -> None:
         if self.as_pattern and self.as_pattern.name:

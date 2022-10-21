@@ -1074,3 +1074,44 @@ L3:
 L4:
     r16 = box(None, 1)
     return r16
+[case testMatchMappingPatternWithRest_python3_10]
+def f(x):
+    match x:
+        case {**rest}:
+            print("matched")
+[out]
+def f(x):
+    x :: object
+    r0 :: int
+    r1 :: bit
+    r2 :: object
+    r3, rest :: dict
+    r4 :: str
+    r5 :: object
+    r6 :: str
+    r7 :: object
+    r8 :: object[1]
+    r9 :: object_ptr
+    r10, r11 :: object
+L0:
+    r0 = PyMapping_Check(x)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = PyDict_Copy(x)
+    r3 = cast(dict, r2)
+    rest = r3
+L2:
+    r4 = 'matched'
+    r5 = builtins :: module
+    r6 = 'print'
+    r7 = CPyObject_GetAttr(r5, r6)
+    r8 = [r4]
+    r9 = load_address r8
+    r10 = _PyObject_Vectorcall(r7, r9, 1, 0)
+    keep_alive r4
+    goto L4
+L3:
+L4:
+    r11 = box(None, 1)
+    return r11

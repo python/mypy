@@ -246,3 +246,11 @@ check_mapping_protocol = custom_op(
     c_function_name="PyMapping_Check",
     error_kind=ERR_NEVER,
 )
+
+# Copy an object into a dict
+dict_copy = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyDict_Copy",
+    error_kind=ERR_NEVER,
+)
