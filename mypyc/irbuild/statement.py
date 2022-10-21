@@ -941,16 +941,14 @@ class MatchVisitor(TraverserVisitor):
         self.match = match_node
         self.subject = builder.accept(match_node.subject)
 
-    def build_match_body(
-        self, index: int, code_block: BasicBlock, next_block: BasicBlock
-    ) -> None:
-        self.builder.activate_block(code_block)
+    def build_match_body(self, index: int) -> None:
+        self.builder.activate_block(self.code_block)
 
         if guard := self.match.guards[index]:
             self.code_block = BasicBlock()
 
             cond = self.builder.accept(guard)
-            self.builder.add_bool_branch(cond, self.code_block, next_block)
+            self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
             self.builder.activate_block(self.code_block)
 
@@ -964,7 +962,7 @@ class MatchVisitor(TraverserVisitor):
 
             pattern.accept(self)
 
-            self.build_match_body(i, self.code_block, self.next_block)
+            self.build_match_body(i)
             self.builder.activate_block(self.next_block)
 
         self.builder.goto_and_activate(self.final_block)
