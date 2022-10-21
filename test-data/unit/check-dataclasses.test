@@ -1641,7 +1641,7 @@ A(a=func).a = func  # E: Property "a" defined in "A" is read-only
 # flags: --python-version 3.7
 from dataclasses import dataclass
 
-def foo():
+def foo() -> None:
     @dataclass
     class Foo:
         foo: int

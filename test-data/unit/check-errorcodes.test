@@ -245,7 +245,8 @@ x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
       # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 import sys
-y: sys  # E: Module "sys" is not valid as a type  [valid-type]
+y: sys  # E: Module "sys" is not valid as a type  [valid-type] \
+        # N: Perhaps you meant to use a protocol matching the module structure?
 z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/tuple.pyi]
@@ -841,18 +842,20 @@ if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, object]" of which 
 if not bad_union:  # E: "__main__.bad_union" has type "object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
-def f():
-    pass
-if f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
-    pass
-if not f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
-    pass
-conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
-
 lst: List[int] = []
 if lst:
     pass
 [builtins fixtures/list.pyi]
+
+[case testTruthyFunctions]
+# flags: --strict-optional
+def f():
+    pass
+if f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+    pass
+if not f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+    pass
+conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
 
 [case testNoOverloadImplementation]
 from typing import overload
@@ -964,3 +967,12 @@ class C(abc.ABC):
 T = TypeVar("T")
 def test(tp: Type[T]) -> T: ...
 test(C)  # E: Only concrete class can be given where "Type[C]" is expected  [type-abstract]
+
+[case testUncheckedAnnotationCodeShown]
+def f():
+    x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+
+[case testUncheckedAnnotationSuppressed]
+# flags: --disable-error-code=annotation-unchecked
+def f():
+    x: int = "no"  # No warning here

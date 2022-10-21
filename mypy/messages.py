@@ -80,10 +80,12 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarTupleType,
     TypeVarType,
     UnboundType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     get_proper_type,
     get_proper_types,
 )
@@ -407,32 +409,43 @@ class MessageBuilder:
             if not self.are_type_names_disabled():
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
-                    alternatives = set(original_type.type.names.keys())
-
-                    if module_symbol_table is not None:
-                        alternatives |= {key for key in module_symbol_table.keys()}
-
-                    # in some situations, the member is in the alternatives set
-                    # but since we're in this function, we shouldn't suggest it
-                    if member in alternatives:
-                        alternatives.remove(member)
-
-                    matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
-                    matches.extend(best_matches(member, alternatives)[:3])
-                    if member == "__aiter__" and matches == ["__iter__"]:
-                        matches = []  # Avoid misleading suggestion
-                    if matches:
+                    if (
+                        module_symbol_table is not None
+                        and member in module_symbol_table
+                        and not module_symbol_table[member].module_public
+                    ):
                         self.fail(
-                            '{} has no attribute "{}"; maybe {}?{}'.format(
-                                format_type(original_type),
-                                member,
-                                pretty_seq(matches, "or"),
-                                extra,
-                            ),
+                            f"{format_type(original_type, module_names=True)} does not "
+                            f'explicitly export attribute "{member}"',
                             context,
                             code=codes.ATTR_DEFINED,
                         )
                         failed = True
+                    else:
+                        alternatives = set(original_type.type.names.keys())
+                        if module_symbol_table is not None:
+                            alternatives |= {
+                                k for k, v in module_symbol_table.items() if v.module_public
+                            }
+                        # Rare but possible, see e.g. testNewAnalyzerCyclicDefinitionCrossModule
+                        alternatives.discard(member)
+
+                        matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
+                        matches.extend(best_matches(member, alternatives)[:3])
+                        if member == "__aiter__" and matches == ["__iter__"]:
+                            matches = []  # Avoid misleading suggestion
+                        if matches:
+                            self.fail(
+                                '{} has no attribute "{}"; maybe {}?{}'.format(
+                                    format_type(original_type),
+                                    member,
+                                    pretty_seq(matches, "or"),
+                                    extra,
+                                ),
+                                context,
+                                code=codes.ATTR_DEFINED,
+                            )
+                            failed = True
                 if not failed:
                     self.fail(
                         '{} has no attribute "{}"{}'.format(
@@ -2148,6 +2161,14 @@ class MessageBuilder:
                 ctx,
             )
 
+    def annotation_in_unchecked_function(self, context: Context) -> None:
+        self.note(
+            "By default the bodies of untyped functions are not checked,"
+            " consider using --check-untyped-defs",
+            context,
+            code=codes.ANNOTATION_UNCHECKED,
+        )
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
@@ -2249,7 +2270,12 @@ def format_type_inner(
         else:
             # There are type arguments. Convert the arguments to strings.
             return f"{base_str}[{format_list(itype.args)}]"
+    elif isinstance(typ, UnpackType):
+        return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
+        # This is similar to non-generic instance types.
+        return typ.name
+    elif isinstance(typ, TypeVarTupleType):
         # This is similar to non-generic instance types.
         return typ.name
     elif isinstance(typ, ParamSpecType):
@@ -2702,6 +2728,17 @@ def for_function(callee: CallableType) -> str:
     if name is not None:
         return f" for {name}"
     return ""
+
+
+def wrong_type_arg_count(n: int, act: str, name: str) -> str:
+    s = f"{n} type arguments"
+    if n == 0:
+        s = "no type arguments"
+    elif n == 1:
+        s = "1 type argument"
+    if act == "0":
+        act = "none"
+    return f'"{name}" expects {s}, but {act} given'
 
 
 def find_defining_module(modules: dict[str, MypyFile], typ: CallableType) -> MypyFile | None:

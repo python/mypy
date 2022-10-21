@@ -757,24 +757,24 @@ class C(Generic[P]):
     # think PhantomData<T> from rust
     phantom: Optional[Callable[P, None]]
 
-    def add_str(self) -> C[Concatenate[int, P]]:
-        return C[Concatenate[int, P]]()
-
-    def add_int(self) -> C[Concatenate[str, P]]:
+    def add_str(self) -> C[Concatenate[str, P]]:
         return C[Concatenate[str, P]]()
+
+    def add_int(self) -> C[Concatenate[int, P]]:
+        return C[Concatenate[int, P]]()
 
 def f(c: C[P]) -> None:
     reveal_type(c)  # N: Revealed type is "__main__.C[P`-1]"
 
     n1 = c.add_str()
-    reveal_type(n1)  # N: Revealed type is "__main__.C[[builtins.int, **P`-1]]"
+    reveal_type(n1)  # N: Revealed type is "__main__.C[[builtins.str, **P`-1]]"
     n2 = n1.add_int()
-    reveal_type(n2)  # N: Revealed type is "__main__.C[[builtins.str, builtins.int, **P`-1]]"
+    reveal_type(n2)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str, **P`-1]]"
 
     p1 = c.add_int()
-    reveal_type(p1)  # N: Revealed type is "__main__.C[[builtins.str, **P`-1]]"
+    reveal_type(p1)  # N: Revealed type is "__main__.C[[builtins.int, **P`-1]]"
     p2 = p1.add_str()
-    reveal_type(p2)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str, **P`-1]]"
+    reveal_type(p2)  # N: Revealed type is "__main__.C[[builtins.str, builtins.int, **P`-1]]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecLiteralJoin]

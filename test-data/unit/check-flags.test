@@ -1613,7 +1613,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import a
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1627,7 +1627,7 @@ from other_module_1 import a, b
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 [case testNoImplicitReexportStarConsideredExplicit]
 # flags: --no-implicit-reexport
@@ -1643,7 +1643,7 @@ __all__ = ('b',)
 
 [case testNoImplicitReexportGetAttr]
 # flags: --no-implicit-reexport --python-version 3.7
-from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"
 [file other_module_1.py]
 from typing import Any
 def __getattr__(name: str) -> Any: ...
@@ -1661,7 +1661,7 @@ attr_2 = 6
 [file other_module_2.py]
 from other_module_1 import attr_1, attr_2
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"
 
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
@@ -1679,7 +1679,7 @@ implicit_reexport = True
 \[mypy-other_module_2]
 implicit_reexport = False
 [out]
-main:2: error: Module "other_module_2" has no attribute "a"
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 
 [case testNoImplicitReexportPyProjectTOML]
@@ -1700,7 +1700,7 @@ module = 'other_module_2'
 implicit_reexport = false
 
 [out]
-main:2: error: Module "other_module_2" has no attribute "a"
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 
 [case testImplicitAnyOKForNoArgs]
@@ -2117,3 +2117,14 @@ x: int = ""  # E: Incompatible types in assignment (expression has type "str", v
 [case testHideErrorCodes]
 # flags: --hide-error-codes
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTypeVarTupleDisabled_no_incomplete]
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")  # E: "TypeVarTuple" support is experimental, use --enable-incomplete-feature=TypeVarTuple to enable
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleEnabled_no_incomplete]
+# flags: --enable-incomplete-feature=TypeVarTuple
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")  # OK
+[builtins fixtures/tuple.pyi]

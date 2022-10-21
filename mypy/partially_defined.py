@@ -18,6 +18,7 @@ from mypy.nodes import (
     IfStmt,
     ListExpr,
     Lvalue,
+    MatchStmt,
     NameExpr,
     RaiseStmt,
     ReturnStmt,
@@ -25,6 +26,8 @@ from mypy.nodes import (
     WhileStmt,
     WithStmt,
 )
+from mypy.patterns import AsPattern, StarredPattern
+from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.types import Type, UninhabitedType
 
@@ -57,11 +60,19 @@ class BranchStatement:
     def __init__(self, initial_state: BranchState) -> None:
         self.initial_state = initial_state
         self.branches: list[BranchState] = [
-            BranchState(must_be_defined=self.initial_state.must_be_defined)
+            BranchState(
+                must_be_defined=self.initial_state.must_be_defined,
+                may_be_defined=self.initial_state.may_be_defined,
+            )
         ]
 
     def next_branch(self) -> None:
-        self.branches.append(BranchState(must_be_defined=self.initial_state.must_be_defined))
+        self.branches.append(
+            BranchState(
+                must_be_defined=self.initial_state.must_be_defined,
+                may_be_defined=self.initial_state.may_be_defined,
+            )
+        )
 
     def record_definition(self, name: str) -> None:
         assert len(self.branches) > 0
@@ -198,6 +209,21 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             o.else_body.accept(self)
         self.tracker.end_branch_statement()
 
+    def visit_match_stmt(self, o: MatchStmt) -> None:
+        self.tracker.start_branch_statement()
+        o.subject.accept(self)
+        for i in range(len(o.patterns)):
+            pattern = o.patterns[i]
+            pattern.accept(self)
+            guard = o.guards[i]
+            if guard is not None:
+                guard.accept(self)
+            o.bodies[i].accept(self)
+            is_catchall = infer_pattern_value(pattern) == ALWAYS_TRUE
+            if not is_catchall:
+                self.tracker.next_branch()
+        self.tracker.end_branch_statement()
+
     def visit_func_def(self, o: FuncDef) -> None:
         self.tracker.enter_scope()
         super().visit_func_def(o)
@@ -269,6 +295,16 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             if o.else_body:
                 o.else_body.accept(self)
         self.tracker.end_branch_statement()
+
+    def visit_as_pattern(self, o: AsPattern) -> None:
+        if o.name is not None:
+            self.process_lvalue(o.name)
+        super().visit_as_pattern(o)
+
+    def visit_starred_pattern(self, o: StarredPattern) -> None:
+        if o.capture is not None:
+            self.process_lvalue(o.capture)
+        super().visit_starred_pattern(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
         if self.tracker.is_possibly_undefined(o.name):

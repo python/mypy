@@ -70,7 +70,7 @@ def check_sdist(dist: Path, version: str) -> None:
         hashless_version = match.group(1) if match else version
 
         assert (
-            f"'{hashless_version}'" in version_py_contents
+            f'"{hashless_version}"' in version_py_contents
         ), "Version does not match version.py in sdist"
 
 

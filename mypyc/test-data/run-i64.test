@@ -844,6 +844,37 @@ def test_class_method_default_args() -> None:
     assert dd.c(MAGIC) == MAGIC + 3
     assert dd.c(b=5) == 7
 
+class Init:
+    def __init__(self, x: i64 = 2, y: i64 = 5) -> None:
+        self.x = x
+        self.y = y
+
+def test_init_default_args() -> None:
+    o = Init()
+    assert o.x == 2
+    assert o.y == 5
+    o = Init(7, 8)
+    assert o.x == 7
+    assert o.y == 8
+    o = Init(4)
+    assert o.x == 4
+    assert o.y == 5
+    o = Init(MAGIC, MAGIC)
+    assert o.x == MAGIC
+    assert o.y == MAGIC
+    o = Init(3, MAGIC)
+    assert o.x == 3
+    assert o.y == MAGIC
+    o = Init(MAGIC, 11)
+    assert o.x == MAGIC
+    assert o.y == 11
+    o = Init(MAGIC)
+    assert o.x == MAGIC
+    assert o.y == 5
+    o = Init(y=MAGIC)
+    assert o.x == 2
+    assert o.y == MAGIC
+
 def kw_only(*, a: i64 = 1, b: int = 2, c: i64 = 3) -> i64:
     return a + b + c * 2
 

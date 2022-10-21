@@ -5576,9 +5576,12 @@ import T
 ==
 main:4: error: "C" expects no type arguments, but 1 given
 main:4: error: Module "T" is not valid as a type
+main:4: note: Perhaps you meant to use a protocol matching the module structure?
 main:6: error: Free type variable expected in Generic[...]
 main:7: error: Module "T" is not valid as a type
+main:7: note: Perhaps you meant to use a protocol matching the module structure?
 main:10: error: Module "T" is not valid as a type
+main:10: note: Perhaps you meant to use a protocol matching the module structure?
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeClassToModule]
@@ -5602,8 +5605,10 @@ import C
 ==
 ==
 main:3: error: Module "C" is not valid as a type
+main:3: note: Perhaps you meant to use a protocol matching the module structure?
 main:5: error: Module not callable
 main:8: error: Module "C" is not valid as a type
+main:8: note: Perhaps you meant to use a protocol matching the module structure?
 
 [case testChangeTypeVarToTypeAlias]
 
@@ -5653,8 +5658,10 @@ import D
 ==
 ==
 main:3: error: Module "D" is not valid as a type
+main:3: note: Perhaps you meant to use a protocol matching the module structure?
 main:5: error: Module not callable
 main:8: error: Module "D" is not valid as a type
+main:8: note: Perhaps you meant to use a protocol matching the module structure?
 
 [case testChangeTypeAliasToModuleUnqualified]
 
@@ -5680,8 +5687,10 @@ import D
 ==
 ==
 main:3: error: Module "D" is not valid as a type
+main:3: note: Perhaps you meant to use a protocol matching the module structure?
 main:5: error: Module not callable
 main:8: error: Module "D" is not valid as a type
+main:8: note: Perhaps you meant to use a protocol matching the module structure?
 
 [case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
 import a
@@ -9901,7 +9910,6 @@ x = 0  # Arbitrary change to trigger reprocessing
 a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
 
 [case testUnpackKwargsUpdateFine]
-# flags: --enable-incomplete-features
 import m
 [file shared.py]
 from typing_extensions import TypedDict

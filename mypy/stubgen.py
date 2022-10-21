@@ -189,6 +189,22 @@ METHODS_WITH_RETURN_VALUE: Final = {
     "__iter__",
 }
 
+# These magic methods always return the same type.
+KNOWN_MAGIC_METHODS_RETURN_TYPES: Final = {
+    "__len__": "int",
+    "__length_hint__": "int",
+    "__init__": "None",
+    "__del__": "None",
+    "__bool__": "bool",
+    "__bytes__": "bytes",
+    "__format__": "str",
+    "__contains__": "bool",
+    "__complex__": "complex",
+    "__int__": "int",
+    "__float__": "float",
+    "__index__": "int",
+}
+
 
 class Options:
     """Represents stubgen options.
@@ -735,6 +751,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = None  # implicit Any
+        elif o.name in KNOWN_MAGIC_METHODS_RETURN_TYPES:
+            retname = KNOWN_MAGIC_METHODS_RETURN_TYPES[o.name]
         elif has_yield_expression(o):
             self.add_abc_import("Generator")
             yield_name = "None"

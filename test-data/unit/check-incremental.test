@@ -3544,11 +3544,11 @@ class Bar(Baz): pass
 
 [file c.py]
 class Baz:
-    def __init__(self):
+    def __init__(self) -> None:
         self.x = 12  # type: int
 [file c.py.2]
 class Baz:
-    def __init__(self):
+    def __init__(self) -> None:
         self.x = 'lol'  # type: str
 [out]
 [out2]
@@ -5730,6 +5730,7 @@ class C:
 tmp/a.py:2: error: "object" has no attribute "xyz"
 
 [case testIncrementalInvalidNamedTupleInUnannotatedFunction]
+# flags: --disable-error-code=annotation-unchecked
 import a
 
 [file a.py]
@@ -6016,12 +6017,15 @@ tmp/m.py:2: error: Argument "age" to "foo" has incompatible type "str"; expected
 [case testDisableEnableErrorCodesIncremental]
 # flags: --disable-error-code truthy-bool
 # flags2: --enable-error-code truthy-bool
-def foo() -> int: ...
+class Foo:
+    pass
+
+foo = Foo()
 if foo:
     ...
 [out]
 [out2]
-main:4: error: Function "Callable[[], int]" could always be true in boolean context
+main:7: error: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
 
 [case testModuleAsProtocolImplementationSerialize]
 import m
@@ -6081,3 +6085,207 @@ class Base:
 [out]
 [out2]
 main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+
+[case testNoCrashDoubleReexportFunctionEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+def foo(arg: c.C) -> None: pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportBaseEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+class D(c.C): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportMetaEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+class D(metaclass=c.C): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C(type): ...
+[file pb2.py.2]
+class C(type): ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportTypedDictEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+from typing_extensions import TypedDict
+import c
+class D(TypedDict):
+    x: c.C
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[builtins fixtures/dict.pyi]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportTupleEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+from typing import Tuple
+import c
+class D(Tuple[c.C, int]): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportOverloadEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+from typing import Any, overload
+import c
+
+@overload
+def foo(arg: int) -> None: ...
+@overload
+def foo(arg: c.C) -> None: ...
+def foo(arg: Any) -> None:
+    pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]

@@ -2186,7 +2186,7 @@ N = TypedDict('N', {'x': int})
 [out]
 
 [case testGlobalWithoutInitialization]
-
+# flags: --disable-error-code=annotation-unchecked
 from typing import List
 
 def foo() -> None:
@@ -2200,3 +2200,9 @@ def foo2():
     bar2 = []  # type: List[str]
     bar2
 [builtins fixtures/list.pyi]
+
+[case testNoteUncheckedAnnotation]
+def foo():
+    x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    y = "no"  # type: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    z: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
