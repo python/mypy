@@ -113,6 +113,7 @@ from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
     dict_copy,
+    dict_del_item,
     import_from_op,
     send_op,
     slow_isinstance_op,
@@ -1076,13 +1077,18 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_map, self.code_block, self.next_block)
 
+        keys: list[Value] = []
+
         for key, value in zip(pattern.keys, pattern.values):
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
+            key_value = self.builder.accept(key)
+            keys.append(key_value)
+
             attr = self.builder.call_c(
                 py_getattr_op,
-                [self.subject, self.builder.accept(key)],
+                [self.subject, key_value],
                 pattern.line
             )
 
@@ -1093,7 +1099,7 @@ class MatchVisitor(TraverserVisitor):
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
-            copy = self.builder.call_c(
+            rest = self.builder.call_c(
                 dict_copy,
                 [self.subject],
                 pattern.rest.line,
@@ -1101,7 +1107,11 @@ class MatchVisitor(TraverserVisitor):
 
             target = self.builder.get_assignment_target(pattern.rest)
 
-            self.builder.assign(target, copy, pattern.rest.line)
+            self.builder.assign(target, rest, pattern.rest.line)
+
+            for i, key in enumerate(keys):
+                self.builder.call_c(dict_del_item, [rest, key], pattern.keys[i].line)
+
             self.builder.goto(self.code_block)
 
     def bind_as_pattern(self, value: Value) -> None:
