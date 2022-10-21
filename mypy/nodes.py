@@ -249,8 +249,6 @@ class SymbolNode(Node):
 
     __slots__ = ()
 
-    __match_args__ = ("name", "fullname")
-
     @property
     @abstractmethod
     def name(self) -> str:
@@ -1952,7 +1950,7 @@ class IndexExpr(Expression):
 
     __slots__ = ("base", "index", "method_type", "analyzed")
 
-    __match_args__ = ("base", "index", "method_type")
+    __match_args__ = ("base", "index")
 
     base: Expression
     index: Expression
@@ -1978,7 +1976,7 @@ class UnaryExpr(Expression):
 
     __slots__ = ("op", "expr", "method_type")
 
-    __match_args__ = ("op", "expr", "method_type")
+    __match_args__ = ("op", "expr")
 
     op: str  # TODO: Enum?
     expr: Expression
@@ -2017,7 +2015,7 @@ class OpExpr(Expression):
 
     __slots__ = ("op", "left", "right", "method_type", "right_always", "right_unreachable")
 
-    __match_args__ = ("left", "op", "left", "method_type")
+    __match_args__ = ("left", "op", "right")
 
     op: str  # TODO: Enum?
     left: Expression
@@ -2047,7 +2045,7 @@ class ComparisonExpr(Expression):
 
     __slots__ = ("operators", "operands", "method_types")
 
-    __match_args__ = ("operands", "operators", "method_types")
+    __match_args__ = ("operands", "operators")
 
     operators: list[str]
     operands: list[Expression]
@@ -2675,8 +2673,6 @@ class PromoteExpr(Expression):
     """Ducktype class decorator expression _promote(...)."""
 
     __slots__ = ("type",)
-
-    __match_args__ = ("type",)
 
     type: mypy.types.ProperType
 
@@ -3423,7 +3419,7 @@ class TypeAlias(SymbolNode):
         "eager",
     )
 
-    __match_args__ = ("name", "target", "alias_tvars")
+    __match_args__ = ("name", "target", "alias_tvars", "no_args")
 
     def __init__(
         self,
