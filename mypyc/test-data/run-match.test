@@ -1,16 +1,95 @@
-[case testMatchBasic_python3_10]
+[case testTheBigMatch_python3_10]
+class Person:
+    __match_args__ = ("name", "age")
+
+    name: str
+    age: int
+
+    def __init__(self, name: str, age: int) -> None:
+        self.name = name
+        self.age = age
+
+
 def f(x):
     match x:
         case 123:
-            print("matched!")
-        case _:
-            print("no match")
-[file driver.py]
-from native import f
+            print("test 1")
 
+        case 456 | 789:
+            print("test 2")
+
+        case True | False | None:
+            print("test 3")
+
+        case Person("bob" as name, age):
+            print(f"test 4 ({name=}, {age=})")
+
+        case num if num == 5:
+            print("test 5")
+
+        case 6 as num:
+            print(f"test 6 ({num=})")
+
+        case (7 | "7") as value:
+            print(f"test 7 ({value=})")
+
+        case Person("alice", age=123):
+            print("test 8")
+
+        # case Person("charlie", age=123 | 456):
+        #     print("test 9")
+
+        case _:
+            print("test final")
+[file driver.py]
+from native import f, Person
+
+# test 1
 f(123)
-f(321)
+
+# test 2
+f(456)
+f(789)
+
+# test 3
+f(True)
+f(False)
+f(None)
+
+# test 4
+f(Person("bob", 123))
+
+# test 5
+f(5)
+
+# test 6
+f(6)
+
+# test 7
+f(7)
+f("7")
+
+# test 8
+f(Person("alice", 123))
+
+# test 9
+# f(Person("charlie", 123))
+# f(Person("charlie", 456))
+
+# test final
+f("")
 
 [out]
-matched!
-no match
+test 1
+test 2
+test 2
+test 3
+test 3
+test 3
+test 4 (name='bob', age=123)
+test 5
+test 6 (num=6)
+test 7 (value=7)
+test 7 (value='7')
+test 8
+test final
