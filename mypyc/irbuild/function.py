@@ -548,7 +548,7 @@ def is_decorated(builder: IRBuilder, fdef: FuncDef) -> bool:
 
 def gen_glue(
     builder: IRBuilder,
-    sig: FuncSignature,
+    base_sig: FuncSignature,
     target: FuncIR,
     cls: ClassIR,
     base: ClassIR,
@@ -566,9 +566,9 @@ def gen_glue(
     "shadow" glue methods that work with interpreted subclasses.
     """
     if fdef.is_property:
-        return gen_glue_property(builder, sig, target, cls, base, fdef.line, do_py_ops)
+        return gen_glue_property(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
     else:
-        return gen_glue_method(builder, sig, target, cls, base, fdef.line, do_py_ops)
+        return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
 
 
 class ArgInfo(NamedTuple):
@@ -594,7 +594,7 @@ def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> Ar
 
 def gen_glue_method(
     builder: IRBuilder,
-    sig: FuncSignature,
+    base_sig: FuncSignature,
     target: FuncIR,
     cls: ClassIR,
     base: ClassIR,
@@ -627,22 +627,22 @@ def gen_glue_method(
     instead of a native call.
     """
     builder.enter()
-    builder.ret_types[-1] = sig.ret_type
+    builder.ret_types[-1] = base_sig.ret_type
 
-    rt_args = list(sig.args)
+    rt_args = list(base_sig.args)
 
     if target.decl.kind == FUNC_NORMAL:
-        rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
+        rt_args[0] = RuntimeArg(base_sig.args[0].name, RInstance(cls))
 
     arg_info = get_args(builder, rt_args, line)
     args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
 
     bitmap_args = None
-    if sig.num_bitmap_args:
-        args = args[: -sig.num_bitmap_args]
-        arg_kinds = arg_kinds[: -sig.num_bitmap_args]
-        arg_names = arg_names[: -sig.num_bitmap_args]
-        bitmap_args = builder.builder.args[-sig.num_bitmap_args :]
+    if base_sig.num_bitmap_args:
+        args = args[: -base_sig.num_bitmap_args]
+        arg_kinds = arg_kinds[: -base_sig.num_bitmap_args]
+        arg_names = arg_names[: -base_sig.num_bitmap_args]
+        bitmap_args = builder.builder.args[-base_sig.num_bitmap_args :]
 
     # We can do a passthrough *args/**kwargs with a native call, but if the
     # args need to get distributed out to arguments, we just let python handle it
@@ -666,12 +666,12 @@ def gen_glue_method(
         retval = builder.builder.call(
             target.decl, args, arg_kinds, arg_names, line, bitmap_args=bitmap_args
         )
-    retval = builder.coerce(retval, sig.ret_type, line)
+    retval = builder.coerce(retval, base_sig.ret_type, line)
     builder.add(Return(retval))
 
     arg_regs, _, blocks, ret_type, _ = builder.leave()
-    if sig.num_bitmap_args:
-        rt_args = rt_args[: -sig.num_bitmap_args]
+    if base_sig.num_bitmap_args:
+        rt_args = rt_args[: -base_sig.num_bitmap_args]
     return FuncIR(
         FuncDecl(
             target.name + "__" + base.name + "_glue",
