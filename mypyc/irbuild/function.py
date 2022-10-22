@@ -89,7 +89,7 @@ from mypyc.primitives.dict_ops import dict_get_method_with_none, dict_new_op, di
 from mypyc.primitives.generic_ops import py_setattr_op
 from mypyc.primitives.misc_ops import register_function
 from mypyc.primitives.registry import builtin_names
-from mypyc.sametype import is_same_method_signature
+from mypyc.sametype import is_same_method_signature, is_same_type
 
 # Top-level transform functions
 
@@ -626,6 +626,8 @@ def gen_glue_method(
     If do_pycall is True, then make the call using the C API
     instead of a native call.
     """
+    check_native_override(builder, base_sig, target.decl.sig, line)
+
     builder.enter()
     builder.ret_types[-1] = base_sig.ret_type
 
@@ -683,6 +685,26 @@ def gen_glue_method(
         arg_regs,
         blocks,
     )
+
+
+def check_native_override(
+    builder: IRBuilder, base_sig: FuncSignature, sub_sig: FuncSignature, line: int
+) -> None:
+    for base_arg, sub_arg in zip(base_sig.args, sub_sig.args):
+        if base_arg.type.error_overlap:
+            if not base_arg.optional and sub_arg.optional:
+                builder.error(
+                    "An argument with type "
+                    + f'"{base_arg.type}" cannot be given a default value in a method override',
+                    line,
+                )
+        if base_arg.type.error_overlap or sub_arg.type.error_overlap:
+            if not is_same_type(base_arg.type, sub_arg.type):
+                builder.error(
+                    "Incompatible argument type "
+                    + f'"{sub_arg.type}" (base class has type "{base_arg.type}")',
+                    line,
+                )
 
 
 def gen_glue_property(

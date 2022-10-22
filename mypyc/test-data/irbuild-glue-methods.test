@@ -411,3 +411,27 @@ def D.f__C_glue(self, x, __bitmap):
 L0:
     r0 = D.f(self, x, 0, __bitmap)
     return r0
+
+[case testI64GlueWithInvalidOverride]
+from mypy_extensions import i64
+
+class C:
+    def f(self, x: i64) -> None: pass
+    def ff(self, x: int) -> None: pass
+class CC(C):
+    def f(self, x: i64 = 12) -> None: pass  # Line 7
+    def ff(self, x: int = 12) -> None: pass
+
+class D:
+    def f(self, x: int) -> None: pass
+class DD(D):
+    def f(self, x: i64) -> None: pass  # Line 13
+
+class E:
+    def f(self, x: i64) -> None: pass
+class EE(E):
+    def f(self, x: int) -> None: pass  # Line 18
+[out]
+main:7: error: An argument with type "int64" cannot be given a default value in a method override
+main:13: error: Incompatible argument type "int64" (base class has type "int")
+main:18: error: Incompatible argument type "int" (base class has type "int64")
