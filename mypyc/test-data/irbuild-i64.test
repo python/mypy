@@ -1628,3 +1628,38 @@ L3:
     goto L1
 L4:
     return 1
+
+[case testI64MethodDefaultValueOverride]
+from mypy_extensions import i64
+
+class C:
+    def f(self, x: i64 = 11) -> None: pass
+class D(C):
+    def f(self, x: i64 = 12) -> None: pass
+[out]
+def C.f(self, x, __bitmap):
+    self :: __main__.C
+    x :: int64
+    __bitmap, r0 :: uint32
+    r1 :: bit
+L0:
+    r0 = __bitmap & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    x = 11
+L2:
+    return 1
+def D.f(self, x, __bitmap):
+    self :: __main__.D
+    x :: int64
+    __bitmap, r0 :: uint32
+    r1 :: bit
+L0:
+    r0 = __bitmap & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    x = 12
+L2:
+    return 1
