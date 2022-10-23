@@ -45,8 +45,11 @@ def f(x):
         case Person("dave", 123) as dave:
             print(f"test 10 {dave}")
 
-        case {}:
+        case {"test": 11}:
             print("test 11")
+
+        case {}:
+            print("test final-1")
 
         case _:
             print("test final")
@@ -88,7 +91,11 @@ f(Person("charlie", 456))
 # test 10
 f(Person("dave", 123))
 
-# test 11
+# test 12
+f({"test": 12})
+f({"test": 12, "some": "key"})
+
+# test final-1
 f({})
 
 # test final
@@ -111,4 +118,6 @@ test 9
 test 9
 test 10 Person(name='dave', age=123)
 test 11
+test 11
+test final-1
 test final

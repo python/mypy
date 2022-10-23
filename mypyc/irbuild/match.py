@@ -14,7 +14,7 @@ from mypy.patterns import (
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, TupleType
 
-from mypyc.primitives.generic_ops import py_getattr_op
+from mypyc.primitives.dict_ops import dict_get_item_op
 from mypyc.primitives.misc_ops import (
     check_dict,
     dict_copy,
@@ -195,13 +195,13 @@ class MatchVisitor(TraverserVisitor):
             key_value = self.builder.accept(key)
             keys.append(key_value)
 
-            attr = self.builder.call_c(
-                py_getattr_op,
+            item = self.builder.call_c(
+                dict_get_item_op,
                 [self.subject, key_value],
                 pattern.line
             )
 
-            with self.enter_subpattern(attr):
+            with self.enter_subpattern(item):
                 value.accept(self)
 
         if pattern.rest:
