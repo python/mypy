@@ -693,9 +693,9 @@ def check_native_override(
 
     Glue methods can work around many signature changes but not all of them.
     """
-    for base_arg, sub_arg in zip(base_sig.args, sub_sig.args):
+    for base_arg, sub_arg in zip(base_sig.real_args(), sub_sig.real_args()):
         if base_arg.type.error_overlap:
-            if not base_arg.optional and sub_arg.optional:
+            if not base_arg.optional and sub_arg.optional and base_sig.num_bitmap_args:
                 # This would change the meanings of bits in the argument defaults
                 # bitmap, which we don't support. We'd need to do tricky bit
                 # manipulations to support this generally.

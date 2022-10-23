@@ -416,10 +416,10 @@ L0:
 from mypy_extensions import i64
 
 class C:
-    def f(self, x: i64) -> None: pass
+    def f(self, x: i64, y: i64 = 5) -> None: pass
     def ff(self, x: int) -> None: pass
 class CC(C):
-    def f(self, x: i64 = 12) -> None: pass  # Line 7
+    def f(self, x: i64 = 12, y: i64 = 5) -> None: pass  # Line 7
     def ff(self, x: int = 12) -> None: pass
 
 class D:
