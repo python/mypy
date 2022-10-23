@@ -277,3 +277,11 @@ list_slice_op = custom_op(
     c_function_name="CPyList_GetSlice",
     error_kind=ERR_MAGIC,
 )
+
+# Check that the object is a list or a subclass of list
+check_list = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyList_Check",
+    error_kind=ERR_NEVER,
+)

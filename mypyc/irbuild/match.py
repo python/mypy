@@ -9,6 +9,7 @@ from mypy.patterns import (
     OrPattern,
     MappingPattern,
     SingletonPattern,
+    SequencePattern,
     ValuePattern,
 )
 from mypy.traverser import TraverserVisitor
@@ -21,6 +22,7 @@ from mypyc.primitives.misc_ops import (
     dict_del_item,
     slow_isinstance_op,
 )
+from mypyc.primitives.list_ops import check_list
 from mypyc.irbuild.builder import IRBuilder
 
 class MatchVisitor(TraverserVisitor):
@@ -230,6 +232,15 @@ class MatchVisitor(TraverserVisitor):
                 self.builder.call_c(dict_del_item, [rest, key], pattern.keys[i].line)
 
             self.builder.goto(self.code_block)
+
+    def visit_sequence_pattern(self, pattern: SequencePattern) -> None:
+        is_list = self.builder.call_c(
+            check_list,
+            [self.subject],
+            pattern.line,
+        )
+
+        self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
     def bind_as_pattern(self, value: Value, new_block: bool = False) -> None:
         if self.as_pattern and self.as_pattern.name:

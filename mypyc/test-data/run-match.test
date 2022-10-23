@@ -54,6 +54,9 @@ def f(x):
         case {}:
             print("test map final")
 
+        case []:
+            print("test sequence final")
+
         case _:
             print("test final")
 [file driver.py]
@@ -106,6 +109,9 @@ f({"test": 12, "key": "value", "abc": "123"})
 # test map final
 f({})
 
+# test sequence final
+f([])
+
 # test final
 f("")
 
@@ -131,4 +137,5 @@ test 12 (rest={})
 test 12 (rest={'key': 'value'})
 test 12 (rest={'key': 'value', 'abc': '123'})
 test map final
+test sequence final
 test final
