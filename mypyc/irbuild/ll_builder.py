@@ -936,7 +936,7 @@ class LowLevelIRBuilder:
         arg_names: Sequence[str | None],
         line: int,
         *,
-        bitmap_args: Optional[list[Value]] = None,
+        bitmap_args: list[Register] | None = None,
     ) -> Value:
         """Call a native function.
 
@@ -958,7 +958,7 @@ class LowLevelIRBuilder:
         sig: FuncSignature,
         line: int,
         *,
-        bitmap_args: list[Value] | None = None,
+        bitmap_args: list[Register] | None = None,
     ) -> list[Value]:
         """Prepare arguments for a native call.
 
