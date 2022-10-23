@@ -811,7 +811,7 @@ L0:
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    if r3 goto L1 else goto L5 :: bool
 L1:
     r4 = 'num'
     r5 = CPyObject_GetAttr(x, r4)
@@ -1023,7 +1023,7 @@ L2:
 L3:
     r9 = box(None, 1)
     return r9
-[case testing_python3_10]
+[case testMatchMappingPatternWithKeys_python3_10]
 def f(x):
     match x:
         case {"key": "value"}:

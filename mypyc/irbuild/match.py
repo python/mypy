@@ -84,6 +84,9 @@ class MatchVisitor(TraverserVisitor):
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_or_pattern(self, pattern: OrPattern) -> None:
+        backup_block = self.next_block
+        self.next_block = BasicBlock()
+
         for p in pattern.patterns:
             # Hack to ensure the as pattern is bound to each pattern in the
             # "or" pattern, but not every subpattern
@@ -94,6 +97,7 @@ class MatchVisitor(TraverserVisitor):
             self.builder.activate_block(self.next_block)
             self.next_block = BasicBlock()
 
+        self.next_block = backup_block
         self.builder.goto(self.next_block)
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:

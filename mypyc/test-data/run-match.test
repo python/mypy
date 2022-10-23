@@ -36,8 +36,8 @@ def f(x):
         case Person("alice", age=123):
             print("test 8")
 
-        # case Person("charlie", age=123 | 456):
-        #     print("test 9")
+        case Person("charlie", age=123 | 456):
+            print("test 9")
 
         case _:
             print("test final")
@@ -73,8 +73,10 @@ f("7")
 f(Person("alice", 123))
 
 # test 9
-# f(Person("charlie", 123))
-# f(Person("charlie", 456))
+f(Person("charlie", 123))
+f(Person("charlie", 456))
+
+# stopping at irbuild-match.test line 779
 
 # test final
 f("")
