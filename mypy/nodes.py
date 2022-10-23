@@ -555,8 +555,6 @@ class FuncBase(Node):
         "_fullname",
     )
 
-    __match_args__ = ("name", "type", "info")
-
     def __init__(self) -> None:
         super().__init__()
         # Type signature. This is usually CallableType or Overloaded, but it can be
@@ -724,8 +722,6 @@ class FuncItem(FuncBase):
     )
 
     __deletable__ = ("arguments", "max_pos", "min_args")
-
-    __match_args__ = ("arguments", "type", "body")
 
     def __init__(
         self,
@@ -2182,6 +2178,8 @@ class SuperExpr(Expression):
 
 class LambdaExpr(FuncItem, Expression):
     """Lambda expression"""
+
+    __match_args__ = ("arguments", "arg_names", "arg_kinds", "body")
 
     @property
     def name(self) -> str:
