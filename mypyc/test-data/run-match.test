@@ -54,6 +54,9 @@ def f(x):
         case {}:
             print("test map final")
 
+        case ["test", 13]:
+            print("test 13")
+
         case []:
             print("test sequence final")
 
@@ -109,6 +112,9 @@ f({"test": 12, "key": "value", "abc": "123"})
 # test map final
 f({})
 
+# test 13
+f(["test", 13])
+
 # test sequence final
 f([])
 
@@ -137,5 +143,6 @@ test 12 (rest={})
 test 12 (rest={'key': 'value'})
 test 12 (rest={'key': 'value', 'abc': '123'})
 test map final
+test 13
 test sequence final
 test final

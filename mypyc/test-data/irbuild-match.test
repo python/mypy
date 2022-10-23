@@ -1233,3 +1233,66 @@ L2:
 L3:
     r9 = box(None, 1)
     return r9
+[case testMatchFixedLengthSequencePattern_python3_10]
+def f(x):
+    match x:
+        case [1, 2]:
+            print("matched")
+[out]
+def f(x):
+    x :: object
+    r0 :: int32
+    r1 :: bit
+    r2 :: list
+    r3, r4, r5 :: object
+    r6 :: int32
+    r7 :: bit
+    r8 :: bool
+    r9 :: list
+    r10, r11, r12 :: object
+    r13 :: int32
+    r14 :: bit
+    r15 :: bool
+    r16 :: str
+    r17 :: object
+    r18 :: str
+    r19 :: object
+    r20 :: object[1]
+    r21 :: object_ptr
+    r22, r23 :: object
+L0:
+    r0 = PyList_Check(x)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = cast(list, x)
+    r3 = CPyList_GetItem(r2, 0)
+    r4 = object 1
+    r5 = PyObject_RichCompare(r3, r4, 2)
+    r6 = PyObject_IsTrue(r5)
+    r7 = r6 >= 0 :: signed
+    r8 = truncate r6: int32 to builtins.bool
+    if r8 goto L2 else goto L4 :: bool
+L2:
+    r9 = cast(list, x)
+    r10 = CPyList_GetItem(r9, 2)
+    r11 = object 2
+    r12 = PyObject_RichCompare(r10, r11, 2)
+    r13 = PyObject_IsTrue(r12)
+    r14 = r13 >= 0 :: signed
+    r15 = truncate r13: int32 to builtins.bool
+    if r15 goto L3 else goto L4 :: bool
+L3:
+    r16 = 'matched'
+    r17 = builtins :: module
+    r18 = 'print'
+    r19 = CPyObject_GetAttr(r17, r18)
+    r20 = [r16]
+    r21 = load_address r20
+    r22 = _PyObject_Vectorcall(r19, r21, 1, 0)
+    keep_alive r16
+    goto L5
+L4:
+L5:
+    r23 = box(None, 1)
+    return r23
