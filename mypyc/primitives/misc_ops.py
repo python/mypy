@@ -242,7 +242,7 @@ register_function = custom_op(
 # Check that object supports Mapping protocol
 check_mapping_protocol = custom_op(
     arg_types=[object_rprimitive],
-    return_type=int_rprimitive,
+    return_type=c_int_rprimitive,
     c_function_name="PyMapping_Check",
     error_kind=ERR_NEVER,
 )
@@ -258,7 +258,7 @@ dict_copy = custom_op(
 # Delete an item from a dict
 dict_del_item = custom_op(
     arg_types=[object_rprimitive, object_rprimitive],
-    return_type=int_rprimitive,
+    return_type=c_int_rprimitive,
     c_function_name="PyDict_DelItem",
     error_kind=ERR_NEG_INT,
 )

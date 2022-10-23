@@ -45,6 +45,9 @@ def f(x):
         case Person("dave", 123) as dave:
             print(f"test 10 {dave}")
 
+        case {}:
+            print("test 11")
+
         case _:
             print("test final")
 [file driver.py]
@@ -85,6 +88,9 @@ f(Person("charlie", 456))
 # test 10
 f(Person("dave", 123))
 
+# test 11
+f({})
+
 # test final
 f("")
 
@@ -104,4 +110,5 @@ test 8
 test 9
 test 9
 test 10 Person(name='dave', age=123)
+test 11
 test final
