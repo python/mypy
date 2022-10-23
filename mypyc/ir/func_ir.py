@@ -83,7 +83,7 @@ class FuncSignature:
     def real_args(self) -> tuple[RuntimeArg, ...]:
         """Return arguments without any synthetic bitmap arguments."""
         if self.num_bitmap_args:
-            return self.args[:-self.num_bitmap_args]
+            return self.args[: -self.num_bitmap_args]
         return self.args
 
     def bound_sig(self) -> "FuncSignature":
