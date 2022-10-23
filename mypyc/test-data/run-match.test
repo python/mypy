@@ -48,8 +48,11 @@ def f(x):
         case {"test": 11}:
             print("test 11")
 
+        case {"test": 12, **rest}:
+            print(f"test 12 (rest={rest})")
+
         case {}:
-            print("test final-1")
+            print("test map final")
 
         case _:
             print("test final")
@@ -91,11 +94,16 @@ f(Person("charlie", 456))
 # test 10
 f(Person("dave", 123))
 
+# test 11
+f({"test": 11})
+f({"test": 11, "some": "key"})
+
 # test 12
 f({"test": 12})
-f({"test": 12, "some": "key"})
+f({"test": 12, "key": "value"})
+f({"test": 12, "key": "value", "abc": "123"})
 
-# test final-1
+# test map final
 f({})
 
 # test final
@@ -119,5 +127,8 @@ test 9
 test 10 Person(name='dave', age=123)
 test 11
 test 11
-test final-1
+test 12 (rest={})
+test 12 (rest={'key': 'value'})
+test 12 (rest={'key': 'value', 'abc': '123'})
+test map final
 test final
