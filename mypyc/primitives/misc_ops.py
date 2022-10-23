@@ -239,11 +239,11 @@ register_function = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Check that object supports Mapping protocol
-check_mapping_protocol = custom_op(
+# Check that the object is a dict or a subclass of dict
+check_dict = custom_op(
     arg_types=[object_rprimitive],
     return_type=c_int_rprimitive,
-    c_function_name="PyMapping_Check",
+    c_function_name="PyDict_Check",
     error_kind=ERR_NEVER,
 )
 

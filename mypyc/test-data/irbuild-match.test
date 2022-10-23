@@ -998,7 +998,7 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int
+    r0 :: int32
     r1 :: bit
     r2 :: str
     r3 :: object
@@ -1008,7 +1008,7 @@ def f(x):
     r7 :: object_ptr
     r8, r9 :: object
 L0:
-    r0 = PyMapping_Check(x)
+    r0 = PyDict_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -1033,7 +1033,7 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int
+    r0 :: int32
     r1 :: bit
     r2 :: str
     r3 :: object
@@ -1050,7 +1050,7 @@ def f(x):
     r14 :: object_ptr
     r15, r16 :: object
 L0:
-    r0 = PyMapping_Check(x)
+    r0 = PyDict_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L3 :: bool
 L1:
@@ -1084,7 +1084,7 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int
+    r0 :: int32
     r1 :: bit
     r2 :: object
     r3, rest :: dict
@@ -1096,7 +1096,7 @@ def f(x):
     r9 :: object_ptr
     r10, r11 :: object
 L0:
-    r0 = PyMapping_Check(x)
+    r0 = PyDict_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L3 :: bool
 L1:
@@ -1125,7 +1125,7 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int
+    r0 :: int32
     r1 :: bit
     r2 :: str
     r3 :: object
@@ -1136,7 +1136,7 @@ def f(x):
     r8 :: bool
     r9 :: object
     r10, rest :: dict
-    r11 :: int
+    r11 :: int32
     r12 :: bit
     r13 :: str
     r14 :: object
@@ -1146,7 +1146,7 @@ def f(x):
     r18 :: object_ptr
     r19, r20 :: object
 L0:
-    r0 = PyMapping_Check(x)
+    r0 = PyDict_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L4 :: bool
 L1:

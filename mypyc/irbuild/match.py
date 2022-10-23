@@ -16,7 +16,7 @@ from mypy.types import Instance, TupleType
 
 from mypyc.primitives.generic_ops import py_getattr_op
 from mypyc.primitives.misc_ops import (
-    check_mapping_protocol,
+    check_dict,
     dict_copy,
     dict_del_item,
     slow_isinstance_op,
@@ -173,13 +173,18 @@ class MatchVisitor(TraverserVisitor):
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_mapping_pattern(self, pattern: MappingPattern) -> None:
-        is_map = self.builder.call_c(
-            check_mapping_protocol,
+        # TODO: technically this should accept any object that supports the
+        # mapping protocol, but the PyMapping_Check function returns true for
+        # string types, which is confusing. This should work for the time
+        # being, but will need to be changed at some point.
+
+        is_dict = self.builder.call_c(
+            check_dict,
             [self.subject],
             pattern.line,
         )
 
-        self.builder.add_bool_branch(is_map, self.code_block, self.next_block)
+        self.builder.add_bool_branch(is_dict, self.code_block, self.next_block)
 
         keys: list[Value] = []
 
