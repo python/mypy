@@ -1722,8 +1722,8 @@ def generate_stubs(options: Options) -> None:
             print(f"Generated {files[0]}")
         else:
             print(f"Generated files under {common_dir_prefix(files)}" + os.sep)
-        if len(ignored_py_modules):
-            print(f"Ignored {len(ignored_py_modules)} modules")
+        if ignored_py_modules:
+            print(f"Ignored {len(ignored_py_modules)} modules which regarded as vendored modules")
             if options.verbose:
                 for ignored in ignored_py_modules:
                     print(f"\tignored: {ignored.path}")
