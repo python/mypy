@@ -195,6 +195,14 @@ class MatchVisitor(TraverserVisitor):
             key_value = self.builder.accept(key)
             keys.append(key_value)
 
+            exists = self.builder.binary_op(
+                key_value, self.subject, "in", pattern.line
+            )
+
+            self.builder.add_bool_branch(exists, self.code_block, self.next_block)
+            self.builder.activate_block(self.code_block)
+            self.code_block = BasicBlock()
+
             item = self.builder.call_c(
                 dict_get_item_op,
                 [self.subject, key_value],
