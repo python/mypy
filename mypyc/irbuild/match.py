@@ -107,9 +107,9 @@ class MatchVisitor(TraverserVisitor):
             pattern.line
         )
 
-        self.bind_as_pattern(self.subject)
-
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
+
+        self.bind_as_pattern(self.subject, new_block=True)
 
         if pattern.positionals:
             node = pattern.class_ref.node
@@ -218,12 +218,19 @@ class MatchVisitor(TraverserVisitor):
 
             self.builder.goto(self.code_block)
 
-    def bind_as_pattern(self, value: Value) -> None:
+    def bind_as_pattern(self, value: Value, new_block: bool = False) -> None:
         if self.as_pattern and self.as_pattern.name:
+            if new_block:
+                self.builder.activate_block(self.code_block)
+                self.code_block = BasicBlock()
+
             target = self.builder.get_assignment_target(self.as_pattern.name)
             self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
 
             self.as_pattern = None
+
+            if new_block:
+                self.builder.goto(self.code_block)
 
     @contextmanager
     def enter_subpattern(self, subject: Value) -> Generator[None, None, None]:

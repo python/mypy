@@ -9,6 +9,9 @@ class Person:
         self.name = name
         self.age = age
 
+    def __str__(self) -> str:
+        return f"Person(name={self.name!r}, age={self.age})"
+
 
 def f(x):
     match x:
@@ -38,6 +41,9 @@ def f(x):
 
         case Person("charlie", age=123 | 456):
             print("test 9")
+
+        case Person("dave", 123) as dave:
+            print(f"test 10 {dave}")
 
         case _:
             print("test final")
@@ -76,7 +82,8 @@ f(Person("alice", 123))
 f(Person("charlie", 123))
 f(Person("charlie", 456))
 
-# stopping at irbuild-match.test line 779
+# test 10
+f(Person("dave", 123))
 
 # test final
 f("")
@@ -94,4 +101,7 @@ test 6 (num=6)
 test 7 (value=7)
 test 7 (value='7')
 test 8
+test 9
+test 9
+test 10 Person(name='dave', age=123)
 test final
