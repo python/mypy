@@ -24,6 +24,7 @@ from mypyc.primitives.misc_ops import (
     slow_isinstance_op,
 )
 from mypyc.primitives.list_ops import check_list, list_get_item_op
+from mypyc.primitives.generic_ops import generic_ssize_t_len_op
 from mypyc.irbuild.builder import IRBuilder
 
 class MatchVisitor(TraverserVisitor):
@@ -253,9 +254,27 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
+        min_len = len(pattern.patterns) - (0 if index == -1 else 1)
+
+        if min_len:
+            self.builder.activate_block(self.code_block)
+            self.code_block = BasicBlock()
+
+            actual_len = self.builder.call_c(
+                generic_ssize_t_len_op,
+                [self.subject],
+                pattern.line,
+            )
+
+            is_long_enough = self.builder.binary_op(
+                self.builder.load_int(min_len), actual_len, "<=", pattern.line
+            )
+
+            self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
+
         for i, p in enumerate(pattern.patterns):
             if i == index:
-                continue
+                break
 
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
