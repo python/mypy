@@ -211,7 +211,7 @@ MypyFile:1(
           f
           Args(
             Var(self))
-          def (self: __main__.A)
+          def (self: Self@__main__.A)
           Block:4(
             ExpressionStmt:4(
               NameExpr(self [l])))))
@@ -470,7 +470,7 @@ MypyFile:1(
         Args(
           Var(cls)
           Var(z))
-        def (cls: Type[__main__.A], z: builtins.int) -> builtins.str
+        def (cls: Type[Self@__main__.A], z: builtins.int) -> builtins.str
         Class
         Block:3(
           PassStmt:3())))))
@@ -490,7 +490,7 @@ MypyFile:1(
         f
         Args(
           Var(cls))
-        def (cls: Type[__main__.A]) -> builtins.str
+        def (cls: Type[Self@__main__.A]) -> builtins.str
         Class
         Block:3(
           PassStmt:3())))))
@@ -512,7 +512,7 @@ MypyFile:1(
         f
         Args(
           Var(self))
-        def (self: __main__.A) -> builtins.str
+        def (self: Self@__main__.A) -> builtins.str
         Property
         Block:4(
           PassStmt:4())))))

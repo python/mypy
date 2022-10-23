@@ -619,7 +619,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      def (self: __main__.c[t`1]) -> t`1
+      def (self: Self@__main__.c[t`1]) -> t`1
       Block:6(
         PassStmt:6()))))
 

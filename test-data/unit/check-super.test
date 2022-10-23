@@ -123,7 +123,7 @@ class C(B):
     def h(self, x) -> None:
         reveal_type(super(x, x).f) # N: Revealed type is "def ()"
         reveal_type(super(C, x).f) # N: Revealed type is "def ()"
-        reveal_type(super(C, type(x)).f) # N: Revealed type is "def (self: __main__.B)"
+        reveal_type(super(C, type(x)).f) # N: Revealed type is "def (self: Self@__main__.B)"
 
 [case testSuperInUnannotatedMethod]
 class C:

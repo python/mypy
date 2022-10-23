@@ -20,7 +20,7 @@ MypyFile:1(
         g
         Args(
           Var(self))
-        def (self: __main__.A) -> __main__.A
+        def (self: Self@__main__.A) -> __main__.A
         Abstract
         Block:6(
           PassStmt:6())))
@@ -30,7 +30,7 @@ MypyFile:1(
         f
         Args(
           Var(self))
-        def (self: __main__.A) -> __main__.A
+        def (self: Self@__main__.A) -> __main__.A
         Abstract
         Block:8(
           ReturnStmt:8(
@@ -86,7 +86,7 @@ MypyFile:1(
         f
         Args(
           Var(self))
-        def (self: __main__.A[T`1]) -> __main__.A[T`1]
+        def (self: Self@__main__.A[T`1]) -> __main__.A[T`1]
         Abstract
         Block:6(
           PassStmt:6())))))
@@ -113,7 +113,7 @@ MypyFile:1(
         g
         Args(
           Var(self))
-        def (self: __main__.A) -> __main__.A
+        def (self: Self@__main__.A) -> __main__.A
         Abstract
         Block:7(
           PassStmt:7())))))
