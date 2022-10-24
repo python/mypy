@@ -275,16 +275,33 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
 
+        idk = False
+        capture_end = actual_len
+
         for i, p in enumerate(pattern.patterns):
             if i == index:
-                break
+                idk = True
+                continue
 
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
+            if idk:
+                current = self.builder.binary_op(
+                    actual_len,
+                    self.builder.load_int(min_len - i + 1),
+                    "-",
+                    p.line,
+                )
+
+                capture_end = current
+
+            else:
+                current = self.builder.load_int(i)
+
             item = self.builder.call_c(
                 list_get_item_op,
-                [self.subject, self.builder.load_int(i)],
+                [self.subject, current],
                 p.line,
             )
 
@@ -302,7 +319,7 @@ class MatchVisitor(TraverserVisitor):
                 [
                     self.subject,
                     self.builder.load_int(index),
-                    actual_len,
+                    capture_end,
                 ],
                 capture.line,
             )

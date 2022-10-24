@@ -67,6 +67,9 @@ def f(x):
         case ["test", 15, *rest2]:
             print(f"test 15 ({rest2})")
 
+        case ["test", *rest3, 16]:
+            print(f"test 16 ({rest3})")
+
         case []:
             print("test sequence final")
 
@@ -136,6 +139,11 @@ f(["test", 14, "something"])
 f(["test", 15])
 f(["test", 15, "something"])
 
+# test 16
+f(["test", 16])
+f(["test", "filler", 16])
+f(["test", "more", "filler", 16])
+
 # test sequence final
 f([])
 
@@ -170,5 +178,8 @@ test 14
 test 14
 test 15 ([])
 test 15 (['something'])
+test 16 ([])
+test 16 (['filler'])
+test 16 (['more', 'filler'])
 test sequence final
 test final
