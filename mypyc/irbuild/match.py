@@ -275,18 +275,18 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
 
-        idk = False
+        on_rhs_of_star_pattern = False
         capture_end = actual_len
 
         for i, p in enumerate(pattern.patterns):
             if i == star_index:
-                idk = True
+                on_rhs_of_star_pattern = True
                 continue
 
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
-            if idk:
+            if on_rhs_of_star_pattern:
                 current = self.builder.binary_op(
                     actual_len,
                     self.builder.load_int(min_len - i + 1),
