@@ -292,7 +292,7 @@ class TypedDictAnalyzer:
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
                     )
-                    if analyzed is None or has_placeholder(analyzed):
+                    if analyzed is None:
                         return None, [], set()  # Need to defer
                     # TypedDictAnalyzer sets the AssignmentStmt type here, but
                     # NamedTupleAnalyzer doesn't and instead has semanal.py set it
@@ -304,7 +304,8 @@ class TypedDictAnalyzer:
                     #
                     # TODO: Find some way of refactoring and partially unifying
                     #       these two codepaths?
-                    stmt.type = analyzed
+                    if not has_placeholder(analyzed):
+                        stmt.type = analyzed
                     types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
