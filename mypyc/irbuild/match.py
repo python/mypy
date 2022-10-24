@@ -236,15 +236,13 @@ class MatchVisitor(TraverserVisitor):
             self.builder.goto(self.code_block)
 
     def visit_sequence_pattern(self, pattern: SequencePattern) -> None:
-        index = -1
+        index: int | None = None
         capture: NameExpr | None = None
 
         for i, p in enumerate(pattern.patterns):
             if isinstance(p, StarredPattern):
                 index = i
                 capture = p.capture
-
-        assert index in (-1, len(pattern.patterns) - 1)
 
         is_list = self.builder.call_c(
             check_list,
@@ -254,7 +252,7 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
-        min_len = len(pattern.patterns) - (0 if index == -1 else 1)
+        min_len = len(pattern.patterns) - (0 if index is None else 1)
 
         if not min_len:
             return
@@ -269,7 +267,10 @@ class MatchVisitor(TraverserVisitor):
         )
 
         is_long_enough = self.builder.binary_op(
-            self.builder.load_int(min_len), actual_len, "<=", pattern.line
+            self.builder.load_int(min_len),
+            actual_len,
+            "==" if index is None else "<=",
+            pattern.line
         )
 
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
@@ -290,7 +291,7 @@ class MatchVisitor(TraverserVisitor):
             with self.enter_subpattern(item):
                 p.accept(self)
 
-        if capture:
+        if capture and index:
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
