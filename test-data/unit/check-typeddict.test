@@ -2176,6 +2176,27 @@ Foo = TypedDict('Foo', {'camelCaseKey': str})
 value: Foo = {}  # E: Missing key "camelCaseKey" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictWithDeferredFieldTypeEval]
+from typing import Generic, TypeVar, TypedDict, NamedTuple
+
+class Foo(TypedDict):
+    # Inner[ForceDeferredEval] will be a placeholder type on first pass;
+    # confirm we infer the correct type on the second.
+    x: Outer[Inner[ForceDeferredEval]]
+
+var: Foo
+reveal_type(var)  # N: Revealed type is "TypedDict('__main__.Foo', {'x': __main__.Outer[__main__.Inner[__main__.ForceDeferredEval]]})"
+
+T1 = TypeVar("T1")
+class Outer(Generic[T1]): pass
+
+T2 = TypeVar("T2", bound=ForceDeferredEval)
+class Inner(Generic[T2]): pass
+
+class ForceDeferredEval: pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 -- Required[]
 
 [case testDoesRecognizeRequiredInTypedDictWithClass]

@@ -292,7 +292,7 @@ class TypedDictAnalyzer:
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
                     )
-                    if analyzed is None:
+                    if analyzed is None or has_placeholder(analyzed):
                         return None, [], set()  # Need to defer
                     # TypedDictAnalyzer sets the AssignmentStmt type here, but
                     # NamedTupleAnalyzer doesn't and instead has semanal.py set it
