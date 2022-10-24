@@ -236,12 +236,12 @@ class MatchVisitor(TraverserVisitor):
             self.builder.goto(self.code_block)
 
     def visit_sequence_pattern(self, pattern: SequencePattern) -> None:
-        index: int | None = None
+        star_index: int | None = None
         capture: NameExpr | None = None
 
         for i, p in enumerate(pattern.patterns):
             if isinstance(p, StarredPattern):
-                index = i
+                star_index = i
                 capture = p.capture
 
         is_list = self.builder.call_c(
@@ -252,7 +252,7 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
-        min_len = len(pattern.patterns) - (0 if index is None else 1)
+        min_len = len(pattern.patterns) - (0 if star_index is None else 1)
 
         if not min_len:
             return
@@ -267,9 +267,9 @@ class MatchVisitor(TraverserVisitor):
         )
 
         is_long_enough = self.builder.binary_op(
-            self.builder.load_int(min_len),
             actual_len,
-            "==" if index is None else "<=",
+            self.builder.load_int(min_len),
+            "==" if star_index is None else ">=",
             pattern.line
         )
 
@@ -279,7 +279,7 @@ class MatchVisitor(TraverserVisitor):
         capture_end = actual_len
 
         for i, p in enumerate(pattern.patterns):
-            if i == index:
+            if i == star_index:
                 idk = True
                 continue
 
@@ -308,13 +308,13 @@ class MatchVisitor(TraverserVisitor):
             with self.enter_subpattern(item):
                 p.accept(self)
 
-        if capture and index is not None:
+        if capture and star_index is not None:
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
             target = self.builder.get_assignment_target(capture)
 
-            if index == 0:
+            if star_index == 0:
                 capture_end = self.builder.binary_op(
                     capture_end,
                     self.builder.load_int(1),
@@ -326,7 +326,7 @@ class MatchVisitor(TraverserVisitor):
                 list_slice_op,
                 [
                     self.subject,
-                    self.builder.load_int(index),
+                    self.builder.load_int(star_index),
                     capture_end,
                 ],
                 capture.line,

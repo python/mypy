@@ -1269,7 +1269,7 @@ L0:
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
-    r4 = 2 == r2
+    r4 = r2 == 2
     if r4 goto L2 else goto L5 :: bool
 L2:
     r5 = cast(list, x)
@@ -1339,7 +1339,7 @@ L0:
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
-    r4 = 2 <= r2 :: signed
+    r4 = r2 >= 2 :: signed
     if r4 goto L2 else goto L5 :: bool
 L2:
     r5 = cast(list, x)
@@ -1413,7 +1413,7 @@ L0:
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
-    r4 = 2 <= r2 :: signed
+    r4 = r2 >= 2 :: signed
     if r4 goto L2 else goto L10 :: bool
 L2:
     r5 = cast(list, x)
@@ -1511,7 +1511,7 @@ L0:
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
-    r4 = 2 <= r2 :: signed
+    r4 = r2 >= 2 :: signed
     if r4 goto L2 else goto L14 :: bool
 L2:
     r5 = cast(list, x)
@@ -1623,7 +1623,7 @@ L0:
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
-    r4 = 2 <= r2 :: signed
+    r4 = r2 >= 2 :: signed
     if r4 goto L2 else goto L18 :: bool
 L2:
     r5 = r2 - 2
