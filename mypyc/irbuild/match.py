@@ -308,11 +308,19 @@ class MatchVisitor(TraverserVisitor):
             with self.enter_subpattern(item):
                 p.accept(self)
 
-        if capture and index:
+        if capture and index is not None:
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
             target = self.builder.get_assignment_target(capture)
+
+            if index == 0:
+                capture_end = self.builder.binary_op(
+                    capture_end,
+                    self.builder.load_int(1),
+                    "-",
+                    pattern.patterns[0].line,
+                )
 
             rest = self.builder.call_c(
                 list_slice_op,

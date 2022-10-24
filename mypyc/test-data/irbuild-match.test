@@ -1576,3 +1576,130 @@ L14:
 L15:
     r39 = box(None, 1)
     return r39
+[case testMatchSequenceWithStarPatternAtTheStart_python3_10]
+def f(x):
+    match x:
+        case [*rest, 1, 2]:
+            print("matched")
+[out]
+def f(x):
+    x :: object
+    r0 :: int32
+    r1 :: bit
+    r2 :: native_int
+    r3, r4 :: bit
+    r5 :: native_int
+    r6 :: list
+    r7, r8 :: bit
+    r9, r10, r11 :: int
+    r12, r13, r14 :: object
+    r15 :: int32
+    r16 :: bit
+    r17 :: bool
+    r18 :: native_int
+    r19 :: list
+    r20, r21 :: bit
+    r22, r23, r24 :: int
+    r25, r26, r27 :: object
+    r28 :: int32
+    r29 :: bit
+    r30 :: bool
+    r31 :: native_int
+    r32 :: list
+    r33, r34 :: bit
+    r35, r36, r37 :: int
+    r38, rest :: object
+    r39 :: str
+    r40 :: object
+    r41 :: str
+    r42 :: object
+    r43 :: object[1]
+    r44 :: object_ptr
+    r45, r46 :: object
+L0:
+    r0 = PyList_Check(x)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L18 :: bool
+L1:
+    r2 = PyObject_Size(x)
+    r3 = r2 >= 0 :: signed
+    r4 = 2 <= r2 :: signed
+    if r4 goto L2 else goto L18 :: bool
+L2:
+    r5 = r2 - 2
+    r6 = cast(list, x)
+    r7 = r5 <= 4611686018427387903 :: signed
+    if r7 goto L3 else goto L4 :: bool
+L3:
+    r8 = r5 >= -4611686018427387904 :: signed
+    if r8 goto L5 else goto L4 :: bool
+L4:
+    r9 = CPyTagged_FromInt64(r5)
+    r10 = r9
+    goto L6
+L5:
+    r11 = r5 << 1
+    r10 = r11
+L6:
+    r12 = CPyList_GetItem(r6, r10)
+    r13 = object 1
+    r14 = PyObject_RichCompare(r12, r13, 2)
+    r15 = PyObject_IsTrue(r14)
+    r16 = r15 >= 0 :: signed
+    r17 = truncate r15: int32 to builtins.bool
+    if r17 goto L7 else goto L18 :: bool
+L7:
+    r18 = r2 - 1
+    r19 = cast(list, x)
+    r20 = r18 <= 4611686018427387903 :: signed
+    if r20 goto L8 else goto L9 :: bool
+L8:
+    r21 = r18 >= -4611686018427387904 :: signed
+    if r21 goto L10 else goto L9 :: bool
+L9:
+    r22 = CPyTagged_FromInt64(r18)
+    r23 = r22
+    goto L11
+L10:
+    r24 = r18 << 1
+    r23 = r24
+L11:
+    r25 = CPyList_GetItem(r19, r23)
+    r26 = object 2
+    r27 = PyObject_RichCompare(r25, r26, 2)
+    r28 = PyObject_IsTrue(r27)
+    r29 = r28 >= 0 :: signed
+    r30 = truncate r28: int32 to builtins.bool
+    if r30 goto L12 else goto L18 :: bool
+L12:
+    r31 = r18 - 1
+    r32 = cast(list, x)
+    r33 = r31 <= 4611686018427387903 :: signed
+    if r33 goto L13 else goto L14 :: bool
+L13:
+    r34 = r31 >= -4611686018427387904 :: signed
+    if r34 goto L15 else goto L14 :: bool
+L14:
+    r35 = CPyTagged_FromInt64(r31)
+    r36 = r35
+    goto L16
+L15:
+    r37 = r31 << 1
+    r36 = r37
+L16:
+    r38 = CPyList_GetSlice(r32, 0, r36)
+    rest = r38
+L17:
+    r39 = 'matched'
+    r40 = builtins :: module
+    r41 = 'print'
+    r42 = CPyObject_GetAttr(r40, r41)
+    r43 = [r39]
+    r44 = load_address r43
+    r45 = _PyObject_Vectorcall(r42, r44, 1, 0)
+    keep_alive r39
+    goto L19
+L18:
+L19:
+    r46 = box(None, 1)
+    return r46
