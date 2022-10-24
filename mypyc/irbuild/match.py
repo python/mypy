@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from typing import Generator
 
-from mypy.nodes import MatchStmt, TypeInfo
+from mypy.nodes import MatchStmt, NameExpr, TypeInfo
 from mypyc.ir.ops import Value, BasicBlock
 from mypy.patterns import (
     AsPattern,
@@ -23,7 +23,7 @@ from mypyc.primitives.misc_ops import (
     dict_del_item,
     slow_isinstance_op,
 )
-from mypyc.primitives.list_ops import check_list, list_get_item_op
+from mypyc.primitives.list_ops import check_list, list_get_item_op, list_slice_op
 from mypyc.primitives.generic_ops import generic_ssize_t_len_op
 from mypyc.irbuild.builder import IRBuilder
 
@@ -237,12 +237,12 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_sequence_pattern(self, pattern: SequencePattern) -> None:
         index = -1
+        capture: NameExpr | None = None
 
         for i, p in enumerate(pattern.patterns):
             if isinstance(p, StarredPattern):
                 index = i
-
-                assert not p.capture
+                capture = p.capture
 
         assert index in (-1, len(pattern.patterns) - 1)
 
@@ -256,21 +256,23 @@ class MatchVisitor(TraverserVisitor):
 
         min_len = len(pattern.patterns) - (0 if index == -1 else 1)
 
-        if min_len:
-            self.builder.activate_block(self.code_block)
-            self.code_block = BasicBlock()
+        if not min_len:
+            return
 
-            actual_len = self.builder.call_c(
-                generic_ssize_t_len_op,
-                [self.subject],
-                pattern.line,
-            )
+        self.builder.activate_block(self.code_block)
+        self.code_block = BasicBlock()
 
-            is_long_enough = self.builder.binary_op(
-                self.builder.load_int(min_len), actual_len, "<=", pattern.line
-            )
+        actual_len = self.builder.call_c(
+            generic_ssize_t_len_op,
+            [self.subject],
+            pattern.line,
+        )
 
-            self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
+        is_long_enough = self.builder.binary_op(
+            self.builder.load_int(min_len), actual_len, "<=", pattern.line
+        )
+
+        self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
 
         for i, p in enumerate(pattern.patterns):
             if i == index:
@@ -287,6 +289,26 @@ class MatchVisitor(TraverserVisitor):
 
             with self.enter_subpattern(item):
                 p.accept(self)
+
+        if capture:
+            self.builder.activate_block(self.code_block)
+            self.code_block = BasicBlock()
+
+            target = self.builder.get_assignment_target(capture)
+
+            rest = self.builder.call_c(
+                list_slice_op,
+                [
+                    self.subject,
+                    self.builder.load_int(index),
+                    actual_len,
+                ],
+                capture.line,
+            )
+
+            self.builder.assign(target, rest, capture.line)
+
+            self.builder.goto(self.code_block)
 
     def bind_as_pattern(self, value: Value, new_block: bool = False) -> None:
         if self.as_pattern and self.as_pattern.name:

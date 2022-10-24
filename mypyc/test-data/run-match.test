@@ -60,6 +60,10 @@ def f(x):
         case ["test", 14, *_]:
             print("test 14")
 
+        # TODO: Fix "rest" being used here coliding with above "rest"
+        case ["test", 15, *rest2]:
+            print(f"test 15 ({rest2})")
+
         case []:
             print("test sequence final")
 
@@ -122,6 +126,10 @@ f(["test", 13])
 f(["test", 14])
 f(["test", 14, "something"])
 
+# test 15
+f(["test", 15])
+f(["test", 15, "something"])
+
 # test sequence final
 f([])
 
@@ -153,5 +161,7 @@ test map final
 test 13
 test 14
 test 14
+test 15 ([])
+test 15 (['something'])
 test sequence final
 test final

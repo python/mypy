@@ -1269,7 +1269,7 @@ L0:
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
-    r4 = 2 >= r2 :: signed
+    r4 = 2 <= r2 :: signed
     if r4 goto L2 else goto L5 :: bool
 L2:
     r5 = cast(list, x)
@@ -1339,7 +1339,7 @@ L0:
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
-    r4 = 2 >= r2 :: signed
+    r4 = 2 <= r2 :: signed
     if r4 goto L2 else goto L5 :: bool
 L2:
     r5 = cast(list, x)
@@ -1373,3 +1373,94 @@ L5:
 L6:
     r26 = box(None, 1)
     return r26
+[case testMatchSequencePatternWithTrailingBoundStar_python3_10]
+def f(x):
+    match x:
+        case [1, 2, *rest]:
+            print("matched")
+[out]
+def f(x):
+    x :: object
+    r0 :: int32
+    r1 :: bit
+    r2 :: native_int
+    r3, r4 :: bit
+    r5 :: list
+    r6, r7, r8 :: object
+    r9 :: int32
+    r10 :: bit
+    r11 :: bool
+    r12 :: list
+    r13, r14, r15 :: object
+    r16 :: int32
+    r17 :: bit
+    r18 :: bool
+    r19 :: list
+    r20, r21 :: bit
+    r22, r23, r24 :: int
+    r25, rest :: object
+    r26 :: str
+    r27 :: object
+    r28 :: str
+    r29 :: object
+    r30 :: object[1]
+    r31 :: object_ptr
+    r32, r33 :: object
+L0:
+    r0 = PyList_Check(x)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L10 :: bool
+L1:
+    r2 = PyObject_Size(x)
+    r3 = r2 >= 0 :: signed
+    r4 = 2 <= r2 :: signed
+    if r4 goto L2 else goto L10 :: bool
+L2:
+    r5 = cast(list, x)
+    r6 = CPyList_GetItem(r5, 0)
+    r7 = object 1
+    r8 = PyObject_RichCompare(r6, r7, 2)
+    r9 = PyObject_IsTrue(r8)
+    r10 = r9 >= 0 :: signed
+    r11 = truncate r9: int32 to builtins.bool
+    if r11 goto L3 else goto L10 :: bool
+L3:
+    r12 = cast(list, x)
+    r13 = CPyList_GetItem(r12, 2)
+    r14 = object 2
+    r15 = PyObject_RichCompare(r13, r14, 2)
+    r16 = PyObject_IsTrue(r15)
+    r17 = r16 >= 0 :: signed
+    r18 = truncate r16: int32 to builtins.bool
+    if r18 goto L4 else goto L10 :: bool
+L4:
+    r19 = cast(list, x)
+    r20 = r2 <= 4611686018427387903 :: signed
+    if r20 goto L5 else goto L6 :: bool
+L5:
+    r21 = r2 >= -4611686018427387904 :: signed
+    if r21 goto L7 else goto L6 :: bool
+L6:
+    r22 = CPyTagged_FromInt64(r2)
+    r23 = r22
+    goto L8
+L7:
+    r24 = r2 << 1
+    r23 = r24
+L8:
+    r25 = CPyList_GetSlice(r19, 4, r23)
+    rest = r25
+L9:
+    r26 = 'matched'
+    r27 = builtins :: module
+    r28 = 'print'
+    r29 = CPyObject_GetAttr(r27, r28)
+    r30 = [r26]
+    r31 = load_address r30
+    r32 = _PyObject_Vectorcall(r29, r31, 1, 0)
+    keep_alive r26
+    goto L11
+L10:
+L11:
+    r33 = box(None, 1)
+    return r33
