@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
 
+from mypy.nodes import ARG_STAR
 from mypy.types import (
     AnyType,
     CallableType,
@@ -213,31 +214,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         assert False, "Mypy bug: unpacking must happen at a higher level"
 
     def expand_unpack(self, t: UnpackType) -> list[Type] | Instance | AnyType | None:
-        """May return either a list of types to unpack to, any, or a single
-        variable length tuple. The latter may not be valid in all contexts.
-        """
-        if isinstance(t.type, TypeVarTupleType):
-            repl = get_proper_type(self.variables.get(t.type.id, t))
-            if isinstance(repl, TupleType):
-                return repl.items
-            if isinstance(repl, TypeList):
-                return repl.items
-            elif isinstance(repl, Instance) and repl.type.fullname == "builtins.tuple":
-                return repl
-            elif isinstance(repl, AnyType):
-                # tuple[Any, ...] would be better, but we don't have
-                # the type info to construct that type here.
-                return repl
-            elif isinstance(repl, TypeVarTupleType):
-                return [UnpackType(typ=repl)]
-            elif isinstance(repl, UnpackType):
-                return [repl]
-            elif isinstance(repl, UninhabitedType):
-                return None
-            else:
-                raise NotImplementedError(f"Invalid type replacement to expand: {repl}")
-        else:
-            raise NotImplementedError(f"Invalid type to expand: {t.type}")
+        return expand_unpack_with_variables(t, self.variables)
 
     def visit_parameters(self, t: Parameters) -> Type:
         return t.copy_modified(arg_types=self.expand_types(t.arg_types))
@@ -267,8 +244,23 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
                 )
 
+        var_arg = t.var_arg()
+        if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+            expanded = self.expand_unpack(var_arg.typ)
+            # Handle other cases later.
+            assert isinstance(expanded, list)
+            assert len(expanded) == 1 and isinstance(expanded[0], UnpackType)
+            star_index = t.arg_kinds.index(ARG_STAR)
+            arg_types = (
+                self.expand_types(t.arg_types[:star_index])
+                + expanded
+                + self.expand_types(t.arg_types[star_index + 1 :])
+            )
+        else:
+            arg_types = self.expand_types(t.arg_types)
+
         return t.copy_modified(
-            arg_types=self.expand_types(t.arg_types),
+            arg_types=arg_types,
             ret_type=t.ret_type.accept(self),
             type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
         )
@@ -361,3 +353,33 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         for t in types:
             a.append(t.accept(self))
         return a
+
+
+def expand_unpack_with_variables(
+    t: UnpackType, variables: Mapping[TypeVarId, Type]
+) -> list[Type] | Instance | AnyType | None:
+    """May return either a list of types to unpack to, any, or a single
+    variable length tuple. The latter may not be valid in all contexts.
+    """
+    if isinstance(t.type, TypeVarTupleType):
+        repl = get_proper_type(variables.get(t.type.id, t))
+        if isinstance(repl, TupleType):
+            return repl.items
+        if isinstance(repl, TypeList):
+            return repl.items
+        elif isinstance(repl, Instance) and repl.type.fullname == "builtins.tuple":
+            return repl
+        elif isinstance(repl, AnyType):
+            # tuple[Any, ...] would be better, but we don't have
+            # the type info to construct that type here.
+            return repl
+        elif isinstance(repl, TypeVarTupleType):
+            return [UnpackType(typ=repl)]
+        elif isinstance(repl, UnpackType):
+            return [repl]
+        elif isinstance(repl, UninhabitedType):
+            return None
+        else:
+            raise NotImplementedError(f"Invalid type replacement to expand: {repl}")
+    else:
+        raise NotImplementedError(f"Invalid type to expand: {t.type}")
