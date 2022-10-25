@@ -17,12 +17,11 @@
 </v>
 <v t="ekr.20220526075331.1"><vh>Files</vh>
 <v t="ekr.20220531174005.1"><vh>@@clean check-default-annotations.test</vh></v>
-<v t="ekr.20220603080610.1"><vh>@@clean ekr_test.py</vh></v>
-<v t="ekr.20221004064034.2"><vh>@path C:/Repos/ekr-mypy2</vh>
 <v t="ekr.20221004064034.3"><vh>@clean conftest.py</vh>
 <v t="ekr.20221004064034.4"><vh>pytest_configure</vh></v>
 <v t="ekr.20221004064034.5"><vh>pytest_addoption</vh></v>
 </v>
+<v t="ekr.20220603080610.1"><vh>@clean ekr_test.py</vh></v>
 <v t="ekr.20221004064034.6"><vh>@clean ekr_test.py</vh>
 <v t="ekr.20221004064034.7"><vh>ekr_f_annotated</vh></v>
 <v t="ekr.20221004064034.8"><vh>ekr_f_annotated_initialized</vh></v>
@@ -35,6 +34,8 @@
 <v t="ekr.20221004064034.14"><vh>wait_background_cmd</vh></v>
 <v t="ekr.20221004064034.15"><vh>main</vh></v>
 </v>
+<v t="ekr.20221025081332.1"><vh>@clean sitecustomize.py</vh></v>
+<v t="ekr.20221025075836.1"><vh>@clean tm.cmd</vh></v>
 <v t="ekr.20221004064034.25"><vh>@path misc</vh>
 <v t="ekr.20221004064034.26"><vh>@clean analyze_cache.py</vh>
 <v t="ekr.20221004064034.27"><vh>class CacheData</vh>
@@ -5324,7 +5325,6 @@
 </v>
 </v>
 </v>
-</v>
 <v t="ekr.20220925073606.1"><vh>Recent code</vh>
 <v t="ekr.20220320050857.1"><vh>=== #12352: auto annotations</vh>
 <v t="ekr.20220620055103.1"><vh>--- COPIES</vh>
@@ -5371,13 +5371,29 @@
 </v>
 </v>
 </v>
-<v t="ekr.20221001054943.1"><vh>** To do</vh>
-<v t="ekr.20221001055237.1"><vh>** Notes</vh></v>
+<v t="ekr.20221025092126.1"><vh>Recent files</vh>
+<v t="ekr.20221004064036.791"><vh>@clean testcheck.py</vh>
+<v t="ekr.20221004064036.792"><vh>class TypeCheckSuite</vh>
+<v t="ekr.20221004064036.793"><vh>TypeCheckSuite.run_case</vh></v>
+<v t="ekr.20221004064036.794"><vh>TypeCheckSuite.run_case_once</vh></v>
+<v t="ekr.20221004064036.795"><vh>TypeCheckSuite.verify_cache</vh></v>
+<v t="ekr.20221004064036.796"><vh>TypeCheckSuite.find_error_message_paths</vh></v>
+<v t="ekr.20221004064036.797"><vh>TypeCheckSuite.find_module_files</vh></v>
+<v t="ekr.20221004064036.798"><vh>TypeCheckSuite.find_missing_cache_files</vh></v>
+<v t="ekr.20221004064036.799"><vh>TypeCheckSuite.parse_module</vh></v>
 </v>
+</v>
+<v t="ekr.20221004064034.196"></v>
+</v>
+<v t="ekr.20221001054943.1"><vh>** To do</vh></v>
 <v t="ekr.20221005074708.1"><vh>--- failure files</vh>
 <v t="ekr.20221004064034.324"></v>
 <v t="ekr.20221004064035.2471"></v>
 <v t="ekr.20221004064035.2617"></v>
+</v>
+<v t="ekr.20221025071515.1"><vh>@clean mypy-notes.md</vh>
+<v t="ekr.20221025071935.1"><vh>Ahas</vh></v>
+<v t="ekr.20221025072341.1"><vh>Running unit tests</vh></v>
 </v>
 <v t="ekr.20220930225101.1"><vh>=== Study </vh>
 <v t="ekr.20221003060449.1"><vh>--- Notes from discussions</vh>
@@ -6151,17 +6167,7 @@
 <v t="ekr.20220525082935.309"><vh>semantic_analysis_for_scc (main.py)</vh></v>
 </v>
 </v>
-<v t="ekr.20221004064036.791"><vh>@clean testcheck.py</vh>
-<v t="ekr.20221004064036.792"><vh>class TypeCheckSuite</vh>
-<v t="ekr.20221004064036.793"><vh>TypeCheckSuite.run_case</vh></v>
-<v t="ekr.20221004064036.794"><vh>TypeCheckSuite.run_case_once</vh></v>
-<v t="ekr.20221004064036.795"><vh>TypeCheckSuite.verify_cache</vh></v>
-<v t="ekr.20221004064036.796"><vh>TypeCheckSuite.find_error_message_paths</vh></v>
-<v t="ekr.20221004064036.797"><vh>TypeCheckSuite.find_module_files</vh></v>
-<v t="ekr.20221004064036.798"><vh>TypeCheckSuite.find_missing_cache_files</vh></v>
-<v t="ekr.20221004064036.799"><vh>TypeCheckSuite.parse_module</vh></v>
-</v>
-</v>
+<v t="ekr.20221004064036.794"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20220320050857.1">@language rest
@@ -22165,10 +22171,6 @@ Alignment of first line difference:
 
 @language python
 </t>
-<t tx="ekr.20221001055237.1">@language rest
-@wrap
-
-- Aha: Use Tapl for definitions &amp; ideas.</t>
 <t tx="ekr.20221003060449.1"></t>
 <t tx="ekr.20221003060506.1">@language rest
 @wrap
@@ -32375,6 +32377,11 @@ class BuildResult:
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
     extra_plugins = extra_plugins or []
+    
+    ### from leo.core import leoGlobals as g  ###
+    ### g.printObj([repr(z) for z in sources])
+    
+    ### import pdb ; pdb.set_trace()  ###
 
     try:
         result = _build(
@@ -32394,7 +32401,6 @@ class BuildResult:
 
 
 </t>
-<t tx="ekr.20221004064034.2"></t>
 <t tx="ekr.20221004064034.200">def default_flush_errors(new_messages: list[str], is_serious: bool) -&gt; None:
     messages.extend(new_messages)
 
@@ -57947,7 +57953,6 @@ MEM_PROFILE: Final = False  # If True, dump memory profile
         clean_exit: Don't hard kill the process on exit. This allows catching
             SystemExit.
     """
-    import pdb ; pdb.set_trace()  # doesn't fire for pytest
     util.check_python_version("mypy")
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
@@ -105295,6 +105300,7 @@ if sys.platform not in ("darwin", "win32"):
 
     res = None
     try:
+        ### import pdb ; pdb.set_trace()  ###
         res = build.build(sources=sources, options=options, alt_lib_path=test_temp_dir)
         a = res.errors
     except CompileError as e:
@@ -105775,5 +105781,64 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
 <t tx="ekr.20221005081520.1"></t>
 <t tx="ekr.20221005081733.1"></t>
 <t tx="ekr.20221005082302.1"></t>
+<t tx="ekr.20221025071515.1">@path C:\Users\Dev
+@language md
+
+Private (for now) mypy notes.
+
+[Markdown best practices](https://www.markdownguide.org/basic-syntax/)
+
+@others
+</t>
+<t tx="ekr.20221025071935.1">#### Ahas
+
+- Static analysis should usually suffice!
+  That's the *goal* of well-designed classes.
+  
+- Use (mypy) unit tests as a means of running code.
+  We don't usually have to know how the tests are run!
+</t>
+<t tx="ekr.20221025072341.1">#### Running unit tests
+
+- Must use pytest, not unittest.
+
+- sitecustomize.py (Python 3.10) adds ekr-mypy2 and leo-editor to sys.path.
+
+- tm.cmd runs mypy unit tests:
+
+        pytest -n0 -s --mypy-verbose --verbose -k testForcedAssignment
+
+- Use -s to suppress redirection of stdout and stderr.
+  This option shows mypy log messages and allows g.trace to be visible.
+  
+- mypy/test/data.py contains class DataDrivenTestCase(pytest.Item).
+
+- mypy/test/testcheck.py creates test cases from .test files.
+  run_case_once calls build.build.</t>
+<t tx="ekr.20221025075836.1">@path c:\scripts
+@language batch
+
+echo off
+
+cd c:\Repos\ekr-mypy2
+
+rem -s disable redirection of stdout (so g.trace works).
+
+pytest -n0 -s --mypy-verbose --verbose -k testForcedAssignment</t>
+<t tx="ekr.20221025081332.1"># Python 3.10: sitecustomize.py
+@path C:\Python\Python3.10\Lib
+import sys
+paths = (
+	r'C:\Repos\ekr-mypy2',  # The path continaing the top-level mypy directory.
+	r'C:\Repos\leo-editor',  # So mypy can import leoGlobals.
+)
+for path in paths:
+	if path not in sys.path:
+		sys.path.append(path)
+if 0:
+	print(f"\n***** {__file__}: add {path}\n")
+	for z in sys.path:
+		print(z)</t>
+<t tx="ekr.20221025092126.1"></t>
 </tnodes>
 </leo_file>
