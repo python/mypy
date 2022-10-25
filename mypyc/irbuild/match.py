@@ -294,7 +294,8 @@ class MatchVisitor(TraverserVisitor):
                     p.line,
                 )
 
-                capture_end = current
+                if star_index != 0:
+                    capture_end = current
 
             else:
                 current = self.builder.load_int(i)
@@ -316,8 +317,8 @@ class MatchVisitor(TraverserVisitor):
 
             if star_index == 0:
                 capture_end = self.builder.binary_op(
-                    capture_end,
-                    self.builder.load_int(1),
+                    actual_len,
+                    self.builder.load_int(min_len),
                     "-",
                     pattern.patterns[0].line,
                 )
