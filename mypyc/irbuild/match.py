@@ -28,6 +28,22 @@ from mypyc.primitives.list_ops import check_list, list_get_item_op, list_slice_o
 from mypyc.primitives.generic_ops import generic_ssize_t_len_op
 from mypyc.irbuild.builder import IRBuilder
 
+# From: https://peps.python.org/pep-0634/#class-patterns
+MATCHABLE_BUILTINS = {
+    "builtins.bool",
+    "builtins.bytearray",
+    "builtins.bytes",
+    "builtins.dict",
+    "builtins.float",
+    "builtins.frozenset",
+    "builtins.int",
+    "builtins.list",
+    "builtins.set",
+    "builtins.str",
+    "builtins.tuple",
+}
+
+
 class MatchVisitor(TraverserVisitor):
     builder: IRBuilder
     code_block: BasicBlock
@@ -117,6 +133,14 @@ class MatchVisitor(TraverserVisitor):
         self.bind_as_pattern(self.subject, new_block=True)
 
         if pattern.positionals:
+            if pattern.class_ref.fullname in MATCHABLE_BUILTINS:
+                self.builder.activate_block(self.code_block)
+                self.code_block = BasicBlock()
+
+                pattern.positionals[0].accept(self)
+
+                return
+
             node = pattern.class_ref.node
             assert isinstance(node, TypeInfo)
 
