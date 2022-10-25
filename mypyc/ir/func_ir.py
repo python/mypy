@@ -70,6 +70,8 @@ class FuncSignature:
     def __init__(self, args: Sequence[RuntimeArg], ret_type: RType) -> None:
         self.args = tuple(args)
         self.ret_type = ret_type
+        # Bitmap arguments are use to mark default values for arguments that
+        # have types with overlapping error values.
         self.num_bitmap_args = num_bitmap_args(self.args)
         if self.num_bitmap_args:
             extra = [
@@ -77,6 +79,12 @@ class FuncSignature:
                 for i in range(self.num_bitmap_args)
             ]
             self.args = self.args + tuple(reversed(extra))
+
+    def real_args(self) -> tuple[RuntimeArg, ...]:
+        """Return arguments without any synthetic bitmap arguments."""
+        if self.num_bitmap_args:
+            return self.args[: -self.num_bitmap_args]
+        return self.args
 
     def bound_sig(self) -> "FuncSignature":
         if self.num_bitmap_args:
