@@ -237,19 +237,7 @@ class MatchVisitor(TraverserVisitor):
             self.builder.goto(self.code_block)
 
     def visit_sequence_pattern(self, seq_pattern: SequencePattern) -> None:
-        star_index: int | None = None
-        capture: NameExpr | None = None
-        patterns: list[Pattern] = []
-
-        for i, pattern in enumerate(seq_pattern.patterns):
-            if isinstance(pattern, StarredPattern):
-                star_index = i
-                capture = pattern.capture
-
-            else:
-                patterns.append(pattern)
-
-        ###
+        star_index, capture, patterns = prep_sequence_pattern(seq_pattern)
 
         is_list = self.builder.call_c(
             check_list, [self.subject], seq_pattern.line
@@ -257,14 +245,10 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
-        ###
-
         min_len = len(patterns)
 
         if not min_len:
             return
-
-        ###
 
         self.builder.activate_block(self.code_block)
         self.code_block = BasicBlock()
@@ -283,8 +267,6 @@ class MatchVisitor(TraverserVisitor):
         )
 
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
-
-        ###
 
         for i, pattern in enumerate(patterns):
             self.builder.activate_block(self.code_block)
@@ -310,8 +292,6 @@ class MatchVisitor(TraverserVisitor):
             with self.enter_subpattern(item):
                 pattern.accept(self)
 
-        ###
-
         if capture and star_index is not None:
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
@@ -320,7 +300,7 @@ class MatchVisitor(TraverserVisitor):
                 actual_len,
                 self.builder.load_int(min_len - star_index),
                 "-",
-                patterns[0].line,
+                capture.line,
             )
 
             rest = self.builder.call_c(
@@ -365,3 +345,21 @@ class MatchVisitor(TraverserVisitor):
         self.as_pattern = pattern
         yield
         self.as_pattern = old_pattern
+
+
+def prep_sequence_pattern(seq_pattern: SequencePattern) -> tuple[
+    int | None, NameExpr | None, list[Pattern]
+]:
+    star_index: int | None = None
+    capture: NameExpr | None = None
+    patterns: list[Pattern] = []
+
+    for i, pattern in enumerate(seq_pattern.patterns):
+        if isinstance(pattern, StarredPattern):
+            star_index = i
+            capture = pattern.capture
+
+        else:
+            patterns.append(pattern)
+
+    return star_index, capture, patterns
