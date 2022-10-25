@@ -8,6 +8,7 @@ from mypy.patterns import (
     ClassPattern,
     OrPattern,
     MappingPattern,
+    Pattern,
     SingletonPattern,
     SequencePattern,
     StarredPattern,
@@ -238,25 +239,27 @@ class MatchVisitor(TraverserVisitor):
     def visit_sequence_pattern(self, seq_pattern: SequencePattern) -> None:
         star_index: int | None = None
         capture: NameExpr | None = None
+        patterns: list[Pattern] = []
 
         for i, pattern in enumerate(seq_pattern.patterns):
             if isinstance(pattern, StarredPattern):
                 star_index = i
                 capture = pattern.capture
 
+            else:
+                patterns.append(pattern)
+
         ###
 
         is_list = self.builder.call_c(
-            check_list,
-            [self.subject],
-            seq_pattern.line,
+            check_list, [self.subject], seq_pattern.line
         )
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
         ###
 
-        min_len = len(seq_pattern.patterns) - (0 if star_index is None else 1)
+        min_len = len(patterns)
 
         if not min_len:
             return
@@ -283,17 +286,14 @@ class MatchVisitor(TraverserVisitor):
 
         ###
 
-        for i, pattern in enumerate(seq_pattern.patterns):
-            if i == star_index:
-                continue
-
+        for i, pattern in enumerate(patterns):
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
-            if star_index is not None and i > star_index:
+            if star_index is not None and i >= star_index:
                 current = self.builder.binary_op(
                     actual_len,
-                    self.builder.load_int(min_len - i + 1),
+                    self.builder.load_int(min_len - i),
                     "-",
                     pattern.line,
                 )
@@ -320,7 +320,7 @@ class MatchVisitor(TraverserVisitor):
                 actual_len,
                 self.builder.load_int(min_len - star_index),
                 "-",
-                seq_pattern.patterns[0].line,
+                patterns[0].line,
             )
 
             rest = self.builder.call_c(
