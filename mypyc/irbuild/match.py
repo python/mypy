@@ -235,24 +235,24 @@ class MatchVisitor(TraverserVisitor):
 
             self.builder.goto(self.code_block)
 
-    def visit_sequence_pattern(self, pattern: SequencePattern) -> None:
+    def visit_sequence_pattern(self, seq_pattern: SequencePattern) -> None:
         star_index: int | None = None
         capture: NameExpr | None = None
 
-        for i, p in enumerate(pattern.patterns):
-            if isinstance(p, StarredPattern):
+        for i, pattern in enumerate(seq_pattern.patterns):
+            if isinstance(pattern, StarredPattern):
                 star_index = i
-                capture = p.capture
+                capture = pattern.capture
 
         is_list = self.builder.call_c(
             check_list,
             [self.subject],
-            pattern.line,
+            seq_pattern.line,
         )
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
-        min_len = len(pattern.patterns) - (0 if star_index is None else 1)
+        min_len = len(seq_pattern.patterns) - (0 if star_index is None else 1)
 
         if not min_len:
             return
@@ -263,21 +263,21 @@ class MatchVisitor(TraverserVisitor):
         actual_len = self.builder.call_c(
             generic_ssize_t_len_op,
             [self.subject],
-            pattern.line,
+            seq_pattern.line,
         )
 
         is_long_enough = self.builder.binary_op(
             actual_len,
             self.builder.load_int(min_len),
             "==" if star_index is None else ">=",
-            pattern.line
+            seq_pattern.line
         )
 
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
 
         on_rhs_of_star_pattern = False
 
-        for i, p in enumerate(pattern.patterns):
+        for i, pattern in enumerate(seq_pattern.patterns):
             if i == star_index:
                 on_rhs_of_star_pattern = True
                 continue
@@ -290,7 +290,7 @@ class MatchVisitor(TraverserVisitor):
                     actual_len,
                     self.builder.load_int(min_len - i + 1),
                     "-",
-                    p.line,
+                    pattern.line,
                 )
 
             else:
@@ -299,23 +299,21 @@ class MatchVisitor(TraverserVisitor):
             item = self.builder.call_c(
                 list_get_item_op,
                 [self.subject, current],
-                p.line,
+                pattern.line,
             )
 
             with self.enter_subpattern(item):
-                p.accept(self)
+                pattern.accept(self)
 
         if capture and star_index is not None:
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
-            target = self.builder.get_assignment_target(capture)
-
             capture_end = self.builder.binary_op(
                 actual_len,
                 self.builder.load_int(min_len - star_index),
                 "-",
-                pattern.patterns[0].line,
+                seq_pattern.patterns[0].line,
             )
 
             rest = self.builder.call_c(
@@ -328,6 +326,7 @@ class MatchVisitor(TraverserVisitor):
                 capture.line,
             )
 
+            target = self.builder.get_assignment_target(capture)
             self.builder.assign(target, rest, capture.line)
 
             self.builder.goto(self.code_block)
