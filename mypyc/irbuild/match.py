@@ -276,7 +276,6 @@ class MatchVisitor(TraverserVisitor):
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
 
         on_rhs_of_star_pattern = False
-        capture_end = actual_len
 
         for i, p in enumerate(pattern.patterns):
             if i == star_index:
@@ -293,9 +292,6 @@ class MatchVisitor(TraverserVisitor):
                     "-",
                     p.line,
                 )
-
-                if star_index != 0:
-                    capture_end = current
 
             else:
                 current = self.builder.load_int(i)
@@ -315,13 +311,12 @@ class MatchVisitor(TraverserVisitor):
 
             target = self.builder.get_assignment_target(capture)
 
-            if star_index == 0:
-                capture_end = self.builder.binary_op(
-                    actual_len,
-                    self.builder.load_int(min_len),
-                    "-",
-                    pattern.patterns[0].line,
-                )
+            capture_end = self.builder.binary_op(
+                actual_len,
+                self.builder.load_int(min_len - star_index),
+                "-",
+                pattern.patterns[0].line,
+            )
 
             rest = self.builder.call_c(
                 list_slice_op,

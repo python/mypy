@@ -1395,17 +1395,18 @@ def f(x):
     r16 :: int32
     r17 :: bit
     r18 :: bool
-    r19 :: list
-    r20, r21 :: bit
-    r22, r23, r24 :: int
-    r25, rest :: object
-    r26 :: str
-    r27 :: object
-    r28 :: str
-    r29 :: object
-    r30 :: object[1]
-    r31 :: object_ptr
-    r32, r33 :: object
+    r19 :: native_int
+    r20 :: list
+    r21, r22 :: bit
+    r23, r24, r25 :: int
+    r26, rest :: object
+    r27 :: str
+    r28 :: object
+    r29 :: str
+    r30 :: object
+    r31 :: object[1]
+    r32 :: object_ptr
+    r33, r34 :: object
 L0:
     r0 = PyList_Check(x)
     r1 = r0 != 0
@@ -1434,36 +1435,37 @@ L3:
     r18 = truncate r16: int32 to builtins.bool
     if r18 goto L4 else goto L10 :: bool
 L4:
-    r19 = cast(list, x)
-    r20 = r2 <= 4611686018427387903 :: signed
-    if r20 goto L5 else goto L6 :: bool
+    r19 = r2 - 0
+    r20 = cast(list, x)
+    r21 = r19 <= 4611686018427387903 :: signed
+    if r21 goto L5 else goto L6 :: bool
 L5:
-    r21 = r2 >= -4611686018427387904 :: signed
-    if r21 goto L7 else goto L6 :: bool
+    r22 = r19 >= -4611686018427387904 :: signed
+    if r22 goto L7 else goto L6 :: bool
 L6:
-    r22 = CPyTagged_FromInt64(r2)
-    r23 = r22
+    r23 = CPyTagged_FromInt64(r19)
+    r24 = r23
     goto L8
 L7:
-    r24 = r2 << 1
-    r23 = r24
+    r25 = r19 << 1
+    r24 = r25
 L8:
-    r25 = CPyList_GetSlice(r19, 4, r23)
-    rest = r25
+    r26 = CPyList_GetSlice(r20, 4, r24)
+    rest = r26
 L9:
-    r26 = 'matched'
-    r27 = builtins :: module
-    r28 = 'print'
-    r29 = CPyObject_GetAttr(r27, r28)
-    r30 = [r26]
-    r31 = load_address r30
-    r32 = _PyObject_Vectorcall(r29, r31, 1, 0)
-    keep_alive r26
+    r27 = 'matched'
+    r28 = builtins :: module
+    r29 = 'print'
+    r30 = CPyObject_GetAttr(r28, r29)
+    r31 = [r27]
+    r32 = load_address r31
+    r33 = _PyObject_Vectorcall(r30, r32, 1, 0)
+    keep_alive r27
     goto L11
 L10:
 L11:
-    r33 = box(None, 1)
-    return r33
+    r34 = box(None, 1)
+    return r34
 [case testMatchSequenceWithStarPatternInTheMiddle_python3_10]
 def f(x):
     match x:
@@ -1493,17 +1495,18 @@ def f(x):
     r22 :: int32
     r23 :: bit
     r24 :: bool
-    r25 :: list
-    r26, r27 :: bit
-    r28, r29, r30 :: int
-    r31, rest :: object
-    r32 :: str
-    r33 :: object
-    r34 :: str
-    r35 :: object
-    r36 :: object[1]
-    r37 :: object_ptr
-    r38, r39 :: object
+    r25 :: native_int
+    r26 :: list
+    r27, r28 :: bit
+    r29, r30, r31 :: int
+    r32, rest :: object
+    r33 :: str
+    r34 :: object
+    r35 :: str
+    r36 :: object
+    r37 :: object[1]
+    r38 :: object_ptr
+    r39, r40 :: object
 L0:
     r0 = PyList_Check(x)
     r1 = r0 != 0
@@ -1546,36 +1549,37 @@ L7:
     r24 = truncate r22: int32 to builtins.bool
     if r24 goto L8 else goto L14 :: bool
 L8:
-    r25 = cast(list, x)
-    r26 = r12 <= 4611686018427387903 :: signed
-    if r26 goto L9 else goto L10 :: bool
+    r25 = r2 - 1
+    r26 = cast(list, x)
+    r27 = r25 <= 4611686018427387903 :: signed
+    if r27 goto L9 else goto L10 :: bool
 L9:
-    r27 = r12 >= -4611686018427387904 :: signed
-    if r27 goto L11 else goto L10 :: bool
+    r28 = r25 >= -4611686018427387904 :: signed
+    if r28 goto L11 else goto L10 :: bool
 L10:
-    r28 = CPyTagged_FromInt64(r12)
-    r29 = r28
+    r29 = CPyTagged_FromInt64(r25)
+    r30 = r29
     goto L12
 L11:
-    r30 = r12 << 1
-    r29 = r30
+    r31 = r25 << 1
+    r30 = r31
 L12:
-    r31 = CPyList_GetSlice(r25, 2, r29)
-    rest = r31
+    r32 = CPyList_GetSlice(r26, 2, r30)
+    rest = r32
 L13:
-    r32 = 'matched'
-    r33 = builtins :: module
-    r34 = 'print'
-    r35 = CPyObject_GetAttr(r33, r34)
-    r36 = [r32]
-    r37 = load_address r36
-    r38 = _PyObject_Vectorcall(r35, r37, 1, 0)
-    keep_alive r32
+    r33 = 'matched'
+    r34 = builtins :: module
+    r35 = 'print'
+    r36 = CPyObject_GetAttr(r34, r35)
+    r37 = [r33]
+    r38 = load_address r37
+    r39 = _PyObject_Vectorcall(r36, r38, 1, 0)
+    keep_alive r33
     goto L15
 L14:
 L15:
-    r39 = box(None, 1)
-    return r39
+    r40 = box(None, 1)
+    return r40
 [case testMatchSequenceWithStarPatternAtTheStart_python3_10]
 def f(x):
     match x:
@@ -1672,7 +1676,7 @@ L11:
     r30 = truncate r28: int32 to builtins.bool
     if r30 goto L12 else goto L18 :: bool
 L12:
-    r31 = r18 - 1
+    r31 = r2 - 2
     r32 = cast(list, x)
     r33 = r31 <= 4611686018427387903 :: signed
     if r33 goto L13 else goto L14 :: bool
