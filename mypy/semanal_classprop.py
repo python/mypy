@@ -165,15 +165,9 @@ def add_type_promotion(
     if not promote_targets:
         if defn.fullname in TYPE_PROMOTIONS:
             target_sym = module_names.get(TYPE_PROMOTIONS[defn.fullname])
-            if (
-                defn.fullname == "builtins.bytearray"
-                and options.disable_bytearray_promotion
-            ):
+            if defn.fullname == "builtins.bytearray" and options.disable_bytearray_promotion:
                 target_sym = None
-            elif (
-                defn.fullname == "builtins.memoryview"
-                and options.disable_memoryview_promotion
-            ):
+            elif defn.fullname == "builtins.memoryview" and options.disable_memoryview_promotion:
                 target_sym = None
             # With test stubs, the target may not exist.
             if target_sym:
