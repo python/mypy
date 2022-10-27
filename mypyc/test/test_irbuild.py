@@ -45,7 +45,7 @@ files = [
     # "irbuild-dunders.test",
     # "irbuild-singledispatch.test",
     # "irbuild-constant-fold.test",
-    "irbuild-match.test",
+    "irbuild-match.test"
 ]
 
 

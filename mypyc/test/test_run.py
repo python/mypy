@@ -62,7 +62,7 @@ files = [
     # "run-dunders.test",
     # "run-singledispatch.test",
     # "run-attrs.test",
-    "run-match.test",
+    "run-match.test"
 ]
 
 files.append("run-python37.test")

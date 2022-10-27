@@ -18,12 +18,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, TupleType
 
 from mypyc.primitives.dict_ops import dict_get_item_op
-from mypyc.primitives.misc_ops import (
-    check_dict,
-    dict_copy,
-    dict_del_item,
-    slow_isinstance_op,
-)
+from mypyc.primitives.misc_ops import check_dict, dict_copy, dict_del_item, slow_isinstance_op
 from mypyc.primitives.list_ops import check_list, list_get_item_op, list_slice_op
 from mypyc.primitives.generic_ops import generic_ssize_t_len_op
 from mypyc.irbuild.builder import IRBuilder
@@ -93,12 +88,7 @@ class MatchVisitor(TraverserVisitor):
     def visit_value_pattern(self, pattern: ValuePattern) -> None:
         value = self.builder.accept(pattern.expr)
 
-        cond = self.builder.binary_op(
-            self.subject,
-            value,
-            "==",
-            pattern.expr.line
-        )
+        cond = self.builder.binary_op(self.subject, value, "==", pattern.expr.line)
 
         self.bind_as_pattern(value)
 
@@ -125,7 +115,7 @@ class MatchVisitor(TraverserVisitor):
         cond = self.builder.call_c(
             slow_isinstance_op,
             [self.subject, self.builder.accept(pattern.class_ref)],
-            pattern.line
+            pattern.line,
         )
 
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
@@ -161,9 +151,7 @@ class MatchVisitor(TraverserVisitor):
                 self.builder.activate_block(self.code_block)
                 self.code_block = BasicBlock()
 
-                value = self.builder.py_get_attr(
-                    self.subject, match_args[i], expr.line
-                )
+                value = self.builder.py_get_attr(self.subject, match_args[i], expr.line)
 
                 with self.enter_subpattern(value):
                     expr.accept(self)
@@ -209,11 +197,7 @@ class MatchVisitor(TraverserVisitor):
         # string types, which is confusing. This should work for the time
         # being, but will need to be changed at some point.
 
-        is_dict = self.builder.call_c(
-            check_dict,
-            [self.subject],
-            pattern.line,
-        )
+        is_dict = self.builder.call_c(check_dict, [self.subject], pattern.line)
 
         self.builder.add_bool_branch(is_dict, self.code_block, self.next_block)
 
@@ -226,19 +210,13 @@ class MatchVisitor(TraverserVisitor):
             key_value = self.builder.accept(key)
             keys.append(key_value)
 
-            exists = self.builder.binary_op(
-                key_value, self.subject, "in", pattern.line
-            )
+            exists = self.builder.binary_op(key_value, self.subject, "in", pattern.line)
 
             self.builder.add_bool_branch(exists, self.code_block, self.next_block)
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
-            item = self.builder.call_c(
-                dict_get_item_op,
-                [self.subject, key_value],
-                pattern.line
-            )
+            item = self.builder.call_c(dict_get_item_op, [self.subject, key_value], pattern.line)
 
             with self.enter_subpattern(item):
                 value.accept(self)
@@ -247,11 +225,7 @@ class MatchVisitor(TraverserVisitor):
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
-            rest = self.builder.call_c(
-                dict_copy,
-                [self.subject],
-                pattern.rest.line,
-            )
+            rest = self.builder.call_c(dict_copy, [self.subject], pattern.rest.line)
 
             target = self.builder.get_assignment_target(pattern.rest)
 
@@ -265,9 +239,7 @@ class MatchVisitor(TraverserVisitor):
     def visit_sequence_pattern(self, seq_pattern: SequencePattern) -> None:
         star_index, capture, patterns = prep_sequence_pattern(seq_pattern)
 
-        is_list = self.builder.call_c(
-            check_list, [self.subject], seq_pattern.line
-        )
+        is_list = self.builder.call_c(check_list, [self.subject], seq_pattern.line)
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
@@ -279,17 +251,13 @@ class MatchVisitor(TraverserVisitor):
         self.builder.activate_block(self.code_block)
         self.code_block = BasicBlock()
 
-        actual_len = self.builder.call_c(
-            generic_ssize_t_len_op,
-            [self.subject],
-            seq_pattern.line,
-        )
+        actual_len = self.builder.call_c(generic_ssize_t_len_op, [self.subject], seq_pattern.line)
 
         is_long_enough = self.builder.binary_op(
             actual_len,
             self.builder.load_int(min_len),
             "==" if star_index is None else ">=",
-            seq_pattern.line
+            seq_pattern.line,
         )
 
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
@@ -300,20 +268,13 @@ class MatchVisitor(TraverserVisitor):
 
             if star_index is not None and i >= star_index:
                 current = self.builder.binary_op(
-                    actual_len,
-                    self.builder.load_int(min_len - i),
-                    "-",
-                    pattern.line,
+                    actual_len, self.builder.load_int(min_len - i), "-", pattern.line
                 )
 
             else:
                 current = self.builder.load_int(i)
 
-            item = self.builder.call_c(
-                list_get_item_op,
-                [self.subject, current],
-                pattern.line,
-            )
+            item = self.builder.call_c(list_get_item_op, [self.subject, current], pattern.line)
 
             with self.enter_subpattern(item):
                 pattern.accept(self)
@@ -323,19 +284,12 @@ class MatchVisitor(TraverserVisitor):
             self.code_block = BasicBlock()
 
             capture_end = self.builder.binary_op(
-                actual_len,
-                self.builder.load_int(min_len - star_index),
-                "-",
-                capture.line,
+                actual_len, self.builder.load_int(min_len - star_index), "-", capture.line
             )
 
             rest = self.builder.call_c(
                 list_slice_op,
-                [
-                    self.subject,
-                    self.builder.load_int(star_index),
-                    capture_end,
-                ],
+                [self.subject, self.builder.load_int(star_index), capture_end],
                 capture.line,
             )
 
@@ -366,9 +320,9 @@ class MatchVisitor(TraverserVisitor):
         self.subject = old_subject
 
 
-def prep_sequence_pattern(seq_pattern: SequencePattern) -> tuple[
-    int | None, NameExpr | None, list[Pattern]
-]:
+def prep_sequence_pattern(
+    seq_pattern: SequencePattern,
+) -> tuple[int | None, NameExpr | None, list[Pattern]]:
     star_index: int | None = None
     capture: NameExpr | None = None
     patterns: list[Pattern] = []
