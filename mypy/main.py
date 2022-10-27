@@ -1121,6 +1121,12 @@ def process_options(
     parser.add_argument(
         "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
     )
+    parser.add_argument(
+        "--disable-bytearray-promotion", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
+    )
 
     # options specifying code to check
     code_group = parser.add_argument_group(
