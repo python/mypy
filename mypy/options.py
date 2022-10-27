@@ -62,8 +62,8 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "platform",
         "bazel",
         "plugins",
-        "_disable_bytearray_promotion",
-        "_disable_memoryview_promotion",
+        "disable_bytearray_promotion",
+        "disable_memoryview_promotion",
     }
 ) - {"debug_cache"}
 
@@ -336,8 +336,8 @@ class Options:
         # Deprecated reverse version of the above, do not use.
         self.enable_recursive_aliases = False
 
-        self._disable_bytearray_promotion = False
-        self._disable_memoryview_promotion = False
+        self.disable_bytearray_promotion = False
+        self.disable_memoryview_promotion = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

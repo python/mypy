@@ -1122,10 +1122,10 @@ def process_options(
         "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
     )
     parser.add_argument(
-        "--_disable-bytearray-promotion", action="store_true", help=argparse.SUPPRESS
+        "--disable-bytearray-promotion", action="store_true", help=argparse.SUPPRESS
     )
     parser.add_argument(
-        "--_disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
+        "--disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
     )
 
     # options specifying code to check
