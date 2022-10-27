@@ -82,6 +82,9 @@ def f(x):
         case str(test_20) if test_20.startswith("test 20"):
             print(f"test 20 ({test_20[7:]!r})")
 
+        case ("test 21" as value) | ("test 21 as well" as value):
+            print(f"test 21 ({value[7:]!r})")
+
         case []:
             print("test sequence final")
 
@@ -173,6 +176,10 @@ f("test 19")
 f("test 20")
 f("test 20 something else")
 
+# test 21
+f("test 21")
+f("test 21 as well")
+
 # test sequence final
 f([])
 
@@ -219,5 +226,7 @@ test 18 (['more', 'stuff'])
 test 19
 test 20 ('')
 test 20 (' something else')
+test 21 ('')
+test 21 (' as well')
 test sequence final
 test final
