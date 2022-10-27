@@ -238,27 +238,3 @@ register_function = custom_op(
     c_function_name="CPySingledispatch_RegisterFunction",
     error_kind=ERR_MAGIC,
 )
-
-# Check that the object is a dict or a subclass of dict
-check_dict = custom_op(
-    arg_types=[object_rprimitive],
-    return_type=c_int_rprimitive,
-    c_function_name="PyDict_Check",
-    error_kind=ERR_NEVER,
-)
-
-# Copy an object into a dict
-dict_copy = custom_op(
-    arg_types=[object_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="PyDict_Copy",
-    error_kind=ERR_NEVER,
-)
-
-# Delete an item from a dict
-dict_del_item = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive],
-    return_type=c_int_rprimitive,
-    c_function_name="PyDict_DelItem",
-    error_kind=ERR_NEG_INT,
-)

@@ -17,8 +17,8 @@ from mypy.patterns import (
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, TupleType
 
-from mypyc.primitives.dict_ops import dict_get_item_op
-from mypyc.primitives.misc_ops import check_dict, dict_copy, dict_del_item, slow_isinstance_op
+from mypyc.primitives.dict_ops import check_dict, dict_copy, dict_del_item, dict_get_item_op
+from mypyc.primitives.misc_ops import slow_isinstance_op
 from mypyc.primitives.list_ops import check_list, list_get_item_op, list_slice_op
 from mypyc.primitives.generic_ops import generic_ssize_t_len_op
 from mypyc.irbuild.builder import IRBuilder
