@@ -6656,6 +6656,8 @@ def builtin_item_type(tp: Type) -> Type | None:
             "builtins.dict",
             "builtins.set",
             "builtins.frozenset",
+            "_collections_abc.dict_keys",
+            "typing.KeysView",
         ]:
             if not tp.args:
                 # TODO: fix tuple in lib-stub/builtins.pyi (it should be generic).
