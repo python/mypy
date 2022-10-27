@@ -179,8 +179,10 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
         if pattern.pattern:
-            with self.enter_as_pattern(pattern):
-                pattern.pattern.accept(self)
+            old_pattern = self.as_pattern
+            self.as_pattern = pattern
+            pattern.pattern.accept(self)
+            self.as_pattern = old_pattern
 
         elif pattern.name:
             target = self.builder.get_assignment_target(pattern.name)
@@ -343,13 +345,13 @@ class MatchVisitor(TraverserVisitor):
             self.builder.goto(self.code_block)
 
     def bind_as_pattern(self, value: Value, new_block: bool = False) -> None:
-        if self.as_pattern and self.as_pattern.name:
+        if self.as_pattern and self.as_pattern.pattern and self.as_pattern.name:
             if new_block:
                 self.builder.activate_block(self.code_block)
                 self.code_block = BasicBlock()
 
             target = self.builder.get_assignment_target(self.as_pattern.name)
-            self.builder.assign(target, value, self.as_pattern.pattern.line)  # type: ignore
+            self.builder.assign(target, value, self.as_pattern.pattern.line)
 
             self.as_pattern = None
 
@@ -362,13 +364,6 @@ class MatchVisitor(TraverserVisitor):
         self.subject = subject
         yield
         self.subject = old_subject
-
-    @contextmanager
-    def enter_as_pattern(self, pattern: AsPattern) -> Generator[None, None, None]:
-        old_pattern = self.as_pattern
-        self.as_pattern = pattern
-        yield
-        self.as_pattern = old_pattern
 
 
 def prep_sequence_pattern(seq_pattern: SequencePattern) -> tuple[
