@@ -116,7 +116,7 @@ class StubgenCmdLineSuite(unittest.TestCase):
                 os.chdir(current)
 
     @unittest.skipIf(sys.platform == "win32", "clean up fails on Windows")
-    def test_module_not_found(self) -> None:
+    def test_module_found(self) -> None:
         current = os.getcwd()
         captured_output = io.StringIO()
         sys.stdout = captured_output
@@ -127,6 +127,10 @@ class StubgenCmdLineSuite(unittest.TestCase):
                 opts = parse_options(["-m", "mymodule"])
                 py_mods, c_mods, ignored_py_mods = collect_build_targets(opts, mypy_options(opts))
                 assert captured_output.getvalue() == ""
+                files = {os.path.relpath(mod.path or "FAIL") for mod in py_mods}
+                assert_equal(files, {"mymodule.py"})
+                assert_equal(c_mods, [])
+                assert_equal(ignored_py_mods, [])
             finally:
                 sys.stdout = sys.__stdout__
                 os.chdir(current)
