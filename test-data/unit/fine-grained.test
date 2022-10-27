@@ -2378,7 +2378,7 @@ class B:
     x: int
 [out]
 ==
-a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[D, B], B]"; expected "Callable[..., str]"
+a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[Self, B], B]"; expected "Callable[..., str]"
 ==
 a.py:7: error: "B" has no attribute "x"
 ==
@@ -2429,7 +2429,7 @@ class C:
         pass
 [out]
 ==
-a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "Callable[[Inner, int], int]"; expected "Callable[..., str]"
+a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "Callable[[Self, int], int]"; expected "Callable[..., str]"
 
 [case testDecoratorUpdateClassInFunction]
 import a
@@ -2465,7 +2465,7 @@ class B:
     x: str
 [out]
 ==
-a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "Callable[[Inner, B], int]"; expected "Callable[..., str]"
+a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "Callable[[Self, B], int]"; expected "Callable[..., str]"
 ==
 a.py:8: error: Incompatible return value type (got "str", expected "int")
 

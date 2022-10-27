@@ -7022,7 +7022,7 @@ class C:
     def meth(cls): ...
 
 reveal_type(C.meth)  # N: Revealed type is "def () -> Any"
-reveal_type(C.__new__)  # N: Revealed type is "def (cls: Type[Self@__main__.C]) -> Any"
+reveal_type(C.__new__)  # N: Revealed type is "def (cls: Type[__main__.C]) -> Any"
 [builtins fixtures/classmethod.pyi]
 
 [case testOverrideGenericSelfClassMethod]
