@@ -16,26 +16,40 @@
 </v>
 </v>
 <v t="ekr.20220526075331.1"><vh>Files</vh>
+<v t="ekr.20221026040217.1"><vh>--- ekr files</vh>
+<v t="ekr.20221025081332.1"><vh>@clean sitecustomize.py</vh></v>
+<v t="ekr.20221025075836.1"><vh>@clean tm.cmd</vh></v>
+<v t="ekr.20220603080610.1"><vh>@clean ekr_test.py</vh></v>
+</v>
+<v t="ekr.20221026040242.1"><vh>--- test files</vh>
 <v t="ekr.20220531174005.1"><vh>@@clean check-default-annotations.test</vh></v>
+<v t="ekr.20221025094656.1"><vh>@clean check-isinstance.test</vh></v>
 <v t="ekr.20221004064034.3"><vh>@clean conftest.py</vh>
 <v t="ekr.20221004064034.4"><vh>pytest_configure</vh></v>
 <v t="ekr.20221004064034.5"><vh>pytest_addoption</vh></v>
-</v>
-<v t="ekr.20220603080610.1"><vh>@clean ekr_test.py</vh></v>
-<v t="ekr.20221004064034.6"><vh>@clean ekr_test.py</vh>
-<v t="ekr.20221004064034.7"><vh>ekr_f_annotated</vh></v>
-<v t="ekr.20221004064034.8"><vh>ekr_f_annotated_initialized</vh></v>
-<v t="ekr.20221004064034.9"><vh>ekr_f_not_annotated</vh></v>
-<v t="ekr.20221004064034.10"><vh>ekr_f_not_annotated2</vh></v>
 </v>
 <v t="ekr.20221004064034.11"><vh>@clean runtests.py</vh>
 <v t="ekr.20221004064034.12"><vh>run_cmd</vh></v>
 <v t="ekr.20221004064034.13"><vh>start_background_cmd</vh></v>
 <v t="ekr.20221004064034.14"><vh>wait_background_cmd</vh></v>
-<v t="ekr.20221004064034.15"><vh>main</vh></v>
+<v t="ekr.20221004064034.15"><vh>function: main (runtests.py)</vh></v>
 </v>
-<v t="ekr.20221025081332.1"><vh>@clean sitecustomize.py</vh></v>
-<v t="ekr.20221025075836.1"><vh>@clean tm.cmd</vh></v>
+<v t="ekr.20221025104200.1"><vh>@path test</vh>
+<v t="ekr.20221004064036.791"><vh>@clean testcheck.py</vh>
+<v t="ekr.20221004064036.792"><vh>class TypeCheckSuite</vh>
+<v t="ekr.20221004064036.793"><vh>TypeCheckSuite.run_case</vh></v>
+<v t="ekr.20221004064036.794"><vh>TypeCheckSuite.run_case_once (call build.build)</vh></v>
+<v t="ekr.20221004064036.795"><vh>TypeCheckSuite.verify_cache</vh></v>
+<v t="ekr.20221004064036.796"><vh>TypeCheckSuite.find_error_message_paths</vh></v>
+<v t="ekr.20221004064036.797"><vh>TypeCheckSuite.find_module_files</vh></v>
+<v t="ekr.20221004064036.798"><vh>TypeCheckSuite.find_missing_cache_files</vh></v>
+<v t="ekr.20221004064036.799"><vh>TypeCheckSuite.parse_module</vh></v>
+</v>
+</v>
+<v t="ekr.20221025104027.1"><vh>@clean data.py</vh></v>
+<v t="ekr.20221025104126.1"><vh>@clean helpers.py</vh></v>
+</v>
+</v>
 <v t="ekr.20221004064034.25"><vh>@path misc</vh>
 <v t="ekr.20221004064034.26"><vh>@clean analyze_cache.py</vh>
 <v t="ekr.20221004064034.27"><vh>class CacheData</vh>
@@ -1454,7 +1468,7 @@
 </v>
 </v>
 </v>
-<v t="ekr.20221005081130.1"><vh>--- checkers</vh>
+<v t="ekr.20221005081130.1"><vh>--- mypy.checkers</vh>
 <v t="ekr.20221004064034.324"><vh>@clean checker.py</vh>
 <v t="ekr.20221004064034.325"><vh>class DeferredNode</vh></v>
 <v t="ekr.20221004064034.326"><vh>class FineGrainedDeferredNode</vh></v>
@@ -2041,7 +2055,7 @@
 <v t="ekr.20221004064034.889"><vh>has_type_component</vh></v>
 </v>
 </v>
-<v t="ekr.20221005082302.1"><vh>--- config</vh>
+<v t="ekr.20221005082302.1"><vh>--- mypy.config</vh>
 <v t="ekr.20221004064034.890"><vh>@clean config_parser.py</vh>
 <v t="ekr.20221004064034.891"><vh>parse_version</vh></v>
 <v t="ekr.20221004064034.892"><vh>try_split</vh></v>
@@ -2094,7 +2108,7 @@
 </v>
 </v>
 </v>
-<v t="ekr.20221005080846.1"><vh>--- dmypy</vh>
+<v t="ekr.20221005080846.1"><vh>--- mypy.dmypy</vh>
 <v t="ekr.20221004064034.992"><vh>@clean dmypy_os.py</vh>
 <v t="ekr.20221004064034.993"><vh>alive</vh></v>
 <v t="ekr.20221004064034.994"><vh>kill</vh></v>
@@ -2144,7 +2158,7 @@
 <v t="ekr.20221004064034.1035"><vh>receive</vh></v>
 </v>
 </v>
-<v t="ekr.20221005081317.1"><vh>--- errors, logs messages &amp; stats</vh>
+<v t="ekr.20221005081317.1"><vh>--- mypy.errors, logs messages &amp; stats</vh>
 <v t="ekr.20221004064034.1074"><vh>@clean errorcodes.py</vh>
 <v t="ekr.20221004064034.1075"><vh>class ErrorCode</vh>
 <v t="ekr.20221004064034.1076"><vh>ErrorCode.__init__</vh></v>
@@ -2647,7 +2661,7 @@
 <v t="ekr.20221004064035.1800"><vh>indent</vh></v>
 </v>
 </v>
-<v t="ekr.20221005081400.1"><vh>--- file system &amp; serialization</vh>
+<v t="ekr.20221005081400.1"><vh>--- mypy.file system &amp; serialization</vh>
 <v t="ekr.20221004064034.1308"><vh>@clean find_sources.py</vh>
 <v t="ekr.20221004064034.1309"><vh>class InvalidSourceList</vh></v>
 <v t="ekr.20221004064034.1310"><vh>create_source_list</vh></v>
@@ -2780,7 +2794,7 @@
 </v>
 </v>
 <v t="ekr.20221004064035.428"><vh>@clean modulefinder.py</vh>
-<v t="ekr.20221004064035.429"><vh>class SearchPaths</vh></v>
+<v t="ekr.20221004064035.429"><vh>class SearchPaths(NamedTuple)</vh></v>
 <v t="ekr.20221004064035.430"><vh>Package dirs are a two-tuple of path to search and whether to verify the module</vh></v>
 <v t="ekr.20221004064035.431"><vh>class ModuleNotFoundReason</vh>
 <v t="ekr.20221004064035.432"><vh>ModuleNotFoundReason.error_message_templates</vh></v>
@@ -2840,7 +2854,7 @@
 </v>
 </v>
 </v>
-<v t="ekr.20221005080738.1"><vh>--- semantic analysis</vh>
+<v t="ekr.20221005080738.1"><vh>--- mypy.semantic analysis</vh>
 <v t="ekr.20221004064034.164"><vh>@clean binder.py</vh>
 <v t="ekr.20221004064034.165"><vh>class Frame</vh>
 <v t="ekr.20221004064034.166"><vh>Frame.__init__</vh></v>
@@ -3298,7 +3312,9 @@
 <v t="ekr.20221004064035.1516"><vh>find_fixed_callable_return</vh></v>
 </v>
 <v t="ekr.20221004064035.1517"><vh>@clean semanal_main.py</vh>
-<v t="ekr.20221004064035.1518"><vh>semantic_analysis_for_scc</vh></v>
+<v t="ekr.20221004064035.1518"><vh>semantic_analysis_for_scc (semanal_main.py)</vh>
+<v t="ekr.20221025093106.1"><vh>&lt;&lt; Leo traces &gt;&gt;</vh></v>
+</v>
 <v t="ekr.20221004064035.1519"><vh>cleanup_builtin_scc</vh></v>
 <v t="ekr.20221004064035.1520"><vh>semantic_analysis_for_targets</vh></v>
 <v t="ekr.20221004064035.1521"><vh>restore_saved_attrs</vh></v>
@@ -3308,7 +3324,9 @@
 <v t="ekr.20221004064035.1525"><vh>TargetInfo: _TypeAlias = Tuple[</vh></v>
 <v t="ekr.20221004064035.1526"><vh>get_all_leaf_targets</vh></v>
 <v t="ekr.20221004064035.1527"><vh>semantic_analyze_target</vh></v>
-<v t="ekr.20221004064035.1528"><vh>check_type_arguments</vh></v>
+<v t="ekr.20221004064035.1528"><vh>check_type_arguments (semanal_main.py)</vh>
+<v t="ekr.20221025093106.1"></v>
+</v>
 <v t="ekr.20221004064035.1529"><vh>check_type_arguments_in_targets</vh></v>
 <v t="ekr.20221004064035.1530"><vh>apply_class_plugin_hooks</vh></v>
 <v t="ekr.20221004064035.1531"><vh>apply_hooks_to_class</vh></v>
@@ -3434,7 +3452,7 @@
 </v>
 </v>
 </v>
-<v t="ekr.20221005080808.1"><vh>--- stubgen</vh>
+<v t="ekr.20221005080808.1"><vh>--- mypy.stubgen</vh>
 <v t="ekr.20221004064035.1801"><vh>@clean stubdoc.py</vh>
 <v t="ekr.20221004064035.1802"><vh>is_valid_type</vh></v>
 <v t="ekr.20221004064035.1803"><vh>class ArgSig</vh>
@@ -3718,7 +3736,7 @@
 <v t="ekr.20221004064035.2051"><vh>common_dir_prefix</vh></v>
 </v>
 </v>
-<v t="ekr.20221005081102.1"><vh>--- top-level</vh>
+<v t="ekr.20221005081102.1"><vh>--- mypy.top-level</vh>
 <v t="ekr.20221004064036.237"><vh>@clean __main__.py</vh>
 <v t="ekr.20221004064036.238"><vh>console_entry</vh></v>
 </v>
@@ -3733,10 +3751,10 @@
 <v t="ekr.20221004064034.197"><vh>class BuildResult</vh>
 <v t="ekr.20221004064034.198"><vh>BuildResult.__init__</vh></v>
 </v>
-<v t="ekr.20221004064034.199"><vh>build</vh>
+<v t="ekr.20221004064034.199"><vh>function: build (parse, SA and type check)</vh>
 <v t="ekr.20221004064034.200"><vh>default_flush_errors</vh></v>
 </v>
-<v t="ekr.20221004064034.201"><vh>_build</vh></v>
+<v t="ekr.20221004064034.201"><vh>function: _build</vh></v>
 <v t="ekr.20221004064034.202"><vh>default_data_dir</vh></v>
 <v t="ekr.20221004064034.203"><vh>normpath</vh></v>
 <v t="ekr.20221004064034.204"><vh>class CacheMeta</vh></v>
@@ -3842,15 +3860,17 @@
 <v t="ekr.20221004064034.301"><vh>skipping_ancestor</vh></v>
 <v t="ekr.20221004064034.302"><vh>log_configuration</vh></v>
 <v t="ekr.20221004064034.303"><vh>The driver</vh></v>
-<v t="ekr.20221004064034.304"><vh>dispatch</vh></v>
+<v t="ekr.20221004064034.304"><vh>function: dispatch (Driver: Return graph)</vh></v>
 <v t="ekr.20221004064034.305"><vh>class NodeInfo</vh>
 <v t="ekr.20221004064034.306"><vh>NodeInfo.__init__</vh></v>
 <v t="ekr.20221004064034.307"><vh>NodeInfo.dumps</vh></v>
 </v>
 <v t="ekr.20221004064034.308"><vh>dump_timing_stats</vh></v>
 <v t="ekr.20221004064034.309"><vh>dump_graph</vh></v>
-<v t="ekr.20221004064034.310"><vh>load_graph</vh></v>
-<v t="ekr.20221004064034.311"><vh>process_graph</vh></v>
+<v t="ekr.20221004064034.310"><vh>function: load_graph</vh></v>
+<v t="ekr.20221004064034.311"><vh>function: process_graph</vh>
+<v t="ekr.20221025093106.1"></v>
+</v>
 <v t="ekr.20221004064034.312"><vh>order_ascc</vh></v>
 <v t="ekr.20221004064034.313"><vh>process_fresh_modules</vh></v>
 <v t="ekr.20221004064034.314"><vh>process_stale_scc</vh></v>
@@ -3872,8 +3892,8 @@
 </v>
 <v t="ekr.20221004064035.113"><vh>@clean main.py</vh>
 <v t="ekr.20221004064035.114"><vh>stat_proxy</vh></v>
-<v t="ekr.20221004064035.115"><vh>main</vh></v>
-<v t="ekr.20221004064035.116"><vh>run_build</vh>
+<v t="ekr.20221004064035.115"><vh>function: main (main.py)</vh></v>
+<v t="ekr.20221004064035.116"><vh>function: run_build</vh>
 <v t="ekr.20221004064035.117"><vh>flush_errors</vh></v>
 </v>
 <v t="ekr.20221004064035.118"><vh>show_messages</vh></v>
@@ -3913,7 +3933,7 @@
 <v t="ekr.20221004064035.148"><vh>install_types</vh></v>
 </v>
 </v>
-<v t="ekr.20221005080920.1"><vh>--- types</vh>
+<v t="ekr.20221005080920.1"><vh>--- mypy.types</vh>
 <v t="ekr.20221004064034.155"><vh>@clean applytype.py</vh>
 <v t="ekr.20221004064034.156"><vh>get_target_type</vh></v>
 <v t="ekr.20221004064034.157"><vh>apply_generic_arguments</vh></v>
@@ -4757,7 +4777,6 @@
 <v t="ekr.20221004064035.2740"><vh>NoneType.deserialize</vh></v>
 <v t="ekr.20221004064035.2741"><vh>NoneType.is_singleton_type</vh></v>
 </v>
-<v t="ekr.20221004064035.2742"><vh>NoneType used to be called NoneTyp so to avoid needlessly breaking</vh></v>
 <v t="ekr.20221004064035.2743"><vh>class ErasedType</vh>
 <v t="ekr.20221004064035.2744"><vh>ErasedType.accept</vh></v>
 </v>
@@ -4767,7 +4786,7 @@
 <v t="ekr.20221004064035.2748"><vh>DeletedType.serialize</vh></v>
 <v t="ekr.20221004064035.2749"><vh>DeletedType.deserialize</vh></v>
 </v>
-<v t="ekr.20221004064035.2750"><vh>Fake TypeInfo to be used as a placeholder during Instance de-serialization.</vh></v>
+<v t="ekr.20221004064035.2750"><vh>var NOT_READY</vh></v>
 <v t="ekr.20221004064035.2751"><vh>class ExtraAttrs</vh>
 <v t="ekr.20221004064035.2752"><vh>ExtraAttrs.__init__</vh></v>
 <v t="ekr.20221004064035.2753"><vh>ExtraAttrs.__hash__</vh></v>
@@ -4948,13 +4967,15 @@
 <v t="ekr.20221004064035.2913"><vh>PlaceholderType.accept</vh></v>
 <v t="ekr.20221004064035.2914"><vh>PlaceholderType.serialize</vh></v>
 </v>
+<v t="ekr.20221026083053.1"><vh>get_proper_type (overloaded)</vh>
 <v t="ekr.20221004064035.2915"><vh>get_proper_type</vh></v>
 <v t="ekr.20221004064035.2916"><vh>get_proper_type</vh></v>
 <v t="ekr.20221004064035.2917"><vh>get_proper_type</vh></v>
 <v t="ekr.20221004064035.2918"><vh>get_proper_types</vh></v>
 <v t="ekr.20221004064035.2919"><vh>get_proper_types</vh></v>
 <v t="ekr.20221004064035.2920"><vh>get_proper_types</vh></v>
-<v t="ekr.20221004064035.2921"><vh>We split off the type visitor base classes to another module</vh></v>
+</v>
+<v t="ekr.20221004064035.2921"><vh>late imports</vh></v>
 <v t="ekr.20221004064035.2922"><vh>class TypeStrVisitor</vh>
 <v t="ekr.20221004064035.2923"><vh>TypeStrVisitor.__init__</vh></v>
 <v t="ekr.20221004064035.2924"><vh>TypeStrVisitor.visit_unbound_type</vh></v>
@@ -5021,7 +5042,7 @@
 <v t="ekr.20221004064035.2983"><vh>remove_optional</vh></v>
 <v t="ekr.20221004064035.2984"><vh>is_literal_type</vh></v>
 <v t="ekr.20221004064035.2985"><vh>is_self_type_like</vh></v>
-<v t="ekr.20221004064035.2986"><vh>names: Final = globals().copy()</vh></v>
+<v t="ekr.20221004064035.2986"><vh>: Final = globals().copy()</vh></v>
 <v t="ekr.20221004064035.2987"><vh>callable_with_ellipsis</vh></v>
 </v>
 <v t="ekr.20221004064035.2988"><vh>@clean typestate.py</vh>
@@ -5044,6 +5065,7 @@
 </v>
 <v t="ekr.20221004064035.3004"><vh>@clean typetraverser.py</vh>
 <v t="ekr.20221004064035.3005"><vh>class TypeTraverserVisitor</vh>
+<v t="ekr.20221026083444.1"><vh>Atomic types</vh>
 <v t="ekr.20221004064035.3006"><vh>TypeTraverserVisitor.visit_any</vh></v>
 <v t="ekr.20221004064035.3007"><vh>TypeTraverserVisitor.visit_uninhabited_type</vh></v>
 <v t="ekr.20221004064035.3008"><vh>TypeTraverserVisitor.visit_none_type</vh></v>
@@ -5054,7 +5076,8 @@
 <v t="ekr.20221004064035.3013"><vh>TypeTraverserVisitor.visit_parameters</vh></v>
 <v t="ekr.20221004064035.3014"><vh>TypeTraverserVisitor.visit_type_var_tuple</vh></v>
 <v t="ekr.20221004064035.3015"><vh>TypeTraverserVisitor.visit_literal_type</vh></v>
-<v t="ekr.20221004064035.3016"><vh>TypeTraverserVisitor.Composite types</vh></v>
+</v>
+<v t="ekr.20221004064035.3016"><vh>Composite types</vh>
 <v t="ekr.20221004064035.3017"><vh>TypeTraverserVisitor.visit_instance</vh></v>
 <v t="ekr.20221004064035.3018"><vh>TypeTraverserVisitor.visit_callable_type</vh></v>
 <v t="ekr.20221004064035.3019"><vh>TypeTraverserVisitor.visit_tuple_type</vh></v>
@@ -5062,7 +5085,8 @@
 <v t="ekr.20221004064035.3021"><vh>TypeTraverserVisitor.visit_union_type</vh></v>
 <v t="ekr.20221004064035.3022"><vh>TypeTraverserVisitor.visit_overloaded</vh></v>
 <v t="ekr.20221004064035.3023"><vh>TypeTraverserVisitor.visit_type_type</vh></v>
-<v t="ekr.20221004064035.3024"><vh>TypeTraverserVisitor.Special types (not real types)</vh></v>
+</v>
+<v t="ekr.20221004064035.3024"><vh>Special types</vh>
 <v t="ekr.20221004064035.3025"><vh>TypeTraverserVisitor.visit_callable_argument</vh></v>
 <v t="ekr.20221004064035.3026"><vh>TypeTraverserVisitor.visit_unbound_type</vh></v>
 <v t="ekr.20221004064035.3027"><vh>TypeTraverserVisitor.visit_type_list</vh></v>
@@ -5073,8 +5097,10 @@
 <v t="ekr.20221004064035.3032"><vh>TypeTraverserVisitor.visit_raw_expression_type</vh></v>
 <v t="ekr.20221004064035.3033"><vh>TypeTraverserVisitor.visit_type_alias_type</vh></v>
 <v t="ekr.20221004064035.3034"><vh>TypeTraverserVisitor.visit_unpack_type</vh></v>
-<v t="ekr.20221004064035.3035"><vh>TypeTraverserVisitor.Helpers</vh></v>
+</v>
+<v t="ekr.20221004064035.3035"><vh>Helpers</vh>
 <v t="ekr.20221004064035.3036"><vh>TypeTraverserVisitor.traverse_types</vh></v>
+</v>
 </v>
 </v>
 <v t="ekr.20221004064035.3037"><vh>@clean typevars.py</vh>
@@ -5091,7 +5117,7 @@
 <v t="ekr.20221004064035.3047"><vh>extract_unpack</vh></v>
 </v>
 </v>
-<v t="ekr.20221005081520.1"><vh>--- utils</vh>
+<v t="ekr.20221005081520.1"><vh>--- mypy.utils</vh>
 <v t="ekr.20221004064034.1407"><vh>@clean git.py</vh>
 <v t="ekr.20221004064034.1408"><vh>is_git_repo</vh></v>
 <v t="ekr.20221004064034.1409"><vh>have_git</vh></v>
@@ -5325,6 +5351,37 @@
 </v>
 </v>
 </v>
+<v t="ekr.20220930225101.1"><vh>=== Notes</vh>
+<v t="ekr.20221025071515.1"><vh>@clean mypy-notes.md</vh>
+<v t="ekr.20221026035450.1"><vh>Questions</vh></v>
+<v t="ekr.20221026035745.1"><vh>To do</vh></v>
+<v t="ekr.20221026034938.1"><vh>Diary 10/25/2022</vh>
+<v t="ekr.20221025071935.1"><vh>Ahas</vh></v>
+<v t="ekr.20221025072341.1"><vh>Running unit tests</vh></v>
+</v>
+<v t="ekr.20221026035003.1"><vh>Diary 10/26/2022</vh></v>
+</v>
+<v t="ekr.20221003060449.1"><vh>--- Notes from discussions</vh>
+<v t="ekr.20221003060901.1"><vh>Summary of issue</vh></v>
+<v t="ekr.20221003060506.1"><vh>Understanding x.accept</vh></v>
+<v t="ekr.20221003060650.1"><vh>Transportation</vh></v>
+<v t="ekr.20221003061049.1"><vh>Why so many calls to analyze_func_def</vh></v>
+</v>
+<v t="ekr.20220614100654.1"><vh>--- docstrings &amp; comments</vh>
+<v t="ekr.20220617075745.1"><vh>&lt;&lt; docstring: plugin.py &gt;&gt;</vh></v>
+<v t="ekr.20220617085508.1"><vh>&lt;&lt; docstring: build &gt;&gt;</vh></v>
+<v t="ekr.20220614100511.1"><vh>&lt;&lt; docstring: semanal.py &gt;&gt;</vh></v>
+<v t="ekr.20220614100550.1"><vh>&lt;&lt; docstring: semanal_main.py &gt;&gt;</vh></v>
+</v>
+</v>
+<v t="ekr.20221025092126.1"><vh>Recent files</vh>
+<v t="ekr.20221004064034.196"></v>
+<v t="ekr.20221004064034.324"></v>
+<v t="ekr.20221004064035.2471"></v>
+<v t="ekr.20221004064035.2617"></v>
+<v t="ekr.20221025094656.1"></v>
+<v t="ekr.20221004064036.791"></v>
+</v>
 <v t="ekr.20220925073606.1"><vh>Recent code</vh>
 <v t="ekr.20220320050857.1"><vh>=== #12352: auto annotations</vh>
 <v t="ekr.20220620055103.1"><vh>--- COPIES</vh>
@@ -5370,804 +5427,49 @@
 </v>
 </v>
 </v>
-</v>
-<v t="ekr.20221025092126.1"><vh>Recent files</vh>
-<v t="ekr.20221004064036.791"><vh>@clean testcheck.py</vh>
-<v t="ekr.20221004064036.792"><vh>class TypeCheckSuite</vh>
-<v t="ekr.20221004064036.793"><vh>TypeCheckSuite.run_case</vh></v>
-<v t="ekr.20221004064036.794"><vh>TypeCheckSuite.run_case_once</vh></v>
-<v t="ekr.20221004064036.795"><vh>TypeCheckSuite.verify_cache</vh></v>
-<v t="ekr.20221004064036.796"><vh>TypeCheckSuite.find_error_message_paths</vh></v>
-<v t="ekr.20221004064036.797"><vh>TypeCheckSuite.find_module_files</vh></v>
-<v t="ekr.20221004064036.798"><vh>TypeCheckSuite.find_missing_cache_files</vh></v>
-<v t="ekr.20221004064036.799"><vh>TypeCheckSuite.parse_module</vh></v>
-</v>
-</v>
-<v t="ekr.20221004064034.196"></v>
-</v>
-<v t="ekr.20221001054943.1"><vh>** To do</vh></v>
-<v t="ekr.20221005074708.1"><vh>--- failure files</vh>
-<v t="ekr.20221004064034.324"></v>
-<v t="ekr.20221004064035.2471"></v>
-<v t="ekr.20221004064035.2617"></v>
-</v>
-<v t="ekr.20221025071515.1"><vh>@clean mypy-notes.md</vh>
-<v t="ekr.20221025071935.1"><vh>Ahas</vh></v>
-<v t="ekr.20221025072341.1"><vh>Running unit tests</vh></v>
-</v>
-<v t="ekr.20220930225101.1"><vh>=== Study </vh>
-<v t="ekr.20221003060449.1"><vh>--- Notes from discussions</vh>
-<v t="ekr.20221003060901.1"><vh>Summary of issue</vh></v>
-<v t="ekr.20221003060506.1"><vh>Understanding x.accept</vh></v>
-<v t="ekr.20221003060650.1"><vh>Transportation</vh></v>
-<v t="ekr.20221003061049.1"><vh>Why so many calls to analyze_func_def</vh></v>
-</v>
-<v t="ekr.20220614100654.1"><vh>--- docstrings &amp; comments</vh>
-<v t="ekr.20220617075745.1"><vh>&lt;&lt; docstring: plugin.py &gt;&gt;</vh></v>
-<v t="ekr.20220617085508.1"><vh>&lt;&lt; docstring: build &gt;&gt;</vh></v>
-<v t="ekr.20220614100511.1"><vh>&lt;&lt; docstring: semanal.py &gt;&gt;</vh></v>
-<v t="ekr.20220614100550.1"><vh>&lt;&lt; docstring: semanal_main.py &gt;&gt;</vh></v>
-</v>
-<v t="ekr.20220603081942.1"><vh>--- class hierarchies</vh>
-<v t="ekr.20220605090347.1"><vh>--- Hierarchy for Instance</vh>
-<v t="ekr.20220525082934.872"><vh>class Context</vh>
-<v t="ekr.20220525082934.873"><vh>Context.__init__</vh></v>
-<v t="ekr.20220525082934.874"><vh>Context.set_line</vh></v>
-<v t="ekr.20220525082934.875"><vh>Context.get_line</vh></v>
-<v t="ekr.20220525082934.876"><vh>Context.get_column</vh></v>
-</v>
-<v t="ekr.20220525082935.1319"><vh>class Type(Context) (has accept method)</vh>
-<v t="ekr.20220525082935.1320"><vh>Type.__init__</vh></v>
-<v t="ekr.20220525082935.1321"><vh>Type.can_be_true_default</vh></v>
-<v t="ekr.20220525082935.1322"><vh>Type.can_be_false_default</vh></v>
-<v t="ekr.20220525082935.1323"><vh>Type.accept</vh></v>
-<v t="ekr.20220525082935.1324"><vh>Type.__repr__</vh></v>
-<v t="ekr.20220525082935.1325"><vh>Type.serialize</vh></v>
-<v t="ekr.20220525082935.1326"><vh>Type.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082935.1348"><vh>class ProperType(Type)</vh></v>
-<v t="ekr.20220525082935.1444"><vh>class Instance(ProperType)</vh>
-<v t="ekr.20220525082935.1445"><vh>Instance.__init__</vh></v>
-<v t="ekr.20220525082935.1446"><vh>Instance.accept</vh></v>
-<v t="ekr.20220525082935.1447"><vh>Instance.__hash__</vh></v>
-<v t="ekr.20220525082935.1448"><vh>Instance.__eq__</vh></v>
-<v t="ekr.20220525082935.1449"><vh>Instance.serialize</vh></v>
-<v t="ekr.20220525082935.1450"><vh>Instance.deserialize</vh></v>
-<v t="ekr.20220525082935.1451"><vh>Instance.copy_modified</vh></v>
-<v t="ekr.20220525082935.1452"><vh>Instance.has_readable_member</vh></v>
-</v>
-</v>
-<v t="ekr.20220606085857.1"><vh>--- Hierarchy for CallableType</vh>
-<v t="ekr.20220525082934.872"></v>
-<v t="ekr.20220525082935.1319"></v>
-<v t="ekr.20220525082935.1348"></v>
-<v t="ekr.20220525082935.1453"><vh>class FunctionLike(ProperType)</vh>
-<v t="ekr.20220525082935.1454"><vh>FunctionLike.__init__</vh></v>
-<v t="ekr.20220525082935.1455"><vh>FunctionLike.is_type_obj</vh></v>
-<v t="ekr.20220525082935.1456"><vh>FunctionLike.type_object</vh></v>
-<v t="ekr.20220525082935.1457"><vh>FunctionLike.items</vh></v>
-<v t="ekr.20220525082935.1458"><vh>FunctionLike.with_name</vh></v>
-<v t="ekr.20220525082935.1459"><vh>FunctionLike.get_name</vh></v>
-</v>
-<v t="ekr.20220525082935.1476"><vh>class CallableType(FunctionLike)</vh>
-<v t="ekr.20220525082935.1477"><vh>CallableType.__init__</vh></v>
-<v t="ekr.20220525082935.1478"><vh>CallableType.copy_modified</vh></v>
-<v t="ekr.20220525082935.1479"><vh>CallableType.var_arg</vh></v>
-<v t="ekr.20220525082935.1480"><vh>CallableType.kw_arg</vh></v>
-<v t="ekr.20220525082935.1481"><vh>CallableType.is_var_arg</vh></v>
-<v t="ekr.20220525082935.1482"><vh>CallableType.is_kw_arg</vh></v>
-<v t="ekr.20220525082935.1483"><vh>CallableType.is_type_obj</vh></v>
-<v t="ekr.20220525082935.1484"><vh>CallableType.type_object</vh></v>
-<v t="ekr.20220525082935.1485"><vh>CallableType.accept</vh></v>
-<v t="ekr.20220525082935.1486"><vh>CallableType.with_name</vh></v>
-<v t="ekr.20220525082935.1487"><vh>CallableType.get_name</vh></v>
-<v t="ekr.20220525082935.1488"><vh>CallableType.max_possible_positional_args</vh></v>
-<v t="ekr.20220525082935.1489"><vh>CallableType.formal_arguments</vh></v>
-<v t="ekr.20220525082935.1490"><vh>CallableType.argument_by_name</vh></v>
-<v t="ekr.20220525082935.1491"><vh>CallableType.argument_by_position</vh></v>
-<v t="ekr.20220525082935.1492"><vh>CallableType.try_synthesizing_arg_from_kwarg</vh></v>
-<v t="ekr.20220525082935.1493"><vh>CallableType.try_synthesizing_arg_from_vararg</vh></v>
-<v t="ekr.20220525082935.1494"><vh>CallableType.items</vh></v>
-<v t="ekr.20220525082935.1495"><vh>CallableType.is_generic</vh></v>
-<v t="ekr.20220525082935.1496"><vh>CallableType.type_var_ids</vh></v>
-<v t="ekr.20220525082935.1497"><vh>CallableType.param_spec</vh></v>
-<v t="ekr.20220525082935.1498"><vh>CallableType.expand_param_spec</vh></v>
-<v t="ekr.20220525082935.1499"><vh>CallableType.__hash__</vh></v>
-<v t="ekr.20220525082935.1500"><vh>CallableType.__eq__</vh></v>
-<v t="ekr.20220525082935.1501"><vh>CallableType.serialize</vh></v>
-<v t="ekr.20220525082935.1502"><vh>CallableType.deserialize</vh></v>
-</v>
-</v>
-<v t="ekr.20220606101206.1"><vh>--- Hierarchy for FuncDef</vh>
-<v t="ekr.20220525082934.880"><vh>class Node (abstract, but defines __str__)</vh>
-<v t="ekr.20220525082934.881"><vh>Node.__str__</vh></v>
-<v t="ekr.20220525082934.882"><vh>Node.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.883"><vh>class Statement (abstract)</vh>
-<v t="ekr.20220525082934.884"><vh>Statement.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.889"><vh>class SymbolNode (abstract)</vh>
-<v t="ekr.20220525082934.890"><vh>SymbolNode.name</vh></v>
-<v t="ekr.20220525082934.891"><vh>SymbolNode.fullname</vh></v>
-<v t="ekr.20220525082934.892"><vh>SymbolNode.serialize</vh></v>
-<v t="ekr.20220525082934.893"><vh>SymbolNode.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.939"><vh>class FuncItem</vh>
-<v t="ekr.20220525082934.940"><vh>FuncItem.__init__</vh></v>
-<v t="ekr.20220525082934.941"><vh>FuncItem.max_fixed_argc</vh></v>
-<v t="ekr.20220525082934.942"><vh>FuncItem.set_line</vh></v>
-<v t="ekr.20220525082934.943"><vh>FuncItem.is_dynamic</vh></v>
-</v>
-<v t="ekr.20220525082934.945"><vh>class FuncDef(FuncItem, SymbolNode, Statement) (nodes.py)</vh>
-<v t="ekr.20220525082934.946"><vh>FuncDef.__init__</vh></v>
-<v t="ekr.20220525082934.947"><vh>FuncDef.name</vh></v>
-<v t="ekr.20220525082934.948"><vh>FuncDef.accept</vh></v>
-<v t="ekr.20220525082934.949"><vh>FuncDef.serialize</vh></v>
-<v t="ekr.20220525082934.950"><vh>FuncDef.deserialize</vh></v>
-</v>
-</v>
-</v>
-<v t="ekr.20220608151139.1"><vh>--- classes</vh>
-<v t="ekr.20220525082934.1067"><vh>class ArgKind</vh>
-<v t="ekr.20220525082934.1068"><vh>ArgKind.is_positional</vh></v>
-<v t="ekr.20220525082934.1069"><vh>ArgKind.is_named</vh></v>
-<v t="ekr.20220525082934.1070"><vh>ArgKind.is_required</vh></v>
-<v t="ekr.20220525082934.1071"><vh>ArgKind.is_optional</vh></v>
-<v t="ekr.20220525082934.1072"><vh>ArgKind.is_star</vh></v>
-</v>
-<v t="ekr.20220525082934.935"><vh>class Argument</vh>
-<v t="ekr.20220525082934.936"><vh>Argument.__init__</vh></v>
-<v t="ekr.20220525082934.937"><vh>Argument.set_line</vh></v>
-</v>
-<v t="ekr.20220525082934.40"><vh>class ASTConverter (fastparse.py)</vh>
-<v t="ekr.20220525082934.41"><vh>ASTConverter.__init__</vh></v>
-<v t="ekr.20220614101220.1"><vh>ASTConverter: Messages</vh>
-<v t="ekr.20220525082934.42"><vh>ASTConverter.note</vh></v>
-<v t="ekr.20220525082934.43"><vh>ASTConverter.fail</vh></v>
-<v t="ekr.20220525082934.44"><vh>ASTConverter.fail_merge_overload</vh></v>
-</v>
-<v t="ekr.20220614101246.1"><vh>ASTConverter: Utils</vh>
-<v t="ekr.20220525082934.45"><vh>ASTConverter.visit</vh></v>
-<v t="ekr.20220525082934.46"><vh>ASTConverter.set_line</vh></v>
-<v t="ekr.20220525082934.47"><vh>ASTConverter.translate_opt_expr_list</vh></v>
-<v t="ekr.20220525082934.48"><vh>ASTConverter.translate_expr_list</vh></v>
-<v t="ekr.20220525082934.49"><vh>ASTConverter.get_lineno</vh></v>
-<v t="ekr.20220525082934.50"><vh>ASTConverter.translate_stmt_list</vh></v>
-<v t="ekr.20220525082934.51"><vh>ASTConverter.translate_type_comment</vh></v>
-<v t="ekr.20220525082934.52"><vh>ASTConverter.var: op_map</vh></v>
-<v t="ekr.20220525082934.53"><vh>ASTConverter.from_operator</vh></v>
-<v t="ekr.20220525082934.54"><vh>ASTConverter.var: comp_op_map</vh></v>
-<v t="ekr.20220525082934.55"><vh>ASTConverter.from_comp_operator</vh></v>
-<v t="ekr.20220525082934.56"><vh>ASTConverter.as_block</vh></v>
-<v t="ekr.20220525082934.57"><vh>ASTConverter.as_required_block</vh></v>
-<v t="ekr.20220525082934.58"><vh>ASTConverter.fix_function_overloads</vh></v>
-<v t="ekr.20220525082934.59"><vh>ASTConverter._check_ifstmt_for_overloads</vh></v>
-<v t="ekr.20220525082934.60"><vh>ASTConverter._get_executable_if_block_with_overloads</vh></v>
-<v t="ekr.20220525082934.61"><vh>ASTConverter._strip_contents_from_if_stmt</vh></v>
-<v t="ekr.20220525082934.62"><vh>ASTConverter._is_stripped_if_stmt</vh></v>
-<v t="ekr.20220525082934.63"><vh>ASTConverter.in_method_scope</vh></v>
-<v t="ekr.20220525082934.64"><vh>ASTConverter.translate_module_id</vh></v>
-</v>
-<v t="ekr.20220614101407.1"><vh>ASTConverter: Modules &amp; Functions</vh>
-<v t="ekr.20220525082934.65"><vh>ASTConverter.visit_Module</vh></v>
-<v t="ekr.20220525082934.66"><vh>ASTConverter.visit_FunctionDef</vh></v>
-<v t="ekr.20220525082934.67"><vh>ASTConverter.visit_AsyncFunctionDef</vh></v>
-<v t="ekr.20220525082934.68"><vh>ASTConverter.do_func_def</vh></v>
-<v t="ekr.20220525082934.69"><vh>ASTConverter.set_type_optional</vh></v>
-<v t="ekr.20220525082934.70"></v>
-<v t="ekr.20220525082934.71"></v>
-<v t="ekr.20220525082934.72"><vh>ASTConverter.fail_arg</vh></v>
-</v>
-<v t="ekr.20220614100953.1"><vh>ASTConverter: Statements</vh>
-<v t="ekr.20220525082934.73"><vh>ASTConverter.visit_ClassDef</vh></v>
-<v t="ekr.20220525082934.74"><vh>ASTConverter.visit_Return</vh></v>
-<v t="ekr.20220525082934.75"><vh>ASTConverter.visit_Delete</vh></v>
-<v t="ekr.20220525082934.76"><vh>ASTConverter.visit_Assign</vh></v>
-<v t="ekr.20220525082934.77"><vh>ASTConverter.visit_AnnAssign</vh></v>
-<v t="ekr.20220525082934.78"><vh>ASTConverter.visit_AugAssign</vh></v>
-<v t="ekr.20220525082934.79"><vh>ASTConverter.visit_For</vh></v>
-<v t="ekr.20220525082934.80"><vh>ASTConverter.visit_AsyncFor</vh></v>
-<v t="ekr.20220525082934.81"><vh>ASTConverter.visit_While</vh></v>
-<v t="ekr.20220525082934.82"><vh>ASTConverter.visit_If</vh></v>
-<v t="ekr.20220525082934.83"><vh>ASTConverter.visit_With</vh></v>
-<v t="ekr.20220525082934.84"><vh>ASTConverter.visit_AsyncWith</vh></v>
-<v t="ekr.20220525082934.85"><vh>ASTConverter.visit_Raise</vh></v>
-<v t="ekr.20220525082934.86"><vh>ASTConverter.visit_Try</vh></v>
-<v t="ekr.20220525082934.87"><vh>ASTConverter.visit_Assert</vh></v>
-<v t="ekr.20220525082934.88"><vh>ASTConverter.visit_Import</vh></v>
-<v t="ekr.20220525082934.89"><vh>ASTConverter.visit_ImportFrom</vh></v>
-<v t="ekr.20220525082934.90"><vh>ASTConverter.visit_Global</vh></v>
-<v t="ekr.20220525082934.91"><vh>ASTConverter.visit_Nonlocal</vh></v>
-<v t="ekr.20220525082934.92"><vh>ASTConverter.visit_Expr</vh></v>
-<v t="ekr.20220525082934.93"><vh>ASTConverter.visit_Pass</vh></v>
-<v t="ekr.20220525082934.94"><vh>ASTConverter.visit_Break</vh></v>
-<v t="ekr.20220525082934.95"><vh>ASTConverter.visit_Continue</vh></v>
-</v>
-<v t="ekr.20220525082934.96"><vh>ASTConverter: Expressions</vh>
-<v t="ekr.20220525082934.97"><vh>ASTConverter.visit_NamedExpr</vh></v>
-<v t="ekr.20220525082934.98"><vh>ASTConverter.visit_BoolOp</vh></v>
-<v t="ekr.20220525082934.99"><vh>ASTConverter.group</vh></v>
-<v t="ekr.20220525082934.100"><vh>ASTConverter.visit_BinOp</vh></v>
-<v t="ekr.20220525082934.101"><vh>ASTConverter.visit_UnaryOp</vh></v>
-<v t="ekr.20220525082934.102"><vh>ASTConverter.visit_Lambda</vh></v>
-<v t="ekr.20220525082934.103"><vh>ASTConverter.visit_IfExp</vh></v>
-<v t="ekr.20220525082934.104"><vh>ASTConverter.visit_Dict</vh></v>
-<v t="ekr.20220525082934.105"><vh>ASTConverter.visit_Set</vh></v>
-<v t="ekr.20220525082934.106"><vh>ASTConverter.visit_ListComp</vh></v>
-<v t="ekr.20220525082934.107"><vh>ASTConverter.visit_SetComp</vh></v>
-<v t="ekr.20220525082934.108"><vh>ASTConverter.visit_DictComp</vh></v>
-<v t="ekr.20220525082934.109"><vh>ASTConverter.visit_GeneratorExp</vh></v>
-<v t="ekr.20220525082934.110"><vh>ASTConverter.visit_Await</vh></v>
-<v t="ekr.20220525082934.111"><vh>ASTConverter.visit_Yield</vh></v>
-<v t="ekr.20220525082934.112"><vh>ASTConverter.visit_YieldFrom</vh></v>
-<v t="ekr.20220525082934.113"><vh>ASTConverter.visit_Compare</vh></v>
-<v t="ekr.20220525082934.114"><vh>ASTConverter.visit_Call</vh></v>
-</v>
-<v t="ekr.20220614101046.1"><vh>ASTConverter: Constants</vh>
-<v t="ekr.20220525082934.115"><vh>ASTConverter.visit_Constant</vh></v>
-<v t="ekr.20220525082934.116"><vh>ASTConverter.visit_Num</vh></v>
-<v t="ekr.20220525082934.117"><vh>ASTConverter.visit_Str (fastparse.py)</vh></v>
-<v t="ekr.20220525082934.118"><vh>ASTConverter.visit_JoinedStr</vh></v>
-<v t="ekr.20220525082934.119"><vh>ASTConverter.visit_FormattedValue</vh></v>
-<v t="ekr.20220525082934.120"><vh>ASTConverter.visit_Bytes</vh></v>
-<v t="ekr.20220525082934.121"><vh>ASTConverter.visit_NameConstant</vh></v>
-<v t="ekr.20220525082934.122"><vh>ASTConverter.visit_Ellipsis</vh></v>
-<v t="ekr.20220525082934.123"><vh>ASTConverter.visit_Attribute</vh></v>
-<v t="ekr.20220525082934.124"><vh>ASTConverter.visit_Subscript</vh></v>
-<v t="ekr.20220525082934.125"><vh>ASTConverter.visit_Starred</vh></v>
-<v t="ekr.20220525082934.126"><vh>ASTConverter.visit_Name</vh></v>
-<v t="ekr.20220525082934.127"><vh>ASTConverter.visit_List</vh></v>
-<v t="ekr.20220525082934.128"><vh>ASTConverter.visit_Tuple</vh></v>
-</v>
-<v t="ekr.20220525082934.129"><vh>ASTConverter: Slices</vh>
-<v t="ekr.20220525082934.130"><vh>ASTConverter.visit_Slice</vh></v>
-<v t="ekr.20220525082934.131"><vh>ASTConverter.visit_ExtSlice</vh></v>
-<v t="ekr.20220525082934.132"><vh>ASTConverter.visit_Index</vh></v>
-</v>
-<v t="ekr.20220614101128.1"><vh>AstConverter: Match</vh>
-<v t="ekr.20220525082934.133"><vh>ASTConverter.visit_Match</vh></v>
-<v t="ekr.20220525082934.134"><vh>ASTConverter.visit_MatchValue</vh></v>
-<v t="ekr.20220525082934.135"><vh>ASTConverter.visit_MatchSingleton</vh></v>
-<v t="ekr.20220525082934.136"><vh>ASTConverter.visit_MatchSequence</vh></v>
-<v t="ekr.20220525082934.137"><vh>ASTConverter.visit_MatchStar</vh></v>
-<v t="ekr.20220525082934.138"><vh>ASTConverter.visit_MatchMapping</vh></v>
-<v t="ekr.20220525082934.139"><vh>ASTConverter.visit_MatchClass</vh></v>
-<v t="ekr.20220525082934.140"><vh>ASTConverter.visit_MatchAs</vh></v>
-<v t="ekr.20220525082934.141"><vh>ASTConverter.visit_MatchOr</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082933.232"><vh>class BuildManager</vh>
-<v t="ekr.20220525082933.233"><vh>BuildManager.__init__</vh></v>
-<v t="ekr.20220525082933.234"><vh>BuildManager.dump_stats</vh></v>
-<v t="ekr.20220525082933.235"><vh>BuildManager.use_fine_grained_cache</vh></v>
-<v t="ekr.20220525082933.236"><vh>BuildManager.maybe_swap_for_shadow_path</vh></v>
-<v t="ekr.20220525082933.237"><vh>BuildManager.get_stat</vh></v>
-<v t="ekr.20220525082933.238"><vh>BuildManager.getmtime</vh></v>
-<v t="ekr.20220525082933.239"><vh>BuildManager.all_imported_modules_in_file</vh></v>
-<v t="ekr.20220525082933.240"><vh>BuildManager.is_module</vh></v>
-<v t="ekr.20220525082933.241"><vh>BuildManager.parse_file (calls parse, returns tree)</vh></v>
-<v t="ekr.20220525082933.242"><vh>BuildManager.load_fine_grained_deps</vh></v>
-<v t="ekr.20220525082933.243"><vh>BuildManager.report_file</vh></v>
-<v t="ekr.20220525082933.244"><vh>BuildManager.verbosity</vh></v>
-<v t="ekr.20220525082933.245"><vh>BuildManager.log</vh></v>
-<v t="ekr.20220525082933.246"><vh>BuildManager.log_fine_grained</vh></v>
-<v t="ekr.20220525082933.247"><vh>BuildManager.trace</vh></v>
-<v t="ekr.20220525082933.248"><vh>BuildManager.add_stats</vh></v>
-<v t="ekr.20220525082933.249"><vh>BuildManager.stats_summary</vh></v>
-</v>
-<v t="ekr.20220525082935.1476"></v>
-<v t="ekr.20220525082935.1460"><vh>class FormalArgument</vh></v>
-<v t="ekr.20220525082934.945"></v>
-<v t="ekr.20220525082935.1444"></v>
-<v t="ekr.20220525082934.895"><vh>class MypyFile(SymbolNode) (the AST of one file)</vh>
-<v t="ekr.20220525082934.896"><vh>MypyFile.__init__</vh></v>
-<v t="ekr.20220525082934.897"><vh>MypyFile.local_definitions</vh></v>
-<v t="ekr.20220525082934.898"><vh>MypyFile.name</vh></v>
-<v t="ekr.20220525082934.899"><vh>MypyFile.fullname</vh></v>
-<v t="ekr.20220525082934.900"><vh>MypyFile.accept</vh></v>
-<v t="ekr.20220525082934.901"><vh>MypyFile.is_package_init_file</vh></v>
-<v t="ekr.20220525082934.902"><vh>MypyFile.is_future_flag_set</vh></v>
-<v t="ekr.20220525082934.903"><vh>MypyFile.serialize</vh></v>
-<v t="ekr.20220525082934.904"><vh>MypyFile.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082935.1"><vh>class SemanticAnalyzer</vh>
-<v t="ekr.20220525082935.2"><vh>SA.__init__</vh></v>
-<v t="ekr.20220619062539.1"><vh>SA: properties</vh>
-<v t="ekr.20220525082935.3"><vh>SA.is_stub_file</vh></v>
-<v t="ekr.20220525082935.4"><vh>SA.is_typeshed_stub_file</vh></v>
-<v t="ekr.20220525082935.5"><vh>SA.final_iteration</vh></v>
-</v>
-<v t="ekr.20220525082935.6"><vh>SA: preparation</vh>
-<v t="ekr.20220525082935.7"><vh>SA.prepare_file</vh></v>
-<v t="ekr.20220525082935.8"><vh>SA.prepare_typing_namespace</vh></v>
-<v t="ekr.20220525082935.9"><vh>SA.prepare_builtins_namespace</vh></v>
-</v>
-<v t="ekr.20220525082935.10"><vh>SA: analyze targets</vh>
-<v t="ekr.20220525082935.11"><vh>SA.refresh_partial</vh></v>
-<v t="ekr.20220525082935.12"><vh>SA.refresh_top_level</vh></v>
-<v t="ekr.20220525082935.13"><vh>SA.add_implicit_module_attrs</vh></v>
-<v t="ekr.20220525082935.14"><vh>SA.add_builtin_aliases</vh></v>
-<v t="ekr.20220525082935.15"><vh>SA.add_typing_extension_aliases</vh></v>
-<v t="ekr.20220525082935.16"><vh>SA.create_alias</vh></v>
-<v t="ekr.20220525082935.17"><vh>SA.adjust_public_exports</vh></v>
-<v t="ekr.20220525082935.18"><vh>SA.file_context</vh></v>
-</v>
-<v t="ekr.20220525082935.19"><vh>SA: analyze functions</vh>
-<v t="ekr.20220525082935.20"><vh>SA.visit_func_def</vh></v>
-<v t="ekr.20220525082935.21"></v>
-<v t="ekr.20220525082935.22"><vh>SA.prepare_method_signature</vh></v>
-<v t="ekr.20220525082935.23"><vh>SA.set_original_def</vh></v>
-<v t="ekr.20220525082935.24"><vh>SA.update_function_type_variables (trace ???)</vh></v>
-<v t="ekr.20220525082935.25"><vh>SA.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082935.26"><vh>SA.analyze_overloaded_func_def</vh></v>
-<v t="ekr.20220525082935.27"><vh>SA.analyze_overload_sigs_and_impl</vh></v>
-<v t="ekr.20220525082935.28"><vh>SA.handle_missing_overload_decorators</vh></v>
-<v t="ekr.20220525082935.29"><vh>SA.handle_missing_overload_implementation</vh></v>
-<v t="ekr.20220525082935.30"><vh>SA.process_final_in_overload</vh></v>
-<v t="ekr.20220525082935.31"><vh>SA.process_static_or_class_method_in_overload</vh></v>
-<v t="ekr.20220525082935.32"><vh>SA.analyze_property_with_multi_part_definition</vh></v>
-<v t="ekr.20220525082935.33"><vh>SA.add_function_to_symbol_table</vh></v>
-<v t="ekr.20220525082935.34"></v>
-<v t="ekr.20220525082935.35"><vh>SA.analyze_function_body</vh></v>
-<v t="ekr.20220525082935.36"><vh>SA.check_classvar_in_signature</vh></v>
-<v t="ekr.20220525082935.37"><vh>SA.check_function_signature (trace???)</vh></v>
-<v t="ekr.20220525082935.38"><vh>SA.visit_decorator</vh></v>
-<v t="ekr.20220525082935.39"><vh>SA.check_decorated_function_is_method</vh></v>
-</v>
-<v t="ekr.20220525082935.40"><vh>SA: analyze classes</vh>
-<v t="ekr.20220525082935.41"><vh>SA.visit_class_def</vh></v>
-<v t="ekr.20220525082935.42"><vh>SA.analyze_class</vh></v>
-<v t="ekr.20220525082935.43"><vh>SA.is_core_builtin_class</vh></v>
-<v t="ekr.20220525082935.44"><vh>SA.analyze_class_body_common</vh></v>
-<v t="ekr.20220525082935.45"><vh>SA.analyze_namedtuple_classdef</vh></v>
-<v t="ekr.20220525082935.46"><vh>SA.apply_class_plugin_hooks</vh></v>
-<v t="ekr.20220525082935.47"><vh>SA.get_fullname_for_hook</vh></v>
-<v t="ekr.20220525082935.48"><vh>SA.analyze_class_keywords</vh></v>
-<v t="ekr.20220525082935.49"><vh>SA.enter_class</vh></v>
-<v t="ekr.20220525082935.50"><vh>SA.leave_class</vh></v>
-<v t="ekr.20220525082935.51"><vh>SA.analyze_class_decorator</vh></v>
-<v t="ekr.20220525082935.52"><vh>SA.clean_up_bases_and_infer_type_variables</vh></v>
-<v t="ekr.20220525082935.53"><vh>SA.analyze_class_typevar_declaration</vh></v>
-<v t="ekr.20220525082935.54"><vh>SA.analyze_unbound_tvar</vh></v>
-<v t="ekr.20220525082935.55"><vh>SA.get_all_bases_tvars</vh></v>
-<v t="ekr.20220525082935.56"><vh>SA.prepare_class_def</vh></v>
-<v t="ekr.20220525082935.57"><vh>SA.make_empty_type_info</vh></v>
-<v t="ekr.20220525082935.58"><vh>SA.get_name_repr_of_expr</vh></v>
-<v t="ekr.20220525082935.59"><vh>SA.analyze_base_classes</vh></v>
-<v t="ekr.20220525082935.60"><vh>SA.configure_base_classes</vh></v>
-<v t="ekr.20220525082935.61"><vh>SA.configure_tuple_base_class</vh></v>
-<v t="ekr.20220525082935.62"><vh>SA.set_dummy_mro</vh></v>
-<v t="ekr.20220525082935.63"><vh>SA.calculate_class_mro</vh></v>
-<v t="ekr.20220525082935.64"><vh>SA.update_metaclass</vh></v>
-<v t="ekr.20220525082935.65"><vh>SA.verify_base_classes</vh></v>
-<v t="ekr.20220525082935.66"><vh>SA.is_base_class</vh></v>
-<v t="ekr.20220525082935.67"><vh>SA.analyze_metaclass</vh></v>
-</v>
-<v t="ekr.20220525082935.68"><vh>SA: analyze imports</vh>
-<v t="ekr.20220525082935.69"><vh>SA.visit_import</vh></v>
-<v t="ekr.20220525082935.70"><vh>SA.visit_import_from</vh></v>
-<v t="ekr.20220525082935.71"><vh>SA.process_imported_symbol</vh></v>
-<v t="ekr.20220525082935.72"><vh>SA.report_missing_module_attribute</vh></v>
-<v t="ekr.20220525082935.73"><vh>SA.process_import_over_existing_name</vh></v>
-<v t="ekr.20220525082935.74"><vh>SA.correct_relative_import</vh></v>
-<v t="ekr.20220525082935.75"><vh>SA.visit_import_all</vh></v>
-</v>
-<v t="ekr.20220525082935.76"><vh>SA: analyze assignments</vh>
-<v t="ekr.20220525082935.77"><vh>SA.visit_assignment_expr</vh></v>
-<v t="ekr.20220525082935.78"><vh>SA.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.79"><vh>SA.analyze_identity_global_assignment</vh></v>
-<v t="ekr.20220525082935.80"><vh>SA.should_wait_rhs</vh></v>
-<v t="ekr.20220525082935.81"><vh>SA.can_be_type_alias</vh></v>
-<v t="ekr.20220525082935.82"><vh>SA.is_type_ref</vh></v>
-<v t="ekr.20220525082935.83"><vh>SA.is_none_alias</vh></v>
-<v t="ekr.20220525082935.84"><vh>SA.record_special_form_lvalue</vh></v>
-<v t="ekr.20220525082935.85"><vh>SA.analyze_enum_assign</vh></v>
-<v t="ekr.20220525082935.86"><vh>SA.analyze_namedtuple_assign</vh></v>
-<v t="ekr.20220525082935.87"><vh>SA.analyze_typeddict_assign</vh></v>
-<v t="ekr.20220525082935.88"><vh>SA.analyze_lvalues</vh></v>
-<v t="ekr.20220525082935.89"><vh>SA.apply_dynamic_class_hook</vh></v>
-<v t="ekr.20220525082935.90"><vh>SA.unwrap_final</vh></v>
-<v t="ekr.20220525082935.91"><vh>SA.check_final_implicit_def</vh></v>
-<v t="ekr.20220525082935.92"><vh>SA.store_final_status</vh></v>
-<v t="ekr.20220525082935.93"><vh>SA.flatten_lvalues</vh></v>
-<v t="ekr.20220525082935.94"><vh>SA.unbox_literal</vh></v>
-<v t="ekr.20220525082935.95"><vh>SA.process_type_annotation</vh>
-<v t="ekr.20220612061447.1"><vh>&lt;&lt; define callers &amp; callerName &gt;&gt;</vh></v>
-</v>
-<v t="ekr.20220525082935.96"><vh>SA.is_annotated_protocol_member</vh></v>
-<v t="ekr.20220525082935.97"><vh>SA.analyze_simple_literal_type (****)</vh></v>
-<v t="ekr.20220525082935.98"><vh>SA.analyze_alias</vh></v>
-<v t="ekr.20220525082935.99"><vh>SA.check_and_set_up_type_alias</vh></v>
-<v t="ekr.20220525082935.100"><vh>SA.analyze_lvalue</vh></v>
-<v t="ekr.20220525082935.101"><vh>SA.analyze_name_lvalue</vh></v>
-<v t="ekr.20220525082935.102"><vh>SA.is_final_redefinition</vh></v>
-<v t="ekr.20220525082935.103"><vh>SA.is_alias_for_final_name</vh></v>
-<v t="ekr.20220525082935.104"><vh>SA.make_name_lvalue_var</vh></v>
-<v t="ekr.20220525082935.105"><vh>SA.make_name_lvalue_point_to_existing_def</vh></v>
-<v t="ekr.20220525082935.106"><vh>SA.analyze_tuple_or_list_lvalue</vh></v>
-<v t="ekr.20220525082935.107"><vh>SA.analyze_member_lvalue</vh></v>
-<v t="ekr.20220525082935.108"><vh>SA.is_self_member_ref</vh></v>
-<v t="ekr.20220525082935.109"><vh>SA.check_lvalue_validity</vh></v>
-<v t="ekr.20220525082935.110"><vh>SA.store_declared_types</vh></v>
-<v t="ekr.20220525082935.111"><vh>SA.process_typevar_declaration</vh></v>
-<v t="ekr.20220525082935.112"><vh>SA.check_typevarlike_name</vh></v>
-<v t="ekr.20220525082935.113"><vh>SA.get_typevarlike_declaration</vh></v>
-<v t="ekr.20220525082935.114"><vh>SA.process_typevar_parameters</vh></v>
-<v t="ekr.20220525082935.115"><vh>SA.extract_typevarlike_name</vh></v>
-<v t="ekr.20220525082935.116"><vh>SA.process_paramspec_declaration</vh></v>
-<v t="ekr.20220525082935.117"><vh>SA.process_typevartuple_declaration</vh></v>
-<v t="ekr.20220525082935.118"><vh>SA.basic_new_typeinfo</vh></v>
-<v t="ekr.20220525082935.119"><vh>SA.analyze_value_types</vh></v>
-<v t="ekr.20220525082935.120"><vh>SA.check_classvar</vh></v>
-<v t="ekr.20220525082935.121"><vh>SA.is_classvar</vh></v>
-<v t="ekr.20220525082935.122"><vh>SA.is_final_type</vh></v>
-<v t="ekr.20220525082935.123"><vh>SA.fail_invalid_classvar</vh></v>
-<v t="ekr.20220525082935.124"><vh>SA.process_module_assignment</vh></v>
-<v t="ekr.20220525082935.125"><vh>SA.process__all__</vh></v>
-<v t="ekr.20220525082935.126"><vh>SA.process__deletable__</vh></v>
-<v t="ekr.20220525082935.127"><vh>SA.process__slots__</vh></v>
-</v>
-<v t="ekr.20220525082935.128"><vh>SA: analyze misc statements</vh>
-<v t="ekr.20220525082935.129"><vh>SA.visit_block</vh></v>
-<v t="ekr.20220525082935.130"><vh>SA.visit_block_maybe</vh></v>
-<v t="ekr.20220525082935.131"><vh>SA.visit_expression_stmt</vh></v>
-<v t="ekr.20220525082935.132"><vh>SA.visit_return_stmt</vh></v>
-<v t="ekr.20220525082935.133"><vh>SA.visit_raise_stmt</vh></v>
-<v t="ekr.20220525082935.134"><vh>SA.visit_assert_stmt</vh></v>
-<v t="ekr.20220525082935.135"><vh>SA.visit_operator_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.136"><vh>SA.visit_while_stmt</vh></v>
-<v t="ekr.20220525082935.137"><vh>SA.visit_for_stmt</vh></v>
-<v t="ekr.20220525082935.138"><vh>SA.visit_break_stmt</vh></v>
-<v t="ekr.20220525082935.139"><vh>SA.visit_continue_stmt</vh></v>
-<v t="ekr.20220525082935.140"><vh>SA.visit_if_stmt</vh></v>
-<v t="ekr.20220525082935.141"><vh>SA.visit_try_stmt</vh></v>
-<v t="ekr.20220525082935.142"><vh>SA.analyze_try_stmt</vh></v>
-<v t="ekr.20220525082935.143"><vh>SA.visit_with_stmt</vh></v>
-<v t="ekr.20220525082935.144"><vh>SA.visit_del_stmt</vh></v>
-<v t="ekr.20220525082935.145"><vh>SA.is_valid_del_target</vh></v>
-<v t="ekr.20220525082935.146"><vh>SA.visit_global_decl</vh></v>
-<v t="ekr.20220525082935.147"><vh>SA.visit_nonlocal_decl</vh></v>
-<v t="ekr.20220525082935.148"><vh>SA.visit_print_stmt</vh></v>
-<v t="ekr.20220525082935.149"><vh>SA.visit_exec_stmt</vh></v>
-<v t="ekr.20220525082935.150"><vh>SA.visit_match_stmt</vh></v>
-</v>
-<v t="ekr.20220525082935.151"><vh>SA: analyze expressions</vh>
-<v t="ekr.20220525082935.152"><vh>SA.visit_name_expr</vh></v>
-<v t="ekr.20220525082935.153"><vh>SA.bind_name_expr</vh></v>
-<v t="ekr.20220525082935.154"><vh>SA.visit_super_expr</vh></v>
-<v t="ekr.20220525082935.155"><vh>SA.visit_tuple_expr</vh></v>
-<v t="ekr.20220525082935.156"><vh>SA.visit_list_expr</vh></v>
-<v t="ekr.20220525082935.157"><vh>SA.visit_set_expr</vh></v>
-<v t="ekr.20220525082935.158"><vh>SA.visit_dict_expr</vh></v>
-<v t="ekr.20220525082935.159"><vh>SA.visit_star_expr</vh></v>
-<v t="ekr.20220525082935.160"><vh>SA.visit_yield_from_expr</vh></v>
-<v t="ekr.20220525082935.161"><vh>SA.visit_call_expr</vh></v>
-<v t="ekr.20220525082935.162"><vh>SA.translate_dict_call</vh></v>
-<v t="ekr.20220525082935.163"><vh>SA.check_fixed_args</vh></v>
-<v t="ekr.20220525082935.164"><vh>SA.visit_member_expr</vh></v>
-<v t="ekr.20220525082935.165"><vh>SA.visit_op_expr</vh></v>
-<v t="ekr.20220525082935.166"><vh>SA.visit_comparison_expr</vh></v>
-<v t="ekr.20220525082935.167"><vh>SA.visit_unary_expr</vh></v>
-<v t="ekr.20220525082935.168"><vh>SA.visit_index_expr</vh></v>
-<v t="ekr.20220525082935.169"><vh>SA.analyze_type_application</vh></v>
-<v t="ekr.20220525082935.170"><vh>SA.analyze_type_application_args</vh></v>
-<v t="ekr.20220525082935.171"><vh>SA.visit_slice_expr</vh></v>
-<v t="ekr.20220525082935.172"><vh>SA.visit_cast_expr</vh></v>
-<v t="ekr.20220525082935.173"><vh>SA.visit_assert_type_expr</vh></v>
-<v t="ekr.20220525082935.174"><vh>SA.visit_reveal_expr</vh></v>
-<v t="ekr.20220525082935.175"><vh>SA.visit_type_application</vh></v>
-<v t="ekr.20220525082935.176"><vh>SA.visit_list_comprehension</vh></v>
-<v t="ekr.20220525082935.177"><vh>SA.visit_set_comprehension</vh></v>
-<v t="ekr.20220525082935.178"><vh>SA.visit_dictionary_comprehension</vh></v>
-<v t="ekr.20220525082935.179"><vh>SA.visit_generator_expr</vh></v>
-<v t="ekr.20220525082935.180"><vh>SA.analyze_comp_for</vh></v>
-<v t="ekr.20220525082935.181"><vh>SA.analyze_comp_for_2</vh></v>
-<v t="ekr.20220525082935.182"><vh>SA.visit_lambda_expr</vh></v>
-<v t="ekr.20220525082935.183"><vh>SA.visit_conditional_expr</vh></v>
-<v t="ekr.20220525082935.184"><vh>SA.visit_backquote_expr</vh></v>
-<v t="ekr.20220525082935.185"><vh>SA.visit__promote_expr</vh></v>
-<v t="ekr.20220525082935.186"><vh>SA.visit_yield_expr</vh></v>
-<v t="ekr.20220525082935.187"><vh>SA.visit_await_expr</vh></v>
-</v>
-<v t="ekr.20220525082935.188"><vh>SA: analyze patterns</vh>
-<v t="ekr.20220525082935.189"><vh>SA.visit_as_pattern</vh></v>
-<v t="ekr.20220525082935.190"><vh>SA.visit_or_pattern</vh></v>
-<v t="ekr.20220525082935.191"><vh>SA.visit_value_pattern</vh></v>
-<v t="ekr.20220525082935.192"><vh>SA.visit_sequence_pattern</vh></v>
-<v t="ekr.20220525082935.193"><vh>SA.visit_starred_pattern</vh></v>
-<v t="ekr.20220525082935.194"><vh>SA.visit_mapping_pattern</vh></v>
-<v t="ekr.20220525082935.195"><vh>SA.visit_class_pattern</vh></v>
-</v>
-<v t="ekr.20220525082935.196"><vh>SA: lookup functions</vh>
-<v t="ekr.20220525082935.197"><vh>SA.lookup</vh></v>
-<v t="ekr.20220525082935.198"><vh>SA.is_active_symbol_in_class_body</vh></v>
-<v t="ekr.20220525082935.199"><vh>SA.is_textually_before_statement</vh></v>
-<v t="ekr.20220525082935.200"><vh>SA.is_overloaded_item</vh></v>
-<v t="ekr.20220525082935.201"><vh>SA.is_defined_in_current_module</vh></v>
-<v t="ekr.20220525082935.202"><vh>SA.lookup_qualified</vh></v>
-<v t="ekr.20220525082935.203"><vh>SA.lookup_type_node</vh></v>
-<v t="ekr.20220525082935.204"><vh>SA.get_module_symbol</vh></v>
-<v t="ekr.20220525082935.205"><vh>SA.is_missing_module</vh></v>
-<v t="ekr.20220525082935.206"><vh>SA.implicit_symbol</vh></v>
-<v t="ekr.20220525082935.207"><vh>SA.create_getattr_var</vh></v>
-<v t="ekr.20220525082935.208"><vh>SA.lookup_fully_qualified (added trace)</vh></v>
-<v t="ekr.20220525082935.209"><vh>SA.lookup_fully_qualified_or_none</vh></v>
-<v t="ekr.20220525082935.210"><vh>SA.object_type</vh></v>
-<v t="ekr.20220525082935.211"><vh>SA.str_type</vh></v>
-<v t="ekr.20220525082935.212"><vh>SA.named_type</vh></v>
-<v t="ekr.20220525082935.213"><vh>SA.named_type_or_none</vh></v>
-<v t="ekr.20220525082935.214"><vh>SA.builtin_type</vh></v>
-<v t="ekr.20220525082935.215"><vh>SA.lookup_current_scope</vh></v>
-</v>
-<v t="ekr.20220525082935.216"><vh>SA: adding symbols</vh>
-<v t="ekr.20220525082935.217"><vh>SA.add_symbol</vh></v>
-<v t="ekr.20220525082935.218"><vh>SA.add_symbol_skip_local</vh></v>
-<v t="ekr.20220525082935.219"><vh>SA.add_symbol_table_node</vh></v>
-<v t="ekr.20220525082935.220"><vh>SA.add_redefinition</vh></v>
-<v t="ekr.20220525082935.221"><vh>SA.add_local</vh></v>
-<v t="ekr.20220525082935.222"><vh>SA.add_module_symbol</vh></v>
-<v t="ekr.20220525082935.223"><vh>SA._get_node_for_class_scoped_import</vh></v>
-<v t="ekr.20220525082935.224"><vh>SA.add_imported_symbol</vh></v>
-<v t="ekr.20220525082935.225"><vh>SA.add_unknown_imported_symbol</vh></v>
-</v>
-<v t="ekr.20220525082935.226"><vh>SA: other helpers</vh>
-<v t="ekr.20220525082935.227"><vh>SA.tvar_scope_frame</vh></v>
-<v t="ekr.20220525082935.228"><vh>SA.defer</vh></v>
-<v t="ekr.20220525082935.229"><vh>SA.track_incomplete_refs</vh></v>
-<v t="ekr.20220525082935.230"><vh>SA.found_incomplete_ref</vh></v>
-<v t="ekr.20220525082935.231"><vh>SA.record_incomplete_ref</vh></v>
-<v t="ekr.20220525082935.232"><vh>SA.mark_incomplete</vh></v>
-<v t="ekr.20220525082935.233"><vh>SA.is_incomplete_namespace</vh></v>
-<v t="ekr.20220525082935.234"><vh>SA.process_placeholder</vh></v>
-<v t="ekr.20220525082935.235"><vh>SA.cannot_resolve_name</vh></v>
-<v t="ekr.20220525082935.236"><vh>SA.qualified_name</vh></v>
-<v t="ekr.20220525082935.237"><vh>SA.enter</vh></v>
-<v t="ekr.20220525082935.238"><vh>SA.is_func_scope</vh></v>
-<v t="ekr.20220525082935.239"><vh>SA.is_nested_within_func_scope</vh></v>
-<v t="ekr.20220525082935.240"><vh>SA.is_class_scope</vh></v>
-<v t="ekr.20220525082935.241"><vh>SA.is_module_scope</vh></v>
-<v t="ekr.20220525082935.242"><vh>SA.current_symbol_kind</vh></v>
-<v t="ekr.20220525082935.243"><vh>SA.current_symbol_table</vh></v>
-<v t="ekr.20220525082935.244"><vh>SA.is_global_or_nonlocal</vh></v>
-<v t="ekr.20220525082935.245"><vh>SA.add_exports</vh></v>
-<v t="ekr.20220525082935.246"><vh>SA.name_not_defined</vh></v>
-<v t="ekr.20220525082935.247"><vh>SA.already_defined</vh></v>
-<v t="ekr.20220525082935.248"><vh>SA.name_already_defined</vh></v>
-<v t="ekr.20220525082935.249"><vh>SA.attribute_already_defined</vh></v>
-<v t="ekr.20220525082935.250"><vh>SA.is_local_name</vh></v>
-<v t="ekr.20220525082935.251"><vh>SA.in_checked_function</vh></v>
-<v t="ekr.20220525082935.252"><vh>SA.fail</vh></v>
-<v t="ekr.20220525082935.253"><vh>SA.note</vh></v>
-<v t="ekr.20220525082935.254"><vh>SA.accept</vh></v>
-<v t="ekr.20220525082935.255"><vh>SA.expr_to_analyzed_type</vh></v>
-<v t="ekr.20220525082935.256"><vh>SA.analyze_type_expr</vh></v>
-<v t="ekr.20220525082935.257"><vh>SA.type_analyzer</vh></v>
-<v t="ekr.20220525082935.258"><vh>SA.expr_to_unanalyzed_type</vh></v>
-<v t="ekr.20220525082935.259"><vh>SA.anal_type</vh></v>
-<v t="ekr.20220525082935.260"><vh>SA.class_type</vh></v>
-<v t="ekr.20220525082935.261"><vh>SA.schedule_patch</vh></v>
-<v t="ekr.20220525082935.262"><vh>SA.report_hang</vh></v>
-<v t="ekr.20220525082935.263"><vh>SA.add_plugin_dependency</vh></v>
-<v t="ekr.20220525082935.264"><vh>SA.add_type_alias_deps</vh></v>
-<v t="ekr.20220525082935.265"><vh>SA.is_mangled_global</vh></v>
-<v t="ekr.20220525082935.266"><vh>SA.is_initial_mangled_global</vh></v>
-<v t="ekr.20220525082935.267"><vh>SA.parse_bool</vh></v>
-<v t="ekr.20220525082935.268"><vh>SA.set_future_import_flags</vh></v>
-<v t="ekr.20220525082935.269"><vh>SA.is_future_flag_set</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082933.274"><vh>class State</vh>
-<v t="ekr.20220525082933.275"><vh>State.__init__ (may call self.parse_file)</vh></v>
-<v t="ekr.20220525082933.276"><vh>State.xmeta</vh></v>
-<v t="ekr.20220525082933.277"><vh>State.add_ancestors</vh></v>
-<v t="ekr.20220525082933.278"><vh>State.is_fresh</vh></v>
-<v t="ekr.20220525082933.279"><vh>State.is_interface_fresh</vh></v>
-<v t="ekr.20220525082933.280"><vh>State.mark_as_rechecked</vh></v>
-<v t="ekr.20220525082933.281"><vh>State.mark_interface_stale</vh></v>
-<v t="ekr.20220525082933.282"><vh>State.check_blockers</vh></v>
-<v t="ekr.20220525082933.283"><vh>State.wrap_context</vh></v>
-<v t="ekr.20220525082933.284"><vh>State.load_fine_grained_deps</vh></v>
-<v t="ekr.20220525082933.285"><vh>State.load_tree</vh></v>
-<v t="ekr.20220525082933.286"><vh>State.fix_cross_refs</vh></v>
-<v t="ekr.20220525082933.287"><vh>--- Methods for processing modules from source code</vh>
-<v t="ekr.20220525082933.288"><vh>State.parse_file (BuildManager.modules[self.id] = self.tree)</vh></v>
-<v t="ekr.20220525082933.289"><vh>State.parse_inline_configuration</vh></v>
-<v t="ekr.20220525082933.290"><vh>State.semantic_analysis_pass1</vh></v>
-<v t="ekr.20220525082933.291"><vh>State.add_dependency</vh></v>
-<v t="ekr.20220525082933.292"><vh>State.suppress_dependency</vh></v>
-<v t="ekr.20220525082933.293"><vh>State.compute_dependencies (special case for 'builtins')</vh></v>
-<v t="ekr.20220525082933.294"><vh>State.type_check_first_pass</vh></v>
-<v t="ekr.20220525082933.295"><vh>State.type_checker</vh></v>
-<v t="ekr.20220525082933.296"><vh>State.type_map</vh></v>
-<v t="ekr.20220525082933.297"><vh>State.type_check_second_pass</vh></v>
-<v t="ekr.20220525082933.298"><vh>State.finish_passes</vh></v>
-<v t="ekr.20220525082933.299"><vh>State.free_state</vh></v>
-<v t="ekr.20220525082933.300"><vh>State._patch_indirect_dependencies</vh></v>
-<v t="ekr.20220525082933.301"><vh>State.compute_fine_grained_deps</vh></v>
-<v t="ekr.20220525082933.302"><vh>State.update_fine_grained_deps</vh></v>
-<v t="ekr.20220525082933.303"><vh>State.valid_references</vh></v>
-<v t="ekr.20220525082933.304"><vh>State.write_cache</vh></v>
-<v t="ekr.20220525082933.305"><vh>State.verify_dependencies</vh></v>
-<v t="ekr.20220525082933.306"><vh>State.dependency_priorities</vh></v>
-<v t="ekr.20220525082933.307"><vh>State.dependency_lines</vh></v>
-<v t="ekr.20220525082933.308"><vh>State.generate_unused_ignore_notes</vh></v>
-<v t="ekr.20220525082933.309"><vh>State.generate_ignore_without_code_notes</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.1039"><vh>class StrExpr</vh>
-<v t="ekr.20220525082934.1040"><vh>StrExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1041"><vh>StrExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082935.1319"></v>
-<v t="ekr.20220525082935.1178"><vh>class TypeAnalyser ***</vh>
-<v t="ekr.20220525082935.1179"><vh>TA.__init__</vh></v>
-<v t="ekr.20220525082935.1180"><vh>TA.visit_unbound_type</vh></v>
-<v t="ekr.20220525082935.1181"><vh>TA.visit_unbound_type_nonoptional</vh></v>
-<v t="ekr.20220525082935.1182"><vh>TA.cannot_resolve_type</vh></v>
-<v t="ekr.20220525082935.1183"><vh>TA.apply_concatenate_operator</vh></v>
-<v t="ekr.20220525082935.1184"><vh>TA.try_analyze_special_unbound_type</vh></v>
-<v t="ekr.20220525082935.1185"><vh>TA.get_omitted_any</vh></v>
-<v t="ekr.20220525082935.1186"><vh>TA.analyze_type_with_type_info</vh></v>
-<v t="ekr.20220525082935.1187"><vh>TA.analyze_unbound_type_without_type_info</vh></v>
-<v t="ekr.20220525082935.1188"><vh>TA.visit_any</vh></v>
-<v t="ekr.20220525082935.1189"><vh>TA.visit_none_type</vh></v>
-<v t="ekr.20220525082935.1190"><vh>TA.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082935.1191"><vh>TA.visit_erased_type</vh></v>
-<v t="ekr.20220525082935.1192"><vh>TA.visit_deleted_type</vh></v>
-<v t="ekr.20220525082935.1193"><vh>TA.visit_type_list</vh></v>
-<v t="ekr.20220525082935.1194"><vh>TA.visit_callable_argument</vh></v>
-<v t="ekr.20220525082935.1195"><vh>TA.visit_instance</vh></v>
-<v t="ekr.20220525082935.1196"><vh>TA.visit_type_alias_type</vh></v>
-<v t="ekr.20220525082935.1197"><vh>TA.visit_type_var</vh></v>
-<v t="ekr.20220525082935.1198"><vh>TA.visit_param_spec</vh></v>
-<v t="ekr.20220525082935.1199"><vh>TA.visit_type_var_tuple</vh></v>
-<v t="ekr.20220525082935.1200"><vh>TA.visit_unpack_type</vh></v>
-<v t="ekr.20220525082935.1201"><vh>TA.visit_parameters</vh></v>
-<v t="ekr.20220525082935.1202"></v>
-<v t="ekr.20220525082935.1203"><vh>TA.anal_type_guard</vh></v>
-<v t="ekr.20220525082935.1204"><vh>TA.anal_type_guard_arg</vh></v>
-<v t="ekr.20220525082935.1205"><vh>TA.anal_star_arg_type</vh></v>
-<v t="ekr.20220525082935.1206"><vh>TA.visit_overloaded</vh></v>
-<v t="ekr.20220525082935.1207"><vh>TA.visit_tuple_type</vh></v>
-<v t="ekr.20220525082935.1208"><vh>TA.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082935.1209"><vh>TA.visit_raw_expression_type</vh></v>
-<v t="ekr.20220525082935.1210"><vh>TA.visit_literal_type</vh></v>
-<v t="ekr.20220525082935.1211"><vh>TA.visit_star_type</vh></v>
-<v t="ekr.20220525082935.1212"><vh>TA.visit_union_type</vh></v>
-<v t="ekr.20220525082935.1213"><vh>TA.visit_partial_type</vh></v>
-<v t="ekr.20220525082935.1214"><vh>TA.visit_ellipsis_type</vh></v>
-<v t="ekr.20220525082935.1215"><vh>TA.visit_type_type</vh></v>
-<v t="ekr.20220525082935.1216"><vh>TA.visit_placeholder_type</vh></v>
-<v t="ekr.20220525082935.1217"><vh>TA.analyze_callable_args_for_paramspec</vh></v>
-<v t="ekr.20220525082935.1218"><vh>TA.analyze_callable_args_for_concatenate</vh></v>
-<v t="ekr.20220525082935.1219"><vh>TA.analyze_callable_type</vh></v>
-<v t="ekr.20220525082935.1220"><vh>TA.analyze_callable_args</vh></v>
-<v t="ekr.20220525082935.1221"><vh>TA.analyze_literal_type</vh></v>
-<v t="ekr.20220525082935.1222"><vh>TA.analyze_literal_param</vh></v>
-<v t="ekr.20220525082935.1223"><vh>TA.analyze_type</vh></v>
-<v t="ekr.20220525082935.1224"><vh>TA.fail</vh></v>
-<v t="ekr.20220525082935.1225"><vh>TA.note</vh></v>
-<v t="ekr.20220525082935.1226"><vh>TA.tvar_scope_frame</vh></v>
-<v t="ekr.20220525082935.1227"><vh>TA.infer_type_variables</vh></v>
-<v t="ekr.20220525082935.1228"><vh>TA.bind_function_type_variables</vh></v>
-<v t="ekr.20220525082935.1229"><vh>TA.is_defined_type_var</vh></v>
-<v t="ekr.20220525082935.1230"><vh>TA.anal_array</vh></v>
-<v t="ekr.20220525082935.1231"></v>
-<v t="ekr.20220525082935.1232"><vh>TA.anal_var_def</vh></v>
-<v t="ekr.20220525082935.1233"><vh>TA.anal_var_defs</vh></v>
-<v t="ekr.20220525082935.1234"><vh>TA.named_type_with_normalized_str</vh></v>
-<v t="ekr.20220525082935.1235"><vh>TA.named_type</vh></v>
-<v t="ekr.20220525082935.1236"><vh>TA.tuple_type</vh></v>
-<v t="ekr.20220525082935.1237"><vh>TA.set_allow_param_spec_literals</vh></v>
-</v>
-<v t="ekr.20220525082935.1603"><vh>class TypeStrVisitor</vh>
-<v t="ekr.20220525082935.1604"><vh>TypeStrVisitor.__init__</vh></v>
-<v t="ekr.20220525082935.1605"><vh>TypeStrVisitor.visit_unbound_type</vh></v>
-<v t="ekr.20220525082935.1606"><vh>TypeStrVisitor.visit_type_list</vh></v>
-<v t="ekr.20220525082935.1607"><vh>TypeStrVisitor.visit_callable_argument</vh></v>
-<v t="ekr.20220525082935.1608"><vh>TypeStrVisitor.visit_any</vh></v>
-<v t="ekr.20220525082935.1609"><vh>TypeStrVisitor.visit_none_type</vh></v>
-<v t="ekr.20220525082935.1610"><vh>TypeStrVisitor.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082935.1611"><vh>TypeStrVisitor.visit_erased_type</vh></v>
-<v t="ekr.20220525082935.1612"><vh>TypeStrVisitor.visit_deleted_type</vh></v>
-<v t="ekr.20220525082935.1613"><vh>TypeStrVisitor.visit_instance</vh></v>
-<v t="ekr.20220525082935.1614"><vh>TypeStrVisitor.visit_type_var</vh></v>
-<v t="ekr.20220525082935.1615"><vh>TypeStrVisitor.visit_param_spec</vh></v>
-<v t="ekr.20220525082935.1616"><vh>TypeStrVisitor.visit_parameters</vh></v>
-<v t="ekr.20220525082935.1617"><vh>TypeStrVisitor.visit_type_var_tuple</vh></v>
-<v t="ekr.20220525082935.1618"><vh>TypeStrVisitor.visit_callable_type</vh></v>
-<v t="ekr.20220525082935.1619"><vh>TypeStrVisitor.visit_overloaded</vh></v>
-<v t="ekr.20220525082935.1620"><vh>TypeStrVisitor.visit_tuple_type</vh></v>
-<v t="ekr.20220525082935.1621"><vh>TypeStrVisitor.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082935.1622"><vh>TypeStrVisitor.visit_raw_expression_type</vh></v>
-<v t="ekr.20220525082935.1623"><vh>TypeStrVisitor.visit_literal_type</vh></v>
-<v t="ekr.20220525082935.1624"><vh>TypeStrVisitor.visit_star_type</vh></v>
-<v t="ekr.20220525082935.1625"><vh>TypeStrVisitor.visit_union_type</vh></v>
-<v t="ekr.20220525082935.1626"><vh>TypeStrVisitor.visit_partial_type</vh></v>
-<v t="ekr.20220525082935.1627"><vh>TypeStrVisitor.visit_ellipsis_type</vh></v>
-<v t="ekr.20220525082935.1628"><vh>TypeStrVisitor.visit_type_type</vh></v>
-<v t="ekr.20220525082935.1629"><vh>TypeStrVisitor.visit_placeholder_type</vh></v>
-<v t="ekr.20220525082935.1630"><vh>TypeStrVisitor.visit_type_alias_type</vh></v>
-<v t="ekr.20220525082935.1631"><vh>TypeStrVisitor.visit_unpack_type</vh></v>
-<v t="ekr.20220525082935.1632"><vh>TypeStrVisitor.list_str</vh></v>
-</v>
-<v t="ekr.20220525082936.34"><vh>class TypeTranslator</vh>
-<v t="ekr.20220525082936.35"><vh>TT.visit_unbound_type</vh></v>
-<v t="ekr.20220525082936.36"><vh>TT.visit_any</vh></v>
-<v t="ekr.20220525082936.37"><vh>TT.visit_none_type</vh></v>
-<v t="ekr.20220525082936.38"><vh>TT.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082936.39"><vh>TT.visit_erased_type</vh></v>
-<v t="ekr.20220525082936.40"><vh>TT.visit_deleted_type</vh></v>
-<v t="ekr.20220525082936.41"><vh>TT.visit_instance</vh></v>
-<v t="ekr.20220525082936.42"><vh>TT.visit_type_var</vh></v>
-<v t="ekr.20220525082936.43"><vh>TT.visit_param_spec</vh></v>
-<v t="ekr.20220525082936.44"><vh>TT.visit_parameters</vh></v>
-<v t="ekr.20220525082936.45"><vh>TT.visit_type_var_tuple</vh></v>
-<v t="ekr.20220525082936.46"><vh>TT.visit_partial_type</vh></v>
-<v t="ekr.20220525082936.47"><vh>TT.visit_unpack_type</vh></v>
-<v t="ekr.20220525082936.48"><vh>TT.visit_callable_type</vh></v>
-<v t="ekr.20220525082936.49"><vh>TT.visit_tuple_type</vh></v>
-<v t="ekr.20220525082936.50"><vh>TT.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082936.51"><vh>TT.visit_literal_type</vh></v>
-<v t="ekr.20220525082936.52"><vh>TT.visit_union_type</vh></v>
-<v t="ekr.20220525082936.53"><vh>TT.translate_types</vh></v>
-<v t="ekr.20220525082936.54"><vh>TT.translate_variables</vh></v>
-<v t="ekr.20220525082936.55"><vh>TT.visit_overloaded</vh></v>
-<v t="ekr.20220525082936.56"><vh>TT.visit_type_type</vh></v>
-<v t="ekr.20220525082936.57"><vh>TT.visit_type_alias_type</vh></v>
-</v>
-<v t="ekr.20220525082935.1388"><vh>class UnboundType</vh>
-<v t="ekr.20220525082935.1389"><vh>UnboundType.__init__</vh></v>
-<v t="ekr.20220525082935.1390"><vh>UnboundType.copy_modified</vh></v>
-<v t="ekr.20220525082935.1391"><vh>UnboundType.accept</vh></v>
-<v t="ekr.20220525082935.1392"><vh>UnboundType.__hash__</vh></v>
-<v t="ekr.20220525082935.1393"><vh>UnboundType.__eq__</vh></v>
-<v t="ekr.20220525082935.1394"><vh>UnboundType.serialize</vh></v>
-<v t="ekr.20220525082935.1395"><vh>UnboundType.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.963"><vh>class Var</vh>
-<v t="ekr.20220525082934.964"><vh>Var.__init__</vh></v>
-<v t="ekr.20220525082934.965"><vh>Var.name</vh></v>
-<v t="ekr.20220525082934.966"><vh>Var.fullname</vh></v>
-<v t="ekr.20220525082934.967"><vh>Var.accept</vh></v>
-<v t="ekr.20220525082934.968"><vh>Var.serialize</vh></v>
-<v t="ekr.20220525082934.969"><vh>Var.deserialize</vh></v>
-</v>
-</v>
 <v t="ekr.20220603103251.1"><vh>--- main calling sequence</vh>
-<v t="ekr.20220525082934.504"><vh>main (main.py)</vh>
-<v t="ekr.20220617084344.1"><vh>&lt;&lt; check options &gt;&gt;</vh></v>
-<v t="ekr.20220617085103.1"><vh>&lt;&lt; shut down &gt;&gt;</vh></v>
+<v t="ekr.20221025094347.1"><vh>1. main functions &amp; helper</vh>
+<v t="ekr.20221004064034.15"></v>
+<v t="ekr.20221004064035.115"></v>
+<v t="ekr.20221004064035.116"></v>
 </v>
-<v t="ekr.20220525082934.505"><vh>run_build (build.py)</vh>
-<v t="ekr.20220525082934.506"><vh>flush_errors</vh></v>
-<v t="ekr.20220617085407.1"><vh>&lt;&lt; warn about unused configs &gt;&gt;</vh></v>
+<v t="ekr.20221025094156.1"><vh>2. build.py</vh>
+<v t="ekr.20221004064034.199"></v>
+<v t="ekr.20221004064034.201"></v>
+<v t="ekr.20221004064034.304"></v>
+<v t="ekr.20221004064034.310"></v>
+<v t="ekr.20221004064034.311"></v>
+<v t="ekr.20220525082933.327"><vh>function: load_graph (create graph with many modules)</vh></v>
+<v t="ekr.20220525082933.331"><vh>function: process_stale_scc</vh></v>
 </v>
-<v t="ekr.20220525082933.217"><vh>build (build.py) (parsing, SA and type checking)</vh>
-<v t="ekr.20220617085508.1"></v>
-<v t="ekr.20220525082933.218"><vh>function: default_flush_errors</vh></v>
-</v>
-<v t="ekr.20220525082933.219"><vh>_build (build.py) (instantiates BuildManager, Errors)</vh>
-<v t="ekr.20220617092625.1"><vh>&lt;&lt; Instantiate Errors &gt;&gt;</vh></v>
-<v t="ekr.20220617092600.1"><vh>&lt;&lt; Instantiate BuildManager &gt;&gt;</vh></v>
-<v t="ekr.20220617092846.1"><vh>&lt;&lt; Handle stats and reports &gt;&gt;</vh></v>
-</v>
-<v t="ekr.20220525082933.321"><vh>dispatch (build.py) (calls process graph. Return graph)</vh>
-<v t="ekr.20220617090951.1"><vh>&lt;&lt; Handle stats and dumps &gt;&gt;</vh></v>
-<v t="ekr.20220617092314.1"><vh>&lt;&lt; update snapshot &gt;&gt;</vh></v>
-<v t="ekr.20220617092355.1"><vh>&lt;&lt; dump dependencies &gt;&gt;</vh></v>
-</v>
-<v t="ekr.20220525082933.327"><vh>load_graph (build.py) (creates graph with many modules)</vh></v>
-<v t="ekr.20220525082933.328"><vh>process_graph (build.py)</vh>
-<v t="ekr.20220617091730.1"><vh>&lt;&lt; order scc &gt;&gt;</vh></v>
-<v t="ekr.20220617091557.1"><vh>&lt;&lt; log the processing &gt;&gt;</vh></v>
-<v t="ekr.20220617093043.1"><vh>&lt;&lt; stats &amp; log &gt;&gt;</vh></v>
-</v>
-<v t="ekr.20220525082933.331"><vh>process_stale_scc (build.py)</vh></v>
-<v t="ekr.20220525082935.309"><vh>semantic_analysis_for_scc (main.py)</vh></v>
+<v t="ekr.20221025095256.1"><vh>3. main.py</vh>
+<v t="ekr.20221004064035.1518"></v>
 </v>
 </v>
+</v>
+<v t="ekr.20221025092947.1"><vh>--- tracing unit tests</vh>
+<v t="ekr.20221025093106.1"></v>
+</v>
+<v t="ekr.20221025101510.1"><vh>--- classes</vh>
+<v t="ekr.20221004064035.429"></v>
+<v t="ekr.20221004064035.437"></v>
+<v t="ekr.20221004064035.434"></v>
+<v t="ekr.20221004064034.214"></v>
+<v t="ekr.20221004064034.256"></v>
+<v t="ekr.20221004064035.1611"></v>
+</v>
+<v t="ekr.20221025101528.1"><vh>--- calling sequence</vh>
 <v t="ekr.20221004064036.794"></v>
+<v t="ekr.20221004064034.201"></v>
+<v t="ekr.20221004064034.304"></v>
+<v t="ekr.20221004064034.311"></v>
+<v t="ekr.20220525082933.331"></v>
+<v t="ekr.20221004064035.1518"></v>
+<v t="ekr.20221004064035.1528"></v>
+</v>
+<v t="ekr.20221005080920.1"></v>
+<v t="ekr.20221004064035.2617"></v>
+<v t="ekr.20221004064035.2620"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20220320050857.1">@language rest
@@ -6205,1263 +5507,6 @@ if 1:
     # c.expandAllSubheads()
     c.redraw(last)
 print('Done')</t>
-<t tx="ekr.20220525082933.217">def build(
-    sources: list[BuildSource],
-    options: Options,
-    alt_lib_path: str | None = None,
-    flush_errors: Callable[[list[str], bool], None] | None = None,
-    fscache: FileSystemCache | None = None,
-    stdout: TextIO | None = None,
-    stderr: TextIO | None = None,
-    extra_plugins: Sequence[Plugin] | None = None,
-) -&gt; BuildResult:
-    &lt;&lt; docstring: build &gt;&gt;
-    # If we were not given a flush_errors, we use one that will populate those
-    # fields for callers that want the traditional API.
-    messages = []
-
-    @others
-    flush_errors = flush_errors or default_flush_errors
-    stdout = stdout or sys.stdout
-    stderr = stderr or sys.stderr
-    extra_plugins = extra_plugins or []
-
-    try:
-        result = _build(
-            sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr, extra_plugins
-        )
-        result.errors = messages
-        return result
-    except CompileError as e:
-        # CompileErrors raised from an errors object carry all of the
-        # messages that have not been reported out by error streaming.
-        # Patch it up to contain either none or all none of the messages,
-        # depending on whether we are flushing errors.
-        serious = not e.use_stdout
-        flush_errors(e.messages, serious)
-        e.messages = messages
-        raise
-
-
-</t>
-<t tx="ekr.20220525082933.218">def default_flush_errors(new_messages: list[str], is_serious: bool) -&gt; None:
-    messages.extend(new_messages)
-
-</t>
-<t tx="ekr.20220525082933.219">def _build(
-    sources: list[BuildSource],
-    options: Options,
-    alt_lib_path: str | None,
-    flush_errors: Callable[[list[str], bool], None],
-    fscache: FileSystemCache | None,
-    stdout: TextIO,
-    stderr: TextIO,
-    extra_plugins: Sequence[Plugin],
-) -&gt; BuildResult:
-    if platform.python_implementation() == "CPython":
-        # This seems the most reasonable place to tune garbage collection.
-        gc.set_threshold(150 * 1000)
-
-    data_dir = default_data_dir()
-    fscache = fscache or FileSystemCache()
-
-    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
-
-    reports = None
-    if options.report_dirs:
-        # Import lazily to avoid slowing down startup.
-        from mypy.report import Reports
-
-        reports = Reports(data_dir, options.report_dirs)
-
-    source_set = BuildSourceSet(sources)
-    cached_read = fscache.read
-    &lt;&lt; Instantiate Errors &gt;&gt;
-    plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
-
-    # Add catch-all .gitignore to cache dir if we created it
-    cache_dir_existed = os.path.isdir(options.cache_dir)
-    &lt;&lt; Instantiate BuildManager &gt;&gt;
-    reset_global_state()
-    try:
-        graph = dispatch(sources, manager, stdout)
-        if not options.fine_grained_incremental:
-            TypeState.reset_all_subtype_caches()
-        if options.timing_stats is not None:
-            dump_timing_stats(options.timing_stats, graph)
-        return BuildResult(manager, graph)
-    finally:
-        &lt;&lt; Handle stats and reports &gt;&gt;
-</t>
-<t tx="ekr.20220525082933.232">class BuildManager:
-    """This class holds shared state for building a mypy program.
-
-    It is used to coordinate parsing, import processing, semantic
-    analysis and type checking.  The actual build steps are carried
-    out by dispatch().
-
-    Attributes:
-      data_dir:        Mypy data directory (contains stubs)
-      search_paths:    SearchPaths instance indicating where to look for modules
-      modules:         Mapping of module ID to MypyFile (shared by the passes)
-      semantic_analyzer:
-                       Semantic analyzer, pass 2
-      all_types:       Map {Expression: Type} from all modules (enabled by export_types)
-      options:         Build options
-      missing_modules: Set of modules that could not be imported encountered so far
-      stale_modules:   Set of modules that needed to be rechecked (only used by tests)
-      fg_deps_meta:    Metadata for fine-grained dependencies caches associated with modules
-      fg_deps:         A fine-grained dependency map
-      version_id:      The current mypy version (based on commit id when possible)
-      plugin:          Active mypy plugin(s)
-      plugins_snapshot:
-                       Snapshot of currently active user plugins (versions and hashes)
-      old_plugins_snapshot:
-                       Plugins snapshot from previous incremental run (or None in
-                       non-incremental mode and if cache was not found)
-      errors:          Used for reporting all errors
-      flush_errors:    A function for processing errors after each SCC
-      cache_enabled:   Whether cache is being read. This is set based on options,
-                       but is disabled if fine-grained cache loading fails
-                       and after an initial fine-grained load. This doesn't
-                       determine whether we write cache files or not.
-      quickstart_state:
-                       A cache of filename -&gt; mtime/size/hash info used to avoid
-                       needing to hash source files when using a cache with mismatching mtimes
-      stats:           Dict with various instrumentation numbers, it is used
-                       not only for debugging, but also required for correctness,
-                       in particular to check consistency of the fine-grained dependency cache.
-      fscache:         A file system cacher
-      ast_cache:       AST cache to speed up mypy daemon
-    """
-
-    @others
-</t>
-<t tx="ekr.20220525082933.233">def __init__(
-    self,
-    data_dir: str,
-    search_paths: SearchPaths,
-    ignore_prefix: str,
-    source_set: BuildSourceSet,
-    reports: Reports | None,
-    options: Options,
-    version_id: str,
-    plugin: Plugin,
-    plugins_snapshot: dict[str, str],
-    errors: Errors,
-    flush_errors: Callable[[list[str], bool], None],
-    fscache: FileSystemCache,
-    stdout: TextIO,
-    stderr: TextIO,
-) -&gt; None:
-    self.stats: dict[str, Any] = {}  # Values are ints or floats
-    self.stdout = stdout
-    self.stderr = stderr
-    self.start_time = time.time()
-    self.data_dir = data_dir
-    self.errors = errors
-    self.errors.set_ignore_prefix(ignore_prefix)
-    self.search_paths = search_paths
-    self.source_set = source_set
-    self.reports = reports
-    self.options = options
-    self.version_id = version_id
-    self.modules: dict[str, MypyFile] = {}
-    self.missing_modules: set[str] = set()
-    self.fg_deps_meta: dict[str, FgDepMeta] = {}
-    # fg_deps holds the dependencies of every module that has been
-    # processed. We store this in BuildManager so that we can compute
-    # dependencies as we go, which allows us to free ASTs and type information,
-    # saving a ton of memory on net.
-    self.fg_deps: dict[str, set[str]] = {}
-    # Always convert the plugin to a ChainedPlugin so that it can be manipulated if needed
-    if not isinstance(plugin, ChainedPlugin):
-        plugin = ChainedPlugin(options, [plugin])
-    self.plugin = plugin
-    # Set of namespaces (module or class) that are being populated during semantic
-    # analysis and may have missing definitions.
-    self.incomplete_namespaces: set[str] = set()
-    self.semantic_analyzer = SemanticAnalyzer(
-        self.modules,
-        self.missing_modules,
-        self.incomplete_namespaces,
-        self.errors,
-        self.plugin,
-    )
-    self.all_types: dict[Expression, Type] = {}  # Enabled by export_types
-    self.indirection_detector = TypeIndirectionVisitor()
-    self.stale_modules: set[str] = set()
-    self.rechecked_modules: set[str] = set()
-    self.flush_errors = flush_errors
-    has_reporters = reports is not None and reports.reporters
-    self.cache_enabled = (
-        options.incremental
-        and (not options.fine_grained_incremental or options.use_fine_grained_cache)
-        and not has_reporters
-    )
-    self.fscache = fscache
-    self.find_module_cache = FindModuleCache(
-        self.search_paths, self.fscache, self.options, source_set=self.source_set
-    )
-    for module in CORE_BUILTIN_MODULES:
-        if options.use_builtins_fixtures:
-            continue
-        if module == "_importlib_modulespec":
-            continue
-        path = self.find_module_cache.find_module(module)
-        if not isinstance(path, str):
-            raise CompileError(
-                [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
-            )
-        if is_typeshed_file(options.abs_custom_typeshed_dir, path) or is_stub_package_file(
-            path
-        ):
-            continue
-
-        raise CompileError(
-            [
-                f'mypy: "{os.path.relpath(path)}" shadows library module "{module}"',
-                f'note: A user-defined top-level module with name "{module}" is not supported',
-            ]
-        )
-
-    self.metastore = create_metastore(options)
-
-    # a mapping from source files to their corresponding shadow files
-    # for efficient lookup
-    self.shadow_map: dict[str, str] = {}
-    if self.options.shadow_file is not None:
-        self.shadow_map = {
-            source_file: shadow_file for (source_file, shadow_file) in self.options.shadow_file
-        }
-    # a mapping from each file being typechecked to its possible shadow file
-    self.shadow_equivalence_map: dict[str, str | None] = {}
-    self.plugin = plugin
-    self.plugins_snapshot = plugins_snapshot
-    self.old_plugins_snapshot = read_plugins_snapshot(self)
-    self.quickstart_state = read_quickstart_file(options, self.stdout)
-    # Fine grained targets (module top levels and top level functions) processed by
-    # the semantic analyzer, used only for testing. Currently used only by the new
-    # semantic analyzer.
-    self.processed_targets: list[str] = []
-    # Missing stub packages encountered.
-    self.missing_stub_packages: set[str] = set()
-    # Cache for mypy ASTs that have completed semantic analysis
-    # pass 1. When multiple files are added to the build in a
-    # single daemon increment, only one of the files gets added
-    # per step and the others are discarded. This gets repeated
-    # until all the files have been added. This means that a
-    # new file can be processed O(n**2) times. This cache
-    # avoids most of this redundant work.
-    self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo]]] = {}
-
-</t>
-<t tx="ekr.20220525082933.234">def dump_stats(self) -&gt; None:
-    if self.options.dump_build_stats:
-        print("Stats:")
-        for key, value in sorted(self.stats_summary().items()):
-            print(f"{key + ':':24}{value}")
-
-</t>
-<t tx="ekr.20220525082933.235">def use_fine_grained_cache(self) -&gt; bool:
-    return self.cache_enabled and self.options.use_fine_grained_cache
-
-</t>
-<t tx="ekr.20220525082933.236">def maybe_swap_for_shadow_path(self, path: str) -&gt; str:
-    if not self.shadow_map:
-        return path
-
-    path = normpath(path, self.options)
-
-    previously_checked = path in self.shadow_equivalence_map
-    if not previously_checked:
-        for source, shadow in self.shadow_map.items():
-            if self.fscache.samefile(path, source):
-                self.shadow_equivalence_map[path] = shadow
-                break
-            else:
-                self.shadow_equivalence_map[path] = None
-
-    shadow_file = self.shadow_equivalence_map.get(path)
-    return shadow_file if shadow_file else path
-
-</t>
-<t tx="ekr.20220525082933.237">def get_stat(self, path: str) -&gt; os.stat_result:
-    return self.fscache.stat(self.maybe_swap_for_shadow_path(path))
-
-</t>
-<t tx="ekr.20220525082933.238">def getmtime(self, path: str) -&gt; int:
-    """Return a file's mtime; but 0 in bazel mode.
-
-    (Bazel's distributed cache doesn't like filesystem metadata to
-    end up in output files.)
-    """
-    if self.options.bazel:
-        return 0
-    else:
-        return int(self.metastore.getmtime(path))
-
-</t>
-<t tx="ekr.20220525082933.239">def all_imported_modules_in_file(self, file: MypyFile) -&gt; list[tuple[int, str, int]]:
-    """Find all reachable import statements in a file.
-
-    Return list of tuples (priority, module id, import line number)
-    for all modules imported in file; lower numbers == higher priority.
-
-    Can generate blocking errors on bogus relative imports.
-    """
-
-    def correct_rel_imp(imp: ImportFrom | ImportAll) -&gt; str:
-        """Function to correct for relative imports."""
-        file_id = file.fullname
-        rel = imp.relative
-        if rel == 0:
-            return imp.id
-        if os.path.basename(file.path).startswith("__init__."):
-            rel -= 1
-        if rel != 0:
-            file_id = ".".join(file_id.split(".")[:-rel])
-        new_id = file_id + "." + imp.id if imp.id else file_id
-
-        if not new_id:
-            self.errors.set_file(file.path, file.name, self.options)
-            self.errors.report(
-                imp.line, 0, "No parent module -- cannot perform relative import", blocker=True
-            )
-
-        return new_id
-
-    res: list[tuple[int, str, int]] = []
-    for imp in file.imports:
-        if not imp.is_unreachable:
-            if isinstance(imp, Import):
-                pri = import_priority(imp, PRI_MED)
-                ancestor_pri = import_priority(imp, PRI_LOW)
-                for id, _ in imp.ids:
-                    res.append((pri, id, imp.line))
-                    ancestor_parts = id.split(".")[:-1]
-                    ancestors = []
-                    for part in ancestor_parts:
-                        ancestors.append(part)
-                        res.append((ancestor_pri, ".".join(ancestors), imp.line))
-            elif isinstance(imp, ImportFrom):
-                cur_id = correct_rel_imp(imp)
-                all_are_submodules = True
-                # Also add any imported names that are submodules.
-                pri = import_priority(imp, PRI_MED)
-                for name, __ in imp.names:
-                    sub_id = cur_id + "." + name
-                    if self.is_module(sub_id):
-                        res.append((pri, sub_id, imp.line))
-                    else:
-                        all_are_submodules = False
-                # Add cur_id as a dependency, even if all of the
-                # imports are submodules. Processing import from will try
-                # to look through cur_id, so we should depend on it.
-                # As a workaround for for some bugs in cycle handling (#4498),
-                # if all of the imports are submodules, do the import at a lower
-                # priority.
-                pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
-                res.append((pri, cur_id, imp.line))
-            elif isinstance(imp, ImportAll):
-                pri = import_priority(imp, PRI_HIGH)
-                res.append((pri, correct_rel_imp(imp), imp.line))
-
-    # Sort such that module (e.g. foo.bar.baz) comes before its ancestors (e.g. foo
-    # and foo.bar) so that, if FindModuleCache finds the target module in a
-    # package marked with py.typed underneath a namespace package installed in
-    # site-packages, (gasp), that cache's knowledge of the ancestors
-    # (aka FindModuleCache.ns_ancestors) can be primed when it is asked to find
-    # the parent.
-    res.sort(key=lambda x: -x[1].count("."))
-    return res
-
-</t>
-<t tx="ekr.20220525082933.240">def is_module(self, id: str) -&gt; bool:
-    """Is there a file in the file system corresponding to module id?"""
-    return find_module_simple(id, self) is not None
-
-</t>
-<t tx="ekr.20220525082933.241">def parse_file(
-    self, id: str, path: str, source: str, ignore_errors: bool, options: Options
-) -&gt; MypyFile:
-    """Parse the source of a file with the given name.
-
-    Raise CompileError if there is a parse error.
-    """
-    t0 = time.time()
-    tree = parse(source, path, id, self.errors, options=options)
-    tree._fullname = id
-    self.add_stats(
-        files_parsed=1,
-        modules_parsed=int(not tree.is_stub),
-        stubs_parsed=int(tree.is_stub),
-        parse_time=time.time() - t0,
-    )
-
-    if self.errors.is_blockers():
-        self.log("Bailing due to parse errors")
-        self.errors.raise_error()
-
-    self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
-    return tree
-
-</t>
-<t tx="ekr.20220525082933.242">def load_fine_grained_deps(self, id: str) -&gt; dict[str, set[str]]:
-    t0 = time.time()
-    if id in self.fg_deps_meta:
-        # TODO: Assert deps file wasn't changed.
-        deps = json.loads(self.metastore.read(self.fg_deps_meta[id]["path"]))
-    else:
-        deps = {}
-    val = {k: set(v) for k, v in deps.items()}
-    self.add_stats(load_fg_deps_time=time.time() - t0)
-    return val
-
-</t>
-<t tx="ekr.20220525082933.243">def report_file(
-    self, file: MypyFile, type_map: dict[Expression, Type], options: Options
-) -&gt; None:
-    if self.reports is not None and self.source_set.is_source(file):
-        self.reports.file(file, self.modules, type_map, options)
-
-</t>
-<t tx="ekr.20220525082933.244">def verbosity(self) -&gt; int:
-    return self.options.verbosity
-
-</t>
-<t tx="ekr.20220525082933.245">def log(self, *message: str) -&gt; None:
-    if self.verbosity() &gt;= 1:
-        if message:
-            print("LOG: ", *message, file=self.stderr)
-        else:
-            print(file=self.stderr)
-        self.stderr.flush()
-
-</t>
-<t tx="ekr.20220525082933.246">def log_fine_grained(self, *message: str) -&gt; None:
-    import mypy.build
-
-    if self.verbosity() &gt;= 1:
-        self.log("fine-grained:", *message)
-    elif mypy.build.DEBUG_FINE_GRAINED:
-        # Output log in a simplified format that is quick to browse.
-        if message:
-            print(*message, file=self.stderr)
-        else:
-            print(file=self.stderr)
-        self.stderr.flush()
-
-</t>
-<t tx="ekr.20220525082933.247">def trace(self, *message: str) -&gt; None:
-    if self.verbosity() &gt;= 2:
-        print("TRACE:", *message, file=self.stderr)
-        self.stderr.flush()
-
-</t>
-<t tx="ekr.20220525082933.248">def add_stats(self, **kwds: Any) -&gt; None:
-    for key, value in kwds.items():
-        if key in self.stats:
-            self.stats[key] += value
-        else:
-            self.stats[key] = value
-
-</t>
-<t tx="ekr.20220525082933.249">def stats_summary(self) -&gt; Mapping[str, object]:
-    return self.stats
-
-
-</t>
-<t tx="ekr.20220525082933.274">class State:
-    """The state for a module.
-
-    The source is only used for the -c command line option; in that
-    case path is None.  Otherwise source is None and path isn't.
-    """
-
-    manager: BuildManager
-    order_counter: ClassVar[int] = 0
-    order: int  # Order in which modules were encountered
-    id: str  # Fully qualified module name
-    path: str | None = None  # Path to module source
-    abspath: str | None = None  # Absolute path to module source
-    xpath: str  # Path or '&lt;string&gt;'
-    source: str | None = None  # Module source code
-    source_hash: str | None = None  # Hash calculated based on the source code
-    meta_source_hash: str | None = None  # Hash of the source given in the meta, if any
-    meta: CacheMeta | None = None
-    data: str | None = None
-    tree: MypyFile | None = None
-    # We keep both a list and set of dependencies. A set because it makes it efficient to
-    # prevent duplicates and the list because I am afraid of changing the order of
-    # iteration over dependencies.
-    # They should be managed with add_dependency and suppress_dependency.
-    dependencies: list[str]  # Modules directly imported by the module
-    dependencies_set: set[str]  # The same but as a set for deduplication purposes
-    suppressed: list[str]  # Suppressed/missing dependencies
-    suppressed_set: set[str]  # Suppressed/missing dependencies
-    priorities: dict[str, int]
-
-    # Map each dependency to the line number where it is first imported
-    dep_line_map: dict[str, int]
-
-    # Parent package, its parent, etc.
-    ancestors: list[str] | None = None
-
-    # List of (path, line number) tuples giving context for import
-    import_context: list[tuple[str, int]]
-
-    # The State from which this module was imported, if any
-    caller_state: State | None = None
-
-    # If caller_state is set, the line number in the caller where the import occurred
-    caller_line = 0
-
-    # If True, indicate that the public interface of this module is unchanged
-    externally_same = True
-
-    # Contains a hash of the public interface in incremental mode
-    interface_hash: str = ""
-
-    # Options, specialized for this file
-    options: Options
-
-    # Whether to ignore all errors
-    ignore_all = False
-
-    # Whether the module has an error or any of its dependencies have one.
-    transitive_error = False
-
-    # Errors reported before semantic analysis, to allow fine-grained
-    # mode to keep reporting them.
-    early_errors: list[ErrorInfo]
-
-    # Type checker used for checking this file.  Use type_checker() for
-    # access and to construct this on demand.
-    _type_checker: TypeChecker | None = None
-
-    fine_grained_deps_loaded = False
-
-    # Cumulative time spent on this file, in microseconds (for profiling stats)
-    time_spent_us: int = 0
-
-    @others
-</t>
-<t tx="ekr.20220525082933.275">def __init__(
-    self,
-    id: str | None,
-    path: str | None,
-    source: str | None,
-    manager: BuildManager,
-    caller_state: State | None = None,
-    caller_line: int = 0,
-    ancestor_for: State | None = None,
-    root_source: bool = False,
-    # If `temporary` is True, this State is being created to just
-    # quickly parse/load the tree, without an intention to further
-    # process it. With this flag, any changes to external state as well
-    # as error reporting should be avoided.
-    temporary: bool = False,
-) -&gt; None:
-    if not temporary:
-        assert id or path or source is not None, "Neither id, path nor source given"
-    self.manager = manager
-    State.order_counter += 1
-    self.order = State.order_counter
-    self.caller_state = caller_state
-    self.caller_line = caller_line
-    if caller_state:
-        self.import_context = caller_state.import_context[:]
-        self.import_context.append((caller_state.xpath, caller_line))
-    else:
-        self.import_context = []
-    self.id = id or "__main__"
-    self.options = manager.options.clone_for_module(self.id)
-    self.early_errors = []
-    self._type_checker = None
-    if not path and source is None:
-        assert id is not None
-        try:
-            path, follow_imports = find_module_and_diagnose(
-                manager,
-                id,
-                self.options,
-                caller_state,
-                caller_line,
-                ancestor_for,
-                root_source,
-                skip_diagnose=temporary,
-            )
-        except ModuleNotFound:
-            if not temporary:
-                manager.missing_modules.add(id)
-            raise
-        if follow_imports == "silent":
-            self.ignore_all = True
-    elif path and is_silent_import_module(manager, path):
-        self.ignore_all = True
-    self.path = path
-    if path:
-        self.abspath = os.path.abspath(path)
-    self.xpath = path or "&lt;string&gt;"
-    if path and source is None and self.manager.cache_enabled:
-        self.meta = find_cache_meta(self.id, path, manager)
-        # TODO: Get mtime if not cached.
-        if self.meta is not None:
-            self.interface_hash = self.meta.interface_hash
-            self.meta_source_hash = self.meta.hash
-    if path and source is None and self.manager.fscache.isdir(path):
-        source = ""
-    self.source = source
-    self.add_ancestors()
-    t0 = time.time()
-    self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
-    self.manager.add_stats(validate_meta_time=time.time() - t0)
-    if self.meta:
-        # Make copies, since we may modify these and want to
-        # compare them to the originals later.
-        self.dependencies = list(self.meta.dependencies)
-        self.dependencies_set = set(self.dependencies)
-        self.suppressed = list(self.meta.suppressed)
-        self.suppressed_set = set(self.suppressed)
-        all_deps = self.dependencies + self.suppressed
-        assert len(all_deps) == len(self.meta.dep_prios)
-        self.priorities = {id: pri for id, pri in zip(all_deps, self.meta.dep_prios)}
-        assert len(all_deps) == len(self.meta.dep_lines)
-        self.dep_line_map = {id: line for id, line in zip(all_deps, self.meta.dep_lines)}
-        if temporary:
-            self.load_tree(temporary=True)
-        if not manager.use_fine_grained_cache():
-            # Special case: if there were a previously missing package imported here
-            # and it is not present, then we need to re-calculate dependencies.
-            # This is to support patterns like this:
-            #     from missing_package import missing_module  # type: ignore
-            # At first mypy doesn't know that `missing_module` is a module
-            # (it may be a variable, a class, or a function), so it is not added to
-            # suppressed dependencies. Therefore, when the package with module is added,
-            # we need to re-calculate dependencies.
-            # NOTE: see comment below for why we skip this in fine grained mode.
-            if exist_added_packages(self.suppressed, manager, self.options):
-                self.parse_file()  # This is safe because the cache is anyway stale.
-                self.compute_dependencies()
-    else:
-        # When doing a fine-grained cache load, pretend we only
-        # know about modules that have cache information and defer
-        # handling new modules until the fine-grained update.
-        if manager.use_fine_grained_cache():
-            manager.log(f"Deferring module to fine-grained update {path} ({id})")
-            raise ModuleNotFound
-
-        # Parse the file (and then some) to get the dependencies.
-        self.parse_file()
-        self.compute_dependencies()
-
-</t>
-<t tx="ekr.20220525082933.276">@property
-def xmeta(self) -&gt; CacheMeta:
-    assert self.meta, "missing meta on allegedly fresh module"
-    return self.meta
-
-</t>
-<t tx="ekr.20220525082933.277">def add_ancestors(self) -&gt; None:
-    if self.path is not None:
-        _, name = os.path.split(self.path)
-        base, _ = os.path.splitext(name)
-        if "." in base:
-            # This is just a weird filename, don't add anything
-            self.ancestors = []
-            return
-    # All parent packages are new ancestors.
-    ancestors = []
-    parent = self.id
-    while "." in parent:
-        parent, _ = parent.rsplit(".", 1)
-        ancestors.append(parent)
-    self.ancestors = ancestors
-
-</t>
-<t tx="ekr.20220525082933.278">def is_fresh(self) -&gt; bool:
-    """Return whether the cache data for this file is fresh."""
-    # NOTE: self.dependencies may differ from
-    # self.meta.dependencies when a dependency is dropped due to
-    # suppression by silent mode.  However when a suppressed
-    # dependency is added back we find out later in the process.
-    return (
-        self.meta is not None
-        and self.is_interface_fresh()
-        and self.dependencies == self.meta.dependencies
-    )
-
-</t>
-<t tx="ekr.20220525082933.279">def is_interface_fresh(self) -&gt; bool:
-    return self.externally_same
-
-</t>
-<t tx="ekr.20220525082933.280">def mark_as_rechecked(self) -&gt; None:
-    """Marks this module as having been fully re-analyzed by the type-checker."""
-    self.manager.rechecked_modules.add(self.id)
-
-</t>
-<t tx="ekr.20220525082933.281">def mark_interface_stale(self, *, on_errors: bool = False) -&gt; None:
-    """Marks this module as having a stale public interface, and discards the cache data."""
-    self.externally_same = False
-    if not on_errors:
-        self.manager.stale_modules.add(self.id)
-
-</t>
-<t tx="ekr.20220525082933.282">def check_blockers(self) -&gt; None:
-    """Raise CompileError if a blocking error is detected."""
-    if self.manager.errors.is_blockers():
-        self.manager.log("Bailing due to blocking errors")
-        self.manager.errors.raise_error()
-
-</t>
-<t tx="ekr.20220525082933.283">@contextlib.contextmanager
-def wrap_context(self, check_blockers: bool = True) -&gt; Iterator[None]:
-    """Temporarily change the error import context to match this state.
-
-    Also report an internal error if an unexpected exception was raised
-    and raise an exception on a blocking error, unless
-    check_blockers is False. Skipping blocking error reporting is used
-    in the semantic analyzer so that we can report all blocking errors
-    for a file (across multiple targets) to maintain backward
-    compatibility.
-    """
-    save_import_context = self.manager.errors.import_context()
-    self.manager.errors.set_import_context(self.import_context)
-    try:
-        yield
-    except CompileError:
-        raise
-    except Exception as err:
-        report_internal_error(
-            err,
-            self.path,
-            0,
-            self.manager.errors,
-            self.options,
-            self.manager.stdout,
-            self.manager.stderr,
-        )
-    self.manager.errors.set_import_context(save_import_context)
-    # TODO: Move this away once we've removed the old semantic analyzer?
-    if check_blockers:
-        self.check_blockers()
-
-</t>
-<t tx="ekr.20220525082933.284">def load_fine_grained_deps(self) -&gt; dict[str, set[str]]:
-    return self.manager.load_fine_grained_deps(self.id)
-
-</t>
-<t tx="ekr.20220525082933.285">def load_tree(self, temporary: bool = False) -&gt; None:
-    assert (
-        self.meta is not None
-    ), "Internal error: this method must be called only for cached modules"
-
-    data = _load_json_file(
-        self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
-    )
-    if data is None:
-        return None
-
-    t0 = time.time()
-    # TODO: Assert data file wasn't changed.
-    self.tree = MypyFile.deserialize(data)
-    t1 = time.time()
-    self.manager.add_stats(deserialize_time=t1 - t0)
-    if not temporary:
-        self.manager.modules[self.id] = self.tree
-        self.manager.add_stats(fresh_trees=1)
-
-</t>
-<t tx="ekr.20220525082933.286">def fix_cross_refs(self) -&gt; None:
-    assert self.tree is not None, "Internal error: method must be called on parsed file only"
-    # We need to set allow_missing when doing a fine grained cache
-    # load because we need to gracefully handle missing modules.
-    fixup_module(self.tree, self.manager.modules, self.options.use_fine_grained_cache)
-
-</t>
-<t tx="ekr.20220525082933.287"># Methods for processing modules from source code.
-
-</t>
-<t tx="ekr.20220525082933.288">def parse_file(self) -&gt; None:
-    """Parse file and run first pass of semantic analysis.
-
-    Everything done here is local to the file. Don't depend on imported
-    modules in any way. Also record module dependencies based on imports.
-    """
-    if self.tree is not None:
-        # The file was already parsed (in __init__()).
-        return
-
-    manager = self.manager
-
-    # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
-    cached = self.id in manager.ast_cache
-    modules = manager.modules
-    if not cached:
-        manager.log(f"Parsing {self.xpath} ({self.id})")
-    else:
-        manager.log(f"Using cached AST for {self.xpath} ({self.id})")
-
-    t0 = time_ref()
-
-    with self.wrap_context():
-        source = self.source
-        self.source = None  # We won't need it again.
-        if self.path and source is None:
-            try:
-                path = manager.maybe_swap_for_shadow_path(self.path)
-                source = decode_python_encoding(manager.fscache.read(path))
-                self.source_hash = manager.fscache.hash_digest(path)
-            except OSError as ioerr:
-                # ioerr.strerror differs for os.stat failures between Windows and
-                # other systems, but os.strerror(ioerr.errno) does not, so we use that.
-                # (We want the error messages to be platform-independent so that the
-                # tests have predictable output.)
-                raise CompileError(
-                    [
-                        "mypy: can't read file '{}': {}".format(
-                            self.path, os.strerror(ioerr.errno)
-                        )
-                    ],
-                    module_with_blocker=self.id,
-                ) from ioerr
-            except (UnicodeDecodeError, DecodeError) as decodeerr:
-                if self.path.endswith(".pyd"):
-                    err = f"mypy: stubgen does not support .pyd files: '{self.path}'"
-                else:
-                    err = f"mypy: can't decode file '{self.path}': {str(decodeerr)}"
-                raise CompileError([err], module_with_blocker=self.id) from decodeerr
-        elif self.path and self.manager.fscache.isdir(self.path):
-            source = ""
-            self.source_hash = ""
-        else:
-            assert source is not None
-            self.source_hash = compute_hash(source)
-
-        self.parse_inline_configuration(source)
-        if not cached:
-            self.tree = manager.parse_file(
-                self.id,
-                self.xpath,
-                source,
-                self.ignore_all or self.options.ignore_errors,
-                self.options,
-            )
-
-        else:
-            # Reuse a cached AST
-            self.tree = manager.ast_cache[self.id][0]
-            manager.errors.set_file_ignored_lines(
-                self.xpath,
-                self.tree.ignored_lines,
-                self.ignore_all or self.options.ignore_errors,
-            )
-
-    self.time_spent_us += time_spent_us(t0)
-
-    if not cached:
-        # Make a copy of any errors produced during parse time so that
-        # fine-grained mode can repeat them when the module is
-        # reprocessed.
-        self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
-    else:
-        self.early_errors = manager.ast_cache[self.id][1]
-
-    modules[self.id] = self.tree
-
-    if not cached:
-        self.semantic_analysis_pass1()
-
-    self.check_blockers()
-
-    manager.ast_cache[self.id] = (self.tree, self.early_errors)
-
-</t>
-<t tx="ekr.20220525082933.289">def parse_inline_configuration(self, source: str) -&gt; None:
-    """Check for inline mypy: options directive and parse them."""
-    flags = get_mypy_comments(source)
-    if flags:
-        changes, config_errors = parse_mypy_comments(flags, self.options)
-        self.options = self.options.apply_changes(changes)
-        self.manager.errors.set_file(self.xpath, self.id, self.options)
-        for lineno, error in config_errors:
-            self.manager.errors.report(lineno, 0, error)
-
-</t>
-<t tx="ekr.20220525082933.290">def semantic_analysis_pass1(self) -&gt; None:
-    """Perform pass 1 of semantic analysis, which happens immediately after parsing.
-
-    This pass can't assume that any other modules have been processed yet.
-    """
-    options = self.options
-    assert self.tree is not None
-
-    t0 = time_ref()
-
-    # Do the first pass of semantic analysis: analyze the reachability
-    # of blocks and import statements. We must do this before
-    # processing imports, since this may mark some import statements as
-    # unreachable.
-    #
-    # TODO: This should not be considered as a semantic analysis
-    #     pass -- it's an independent pass.
-    analyzer = SemanticAnalyzerPreAnalysis()
-    with self.wrap_context():
-        analyzer.visit_file(self.tree, self.xpath, self.id, options)
-    # TODO: Do this while constructing the AST?
-    self.tree.names = SymbolTable()
-    if not self.tree.is_stub:
-        # Always perform some low-key variable renaming
-        self.tree.accept(LimitedVariableRenameVisitor())
-        if options.allow_redefinition:
-            # Perform more renaming across the AST to allow variable redefinitions
-            self.tree.accept(VariableRenameVisitor())
-    self.time_spent_us += time_spent_us(t0)
-
-</t>
-<t tx="ekr.20220525082933.291">def add_dependency(self, dep: str) -&gt; None:
-    if dep not in self.dependencies_set:
-        self.dependencies.append(dep)
-        self.dependencies_set.add(dep)
-    if dep in self.suppressed_set:
-        self.suppressed.remove(dep)
-        self.suppressed_set.remove(dep)
-
-</t>
-<t tx="ekr.20220525082933.292">def suppress_dependency(self, dep: str) -&gt; None:
-    if dep in self.dependencies_set:
-        self.dependencies.remove(dep)
-        self.dependencies_set.remove(dep)
-    if dep not in self.suppressed_set:
-        self.suppressed.append(dep)
-        self.suppressed_set.add(dep)
-
-</t>
-<t tx="ekr.20220525082933.293">def compute_dependencies(self) -&gt; None:
-    """Compute a module's dependencies after parsing it.
-
-    This is used when we parse a file that we didn't have
-    up-to-date cache information for. When we have an up-to-date
-    cache, we just use the cached info.
-    """
-    manager = self.manager
-    assert self.tree is not None
-
-    # Compute (direct) dependencies.
-    # Add all direct imports (this is why we needed the first pass).
-    # Also keep track of each dependency's source line.
-    # Missing dependencies will be moved from dependencies to
-    # suppressed when they fail to be loaded in load_graph.
-
-    self.dependencies = []
-    self.dependencies_set = set()
-    self.suppressed = []
-    self.suppressed_set = set()
-    self.priorities = {}  # id -&gt; priority
-    self.dep_line_map = {}  # id -&gt; line
-    dep_entries = manager.all_imported_modules_in_file(
-        self.tree
-    ) + self.manager.plugin.get_additional_deps(self.tree)
-    for pri, id, line in dep_entries:
-        self.priorities[id] = min(pri, self.priorities.get(id, PRI_ALL))
-        if id == self.id:
-            continue
-        self.add_dependency(id)
-        if id not in self.dep_line_map:
-            self.dep_line_map[id] = line
-    # Every module implicitly depends on builtins.
-    if self.id != "builtins":
-        self.add_dependency("builtins")
-
-    self.check_blockers()  # Can fail due to bogus relative imports
-
-</t>
-<t tx="ekr.20220525082933.294">def type_check_first_pass(self) -&gt; None:
-    if self.options.semantic_analysis_only:
-        return
-    t0 = time_ref()
-    with self.wrap_context():
-        self.type_checker().check_first_pass()
-    self.time_spent_us += time_spent_us(t0)
-
-</t>
-<t tx="ekr.20220525082933.295">def type_checker(self) -&gt; TypeChecker:
-    if not self._type_checker:
-        assert self.tree is not None, "Internal error: must be called on parsed file only"
-        manager = self.manager
-        self._type_checker = TypeChecker(
-            manager.errors,
-            manager.modules,
-            self.options,
-            self.tree,
-            self.xpath,
-            manager.plugin,
-        )
-    return self._type_checker
-
-</t>
-<t tx="ekr.20220525082933.296">def type_map(self) -&gt; dict[Expression, Type]:
-    # We can extract the master type map directly since at this
-    # point no temporary type maps can be active.
-    assert len(self.type_checker()._type_maps) == 1
-    return self.type_checker()._type_maps[0]
-
-</t>
-<t tx="ekr.20220525082933.297">def type_check_second_pass(self) -&gt; bool:
-    if self.options.semantic_analysis_only:
-        return False
-    t0 = time_ref()
-    with self.wrap_context():
-        result = self.type_checker().check_second_pass()
-    self.time_spent_us += time_spent_us(t0)
-    return result
-
-def detect_partially_defined_vars(self, type_map: dict[Expression, Type]) -&gt; None:
-    assert self.tree is not None, "Internal error: method must be called on parsed file only"
-    manager = self.manager
-    if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED):
-        manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
-        self.tree.accept(
-            PartiallyDefinedVariableVisitor(
-                MessageBuilder(manager.errors, manager.modules), type_map
-            )
-        )
-
-</t>
-<t tx="ekr.20220525082933.298">def finish_passes(self) -&gt; None:
-    assert self.tree is not None, "Internal error: method must be called on parsed file only"
-    manager = self.manager
-    if self.options.semantic_analysis_only:
-        return
-    t0 = time_ref()
-    with self.wrap_context():
-        # Some tests (and tools) want to look at the set of all types.
-        options = manager.options
-        if options.export_types:
-            manager.all_types.update(self.type_map())
-
-        # We should always patch indirect dependencies, even in full (non-incremental) builds,
-        # because the cache still may be written, and it must be correct.
-        self._patch_indirect_dependencies(self.type_checker().module_refs, self.type_map())
-
-        if self.options.dump_inference_stats:
-            dump_type_stats(
-                self.tree,
-                self.xpath,
-                modules=self.manager.modules,
-                inferred=True,
-                typemap=self.type_map(),
-            )
-        manager.report_file(self.tree, self.type_map(), self.options)
-
-        self.update_fine_grained_deps(self.manager.fg_deps)
-        self.free_state()
-        if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
-            free_tree(self.tree)
-    self.time_spent_us += time_spent_us(t0)
-
-</t>
-<t tx="ekr.20220525082933.299">def free_state(self) -&gt; None:
-    if self._type_checker:
-        self._type_checker.reset()
-        self._type_checker = None
-
-</t>
-<t tx="ekr.20220525082933.300">def _patch_indirect_dependencies(
-    self, module_refs: set[str], type_map: dict[Expression, Type]
-) -&gt; None:
-    types = set(type_map.values())
-    assert None not in types
-    valid = self.valid_references()
-
-    encountered = self.manager.indirection_detector.find_modules(types) | module_refs
-    extra = encountered - valid
-
-    for dep in sorted(extra):
-        if dep not in self.manager.modules:
-            continue
-        if dep not in self.suppressed_set and dep not in self.manager.missing_modules:
-            self.add_dependency(dep)
-            self.priorities[dep] = PRI_INDIRECT
-        elif dep not in self.suppressed_set and dep in self.manager.missing_modules:
-            self.suppress_dependency(dep)
-
-</t>
-<t tx="ekr.20220525082933.301">def compute_fine_grained_deps(self) -&gt; dict[str, set[str]]:
-    assert self.tree is not None
-    if self.id in ("builtins", "typing", "types", "sys", "_typeshed"):
-        # We don't track changes to core parts of typeshed -- the
-        # assumption is that they are only changed as part of mypy
-        # updates, which will invalidate everything anyway. These
-        # will always be processed in the initial non-fine-grained
-        # build. Other modules may be brought in as a result of an
-        # fine-grained increment, and we may need these
-        # dependencies then to handle cyclic imports.
-        return {}
-    from mypy.server.deps import get_dependencies  # Lazy import to speed up startup
-
-    return get_dependencies(
-        target=self.tree,
-        type_map=self.type_map(),
-        python_version=self.options.python_version,
-</t>
-<t tx="ekr.20220525082933.302">        options=self.manager.options,
-    )
-
-def update_fine_grained_deps(self, deps: dict[str, set[str]]) -&gt; None:
-    options = self.manager.options
-    if options.cache_fine_grained or options.fine_grained_incremental:
-        from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
-
-        merge_dependencies(self.compute_fine_grained_deps(), deps)
-        TypeState.update_protocol_deps(deps)
-
-</t>
-<t tx="ekr.20220525082933.303">def valid_references(self) -&gt; set[str]:
-    assert self.ancestors is not None
-    valid_refs = set(self.dependencies + self.suppressed + self.ancestors)
-    valid_refs.add(self.id)
-
-    if "os" in valid_refs:
-        valid_refs.add("os.path")
-
-    return valid_refs
-
-</t>
-<t tx="ekr.20220525082933.304">def write_cache(self) -&gt; None:
-    assert self.tree is not None, "Internal error: method must be called on parsed file only"
-    # We don't support writing cache files in fine-grained incremental mode.
-    if (
-        not self.path
-        or self.options.cache_dir == os.devnull
-        or self.options.fine_grained_incremental
-    ):
-        return
-    is_errors = self.transitive_error
-    if is_errors:
-        delete_cache(self.id, self.path, self.manager)
-        self.meta = None
-        self.mark_interface_stale(on_errors=True)
-        return
-    dep_prios = self.dependency_priorities()
-    dep_lines = self.dependency_lines()
-    assert self.source_hash is not None
-    assert len(set(self.dependencies)) == len(
-        self.dependencies
-    ), f"Duplicates in dependencies list for {self.id} ({self.dependencies})"
-    new_interface_hash, self.meta = write_cache(
-        self.id,
-        self.path,
-        self.tree,
-        list(self.dependencies),
-        list(self.suppressed),
-        dep_prios,
-        dep_lines,
-        self.interface_hash,
-        self.source_hash,
-        self.ignore_all,
-        self.manager,
-    )
-    if new_interface_hash == self.interface_hash:
-        self.manager.log(f"Cached module {self.id} has same interface")
-    else:
-        self.manager.log(f"Cached module {self.id} has changed interface")
-        self.mark_interface_stale()
-        self.interface_hash = new_interface_hash
-
-</t>
-<t tx="ekr.20220525082933.305">def verify_dependencies(self, suppressed_only: bool = False) -&gt; None:
-    """Report errors for import targets in modules that don't exist.
-
-    If suppressed_only is set, only check suppressed dependencies.
-    """
-    manager = self.manager
-    assert self.ancestors is not None
-    if suppressed_only:
-        all_deps = self.suppressed
-    else:
-        # Strip out indirect dependencies. See comment in build.load_graph().
-        dependencies = [
-            dep for dep in self.dependencies if self.priorities.get(dep) != PRI_INDIRECT
-        ]
-        all_deps = dependencies + self.suppressed + self.ancestors
-    for dep in all_deps:
-        if dep in manager.modules:
-            continue
-        options = manager.options.clone_for_module(dep)
-        if options.ignore_missing_imports:
-            continue
-        line = self.dep_line_map.get(dep, 1)
-        try:
-            if dep in self.ancestors:
-                state: State | None = None
-                ancestor: State | None = self
-            else:
-                state, ancestor = self, None
-            # Called just for its side effects of producing diagnostics.
-            find_module_and_diagnose(
-                manager,
-                dep,
-                options,
-                caller_state=state,
-                caller_line=line,
-                ancestor_for=ancestor,
-            )
-        except (ModuleNotFound, CompileError):
-            # Swallow up any ModuleNotFounds or CompilerErrors while generating
-            # a diagnostic. CompileErrors may get generated in
-            # fine-grained mode when an __init__.py is deleted, if a module
-            # that was in that package has targets reprocessed before
-            # it is renamed.
-            pass
-
-</t>
-<t tx="ekr.20220525082933.306">def dependency_priorities(self) -&gt; list[int]:
-    return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies + self.suppressed]
-
-</t>
-<t tx="ekr.20220525082933.307">def dependency_lines(self) -&gt; list[int]:
-    return [self.dep_line_map.get(dep, 1) for dep in self.dependencies + self.suppressed]
-
-</t>
-<t tx="ekr.20220525082933.308">def generate_unused_ignore_notes(self) -&gt; None:
-    if self.options.warn_unused_ignores:
-        # If this file was initially loaded from the cache, it may have suppressed
-        # dependencies due to imports with ignores on them. We need to generate
-        # those errors to avoid spuriously flagging them as unused ignores.
-        if self.meta:
-            self.verify_dependencies(suppressed_only=True)
-        self.manager.errors.generate_unused_ignore_errors(self.xpath)
-
-</t>
-<t tx="ekr.20220525082933.309">def generate_ignore_without_code_notes(self) -&gt; None:
-    if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
-        self.manager.errors.generate_ignore_without_code_errors(
-            self.xpath, self.options.warn_unused_ignores
-        )
-
-
-</t>
-<t tx="ekr.20220525082933.321">def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) -&gt; Graph:
-    log_configuration(manager, sources)
-
-    t0 = time.time()
-    graph = load_graph(sources, manager)
-
-    &lt;&lt; Handle stats and dumps &gt;&gt;
-    # If we are loading a fine-grained incremental mode cache, we
-    # don't want to do a real incremental reprocess of the
-    # graph---we'll handle it all later.
-    if not manager.use_fine_grained_cache():
-        process_graph(graph, manager)
-        &lt;&lt; update snapshot &gt;&gt;
-    &lt;&lt; dump dependencies &gt;&gt;
-    return graph
-
-
-</t>
 <t tx="ekr.20220525082933.327">def load_graph(
     sources: list[BuildSource],
     manager: BuildManager,
@@ -7621,28 +5666,6 @@ def update_fine_grained_deps(self, deps: dict[str, set[str]]) -&gt; None:
 
 
 </t>
-<t tx="ekr.20220525082933.328">def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
-    """Process everything in dependency order."""
-    sccs = sorted_components(graph)
-    manager.log("Found %d SCCs; largest has %d nodes" % (len(sccs), max(len(scc) for scc in sccs)))
-
-    fresh_scc_queue: list[list[str]] = []
-
-    # We're processing SCCs from leaves (those without further
-    # dependencies) to roots (those from which everything else can be
-    # reached).
-    for ascc in sccs:
-        &lt;&lt; order scc &gt;&gt;
-        scc_str = " ".join(scc)
-        if fresh:
-            manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
-            fresh_scc_queue.append(scc)
-        else:
-            &lt;&lt; log the processing &gt;&gt;
-            process_stale_scc(graph, scc, manager)
-
-    &lt;&lt; stats &amp; log &gt;&gt;
-</t>
 <t tx="ekr.20220525082933.331">def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -&gt; None:
     """Process the modules in one SCC from source code.
 
@@ -7736,1209 +5759,6 @@ def update_fine_grained_deps(self, deps: dict[str, set[str]]) -&gt; None:
                 self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 
 </t>
-<t tx="ekr.20220525082934.100"># BinOp(expr left, operator op, expr right)
-def visit_BinOp(self, n: ast3.BinOp) -&gt; OpExpr:
-    op = self.from_operator(n.op)
-
-    if op is None:
-        raise RuntimeError("cannot translate BinOp " + str(type(n.op)))
-
-    e = OpExpr(op, self.visit(n.left), self.visit(n.right))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.101"># UnaryOp(unaryop op, expr operand)
-def visit_UnaryOp(self, n: ast3.UnaryOp) -&gt; UnaryExpr:
-    op = None
-    if isinstance(n.op, ast3.Invert):
-        op = "~"
-    elif isinstance(n.op, ast3.Not):
-        op = "not"
-    elif isinstance(n.op, ast3.UAdd):
-        op = "+"
-    elif isinstance(n.op, ast3.USub):
-        op = "-"
-
-    if op is None:
-        raise RuntimeError("cannot translate UnaryOp " + str(type(n.op)))
-
-    e = UnaryExpr(op, self.visit(n.operand))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.102"># Lambda(arguments args, expr body)
-def visit_Lambda(self, n: ast3.Lambda) -&gt; LambdaExpr:
-    body = ast3.Return(n.body)
-    body.lineno = n.body.lineno
-    body.col_offset = n.body.col_offset
-
-    e = LambdaExpr(
-        self.transform_args(n.args, n.lineno), self.as_required_block([body], n.lineno)
-    )
-    e.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
-    return e
-
-</t>
-<t tx="ekr.20220525082934.103"># IfExp(expr test, expr body, expr orelse)
-def visit_IfExp(self, n: ast3.IfExp) -&gt; ConditionalExpr:
-    e = ConditionalExpr(self.visit(n.test), self.visit(n.body), self.visit(n.orelse))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.1039">class StrExpr(Expression):
-    """String literal"""
-
-    __slots__ = ("value",)
-
-    value: str  # '' by default
-
-    def __init__(self, value: str) -&gt; None:
-    @others
-</t>
-<t tx="ekr.20220525082934.104"># Dict(expr* keys, expr* values)
-def visit_Dict(self, n: ast3.Dict) -&gt; DictExpr:
-    e = DictExpr(
-        list(zip(self.translate_opt_expr_list(n.keys), self.translate_expr_list(n.values)))
-    )
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.1040">    super().__init__()
-    self.value = value
-
-</t>
-<t tx="ekr.20220525082934.1041">def accept(self, visitor: ExpressionVisitor[T]) -&gt; T:
-    return visitor.visit_str_expr(self)
-
-
-</t>
-<t tx="ekr.20220525082934.105"># Set(expr* elts)
-def visit_Set(self, n: ast3.Set) -&gt; SetExpr:
-    e = SetExpr(self.translate_expr_list(n.elts))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.106"># ListComp(expr elt, comprehension* generators)
-def visit_ListComp(self, n: ast3.ListComp) -&gt; ListComprehension:
-    e = ListComprehension(self.visit_GeneratorExp(cast(ast3.GeneratorExp, n)))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.1067"># Kinds of arguments
-@unique
-class ArgKind(Enum):
-    # Positional argument
-    ARG_POS = 0
-    # Positional, optional argument (functions only, not calls)
-    ARG_OPT = 1
-    # *arg argument
-    ARG_STAR = 2
-    # Keyword argument x=y in call, or keyword-only function arg
-    ARG_NAMED = 3
-    # **arg argument
-    ARG_STAR2 = 4
-    # In an argument list, keyword-only and also optional
-    ARG_NAMED_OPT = 5
-
-    @others
-ARG_POS: Final = ArgKind.ARG_POS
-ARG_OPT: Final = ArgKind.ARG_OPT
-ARG_STAR: Final = ArgKind.ARG_STAR
-ARG_NAMED: Final = ArgKind.ARG_NAMED
-ARG_STAR2: Final = ArgKind.ARG_STAR2
-ARG_NAMED_OPT: Final = ArgKind.ARG_NAMED_OPT
-
-
-</t>
-<t tx="ekr.20220525082934.1068">def is_positional(self, star: bool = False) -&gt; bool:
-    return self == ARG_POS or self == ARG_OPT or (star and self == ARG_STAR)
-
-</t>
-<t tx="ekr.20220525082934.1069">def is_named(self, star: bool = False) -&gt; bool:
-    return self == ARG_NAMED or self == ARG_NAMED_OPT or (star and self == ARG_STAR2)
-
-</t>
-<t tx="ekr.20220525082934.107"># SetComp(expr elt, comprehension* generators)
-def visit_SetComp(self, n: ast3.SetComp) -&gt; SetComprehension:
-    e = SetComprehension(self.visit_GeneratorExp(cast(ast3.GeneratorExp, n)))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.1070">def is_required(self) -&gt; bool:
-    return self == ARG_POS or self == ARG_NAMED
-
-</t>
-<t tx="ekr.20220525082934.1071">def is_optional(self) -&gt; bool:
-    return self == ARG_OPT or self == ARG_NAMED_OPT
-
-</t>
-<t tx="ekr.20220525082934.1072">def is_star(self) -&gt; bool:
-    return self == ARG_STAR or self == ARG_STAR2
-
-
-</t>
-<t tx="ekr.20220525082934.108"># DictComp(expr key, expr value, comprehension* generators)
-def visit_DictComp(self, n: ast3.DictComp) -&gt; DictionaryComprehension:
-    targets = [self.visit(c.target) for c in n.generators]
-    iters = [self.visit(c.iter) for c in n.generators]
-    ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
-    is_async = [bool(c.is_async) for c in n.generators]
-    e = DictionaryComprehension(
-        self.visit(n.key), self.visit(n.value), targets, iters, ifs_list, is_async
-    )
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.109"># GeneratorExp(expr elt, comprehension* generators)
-def visit_GeneratorExp(self, n: ast3.GeneratorExp) -&gt; GeneratorExpr:
-    targets = [self.visit(c.target) for c in n.generators]
-    iters = [self.visit(c.iter) for c in n.generators]
-    ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
-    is_async = [bool(c.is_async) for c in n.generators]
-    e = GeneratorExpr(self.visit(n.elt), targets, iters, ifs_list, is_async)
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.110"># Await(expr value)
-def visit_Await(self, n: ast3.Await) -&gt; AwaitExpr:
-    v = self.visit(n.value)
-    e = AwaitExpr(v)
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.111"># Yield(expr? value)
-def visit_Yield(self, n: ast3.Yield) -&gt; YieldExpr:
-    e = YieldExpr(self.visit(n.value))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.112"># YieldFrom(expr value)
-def visit_YieldFrom(self, n: ast3.YieldFrom) -&gt; YieldFromExpr:
-    e = YieldFromExpr(self.visit(n.value))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.113"># Compare(expr left, cmpop* ops, expr* comparators)
-def visit_Compare(self, n: ast3.Compare) -&gt; ComparisonExpr:
-    operators = [self.from_comp_operator(o) for o in n.ops]
-    operands = self.translate_expr_list([n.left] + n.comparators)
-    e = ComparisonExpr(operators, operands)
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.114"># Call(expr func, expr* args, keyword* keywords)
-# keyword = (identifier? arg, expr value)
-def visit_Call(self, n: Call) -&gt; CallExpr:
-    args = n.args
-    keywords = n.keywords
-    keyword_names = [k.arg for k in keywords]
-    arg_types = self.translate_expr_list(
-        [a.value if isinstance(a, Starred) else a for a in args] + [k.value for k in keywords]
-    )
-    arg_kinds = [ARG_STAR if type(a) is Starred else ARG_POS for a in args] + [
-        ARG_STAR2 if arg is None else ARG_NAMED for arg in keyword_names
-    ]
-    e = CallExpr(
-        self.visit(n.func),
-        arg_types,
-        arg_kinds,
-        cast("List[Optional[str]]", [None] * len(args)) + keyword_names,
-    )
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.115"># Constant(object value) -- a constant, in Python 3.8.
-def visit_Constant(self, n: Constant) -&gt; Any:
-    val = n.value
-    e: Any = None
-    if val is None:
-        e = NameExpr("None")
-    elif isinstance(val, str):
-        e = StrExpr(n.s)
-    elif isinstance(val, bytes):
-        e = BytesExpr(bytes_to_human_readable_repr(n.s))
-    elif isinstance(val, bool):  # Must check before int!
-        e = NameExpr(str(val))
-    elif isinstance(val, int):
-        e = IntExpr(val)
-    elif isinstance(val, float):
-        e = FloatExpr(val)
-    elif isinstance(val, complex):
-        e = ComplexExpr(val)
-    elif val is Ellipsis:
-        e = EllipsisExpr()
-    else:
-        raise RuntimeError("Constant not implemented for " + str(type(val)))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.116"># Num(object n) -- a number as a PyObject.
-def visit_Num(self, n: ast3.Num) -&gt; IntExpr | FloatExpr | ComplexExpr:
-    # The n field has the type complex, but complex isn't *really*
-    # a parent of int and float, and this causes isinstance below
-    # to think that the complex branch is always picked. Avoid
-    # this by throwing away the type.
-    val: object = n.n
-    if isinstance(val, int):
-        e: IntExpr | FloatExpr | ComplexExpr = IntExpr(val)
-    elif isinstance(val, float):
-        e = FloatExpr(val)
-    elif isinstance(val, complex):
-        e = ComplexExpr(val)
-    else:
-        raise RuntimeError("num not implemented for " + str(type(val)))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.117"># Str(string s)
-def visit_Str(self, n: Str) -&gt; StrExpr:
-    e = StrExpr(n.s)
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.118"># JoinedStr(expr* values)
-def visit_JoinedStr(self, n: ast3.JoinedStr) -&gt; Expression:
-    # Each of n.values is a str or FormattedValue; we just concatenate
-    # them all using ''.join.
-    empty_string = StrExpr("")
-    empty_string.set_line(n.lineno, n.col_offset)
-    strs_to_join = ListExpr(self.translate_expr_list(n.values))
-    strs_to_join.set_line(empty_string)
-    # Don't make unnecessary join call if there is only one str to join
-    if len(strs_to_join.items) == 1:
-        return self.set_line(strs_to_join.items[0], n)
-    join_method = MemberExpr(empty_string, "join")
-    join_method.set_line(empty_string)
-    result_expression = CallExpr(join_method, [strs_to_join], [ARG_POS], [None])
-    return self.set_line(result_expression, n)
-
-</t>
-<t tx="ekr.20220525082934.119"># FormattedValue(expr value)
-def visit_FormattedValue(self, n: ast3.FormattedValue) -&gt; Expression:
-    # A FormattedValue is a component of a JoinedStr, or it can exist
-    # on its own. We translate them to individual '{}'.format(value)
-    # calls. Format specifier and conversion information is passed along
-    # to allow mypyc to support f-strings with format specifiers and conversions.
-    val_exp = self.visit(n.value)
-    val_exp.set_line(n.lineno, n.col_offset)
-    conv_str = "" if n.conversion is None or n.conversion &lt; 0 else "!" + chr(n.conversion)
-    format_string = StrExpr("{" + conv_str + ":{}}")
-    format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr("")
-    format_string.set_line(n.lineno, n.col_offset)
-    format_method = MemberExpr(format_string, "format")
-    format_method.set_line(format_string)
-    result_expression = CallExpr(
-        format_method, [val_exp, format_spec_exp], [ARG_POS, ARG_POS], [None, None]
-    )
-    return self.set_line(result_expression, n)
-
-</t>
-<t tx="ekr.20220525082934.120"># Bytes(bytes s)
-def visit_Bytes(self, n: ast3.Bytes) -&gt; BytesExpr | StrExpr:
-    e = BytesExpr(bytes_to_human_readable_repr(n.s))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.121"># NameConstant(singleton value)
-def visit_NameConstant(self, n: NameConstant) -&gt; NameExpr:
-    e = NameExpr(str(n.value))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.122"># Ellipsis
-def visit_Ellipsis(self, n: ast3_Ellipsis) -&gt; EllipsisExpr:
-    e = EllipsisExpr()
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.123"># Attribute(expr value, identifier attr, expr_context ctx)
-def visit_Attribute(self, n: Attribute) -&gt; MemberExpr | SuperExpr:
-    value = n.value
-    member_expr = MemberExpr(self.visit(value), n.attr)
-    obj = member_expr.expr
-    if (
-        isinstance(obj, CallExpr)
-        and isinstance(obj.callee, NameExpr)
-        and obj.callee.name == "super"
-    ):
-        e: MemberExpr | SuperExpr = SuperExpr(member_expr.name, obj)
-    else:
-        e = member_expr
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.124"># Subscript(expr value, slice slice, expr_context ctx)
-def visit_Subscript(self, n: ast3.Subscript) -&gt; IndexExpr:
-    e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-    self.set_line(e, n)
-    # alias to please mypyc
-    is_py38_or_earlier = sys.version_info &lt; (3, 9)
-    if isinstance(n.slice, ast3.Slice) or (
-        is_py38_or_earlier and isinstance(n.slice, ast3.ExtSlice)
-    ):
-        # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
-        # visit_Slice doesn't set_line, even in Python 3.9 on.
-        # ExtSlice also has no line/column info. In Python 3.9 on, line/column is set for
-        # e.index when visiting n.slice.
-        e.index.line = e.line
-        e.index.column = e.column
-    return e
-
-</t>
-<t tx="ekr.20220525082934.125"># Starred(expr value, expr_context ctx)
-def visit_Starred(self, n: Starred) -&gt; StarExpr:
-    e = StarExpr(self.visit(n.value))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.126"># Name(identifier id, expr_context ctx)
-def visit_Name(self, n: Name) -&gt; NameExpr:
-    e = NameExpr(n.id)
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.127"># List(expr* elts, expr_context ctx)
-def visit_List(self, n: ast3.List) -&gt; ListExpr | TupleExpr:
-    expr_list: list[Expression] = [self.visit(e) for e in n.elts]
-    if isinstance(n.ctx, ast3.Store):
-        # [x, y] = z and (x, y) = z means exactly the same thing
-        e: ListExpr | TupleExpr = TupleExpr(expr_list)
-    else:
-        e = ListExpr(expr_list)
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.128"># Tuple(expr* elts, expr_context ctx)
-def visit_Tuple(self, n: ast3.Tuple) -&gt; TupleExpr:
-    e = TupleExpr(self.translate_expr_list(n.elts))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082934.129"># --- slice ---
-
-</t>
-<t tx="ekr.20220525082934.130"># Slice(expr? lower, expr? upper, expr? step)
-def visit_Slice(self, n: ast3.Slice) -&gt; SliceExpr:
-    return SliceExpr(self.visit(n.lower), self.visit(n.upper), self.visit(n.step))
-
-</t>
-<t tx="ekr.20220525082934.131"># ExtSlice(slice* dims)
-def visit_ExtSlice(self, n: ast3.ExtSlice) -&gt; TupleExpr:
-    # cast for mypyc's benefit on Python 3.9
-    return TupleExpr(self.translate_expr_list(cast(Any, n).dims))
-
-</t>
-<t tx="ekr.20220525082934.132"># Index(expr value)
-def visit_Index(self, n: Index) -&gt; Node:
-    # cast for mypyc's benefit on Python 3.9
-    value = self.visit(cast(Any, n).value)
-    assert isinstance(value, Node)
-    return value
-
-</t>
-<t tx="ekr.20220525082934.133"># Match(expr subject, match_case* cases) # python 3.10 and later
-def visit_Match(self, n: Match) -&gt; MatchStmt:
-    node = MatchStmt(
-        self.visit(n.subject),
-        [self.visit(c.pattern) for c in n.cases],
-        [self.visit(c.guard) for c in n.cases],
-        [self.as_required_block(c.body, n.lineno) for c in n.cases],
-    )
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.134">def visit_MatchValue(self, n: MatchValue) -&gt; ValuePattern:
-    node = ValuePattern(self.visit(n.value))
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.135">def visit_MatchSingleton(self, n: MatchSingleton) -&gt; SingletonPattern:
-    node = SingletonPattern(n.value)
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.136">def visit_MatchSequence(self, n: MatchSequence) -&gt; SequencePattern:
-    patterns = [self.visit(p) for p in n.patterns]
-    stars = [p for p in patterns if isinstance(p, StarredPattern)]
-    assert len(stars) &lt; 2
-
-    node = SequencePattern(patterns)
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.137">def visit_MatchStar(self, n: MatchStar) -&gt; StarredPattern:
-    if n.name is None:
-        node = StarredPattern(None)
-    else:
-        node = StarredPattern(NameExpr(n.name))
-
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.138">def visit_MatchMapping(self, n: MatchMapping) -&gt; MappingPattern:
-    keys = [self.visit(k) for k in n.keys]
-    values = [self.visit(v) for v in n.patterns]
-
-    if n.rest is None:
-        rest = None
-    else:
-        rest = NameExpr(n.rest)
-
-    node = MappingPattern(keys, values, rest)
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.139">def visit_MatchClass(self, n: MatchClass) -&gt; ClassPattern:
-    class_ref = self.visit(n.cls)
-    assert isinstance(class_ref, RefExpr)
-    positionals = [self.visit(p) for p in n.patterns]
-    keyword_keys = n.kwd_attrs
-    keyword_values = [self.visit(p) for p in n.kwd_patterns]
-
-    node = ClassPattern(class_ref, positionals, keyword_keys, keyword_values)
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.140"># MatchAs(expr pattern, identifier name)
-def visit_MatchAs(self, n: MatchAs) -&gt; AsPattern:
-    if n.name is None:
-        name = None
-    else:
-        name = NameExpr(n.name)
-        name = self.set_line(name, n)
-    node = AsPattern(self.visit(n.pattern), name)
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.141"># MatchOr(expr* pattern)
-def visit_MatchOr(self, n: MatchOr) -&gt; OrPattern:
-    node = OrPattern([self.visit(pattern) for pattern in n.patterns])
-    return self.set_line(node, n)
-
-
-</t>
-<t tx="ekr.20220525082934.40">class ASTConverter:
-    @others
-</t>
-<t tx="ekr.20220525082934.41">def __init__(self, options: Options, is_stub: bool, errors: Errors) -&gt; None:
-    # 'C' for class, 'F' for function
-    self.class_and_function_stack: list[Literal["C", "F"]] = []
-    self.imports: list[ImportBase] = []
-
-    self.options = options
-    self.is_stub = is_stub
-    self.errors = errors
-
-    self.type_ignores: dict[int, list[str]] = {}
-
-    # Cache of visit_X methods keyed by type of visited object
-    self.visitor_cache: dict[type, Callable[[AST | None], Any]] = {}
-
-</t>
-<t tx="ekr.20220525082934.42">def note(self, msg: str, line: int, column: int) -&gt; None:
-    self.errors.report(line, column, msg, severity="note", code=codes.SYNTAX)
-
-</t>
-<t tx="ekr.20220525082934.43">def fail(
-    self,
-    msg: str,
-    line: int,
-    column: int,
-    blocker: bool = True,
-    code: codes.ErrorCode = codes.SYNTAX,
-) -&gt; None:
-    if blocker or not self.options.ignore_errors:
-        self.errors.report(line, column, msg, blocker=blocker, code=code)
-
-</t>
-<t tx="ekr.20220525082934.44">def fail_merge_overload(self, node: IfStmt) -&gt; None:
-    self.fail(
-        "Condition can't be inferred, unable to merge overloads",
-        line=node.line,
-        column=node.column,
-        blocker=False,
-        code=codes.MISC,
-    )
-
-</t>
-<t tx="ekr.20220525082934.45">def visit(self, node: AST | None) -&gt; Any:
-    if node is None:
-        return None
-    typeobj = type(node)
-    visitor = self.visitor_cache.get(typeobj)
-    if visitor is None:
-        method = "visit_" + node.__class__.__name__
-        visitor = getattr(self, method)
-        self.visitor_cache[typeobj] = visitor
-    return visitor(node)
-
-</t>
-<t tx="ekr.20220525082934.46">def set_line(self, node: N, n: AstNode) -&gt; N:
-    node.line = n.lineno
-    node.column = n.col_offset
-    node.end_line = getattr(n, "end_lineno", None)
-    node.end_column = getattr(n, "end_col_offset", None)
-
-    return node
-
-</t>
-<t tx="ekr.20220525082934.47">def translate_opt_expr_list(self, l: Sequence[AST | None]) -&gt; list[Expression | None]:
-    res: list[Expression | None] = []
-    for e in l:
-        exp = self.visit(e)
-        res.append(exp)
-    return res
-
-</t>
-<t tx="ekr.20220525082934.48">def translate_expr_list(self, l: Sequence[AST]) -&gt; list[Expression]:
-    return cast(List[Expression], self.translate_opt_expr_list(l))
-
-</t>
-<t tx="ekr.20220525082934.49">def get_lineno(self, node: ast3.expr | ast3.stmt) -&gt; int:
-    if (
-        isinstance(node, (ast3.AsyncFunctionDef, ast3.ClassDef, ast3.FunctionDef))
-        and node.decorator_list
-    ):
-        return node.decorator_list[0].lineno
-    return node.lineno
-
-</t>
-<t tx="ekr.20220525082934.50">def translate_stmt_list(
-    self, stmts: Sequence[ast3.stmt], ismodule: bool = False
-) -&gt; list[Statement]:
-    # A "# type: ignore" comment before the first statement of a module
-    # ignores the whole module:
-    if (
-        ismodule
-        and stmts
-        and self.type_ignores
-        and min(self.type_ignores) &lt; self.get_lineno(stmts[0])
-    ):
-        if self.type_ignores[min(self.type_ignores)]:
-            self.fail(
-                (
-                    "type ignore with error code is not supported for modules; "
-                    "use `# mypy: disable-error-code=...`"
-                ),
-                line=min(self.type_ignores),
-                column=0,
-                blocker=False,
-            )
-        self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-            codes.FILE.code
-        )
-        block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
-        mark_block_unreachable(block)
-        return [block]
-
-    res: list[Statement] = []
-    for stmt in stmts:
-        node = self.visit(stmt)
-        res.append(node)
-
-    return res
-
-</t>
-<t tx="ekr.20220525082934.504">def main(
-    *,
-    args: list[str] | None = None,
-    stdout: TextIO = sys.stdout,
-    stderr: TextIO = sys.stderr,
-    clean_exit: bool = False,
-) -&gt; None:
-    """Main entry point to the type checker.
-
-    Args:
-        args: Custom command-line arguments.  If not given, sys.argv[1:] will
-            be used.
-        clean_exit: Don't hard kill the process on exit. This allows catching
-            SystemExit.
-    """
-    util.check_python_version("mypy")
-    t0 = time.time()
-    # To log stat() calls: os.stat = stat_proxy
-    sys.setrecursionlimit(2**14)
-    if args is None:
-        args = sys.argv[1:]
-
-    fscache = FileSystemCache()
-    &lt;&lt; check options &gt;&gt;
-    if options.install_types and not sources:
-        install_types(formatter, options, non_interactive=options.non_interactive)
-        return
-
-    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
-
-    &lt;&lt; shut down &gt;&gt;
-
-    # HACK: keep res alive so that mypyc won't free it before the hard_exit
-    list([res])
-
-
-</t>
-<t tx="ekr.20220525082934.505">def run_build(
-    sources: list[BuildSource],
-    options: Options,
-    fscache: FileSystemCache,
-    t0: float,
-    stdout: TextIO,
-    stderr: TextIO,
-) -&gt; tuple[build.BuildResult | None, list[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
-
-    messages = []
-
-    @others
-    serious = False
-    blockers = False
-    res = None
-    try:
-        # Keep a dummy reference (res) for memory profiling afterwards, as otherwise
-        # the result could be freed.
-        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
-    except CompileError as e:
-        blockers = True
-        if not e.use_stdout:
-            serious = True
-    &lt;&lt; warn about unused configs &gt;&gt;
-    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
-    return res, messages, blockers
-
-
-</t>
-<t tx="ekr.20220525082934.506">def flush_errors(new_messages: list[str], serious: bool) -&gt; None:
-    if options.pretty:
-        new_messages = formatter.fit_in_terminal(new_messages)
-    messages.extend(new_messages)
-    if options.non_interactive:
-        # Collect messages and possibly show them later.
-        return
-    f = stderr if serious else stdout
-    show_messages(new_messages, f, formatter, options)
-
-</t>
-<t tx="ekr.20220525082934.51">def translate_type_comment(
-    self, n: ast3.stmt | ast3.arg, type_comment: str | None
-) -&gt; ProperType | None:
-    if type_comment is None:
-        return None
-    else:
-        lineno = n.lineno
-        extra_ignore, typ = parse_type_comment(type_comment, lineno, n.col_offset, self.errors)
-        if extra_ignore is not None:
-            self.type_ignores[lineno] = extra_ignore
-        return typ
-
-</t>
-<t tx="ekr.20220525082934.52">op_map: Final[dict[type[AST], str]] = {
-    ast3.Add: "+",
-    ast3.Sub: "-",
-    ast3.Mult: "*",
-    ast3.MatMult: "@",
-    ast3.Div: "/",
-    ast3.Mod: "%",
-    ast3.Pow: "**",
-    ast3.LShift: "&lt;&lt;",
-    ast3.RShift: "&gt;&gt;",
-    ast3.BitOr: "|",
-    ast3.BitXor: "^",
-    ast3.BitAnd: "&amp;",
-    ast3.FloorDiv: "//",
-}
-
-</t>
-<t tx="ekr.20220525082934.53">def from_operator(self, op: ast3.operator) -&gt; str:
-    op_name = ASTConverter.op_map.get(type(op))
-    if op_name is None:
-        raise RuntimeError("Unknown operator " + str(type(op)))
-    else:
-        return op_name
-
-</t>
-<t tx="ekr.20220525082934.54">comp_op_map: Final[dict[type[AST], str]] = {
-    ast3.Gt: "&gt;",
-    ast3.Lt: "&lt;",
-    ast3.Eq: "==",
-    ast3.GtE: "&gt;=",
-    ast3.LtE: "&lt;=",
-    ast3.NotEq: "!=",
-    ast3.Is: "is",
-    ast3.IsNot: "is not",
-    ast3.In: "in",
-    ast3.NotIn: "not in",
-}
-
-</t>
-<t tx="ekr.20220525082934.55">def from_comp_operator(self, op: ast3.cmpop) -&gt; str:
-    op_name = ASTConverter.comp_op_map.get(type(op))
-    if op_name is None:
-        raise RuntimeError("Unknown comparison operator " + str(type(op)))
-    else:
-        return op_name
-
-</t>
-<t tx="ekr.20220525082934.56">def as_block(self, stmts: list[ast3.stmt], lineno: int) -&gt; Block | None:
-    b = None
-    if stmts:
-        b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
-        b.set_line(lineno)
-    return b
-
-</t>
-<t tx="ekr.20220525082934.57">def as_required_block(self, stmts: list[ast3.stmt], lineno: int) -&gt; Block:
-    assert stmts  # must be non-empty
-    b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
-    # TODO: in most call sites line is wrong (includes first line of enclosing statement)
-    # TODO: also we need to set the column, and the end position here.
-    b.set_line(lineno)
-    return b
-
-</t>
-<t tx="ekr.20220525082934.58">def fix_function_overloads(self, stmts: list[Statement]) -&gt; list[Statement]:
-    ret: list[Statement] = []
-    current_overload: list[OverloadPart] = []
-    current_overload_name: str | None = None
-    seen_unconditional_func_def = False
-    last_if_stmt: IfStmt | None = None
-    last_if_overload: Decorator | FuncDef | OverloadedFuncDef | None = None
-    last_if_stmt_overload_name: str | None = None
-    last_if_unknown_truth_value: IfStmt | None = None
-    skipped_if_stmts: list[IfStmt] = []
-    for stmt in stmts:
-        if_overload_name: str | None = None
-        if_block_with_overload: Block | None = None
-        if_unknown_truth_value: IfStmt | None = None
-        if isinstance(stmt, IfStmt) and seen_unconditional_func_def is False:
-            # Check IfStmt block to determine if function overloads can be merged
-            if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
-            if if_overload_name is not None:
-                (
-                    if_block_with_overload,
-                    if_unknown_truth_value,
-                ) = self._get_executable_if_block_with_overloads(stmt)
-
-        if (
-            current_overload_name is not None
-            and isinstance(stmt, (Decorator, FuncDef))
-            and stmt.name == current_overload_name
-        ):
-            if last_if_stmt is not None:
-                skipped_if_stmts.append(last_if_stmt)
-            if last_if_overload is not None:
-                # Last stmt was an IfStmt with same overload name
-                # Add overloads to current_overload
-                if isinstance(last_if_overload, OverloadedFuncDef):
-                    current_overload.extend(last_if_overload.items)
-                else:
-                    current_overload.append(last_if_overload)
-                last_if_stmt, last_if_overload = None, None
-            if last_if_unknown_truth_value:
-                self.fail_merge_overload(last_if_unknown_truth_value)
-                last_if_unknown_truth_value = None
-            current_overload.append(stmt)
-            if isinstance(stmt, FuncDef):
-                seen_unconditional_func_def = True
-        elif (
-            current_overload_name is not None
-            and isinstance(stmt, IfStmt)
-            and if_overload_name == current_overload_name
-        ):
-            # IfStmt only contains stmts relevant to current_overload.
-            # Check if stmts are reachable and add them to current_overload,
-            # otherwise skip IfStmt to allow subsequent overload
-            # or function definitions.
-            skipped_if_stmts.append(stmt)
-            if if_block_with_overload is None:
-                if if_unknown_truth_value is not None:
-                    self.fail_merge_overload(if_unknown_truth_value)
-                continue
-            if last_if_overload is not None:
-                # Last stmt was an IfStmt with same overload name
-                # Add overloads to current_overload
-                if isinstance(last_if_overload, OverloadedFuncDef):
-                    current_overload.extend(last_if_overload.items)
-                else:
-                    current_overload.append(last_if_overload)
-                last_if_stmt, last_if_overload = None, None
-            if isinstance(if_block_with_overload.body[-1], OverloadedFuncDef):
-                skipped_if_stmts.extend(cast(List[IfStmt], if_block_with_overload.body[:-1]))
-                current_overload.extend(if_block_with_overload.body[-1].items)
-            else:
-                current_overload.append(
-                    cast(Union[Decorator, FuncDef], if_block_with_overload.body[0])
-                )
-        else:
-            if last_if_stmt is not None:
-                ret.append(last_if_stmt)
-                last_if_stmt_overload_name = current_overload_name
-                last_if_stmt, last_if_overload = None, None
-                last_if_unknown_truth_value = None
-
-            if current_overload and current_overload_name == last_if_stmt_overload_name:
-                # Remove last stmt (IfStmt) from ret if the overload names matched
-                # Only happens if no executable block had been found in IfStmt
-                skipped_if_stmts.append(cast(IfStmt, ret.pop()))
-            if current_overload and skipped_if_stmts:
-                # Add bare IfStmt (without overloads) to ret
-                # Required for mypy to be able to still check conditions
-                for if_stmt in skipped_if_stmts:
-                    self._strip_contents_from_if_stmt(if_stmt)
-                    ret.append(if_stmt)
-                skipped_if_stmts = []
-            if len(current_overload) == 1:
-                ret.append(current_overload[0])
-            elif len(current_overload) &gt; 1:
-                ret.append(OverloadedFuncDef(current_overload))
-
-            # If we have multiple decorated functions named "_" next to each, we want to treat
-            # them as a series of regular FuncDefs instead of one OverloadedFuncDef because
-            # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
-            # related, but multiple underscore functions next to each other aren't necessarily
-            # related
-            seen_unconditional_func_def = False
-            if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
-                current_overload = [stmt]
-                current_overload_name = stmt.name
-            elif isinstance(stmt, IfStmt) and if_overload_name is not None:
-                current_overload = []
-                current_overload_name = if_overload_name
-                last_if_stmt = stmt
-                last_if_stmt_overload_name = None
-                if if_block_with_overload is not None:
-                    skipped_if_stmts.extend(
-                        cast(List[IfStmt], if_block_with_overload.body[:-1])
-                    )
-                    last_if_overload = cast(
-                        Union[Decorator, FuncDef, OverloadedFuncDef],
-                        if_block_with_overload.body[-1],
-                    )
-                last_if_unknown_truth_value = if_unknown_truth_value
-            else:
-                current_overload = []
-                current_overload_name = None
-                ret.append(stmt)
-
-    if current_overload and skipped_if_stmts:
-        # Add bare IfStmt (without overloads) to ret
-        # Required for mypy to be able to still check conditions
-        for if_stmt in skipped_if_stmts:
-            self._strip_contents_from_if_stmt(if_stmt)
-            ret.append(if_stmt)
-    if len(current_overload) == 1:
-        ret.append(current_overload[0])
-    elif len(current_overload) &gt; 1:
-        ret.append(OverloadedFuncDef(current_overload))
-    elif last_if_overload is not None:
-        ret.append(last_if_overload)
-    elif last_if_stmt is not None:
-        ret.append(last_if_stmt)
-    return ret
-
-</t>
-<t tx="ekr.20220525082934.59">def _check_ifstmt_for_overloads(
-    self, stmt: IfStmt, current_overload_name: str | None = None
-) -&gt; str | None:
-    """Check if IfStmt contains only overloads with the same name.
-    Return overload_name if found, None otherwise.
-    """
-    # Check that block only contains a single Decorator, FuncDef, or OverloadedFuncDef.
-    # Multiple overloads have already been merged as OverloadedFuncDef.
-    if not (
-        len(stmt.body[0].body) == 1
-        and (
-            isinstance(stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
-            or current_overload_name is not None
-            and isinstance(stmt.body[0].body[0], FuncDef)
-        )
-        or len(stmt.body[0].body) &gt; 1
-        and isinstance(stmt.body[0].body[-1], OverloadedFuncDef)
-        and all(self._is_stripped_if_stmt(if_stmt) for if_stmt in stmt.body[0].body[:-1])
-    ):
-        return None
-
-    overload_name = cast(
-        Union[Decorator, FuncDef, OverloadedFuncDef], stmt.body[0].body[-1]
-    ).name
-    if stmt.else_body is None:
-        return overload_name
-
-    if len(stmt.else_body.body) == 1:
-        # For elif: else_body contains an IfStmt itself -&gt; do a recursive check.
-        if (
-            isinstance(stmt.else_body.body[0], (Decorator, FuncDef, OverloadedFuncDef))
-            and stmt.else_body.body[0].name == overload_name
-        ):
-            return overload_name
-        if (
-            isinstance(stmt.else_body.body[0], IfStmt)
-            and self._check_ifstmt_for_overloads(stmt.else_body.body[0], current_overload_name)
-            == overload_name
-        ):
-            return overload_name
-
-    return None
-
-</t>
-<t tx="ekr.20220525082934.60">def _get_executable_if_block_with_overloads(
-    self, stmt: IfStmt
-) -&gt; tuple[Block | None, IfStmt | None]:
-    """Return block from IfStmt that will get executed.
-
-    Return
-        0 -&gt; A block if sure that alternative blocks are unreachable.
-        1 -&gt; An IfStmt if the reachability of it can't be inferred,
-             i.e. the truth value is unknown.
-    """
-    infer_reachability_of_if_statement(stmt, self.options)
-    if stmt.else_body is None and stmt.body[0].is_unreachable is True:
-        # always False condition with no else
-        return None, None
-    if (
-        stmt.else_body is None
-        or stmt.body[0].is_unreachable is False
-        and stmt.else_body.is_unreachable is False
-    ):
-        # The truth value is unknown, thus not conclusive
-        return None, stmt
-    if stmt.else_body.is_unreachable is True:
-        # else_body will be set unreachable if condition is always True
-        return stmt.body[0], None
-    if stmt.body[0].is_unreachable is True:
-        # body will be set unreachable if condition is always False
-        # else_body can contain an IfStmt itself (for elif) -&gt; do a recursive check
-        if isinstance(stmt.else_body.body[0], IfStmt):
-            return self._get_executable_if_block_with_overloads(stmt.else_body.body[0])
-        return stmt.else_body, None
-    return None, stmt
-
-</t>
-<t tx="ekr.20220525082934.61">def _strip_contents_from_if_stmt(self, stmt: IfStmt) -&gt; None:
-    """Remove contents from IfStmt.
-
-    Needed to still be able to check the conditions after the contents
-    have been merged with the surrounding function overloads.
-    """
-    if len(stmt.body) == 1:
-        stmt.body[0].body = []
-    if stmt.else_body and len(stmt.else_body.body) == 1:
-        if isinstance(stmt.else_body.body[0], IfStmt):
-            self._strip_contents_from_if_stmt(stmt.else_body.body[0])
-        else:
-            stmt.else_body.body = []
-
-</t>
-<t tx="ekr.20220525082934.62">def _is_stripped_if_stmt(self, stmt: Statement) -&gt; bool:
-    """Check stmt to make sure it is a stripped IfStmt.
-
-    See also: _strip_contents_from_if_stmt
-    """
-    if not isinstance(stmt, IfStmt):
-        return False
-
-    if not (len(stmt.body) == 1 and len(stmt.body[0].body) == 0):
-        # Body not empty
-        return False
-
-    if not stmt.else_body or len(stmt.else_body.body) == 0:
-        # No or empty else_body
-        return True
-
-    # For elif, IfStmt are stored recursively in else_body
-    return self._is_stripped_if_stmt(stmt.else_body.body[0])
-
-</t>
-<t tx="ekr.20220525082934.63">def in_method_scope(self) -&gt; bool:
-    return self.class_and_function_stack[-2:] == ["C", "F"]
-
-</t>
-<t tx="ekr.20220525082934.64">def translate_module_id(self, id: str) -&gt; str:
-    """Return the actual, internal module id for a source text id."""
-    if id == self.options.custom_typing_module:
-        return "typing"
-    return id
-
-</t>
-<t tx="ekr.20220525082934.65">def visit_Module(self, mod: ast3.Module) -&gt; MypyFile:
-    self.type_ignores = {}
-    for ti in mod.type_ignores:
-        parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
-        if parsed is not None:
-            self.type_ignores[ti.lineno] = parsed
-        else:
-            self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
-    body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
-    return MypyFile(body, self.imports, False, self.type_ignores)
-
-</t>
-<t tx="ekr.20220525082934.66"># --- stmt ---
-# FunctionDef(identifier name, arguments args,
-#             stmt* body, expr* decorator_list, expr? returns, string? type_comment)
-# arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
-#              arg? kwarg, expr* defaults)
-def visit_FunctionDef(self, n: ast3.FunctionDef) -&gt; FuncDef | Decorator:
-    return self.do_func_def(n)
-
-</t>
-<t tx="ekr.20220525082934.67"># AsyncFunctionDef(identifier name, arguments args,
-#                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
-def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -&gt; FuncDef | Decorator:
-    return self.do_func_def(n, is_coroutine=True)
-
-</t>
-<t tx="ekr.20220525082934.68">def do_func_def(
-    self, n: ast3.FunctionDef | ast3.AsyncFunctionDef, is_coroutine: bool = False
-) -&gt; FuncDef | Decorator:
-    """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
-    self.class_and_function_stack.append("F")
-    no_type_check = bool(
-        n.decorator_list and any(is_no_type_check_decorator(d) for d in n.decorator_list)
-    )
-
-    lineno = n.lineno
-    args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
-    if special_function_elide_names(n.name):
-        for arg in args:
-            arg.pos_only = True
-
-    arg_kinds = [arg.kind for arg in args]
-    arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
-
-    arg_types: list[Type | None] = []
-    if no_type_check:
-        arg_types = [None] * len(args)
-        return_type = None
-    elif n.type_comment is not None:
-        try:
-            func_type_ast = ast3_parse(n.type_comment, "&lt;func_type&gt;", "func_type")
-            assert isinstance(func_type_ast, FunctionType)
-            # for ellipsis arg
-            if len(func_type_ast.argtypes) == 1 and isinstance(
-                func_type_ast.argtypes[0], ast3_Ellipsis
-            ):
-                if n.returns:
-                    # PEP 484 disallows both type annotations and type comments
-                    self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
-                arg_types = [
-                    a.type_annotation
-                    if a.type_annotation is not None
-                    else AnyType(TypeOfAny.unannotated)
-                    for a in args
-                ]
-            else:
-                # PEP 484 disallows both type annotations and type comments
-                if n.returns or any(a.type_annotation is not None for a in args):
-                    self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
-                translated_args: list[Type] = TypeConverter(
-                    self.errors, line=lineno, override_column=n.col_offset
-                ).translate_expr_list(func_type_ast.argtypes)
-                # Use a cast to work around `list` invariance
-                arg_types = cast(List[Optional[Type]], translated_args)
-            return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
-
-            # add implicit self type
-            if self.in_method_scope() and len(arg_types) &lt; len(args):
-                arg_types.insert(0, AnyType(TypeOfAny.special_form))
-        except SyntaxError:
-            stripped_type = n.type_comment.split("#", 2)[0].strip()
-            err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
-            self.fail(err_msg, lineno, n.col_offset)
-            if n.type_comment and n.type_comment[0] not in ["(", "#"]:
-                self.note(
-                    "Suggestion: wrap argument types in parentheses", lineno, n.col_offset
-                )
-            arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
-            return_type = AnyType(TypeOfAny.from_error)
-    else:
-        arg_types = [a.type_annotation for a in args]
-        return_type = TypeConverter(
-            self.errors, line=n.returns.lineno if n.returns else lineno
-        ).visit(n.returns)
-
-    for arg, arg_type in zip(args, arg_types):
-        self.set_type_optional(arg_type, arg.initializer)
-
-    func_type = None
-    if any(arg_types) or return_type:
-        if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
-            self.fail(
-                "Ellipses cannot accompany other argument types in function type signature",
-                lineno,
-                n.col_offset,
-            )
-        elif len(arg_types) &gt; len(arg_kinds):
-            self.fail(
-                "Type signature has too many arguments", lineno, n.col_offset, blocker=False
-            )
-        elif len(arg_types) &lt; len(arg_kinds):
-            self.fail(
-                "Type signature has too few arguments", lineno, n.col_offset, blocker=False
-            )
-        else:
-            func_type = CallableType(
-                [a if a is not None else AnyType(TypeOfAny.unannotated) for a in arg_types],
-                arg_kinds,
-                arg_names,
-                return_type if return_type is not None else AnyType(TypeOfAny.unannotated),
-                _dummy_fallback,
-            )
-
-    # End position is always the same.
-    end_line = getattr(n, "end_lineno", None)
-    end_column = getattr(n, "end_col_offset", None)
-
-    func_def = FuncDef(n.name, args, self.as_required_block(n.body, lineno), func_type)
-    if isinstance(func_def.type, CallableType):
-        # semanal.py does some in-place modifications we want to avoid
-        func_def.unanalyzed_type = func_def.type.copy_modified()
-    if is_coroutine:
-        func_def.is_coroutine = True
-    if func_type is not None:
-        func_type.definition = func_def
-        func_type.line = lineno
-
-    if n.decorator_list:
-        if sys.version_info &lt; (3, 8):
-            # Before 3.8, [typed_]ast the line number points to the first decorator.
-            # In 3.8, it points to the 'def' line, where we want it.
-            deco_line = lineno
-            lineno += len(n.decorator_list)  # this is only approximately true
-        else:
-            # Set deco_line to the old pre-3.8 lineno, in order to keep
-            # existing "# type: ignore" comments working:
-            deco_line = n.decorator_list[0].lineno
-
-        var = Var(func_def.name)
-        var.is_ready = False
-        var.set_line(lineno)
-
-        func_def.is_decorated = True
-        func_def.deco_line = deco_line
-        func_def.set_line(lineno, n.col_offset, end_line, end_column)
-        # Set the line again after we updated it (to make value same in Python 3.7/3.8)
-        # Note that TODOs in as_required_block() apply here as well.
-        func_def.body.set_line(lineno)
-
-        deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
-        first = n.decorator_list[0]
-        deco.set_line(first.lineno, first.col_offset, end_line, end_column)
-        retval: FuncDef | Decorator = deco
-    else:
-        # FuncDef overrides set_line -- can't use self.set_line
-        func_def.set_line(lineno, n.col_offset, end_line, end_column)
-        retval = func_def
-    self.class_and_function_stack.pop()
-    return retval
-
-</t>
-<t tx="ekr.20220525082934.69">def set_type_optional(self, type: Type | None, initializer: Expression | None) -&gt; None:
-    if not self.options.implicit_optional:
-        return
-    # Indicate that type should be wrapped in an Optional if arg is initialized to None.
-    optional = isinstance(initializer, NameExpr) and initializer.name == "None"
-    if isinstance(type, UnboundType):
-        type.optional = optional
-
-</t>
 <t tx="ekr.20220525082934.70">def transform_args(
     self, args: ast3.arguments, line: int, no_type_check: bool = False
 ) -&gt; list[Argument]:
@@ -9010,2472 +5830,6 @@ def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -&gt; FuncDef | Decor
     return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
 
 </t>
-<t tx="ekr.20220525082934.72">def fail_arg(self, msg: str, arg: ast3.arg) -&gt; None:
-    self.fail(msg, arg.lineno, arg.col_offset)
-
-</t>
-<t tx="ekr.20220525082934.73"># ClassDef(identifier name,
-#  expr* bases,
-#  keyword* keywords,
-#  stmt* body,
-#  expr* decorator_list)
-def visit_ClassDef(self, n: ast3.ClassDef) -&gt; ClassDef:
-    self.class_and_function_stack.append("C")
-    keywords = [(kw.arg, self.visit(kw.value)) for kw in n.keywords if kw.arg]
-
-    cdef = ClassDef(
-        n.name,
-        self.as_required_block(n.body, n.lineno),
-        None,
-        self.translate_expr_list(n.bases),
-        metaclass=dict(keywords).get("metaclass"),
-        keywords=keywords,
-    )
-    cdef.decorators = self.translate_expr_list(n.decorator_list)
-    # Set lines to match the old mypy 0.700 lines, in order to keep
-    # existing "# type: ignore" comments working:
-    if sys.version_info &lt; (3, 8):
-        cdef.line = n.lineno + len(n.decorator_list)
-        cdef.deco_line = n.lineno
-    else:
-        cdef.line = n.lineno
-        cdef.deco_line = n.decorator_list[0].lineno if n.decorator_list else None
-    cdef.column = n.col_offset
-    cdef.end_line = getattr(n, "end_lineno", None)
-    cdef.end_column = getattr(n, "end_col_offset", None)
-    self.class_and_function_stack.pop()
-    return cdef
-
-</t>
-<t tx="ekr.20220525082934.74"># Return(expr? value)
-def visit_Return(self, n: ast3.Return) -&gt; ReturnStmt:
-    node = ReturnStmt(self.visit(n.value))
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.75"># Delete(expr* targets)
-def visit_Delete(self, n: ast3.Delete) -&gt; DelStmt:
-    if len(n.targets) &gt; 1:
-        tup = TupleExpr(self.translate_expr_list(n.targets))
-        tup.set_line(n.lineno)
-        node = DelStmt(tup)
-    else:
-        node = DelStmt(self.visit(n.targets[0]))
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.76"># Assign(expr* targets, expr? value, string? type_comment, expr? annotation)
-def visit_Assign(self, n: ast3.Assign) -&gt; AssignmentStmt:
-    lvalues = self.translate_expr_list(n.targets)
-    rvalue = self.visit(n.value)
-    typ = self.translate_type_comment(n, n.type_comment)
-    s = AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
-    return self.set_line(s, n)
-
-</t>
-<t tx="ekr.20220525082934.77"># AnnAssign(expr target, expr annotation, expr? value, int simple)
-def visit_AnnAssign(self, n: ast3.AnnAssign) -&gt; AssignmentStmt:
-    line = n.lineno
-    if n.value is None:  # always allow 'x: int'
-        rvalue: Expression = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
-        rvalue.line = line
-        rvalue.column = n.col_offset
-    else:
-        rvalue = self.visit(n.value)
-    typ = TypeConverter(self.errors, line=line).visit(n.annotation)
-    assert typ is not None
-    typ.column = n.annotation.col_offset
-    s = AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)
-    return self.set_line(s, n)
-
-</t>
-<t tx="ekr.20220525082934.78"># AugAssign(expr target, operator op, expr value)
-def visit_AugAssign(self, n: ast3.AugAssign) -&gt; OperatorAssignmentStmt:
-    s = OperatorAssignmentStmt(
-        self.from_operator(n.op), self.visit(n.target), self.visit(n.value)
-    )
-    return self.set_line(s, n)
-
-</t>
-<t tx="ekr.20220525082934.79"># For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
-def visit_For(self, n: ast3.For) -&gt; ForStmt:
-    target_type = self.translate_type_comment(n, n.type_comment)
-    node = ForStmt(
-        self.visit(n.target),
-        self.visit(n.iter),
-        self.as_required_block(n.body, n.lineno),
-        self.as_block(n.orelse, n.lineno),
-        target_type,
-    )
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.80"># AsyncFor(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
-def visit_AsyncFor(self, n: ast3.AsyncFor) -&gt; ForStmt:
-    target_type = self.translate_type_comment(n, n.type_comment)
-    node = ForStmt(
-        self.visit(n.target),
-        self.visit(n.iter),
-        self.as_required_block(n.body, n.lineno),
-        self.as_block(n.orelse, n.lineno),
-        target_type,
-    )
-    node.is_async = True
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.81"># While(expr test, stmt* body, stmt* orelse)
-def visit_While(self, n: ast3.While) -&gt; WhileStmt:
-    node = WhileStmt(
-        self.visit(n.test),
-        self.as_required_block(n.body, n.lineno),
-        self.as_block(n.orelse, n.lineno),
-    )
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.82"># If(expr test, stmt* body, stmt* orelse)
-def visit_If(self, n: ast3.If) -&gt; IfStmt:
-    lineno = n.lineno
-    node = IfStmt(
-        [self.visit(n.test)],
-        [self.as_required_block(n.body, lineno)],
-        self.as_block(n.orelse, lineno),
-    )
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.83"># With(withitem* items, stmt* body, string? type_comment)
-def visit_With(self, n: ast3.With) -&gt; WithStmt:
-    target_type = self.translate_type_comment(n, n.type_comment)
-    node = WithStmt(
-        [self.visit(i.context_expr) for i in n.items],
-        [self.visit(i.optional_vars) for i in n.items],
-        self.as_required_block(n.body, n.lineno),
-        target_type,
-    )
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.84"># AsyncWith(withitem* items, stmt* body, string? type_comment)
-def visit_AsyncWith(self, n: ast3.AsyncWith) -&gt; WithStmt:
-    target_type = self.translate_type_comment(n, n.type_comment)
-    s = WithStmt(
-        [self.visit(i.context_expr) for i in n.items],
-        [self.visit(i.optional_vars) for i in n.items],
-        self.as_required_block(n.body, n.lineno),
-        target_type,
-    )
-    s.is_async = True
-    return self.set_line(s, n)
-
-</t>
-<t tx="ekr.20220525082934.85"># Raise(expr? exc, expr? cause)
-def visit_Raise(self, n: ast3.Raise) -&gt; RaiseStmt:
-    node = RaiseStmt(self.visit(n.exc), self.visit(n.cause))
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.86"># Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
-def visit_Try(self, n: ast3.Try) -&gt; TryStmt:
-    vs = [
-        self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
-    ]
-    types = [self.visit(h.type) for h in n.handlers]
-    handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
-
-    node = TryStmt(
-        self.as_required_block(n.body, n.lineno),
-        vs,
-        types,
-        handlers,
-        self.as_block(n.orelse, n.lineno),
-        self.as_block(n.finalbody, n.lineno),
-    )
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.87"># Assert(expr test, expr? msg)
-def visit_Assert(self, n: ast3.Assert) -&gt; AssertStmt:
-    node = AssertStmt(self.visit(n.test), self.visit(n.msg))
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.872">class Context:
-    """Base type for objects that are valid as error message locations."""
-
-    __slots__ = ("line", "column", "end_line", "end_column")
-
-    @others
-</t>
-<t tx="ekr.20220525082934.873">def __init__(self, line: int = -1, column: int = -1) -&gt; None:
-    self.line = line
-    self.column = column
-    self.end_line: int | None = None
-    self.end_column: int | None = None
-</t>
-<t tx="ekr.20220525082934.874">
-def set_line(
-    self,
-    target: Context | int,
-    column: int | None = None,
-    end_line: int | None = None,
-    end_column: int | None = None,
-) -&gt; None:
-    """If target is a node, pull line (and column) information
-    into this node. If column is specified, this will override any column
-    information coming from a node.
-    """
-    if isinstance(target, int):
-        self.line = target
-    else:
-        self.line = target.line
-        self.column = target.column
-        self.end_line = target.end_line
-        self.end_column = target.end_column
-
-    if column is not None:
-        self.column = column
-
-    if end_line is not None:
-        self.end_line = end_line
-
-    if end_column is not None:
-        self.end_column = end_column
-
-</t>
-<t tx="ekr.20220525082934.875">def get_line(self) -&gt; int:
-    """Don't use. Use x.line."""
-    return self.line
-
-</t>
-<t tx="ekr.20220525082934.876">def get_column(self) -&gt; int:
-    """Don't use. Use x.column."""
-    return self.column
-
-
-</t>
-<t tx="ekr.20220525082934.88"># Import(alias* names)
-def visit_Import(self, n: ast3.Import) -&gt; Import:
-    names: list[tuple[str, str | None]] = []
-    for alias in n.names:
-        name = self.translate_module_id(alias.name)
-        asname = alias.asname
-        if asname is None and name != alias.name:
-            # if the module name has been translated (and it's not already
-            # an explicit import-as), make it an implicit import-as the
-            # original name
-            asname = alias.name
-        names.append((name, asname))
-    i = Import(names)
-    self.imports.append(i)
-    return self.set_line(i, n)
-
-</t>
-<t tx="ekr.20220525082934.880">RUNTIME_PROTOCOL_DECOS: Final = (
-    "typing.runtime_checkable",
-    "typing_extensions.runtime",
-    "typing_extensions.runtime_checkable",
-)
-
-
-class Node(Context):
-    """Common base class for all non-type parse tree nodes."""
-
-    __slots__ = ()
-
-    @others
-</t>
-<t tx="ekr.20220525082934.881">def __str__(self) -&gt; str:
-    ans = self.accept(mypy.strconv.StrConv())
-    if ans is None:
-        return repr(self)
-    return ans
-
-</t>
-<t tx="ekr.20220525082934.882">def accept(self, visitor: NodeVisitor[T]) -&gt; T:
-    raise RuntimeError("Not implemented")
-
-
-</t>
-<t tx="ekr.20220525082934.883">@trait
-class Statement(Node):
-    """A statement node."""
-
-    __slots__ = ()
-
-    @others
-</t>
-<t tx="ekr.20220525082934.884">def accept(self, visitor: StatementVisitor[T]) -&gt; T:
-    raise RuntimeError("Not implemented")
-
-
-</t>
-<t tx="ekr.20220525082934.889">@trait
-class SymbolNode(Node):
-    """Nodes that can be stored in a symbol table."""
-
-    __slots__ = ()
-
-    @others
-
-# Items: fullname, related symbol table node, surrounding type (if any)
-Definition: _TypeAlias = Tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
-
-
-</t>
-<t tx="ekr.20220525082934.89"># ImportFrom(identifier? module, alias* names, int? level)
-def visit_ImportFrom(self, n: ast3.ImportFrom) -&gt; ImportBase:
-    assert n.level is not None
-    if len(n.names) == 1 and n.names[0].name == "*":
-        mod = n.module if n.module is not None else ""
-        i: ImportBase = ImportAll(mod, n.level)
-    else:
-        i = ImportFrom(
-            self.translate_module_id(n.module) if n.module is not None else "",
-            n.level,
-            [(a.name, a.asname) for a in n.names],
-        )
-    self.imports.append(i)
-    return self.set_line(i, n)
-
-</t>
-<t tx="ekr.20220525082934.890">@property
-@abstractmethod
-def name(self) -&gt; str:
-    pass
-
-</t>
-<t tx="ekr.20220525082934.891"># fullname can often be None even though the type system
-# disagrees. We mark this with Bogus to let mypyc know not to
-# worry about it.
-@property
-@abstractmethod
-def fullname(self) -&gt; Bogus[str]:
-    pass
-
-</t>
-<t tx="ekr.20220525082934.892">@abstractmethod
-def serialize(self) -&gt; JsonDict:
-    pass
-
-</t>
-<t tx="ekr.20220525082934.893">@classmethod
-def deserialize(cls, data: JsonDict) -&gt; SymbolNode:
-    classname = data[".class"]
-    method = deserialize_map.get(classname)
-    if method is not None:
-        return method(data)
-    raise NotImplementedError(f"unexpected .class {classname}")
-
-</t>
-<t tx="ekr.20220525082934.895">class MypyFile(SymbolNode):
-    """The abstract syntax tree of a single source file."""
-
-    __slots__ = (
-        "_fullname",
-        "path",
-        "defs",
-        "alias_deps",
-        "is_bom",
-        "names",
-        "imports",
-        "ignored_lines",
-        "is_stub",
-        "is_cache_skeleton",
-        "is_partial_stub_package",
-        "plugin_deps",
-        "future_import_flags",
-    )
-
-    # Fully qualified module name
-    _fullname: Bogus[str]
-    # Path to the file (empty string if not known)
-    path: str
-    # Top-level definitions and statements
-    defs: list[Statement]
-    # Type alias dependencies as mapping from target to set of alias full names
-    alias_deps: defaultdict[str, set[str]]
-    # Is there a UTF-8 BOM at the start?
-    is_bom: bool
-    names: SymbolTable
-    # All import nodes within the file (also ones within functions etc.)
-    imports: list[ImportBase]
-    # Lines on which to ignore certain errors when checking.
-    # If the value is empty, ignore all errors; otherwise, the list contains all
-    # error codes to ignore.
-    ignored_lines: dict[int, list[str]]
-    # Is this file represented by a stub file (.pyi)?
-    is_stub: bool
-    # Is this loaded from the cache and thus missing the actual body of the file?
-    is_cache_skeleton: bool
-    # Does this represent an __init__.pyi stub with a module __getattr__
-    # (i.e. a partial stub package), for such packages we suppress any missing
-    # module errors in addition to missing attribute errors.
-    is_partial_stub_package: bool
-    # Plugin-created dependencies
-    plugin_deps: dict[str, set[str]]
-    # Future imports defined in this file. Populated during semantic analysis.
-    future_import_flags: set[str]
-
-    @others
-</t>
-<t tx="ekr.20220525082934.896">def __init__(
-    self,
-    defs: list[Statement],
-    imports: list[ImportBase],
-    is_bom: bool = False,
-    ignored_lines: dict[int, list[str]] | None = None,
-) -&gt; None:
-    super().__init__()
-    self.defs = defs
-    self.line = 1  # Dummy line number
-    self.column = 0  # Dummy column
-    self.imports = imports
-    self.is_bom = is_bom
-    self.alias_deps = defaultdict(set)
-    self.plugin_deps = {}
-    if ignored_lines:
-        self.ignored_lines = ignored_lines
-    else:
-        self.ignored_lines = {}
-
-    self.path = ""
-    self.is_stub = False
-    self.is_cache_skeleton = False
-    self.is_partial_stub_package = False
-    self.future_import_flags = set()
-
-</t>
-<t tx="ekr.20220525082934.897">def local_definitions(self) -&gt; Iterator[Definition]:
-    """Return all definitions within the module (including nested).
-
-    This doesn't include imported definitions.
-    """
-    return local_definitions(self.names, self.fullname)
-
-</t>
-<t tx="ekr.20220525082934.898">@property
-def name(self) -&gt; str:
-    return "" if not self._fullname else self._fullname.split(".")[-1]
-
-</t>
-<t tx="ekr.20220525082934.899">@property
-def fullname(self) -&gt; Bogus[str]:
-    return self._fullname
-
-</t>
-<t tx="ekr.20220525082934.90"># Global(identifier* names)
-def visit_Global(self, n: ast3.Global) -&gt; GlobalDecl:
-    g = GlobalDecl(n.names)
-    return self.set_line(g, n)
-
-</t>
-<t tx="ekr.20220525082934.900">def accept(self, visitor: NodeVisitor[T]) -&gt; T:
-    return visitor.visit_mypy_file(self)
-
-</t>
-<t tx="ekr.20220525082934.901">def is_package_init_file(self) -&gt; bool:
-    return len(self.path) != 0 and os.path.basename(self.path).startswith("__init__.")
-
-</t>
-<t tx="ekr.20220525082934.902">def is_future_flag_set(self, flag: str) -&gt; bool:
-    return flag in self.future_import_flags
-
-</t>
-<t tx="ekr.20220525082934.903">def serialize(self) -&gt; JsonDict:
-    return {
-        ".class": "MypyFile",
-        "_fullname": self._fullname,
-        "names": self.names.serialize(self._fullname),
-        "is_stub": self.is_stub,
-        "path": self.path,
-        "is_partial_stub_package": self.is_partial_stub_package,
-        "future_import_flags": list(self.future_import_flags),
-    }
-
-</t>
-<t tx="ekr.20220525082934.904">@classmethod
-def deserialize(cls, data: JsonDict) -&gt; MypyFile:
-    assert data[".class"] == "MypyFile", data
-    tree = MypyFile([], [])
-    tree._fullname = data["_fullname"]
-    tree.names = SymbolTable.deserialize(data["names"])
-    tree.is_stub = data["is_stub"]
-    tree.path = data["path"]
-    tree.is_partial_stub_package = data["is_partial_stub_package"]
-    tree.is_cache_skeleton = True
-    tree.future_import_flags = set(data["future_import_flags"])
-    return tree
-
-
-</t>
-<t tx="ekr.20220525082934.91"># Nonlocal(identifier* names)
-def visit_Nonlocal(self, n: ast3.Nonlocal) -&gt; NonlocalDecl:
-    d = NonlocalDecl(n.names)
-    return self.set_line(d, n)
-
-</t>
-<t tx="ekr.20220525082934.92"># Expr(expr value)
-def visit_Expr(self, n: ast3.Expr) -&gt; ExpressionStmt:
-    value = self.visit(n.value)
-    node = ExpressionStmt(value)
-    return self.set_line(node, n)
-
-</t>
-<t tx="ekr.20220525082934.93"># Pass
-def visit_Pass(self, n: ast3.Pass) -&gt; PassStmt:
-    s = PassStmt()
-    return self.set_line(s, n)
-
-</t>
-<t tx="ekr.20220525082934.935">class Argument(Node):
-    """A single argument in a FuncItem."""
-
-    __slots__ = ("variable", "type_annotation", "initializer", "kind", "pos_only")
-
-    @others
-</t>
-<t tx="ekr.20220525082934.936">def __init__(
-    self,
-    variable: Var,
-    type_annotation: mypy.types.Type | None,
-    initializer: Expression | None,
-    kind: ArgKind,
-    pos_only: bool = False,
-) -&gt; None:
-    super().__init__()
-    self.variable = variable
-    self.type_annotation = type_annotation
-    self.initializer = initializer
-    self.kind = kind  # must be an ARG_* constant
-    self.pos_only = pos_only
-
-</t>
-<t tx="ekr.20220525082934.937">def set_line(
-    self,
-    target: Context | int,
-    column: int | None = None,
-    end_line: int | None = None,
-    end_column: int | None = None,
-) -&gt; None:
-    super().set_line(target, column, end_line, end_column)
-
-    if self.initializer and self.initializer.line &lt; 0:
-        self.initializer.set_line(self.line, self.column, self.end_line, self.end_column)
-
-    self.variable.set_line(self.line, self.column, self.end_line, self.end_column)
-
-
-</t>
-<t tx="ekr.20220525082934.939">FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
-    "is_overload",
-    "is_generator",
-    "is_coroutine",
-    "is_async_generator",
-    "is_awaitable_coroutine",
-]
-
-
-class FuncItem(FuncBase):
-    """Base class for nodes usable as overloaded function items."""
-
-    __slots__ = (
-        "arguments",  # Note that can be unset if deserialized (type is a lie!)
-        "arg_names",  # Names of arguments
-        "arg_kinds",  # Kinds of arguments
-        "min_args",  # Minimum number of arguments
-        "max_pos",  # Maximum number of positional arguments, -1 if no explicit
-        # limit (*args not included)
-        "body",  # Body of the function
-        "is_overload",  # Is this an overload variant of function with more than
-        # one overload variant?
-        "is_generator",  # Contains a yield statement?
-        "is_coroutine",  # Defined using 'async def' syntax?
-        "is_async_generator",  # Is an async def generator?
-        "is_awaitable_coroutine",  # Decorated with '@{typing,asyncio}.coroutine'?
-        "expanded",  # Variants of function with type variables with values expanded
-    )
-
-    __deletable__ = ("arguments", "max_pos", "min_args")
-    @others
-</t>
-<t tx="ekr.20220525082934.94"># Break
-def visit_Break(self, n: ast3.Break) -&gt; BreakStmt:
-    s = BreakStmt()
-    return self.set_line(s, n)
-
-</t>
-<t tx="ekr.20220525082934.940">
-def __init__(
-    self,
-    arguments: list[Argument] | None = None,
-    body: Block | None = None,
-    typ: mypy.types.FunctionLike | None = None,
-) -&gt; None:
-    super().__init__()
-    self.arguments = arguments or []
-    self.arg_names = [None if arg.pos_only else arg.variable.name for arg in self.arguments]
-    self.arg_kinds: list[ArgKind] = [arg.kind for arg in self.arguments]
-    self.max_pos: int = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
-    self.body: Block = body or Block([])
-    self.type = typ
-    self.unanalyzed_type = typ
-    self.is_overload: bool = False
-    self.is_generator: bool = False
-    self.is_coroutine: bool = False
-    self.is_async_generator: bool = False
-    self.is_awaitable_coroutine: bool = False
-    self.expanded: list[FuncItem] = []
-
-    self.min_args = 0
-    for i in range(len(self.arguments)):
-        if self.arguments[i] is None and i &lt; self.max_fixed_argc():
-            self.min_args = i + 1
-
-</t>
-<t tx="ekr.20220525082934.941">def max_fixed_argc(self) -&gt; int:
-    return self.max_pos
-
-</t>
-<t tx="ekr.20220525082934.942">def set_line(
-    self,
-    target: Context | int,
-    column: int | None = None,
-    end_line: int | None = None,
-    end_column: int | None = None,
-) -&gt; None:
-    super().set_line(target, column, end_line, end_column)
-    for arg in self.arguments:
-        # TODO: set arguments line/column to their precise locations.
-        arg.set_line(self.line, self.column, self.end_line, end_column)
-
-</t>
-<t tx="ekr.20220525082934.943">def is_dynamic(self) -&gt; bool:
-    return self.type is None
-
-
-</t>
-<t tx="ekr.20220525082934.945">FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
-    "is_decorated",
-    "is_conditional",
-    "is_trivial_body",
-    "is_mypy_only",
-]
-
-# Abstract status of a function
-NOT_ABSTRACT: Final = 0
-# Explicitly abstract (with @abstractmethod or overload without implementation)
-IS_ABSTRACT: Final = 1
-# Implicitly abstract: used for functions with trivial bodies defined in Protocols
-IMPLICITLY_ABSTRACT: Final = 2
-
-
-class FuncDef(FuncItem, SymbolNode, Statement):
-    """Function definition.
-
-    This is a non-lambda function defined using 'def'.
-    """
-
-    __slots__ = (
-        "_name",
-        "is_decorated",
-        "is_conditional",
-        "abstract_status",
-        "original_def",
-        "deco_line",
-        "is_trivial_body",
-        "is_mypy_only",
-    )
-
-    @others
-# All types that are both SymbolNodes and FuncBases. See the FuncBase
-# docstring for the rationale.
-SYMBOL_FUNCBASE_TYPES = (OverloadedFuncDef, FuncDef)
-
-
-</t>
-<t tx="ekr.20220525082934.946"># Note that all __init__ args must have default values
-def __init__(
-    self,
-    name: str = "",  # Function name
-    arguments: list[Argument] | None = None,
-    body: Block | None = None,
-    typ: mypy.types.FunctionLike | None = None,
-) -&gt; None:
-    super().__init__(arguments, body, typ)
-    self._name = name
-    self.is_decorated = False
-    self.is_conditional = False  # Defined conditionally (within block)?
-    self.abstract_status = NOT_ABSTRACT
-    # Is this an abstract method with trivial body?
-    # Such methods can't be called via super().
-    self.is_trivial_body = False
-    self.is_final = False
-    # Original conditional definition
-    self.original_def: None | FuncDef | Var | Decorator = None
-    # Used for error reporting (to keep backward compatibility with pre-3.8)
-    self.deco_line: int | None = None
-    # Definitions that appear in if TYPE_CHECKING are marked with this flag.
-    self.is_mypy_only = False
-
-</t>
-<t tx="ekr.20220525082934.947">@property
-def name(self) -&gt; str:
-    return self._name
-
-</t>
-<t tx="ekr.20220525082934.948">def accept(self, visitor: StatementVisitor[T]) -&gt; T:
-    return visitor.visit_func_def(self)
-
-</t>
-<t tx="ekr.20220525082934.949">def serialize(self) -&gt; JsonDict:
-    # We're deliberating omitting arguments and storing only arg_names and
-    # arg_kinds for space-saving reasons (arguments is not used in later
-    # stages of mypy).
-    # TODO: After a FuncDef is deserialized, the only time we use `arg_names`
-    # and `arg_kinds` is when `type` is None and we need to infer a type. Can
-    # we store the inferred type ahead of time?
-    return {
-        ".class": "FuncDef",
-        "name": self._name,
-        "fullname": self._fullname,
-        "arg_names": self.arg_names,
-        "arg_kinds": [int(x.value) for x in self.arg_kinds],
-        "type": None if self.type is None else self.type.serialize(),
-        "flags": get_flags(self, FUNCDEF_FLAGS),
-        "abstract_status": self.abstract_status,
-        # TODO: Do we need expanded, original_def?
-    }
-
-</t>
-<t tx="ekr.20220525082934.95"># Continue
-def visit_Continue(self, n: ast3.Continue) -&gt; ContinueStmt:
-    s = ContinueStmt()
-    return self.set_line(s, n)
-
-</t>
-<t tx="ekr.20220525082934.950">@classmethod
-def deserialize(cls, data: JsonDict) -&gt; FuncDef:
-    assert data[".class"] == "FuncDef"
-    body = Block([])
-    ret = FuncDef(
-        data["name"],
-        [],
-        body,
-        (
-            None
-            if data["type"] is None
-            else cast(mypy.types.FunctionLike, mypy.types.deserialize_type(data["type"]))
-        ),
-    )
-    ret._fullname = data["fullname"]
-    set_flags(ret, data["flags"])
-    # NOTE: ret.info is set in the fixup phase.
-    ret.arg_names = data["arg_names"]
-    ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
-    ret.abstract_status = data["abstract_status"]
-    # Leave these uninitialized so that future uses will trigger an error
-    del ret.arguments
-    del ret.max_pos
-    del ret.min_args
-    return ret
-
-
-</t>
-<t tx="ekr.20220525082934.96"># --- expr ---
-
-</t>
-<t tx="ekr.20220525082934.963">VAR_FLAGS: Final = [
-    "is_self",
-    "is_initialized_in_class",
-    "is_staticmethod",
-    "is_classmethod",
-    "is_property",
-    "is_settable_property",
-    "is_suppressed_import",
-    "is_classvar",
-    "is_abstract_var",
-    "is_final",
-    "final_unset_in_class",
-    "final_set_in_init",
-    "explicit_self_type",
-    "is_ready",
-    "is_inferred",
-    "invalid_partial_type",
-    "from_module_getattr",
-    "has_explicit_value",
-    "allow_incompatible_override",
-]
-
-
-class Var(SymbolNode):
-    """A variable.
-
-    It can refer to global/local variable or a data attribute.
-    """
-
-    __slots__ = (
-        "_name",
-        "_fullname",
-        "info",
-        "type",
-        "final_value",
-        "is_self",
-        "is_ready",
-        "is_inferred",
-        "is_initialized_in_class",
-        "is_staticmethod",
-        "is_classmethod",
-        "is_property",
-        "is_settable_property",
-        "is_classvar",
-        "is_abstract_var",
-        "is_final",
-        "final_unset_in_class",
-        "final_set_in_init",
-        "is_suppressed_import",
-        "explicit_self_type",
-        "from_module_getattr",
-        "has_explicit_value",
-        "allow_incompatible_override",
-        "invalid_partial_type",
-    @others
-</t>
-<t tx="ekr.20220525082934.964">)
-
-def __init__(self, name: str, type: mypy.types.Type | None = None) -&gt; None:
-    super().__init__()
-    self._name = name  # Name without module prefix
-    # TODO: Should be Optional[str]
-    self._fullname = cast("Bogus[str]", None)  # Name with module prefix
-    # TODO: Should be Optional[TypeInfo]
-    self.info = VAR_NO_INFO
-    self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
-    # Is this the first argument to an ordinary method (usually "self")?
-    self.is_self = False
-    self.is_ready = True  # If inferred, is the inferred type available?
-    self.is_inferred = self.type is None
-    # Is this initialized explicitly to a non-None value in class body?
-    self.is_initialized_in_class = False
-    self.is_staticmethod = False
-    self.is_classmethod = False
-    self.is_property = False
-    self.is_settable_property = False
-    self.is_classvar = False
-    self.is_abstract_var = False
-    # Set to true when this variable refers to a module we were unable to
-    # parse for some reason (eg a silenced module)
-    self.is_suppressed_import = False
-    # Was this "variable" (rather a constant) defined as Final[...]?
-    self.is_final = False
-    # If constant value is a simple literal,
-    # store the literal value (unboxed) for the benefit of
-    # tools like mypyc.
-    self.final_value: int | float | bool | str | None = None
-    # Where the value was set (only for class attributes)
-    self.final_unset_in_class = False
-    self.final_set_in_init = False
-    # This is True for a variable that was declared on self with an explicit type:
-    #     class C:
-    #         def __init__(self) -&gt; None:
-    #             self.x: int
-    # This case is important because this defines a new Var, even if there is one
-    # present in a superclass (without explicit type this doesn't create a new Var).
-    # See SemanticAnalyzer.analyze_member_lvalue() for details.
-    self.explicit_self_type = False
-    # If True, this is an implicit Var created due to module-level __getattr__.
-    self.from_module_getattr = False
-    # Var can be created with an explicit value `a = 1` or without one `a: int`,
-    # we need a way to tell which one is which.
-    self.has_explicit_value = False
-    # If True, subclasses can override this with an incompatible type.
-    self.allow_incompatible_override = False
-    # If True, this means we didn't manage to infer full type and fall back to
-    # something like list[Any]. We may decide to not use such types as context.
-    self.invalid_partial_type = False
-
-</t>
-<t tx="ekr.20220525082934.965">@property
-def name(self) -&gt; str:
-    return self._name
-
-</t>
-<t tx="ekr.20220525082934.966">@property
-def fullname(self) -&gt; Bogus[str]:
-    return self._fullname
-
-</t>
-<t tx="ekr.20220525082934.967">def accept(self, visitor: NodeVisitor[T]) -&gt; T:
-    return visitor.visit_var(self)
-
-</t>
-<t tx="ekr.20220525082934.968">def serialize(self) -&gt; JsonDict:
-    # TODO: Leave default values out?
-    # NOTE: Sometimes self.is_ready is False here, but we don't care.
-    data: JsonDict = {
-        ".class": "Var",
-        "name": self._name,
-        "fullname": self._fullname,
-        "type": None if self.type is None else self.type.serialize(),
-        "flags": get_flags(self, VAR_FLAGS),
-    }
-    if self.final_value is not None:
-        data["final_value"] = self.final_value
-    return data
-
-</t>
-<t tx="ekr.20220525082934.969">@classmethod
-def deserialize(cls, data: JsonDict) -&gt; Var:
-    assert data[".class"] == "Var"
-    name = data["name"]
-    type = None if data["type"] is None else mypy.types.deserialize_type(data["type"])
-    v = Var(name, type)
-    v.is_ready = False  # Override True default set in __init__
-    v._fullname = data["fullname"]
-    set_flags(v, data["flags"])
-    v.final_value = data.get("final_value")
-    return v
-
-
-</t>
-<t tx="ekr.20220525082934.97">def visit_NamedExpr(self, n: NamedExpr) -&gt; AssignmentExpr:
-    s = AssignmentExpr(self.visit(n.target), self.visit(n.value))
-    return self.set_line(s, n)
-
-</t>
-<t tx="ekr.20220525082934.98"># BoolOp(boolop op, expr* values)
-def visit_BoolOp(self, n: ast3.BoolOp) -&gt; OpExpr:
-    # mypy translates (1 and 2 and 3) as (1 and (2 and 3))
-    assert len(n.values) &gt;= 2
-    op_node = n.op
-    if isinstance(op_node, ast3.And):
-        op = "and"
-    elif isinstance(op_node, ast3.Or):
-        op = "or"
-    else:
-        raise RuntimeError("unknown BoolOp " + str(type(n)))
-
-    # potentially inefficient!
-    return self.group(op, self.translate_expr_list(n.values), n)
-
-</t>
-<t tx="ekr.20220525082934.99">def group(self, op: str, vals: list[Expression], n: ast3.expr) -&gt; OpExpr:
-    if len(vals) == 2:
-        e = OpExpr(op, vals[0], vals[1])
-    else:
-        e = OpExpr(op, vals[0], self.group(op, vals[1:], n))
-    return self.set_line(e, n)
-
-</t>
-<t tx="ekr.20220525082935.1">class SemanticAnalyzer(
-    NodeVisitor[None], SemanticAnalyzerInterface, SemanticAnalyzerPluginInterface
-):
-    """Semantically analyze parsed mypy files.
-
-    The analyzer binds names and does various consistency checks for an
-    AST. Note that type checking is performed as a separate pass.
-    """
-
-    __deletable__ = ["patches", "options", "cur_mod_node"]
-
-    # Module name space
-    modules: dict[str, MypyFile]
-    # Global name space for current module
-    globals: SymbolTable
-    # Names declared using "global" (separate set for each scope)
-    global_decls: list[set[str]]
-    # Names declared using "nonlocal" (separate set for each scope)
-    nonlocal_decls: list[set[str]]
-    # Local names of function scopes; None for non-function scopes.
-    locals: list[SymbolTable | None]
-    # Whether each scope is a comprehension scope.
-    is_comprehension_stack: list[bool]
-    # Nested block depths of scopes
-    block_depth: list[int]
-    # TypeInfo of directly enclosing class (or None)
-    type: TypeInfo | None = None
-    # Stack of outer classes (the second tuple item contains tvars).
-    type_stack: list[TypeInfo | None]
-    # Type variables bound by the current scope, be it class or function
-    tvar_scope: TypeVarLikeScope
-    # Per-module options
-    options: Options
-
-    # Stack of functions being analyzed
-    function_stack: list[FuncItem]
-
-    # Set to True if semantic analysis defines a name, or replaces a
-    # placeholder definition. If some iteration makes no progress,
-    # there can be at most one additional final iteration (see below).
-    progress = False
-    deferred = False  # Set to true if another analysis pass is needed
-    incomplete = False  # Set to true if current module namespace is missing things
-    # Is this the final iteration of semantic analysis (where we report
-    # unbound names due to cyclic definitions and should not defer)?
-    _final_iteration = False
-    # These names couldn't be added to the symbol table due to incomplete deps.
-    # Note that missing names are per module, _not_ per namespace. This means that e.g.
-    # a missing name at global scope will block adding same name at a class scope.
-    # This should not affect correctness and is purely a performance issue,
-    # since it can cause unnecessary deferrals. These are represented as
-    # PlaceholderNodes in the symbol table. We use this to ensure that the first
-    # definition takes precedence even if it's incomplete.
-    #
-    # Note that a star import adds a special name '*' to the set, this blocks
-    # adding _any_ names in the current file.
-    missing_names: list[set[str]]
-    # Callbacks that will be called after semantic analysis to tweak things.
-    patches: list[tuple[int, Callable[[], None]]]
-    loop_depth = 0  # Depth of breakable loops
-    cur_mod_id = ""  # Current module id (or None) (phase 2)
-    _is_stub_file = False  # Are we analyzing a stub file?
-    _is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
-    imports: set[str]  # Imported modules (during phase 2 analysis)
-    # Note: some imports (and therefore dependencies) might
-    # not be found in phase 1, for example due to * imports.
-    errors: Errors  # Keeps track of generated errors
-    plugin: Plugin  # Mypy plugin for special casing of library features
-    statement: Statement | None = None  # Statement/definition being analyzed
-
-    # Mapping from 'async def' function definitions to their return type wrapped as a
-    # 'Coroutine[Any, Any, T]'. Used to keep track of whether a function definition's
-    # return type has already been wrapped, by checking if the function definition's
-    # type is stored in this mapping and that it still matches.
-    wrapped_coro_return_types: dict[FuncDef, Type] = {}
-
-    @others
-</t>
-<t tx="ekr.20220525082935.10">#
-# Analyzing a target
-#
-
-</t>
-<t tx="ekr.20220525082935.100">def disable_invalid_recursive_aliases(
-    self, s: AssignmentStmt, current_node: TypeAlias
-) -&gt; None:
-    """Prohibit and fix recursive type aliases that are invalid/unsupported."""
-    messages = []
-    if invalid_recursive_alias({current_node}, current_node.target):
-        messages.append("Invalid recursive alias: a union item of itself")
-    if detect_diverging_alias(
-        current_node, current_node.target, self.lookup_qualified, self.tvar_scope
-    ):
-        messages.append("Invalid recursive alias: type variable nesting on right hand side")
-    if messages:
-        current_node.target = AnyType(TypeOfAny.from_error)
-        s.invalid_recursive_alias = True
-    for msg in messages:
-        self.fail(msg, s.rvalue)
-
-def analyze_lvalue(
-    self,
-    lval: Lvalue,
-    nested: bool = False,
-    explicit_type: bool = False,
-    is_final: bool = False,
-    escape_comprehensions: bool = False,
-    has_explicit_value: bool = False,
-) -&gt; None:
-    """Analyze an lvalue or assignment target.
-
-    Args:
-        lval: The target lvalue
-        nested: If true, the lvalue is within a tuple or list lvalue expression
-        explicit_type: Assignment has type annotation
-        escape_comprehensions: If we are inside a comprehension, set the variable
-            in the enclosing scope instead. This implements
-            https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
-    """
-    if escape_comprehensions:
-        assert isinstance(lval, NameExpr), "assignment expression target must be NameExpr"
-    if isinstance(lval, NameExpr):
-        self.analyze_name_lvalue(
-            lval,
-            explicit_type,
-            is_final,
-            escape_comprehensions,
-            has_explicit_value=has_explicit_value,
-        )
-    elif isinstance(lval, MemberExpr):
-        self.analyze_member_lvalue(lval, explicit_type, is_final)
-        if explicit_type and not self.is_self_member_ref(lval):
-            self.fail("Type cannot be declared in assignment to non-self attribute", lval)
-    elif isinstance(lval, IndexExpr):
-        if explicit_type:
-            self.fail("Unexpected type declaration", lval)
-        lval.accept(self)
-    elif isinstance(lval, TupleExpr):
-        self.analyze_tuple_or_list_lvalue(lval, explicit_type)
-    elif isinstance(lval, StarExpr):
-        if nested:
-            self.analyze_lvalue(lval.expr, nested, explicit_type)
-        else:
-            self.fail("Starred assignment target must be in a list or tuple", lval)
-    else:
-        self.fail("Invalid assignment target", lval)
-
-</t>
-<t tx="ekr.20220525082935.101">def analyze_name_lvalue(
-    self,
-    lvalue: NameExpr,
-    explicit_type: bool,
-    is_final: bool,
-    escape_comprehensions: bool,
-    has_explicit_value: bool,
-) -&gt; None:
-    """Analyze an lvalue that targets a name expression.
-
-    Arguments are similar to "analyze_lvalue".
-    """
-    if lvalue.node:
-        # This has been bound already in a previous iteration.
-        return
-
-    name = lvalue.name
-    if self.is_alias_for_final_name(name):
-        if is_final:
-            self.fail("Cannot redefine an existing name as final", lvalue)
-        else:
-            self.msg.cant_assign_to_final(name, self.type is not None, lvalue)
-
-    kind = self.current_symbol_kind()
-    names = self.current_symbol_table(escape_comprehensions=escape_comprehensions)
-    existing = names.get(name)
-
-    outer = self.is_global_or_nonlocal(name)
-    if kind == MDEF and isinstance(self.type, TypeInfo) and self.type.is_enum:
-        # Special case: we need to be sure that `Enum` keys are unique.
-        if existing is not None and not isinstance(existing.node, PlaceholderNode):
-            self.fail(
-                'Attempted to reuse member name "{}" in Enum definition "{}"'.format(
-                    name, self.type.name
-                ),
-                lvalue,
-            )
-
-    if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
-        # Define new variable.
-        var = self.make_name_lvalue_var(lvalue, kind, not explicit_type, has_explicit_value)
-        added = self.add_symbol(name, var, lvalue, escape_comprehensions=escape_comprehensions)
-        # Only bind expression if we successfully added name to symbol table.
-        if added:
-            lvalue.is_new_def = True
-            lvalue.is_inferred_def = True
-            lvalue.kind = kind
-            lvalue.node = var
-            if kind == GDEF:
-                lvalue.fullname = var._fullname
-            else:
-                lvalue.fullname = lvalue.name
-            if self.is_func_scope():
-                if unmangle(name) == "_":
-                    # Special case for assignment to local named '_': always infer 'Any'.
-                    typ = AnyType(TypeOfAny.special_form)
-                    self.store_declared_types(lvalue, typ)
-        if is_final and self.is_final_redefinition(kind, name):
-            self.fail("Cannot redefine an existing name as final", lvalue)
-    else:
-        self.make_name_lvalue_point_to_existing_def(lvalue, explicit_type, is_final)
-
-</t>
-<t tx="ekr.20220525082935.102">def is_final_redefinition(self, kind: int, name: str) -&gt; bool:
-    if kind == GDEF:
-        return self.is_mangled_global(name) and not self.is_initial_mangled_global(name)
-    elif kind == MDEF and self.type:
-        return unmangle(name) + "'" in self.type.names
-    return False
-
-</t>
-<t tx="ekr.20220525082935.103">def is_alias_for_final_name(self, name: str) -&gt; bool:
-    if self.is_func_scope():
-        if not name.endswith("'"):
-            # Not a mangled name -- can't be an alias
-            return False
-        name = unmangle(name)
-        assert self.locals[-1] is not None, "No locals at function scope"
-        existing = self.locals[-1].get(name)
-        return existing is not None and is_final_node(existing.node)
-    elif self.type is not None:
-        orig_name = unmangle(name) + "'"
-        if name == orig_name:
-            return False
-        existing = self.type.names.get(orig_name)
-        return existing is not None and is_final_node(existing.node)
-    else:
-        orig_name = unmangle(name) + "'"
-        if name == orig_name:
-            return False
-        existing = self.globals.get(orig_name)
-        return existing is not None and is_final_node(existing.node)
-
-</t>
-<t tx="ekr.20220525082935.104">def make_name_lvalue_var(
-    self, lvalue: NameExpr, kind: int, inferred: bool, has_explicit_value: bool
-) -&gt; Var:
-    """Return a Var node for an lvalue that is a name expression."""
-    name = lvalue.name
-    v = Var(name)
-    v.set_line(lvalue)
-    v.is_inferred = inferred
-    if kind == MDEF:
-        assert self.type is not None
-        v.info = self.type
-        v.is_initialized_in_class = True
-        v.allow_incompatible_override = name in ALLOW_INCOMPATIBLE_OVERRIDE
-    if kind != LDEF:
-        v._fullname = self.qualified_name(name)
-    else:
-        # fullanme should never stay None
-        v._fullname = name
-    v.is_ready = False  # Type not inferred yet
-    v.has_explicit_value = has_explicit_value
-    return v
-
-</t>
-<t tx="ekr.20220525082935.105">def make_name_lvalue_point_to_existing_def(
-    self, lval: NameExpr, explicit_type: bool, is_final: bool
-) -&gt; None:
-    """Update an lvalue to point to existing definition in the same scope.
-
-    Arguments are similar to "analyze_lvalue".
-
-    Assume that an existing name exists.
-    """
-    if is_final:
-        # Redefining an existing name with final is always an error.
-        self.fail("Cannot redefine an existing name as final", lval)
-    original_def = self.lookup(lval.name, lval, suppress_errors=True)
-    if original_def is None and self.type and not self.is_func_scope():
-        # Workaround to allow "x, x = ..." in class body.
-        original_def = self.type.get(lval.name)
-    if explicit_type:
-        # Don't re-bind if there is a type annotation.
-        self.name_already_defined(lval.name, lval, original_def)
-    else:
-        # Bind to an existing name.
-        if original_def:
-            self.bind_name_expr(lval, original_def)
-        else:
-            self.name_not_defined(lval.name, lval)
-        self.check_lvalue_validity(lval.node, lval)
-
-</t>
-<t tx="ekr.20220525082935.106">def analyze_tuple_or_list_lvalue(self, lval: TupleExpr, explicit_type: bool = False) -&gt; None:
-    """Analyze an lvalue or assignment target that is a list or tuple."""
-    items = lval.items
-    star_exprs = [item for item in items if isinstance(item, StarExpr)]
-
-    if len(star_exprs) &gt; 1:
-        self.fail("Two starred expressions in assignment", lval)
-    else:
-        if len(star_exprs) == 1:
-            star_exprs[0].valid = True
-        for i in items:
-            self.analyze_lvalue(
-                lval=i,
-                nested=True,
-                explicit_type=explicit_type,
-                # Lists and tuples always have explicit values defined:
-                # `a, b, c = value`
-                has_explicit_value=True,
-            )
-
-</t>
-<t tx="ekr.20220525082935.107">def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool, is_final: bool) -&gt; None:
-    """Analyze lvalue that is a member expression.
-
-    Arguments:
-        lval: The target lvalue
-        explicit_type: Assignment has type annotation
-        is_final: Is the target final
-    """
-    if lval.node:
-        # This has been bound already in a previous iteration.
-        return
-    lval.accept(self)
-    if self.is_self_member_ref(lval):
-        assert self.type, "Self member outside a class"
-        cur_node = self.type.names.get(lval.name)
-        node = self.type.get(lval.name)
-        if cur_node and is_final:
-            # Overrides will be checked in type checker.
-            self.fail("Cannot redefine an existing name as final", lval)
-        # On first encounter with this definition, if this attribute was defined before
-        # with an inferred type and it's marked with an explicit type now, give an error.
-        if (
-            not lval.node
-            and cur_node
-            and isinstance(cur_node.node, Var)
-            and cur_node.node.is_inferred
-            and explicit_type
-        ):
-            self.attribute_already_defined(lval.name, lval, cur_node)
-        # If the attribute of self is not defined in superclasses, create a new Var, ...
-        if (
-            node is None
-            or (isinstance(node.node, Var) and node.node.is_abstract_var)
-            # ... also an explicit declaration on self also creates a new Var.
-            # Note that `explicit_type` might has been erased for bare `Final`,
-            # so we also check if `is_final` is passed.
-            or (cur_node is None and (explicit_type or is_final))
-        ):
-            if self.type.is_protocol and node is None:
-                self.fail("Protocol members cannot be defined via assignment to self", lval)
-            else:
-                # Implicit attribute definition in __init__.
-                lval.is_new_def = True
-                lval.is_inferred_def = True
-                v = Var(lval.name)
-                v.set_line(lval)
-                v._fullname = self.qualified_name(lval.name)
-                v.info = self.type
-                v.is_ready = False
-                v.explicit_self_type = explicit_type or is_final
-                lval.def_var = v
-                lval.node = v
-                # TODO: should we also set lval.kind = MDEF?
-                self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
-    self.check_lvalue_validity(lval.node, lval)
-
-</t>
-<t tx="ekr.20220525082935.108">def is_self_member_ref(self, memberexpr: MemberExpr) -&gt; bool:
-    """Does memberexpr to refer to an attribute of self?"""
-    if not isinstance(memberexpr.expr, NameExpr):
-        return False
-    node = memberexpr.expr.node
-    return isinstance(node, Var) and node.is_self
-
-</t>
-<t tx="ekr.20220525082935.109">def check_lvalue_validity(self, node: Expression | SymbolNode | None, ctx: Context) -&gt; None:
-    if isinstance(node, TypeVarExpr):
-        self.fail("Invalid assignment target", ctx)
-    elif isinstance(node, TypeInfo):
-        self.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, ctx)
-
-</t>
-<t tx="ekr.20220525082935.11">def refresh_partial(
-    self,
-    node: MypyFile | FuncDef | OverloadedFuncDef,
-    patches: list[tuple[int, Callable[[], None]]],
-    final_iteration: bool,
-    file_node: MypyFile,
-    options: Options,
-    active_type: TypeInfo | None = None,
-) -&gt; None:
-    """Refresh a stale target in fine-grained incremental mode."""
-    self.patches = patches
-    self.deferred = False
-    self.incomplete = False
-    self._final_iteration = final_iteration
-    self.missing_names[-1] = set()
-
-    with self.file_context(file_node, options, active_type):
-        if isinstance(node, MypyFile):
-            self.refresh_top_level(node)
-        else:
-            self.recurse_into_functions = True
-            self.accept(node)
-    del self.patches
-
-</t>
-<t tx="ekr.20220525082935.110">def store_declared_types(self, lvalue: Lvalue, typ: Type) -&gt; None:
-    if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
-        self.fail("Star type only allowed for starred expressions", lvalue)
-    if isinstance(lvalue, RefExpr):
-        lvalue.is_inferred_def = False
-        if isinstance(lvalue.node, Var):
-            var = lvalue.node
-            var.type = typ
-            var.is_ready = True
-        # If node is not a variable, we'll catch it elsewhere.
-    elif isinstance(lvalue, TupleExpr):
-        typ = get_proper_type(typ)
-        if isinstance(typ, TupleType):
-            if len(lvalue.items) != len(typ.items):
-                self.fail("Incompatible number of tuple items", lvalue)
-                return
-            for item, itemtype in zip(lvalue.items, typ.items):
-                self.store_declared_types(item, itemtype)
-        else:
-            self.fail("Tuple type expected for multiple variables", lvalue)
-    elif isinstance(lvalue, StarExpr):
-        # Historical behavior for the old parser
-        if isinstance(typ, StarType):
-            self.store_declared_types(lvalue.expr, typ.type)
-        else:
-            self.store_declared_types(lvalue.expr, typ)
-    else:
-        # This has been flagged elsewhere as an error, so just ignore here.
-        pass
-
-</t>
-<t tx="ekr.20220525082935.111">def process_typevar_declaration(self, s: AssignmentStmt) -&gt; bool:
-    """Check if s declares a TypeVar; it yes, store it in symbol table.
-
-    Return True if this looks like a type variable declaration (but maybe
-    with errors), otherwise return False.
-    """
-    call = self.get_typevarlike_declaration(s, ("typing.TypeVar",))
-    if not call:
-        return False
-
-    name = self.extract_typevarlike_name(s, call)
-    if name is None:
-        return False
-
-    # Constraining types
-    n_values = call.arg_kinds[1:].count(ARG_POS)
-    values = self.analyze_value_types(call.args[1 : 1 + n_values])
-
-    res = self.process_typevar_parameters(
-        call.args[1 + n_values :],
-        call.arg_names[1 + n_values :],
-        call.arg_kinds[1 + n_values :],
-        n_values,
-        s,
-    )
-    if res is None:
-        return False
-    variance, upper_bound = res
-
-    existing = self.current_symbol_table().get(name)
-    if existing and not (
-        isinstance(existing.node, PlaceholderNode)
-        or
-        # Also give error for another type variable with the same name.
-        (isinstance(existing.node, TypeVarExpr) and existing.node is call.analyzed)
-    ):
-        self.fail(f'Cannot redefine "{name}" as a type variable', s)
-        return False
-
-    if self.options.disallow_any_unimported:
-        for idx, constraint in enumerate(values, start=1):
-            if has_any_from_unimported_type(constraint):
-                prefix = f"Constraint {idx}"
-                self.msg.unimported_type_becomes_any(prefix, constraint, s)
-
-        if has_any_from_unimported_type(upper_bound):
-            prefix = "Upper bound of type variable"
-            self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
-
-    for t in values + [upper_bound]:
-        check_for_explicit_any(
-            t, self.options, self.is_typeshed_stub_file, self.msg, context=s
-        )
-
-    # mypyc suppresses making copies of a function to check each
-    # possible type, so set the upper bound to Any to prevent that
-    # from causing errors.
-    if values and self.options.mypyc:
-        upper_bound = AnyType(TypeOfAny.implementation_artifact)
-
-    # Yes, it's a valid type variable definition! Add it to the symbol table.
-    if not call.analyzed:
-        type_var = TypeVarExpr(name, self.qualified_name(name), values, upper_bound, variance)
-        type_var.line = call.line
-        call.analyzed = type_var
-    else:
-        assert isinstance(call.analyzed, TypeVarExpr)
-        call.analyzed.upper_bound = upper_bound
-        call.analyzed.values = values
-    if any(has_placeholder(v) for v in values) or has_placeholder(upper_bound):
-        self.defer(force_progress=True)
-
-    self.add_symbol(name, call.analyzed, s)
-    return True
-
-</t>
-<t tx="ekr.20220525082935.112">def check_typevarlike_name(self, call: CallExpr, name: str, context: Context) -&gt; bool:
-    """Checks that the name of a TypeVar or ParamSpec matches its variable."""
-    name = unmangle(name)
-    assert isinstance(call.callee, RefExpr)
-    typevarlike_type = (
-        call.callee.name if isinstance(call.callee, NameExpr) else call.callee.fullname
-    )
-    if len(call.args) &lt; 1:
-        self.fail(f"Too few arguments for {typevarlike_type}()", context)
-        return False
-    if not isinstance(call.args[0], StrExpr) or not call.arg_kinds[0] == ARG_POS:
-        self.fail(f"{typevarlike_type}() expects a string literal as first argument", context)
-        return False
-    elif call.args[0].value != name:
-        msg = 'String argument 1 "{}" to {}(...) does not match variable name "{}"'
-        self.fail(msg.format(call.args[0].value, typevarlike_type, name), context)
-        return False
-    return True
-
-</t>
-<t tx="ekr.20220525082935.113">def get_typevarlike_declaration(
-    self, s: AssignmentStmt, typevarlike_types: tuple[str, ...]
-) -&gt; CallExpr | None:
-    """Returns the call expression if `s` is a declaration of `typevarlike_type`
-    (TypeVar or ParamSpec), or None otherwise.
-    """
-    if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-        return None
-    if not isinstance(s.rvalue, CallExpr):
-        return None
-    call = s.rvalue
-    callee = call.callee
-    if not isinstance(callee, RefExpr):
-        return None
-    if callee.fullname not in typevarlike_types:
-        return None
-    return call
-
-</t>
-<t tx="ekr.20220525082935.114">def process_typevar_parameters(
-    self,
-    args: list[Expression],
-    names: list[str | None],
-    kinds: list[ArgKind],
-    num_values: int,
-    context: Context,
-) -&gt; tuple[int, Type] | None:
-    has_values = num_values &gt; 0
-    covariant = False
-    contravariant = False
-    upper_bound: Type = self.object_type()
-    for param_value, param_name, param_kind in zip(args, names, kinds):
-        if not param_kind.is_named():
-            self.fail(message_registry.TYPEVAR_UNEXPECTED_ARGUMENT, context)
-            return None
-        if param_name == "covariant":
-            if isinstance(param_value, NameExpr) and param_value.name in ("True", "False"):
-                covariant = param_value.name == "True"
-            else:
-                self.fail(message_registry.TYPEVAR_VARIANCE_DEF.format("covariant"), context)
-                return None
-        elif param_name == "contravariant":
-            if isinstance(param_value, NameExpr) and param_value.name in ("True", "False"):
-                contravariant = param_value.name == "True"
-            else:
-                self.fail(
-                    message_registry.TYPEVAR_VARIANCE_DEF.format("contravariant"), context
-                )
-                return None
-        elif param_name == "bound":
-            if has_values:
-                self.fail("TypeVar cannot have both values and an upper bound", context)
-                return None
-            try:
-                # We want to use our custom error message below, so we suppress
-                # the default error message for invalid types here.
-                analyzed = self.expr_to_analyzed_type(
-                    param_value, allow_placeholder=True, report_invalid_types=False
-                )
-                if analyzed is None:
-                    # Type variables are special: we need to place them in the symbol table
-                    # soon, even if upper bound is not ready yet. Otherwise avoiding
-                    # a "deadlock" in this common pattern would be tricky:
-                    #     T = TypeVar('T', bound=Custom[Any])
-                    #     class Custom(Generic[T]):
-                    #         ...
-                    analyzed = PlaceholderType(None, [], context.line)
-                upper_bound = get_proper_type(analyzed)
-                if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
-                    self.fail(message_registry.TYPEVAR_BOUND_MUST_BE_TYPE, param_value)
-                    # Note: we do not return 'None' here -- we want to continue
-                    # using the AnyType as the upper bound.
-            except TypeTranslationError:
-                self.fail(message_registry.TYPEVAR_BOUND_MUST_BE_TYPE, param_value)
-                return None
-        elif param_name == "values":
-            # Probably using obsolete syntax with values=(...). Explain the current syntax.
-            self.fail('TypeVar "values" argument not supported', context)
-            self.fail(
-                "Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))", context
-            )
-            return None
-        else:
-            self.fail(
-                f'{message_registry.TYPEVAR_UNEXPECTED_ARGUMENT}: "{param_name}"', context
-            )
-            return None
-
-    if covariant and contravariant:
-        self.fail("TypeVar cannot be both covariant and contravariant", context)
-        return None
-    elif num_values == 1:
-        self.fail("TypeVar cannot have only a single constraint", context)
-        return None
-    elif covariant:
-        variance = COVARIANT
-    elif contravariant:
-        variance = CONTRAVARIANT
-    else:
-        variance = INVARIANT
-    return variance, upper_bound
-
-</t>
-<t tx="ekr.20220525082935.115">def extract_typevarlike_name(self, s: AssignmentStmt, call: CallExpr) -&gt; str | None:
-    if not call:
-        return None
-
-    lvalue = s.lvalues[0]
-    assert isinstance(lvalue, NameExpr)
-    if s.type:
-        self.fail("Cannot declare the type of a TypeVar or similar construct", s)
-        return None
-
-    if not self.check_typevarlike_name(call, lvalue.name, s):
-        return None
-    return lvalue.name
-
-</t>
-<t tx="ekr.20220525082935.116">def process_paramspec_declaration(self, s: AssignmentStmt) -&gt; bool:
-    """Checks if s declares a ParamSpec; if yes, store it in symbol table.
-
-    Return True if this looks like a ParamSpec (maybe with errors), otherwise return False.
-
-    In the future, ParamSpec may accept bounds and variance arguments, in which
-    case more aggressive sharing of code with process_typevar_declaration should be pursued.
-    """
-    call = self.get_typevarlike_declaration(
-        s, ("typing_extensions.ParamSpec", "typing.ParamSpec")
-    )
-    if not call:
-        return False
-
-    name = self.extract_typevarlike_name(s, call)
-    if name is None:
-        return False
-
-    # ParamSpec is different from a regular TypeVar:
-    # arguments are not semantically valid. But, allowed in runtime.
-    # So, we need to warn users about possible invalid usage.
-    if len(call.args) &gt; 1:
-        self.fail("Only the first argument to ParamSpec has defined semantics", s)
-
-    # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
-    # ParamSpec in a later PEP. If and when that happens, we should do something
-    # on the lines of process_typevar_parameters
-
-    if not call.analyzed:
-        paramspec_var = ParamSpecExpr(
-            name, self.qualified_name(name), self.object_type(), INVARIANT
-        )
-        paramspec_var.line = call.line
-        call.analyzed = paramspec_var
-    else:
-        assert isinstance(call.analyzed, ParamSpecExpr)
-    self.add_symbol(name, call.analyzed, s)
-    return True
-
-</t>
-<t tx="ekr.20220525082935.117">def process_typevartuple_declaration(self, s: AssignmentStmt) -&gt; bool:
-    """Checks if s declares a TypeVarTuple; if yes, store it in symbol table.
-
-    Return True if this looks like a TypeVarTuple (maybe with errors), otherwise return False.
-    """
-    call = self.get_typevarlike_declaration(
-        s, ("typing_extensions.TypeVarTuple", "typing.TypeVarTuple")
-    )
-    if not call:
-        return False
-
-    if len(call.args) &gt; 1:
-        self.fail("Only the first argument to TypeVarTuple has defined semantics", s)
-
-    if not self.options.enable_incomplete_features:
-        self.fail('"TypeVarTuple" is not supported by mypy yet', s)
-        return False
-
-    name = self.extract_typevarlike_name(s, call)
-    if name is None:
-        return False
-
-    # PEP 646 does not specify the behavior of variance, constraints, or bounds.
-    if not call.analyzed:
-        typevartuple_var = TypeVarTupleExpr(
-            name, self.qualified_name(name), self.object_type(), INVARIANT
-        )
-        typevartuple_var.line = call.line
-        call.analyzed = typevartuple_var
-    else:
-        assert isinstance(call.analyzed, TypeVarTupleExpr)
-    self.add_symbol(name, call.analyzed, s)
-    return True
-
-</t>
-<t tx="ekr.20220525082935.1178">class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
-    """Semantic analyzer for types.
-
-    Converts unbound types into bound types. This is a no-op for already
-    bound types.
-
-    If an incomplete reference is encountered, this does a defer. The
-    caller never needs to defer.
-    """
-
-    # Is this called from an untyped function definition?
-    in_dynamic_func: bool = False
-    # Is this called from global scope?
-    global_scope: bool = True
-
-    @others
-</t>
-<t tx="ekr.20220525082935.1179">def __init__(
-    self,
-    api: SemanticAnalyzerCoreInterface,
-    tvar_scope: TypeVarLikeScope,
-    plugin: Plugin,
-    options: Options,
-    is_typeshed_stub: bool,
-    *,
-    defining_alias: bool = False,
-    allow_tuple_literal: bool = False,
-    allow_unbound_tvars: bool = False,
-    allow_placeholder: bool = False,
-    allow_required: bool = False,
-    allow_param_spec_literals: bool = False,
-    report_invalid_types: bool = True,
-) -&gt; None:
-    self.api = api
-    self.lookup_qualified = api.lookup_qualified
-    self.lookup_fqn_func = api.lookup_fully_qualified
-    self.fail_func = api.fail
-    self.note_func = api.note
-    self.tvar_scope = tvar_scope
-    # Are we analysing a type alias definition rvalue?
-    self.defining_alias = defining_alias
-    self.allow_tuple_literal = allow_tuple_literal
-    # Positive if we are analyzing arguments of another (outer) type
-    self.nesting_level = 0
-    # Should we allow new type syntax when targeting older Python versions
-    # like 'list[int]' or 'X | Y' (allowed in stubs and with `__future__` import)?
-    self.always_allow_new_syntax = self.api.is_stub_file or self.api.is_future_flag_set(
-        "annotations"
-    )
-    # Should we accept unbound type variables (always OK in aliases)?
-    self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
-    # If false, record incomplete ref if we generate PlaceholderType.
-    self.allow_placeholder = allow_placeholder
-    # Are we in a context where Required[] is allowed?
-    self.allow_required = allow_required
-    # Are we in a context where ParamSpec literals are allowed?
-    self.allow_param_spec_literals = allow_param_spec_literals
-    # Should we report an error whenever we encounter a RawExpressionType outside
-    # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
-    # we want to report an error, but the caller may want to do more specialized
-    # error handling.
-    self.report_invalid_types = report_invalid_types
-    self.plugin = plugin
-    self.options = options
-    self.is_typeshed_stub = is_typeshed_stub
-    # Names of type aliases encountered while analysing a type will be collected here.
-    self.aliases_used: set[str] = set()
-
-</t>
-<t tx="ekr.20220525082935.118">def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance, line: int) -&gt; TypeInfo:
-    if self.is_func_scope() and not self.type and "@" not in name:
-        name += "@" + str(line)
-    class_def = ClassDef(name, Block([]))
-    if self.is_func_scope() and not self.type:
-        # Full names of generated classes should always be prefixed with the module names
-        # even if they are nested in a function, since these classes will be (de-)serialized.
-        # (Note that the caller should append @line to the name to avoid collisions.)
-        # TODO: clean this up, see #6422.
-        class_def.fullname = self.cur_mod_id + "." + self.qualified_name(name)
-    else:
-        class_def.fullname = self.qualified_name(name)
-
-    info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
-    class_def.info = info
-    mro = basetype_or_fallback.type.mro
-    if not mro:
-        # Probably an error, we should not crash so generate something meaningful.
-        mro = [basetype_or_fallback.type, self.object_type().type]
-    info.mro = [info] + mro
-    info.bases = [basetype_or_fallback]
-    return info
-
-</t>
-<t tx="ekr.20220525082935.1180">def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -&gt; Type:
-    typ = self.visit_unbound_type_nonoptional(t, defining_literal)
-    if t.optional:
-        # We don't need to worry about double-wrapping Optionals or
-        # wrapping Anys: Union simplification will take care of that.
-        return make_optional_type(typ)
-    return typ
-
-</t>
-<t tx="ekr.20220525082935.1181">def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -&gt; Type:
-    sym = self.lookup_qualified(t.name, t)
-    if sym is not None:
-        node = sym.node
-        if isinstance(node, PlaceholderNode):
-            if node.becomes_typeinfo:
-                # Reference to placeholder type.
-                if self.api.final_iteration:
-                    self.cannot_resolve_type(t)
-                    return AnyType(TypeOfAny.from_error)
-                elif self.allow_placeholder:
-                    self.api.defer()
-                else:
-                    self.api.record_incomplete_ref()
-                return PlaceholderType(node.fullname, self.anal_array(t.args), t.line)
-            else:
-                if self.api.final_iteration:
-                    self.cannot_resolve_type(t)
-                    return AnyType(TypeOfAny.from_error)
-                else:
-                    # Reference to an unknown placeholder node.
-                    self.api.record_incomplete_ref()
-                    return AnyType(TypeOfAny.special_form)
-        if node is None:
-            self.fail(f"Internal error (node is None, kind={sym.kind})", t)
-            return AnyType(TypeOfAny.special_form)
-        fullname = node.fullname
-        hook = self.plugin.get_type_analyze_hook(fullname)
-        if hook is not None:
-            return hook(AnalyzeTypeContext(t, t, self))
-        if (
-            fullname in get_nongen_builtins(self.options.python_version)
-            and t.args
-            and not self.always_allow_new_syntax
-        ):
-            self.fail(
-                no_subscript_builtin_alias(fullname, propose_alt=not self.defining_alias), t
-            )
-        tvar_def = self.tvar_scope.get_binding(sym)
-        if isinstance(sym.node, ParamSpecExpr):
-            if tvar_def is None:
-                self.fail(f'ParamSpec "{t.name}" is unbound', t, code=codes.VALID_TYPE)
-                return AnyType(TypeOfAny.from_error)
-            assert isinstance(tvar_def, ParamSpecType)
-            if len(t.args) &gt; 0:
-                self.fail(
-                    f'ParamSpec "{t.name}" used with arguments', t, code=codes.VALID_TYPE
-                )
-            # Change the line number
-            return ParamSpecType(
-                tvar_def.name,
-                tvar_def.fullname,
-                tvar_def.id,
-                tvar_def.flavor,
-                tvar_def.upper_bound,
-                line=t.line,
-                column=t.column,
-            )
-        if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
-            self.fail(
-                f'Can\'t use bound type variable "{t.name}" to define generic alias',
-                t,
-                code=codes.VALID_TYPE,
-            )
-            return AnyType(TypeOfAny.from_error)
-        if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
-            assert isinstance(tvar_def, TypeVarType)
-            if len(t.args) &gt; 0:
-                self.fail(
-                    f'Type variable "{t.name}" used with arguments', t, code=codes.VALID_TYPE
-                )
-            # Change the line number
-            return TypeVarType(
-                tvar_def.name,
-                tvar_def.fullname,
-                tvar_def.id,
-                tvar_def.values,
-                tvar_def.upper_bound,
-                tvar_def.variance,
-                line=t.line,
-                column=t.column,
-            )
-        if isinstance(sym.node, TypeVarTupleExpr) and (
-            tvar_def is not None and self.defining_alias
-        ):
-            self.fail(
-                f'Can\'t use bound type variable "{t.name}" to define generic alias',
-                t,
-                code=codes.VALID_TYPE,
-            )
-            return AnyType(TypeOfAny.from_error)
-        if isinstance(sym.node, TypeVarTupleExpr):
-            if tvar_def is None:
-                self.fail(f'TypeVarTuple "{t.name}" is unbound', t, code=codes.VALID_TYPE)
-                return AnyType(TypeOfAny.from_error)
-            assert isinstance(tvar_def, TypeVarTupleType)
-            if len(t.args) &gt; 0:
-                self.fail(
-                    f'Type variable "{t.name}" used with arguments', t, code=codes.VALID_TYPE
-                )
-            # Change the line number
-            return TypeVarTupleType(
-                tvar_def.name,
-                tvar_def.fullname,
-                tvar_def.id,
-                tvar_def.upper_bound,
-                line=t.line,
-                column=t.column,
-            )
-        special = self.try_analyze_special_unbound_type(t, fullname)
-        if special is not None:
-            return special
-        if isinstance(node, TypeAlias):
-            self.aliases_used.add(fullname)
-            an_args = self.anal_array(t.args)
-            disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
-            res = expand_type_alias(
-                node,
-                an_args,
-                self.fail,
-                node.no_args,
-                t,
-                unexpanded_type=t,
-                disallow_any=disallow_any,
-            )
-            # The only case where expand_type_alias() can return an incorrect instance is
-            # when it is top-level instance, so no need to recurse.
-            if (
-                isinstance(res, Instance)  # type: ignore[misc]
-                and len(res.args) != len(res.type.type_vars)
-                and not self.defining_alias
-            ):
-                fix_instance(
-                    res,
-                    self.fail,
-                    self.note,
-                    disallow_any=disallow_any,
-                    python_version=self.options.python_version,
-                    use_generic_error=True,
-                    unexpanded_type=t,
-                )
-            if node.eager:
-                res = get_proper_type(res)
-            return res
-        elif isinstance(node, TypeInfo):
-            return self.analyze_type_with_type_info(node, t.args, t)
-        elif node.fullname in TYPE_ALIAS_NAMES:
-            return AnyType(TypeOfAny.special_form)
-        # Concatenate is an operator, no need for a proper type
-        elif node.fullname in ("typing_extensions.Concatenate", "typing.Concatenate"):
-            # We check the return type further up the stack for valid use locations
-            return self.apply_concatenate_operator(t)
-        else:
-            return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
-    else:  # sym is None
-        return AnyType(TypeOfAny.special_form)
-
-</t>
-<t tx="ekr.20220525082935.1182">def cannot_resolve_type(self, t: UnboundType) -&gt; None:
-    # TODO: Move error message generation to messages.py. We'd first
-    #       need access to MessageBuilder here. Also move the similar
-    #       message generation logic in semanal.py.
-    self.api.fail(f'Cannot resolve name "{t.name}" (possible cyclic definition)', t)
-    if not self.options.disable_recursive_aliases and self.api.is_func_scope():
-        self.note("Recursive types are not allowed at function scope", t)
-
-</t>
-<t tx="ekr.20220525082935.1183">def apply_concatenate_operator(self, t: UnboundType) -&gt; Type:
-    if len(t.args) == 0:
-        self.api.fail("Concatenate needs type arguments", t, code=codes.VALID_TYPE)
-        return AnyType(TypeOfAny.from_error)
-
-    # last argument has to be ParamSpec
-    ps = self.anal_type(t.args[-1], allow_param_spec=True)
-    if not isinstance(ps, ParamSpecType):
-        self.api.fail(
-            "The last parameter to Concatenate needs to be a ParamSpec",
-            t,
-            code=codes.VALID_TYPE,
-        )
-        return AnyType(TypeOfAny.from_error)
-
-    # TODO: this may not work well with aliases, if those worked.
-    #   Those should be special-cased.
-    elif ps.prefix.arg_types:
-        self.api.fail("Nested Concatenates are invalid", t, code=codes.VALID_TYPE)
-
-    args = self.anal_array(t.args[:-1])
-    pre = ps.prefix
-
-    # mypy can't infer this :(
-    names: list[str | None] = [None] * len(args)
-
-    pre = Parameters(
-        args + pre.arg_types, [ARG_POS] * len(args) + pre.arg_kinds, names + pre.arg_names
-    )
-    return ps.copy_modified(prefix=pre)
-
-</t>
-<t tx="ekr.20220525082935.1184">def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -&gt; Type | None:
-    """Bind special type that is recognized through magic name such as 'typing.Any'.
-
-    Return the bound type if successful, and return None if the type is a normal type.
-    """
-    if fullname == "builtins.None":
-        return NoneType()
-    elif fullname == "typing.Any" or fullname == "builtins.Any":
-        return AnyType(TypeOfAny.explicit)
-    elif fullname in FINAL_TYPE_NAMES:
-        self.fail(
-            "Final can be only used as an outermost qualifier in a variable annotation",
-            t,
-            code=codes.VALID_TYPE,
-        )
-        return AnyType(TypeOfAny.from_error)
-    elif fullname == "typing.Tuple" or (
-        fullname == "builtins.tuple"
-        and (self.always_allow_new_syntax or self.options.python_version &gt;= (3, 9))
-    ):
-        # Tuple is special because it is involved in builtin import cycle
-        # and may be not ready when used.
-        sym = self.api.lookup_fully_qualified_or_none("builtins.tuple")
-        if not sym or isinstance(sym.node, PlaceholderNode):
-            if self.api.is_incomplete_namespace("builtins"):
-                self.api.record_incomplete_ref()
-            else:
-                self.fail('Name "tuple" is not defined', t)
-            return AnyType(TypeOfAny.special_form)
-        if len(t.args) == 0 and not t.empty_tuple_index:
-            # Bare 'Tuple' is same as 'tuple'
-            any_type = self.get_omitted_any(t)
-            return self.named_type("builtins.tuple", [any_type], line=t.line, column=t.column)
-        if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
-            # Tuple[T, ...] (uniform, variable-length tuple)
-            instance = self.named_type("builtins.tuple", [self.anal_type(t.args[0])])
-            instance.line = t.line
-            return instance
-        return self.tuple_type(self.anal_array(t.args))
-    elif fullname == "typing.Union":
-        items = self.anal_array(t.args)
-        return UnionType.make_union(items)
-    elif fullname == "typing.Optional":
-        if len(t.args) != 1:
-            self.fail(
-                "Optional[...] must have exactly one type argument", t, code=codes.VALID_TYPE
-            )
-            return AnyType(TypeOfAny.from_error)
-        item = self.anal_type(t.args[0])
-        return make_optional_type(item)
-    elif fullname == "typing.Callable":
-        return self.analyze_callable_type(t)
-    elif fullname == "typing.Type" or (
-        fullname == "builtins.type"
-        and (self.always_allow_new_syntax or self.options.python_version &gt;= (3, 9))
-    ):
-        if len(t.args) == 0:
-            if fullname == "typing.Type":
-                any_type = self.get_omitted_any(t)
-                return TypeType(any_type, line=t.line, column=t.column)
-            else:
-                # To prevent assignment of 'builtins.type' inferred as 'builtins.object'
-                # See https://github.com/python/mypy/issues/9476 for more information
-                return None
-        if len(t.args) != 1:
-            type_str = "Type[...]" if fullname == "typing.Type" else "type[...]"
-            self.fail(
-                type_str + " must have exactly one type argument", t, code=codes.VALID_TYPE
-            )
-        item = self.anal_type(t.args[0])
-        if bad_type_type_item(item):
-            self.fail("Type[...] can't contain another Type[...]", t, code=codes.VALID_TYPE)
-            item = AnyType(TypeOfAny.from_error)
-        return TypeType.make_normalized(item, line=t.line, column=t.column)
-    elif fullname == "typing.ClassVar":
-        if self.nesting_level &gt; 0:
-            self.fail(
-                "Invalid type: ClassVar nested inside other type", t, code=codes.VALID_TYPE
-            )
-        if len(t.args) == 0:
-            return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)
-        if len(t.args) != 1:
-            self.fail(
-                "ClassVar[...] must have at most one type argument", t, code=codes.VALID_TYPE
-            )
-            return AnyType(TypeOfAny.from_error)
-        return self.anal_type(t.args[0])
-    elif fullname in NEVER_NAMES:
-        return UninhabitedType(is_noreturn=True)
-    elif fullname in LITERAL_TYPE_NAMES:
-        return self.analyze_literal_type(t)
-    elif fullname in ANNOTATED_TYPE_NAMES:
-        if len(t.args) &lt; 2:
-            self.fail(
-                "Annotated[...] must have exactly one type argument"
-                " and at least one annotation",
-                t,
-                code=codes.VALID_TYPE,
-            )
-            return AnyType(TypeOfAny.from_error)
-        return self.anal_type(t.args[0])
-    elif fullname in ("typing_extensions.Required", "typing.Required"):
-        if not self.allow_required:
-            self.fail(
-                "Required[] can be only used in a TypedDict definition",
-                t,
-                code=codes.VALID_TYPE,
-            )
-            return AnyType(TypeOfAny.from_error)
-        if len(t.args) != 1:
-            self.fail(
-                "Required[] must have exactly one type argument", t, code=codes.VALID_TYPE
-            )
-            return AnyType(TypeOfAny.from_error)
-        return RequiredType(self.anal_type(t.args[0]), required=True)
-    elif fullname in ("typing_extensions.NotRequired", "typing.NotRequired"):
-        if not self.allow_required:
-            self.fail(
-                "NotRequired[] can be only used in a TypedDict definition",
-                t,
-                code=codes.VALID_TYPE,
-            )
-            return AnyType(TypeOfAny.from_error)
-        if len(t.args) != 1:
-            self.fail(
-                "NotRequired[] must have exactly one type argument", t, code=codes.VALID_TYPE
-            )
-            return AnyType(TypeOfAny.from_error)
-        return RequiredType(self.anal_type(t.args[0]), required=False)
-    elif self.anal_type_guard_arg(t, fullname) is not None:
-        # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
-        return self.named_type("builtins.bool")
-    elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
-        # We don't want people to try to use this yet.
-        if not self.options.enable_incomplete_features:
-            self.fail('"Unpack" is not supported yet, use --enable-incomplete-features', t)
-            return AnyType(TypeOfAny.from_error)
-        return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
-    return None
-
-</t>
-<t tx="ekr.20220525082935.1185">def get_omitted_any(self, typ: Type, fullname: str | None = None) -&gt; AnyType:
-    disallow_any = not self.is_typeshed_stub and self.options.disallow_any_generics
-    return get_omitted_any(
-        disallow_any, self.fail, self.note, typ, self.options.python_version, fullname
-    )
-
-</t>
-<t tx="ekr.20220525082935.1186">def analyze_type_with_type_info(
-    self, info: TypeInfo, args: Sequence[Type], ctx: Context
-) -&gt; Type:
-    """Bind unbound type when were able to find target TypeInfo.
-
-    This handles simple cases like 'int', 'modname.UserClass[str]', etc.
-    """
-
-    if len(args) &gt; 0 and info.fullname == "builtins.tuple":
-        fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
-        return TupleType(self.anal_array(args), fallback, ctx.line)
-
-    # This is a heuristic: it will be checked later anyways but the error
-    # message may be worse.
-    with self.set_allow_param_spec_literals(info.has_param_spec_type):
-        # Analyze arguments and (usually) construct Instance type. The
-        # number of type arguments and their values are
-        # checked only later, since we do not always know the
-        # valid count at this point. Thus we may construct an
-        # Instance with an invalid number of type arguments.
-        instance = Instance(
-            info, self.anal_array(args, allow_param_spec=True), ctx.line, ctx.column
-        )
-
-    # "aesthetic" paramspec literals
-    # these do not support mypy_extensions VarArgs, etc. as they were already analyzed
-    #   TODO: should these be re-analyzed to get rid of this inconsistency?
-    # another inconsistency is with empty type args (Z[] is more possibly an error imo)
-    if len(info.type_vars) == 1 and info.has_param_spec_type and len(instance.args) &gt; 0:
-        first_arg = get_proper_type(instance.args[0])
-
-        # TODO: can I use tuple syntax to isinstance multiple in 3.6?
-        if not (
-            len(instance.args) == 1
-            and (
-                isinstance(first_arg, Parameters)
-                or isinstance(first_arg, ParamSpecType)
-                or isinstance(first_arg, AnyType)
-            )
-        ):
-            args = instance.args
-            instance.args = (Parameters(args, [ARG_POS] * len(args), [None] * len(args)),)
-
-    if info.has_type_var_tuple_type:
-        # - 1 to allow for the empty type var tuple case.
-        valid_arg_length = len(instance.args) &gt;= len(info.type_vars) - 1
-    else:
-        valid_arg_length = len(instance.args) == len(info.type_vars)
-
-    # Check type argument count.
-    if not valid_arg_length and not self.defining_alias:
-        fix_instance(
-            instance,
-            self.fail,
-            self.note,
-            disallow_any=self.options.disallow_any_generics and not self.is_typeshed_stub,
-            python_version=self.options.python_version,
-        )
-
-    tup = info.tuple_type
-    if tup is not None:
-        # The class has a Tuple[...] base class so it will be
-        # represented as a tuple type.
-        if info.special_alias:
-            return TypeAliasType(info.special_alias, self.anal_array(args))
-        return tup.copy_modified(items=self.anal_array(tup.items), fallback=instance)
-    td = info.typeddict_type
-    if td is not None:
-        # The class has a TypedDict[...] base class so it will be
-        # represented as a typeddict type.
-        if info.special_alias:
-            return TypeAliasType(info.special_alias, self.anal_array(args))
-        # Create a named TypedDictType
-        return td.copy_modified(
-            item_types=self.anal_array(list(td.items.values())), fallback=instance
-        )
-
-    if info.fullname == "types.NoneType":
-        self.fail(
-            "NoneType should not be used as a type, please use None instead",
-            ctx,
-            code=codes.VALID_TYPE,
-        )
-        return NoneType(ctx.line, ctx.column)
-
-    return instance
-
-</t>
-<t tx="ekr.20220525082935.1187">def analyze_unbound_type_without_type_info(
-    self, t: UnboundType, sym: SymbolTableNode, defining_literal: bool
-) -&gt; Type:
-    """Figure out what an unbound type that doesn't refer to a TypeInfo node means.
-
-    This is something unusual. We try our best to find out what it is.
-    """
-    name = sym.fullname
-    if name is None:
-        assert sym.node is not None
-        name = sym.node.name
-    # Option 1:
-    # Something with an Any type -- make it an alias for Any in a type
-    # context. This is slightly problematic as it allows using the type 'Any'
-    # as a base class -- however, this will fail soon at runtime so the problem
-    # is pretty minor.
-    if isinstance(sym.node, Var):
-        typ = get_proper_type(sym.node.type)
-        if isinstance(typ, AnyType):
-            return AnyType(
-                TypeOfAny.from_unimported_type, missing_import_name=typ.missing_import_name
-            )
-    # Option 2:
-    # Unbound type variable. Currently these may be still valid,
-    # for example when defining a generic type alias.
-    unbound_tvar = (
-        isinstance(sym.node, (TypeVarExpr, TypeVarTupleExpr))
-        and self.tvar_scope.get_binding(sym) is None
-    )
-    if self.allow_unbound_tvars and unbound_tvar:
-        return t
-
-    # Option 3:
-    # Enum value. Note: we only want to return a LiteralType when
-    # we're using this enum value specifically within context of
-    # a "Literal[...]" type. So, if `defining_literal` is not set,
-    # we bail out early with an error.
-    #
-    # If, in the distant future, we decide to permit things like
-    # `def foo(x: Color.RED) -&gt; None: ...`, we can remove that
-    # check entirely.
-    if isinstance(sym.node, Var) and sym.node.info and sym.node.info.is_enum:
-        value = sym.node.name
-        base_enum_short_name = sym.node.info.name
-        if not defining_literal:
-            msg = message_registry.INVALID_TYPE_RAW_ENUM_VALUE.format(
-                base_enum_short_name, value
-            )
-            self.fail(msg.value, t, code=msg.code)
-            return AnyType(TypeOfAny.from_error)
-        return LiteralType(
-            value=value,
-            fallback=Instance(sym.node.info, [], line=t.line, column=t.column),
-            line=t.line,
-            column=t.column,
-        )
-
-    # None of the above options worked. We parse the args (if there are any)
-    # to make sure there are no remaining semanal-only types, then give up.
-    t = t.copy_modified(args=self.anal_array(t.args))
-    # TODO: Move this message building logic to messages.py.
-    notes: list[str] = []
-    if isinstance(sym.node, Var):
-        notes.append(
-            "See https://mypy.readthedocs.io/en/"
-            "stable/common_issues.html#variables-vs-type-aliases"
-        )
-        message = 'Variable "{}" is not valid as a type'
-    elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
-        message = 'Function "{}" is not valid as a type'
-        if name == "builtins.any":
-            notes.append('Perhaps you meant "typing.Any" instead of "any"?')
-        elif name == "builtins.callable":
-            notes.append('Perhaps you meant "typing.Callable" instead of "callable"?')
-        else:
-            notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
-    elif isinstance(sym.node, MypyFile):
-        # TODO: suggest a protocol when supported.
-        message = 'Module "{}" is not valid as a type'
-    elif unbound_tvar:
-        message = 'Type variable "{}" is unbound'
-        short = name.split(".")[-1]
-        notes.append(
-            (
-                '(Hint: Use "Generic[{}]" or "Protocol[{}]" base class'
-                ' to bind "{}" inside a class)'
-            ).format(short, short, short)
-        )
-        notes.append(
-            '(Hint: Use "{}" in function signature to bind "{}"'
-            " inside a function)".format(short, short)
-        )
-    else:
-        message = 'Cannot interpret reference "{}" as a type'
-    self.fail(message.format(name), t, code=codes.VALID_TYPE)
-    for note in notes:
-        self.note(note, t, code=codes.VALID_TYPE)
-
-    # TODO: Would it be better to always return Any instead of UnboundType
-    # in case of an error? On one hand, UnboundType has a name so error messages
-    # are more detailed, on the other hand, some of them may be bogus,
-    # see https://github.com/python/mypy/issues/4987.
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1188">def visit_any(self, t: AnyType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1189">def visit_none_type(self, t: NoneType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.119">def analyze_value_types(self, items: list[Expression]) -&gt; list[Type]:
-    """Analyze types from values expressions in type variable definition."""
-    result: list[Type] = []
-    for node in items:
-        try:
-            analyzed = self.anal_type(
-                self.expr_to_unanalyzed_type(node), allow_placeholder=True
-            )
-            if analyzed is None:
-                # Type variables are special: we need to place them in the symbol table
-                # soon, even if some value is not ready yet, see process_typevar_parameters()
-                # for an example.
-                analyzed = PlaceholderType(None, [], node.line)
-            result.append(analyzed)
-        except TypeTranslationError:
-            self.fail("Type expected", node)
-            result.append(AnyType(TypeOfAny.from_error))
-    return result
-
-</t>
-<t tx="ekr.20220525082935.1190">def visit_uninhabited_type(self, t: UninhabitedType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1191">def visit_erased_type(self, t: ErasedType) -&gt; Type:
-    # This type should exist only temporarily during type inference
-    assert False, "Internal error: Unexpected erased type"
-
-</t>
-<t tx="ekr.20220525082935.1192">def visit_deleted_type(self, t: DeletedType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1193">def visit_type_list(self, t: TypeList) -&gt; Type:
-    # paramspec literal (Z[[int, str, Whatever]])
-    if self.allow_param_spec_literals:
-        params = self.analyze_callable_args(t)
-        if params:
-            ts, kinds, names = params
-            # bind these types
-            return Parameters(self.anal_array(ts), kinds, names)
-        else:
-            return AnyType(TypeOfAny.from_error)
-    else:
-        self.fail(
-            'Bracketed expression "[...]" is not valid as a type', t, code=codes.VALID_TYPE
-        )
-        self.note('Did you mean "List[...]"?', t)
-        return AnyType(TypeOfAny.from_error)
-
-</t>
-<t tx="ekr.20220525082935.1194">def visit_callable_argument(self, t: CallableArgument) -&gt; Type:
-    self.fail("Invalid type", t, code=codes.VALID_TYPE)
-    return AnyType(TypeOfAny.from_error)
-
-</t>
-<t tx="ekr.20220525082935.1195">def visit_instance(self, t: Instance) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1196">def visit_type_alias_type(self, t: TypeAliasType) -&gt; Type:
-    # TODO: should we do something here?
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1197">def visit_type_var(self, t: TypeVarType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1198">def visit_param_spec(self, t: ParamSpecType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1199">def visit_type_var_tuple(self, t: TypeVarTupleType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.12">def refresh_top_level(self, file_node: MypyFile) -&gt; None:
-    """Reanalyze a stale module top-level in fine-grained incremental mode."""
-    self.recurse_into_functions = False
-    self.add_implicit_module_attrs(file_node)
-    for d in file_node.defs:
-        self.accept(d)
-    if file_node.fullname == "typing":
-        self.add_builtin_aliases(file_node)
-    if file_node.fullname == "typing_extensions":
-        self.add_typing_extension_aliases(file_node)
-    self.adjust_public_exports()
-    self.export_map[self.cur_mod_id] = self.all_exports
-    self.all_exports = []
-
-</t>
-<t tx="ekr.20220525082935.120">def check_classvar(self, s: AssignmentStmt) -&gt; None:
-    """Check if assignment defines a class variable."""
-    lvalue = s.lvalues[0]
-    if len(s.lvalues) != 1 or not isinstance(lvalue, RefExpr):
-        return
-    if not s.type or not self.is_classvar(s.type):
-        return
-    if self.is_class_scope() and isinstance(lvalue, NameExpr):
-        node = lvalue.node
-        if isinstance(node, Var):
-            node.is_classvar = True
-        analyzed = self.anal_type(s.type)
-        assert self.type is not None
-        if analyzed is not None and set(get_type_vars(analyzed)) &amp; set(
-            self.type.defn.type_vars
-        ):
-            # This means that we have a type var defined inside of a ClassVar.
-            # This is not allowed by PEP526.
-            # See https://github.com/python/mypy/issues/11538
-
-            self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
-    elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
-        # In case of member access, report error only when assigning to self
-        # Other kinds of member assignments should be already reported
-        self.fail_invalid_classvar(lvalue)
-
-</t>
-<t tx="ekr.20220525082935.1200">def visit_unpack_type(self, t: UnpackType) -&gt; Type:
-    raise NotImplementedError
-
-</t>
-<t tx="ekr.20220525082935.1201">def visit_parameters(self, t: Parameters) -&gt; Type:
-    raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
-
-</t>
 <t tx="ekr.20220525082935.1202">def visit_callable_type(self, t: CallableType, nested: bool = True) -&gt; Type:
     # Every Callable can bind its own type variables, if they're not in the outer scope
     with self.tvar_scope_frame():
@@ -11502,573 +5856,6 @@ def analyze_lvalue(
             type_guard=special,
         )
     return ret
-
-</t>
-<t tx="ekr.20220525082935.1203">def anal_type_guard(self, t: Type) -&gt; Type | None:
-    if isinstance(t, UnboundType):
-        sym = self.lookup_qualified(t.name, t)
-        if sym is not None and sym.node is not None:
-            return self.anal_type_guard_arg(t, sym.node.fullname)
-    # TODO: What if it's an Instance? Then use t.type.fullname?
-    return None
-
-</t>
-<t tx="ekr.20220525082935.1204">def anal_type_guard_arg(self, t: UnboundType, fullname: str) -&gt; Type | None:
-    if fullname in ("typing_extensions.TypeGuard", "typing.TypeGuard"):
-        if len(t.args) != 1:
-            self.fail(
-                "TypeGuard must have exactly one type argument", t, code=codes.VALID_TYPE
-            )
-            return AnyType(TypeOfAny.from_error)
-        return self.anal_type(t.args[0])
-    return None
-
-</t>
-<t tx="ekr.20220525082935.1205">def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -&gt; Type:
-    """Analyze signature argument type for *args and **kwargs argument."""
-    if isinstance(t, UnboundType) and t.name and "." in t.name and not t.args:
-        components = t.name.split(".")
-        tvar_name = ".".join(components[:-1])
-        sym = self.lookup_qualified(tvar_name, t)
-        if sym is not None and isinstance(sym.node, ParamSpecExpr):
-            tvar_def = self.tvar_scope.get_binding(sym)
-            if isinstance(tvar_def, ParamSpecType):
-                if kind == ARG_STAR:
-                    make_paramspec = paramspec_args
-                    if components[-1] != "args":
-                        self.fail(
-                            f'Use "{tvar_name}.args" for variadic "*" parameter',
-                            t,
-                            code=codes.VALID_TYPE,
-                        )
-                elif kind == ARG_STAR2:
-                    make_paramspec = paramspec_kwargs
-                    if components[-1] != "kwargs":
-                        self.fail(
-                            f'Use "{tvar_name}.kwargs" for variadic "**" parameter',
-                            t,
-                            code=codes.VALID_TYPE,
-                        )
-                else:
-                    assert False, kind
-                return make_paramspec(
-                    tvar_def.name,
-                    tvar_def.fullname,
-                    tvar_def.id,
-                    named_type_func=self.named_type,
-                    line=t.line,
-                    column=t.column,
-                )
-    return self.anal_type(t, nested=nested)
-
-</t>
-<t tx="ekr.20220525082935.1206">def visit_overloaded(self, t: Overloaded) -&gt; Type:
-    # Overloaded types are manually constructed in semanal.py by analyzing the
-    # AST and combining together the Callable types this visitor converts.
-    #
-    # So if we're ever asked to reanalyze an Overloaded type, we know it's
-    # fine to just return it as-is.
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1207">def visit_tuple_type(self, t: TupleType) -&gt; Type:
-    # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
-    # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
-    if t.implicit and not self.allow_tuple_literal:
-        self.fail("Syntax error in type annotation", t, code=codes.SYNTAX)
-        if len(t.items) == 0:
-            self.note(
-                "Suggestion: Use Tuple[()] instead of () for an empty tuple, or "
-                "None for a function without a return value",
-                t,
-                code=codes.SYNTAX,
-            )
-        elif len(t.items) == 1:
-            self.note("Suggestion: Is there a spurious trailing comma?", t, code=codes.SYNTAX)
-        else:
-            self.note(
-                "Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)",
-                t,
-                code=codes.SYNTAX,
-            )
-        return AnyType(TypeOfAny.from_error)
-    star_count = sum(1 for item in t.items if isinstance(item, StarType))
-    if star_count &gt; 1:
-        self.fail("At most one star type allowed in a tuple", t)
-        if t.implicit:
-            return TupleType(
-                [AnyType(TypeOfAny.from_error) for _ in t.items],
-                self.named_type("builtins.tuple"),
-                t.line,
-            )
-        else:
-            return AnyType(TypeOfAny.from_error)
-    any_type = AnyType(TypeOfAny.special_form)
-    # If the fallback isn't filled in yet, its type will be the falsey FakeInfo
-    fallback = (
-        t.partial_fallback
-        if t.partial_fallback.type
-        else self.named_type("builtins.tuple", [any_type])
-    )
-    return TupleType(self.anal_array(t.items), fallback, t.line)
-
-</t>
-<t tx="ekr.20220525082935.1208">def visit_typeddict_type(self, t: TypedDictType) -&gt; Type:
-    items = {
-        item_name: self.anal_type(item_type) for (item_name, item_type) in t.items.items()
-    }
-    return TypedDictType(items, set(t.required_keys), t.fallback)
-
-</t>
-<t tx="ekr.20220525082935.1209">def visit_raw_expression_type(self, t: RawExpressionType) -&gt; Type:
-    # We should never see a bare Literal. We synthesize these raw literals
-    # in the earlier stages of semantic analysis, but those
-    # "fake literals" should always be wrapped in an UnboundType
-    # corresponding to 'Literal'.
-    #
-    # Note: if at some point in the distant future, we decide to
-    # make signatures like "foo(x: 20) -&gt; None" legal, we can change
-    # this method so it generates and returns an actual LiteralType
-    # instead.
-
-    if self.report_invalid_types:
-        if t.base_type_name in ("builtins.int", "builtins.bool"):
-            # The only time it makes sense to use an int or bool is inside of
-            # a literal type.
-            msg = f"Invalid type: try using Literal[{repr(t.literal_value)}] instead?"
-        elif t.base_type_name in ("builtins.float", "builtins.complex"):
-            # We special-case warnings for floats and complex numbers.
-            msg = f"Invalid type: {t.simple_name()} literals cannot be used as a type"
-        else:
-            # And in all other cases, we default to a generic error message.
-            # Note: the reason why we use a generic error message for strings
-            # but not ints or bools is because whenever we see an out-of-place
-            # string, it's unclear if the user meant to construct a literal type
-            # or just misspelled a regular type. So we avoid guessing.
-            msg = "Invalid type comment or annotation"
-
-        self.fail(msg, t, code=codes.VALID_TYPE)
-        if t.note is not None:
-            self.note(t.note, t, code=codes.VALID_TYPE)
-
-    return AnyType(TypeOfAny.from_error, line=t.line, column=t.column)
-
-</t>
-<t tx="ekr.20220525082935.121">def is_classvar(self, typ: Type) -&gt; bool:
-    if not isinstance(typ, UnboundType):
-        return False
-    sym = self.lookup_qualified(typ.name, typ)
-    if not sym or not sym.node:
-        return False
-    return sym.node.fullname == "typing.ClassVar"
-
-</t>
-<t tx="ekr.20220525082935.1210">def visit_literal_type(self, t: LiteralType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082935.1211">def visit_star_type(self, t: StarType) -&gt; Type:
-    return StarType(self.anal_type(t.type), t.line)
-
-</t>
-<t tx="ekr.20220525082935.1212">def visit_union_type(self, t: UnionType) -&gt; Type:
-    if (
-        t.uses_pep604_syntax is True
-        and t.is_evaluated is True
-        and not self.always_allow_new_syntax
-        and not self.options.python_version &gt;= (3, 10)
-    ):
-        self.fail("X | Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
-    return UnionType(self.anal_array(t.items), t.line)
-
-</t>
-<t tx="ekr.20220525082935.1213">def visit_partial_type(self, t: PartialType) -&gt; Type:
-    assert False, "Internal error: Unexpected partial type"
-
-</t>
-<t tx="ekr.20220525082935.1214">def visit_ellipsis_type(self, t: EllipsisType) -&gt; Type:
-    if self.allow_param_spec_literals:
-        any_type = AnyType(TypeOfAny.explicit)
-        return Parameters(
-            [any_type, any_type], [ARG_STAR, ARG_STAR2], [None, None], is_ellipsis_args=True
-        )
-    else:
-        self.fail('Unexpected "..."', t)
-        return AnyType(TypeOfAny.from_error)
-
-</t>
-<t tx="ekr.20220525082935.1215">def visit_type_type(self, t: TypeType) -&gt; Type:
-    return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
-
-</t>
-<t tx="ekr.20220525082935.1216">def visit_placeholder_type(self, t: PlaceholderType) -&gt; Type:
-    n = None if t.fullname is None else self.api.lookup_fully_qualified(t.fullname)
-    if not n or isinstance(n.node, PlaceholderNode):
-        self.api.defer()  # Still incomplete
-        return t
-    else:
-        # TODO: Handle non-TypeInfo
-        assert isinstance(n.node, TypeInfo)
-        return self.analyze_type_with_type_info(n.node, t.args, t)
-
-</t>
-<t tx="ekr.20220525082935.1217">def analyze_callable_args_for_paramspec(
-    self, callable_args: Type, ret_type: Type, fallback: Instance
-) -&gt; CallableType | None:
-    """Construct a 'Callable[P, RET]', where P is ParamSpec, return None if we cannot."""
-    if not isinstance(callable_args, UnboundType):
-        return None
-    sym = self.lookup_qualified(callable_args.name, callable_args)
-    if sym is None:
-        return None
-    tvar_def = self.tvar_scope.get_binding(sym)
-    if not isinstance(tvar_def, ParamSpecType):
-        return None
-
-    return CallableType(
-        [
-            paramspec_args(
-                tvar_def.name, tvar_def.fullname, tvar_def.id, named_type_func=self.named_type
-            ),
-            paramspec_kwargs(
-                tvar_def.name, tvar_def.fullname, tvar_def.id, named_type_func=self.named_type
-            ),
-        ],
-        [nodes.ARG_STAR, nodes.ARG_STAR2],
-        [None, None],
-        ret_type=ret_type,
-        fallback=fallback,
-    )
-
-</t>
-<t tx="ekr.20220525082935.1218">def analyze_callable_args_for_concatenate(
-    self, callable_args: Type, ret_type: Type, fallback: Instance
-) -&gt; CallableType | None:
-    """Construct a 'Callable[C, RET]', where C is Concatenate[..., P], returning None if we
-    cannot.
-    """
-    if not isinstance(callable_args, UnboundType):
-        return None
-    sym = self.lookup_qualified(callable_args.name, callable_args)
-    if sym is None:
-        return None
-    if sym.node is None:
-        return None
-    if sym.node.fullname not in ("typing_extensions.Concatenate", "typing.Concatenate"):
-        return None
-
-    tvar_def = self.anal_type(callable_args, allow_param_spec=True)
-    if not isinstance(tvar_def, ParamSpecType):
-        return None
-
-    # ick, CallableType should take ParamSpecType
-    prefix = tvar_def.prefix
-    # we don't set the prefix here as generic arguments will get updated at some point
-    # in the future. CallableType.param_spec() accounts for this.
-    return CallableType(
-        [
-            *prefix.arg_types,
-            paramspec_args(
-                tvar_def.name, tvar_def.fullname, tvar_def.id, named_type_func=self.named_type
-            ),
-            paramspec_kwargs(
-                tvar_def.name, tvar_def.fullname, tvar_def.id, named_type_func=self.named_type
-            ),
-        ],
-        [*prefix.arg_kinds, nodes.ARG_STAR, nodes.ARG_STAR2],
-        [*prefix.arg_names, None, None],
-        ret_type=ret_type,
-        fallback=fallback,
-        from_concatenate=True,
-    )
-
-</t>
-<t tx="ekr.20220525082935.1219">def analyze_callable_type(self, t: UnboundType) -&gt; Type:
-    fallback = self.named_type("builtins.function")
-    if len(t.args) == 0:
-        # Callable (bare). Treat as Callable[..., Any].
-        any_type = self.get_omitted_any(t)
-        ret = callable_with_ellipsis(any_type, any_type, fallback)
-    elif len(t.args) == 2:
-        callable_args = t.args[0]
-        ret_type = t.args[1]
-        if isinstance(callable_args, TypeList):
-            # Callable[[ARG, ...], RET] (ordinary callable type)
-            analyzed_args = self.analyze_callable_args(callable_args)
-            if analyzed_args is None:
-                return AnyType(TypeOfAny.from_error)
-            args, kinds, names = analyzed_args
-            ret = CallableType(args, kinds, names, ret_type=ret_type, fallback=fallback)
-        elif isinstance(callable_args, EllipsisType):
-            # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
-            ret = callable_with_ellipsis(
-                AnyType(TypeOfAny.explicit), ret_type=ret_type, fallback=fallback
-            )
-        else:
-            # Callable[P, RET] (where P is ParamSpec)
-            maybe_ret = self.analyze_callable_args_for_paramspec(
-                callable_args, ret_type, fallback
-            ) or self.analyze_callable_args_for_concatenate(callable_args, ret_type, fallback)
-            if maybe_ret is None:
-                # Callable[?, RET] (where ? is something invalid)
-                self.fail(
-                    "The first argument to Callable must be a "
-                    'list of types, parameter specification, or "..."',
-                    t,
-                    code=codes.VALID_TYPE,
-                )
-                self.note(
-                    "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas",  # noqa: E501
-                    t,
-                )
-                return AnyType(TypeOfAny.from_error)
-            ret = maybe_ret
-    else:
-        if self.options.disallow_any_generics:
-            self.fail('Please use "Callable[[&lt;parameters&gt;], &lt;return type&gt;]"', t)
-        else:
-            self.fail('Please use "Callable[[&lt;parameters&gt;], &lt;return type&gt;]" or "Callable"', t)
-        return AnyType(TypeOfAny.from_error)
-    assert isinstance(ret, CallableType)
-    return ret.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.122">def is_final_type(self, typ: Type | None) -&gt; bool:
-    if not isinstance(typ, UnboundType):
-        return False
-    sym = self.lookup_qualified(typ.name, typ)
-    if not sym or not sym.node:
-        return False
-    return sym.node.fullname in FINAL_TYPE_NAMES
-
-</t>
-<t tx="ekr.20220525082935.1220">def analyze_callable_args(
-    self, arglist: TypeList
-) -&gt; tuple[list[Type], list[ArgKind], list[str | None]] | None:
-    args: list[Type] = []
-    kinds: list[ArgKind] = []
-    names: list[str | None] = []
-    for arg in arglist.items:
-        if isinstance(arg, CallableArgument):
-            args.append(arg.typ)
-            names.append(arg.name)
-            if arg.constructor is None:
-                return None
-            found = self.lookup_qualified(arg.constructor, arg)
-            if found is None:
-                # Looking it up already put an error message in
-                return None
-            elif found.fullname not in ARG_KINDS_BY_CONSTRUCTOR:
-                self.fail(f'Invalid argument constructor "{found.fullname}"', arg)
-                return None
-            else:
-                assert found.fullname is not None
-                kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
-                kinds.append(kind)
-                if arg.name is not None and kind.is_star():
-                    self.fail(f"{arg.constructor} arguments should not have names", arg)
-                    return None
-        else:
-            args.append(arg)
-            kinds.append(ARG_POS)
-            names.append(None)
-    # Note that arglist below is only used for error context.
-    check_arg_names(names, [arglist] * len(args), self.fail, "Callable")
-    check_arg_kinds(kinds, [arglist] * len(args), self.fail)
-    return args, kinds, names
-
-</t>
-<t tx="ekr.20220525082935.1221">def analyze_literal_type(self, t: UnboundType) -&gt; Type:
-    if len(t.args) == 0:
-        self.fail("Literal[...] must have at least one parameter", t, code=codes.VALID_TYPE)
-        return AnyType(TypeOfAny.from_error)
-
-    output: list[Type] = []
-    for i, arg in enumerate(t.args):
-        analyzed_types = self.analyze_literal_param(i + 1, arg, t)
-        if analyzed_types is None:
-            return AnyType(TypeOfAny.from_error)
-        else:
-            output.extend(analyzed_types)
-    return UnionType.make_union(output, line=t.line)
-
-</t>
-<t tx="ekr.20220525082935.1222">def analyze_literal_param(self, idx: int, arg: Type, ctx: Context) -&gt; list[Type] | None:
-    # This UnboundType was originally defined as a string.
-    if isinstance(arg, UnboundType) and arg.original_str_expr is not None:
-        assert arg.original_str_fallback is not None
-        return [
-            LiteralType(
-                value=arg.original_str_expr,
-                fallback=self.named_type(arg.original_str_fallback),
-                line=arg.line,
-                column=arg.column,
-            )
-        ]
-
-    # If arg is an UnboundType that was *not* originally defined as
-    # a string, try expanding it in case it's a type alias or something.
-    if isinstance(arg, UnboundType):
-        self.nesting_level += 1
-        try:
-            arg = self.visit_unbound_type(arg, defining_literal=True)
-        finally:
-            self.nesting_level -= 1
-
-    # Literal[...] cannot contain Any. Give up and add an error message
-    # (if we haven't already).
-    arg = get_proper_type(arg)
-    if isinstance(arg, AnyType):
-        # Note: We can encounter Literals containing 'Any' under three circumstances:
-        #
-        # 1. If the user attempts use an explicit Any as a parameter
-        # 2. If the user is trying to use an enum value imported from a module with
-        #    no type hints, giving it an implicit type of 'Any'
-        # 3. If there's some other underlying problem with the parameter.
-        #
-        # We report an error in only the first two cases. In the third case, we assume
-        # some other region of the code has already reported a more relevant error.
-        #
-        # TODO: Once we start adding support for enums, make sure we report a custom
-        # error for case 2 as well.
-        if arg.type_of_any not in (TypeOfAny.from_error, TypeOfAny.special_form):
-            self.fail(
-                f'Parameter {idx} of Literal[...] cannot be of type "Any"',
-                ctx,
-                code=codes.VALID_TYPE,
-            )
-        return None
-    elif isinstance(arg, RawExpressionType):
-        # A raw literal. Convert it directly into a literal if we can.
-        if arg.literal_value is None:
-            name = arg.simple_name()
-            if name in ("float", "complex"):
-                msg = f'Parameter {idx} of Literal[...] cannot be of type "{name}"'
-            else:
-                msg = "Invalid type: Literal[...] cannot contain arbitrary expressions"
-            self.fail(msg, ctx, code=codes.VALID_TYPE)
-            # Note: we deliberately ignore arg.note here: the extra info might normally be
-            # helpful, but it generally won't make sense in the context of a Literal[...].
-            return None
-
-        # Remap bytes and unicode into the appropriate type for the correct Python version
-        fallback = self.named_type(arg.base_type_name)
-        assert isinstance(fallback, Instance)
-        return [LiteralType(arg.literal_value, fallback, line=arg.line, column=arg.column)]
-    elif isinstance(arg, (NoneType, LiteralType)):
-        # Types that we can just add directly to the literal/potential union of literals.
-        return [arg]
-    elif isinstance(arg, Instance) and arg.last_known_value is not None:
-        # Types generated from declarations like "var: Final = 4".
-        return [arg.last_known_value]
-    elif isinstance(arg, UnionType):
-        out = []
-        for union_arg in arg.items:
-            union_result = self.analyze_literal_param(idx, union_arg, ctx)
-            if union_result is None:
-                return None
-            out.extend(union_result)
-        return out
-    else:
-        self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx, code=codes.VALID_TYPE)
-        return None
-
-</t>
-<t tx="ekr.20220525082935.1223">def analyze_type(self, t: Type) -&gt; Type:
-    return t.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.1224">def fail(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -&gt; None:
-    self.fail_func(msg, ctx, code=code)
-
-</t>
-<t tx="ekr.20220525082935.1225">def note(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -&gt; None:
-    self.note_func(msg, ctx, code=code)
-
-</t>
-<t tx="ekr.20220525082935.1226">@contextmanager
-def tvar_scope_frame(self) -&gt; Iterator[None]:
-    old_scope = self.tvar_scope
-    self.tvar_scope = self.tvar_scope.method_frame()
-    yield
-    self.tvar_scope = old_scope
-
-</t>
-<t tx="ekr.20220525082935.1227">def infer_type_variables(self, type: CallableType) -&gt; list[tuple[str, TypeVarLikeExpr]]:
-    """Return list of unique type variables referred to in a callable."""
-    names: list[str] = []
-    tvars: list[TypeVarLikeExpr] = []
-    for arg in type.arg_types:
-        for name, tvar_expr in arg.accept(
-            TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope)
-        ):
-            if name not in names:
-                names.append(name)
-                tvars.append(tvar_expr)
-    # When finding type variables in the return type of a function, don't
-    # look inside Callable types.  Type variables only appearing in
-    # functions in the return type belong to those functions, not the
-    # function we're currently analyzing.
-    for name, tvar_expr in type.ret_type.accept(
-        TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope, include_callables=False)
-    ):
-        if name not in names:
-            names.append(name)
-            tvars.append(tvar_expr)
-    return list(zip(names, tvars))
-
-</t>
-<t tx="ekr.20220525082935.1228">def bind_function_type_variables(
-    self, fun_type: CallableType, defn: Context
-) -&gt; Sequence[TypeVarLikeType]:
-    """Find the type variables of the function type and bind them in our tvar_scope"""
-    if fun_type.variables:
-        defs = []
-        for var in fun_type.variables:
-            var_node = self.lookup_qualified(var.name, defn)
-            assert var_node, "Binding for function type variable not found within function"
-            var_expr = var_node.node
-            assert isinstance(var_expr, TypeVarLikeExpr)
-            binding = self.tvar_scope.bind_new(var.name, var_expr)
-            defs.append(binding)
-        return defs
-    typevars = self.infer_type_variables(fun_type)
-    # Do not define a new type variable if already defined in scope.
-    typevars = [
-        (name, tvar) for name, tvar in typevars if not self.is_defined_type_var(name, defn)
-    ]
-    defs = []
-    for name, tvar in typevars:
-        if not self.tvar_scope.allow_binding(tvar.fullname):
-            self.fail(
-                f'Type variable "{name}" is bound by an outer class',
-                defn,
-                code=codes.VALID_TYPE,
-            )
-        binding = self.tvar_scope.bind_new(name, tvar)
-        defs.append(binding)
-
-    return defs
-
-</t>
-<t tx="ekr.20220525082935.1229">def is_defined_type_var(self, tvar: str, context: Context) -&gt; bool:
-    tvar_node = self.lookup_qualified(tvar, context)
-    if not tvar_node:
-        return False
-    return self.tvar_scope.get_binding(tvar_node) is not None
-
-</t>
-<t tx="ekr.20220525082935.123">def fail_invalid_classvar(self, context: Context) -&gt; None:
-    self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)
-
-</t>
-<t tx="ekr.20220525082935.1230">def anal_array(
-    self, a: Iterable[Type], nested: bool = True, *, allow_param_spec: bool = False
-) -&gt; list[Type]:
-    res: list[Type] = []
-    for t in a:
-        res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
-    return res
 
 </t>
 <t tx="ekr.20220525082935.1231">def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -&gt; Type:
@@ -12100,2922 +5887,6 @@ def tvar_scope_frame(self) -&gt; Iterator[None]:
                 t,
             )
     return analyzed
-
-</t>
-<t tx="ekr.20220525082935.1232">def anal_var_def(self, var_def: TypeVarLikeType) -&gt; TypeVarLikeType:
-    if isinstance(var_def, TypeVarType):
-        return TypeVarType(
-            var_def.name,
-            var_def.fullname,
-            var_def.id.raw_id,
-            self.anal_array(var_def.values),
-            var_def.upper_bound.accept(self),
-            var_def.variance,
-            var_def.line,
-        )
-    else:
-        return var_def
-
-</t>
-<t tx="ekr.20220525082935.1233">def anal_var_defs(self, var_defs: Sequence[TypeVarLikeType]) -&gt; list[TypeVarLikeType]:
-    return [self.anal_var_def(vd) for vd in var_defs]
-
-</t>
-<t tx="ekr.20220525082935.1234">def named_type(
-    self,
-    fully_qualified_name: str,
-    args: list[Type] | None = None,
-    line: int = -1,
-    column: int = -1,
-) -&gt; Instance:
-</t>
-<t tx="ekr.20220525082935.1235">    node = self.lookup_fqn_func(fully_qualified_name)
-    assert isinstance(node.node, TypeInfo)
-    any_type = AnyType(TypeOfAny.special_form)
-    return Instance(
-        node.node, args or [any_type] * len(node.node.defn.type_vars), line=line, column=column
-    )
-</t>
-<t tx="ekr.20220525082935.1236">
-def tuple_type(self, items: list[Type]) -&gt; TupleType:
-    any_type = AnyType(TypeOfAny.special_form)
-    return TupleType(items, fallback=self.named_type("builtins.tuple", [any_type]))
-
-</t>
-<t tx="ekr.20220525082935.1237">@contextmanager
-def set_allow_param_spec_literals(self, to: bool) -&gt; Iterator[None]:
-    old = self.allow_param_spec_literals
-    try:
-        self.allow_param_spec_literals = to
-        yield
-    finally:
-        self.allow_param_spec_literals = old
-
-
-</t>
-<t tx="ekr.20220525082935.124">def process_module_assignment(
-    self, lvals: list[Lvalue], rval: Expression, ctx: AssignmentStmt
-) -&gt; None:
-    """Propagate module references across assignments.
-
-    Recursively handles the simple form of iterable unpacking; doesn't
-    handle advanced unpacking with *rest, dictionary unpacking, etc.
-
-    In an expression like x = y = z, z is the rval and lvals will be [x,
-    y].
-
-    """
-    if isinstance(rval, (TupleExpr, ListExpr)) and all(
-        isinstance(v, TupleExpr) for v in lvals
-    ):
-        # rval and all lvals are either list or tuple, so we are dealing
-        # with unpacking assignment like `x, y = a, b`. Mypy didn't
-        # understand our all(isinstance(...)), so cast them as TupleExpr
-        # so mypy knows it is safe to access their .items attribute.
-        seq_lvals = cast(List[TupleExpr], lvals)
-        # given an assignment like:
-        #     (x, y) = (m, n) = (a, b)
-        # we now have:
-        #     seq_lvals = [(x, y), (m, n)]
-        #     seq_rval = (a, b)
-        # We now zip this into:
-        #     elementwise_assignments = [(a, x, m), (b, y, n)]
-        # where each elementwise assignment includes one element of rval and the
-        # corresponding element of each lval. Basically we unpack
-        #     (x, y) = (m, n) = (a, b)
-        # into elementwise assignments
-        #     x = m = a
-        #     y = n = b
-        # and then we recursively call this method for each of those assignments.
-        # If the rval and all lvals are not all of the same length, zip will just ignore
-        # extra elements, so no error will be raised here; mypy will later complain
-        # about the length mismatch in type-checking.
-        elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
-        for rv, *lvs in elementwise_assignments:
-            self.process_module_assignment(lvs, rv, ctx)
-    elif isinstance(rval, RefExpr):
-        rnode = self.lookup_type_node(rval)
-        if rnode and isinstance(rnode.node, MypyFile):
-            for lval in lvals:
-                if not isinstance(lval, RefExpr):
-                    continue
-                # respect explicitly annotated type
-                if isinstance(lval.node, Var) and lval.node.type is not None:
-                    continue
-
-                # We can handle these assignments to locals and to self
-                if isinstance(lval, NameExpr):
-                    lnode = self.current_symbol_table().get(lval.name)
-                elif isinstance(lval, MemberExpr) and self.is_self_member_ref(lval):
-                    assert self.type is not None
-                    lnode = self.type.names.get(lval.name)
-                else:
-                    continue
-
-                if lnode:
-                    if isinstance(lnode.node, MypyFile) and lnode.node is not rnode.node:
-                        assert isinstance(lval, (NameExpr, MemberExpr))
-                        self.fail(
-                            'Cannot assign multiple modules to name "{}" '
-                            'without explicit "types.ModuleType" annotation'.format(lval.name),
-                            ctx,
-                        )
-                    # never create module alias except on initial var definition
-                    elif lval.is_inferred_def:
-                        assert rnode.node is not None
-                        lnode.node = rnode.node
-
-</t>
-<t tx="ekr.20220525082935.125">def process__all__(self, s: AssignmentStmt) -&gt; None:
-    """Export names if argument is a __all__ assignment."""
-    if (
-        len(s.lvalues) == 1
-        and isinstance(s.lvalues[0], NameExpr)
-        and s.lvalues[0].name == "__all__"
-        and s.lvalues[0].kind == GDEF
-        and isinstance(s.rvalue, (ListExpr, TupleExpr))
-    ):
-        self.add_exports(s.rvalue.items)
-
-</t>
-<t tx="ekr.20220525082935.126">def process__deletable__(self, s: AssignmentStmt) -&gt; None:
-    if not self.options.mypyc:
-        return
-    if (
-        len(s.lvalues) == 1
-        and isinstance(s.lvalues[0], NameExpr)
-        and s.lvalues[0].name == "__deletable__"
-        and s.lvalues[0].kind == MDEF
-    ):
-        rvalue = s.rvalue
-        if not isinstance(rvalue, (ListExpr, TupleExpr)):
-            self.fail('"__deletable__" must be initialized with a list or tuple expression', s)
-            return
-        items = rvalue.items
-        attrs = []
-        for item in items:
-            if not isinstance(item, StrExpr):
-                self.fail('Invalid "__deletable__" item; string literal expected', item)
-            else:
-                attrs.append(item.value)
-        assert self.type
-        self.type.deletable_attributes = attrs
-
-</t>
-<t tx="ekr.20220525082935.127">def process__slots__(self, s: AssignmentStmt) -&gt; None:
-    """
-    Processing ``__slots__`` if defined in type.
-
-    See: https://docs.python.org/3/reference/datamodel.html#slots
-    """
-    # Later we can support `__slots__` defined as `__slots__ = other = ('a', 'b')`
-    if (
-        isinstance(self.type, TypeInfo)
-        and len(s.lvalues) == 1
-        and isinstance(s.lvalues[0], NameExpr)
-        and s.lvalues[0].name == "__slots__"
-        and s.lvalues[0].kind == MDEF
-    ):
-
-        # We understand `__slots__` defined as string, tuple, list, set, and dict:
-        if not isinstance(s.rvalue, (StrExpr, ListExpr, TupleExpr, SetExpr, DictExpr)):
-            # For example, `__slots__` can be defined as a variable,
-            # we don't support it for now.
-            return
-
-        if any(p.slots is None for p in self.type.mro[1:-1]):
-            # At least one type in mro (excluding `self` and `object`)
-            # does not have concrete `__slots__` defined. Ignoring.
-            return
-
-        concrete_slots = True
-        rvalue: list[Expression] = []
-        if isinstance(s.rvalue, StrExpr):
-            rvalue.append(s.rvalue)
-        elif isinstance(s.rvalue, (ListExpr, TupleExpr, SetExpr)):
-            rvalue.extend(s.rvalue.items)
-        else:
-            # We have a special treatment of `dict` with possible `{**kwargs}` usage.
-            # In this case we consider all `__slots__` to be non-concrete.
-            for key, _ in s.rvalue.items:
-                if concrete_slots and key is not None:
-                    rvalue.append(key)
-                else:
-                    concrete_slots = False
-
-        slots = []
-        for item in rvalue:
-            # Special case for `'__dict__'` value:
-            # when specified it will still allow any attribute assignment.
-            if isinstance(item, StrExpr) and item.value != "__dict__":
-                slots.append(item.value)
-            else:
-                concrete_slots = False
-        if not concrete_slots:
-            # Some slot items are dynamic, we don't want any false positives,
-            # so, we just pretend that this type does not have any slots at all.
-            return
-
-        # We need to copy all slots from super types:
-        for super_type in self.type.mro[1:-1]:
-            assert super_type.slots is not None
-            slots.extend(super_type.slots)
-        self.type.slots = set(slots)
-
-</t>
-<t tx="ekr.20220525082935.128">#
-# Misc statements
-#
-
-</t>
-<t tx="ekr.20220525082935.129">def visit_block(self, b: Block) -&gt; None:
-    if b.is_unreachable:
-        return
-    self.block_depth[-1] += 1
-    for s in b.body:
-        self.accept(s)
-    self.block_depth[-1] -= 1
-
-</t>
-<t tx="ekr.20220525082935.13">def add_implicit_module_attrs(self, file_node: MypyFile) -&gt; None:
-    """Manually add implicit definitions of module '__name__' etc."""
-    for name, t in implicit_module_attrs.items():
-        if name == "__doc__":
-            typ: Type = UnboundType("__builtins__.str")
-        elif name == "__path__":
-            if not file_node.is_package_init_file():
-                continue
-            # Need to construct the type ourselves, to avoid issues with __builtins__.list
-            # not being subscriptable or typing.List not getting bound
-            sym = self.lookup_qualified("__builtins__.list", Context())
-            if not sym:
-                continue
-            node = sym.node
-            if not isinstance(node, TypeInfo):
-                self.defer(node)
-                return
-            typ = Instance(node, [self.str_type()])
-        elif name == "__annotations__":
-            sym = self.lookup_qualified("__builtins__.dict", Context(), suppress_errors=True)
-            if not sym:
-                continue
-            node = sym.node
-            if not isinstance(node, TypeInfo):
-                self.defer(node)
-                return
-            typ = Instance(node, [self.str_type(), AnyType(TypeOfAny.special_form)])
-        else:
-            assert t is not None, f"type should be specified for {name}"
-            typ = UnboundType(t)
-
-        existing = file_node.names.get(name)
-        if existing is not None and not isinstance(existing.node, PlaceholderNode):
-            # Already exists.
-            continue
-
-        an_type = self.anal_type(typ)
-        if an_type:
-            var = Var(name, an_type)
-            var._fullname = self.qualified_name(name)
-            var.is_ready = True
-            self.add_symbol(name, var, dummy_context())
-        else:
-            self.add_symbol(
-                name,
-                PlaceholderNode(self.qualified_name(name), file_node, -1),
-                dummy_context(),
-            )
-
-</t>
-<t tx="ekr.20220525082935.130">def visit_block_maybe(self, b: Block | None) -&gt; None:
-    if b:
-        self.visit_block(b)
-
-</t>
-<t tx="ekr.20220525082935.131">def visit_expression_stmt(self, s: ExpressionStmt) -&gt; None:
-    self.statement = s
-    s.expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.1319">class Type(mypy.nodes.Context):
-    """Abstract base class for all types."""
-
-    __slots__ = ("can_be_true", "can_be_false")
-    # 'can_be_true' and 'can_be_false' mean whether the value of the
-    # expression can be true or false in a boolean context. They are useful
-    # when inferring the type of logic expressions like `x and y`.
-    #
-    # For example:
-    #   * the literal `False` can't be true while `True` can.
-    #   * a value with type `bool` can be true or false.
-    #   * `None` can't be true
-    #   * ...
-
-    @others
-</t>
-<t tx="ekr.20220525082935.132">def visit_return_stmt(self, s: ReturnStmt) -&gt; None:
-    self.statement = s
-    if not self.is_func_scope():
-        self.fail('"return" outside function', s)
-    if s.expr:
-        s.expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.1320">def __init__(self, line: int = -1, column: int = -1) -&gt; None:
-    super().__init__(line, column)
-    self.can_be_true = self.can_be_true_default()
-    self.can_be_false = self.can_be_false_default()
-
-</t>
-<t tx="ekr.20220525082935.1321">def can_be_true_default(self) -&gt; bool:
-    return True
-
-</t>
-<t tx="ekr.20220525082935.1322">def can_be_false_default(self) -&gt; bool:
-    return True
-
-</t>
-<t tx="ekr.20220525082935.1323">def accept(self, visitor: TypeVisitor[T]) -&gt; T:
-    raise RuntimeError("Not implemented")
-
-</t>
-<t tx="ekr.20220525082935.1324">def __repr__(self) -&gt; str:
-    return self.accept(TypeStrVisitor())
-
-</t>
-<t tx="ekr.20220525082935.1325">def serialize(self) -&gt; JsonDict | str:
-    raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
-
-</t>
-<t tx="ekr.20220525082935.1326">@classmethod
-def deserialize(cls, data: JsonDict) -&gt; Type:
-    raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
-
-def is_singleton_type(self) -&gt; bool:
-    return False
-
-
-</t>
-<t tx="ekr.20220525082935.133">def visit_raise_stmt(self, s: RaiseStmt) -&gt; None:
-    self.statement = s
-    if s.expr:
-        s.expr.accept(self)
-    if s.from_expr:
-        s.from_expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.134">def visit_assert_stmt(self, s: AssertStmt) -&gt; None:
-    self.statement = s
-    if s.expr:
-        s.expr.accept(self)
-    if s.msg:
-        s.msg.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.1348">class ProperType(Type):
-    """Not a type alias.
-
-    Every type except TypeAliasType must inherit from this type.
-    """
-
-    __slots__ = ()
-
-
-</t>
-<t tx="ekr.20220525082935.135">def visit_operator_assignment_stmt(self, s: OperatorAssignmentStmt) -&gt; None:
-    self.statement = s
-    s.lvalue.accept(self)
-    s.rvalue.accept(self)
-    if (
-        isinstance(s.lvalue, NameExpr)
-        and s.lvalue.name == "__all__"
-        and s.lvalue.kind == GDEF
-        and isinstance(s.rvalue, (ListExpr, TupleExpr))
-    ):
-        self.add_exports(s.rvalue.items)
-
-</t>
-<t tx="ekr.20220525082935.136">def visit_while_stmt(self, s: WhileStmt) -&gt; None:
-    self.statement = s
-    s.expr.accept(self)
-    self.loop_depth += 1
-    s.body.accept(self)
-    self.loop_depth -= 1
-    self.visit_block_maybe(s.else_body)
-
-</t>
-<t tx="ekr.20220525082935.137">def visit_for_stmt(self, s: ForStmt) -&gt; None:
-    if s.is_async:
-        if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-            self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, s, code=codes.SYNTAX)
-
-    self.statement = s
-    s.expr.accept(self)
-
-    # Bind index variables and check if they define new names.
-    self.analyze_lvalue(s.index, explicit_type=s.index_type is not None)
-    if s.index_type:
-        if self.is_classvar(s.index_type):
-            self.fail_invalid_classvar(s.index)
-        allow_tuple_literal = isinstance(s.index, TupleExpr)
-        analyzed = self.anal_type(s.index_type, allow_tuple_literal=allow_tuple_literal)
-        if analyzed is not None:
-            self.store_declared_types(s.index, analyzed)
-            s.index_type = analyzed
-
-    self.loop_depth += 1
-    self.visit_block(s.body)
-    self.loop_depth -= 1
-
-    self.visit_block_maybe(s.else_body)
-
-</t>
-<t tx="ekr.20220525082935.138">def visit_break_stmt(self, s: BreakStmt) -&gt; None:
-    self.statement = s
-    if self.loop_depth == 0:
-        self.fail('"break" outside loop', s, serious=True, blocker=True)
-
-</t>
-<t tx="ekr.20220525082935.1388">class UnboundType(ProperType):
-    """Instance type that has not been bound during semantic analysis."""
-
-    __slots__ = (
-        "name",
-        "args",
-    @others
-</t>
-<t tx="ekr.20220525082935.1389">    "optional",
-    "empty_tuple_index",
-    "original_str_expr",
-    "original_str_fallback",
-)
-
-def __init__(
-    self,
-    name: str | None,
-    args: Sequence[Type] | None = None,
-    line: int = -1,
-    column: int = -1,
-    optional: bool = False,
-    empty_tuple_index: bool = False,
-    original_str_expr: str | None = None,
-    original_str_fallback: str | None = None,
-) -&gt; None:
-    super().__init__(line, column)
-    if not args:
-        args = []
-    assert name is not None
-    self.name = name
-    self.args = tuple(args)
-    # Should this type be wrapped in an Optional?
-    self.optional = optional
-    # Special case for X[()]
-    self.empty_tuple_index = empty_tuple_index
-    # If this UnboundType was originally defined as a str or bytes, keep track of
-    # the original contents of that string-like thing. This way, if this UnboundExpr
-    # ever shows up inside of a LiteralType, we can determine whether that
-    # Literal[...] is valid or not. E.g. Literal[foo] is most likely invalid
-    # (unless 'foo' is an alias for another literal or something) and
-    # Literal["foo"] most likely is.
-    #
-    # We keep track of the entire string instead of just using a boolean flag
-    # so we can distinguish between things like Literal["foo"] vs
-    # Literal["    foo   "].
-    #
-    # We also keep track of what the original base fallback type was supposed to be
-    # so we don't have to try and recompute it later
-    self.original_str_expr = original_str_expr
-    self.original_str_fallback = original_str_fallback
-
-</t>
-<t tx="ekr.20220525082935.139">def visit_continue_stmt(self, s: ContinueStmt) -&gt; None:
-    self.statement = s
-    if self.loop_depth == 0:
-        self.fail('"continue" outside loop', s, serious=True, blocker=True)
-
-</t>
-<t tx="ekr.20220525082935.1390">def copy_modified(self, args: Bogus[Sequence[Type] | None] = _dummy) -&gt; UnboundType:
-    if args is _dummy:
-        args = self.args
-    return UnboundType(
-        name=self.name,
-        args=args,
-        line=self.line,
-        column=self.column,
-        optional=self.optional,
-        empty_tuple_index=self.empty_tuple_index,
-        original_str_expr=self.original_str_expr,
-        original_str_fallback=self.original_str_fallback,
-    )
-
-</t>
-<t tx="ekr.20220525082935.1391">def accept(self, visitor: TypeVisitor[T]) -&gt; T:
-    return visitor.visit_unbound_type(self)
-
-</t>
-<t tx="ekr.20220525082935.1392">def __hash__(self) -&gt; int:
-    return hash((self.name, self.optional, tuple(self.args), self.original_str_expr))
-
-</t>
-<t tx="ekr.20220525082935.1393">def __eq__(self, other: object) -&gt; bool:
-    if not isinstance(other, UnboundType):
-        return NotImplemented
-    return (
-        self.name == other.name
-        and self.optional == other.optional
-        and self.args == other.args
-        and self.original_str_expr == other.original_str_expr
-        and self.original_str_fallback == other.original_str_fallback
-    )
-
-</t>
-<t tx="ekr.20220525082935.1394">def serialize(self) -&gt; JsonDict:
-    return {
-        ".class": "UnboundType",
-        "name": self.name,
-        "args": [a.serialize() for a in self.args],
-        "expr": self.original_str_expr,
-        "expr_fallback": self.original_str_fallback,
-    }
-
-</t>
-<t tx="ekr.20220525082935.1395">@classmethod
-def deserialize(cls, data: JsonDict) -&gt; UnboundType:
-    assert data[".class"] == "UnboundType"
-    return UnboundType(
-        data["name"],
-        [deserialize_type(a) for a in data["args"]],
-        original_str_expr=data["expr"],
-        original_str_fallback=data["expr_fallback"],
-    )
-
-
-</t>
-<t tx="ekr.20220525082935.14">def add_builtin_aliases(self, tree: MypyFile) -&gt; None:
-    """Add builtin type aliases to typing module.
-
-    For historical reasons, the aliases like `List = list` are not defined
-    in typeshed stubs for typing module. Instead we need to manually add the
-    corresponding nodes on the fly. We explicitly mark these aliases as normalized,
-    so that a user can write `typing.List[int]`.
-    """
-    assert tree.fullname == "typing"
-    for alias, target_name in type_aliases.items():
-        if type_aliases_source_versions[alias] &gt; self.options.python_version:
-            # This alias is not available on this Python version.
-            continue
-        name = alias.split(".")[-1]
-        if name in tree.names and not isinstance(tree.names[name].node, PlaceholderNode):
-            continue
-        self.create_alias(tree, target_name, alias, name)
-
-</t>
-<t tx="ekr.20220525082935.140">def visit_if_stmt(self, s: IfStmt) -&gt; None:
-    self.statement = s
-    infer_reachability_of_if_statement(s, self.options)
-    for i in range(len(s.expr)):
-        s.expr[i].accept(self)
-        self.visit_block(s.body[i])
-    self.visit_block_maybe(s.else_body)
-
-</t>
-<t tx="ekr.20220525082935.141">def visit_try_stmt(self, s: TryStmt) -&gt; None:
-    self.statement = s
-    self.analyze_try_stmt(s, self)
-
-</t>
-<t tx="ekr.20220525082935.142">def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[None]) -&gt; None:
-    s.body.accept(visitor)
-    for type, var, handler in zip(s.types, s.vars, s.handlers):
-        if type:
-            type.accept(visitor)
-        if var:
-            self.analyze_lvalue(var)
-        handler.accept(visitor)
-    if s.else_body:
-        s.else_body.accept(visitor)
-    if s.finally_body:
-        s.finally_body.accept(visitor)
-
-</t>
-<t tx="ekr.20220525082935.143">def visit_with_stmt(self, s: WithStmt) -&gt; None:
-    self.statement = s
-    types: list[Type] = []
-
-    if s.is_async:
-        if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-            self.fail(message_registry.ASYNC_WITH_OUTSIDE_COROUTINE, s, code=codes.SYNTAX)
-
-    if s.unanalyzed_type:
-        assert isinstance(s.unanalyzed_type, ProperType)
-        actual_targets = [t for t in s.target if t is not None]
-        if len(actual_targets) == 0:
-            # We have a type for no targets
-            self.fail('Invalid type comment: "with" statement has no targets', s)
-        elif len(actual_targets) == 1:
-            # We have one target and one type
-            types = [s.unanalyzed_type]
-        elif isinstance(s.unanalyzed_type, TupleType):
-            # We have multiple targets and multiple types
-            if len(actual_targets) == len(s.unanalyzed_type.items):
-                types = s.unanalyzed_type.items.copy()
-            else:
-                # But it's the wrong number of items
-                self.fail('Incompatible number of types for "with" targets', s)
-        else:
-            # We have multiple targets and one type
-            self.fail('Multiple types expected for multiple "with" targets', s)
-
-    new_types: list[Type] = []
-    for e, n in zip(s.expr, s.target):
-        e.accept(self)
-        if n:
-            self.analyze_lvalue(n, explicit_type=s.unanalyzed_type is not None)
-
-            # Since we have a target, pop the next type from types
-            if types:
-                t = types.pop(0)
-                if self.is_classvar(t):
-                    self.fail_invalid_classvar(n)
-                allow_tuple_literal = isinstance(n, TupleExpr)
-                analyzed = self.anal_type(t, allow_tuple_literal=allow_tuple_literal)
-                if analyzed is not None:
-                    # TODO: Deal with this better
-                    new_types.append(analyzed)
-                    self.store_declared_types(n, analyzed)
-
-    s.analyzed_types = new_types
-
-    self.visit_block(s.body)
-
-</t>
-<t tx="ekr.20220525082935.144">def visit_del_stmt(self, s: DelStmt) -&gt; None:
-    self.statement = s
-    s.expr.accept(self)
-    if not self.is_valid_del_target(s.expr):
-        self.fail("Invalid delete target", s)
-
-</t>
-<t tx="ekr.20220525082935.1444">class Instance(ProperType):
-    """An instance type of form C[T1, ..., Tn].
-
-    The list of type variables may be empty.
-
-    Several types have fallbacks to `Instance`, because in Python everything is an object
-    and this concept is impossible to express without intersection types. We therefore use
-    fallbacks for all "non-special" (like UninhabitedType, ErasedType etc) types.
-    """
-
-    __slots__ = ("type", "args", "invalid", "type_ref", "last_known_value", "_hash", "extra_attrs")
-
-    @others
-</t>
-<t tx="ekr.20220525082935.1445">def __init__(
-    self,
-    typ: mypy.nodes.TypeInfo,
-    args: Sequence[Type],
-    line: int = -1,
-    column: int = -1,
-    *,
-    last_known_value: LiteralType | None = None,
-    extra_attrs: ExtraAttrs | None = None,
-) -&gt; None:
-    super().__init__(line, column)
-    self.type = typ
-    self.args = tuple(args)
-    self.type_ref: str | None = None
-
-    # True if recovered after incorrect number of type arguments error
-    self.invalid = False
-
-    # This field keeps track of the underlying Literal[...] value associated with
-    # this instance, if one is known.
-    #
-    # This field is set whenever possible within expressions, but is erased upon
-    # variable assignment (see erasetype.remove_instance_last_known_values) unless
-    # the variable is declared to be final.
-    #
-    # For example, consider the following program:
-    #
-    #     a = 1
-    #     b: Final[int] = 2
-    #     c: Final = 3
-    #     print(a + b + c + 4)
-    #
-    # The 'Instance' objects associated with the expressions '1', '2', '3', and '4' will
-    # have last_known_values of type Literal[1], Literal[2], Literal[3], and Literal[4]
-    # respectively. However, the Instance object assigned to 'a' and 'b' will have their
-    # last_known_value erased: variable 'a' is mutable; variable 'b' was declared to be
-    # specifically an int.
-    #
-    # Or more broadly, this field lets this Instance "remember" its original declaration
-    # when applicable. We want this behavior because we want implicit Final declarations
-    # to act pretty much identically with constants: we should be able to replace any
-    # places where we use some Final variable with the original value and get the same
-    # type-checking behavior. For example, we want this program:
-    #
-    #    def expects_literal(x: Literal[3]) -&gt; None: pass
-    #    var: Final = 3
-    #    expects_literal(var)
-    #
-    # ...to type-check in the exact same way as if we had written the program like this:
-    #
-    #    def expects_literal(x: Literal[3]) -&gt; None: pass
-    #    expects_literal(3)
-    #
-    # In order to make this work (especially with literal types), we need var's type
-    # (an Instance) to remember the "original" value.
-    #
-    # Preserving this value within expressions is useful for similar reasons.
-    #
-    # Currently most of mypy will ignore this field and will continue to treat this type like
-    # a regular Instance. We end up using this field only when we are explicitly within a
-    # Literal context.
-    self.last_known_value = last_known_value
-
-    # Cached hash value
-    self._hash = -1
-
-</t>
-<t tx="ekr.20220525082935.1446">    # Additional attributes defined per instance of this type. For example modules
-    # have different attributes per instance of types.ModuleType. This is intended
-    # to be "short-lived", we don't serialize it, and even don't store as variable type.
-    self.extra_attrs = extra_attrs
-
-def accept(self, visitor: TypeVisitor[T]) -&gt; T:
-    return visitor.visit_instance(self)
-
-</t>
-<t tx="ekr.20220525082935.1447">def __hash__(self) -&gt; int:
-    if self._hash == -1:
-        self._hash = hash((self.type, self.args, self.last_known_value, self.extra_attrs))
-    return self._hash
-
-</t>
-<t tx="ekr.20220525082935.1448">def __eq__(self, other: object) -&gt; bool:
-    if not isinstance(other, Instance):
-        return NotImplemented
-    return (
-        self.type == other.type
-        and self.args == other.args
-        and self.last_known_value == other.last_known_value
-</t>
-<t tx="ekr.20220525082935.1449">        and self.extra_attrs == other.extra_attrs
-    )
-
-def serialize(self) -&gt; JsonDict | str:
-    assert self.type is not None
-    type_ref = self.type.fullname
-    if not self.args and not self.last_known_value:
-        return type_ref
-    data: JsonDict = {".class": "Instance"}
-    data["type_ref"] = type_ref
-    data["args"] = [arg.serialize() for arg in self.args]
-    if self.last_known_value is not None:
-        data["last_known_value"] = self.last_known_value.serialize()
-    return data
-
-</t>
-<t tx="ekr.20220525082935.145">def is_valid_del_target(self, s: Expression) -&gt; bool:
-    if isinstance(s, (IndexExpr, NameExpr, MemberExpr)):
-        return True
-    elif isinstance(s, (TupleExpr, ListExpr)):
-        return all(self.is_valid_del_target(item) for item in s.items)
-    else:
-        return False
-
-</t>
-<t tx="ekr.20220525082935.1450">@classmethod
-def deserialize(cls, data: JsonDict | str) -&gt; Instance:
-    if isinstance(data, str):
-        inst = Instance(NOT_READY, [])
-        inst.type_ref = data
-        return inst
-    assert data[".class"] == "Instance"
-    args: list[Type] = []
-    if "args" in data:
-        args_list = data["args"]
-        assert isinstance(args_list, list)
-        args = [deserialize_type(arg) for arg in args_list]
-    inst = Instance(NOT_READY, args)
-    inst.type_ref = data["type_ref"]  # Will be fixed up by fixup.py later.
-    if "last_known_value" in data:
-        inst.last_known_value = LiteralType.deserialize(data["last_known_value"])
-    return inst
-
-</t>
-<t tx="ekr.20220525082935.1451">def copy_modified(
-    self,
-    *,
-    args: Bogus[list[Type]] = _dummy,
-    last_known_value: Bogus[LiteralType | None] = _dummy,
-) -&gt; Instance:
-    new = Instance(
-        self.type,
-        args if args is not _dummy else self.args,
-        self.line,
-        self.column,
-        last_known_value=last_known_value
-        if last_known_value is not _dummy
-        else self.last_known_value,
-    )
-    # We intentionally don't copy the extra_attrs here, so they will be erased.
-    new.can_be_true = self.can_be_true
-    new.can_be_false = self.can_be_false
-    return new
-
-def copy_with_extra_attr(self, name: str, typ: Type) -&gt; Instance:
-    if self.extra_attrs:
-        existing_attrs = self.extra_attrs.copy()
-    else:
-        existing_attrs = ExtraAttrs({}, set(), None)
-    existing_attrs.attrs[name] = typ
-    new = self.copy_modified()
-    new.extra_attrs = existing_attrs
-    return new
-
-</t>
-<t tx="ekr.20220525082935.1452">def has_readable_member(self, name: str) -&gt; bool:
-    return self.type.has_readable_member(name)
-
-def is_singleton_type(self) -&gt; bool:
-    # TODO:
-    # Also make this return True if the type corresponds to NotImplemented?
-    return (
-        self.type.is_enum
-        and len(self.get_enum_values()) == 1
-        or self.type.fullname == "builtins.ellipsis"
-    )
-
-def get_enum_values(self) -&gt; list[str]:
-    """Return the list of values for an Enum."""
-    return [
-        name for name, sym in self.type.names.items() if isinstance(sym.node, mypy.nodes.Var)
-    ]
-
-
-</t>
-<t tx="ekr.20220525082935.1453">class FunctionLike(ProperType):
-    """Abstract base class for function types."""
-
-    __slots__ = ("fallback",)
-
-    fallback: Instance
-
-    @others
-</t>
-<t tx="ekr.20220525082935.1454">def __init__(self, line: int = -1, column: int = -1) -&gt; None:
-    super().__init__(line, column)
-    self.can_be_false = False
-
-</t>
-<t tx="ekr.20220525082935.1455">@abstractmethod
-def is_type_obj(self) -&gt; bool:
-    pass
-
-</t>
-<t tx="ekr.20220525082935.1456">@abstractmethod
-def type_object(self) -&gt; mypy.nodes.TypeInfo:
-    pass
-
-</t>
-<t tx="ekr.20220525082935.1457">@property
-@abstractmethod
-def items(self) -&gt; list[CallableType]:
-    pass
-
-</t>
-<t tx="ekr.20220525082935.1458">@abstractmethod
-def with_name(self, name: str) -&gt; FunctionLike:
-    pass
-
-</t>
-<t tx="ekr.20220525082935.1459">@abstractmethod
-def get_name(self) -&gt; str | None:
-    pass
-
-
-</t>
-<t tx="ekr.20220525082935.146">def visit_global_decl(self, g: GlobalDecl) -&gt; None:
-    self.statement = g
-    for name in g.names:
-        if name in self.nonlocal_decls[-1]:
-            self.fail(f'Name "{name}" is nonlocal and global', g)
-        self.global_decls[-1].add(name)
-
-</t>
-<t tx="ekr.20220525082935.1460">class FormalArgument(NamedTuple):
-    name: str | None
-    pos: int | None
-    typ: Type
-    required: bool
-
-
-</t>
-<t tx="ekr.20220525082935.147">def visit_nonlocal_decl(self, d: NonlocalDecl) -&gt; None:
-    self.statement = d
-    if self.is_module_scope():
-        self.fail("nonlocal declaration not allowed at module level", d)
-    else:
-        for name in d.names:
-            for table in reversed(self.locals[:-1]):
-                if table is not None and name in table:
-                    break
-            else:
-                self.fail(f'No binding for nonlocal "{name}" found', d)
-
-            if self.locals[-1] is not None and name in self.locals[-1]:
-                self.fail(
-                    'Name "{}" is already defined in local '
-                    "scope before nonlocal declaration".format(name),
-                    d,
-                )
-
-            if name in self.global_decls[-1]:
-                self.fail(f'Name "{name}" is nonlocal and global', d)
-            self.nonlocal_decls[-1].add(name)
-</t>
-<t tx="ekr.20220525082935.1476">class CallableType(FunctionLike):
-    """Type of a non-overloaded callable object (such as function)."""
-
-    __slots__ = (
-        "arg_types",  # Types of function arguments
-        "arg_kinds",  # ARG_ constants
-        "arg_names",  # Argument names; None if not a keyword argument
-        "min_args",  # Minimum number of arguments; derived from arg_kinds
-        "ret_type",  # Return value type
-        "name",  # Name (may be None; for error messages and plugins)
-        "definition",  # For error messages.  May be None.
-        "variables",  # Type variables for a generic function
-        "is_ellipsis_args",  # Is this Callable[..., t] (with literal '...')?
-        "is_classmethod_class",  # Is this callable constructed for the benefit
-        # of a classmethod's 'cls' argument?
-        "implicit",  # Was this type implicitly generated instead of explicitly
-        # specified by the user?
-        "special_sig",  # Non-None for signatures that require special handling
-        # (currently only value is 'dict' for a signature similar to
-        # 'dict')
-        "from_type_type",  # Was this callable generated by analyzing Type[...]
-        # instantiation?
-        "bound_args",  # Bound type args, mostly unused but may be useful for
-        # tools that consume mypy ASTs
-        "def_extras",  # Information about original definition we want to serialize.
-        # This is used for more detailed error messages.
-        "type_guard",  # T, if -&gt; TypeGuard[T] (ret_type is bool in this case).
-        "from_concatenate",  # whether this callable is from a concatenate object
-        # (this is used for error messages)
-        "unpack_kwargs",  # Was an Unpack[...] with **kwargs used to define this callable?
-    @others
-</t>
-<t tx="ekr.20220525082935.1477">)
-
-def __init__(
-    self,
-    # maybe this should be refactored to take a Parameters object
-    arg_types: Sequence[Type],
-    arg_kinds: list[ArgKind],
-    arg_names: Sequence[str | None],
-    ret_type: Type,
-    fallback: Instance,
-    name: str | None = None,
-    definition: SymbolNode | None = None,
-    variables: Sequence[TypeVarLikeType] | None = None,
-    line: int = -1,
-    column: int = -1,
-    is_ellipsis_args: bool = False,
-    implicit: bool = False,
-    special_sig: str | None = None,
-    from_type_type: bool = False,
-    bound_args: Sequence[Type | None] = (),
-    def_extras: dict[str, Any] | None = None,
-    type_guard: Type | None = None,
-    from_concatenate: bool = False,
-    unpack_kwargs: bool = False,
-) -&gt; None:
-    super().__init__(line, column)
-    assert len(arg_types) == len(arg_kinds) == len(arg_names)
-    if variables is None:
-        variables = []
-    self.arg_types = list(arg_types)
-    self.arg_kinds = arg_kinds
-    self.arg_names = list(arg_names)
-    self.min_args = arg_kinds.count(ARG_POS)
-    self.ret_type = ret_type
-    self.fallback = fallback
-    assert not name or "&lt;bound method" not in name
-    self.name = name
-    self.definition = definition
-    self.variables = variables
-    self.is_ellipsis_args = is_ellipsis_args
-    self.implicit = implicit
-    self.special_sig = special_sig
-    self.from_type_type = from_type_type
-    self.from_concatenate = from_concatenate
-    if not bound_args:
-        bound_args = ()
-    self.bound_args = bound_args
-    if def_extras:
-        self.def_extras = def_extras
-    elif isinstance(definition, FuncDef):
-        # This information would be lost if we don't have definition
-        # after serialization, but it is useful in error messages.
-        # TODO: decide how to add more info here (file, line, column)
-        # without changing interface hash.
-        first_arg: str | None = None
-        if definition.arg_names and definition.info and not definition.is_static:
-            if getattr(definition, "arguments", None):
-                first_arg = definition.arguments[0].variable.name
-            else:
-                first_arg = definition.arg_names[0]
-        self.def_extras = {"first_arg": first_arg}
-    else:
-        self.def_extras = {}
-    self.type_guard = type_guard
-    self.unpack_kwargs = unpack_kwargs
-</t>
-<t tx="ekr.20220525082935.1478">
-def copy_modified(
-    self: CT,
-    arg_types: Bogus[Sequence[Type]] = _dummy,
-    arg_kinds: Bogus[list[ArgKind]] = _dummy,
-    arg_names: Bogus[list[str | None]] = _dummy,
-    ret_type: Bogus[Type] = _dummy,
-    fallback: Bogus[Instance] = _dummy,
-    name: Bogus[str | None] = _dummy,
-    definition: Bogus[SymbolNode] = _dummy,
-    variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
-    line: Bogus[int] = _dummy,
-    column: Bogus[int] = _dummy,
-    is_ellipsis_args: Bogus[bool] = _dummy,
-    implicit: Bogus[bool] = _dummy,
-    special_sig: Bogus[str | None] = _dummy,
-    from_type_type: Bogus[bool] = _dummy,
-    bound_args: Bogus[list[Type | None]] = _dummy,
-    def_extras: Bogus[dict[str, Any]] = _dummy,
-    type_guard: Bogus[Type | None] = _dummy,
-    from_concatenate: Bogus[bool] = _dummy,
-    unpack_kwargs: Bogus[bool] = _dummy,
-) -&gt; CT:
-    return type(self)(
-        arg_types=arg_types if arg_types is not _dummy else self.arg_types,
-        arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
-        arg_names=arg_names if arg_names is not _dummy else self.arg_names,
-        ret_type=ret_type if ret_type is not _dummy else self.ret_type,
-        fallback=fallback if fallback is not _dummy else self.fallback,
-        name=name if name is not _dummy else self.name,
-        definition=definition if definition is not _dummy else self.definition,
-        variables=variables if variables is not _dummy else self.variables,
-        line=line if line is not _dummy else self.line,
-        column=column if column is not _dummy else self.column,
-        is_ellipsis_args=(
-            is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args
-        ),
-        implicit=implicit if implicit is not _dummy else self.implicit,
-        special_sig=special_sig if special_sig is not _dummy else self.special_sig,
-        from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
-        bound_args=bound_args if bound_args is not _dummy else self.bound_args,
-        def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
-        type_guard=type_guard if type_guard is not _dummy else self.type_guard,
-        from_concatenate=(
-            from_concatenate if from_concatenate is not _dummy else self.from_concatenate
-        ),
-        unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
-</t>
-<t tx="ekr.20220525082935.1479">    )
-
-def var_arg(self) -&gt; FormalArgument | None:
-    """The formal argument for *args."""
-    for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
-        if kind == ARG_STAR:
-            return FormalArgument(None, position, type, False)
-    return None
-
-</t>
-<t tx="ekr.20220525082935.148"></t>
-<t tx="ekr.20220525082935.1480">def kw_arg(self) -&gt; FormalArgument | None:
-    """The formal argument for **kwargs."""
-    for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
-        if kind == ARG_STAR2:
-            return FormalArgument(None, position, type, False)
-    return None
-
-</t>
-<t tx="ekr.20220525082935.1481">@property
-def is_var_arg(self) -&gt; bool:
-    """Does this callable have a *args argument?"""
-    return ARG_STAR in self.arg_kinds
-
-</t>
-<t tx="ekr.20220525082935.1482">@property
-def is_kw_arg(self) -&gt; bool:
-    """Does this callable have a **kwargs argument?"""
-    return ARG_STAR2 in self.arg_kinds
-
-</t>
-<t tx="ekr.20220525082935.1483">def is_type_obj(self) -&gt; bool:
-    return self.fallback.type.is_metaclass() and not isinstance(
-        get_proper_type(self.ret_type), UninhabitedType
-    )
-
-</t>
-<t tx="ekr.20220525082935.1484">def type_object(self) -&gt; mypy.nodes.TypeInfo:
-    assert self.is_type_obj()
-    ret = get_proper_type(self.ret_type)
-    if isinstance(ret, TypeVarType):
-        ret = get_proper_type(ret.upper_bound)
-    if isinstance(ret, TupleType):
-        ret = ret.partial_fallback
-    if isinstance(ret, TypedDictType):
-        ret = ret.fallback
-    assert isinstance(ret, Instance)
-    return ret.type
-
-</t>
-<t tx="ekr.20220525082935.1485">def accept(self, visitor: TypeVisitor[T]) -&gt; T:
-    return visitor.visit_callable_type(self)
-
-</t>
-<t tx="ekr.20220525082935.1486">def with_name(self, name: str) -&gt; CallableType:
-    """Return a copy of this type with the specified name."""
-    return self.copy_modified(ret_type=self.ret_type, name=name)
-
-</t>
-<t tx="ekr.20220525082935.1487">def get_name(self) -&gt; str | None:
-    return self.name
-
-</t>
-<t tx="ekr.20220525082935.1488">def max_possible_positional_args(self) -&gt; int:
-    """Returns maximum number of positional arguments this method could possibly accept.
-
-    This takes into account *arg and **kwargs but excludes keyword-only args."""
-    if self.is_var_arg or self.is_kw_arg:
-        return sys.maxsize
-    return sum(kind.is_positional() for kind in self.arg_kinds)
-
-</t>
-<t tx="ekr.20220525082935.1489">def formal_arguments(self, include_star_args: bool = False) -&gt; list[FormalArgument]:
-    """Return a list of the formal arguments of this callable, ignoring *arg and **kwargs.
-
-    To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
-    if they are not None.
-
-    If you really want to include star args in the yielded output, set the
-    'include_star_args' parameter to 'True'."""
-    args = []
-    done_with_positional = False
-    for i in range(len(self.arg_types)):
-        kind = self.arg_kinds[i]
-        if kind.is_named() or kind.is_star():
-            done_with_positional = True
-        if not include_star_args and kind.is_star():
-            continue
-
-        required = kind.is_required()
-        pos = None if done_with_positional else i
-        arg = FormalArgument(self.arg_names[i], pos, self.arg_types[i], required)
-        args.append(arg)
-    return args
-
-</t>
-<t tx="ekr.20220525082935.149">
-</t>
-<t tx="ekr.20220525082935.1490">def argument_by_name(self, name: str | None) -&gt; FormalArgument | None:
-    if name is None:
-        return None
-    seen_star = False
-    for i, (arg_name, kind, typ) in enumerate(
-        zip(self.arg_names, self.arg_kinds, self.arg_types)
-    ):
-        # No more positional arguments after these.
-        if kind.is_named() or kind.is_star():
-            seen_star = True
-        if kind.is_star():
-            continue
-        if arg_name == name:
-            position = None if seen_star else i
-            return FormalArgument(name, position, typ, kind.is_required())
-    return self.try_synthesizing_arg_from_kwarg(name)
-
-</t>
-<t tx="ekr.20220525082935.1491">def argument_by_position(self, position: int | None) -&gt; FormalArgument | None:
-    if position is None:
-        return None
-    if position &gt;= len(self.arg_names):
-        return self.try_synthesizing_arg_from_vararg(position)
-    name, kind, typ = (
-        self.arg_names[position],
-        self.arg_kinds[position],
-        self.arg_types[position],
-    )
-    if kind.is_positional():
-        return FormalArgument(name, position, typ, kind == ARG_POS)
-    else:
-        return self.try_synthesizing_arg_from_vararg(position)
-
-</t>
-<t tx="ekr.20220525082935.1492">def try_synthesizing_arg_from_kwarg(self, name: str | None) -&gt; FormalArgument | None:
-    kw_arg = self.kw_arg()
-    if kw_arg is not None:
-        return FormalArgument(name, None, kw_arg.typ, False)
-    else:
-        return None
-
-</t>
-<t tx="ekr.20220525082935.1493">def try_synthesizing_arg_from_vararg(self, position: int | None) -&gt; FormalArgument | None:
-    var_arg = self.var_arg()
-    if var_arg is not None:
-        return FormalArgument(None, position, var_arg.typ, False)
-    else:
-        return None
-
-</t>
-<t tx="ekr.20220525082935.1494">@property
-def items(self) -&gt; list[CallableType]:
-    return [self]
-
-</t>
-<t tx="ekr.20220525082935.1495">def is_generic(self) -&gt; bool:
-    return bool(self.variables)
-
-</t>
-<t tx="ekr.20220525082935.1496">def type_var_ids(self) -&gt; list[TypeVarId]:
-    a: list[TypeVarId] = []
-    for tv in self.variables:
-        a.append(tv.id)
-    return a
-
-</t>
-<t tx="ekr.20220525082935.1497">def param_spec(self) -&gt; ParamSpecType | None:
-    """Return ParamSpec if callable can be called with one.
-
-    A Callable accepting ParamSpec P args (*args, **kwargs) must have the
-    two final parameters like this: *args: P.args, **kwargs: P.kwargs.
-    """
-    if len(self.arg_types) &lt; 2:
-        return None
-    if self.arg_kinds[-2] != ARG_STAR or self.arg_kinds[-1] != ARG_STAR2:
-        return None
-    arg_type = self.arg_types[-2]
-    if not isinstance(arg_type, ParamSpecType):
-        return None
-    # sometimes paramspectypes are analyzed in from mysterious places,
-    # e.g. def f(prefix..., *args: P.args, **kwargs: P.kwargs) -&gt; ...: ...
-    prefix = arg_type.prefix
-    if not prefix.arg_types:
-        # TODO: confirm that all arg kinds are positional
-        prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
-    return ParamSpecType(
-        arg_type.name,
-        arg_type.fullname,
-</t>
-<t tx="ekr.20220525082935.1498">        arg_type.id,
-        ParamSpecFlavor.BARE,
-        arg_type.upper_bound,
-        prefix=prefix,
-    )
-
-def expand_param_spec(
-    self, c: CallableType | Parameters, no_prefix: bool = False
-) -&gt; CallableType:
-    variables = c.variables
-
-    if no_prefix:
-        return self.copy_modified(
-            arg_types=c.arg_types,
-            arg_kinds=c.arg_kinds,
-            arg_names=c.arg_names,
-            is_ellipsis_args=c.is_ellipsis_args,
-            variables=[*variables, *self.variables],
-        )
-    else:
-        return self.copy_modified(
-            arg_types=self.arg_types[:-2] + c.arg_types,
-            arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-            arg_names=self.arg_names[:-2] + c.arg_names,
-            is_ellipsis_args=c.is_ellipsis_args,
-            variables=[*variables, *self.variables],
-        )
-
-def with_unpacked_kwargs(self) -&gt; NormalizedCallableType:
-    if not self.unpack_kwargs:
-        return NormalizedCallableType(self.copy_modified())
-    last_type = get_proper_type(self.arg_types[-1])
-    assert isinstance(last_type, TypedDictType)
-    extra_kinds = [
-        ArgKind.ARG_NAMED if name in last_type.required_keys else ArgKind.ARG_NAMED_OPT
-        for name in last_type.items
-    ]
-    new_arg_kinds = self.arg_kinds[:-1] + extra_kinds
-    new_arg_names = self.arg_names[:-1] + list(last_type.items)
-    new_arg_types = self.arg_types[:-1] + list(last_type.items.values())
-    return NormalizedCallableType(
-        self.copy_modified(
-            arg_kinds=new_arg_kinds,
-            arg_names=new_arg_names,
-            arg_types=new_arg_types,
-            unpack_kwargs=False,
-        )
-    )
-
-</t>
-<t tx="ekr.20220525082935.1499">def __hash__(self) -&gt; int:
-    # self.is_type_obj() will fail if self.fallback.type is a FakeInfo
-    if isinstance(self.fallback.type, FakeInfo):
-        is_type_obj = 2
-    else:
-        is_type_obj = self.is_type_obj()
-    return hash(
-        (
-            self.ret_type,
-            is_type_obj,
-            self.is_ellipsis_args,
-            self.name,
-            tuple(self.arg_types),
-            tuple(self.arg_names),
-            tuple(self.arg_kinds),
-            self.fallback,
-        )
-    )
-
-</t>
-<t tx="ekr.20220525082935.15">def add_typing_extension_aliases(self, tree: MypyFile) -&gt; None:
-    """Typing extensions module does contain some type aliases.
-
-    We need to analyze them as such, because in typeshed
-    they are just defined as `_Alias()` call.
-    Which is not supported natively.
-    """
-    assert tree.fullname == "typing_extensions"
-
-    for alias, target_name in typing_extensions_aliases.items():
-        name = alias.split(".")[-1]
-        if name in tree.names and isinstance(tree.names[name].node, TypeAlias):
-            continue  # Do not reset TypeAliases on the second pass.
-
-        # We need to remove any node that is there at the moment. It is invalid.
-        tree.names.pop(name, None)
-
-        # Now, create a new alias.
-        self.create_alias(tree, target_name, alias, name)
-
-</t>
-<t tx="ekr.20220525082935.150">def visit_match_stmt(self, s: MatchStmt) -&gt; None:
-    self.statement = s
-    infer_reachability_of_match_statement(s, self.options)
-    s.subject.accept(self)
-    for i in range(len(s.patterns)):
-        s.patterns[i].accept(self)
-        guard = s.guards[i]
-        if guard is not None:
-            guard.accept(self)
-        self.visit_block(s.bodies[i])
-
-</t>
-<t tx="ekr.20220525082935.1500">def __eq__(self, other: object) -&gt; bool:
-    if isinstance(other, CallableType):
-        return (
-            self.ret_type == other.ret_type
-            and self.arg_types == other.arg_types
-            and self.arg_names == other.arg_names
-            and self.arg_kinds == other.arg_kinds
-            and self.name == other.name
-            and self.is_type_obj() == other.is_type_obj()
-            and self.is_ellipsis_args == other.is_ellipsis_args
-            and self.fallback == other.fallback
-        )
-    else:
-        return NotImplemented
-
-</t>
-<t tx="ekr.20220525082935.1501">def serialize(self) -&gt; JsonDict:
-    # TODO: As an optimization, leave out everything related to
-    # generic functions for non-generic functions.
-    return {
-        ".class": "CallableType",
-        "arg_types": [t.serialize() for t in self.arg_types],
-        "arg_kinds": [int(x.value) for x in self.arg_kinds],
-        "arg_names": self.arg_names,
-        "ret_type": self.ret_type.serialize(),
-        "fallback": self.fallback.serialize(),
-        "name": self.name,
-        # We don't serialize the definition (only used for error messages).
-        "variables": [v.serialize() for v in self.variables],
-        "is_ellipsis_args": self.is_ellipsis_args,
-        "implicit": self.implicit,
-        "bound_args": [(None if t is None else t.serialize()) for t in self.bound_args],
-        "def_extras": dict(self.def_extras),
-        "type_guard": self.type_guard.serialize() if self.type_guard is not None else None,
-        "from_concatenate": self.from_concatenate,
-        "unpack_kwargs": self.unpack_kwargs,
-    }
-
-</t>
-<t tx="ekr.20220525082935.1502">@classmethod
-def deserialize(cls, data: JsonDict) -&gt; CallableType:
-    assert data[".class"] == "CallableType"
-    # TODO: Set definition to the containing SymbolNode?
-    return CallableType(
-        [deserialize_type(t) for t in data["arg_types"]],
-        [ArgKind(x) for x in data["arg_kinds"]],
-        data["arg_names"],
-        deserialize_type(data["ret_type"]),
-        Instance.deserialize(data["fallback"]),
-        name=data["name"],
-        variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data["variables"]],
-        is_ellipsis_args=data["is_ellipsis_args"],
-        implicit=data["implicit"],
-        bound_args=[(None if t is None else deserialize_type(t)) for t in data["bound_args"]],
-        def_extras=data["def_extras"],
-        type_guard=(
-            deserialize_type(data["type_guard"]) if data["type_guard"] is not None else None
-        ),
-        from_concatenate=data["from_concatenate"],
-        unpack_kwargs=data["unpack_kwargs"],
-    )
-
-
-# This is a little safety net to prevent reckless special-casing of callables
-# that can potentially break Unpack[...] with **kwargs.
-# TODO: use this in more places in checkexpr.py etc?
-NormalizedCallableType = NewType("NormalizedCallableType", CallableType)
-
-
-</t>
-<t tx="ekr.20220525082935.151">#
-# Expressions
-#
-
-</t>
-<t tx="ekr.20220525082935.152">def visit_name_expr(self, expr: NameExpr) -&gt; None:
-    n = self.lookup(expr.name, expr)
-    if n:
-        self.bind_name_expr(expr, n)
-
-</t>
-<t tx="ekr.20220525082935.153">def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -&gt; None:
-    """Bind name expression to a symbol table node."""
-    if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
-        self.fail(
-            '"{}" is a type variable and only valid in type ' "context".format(expr.name), expr
-        )
-    elif isinstance(sym.node, PlaceholderNode):
-        self.process_placeholder(expr.name, "name", expr)
-    else:
-        expr.kind = sym.kind
-        expr.node = sym.node
-        expr.fullname = sym.fullname
-
-</t>
-<t tx="ekr.20220525082935.154">def visit_super_expr(self, expr: SuperExpr) -&gt; None:
-    if not self.type and not expr.call.args:
-        self.fail('"super" used outside class', expr)
-        return
-    expr.info = self.type
-    for arg in expr.call.args:
-        arg.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.155">def visit_tuple_expr(self, expr: TupleExpr) -&gt; None:
-    for item in expr.items:
-        if isinstance(item, StarExpr):
-            item.valid = True
-        item.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.156">def visit_list_expr(self, expr: ListExpr) -&gt; None:
-    for item in expr.items:
-        if isinstance(item, StarExpr):
-            item.valid = True
-        item.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.157">def visit_set_expr(self, expr: SetExpr) -&gt; None:
-    for item in expr.items:
-        if isinstance(item, StarExpr):
-            item.valid = True
-        item.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.158">def visit_dict_expr(self, expr: DictExpr) -&gt; None:
-    for key, value in expr.items:
-        if key is not None:
-            key.accept(self)
-        value.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.159">def visit_star_expr(self, expr: StarExpr) -&gt; None:
-    if not expr.valid:
-        # XXX TODO Change this error message
-        self.fail("Can use starred expression only as assignment target", expr)
-    else:
-        expr.expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.16">def create_alias(self, tree: MypyFile, target_name: str, alias: str, name: str) -&gt; None:
-    tag = self.track_incomplete_refs()
-    n = self.lookup_fully_qualified_or_none(target_name)
-    if n:
-        if isinstance(n.node, PlaceholderNode):
-            self.mark_incomplete(name, tree)
-        else:
-            # Found built-in class target. Create alias.
-            target = self.named_type_or_none(target_name, [])
-            assert target is not None
-            # Transform List to List[Any], etc.
-            fix_instance_types(target, self.fail, self.note, self.options.python_version)
-            alias_node = TypeAlias(
-                target,
-                alias,
-                line=-1,
-                column=-1,  # there is no context
-                no_args=True,
-                normalized=True,
-            )
-            self.add_symbol(name, alias_node, tree)
-    elif self.found_incomplete_ref(tag):
-        # Built-in class target may not ready yet -- defer.
-        self.mark_incomplete(name, tree)
-    else:
-        # Test fixtures may be missing some builtin classes, which is okay.
-        # Kill the placeholder if there is one.
-        if name in tree.names:
-            assert isinstance(tree.names[name].node, PlaceholderNode)
-            del tree.names[name]
-
-</t>
-<t tx="ekr.20220525082935.160">def visit_yield_from_expr(self, e: YieldFromExpr) -&gt; None:
-    if not self.is_func_scope():
-        self.fail('"yield from" outside function', e, serious=True, blocker=True)
-    elif self.is_comprehension_stack[-1]:
-        self.fail(
-            '"yield from" inside comprehension or generator expression',
-            e,
-            serious=True,
-            blocker=True,
-        )
-    elif self.function_stack[-1].is_coroutine:
-        self.fail('"yield from" in async function', e, serious=True, blocker=True)
-    else:
-        self.function_stack[-1].is_generator = True
-    if e.expr:
-        e.expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.1603">class TypeStrVisitor(SyntheticTypeVisitor[str]):
-    """Visitor for pretty-printing types into strings.
-
-    This is mostly for debugging/testing.
-
-    Do not preserve original formatting.
-
-    Notes:
-     - Represent unbound types as Foo? or Foo?[...].
-     - Represent the NoneType type as None.
-    """
-
-    @others
-</t>
-<t tx="ekr.20220525082935.1604">def __init__(self, id_mapper: IdMapper | None = None) -&gt; None:
-    self.id_mapper = id_mapper
-    self.any_as_dots = False
-
-</t>
-<t tx="ekr.20220525082935.1605">def visit_unbound_type(self, t: UnboundType) -&gt; str:
-    s = t.name + "?"
-    if t.args:
-        s += f"[{self.list_str(t.args)}]"
-    return s
-
-</t>
-<t tx="ekr.20220525082935.1606">def visit_type_list(self, t: TypeList) -&gt; str:
-    return f"&lt;TypeList {self.list_str(t.items)}&gt;"
-
-</t>
-<t tx="ekr.20220525082935.1607">def visit_callable_argument(self, t: CallableArgument) -&gt; str:
-    typ = t.typ.accept(self)
-    if t.name is None:
-        return f"{t.constructor}({typ})"
-    else:
-        return f"{t.constructor}({typ}, {t.name})"
-
-</t>
-<t tx="ekr.20220525082935.1608">def visit_any(self, t: AnyType) -&gt; str:
-    if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
-        return "..."
-    return "Any"
-
-</t>
-<t tx="ekr.20220525082935.1609">def visit_none_type(self, t: NoneType) -&gt; str:
-    return "None"
-
-</t>
-<t tx="ekr.20220525082935.161">def visit_call_expr(self, expr: CallExpr) -&gt; None:
-    """Analyze a call expression.
-
-    Some call expressions are recognized as special forms, including
-    cast(...).
-    """
-    expr.callee.accept(self)
-    if refers_to_fullname(expr.callee, "typing.cast"):
-        # Special form cast(...).
-        if not self.check_fixed_args(expr, 2, "cast"):
-            return
-        # Translate first argument to an unanalyzed type.
-        try:
-            target = self.expr_to_unanalyzed_type(expr.args[0])
-        except TypeTranslationError:
-            self.fail("Cast target is not a type", expr)
-            return
-        # Piggyback CastExpr object to the CallExpr object; it takes
-        # precedence over the CallExpr semantics.
-        expr.analyzed = CastExpr(expr.args[1], target)
-        expr.analyzed.line = expr.line
-        expr.analyzed.column = expr.column
-        expr.analyzed.accept(self)
-    elif refers_to_fullname(expr.callee, ASSERT_TYPE_NAMES):
-        if not self.check_fixed_args(expr, 2, "assert_type"):
-            return
-        # Translate second argument to an unanalyzed type.
-        try:
-            target = self.expr_to_unanalyzed_type(expr.args[1])
-        except TypeTranslationError:
-            self.fail("assert_type() type is not a type", expr)
-            return
-        expr.analyzed = AssertTypeExpr(expr.args[0], target)
-        expr.analyzed.line = expr.line
-        expr.analyzed.column = expr.column
-        expr.analyzed.accept(self)
-    elif refers_to_fullname(expr.callee, REVEAL_TYPE_NAMES):
-        if not self.check_fixed_args(expr, 1, "reveal_type"):
-            return
-        expr.analyzed = RevealExpr(kind=REVEAL_TYPE, expr=expr.args[0])
-        expr.analyzed.line = expr.line
-        expr.analyzed.column = expr.column
-        expr.analyzed.accept(self)
-    elif refers_to_fullname(expr.callee, "builtins.reveal_locals"):
-        # Store the local variable names into the RevealExpr for use in the
-        # type checking pass
-        local_nodes: list[Var] = []
-        if self.is_module_scope():
-            # try to determine just the variable declarations in module scope
-            # self.globals.values() contains SymbolTableNode's
-            # Each SymbolTableNode has an attribute node that is nodes.Var
-            # look for variable nodes that marked as is_inferred
-            # Each symboltable node has a Var node as .node
-            local_nodes = [
-                n.node
-                for name, n in self.globals.items()
-                if getattr(n.node, "is_inferred", False) and isinstance(n.node, Var)
-            ]
-        elif self.is_class_scope():
-            # type = None  # type: Optional[TypeInfo]
-            if self.type is not None:
-                local_nodes = [
-                    st.node for st in self.type.names.values() if isinstance(st.node, Var)
-                ]
-        elif self.is_func_scope():
-            # locals = None  # type: List[Optional[SymbolTable]]
-            if self.locals is not None:
-                symbol_table = self.locals[-1]
-                if symbol_table is not None:
-                    local_nodes = [
-                        st.node for st in symbol_table.values() if isinstance(st.node, Var)
-                    ]
-        expr.analyzed = RevealExpr(kind=REVEAL_LOCALS, local_nodes=local_nodes)
-        expr.analyzed.line = expr.line
-        expr.analyzed.column = expr.column
-        expr.analyzed.accept(self)
-    elif refers_to_fullname(expr.callee, "typing.Any"):
-        # Special form Any(...) no longer supported.
-        self.fail("Any(...) is no longer supported. Use cast(Any, ...) instead", expr)
-    elif refers_to_fullname(expr.callee, "typing._promote"):
-        # Special form _promote(...).
-        if not self.check_fixed_args(expr, 1, "_promote"):
-            return
-        # Translate first argument to an unanalyzed type.
-        try:
-            target = self.expr_to_unanalyzed_type(expr.args[0])
-        except TypeTranslationError:
-            self.fail("Argument 1 to _promote is not a type", expr)
-            return
-        expr.analyzed = PromoteExpr(target)
-        expr.analyzed.line = expr.line
-        expr.analyzed.accept(self)
-    elif refers_to_fullname(expr.callee, "builtins.dict"):
-        expr.analyzed = self.translate_dict_call(expr)
-    elif refers_to_fullname(expr.callee, "builtins.divmod"):
-        if not self.check_fixed_args(expr, 2, "divmod"):
-            return
-        expr.analyzed = OpExpr("divmod", expr.args[0], expr.args[1])
-        expr.analyzed.line = expr.line
-        expr.analyzed.accept(self)
-    else:
-        # Normal call expression.
-        for a in expr.args:
-            a.accept(self)
-
-        if (
-            isinstance(expr.callee, MemberExpr)
-            and isinstance(expr.callee.expr, NameExpr)
-            and expr.callee.expr.name == "__all__"
-            and expr.callee.expr.kind == GDEF
-            and expr.callee.name in ("append", "extend")
-        ):
-            if expr.callee.name == "append" and expr.args:
-                self.add_exports(expr.args[0])
-            elif (
-                expr.callee.name == "extend"
-                and expr.args
-                and isinstance(expr.args[0], (ListExpr, TupleExpr))
-            ):
-                self.add_exports(expr.args[0].items)
-
-</t>
-<t tx="ekr.20220525082935.1610">def visit_uninhabited_type(self, t: UninhabitedType) -&gt; str:
-    return "&lt;nothing&gt;"
-
-</t>
-<t tx="ekr.20220525082935.1611">def visit_erased_type(self, t: ErasedType) -&gt; str:
-    return "&lt;Erased&gt;"
-
-</t>
-<t tx="ekr.20220525082935.1612">def visit_deleted_type(self, t: DeletedType) -&gt; str:
-    if t.source is None:
-        return "&lt;Deleted&gt;"
-    else:
-        return f"&lt;Deleted '{t.source}'&gt;"
-
-</t>
-<t tx="ekr.20220525082935.1613">def visit_instance(self, t: Instance) -&gt; str:
-    if t.last_known_value and not t.args:
-        # Instances with a literal fallback should never be generic. If they are,
-        # something went wrong so we fall back to showing the full Instance repr.
-        s = f"{t.last_known_value}?"
-    else:
-        s = t.type.fullname or t.type.name or "&lt;???&gt;"
-
-    if t.args:
-        if t.type.fullname == "builtins.tuple":
-            assert len(t.args) == 1
-            s += f"[{self.list_str(t.args)}, ...]"
-        else:
-            s += f"[{self.list_str(t.args)}]"
-    if self.id_mapper:
-        s += f"&lt;{self.id_mapper.id(t.type)}&gt;"
-    return s
-
-</t>
-<t tx="ekr.20220525082935.1614">def visit_type_var(self, t: TypeVarType) -&gt; str:
-    if t.name is None:
-        # Anonymous type variable type (only numeric id).
-        s = f"`{t.id}"
-    else:
-        # Named type variable type.
-        s = f"{t.name}`{t.id}"
-    if self.id_mapper and t.upper_bound:
-        s += f"(upper_bound={t.upper_bound.accept(self)})"
-    return s
-
-</t>
-<t tx="ekr.20220525082935.1615">def visit_param_spec(self, t: ParamSpecType) -&gt; str:
-    # prefixes are displayed as Concatenate
-    s = ""
-    if t.prefix.arg_types:
-        s += f"[{self.list_str(t.prefix.arg_types)}, **"
-    if t.name is None:
-        # Anonymous type variable type (only numeric id).
-        s += f"`{t.id}"
-    else:
-        # Named type variable type.
-        s += f"{t.name_with_suffix()}`{t.id}"
-    if t.prefix.arg_types:
-        s += "]"
-    return s
-
-</t>
-<t tx="ekr.20220525082935.1616">def visit_parameters(self, t: Parameters) -&gt; str:
-    # This is copied from visit_callable -- is there a way to decrease duplication?
-    if t.is_ellipsis_args:
-        return "..."
-
-    s = ""
-    bare_asterisk = False
-    for i in range(len(t.arg_types)):
-        if s != "":
-            s += ", "
-        if t.arg_kinds[i].is_named() and not bare_asterisk:
-            s += "*, "
-            bare_asterisk = True
-        if t.arg_kinds[i] == ARG_STAR:
-            s += "*"
-        if t.arg_kinds[i] == ARG_STAR2:
-            s += "**"
-        name = t.arg_names[i]
-        if name:
-            s += f"{name}: "
-        r = t.arg_types[i].accept(self)
-
-        s += r
-
-        if t.arg_kinds[i].is_optional():
-            s += " ="
-
-    return f"[{s}]"
-
-</t>
-<t tx="ekr.20220525082935.1617">def visit_type_var_tuple(self, t: TypeVarTupleType) -&gt; str:
-    if t.name is None:
-        # Anonymous type variable type (only numeric id).
-        s = f"`{t.id}"
-    else:
-        # Named type variable type.
-        s = f"{t.name}`{t.id}"
-    return s
-
-</t>
-<t tx="ekr.20220525082935.1618">def visit_callable_type(self, t: CallableType) -&gt; str:
-    param_spec = t.param_spec()
-    if param_spec is not None:
-        num_skip = 2
-    else:
-        num_skip = 0
-
-    s = ""
-    bare_asterisk = False
-    for i in range(len(t.arg_types) - num_skip):
-        if s != "":
-            s += ", "
-        if t.arg_kinds[i].is_named() and not bare_asterisk:
-            s += "*, "
-            bare_asterisk = True
-        if t.arg_kinds[i] == ARG_STAR:
-            s += "*"
-        if t.arg_kinds[i] == ARG_STAR2:
-            s += "**"
-        name = t.arg_names[i]
-        if name:
-            s += name + ": "
-        type_str = t.arg_types[i].accept(self)
-        if t.arg_kinds[i] == ARG_STAR2 and t.unpack_kwargs:
-            type_str = f"Unpack[{type_str}]"
-        s += type_str
-        if t.arg_kinds[i].is_optional():
-            s += " ="
-
-    if param_spec is not None:
-        n = param_spec.name
-        if s:
-            s += ", "
-        s += f"*{n}.args, **{n}.kwargs"
-
-    s = f"({s})"
-
-    if not isinstance(get_proper_type(t.ret_type), NoneType):
-        if t.type_guard is not None:
-            s += f" -&gt; TypeGuard[{t.type_guard.accept(self)}]"
-        else:
-            s += f" -&gt; {t.ret_type.accept(self)}"
-
-    if t.variables:
-        vs = []
-        for var in t.variables:
-            if isinstance(var, TypeVarType):
-                # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
-                if var.values:
-                    vals = f"({', '.join(val.accept(self) for val in var.values)})"
-                    vs.append(f"{var.name} in {vals}")
-                elif not is_named_instance(var.upper_bound, "builtins.object"):
-                    vs.append(f"{var.name} &lt;: {var.upper_bound.accept(self)}")
-                else:
-                    vs.append(var.name)
-            else:
-                # For other TypeVarLikeTypes, just use the name
-                vs.append(var.name)
-        s = f"[{', '.join(vs)}] {s}"
-
-    return f"def {s}"
-
-</t>
-<t tx="ekr.20220525082935.1619">def visit_overloaded(self, t: Overloaded) -&gt; str:
-    a = []
-    for i in t.items:
-        a.append(i.accept(self))
-    return f"Overload({', '.join(a)})"
-
-</t>
-<t tx="ekr.20220525082935.162">def translate_dict_call(self, call: CallExpr) -&gt; DictExpr | None:
-    """Translate 'dict(x=y, ...)' to {'x': y, ...} and 'dict()' to {}.
-
-    For other variants of dict(...), return None.
-    """
-    if not all(kind == ARG_NAMED for kind in call.arg_kinds):
-        # Must still accept those args.
-        for a in call.args:
-            a.accept(self)
-        return None
-    expr = DictExpr(
-        [
-            (StrExpr(cast(str, key)), value)  # since they are all ARG_NAMED
-            for key, value in zip(call.arg_names, call.args)
-        ]
-    )
-    expr.set_line(call)
-    expr.accept(self)
-    return expr
-
-</t>
-<t tx="ekr.20220525082935.1620">def visit_tuple_type(self, t: TupleType) -&gt; str:
-    s = self.list_str(t.items)
-    if t.partial_fallback and t.partial_fallback.type:
-        fallback_name = t.partial_fallback.type.fullname
-        if fallback_name != "builtins.tuple":
-            return f"Tuple[{s}, fallback={t.partial_fallback.accept(self)}]"
-    return f"Tuple[{s}]"
-
-</t>
-<t tx="ekr.20220525082935.1621">def visit_typeddict_type(self, t: TypedDictType) -&gt; str:
-    def item_str(name: str, typ: str) -&gt; str:
-        if name in t.required_keys:
-            return f"{name!r}: {typ}"
-        else:
-            return f"{name!r}?: {typ}"
-
-    s = (
-        "{"
-        + ", ".join(item_str(name, typ.accept(self)) for name, typ in t.items.items())
-        + "}"
-    )
-    prefix = ""
-    if t.fallback and t.fallback.type:
-        if t.fallback.type.fullname not in TPDICT_FB_NAMES:
-            prefix = repr(t.fallback.type.fullname) + ", "
-    return f"TypedDict({prefix}{s})"
-
-</t>
-<t tx="ekr.20220525082935.1622">def visit_raw_expression_type(self, t: RawExpressionType) -&gt; str:
-    return repr(t.literal_value)
-
-</t>
-<t tx="ekr.20220525082935.1623">def visit_literal_type(self, t: LiteralType) -&gt; str:
-    return f"Literal[{t.value_repr()}]"
-
-</t>
-<t tx="ekr.20220525082935.1624">def visit_star_type(self, t: StarType) -&gt; str:
-    s = t.type.accept(self)
-    return f"*{s}"
-
-</t>
-<t tx="ekr.20220525082935.1625">def visit_union_type(self, t: UnionType) -&gt; str:
-    s = self.list_str(t.items)
-    return f"Union[{s}]"
-
-</t>
-<t tx="ekr.20220525082935.1626">def visit_partial_type(self, t: PartialType) -&gt; str:
-    if t.type is None:
-        return "&lt;partial None&gt;"
-    else:
-        return "&lt;partial {}[{}]&gt;".format(t.type.name, ", ".join(["?"] * len(t.type.type_vars)))
-
-</t>
-<t tx="ekr.20220525082935.1627">def visit_ellipsis_type(self, t: EllipsisType) -&gt; str:
-    return "..."
-
-</t>
-<t tx="ekr.20220525082935.1628">def visit_type_type(self, t: TypeType) -&gt; str:
-    return f"Type[{t.item.accept(self)}]"
-
-</t>
-<t tx="ekr.20220525082935.1629">def visit_placeholder_type(self, t: PlaceholderType) -&gt; str:
-    return f"&lt;placeholder {t.fullname}&gt;"
-
-</t>
-<t tx="ekr.20220525082935.163">def check_fixed_args(self, expr: CallExpr, numargs: int, name: str) -&gt; bool:
-    """Verify that expr has specified number of positional args.
-
-    Return True if the arguments are valid.
-    """
-    s = "s"
-    if numargs == 1:
-        s = ""
-    if len(expr.args) != numargs:
-        self.fail('"%s" expects %d argument%s' % (name, numargs, s), expr)
-        return False
-    if expr.arg_kinds != [ARG_POS] * numargs:
-        self.fail(f'"{name}" must be called with {numargs} positional argument{s}', expr)
-        return False
-    return True
-
-</t>
-<t tx="ekr.20220525082935.1630">def visit_type_alias_type(self, t: TypeAliasType) -&gt; str:
-    if t.alias is not None:
-        unrolled, recursed = t._partial_expansion()
-        self.any_as_dots = recursed
-        type_str = unrolled.accept(self)
-        self.any_as_dots = False
-        return type_str
-    return "&lt;alias (unfixed)&gt;"
-
-</t>
-<t tx="ekr.20220525082935.1631">def visit_unpack_type(self, t: UnpackType) -&gt; str:
-    return f"Unpack[{t.type.accept(self)}]"
-
-</t>
-<t tx="ekr.20220525082935.1632">def list_str(self, a: Iterable[Type]) -&gt; str:
-    """Convert items of an array to strings (pretty-print types)
-    and join the results with commas.
-    """
-    res = []
-    for t in a:
-        res.append(t.accept(self))
-    return ", ".join(res)
-
-
-</t>
-<t tx="ekr.20220525082935.164">def visit_member_expr(self, expr: MemberExpr) -&gt; None:
-    base = expr.expr
-    base.accept(self)
-    if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
-        # Handle module attribute.
-        sym = self.get_module_symbol(base.node, expr.name)
-        if sym:
-            if isinstance(sym.node, PlaceholderNode):
-                self.process_placeholder(expr.name, "attribute", expr)
-                return
-            expr.kind = sym.kind
-            expr.fullname = sym.fullname
-            expr.node = sym.node
-    elif isinstance(base, RefExpr):
-        # This branch handles the case C.bar (or cls.bar or self.bar inside
-        # a classmethod/method), where C is a class and bar is a type
-        # definition or a module resulting from `import bar` (or a module
-        # assignment) inside class C. We look up bar in the class' TypeInfo
-        # namespace.  This is done only when bar is a module or a type;
-        # other things (e.g. methods) are handled by other code in
-        # checkmember.
-        type_info = None
-        if isinstance(base.node, TypeInfo):
-            # C.bar where C is a class
-            type_info = base.node
-        elif isinstance(base.node, Var) and self.type and self.function_stack:
-            # check for self.bar or cls.bar in method/classmethod
-            func_def = self.function_stack[-1]
-            if not func_def.is_static and isinstance(func_def.type, CallableType):
-                formal_arg = func_def.type.argument_by_name(base.node.name)
-                if formal_arg and formal_arg.pos == 0:
-                    type_info = self.type
-        elif isinstance(base.node, TypeAlias) and base.node.no_args:
-            assert isinstance(base.node.target, ProperType)
-            if isinstance(base.node.target, Instance):
-                type_info = base.node.target.type
-
-        if type_info:
-            n = type_info.names.get(expr.name)
-            if n is not None and isinstance(n.node, (MypyFile, TypeInfo, TypeAlias)):
-                if not n:
-                    return
-                expr.kind = n.kind
-                expr.fullname = n.fullname
-                expr.node = n.node
-
-</t>
-<t tx="ekr.20220525082935.165">def visit_op_expr(self, expr: OpExpr) -&gt; None:
-    expr.left.accept(self)
-
-    if expr.op in ("and", "or"):
-        inferred = infer_condition_value(expr.left, self.options)
-        if (inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "and") or (
-            inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "or"
-        ):
-            expr.right_unreachable = True
-            return
-        elif (inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "and") or (
-            inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "or"
-        ):
-            expr.right_always = True
-
-    expr.right.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.166">def visit_comparison_expr(self, expr: ComparisonExpr) -&gt; None:
-    for operand in expr.operands:
-        operand.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.167">def visit_unary_expr(self, expr: UnaryExpr) -&gt; None:
-    expr.expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.168">def visit_index_expr(self, expr: IndexExpr) -&gt; None:
-    base = expr.base
-    base.accept(self)
-    if (
-        isinstance(base, RefExpr)
-        and isinstance(base.node, TypeInfo)
-        and not base.node.is_generic()
-    ):
-        expr.index.accept(self)
-    elif (
-        isinstance(base, RefExpr) and isinstance(base.node, TypeAlias)
-    ) or refers_to_class_or_function(base):
-        # We need to do full processing on every iteration, since some type
-        # arguments may contain placeholder types.
-        self.analyze_type_application(expr)
-    else:
-        expr.index.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.169">def analyze_type_application(self, expr: IndexExpr) -&gt; None:
-    """Analyze special form -- type application (either direct or via type aliasing)."""
-    types = self.analyze_type_application_args(expr)
-    if types is None:
-        return
-    base = expr.base
-    expr.analyzed = TypeApplication(base, types)
-    expr.analyzed.line = expr.line
-    expr.analyzed.column = expr.column
-    # Types list, dict, set are not subscriptable, prohibit this if
-    # subscripted either via type alias...
-    if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
-        alias = base.node
-        target = get_proper_type(alias.target)
-        if isinstance(target, Instance):
-            name = target.type.fullname
-            if (
-                alias.no_args
-                and name  # this avoids bogus errors for already reported aliases
-                in get_nongen_builtins(self.options.python_version)
-                and not self.is_stub_file
-                and not alias.normalized
-            ):
-                self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
-    # ...or directly.
-    else:
-        n = self.lookup_type_node(base)
-        if (
-            n
-            and n.fullname in get_nongen_builtins(self.options.python_version)
-            and not self.is_stub_file
-        ):
-            self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
-
-</t>
-<t tx="ekr.20220525082935.17">def adjust_public_exports(self) -&gt; None:
-    """Adjust the module visibility of globals due to __all__."""
-    if "__all__" in self.globals:
-        for name, g in self.globals.items():
-            # Being included in __all__ explicitly exports and makes public.
-            if name in self.all_exports:
-                g.module_public = True
-                g.module_hidden = False
-            # But when __all__ is defined, and a symbol is not included in it,
-            # it cannot be public.
-            else:
-                g.module_public = False
-
-</t>
-<t tx="ekr.20220525082935.170">def analyze_type_application_args(self, expr: IndexExpr) -&gt; list[Type] | None:
-    """Analyze type arguments (index) in a type application.
-
-    Return None if anything was incomplete.
-    """
-    index = expr.index
-    tag = self.track_incomplete_refs()
-    self.analyze_type_expr(index)
-    if self.found_incomplete_ref(tag):
-        return None
-    if self.basic_type_applications:
-        # Postpone the rest until we have more information (for r.h.s. of an assignment)
-        return None
-    types: list[Type] = []
-    if isinstance(index, TupleExpr):
-        items = index.items
-        is_tuple = isinstance(expr.base, RefExpr) and expr.base.fullname == "builtins.tuple"
-        if is_tuple and len(items) == 2 and isinstance(items[-1], EllipsisExpr):
-            items = items[:-1]
-    else:
-        items = [index]
-
-    # whether param spec literals be allowed here
-    # TODO: should this be computed once and passed in?
-    #   or is there a better way to do this?
-    base = expr.base
-    if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
-        alias = base.node
-        target = get_proper_type(alias.target)
-        if isinstance(target, Instance):
-            has_param_spec = target.type.has_param_spec_type
-            num_args = len(target.type.type_vars)
-        else:
-            has_param_spec = False
-            num_args = -1
-    elif isinstance(base, NameExpr) and isinstance(base.node, TypeInfo):
-        has_param_spec = base.node.has_param_spec_type
-        num_args = len(base.node.type_vars)
-    else:
-        has_param_spec = False
-        num_args = -1
-
-    for item in items:
-        try:
-            typearg = self.expr_to_unanalyzed_type(item)
-        except TypeTranslationError:
-            self.fail("Type expected within [...]", expr)
-            return None
-        # We always allow unbound type variables in IndexExpr, since we
-        # may be analysing a type alias definition rvalue. The error will be
-        # reported elsewhere if it is not the case.
-        analyzed = self.anal_type(
-            typearg,
-            allow_unbound_tvars=True,
-            allow_placeholder=True,
-            allow_param_spec_literals=has_param_spec,
-        )
-        if analyzed is None:
-            return None
-        types.append(analyzed)
-
-    if has_param_spec and num_args == 1 and len(types) &gt; 0:
-        first_arg = get_proper_type(types[0])
-        if not (
-            len(types) == 1
-            and (
-                isinstance(first_arg, Parameters)
-                or isinstance(first_arg, ParamSpecType)
-                or isinstance(first_arg, AnyType)
-            )
-        ):
-            types = [Parameters(types, [ARG_POS] * len(types), [None] * len(types))]
-
-    return types
-
-</t>
-<t tx="ekr.20220525082935.171">def visit_slice_expr(self, expr: SliceExpr) -&gt; None:
-    if expr.begin_index:
-        expr.begin_index.accept(self)
-    if expr.end_index:
-        expr.end_index.accept(self)
-    if expr.stride:
-        expr.stride.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.172">def visit_cast_expr(self, expr: CastExpr) -&gt; None:
-    expr.expr.accept(self)
-    analyzed = self.anal_type(expr.type)
-    if analyzed is not None:
-        expr.type = analyzed
-
-</t>
-<t tx="ekr.20220525082935.173">def visit_assert_type_expr(self, expr: AssertTypeExpr) -&gt; None:
-    expr.expr.accept(self)
-    analyzed = self.anal_type(expr.type)
-    if analyzed is not None:
-        expr.type = analyzed
-
-</t>
-<t tx="ekr.20220525082935.174">def visit_reveal_expr(self, expr: RevealExpr) -&gt; None:
-    if expr.kind == REVEAL_TYPE:
-        if expr.expr is not None:
-            expr.expr.accept(self)
-    else:
-        # Reveal locals doesn't have an inner expression, there's no
-        # need to traverse inside it
-        pass
-
-</t>
-<t tx="ekr.20220525082935.175">def visit_type_application(self, expr: TypeApplication) -&gt; None:
-    expr.expr.accept(self)
-    for i in range(len(expr.types)):
-        analyzed = self.anal_type(expr.types[i])
-        if analyzed is not None:
-            expr.types[i] = analyzed
-
-</t>
-<t tx="ekr.20220525082935.176">def visit_list_comprehension(self, expr: ListComprehension) -&gt; None:
-    if any(expr.generator.is_async):
-        if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-            self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
-
-    expr.generator.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.177">def visit_set_comprehension(self, expr: SetComprehension) -&gt; None:
-    if any(expr.generator.is_async):
-        if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-            self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
-
-    expr.generator.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.178">def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -&gt; None:
-    if any(expr.is_async):
-        if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-            self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
-
-    with self.enter(expr):
-        self.analyze_comp_for(expr)
-        expr.key.accept(self)
-        expr.value.accept(self)
-    self.analyze_comp_for_2(expr)
-
-</t>
-<t tx="ekr.20220525082935.179">def visit_generator_expr(self, expr: GeneratorExpr) -&gt; None:
-    with self.enter(expr):
-        self.analyze_comp_for(expr)
-        expr.left_expr.accept(self)
-    self.analyze_comp_for_2(expr)
-
-</t>
-<t tx="ekr.20220525082935.18">@contextmanager
-def file_context(
-    self, file_node: MypyFile, options: Options, active_type: TypeInfo | None = None
-) -&gt; Iterator[None]:
-    """Configure analyzer for analyzing targets within a file/class.
-
-    Args:
-        file_node: target file
-        options: options specific to the file
-        active_type: must be the surrounding class to analyze method targets
-    """
-    scope = self.scope
-    self.options = options
-    self.errors.set_file(file_node.path, file_node.fullname, scope=scope, options=options)
-    self.cur_mod_node = file_node
-    self.cur_mod_id = file_node.fullname
-    with scope.module_scope(self.cur_mod_id):
-        self._is_stub_file = file_node.path.lower().endswith(".pyi")
-        self._is_typeshed_stub_file = is_typeshed_file(
-            options.abs_custom_typeshed_dir, file_node.path
-        )
-        self.globals = file_node.names
-        self.tvar_scope = TypeVarLikeScope()
-
-        self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
-        self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
-        self.enum_call_analyzer = EnumCallAnalyzer(options, self)
-        self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
-
-        # Counter that keeps track of references to undefined things potentially caused by
-        # incomplete namespaces.
-        self.num_incomplete_refs = 0
-
-        if active_type:
-            self.incomplete_type_stack.append(False)
-            scope.enter_class(active_type)
-            self.enter_class(active_type.defn.info)
-            for tvar in active_type.defn.type_vars:
-                self.tvar_scope.bind_existing(tvar)
-
-        yield
-
-        if active_type:
-            scope.leave_class()
-            self.leave_class()
-            self.type = None
-            self.incomplete_type_stack.pop()
-    del self.options
-
-</t>
-<t tx="ekr.20220525082935.180">def analyze_comp_for(self, expr: GeneratorExpr | DictionaryComprehension) -&gt; None:
-    """Analyses the 'comp_for' part of comprehensions (part 1).
-
-    That is the part after 'for' in (x for x in l if p). This analyzes
-    variables and conditions which are analyzed in a local scope.
-    """
-    for i, (index, sequence, conditions) in enumerate(
-        zip(expr.indices, expr.sequences, expr.condlists)
-    ):
-        if i &gt; 0:
-            sequence.accept(self)
-        # Bind index variables.
-        self.analyze_lvalue(index)
-        for cond in conditions:
-            cond.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.181">def analyze_comp_for_2(self, expr: GeneratorExpr | DictionaryComprehension) -&gt; None:
-    """Analyses the 'comp_for' part of comprehensions (part 2).
-
-    That is the part after 'for' in (x for x in l if p). This analyzes
-    the 'l' part which is analyzed in the surrounding scope.
-    """
-    expr.sequences[0].accept(self)
-
-</t>
-<t tx="ekr.20220525082935.182">def visit_lambda_expr(self, expr: LambdaExpr) -&gt; None:
-    self.analyze_arg_initializers(expr)
-    self.analyze_function_body(expr)
-
-</t>
-<t tx="ekr.20220525082935.183">def visit_conditional_expr(self, expr: ConditionalExpr) -&gt; None:
-    expr.if_expr.accept(self)
-    expr.cond.accept(self)
-    expr.else_expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.184"></t>
-<t tx="ekr.20220525082935.185">def visit__promote_expr(self, expr: PromoteExpr) -&gt; None:
-    analyzed = self.anal_type(expr.type)
-    if analyzed is not None:
-        expr.type = analyzed
-
-</t>
-<t tx="ekr.20220525082935.186">def visit_yield_expr(self, e: YieldExpr) -&gt; None:
-    if not self.is_func_scope():
-        self.fail('"yield" outside function', e, serious=True, blocker=True)
-    elif self.is_comprehension_stack[-1]:
-        self.fail(
-            '"yield" inside comprehension or generator expression',
-            e,
-            serious=True,
-            blocker=True,
-        )
-    elif self.function_stack[-1].is_coroutine:
-        if self.options.python_version &lt; (3, 6):
-            self.fail('"yield" in async function', e, serious=True, blocker=True)
-        else:
-            self.function_stack[-1].is_generator = True
-            self.function_stack[-1].is_async_generator = True
-    else:
-        self.function_stack[-1].is_generator = True
-    if e.expr:
-        e.expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.187">def visit_await_expr(self, expr: AwaitExpr) -&gt; None:
-    if not self.is_func_scope():
-        self.fail('"await" outside function', expr)
-    elif not self.function_stack[-1].is_coroutine:
-        self.fail('"await" outside coroutine ("async def")', expr)
-    expr.expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.188">#
-# Patterns
-#
-
-</t>
-<t tx="ekr.20220525082935.189">def visit_as_pattern(self, p: AsPattern) -&gt; None:
-    if p.pattern is not None:
-        p.pattern.accept(self)
-    if p.name is not None:
-        self.analyze_lvalue(p.name)
-
-</t>
-<t tx="ekr.20220525082935.19">#
-# Functions
-#
-
-</t>
-<t tx="ekr.20220525082935.190">def visit_or_pattern(self, p: OrPattern) -&gt; None:
-    for pattern in p.patterns:
-        pattern.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.191">def visit_value_pattern(self, p: ValuePattern) -&gt; None:
-    p.expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.192">def visit_sequence_pattern(self, p: SequencePattern) -&gt; None:
-    for pattern in p.patterns:
-        pattern.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.193">def visit_starred_pattern(self, p: StarredPattern) -&gt; None:
-    if p.capture is not None:
-        self.analyze_lvalue(p.capture)
-
-</t>
-<t tx="ekr.20220525082935.194">def visit_mapping_pattern(self, p: MappingPattern) -&gt; None:
-    for key in p.keys:
-        key.accept(self)
-    for value in p.values:
-        value.accept(self)
-    if p.rest is not None:
-        self.analyze_lvalue(p.rest)
-
-</t>
-<t tx="ekr.20220525082935.195">def visit_class_pattern(self, p: ClassPattern) -&gt; None:
-    p.class_ref.accept(self)
-    for pos in p.positionals:
-        pos.accept(self)
-    for v in p.keyword_values:
-        v.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.196">#
-# Lookup functions
-#
-
-</t>
-<t tx="ekr.20220525082935.197">def lookup(
-    self, name: str, ctx: Context, suppress_errors: bool = False
-) -&gt; SymbolTableNode | None:
-    """Look up an unqualified (no dots) name in all active namespaces.
-
-    Note that the result may contain a PlaceholderNode. The caller may
-    want to defer in that case.
-
-    Generate an error if the name is not defined unless suppress_errors
-    is true or the current namespace is incomplete. In the latter case
-    defer.
-    """
-    implicit_name = False
-    # 1a. Name declared using 'global x' takes precedence
-    if name in self.global_decls[-1]:
-        if name in self.globals:
-            return self.globals[name]
-        if not suppress_errors:
-            self.name_not_defined(name, ctx)
-        return None
-    # 1b. Name declared using 'nonlocal x' takes precedence
-    if name in self.nonlocal_decls[-1]:
-        for table in reversed(self.locals[:-1]):
-            if table is not None and name in table:
-                return table[name]
-        if not suppress_errors:
-            self.name_not_defined(name, ctx)
-        return None
-    # 2. Class attributes (if within class definition)
-    if self.type and not self.is_func_scope() and name in self.type.names:
-        node = self.type.names[name]
-        if not node.implicit:
-            if self.is_active_symbol_in_class_body(node.node):
-                return node
-        else:
-            # Defined through self.x assignment
-            implicit_name = True
-            implicit_node = node
-    # 3. Local (function) scopes
-    for table in reversed(self.locals):
-        if table is not None and name in table:
-            return table[name]
-    # 4. Current file global scope
-    if name in self.globals:
-        return self.globals[name]
-    # 5. Builtins
-    b = self.globals.get("__builtins__", None)
-    if b:
-        assert isinstance(b.node, MypyFile)
-        table = b.node.names
-        if name in table:
-            if len(name) &gt; 1 and name[0] == "_" and name[1] != "_":
-                if not suppress_errors:
-                    self.name_not_defined(name, ctx)
-                return None
-            node = table[name]
-            return node
-    # Give up.
-    if not implicit_name and not suppress_errors:
-        self.name_not_defined(name, ctx)
-    else:
-        if implicit_name:
-            return implicit_node
-    return None
-
-</t>
-<t tx="ekr.20220525082935.198">def is_active_symbol_in_class_body(self, node: SymbolNode | None) -&gt; bool:
-    """Can a symbol defined in class body accessed at current statement?
-
-    Only allow access to class attributes textually after
-    the definition, so that it's possible to fall back to the
-    outer scope. Example:
-
-        class X: ...
-
-        class C:
-            X = X  # Initializer refers to outer scope
-
-    Nested classes are an exception, since we want to support
-    arbitrary forward references in type annotations. Also, we
-    allow forward references to type aliases to support recursive
-    types.
-    """
-    # TODO: Forward reference to name imported in class body is not
-    #       caught.
-    if self.statement is None:
-        # Assume it's fine -- don't have enough context to check
-        return True
-    return (
-        node is None
-        or self.is_textually_before_statement(node)
-        or not self.is_defined_in_current_module(node.fullname)
-        or isinstance(node, (TypeInfo, TypeAlias))
-        or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo)
-    )
-
-</t>
-<t tx="ekr.20220525082935.199">def is_textually_before_statement(self, node: SymbolNode) -&gt; bool:
-    """Check if a node is defined textually before the current statement
-
-    Note that decorated functions' line number are the same as
-    the top decorator.
-    """
-    assert self.statement
-    line_diff = self.statement.line - node.line
-
-    # The first branch handles reference an overloaded function variant inside itself,
-    # this is a corner case where mypy technically deviates from runtime name resolution,
-    # but it is fine because we want an overloaded function to be treated as a single unit.
-    if self.is_overloaded_item(node, self.statement):
-        return False
-    elif isinstance(node, Decorator) and not node.is_overload:
-        return line_diff &gt; len(node.original_decorators)
-    else:
-        return line_diff &gt; 0
-
-</t>
-<t tx="ekr.20220525082935.2">def __init__(
-    self,
-    modules: dict[str, MypyFile],
-    missing_modules: set[str],
-    incomplete_namespaces: set[str],
-    errors: Errors,
-    plugin: Plugin,
-) -&gt; None:
-    """Construct semantic analyzer.
-
-    We reuse the same semantic analyzer instance across multiple modules.
-
-    Args:
-        modules: Global modules dictionary
-        missing_modules: Modules that could not be imported encountered so far
-        incomplete_namespaces: Namespaces that are being populated during semantic analysis
-            (can contain modules and classes within the current SCC; mutated by the caller)
-        errors: Report analysis errors using this instance
-    """
-    self.locals = [None]
-    self.is_comprehension_stack = [False]
-    # Saved namespaces from previous iteration. Every top-level function/method body is
-    # analyzed in several iterations until all names are resolved. We need to save
-    # the local namespaces for the top level function and all nested functions between
-    # these iterations. See also semanal_main.process_top_level_function().
-    self.saved_locals: dict[
-        FuncItem | GeneratorExpr | DictionaryComprehension, SymbolTable
-    ] = {}
-    self.imports = set()
-    self.type = None
-    self.type_stack = []
-    # Are the namespaces of classes being processed complete?
-    self.incomplete_type_stack: list[bool] = []
-    self.tvar_scope = TypeVarLikeScope()
-    self.function_stack = []
-    self.block_depth = [0]
-    self.loop_depth = 0
-    self.errors = errors
-    self.modules = modules
-    self.msg = MessageBuilder(errors, modules)
-    self.missing_modules = missing_modules
-    self.missing_names = [set()]
-    # These namespaces are still in process of being populated. If we encounter a
-    # missing name in these namespaces, we need to defer the current analysis target,
-    # since it's possible that the name will be there once the namespace is complete.
-    self.incomplete_namespaces = incomplete_namespaces
-    self.all_exports: list[str] = []
-    # Map from module id to list of explicitly exported names (i.e. names in __all__).
-    self.export_map: dict[str, list[str]] = {}
-    self.plugin = plugin
-    # If True, process function definitions. If False, don't. This is used
-    # for processing module top levels in fine-grained incremental mode.
-    self.recurse_into_functions = True
-    self.scope = Scope()
-
-    # Trace line numbers for every file where deferral happened during analysis of
-    # current SCC or top-level function.
-    self.deferral_debug_context: list[tuple[str, int]] = []
-
-    # This is needed to properly support recursive type aliases. The problem is that
-    # Foo[Bar] could mean three things depending on context: a target for type alias,
-    # a normal index expression (including enum index), or a type application.
-    # The latter is particularly problematic as it can falsely create incomplete
-    # refs while analysing rvalues of type aliases. To avoid this we first analyse
-    # rvalues while temporarily setting this to True.
-    self.basic_type_applications = False
-
-</t>
-<t tx="ekr.20220525082935.20">def visit_func_def(self, defn: FuncDef) -&gt; None:
-    self.statement = defn
-
-    # Visit default values because they may contain assignment expressions.
-    for arg in defn.arguments:
-        if arg.initializer:
-            arg.initializer.accept(self)
-
-    defn.is_conditional = self.block_depth[-1] &gt; 0
-
-    # Set full names even for those definitions that aren't added
-    # to a symbol table. For example, for overload items.
-    defn._fullname = self.qualified_name(defn.name)
-
-    # We don't add module top-level functions to symbol tables
-    # when we analyze their bodies in the second phase on analysis,
-    # since they were added in the first phase. Nested functions
-    # get always added, since they aren't separate targets.
-    if not self.recurse_into_functions or len(self.function_stack) &gt; 0:
-        if not defn.is_decorated and not defn.is_overload:
-            self.add_function_to_symbol_table(defn)
-
-    if not self.recurse_into_functions:
-        return
-
-    with self.scope.function_scope(defn):
-        self.analyze_func_def(defn)
-
-</t>
-<t tx="ekr.20220525082935.200">def is_overloaded_item(self, node: SymbolNode, statement: Statement) -&gt; bool:
-    """Check whether the function belongs to the overloaded variants"""
-    if isinstance(node, OverloadedFuncDef) and isinstance(statement, FuncDef):
-        in_items = statement in {
-            item.func if isinstance(item, Decorator) else item for item in node.items
-        }
-        in_impl = node.impl is not None and (
-            (isinstance(node.impl, Decorator) and statement is node.impl.func)
-            or statement is node.impl
-        )
-        return in_items or in_impl
-    return False
-
-</t>
-<t tx="ekr.20220525082935.201">def is_defined_in_current_module(self, fullname: str | None) -&gt; bool:
-    if fullname is None:
-        return False
-    return module_prefix(self.modules, fullname) == self.cur_mod_id
-
-</t>
-<t tx="ekr.20220525082935.202">def lookup_qualified(
-    self, name: str, ctx: Context, suppress_errors: bool = False
-) -&gt; SymbolTableNode | None:
-    """Lookup a qualified name in all activate namespaces.
-
-    Note that the result may contain a PlaceholderNode. The caller may
-    want to defer in that case.
-
-    Generate an error if the name is not defined unless suppress_errors
-    is true or the current namespace is incomplete. In the latter case
-    defer.
-    """
-    if "." not in name:
-        # Simple case: look up a short name.
-        return self.lookup(name, ctx, suppress_errors=suppress_errors)
-    parts = name.split(".")
-    namespace = self.cur_mod_id
-    sym = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
-    if sym:
-        for i in range(1, len(parts)):
-            node = sym.node
-            part = parts[i]
-            if isinstance(node, TypeInfo):
-                nextsym = node.get(part)
-            elif isinstance(node, MypyFile):
-                nextsym = self.get_module_symbol(node, part)
-                namespace = node.fullname
-            elif isinstance(node, PlaceholderNode):
-                return sym
-            elif isinstance(node, TypeAlias) and node.no_args:
-                assert isinstance(node.target, ProperType)
-                if isinstance(node.target, Instance):
-                    nextsym = node.target.type.get(part)
-                else:
-                    nextsym = None
-            else:
-                if isinstance(node, Var):
-                    typ = get_proper_type(node.type)
-                    if isinstance(typ, AnyType):
-                        # Allow access through Var with Any type without error.
-                        return self.implicit_symbol(sym, name, parts[i:], typ)
-                # This might be something like valid `P.args` or invalid `P.__bound__` access.
-                # Important note that `ParamSpecExpr` is also ignored in other places.
-                # See https://github.com/python/mypy/pull/13468
-                if isinstance(node, ParamSpecExpr) and part in ("args", "kwargs"):
-                    return None
-                # Lookup through invalid node, such as variable or function
-                nextsym = None
-            if not nextsym or nextsym.module_hidden:
-                if not suppress_errors:
-                    self.name_not_defined(name, ctx, namespace=namespace)
-                return None
-            sym = nextsym
-    return sym
-
-</t>
-<t tx="ekr.20220525082935.203">def lookup_type_node(self, expr: Expression) -&gt; SymbolTableNode | None:
-    try:
-        t = self.expr_to_unanalyzed_type(expr)
-    except TypeTranslationError:
-        return None
-    if isinstance(t, UnboundType):
-        n = self.lookup_qualified(t.name, expr, suppress_errors=True)
-        return n
-    return None
-
-</t>
-<t tx="ekr.20220525082935.204">def get_module_symbol(self, node: MypyFile, name: str) -&gt; SymbolTableNode | None:
-    """Look up a symbol from a module.
-
-    Return None if no matching symbol could be bound.
-    """
-    module = node.fullname
-    names = node.names
-    sym = names.get(name)
-    if not sym:
-        fullname = module + "." + name
-        if fullname in self.modules:
-            sym = SymbolTableNode(GDEF, self.modules[fullname])
-        elif self.is_incomplete_namespace(module):
-            self.record_incomplete_ref()
-        elif "__getattr__" in names and (
-            node.is_stub or self.options.python_version &gt;= (3, 7)
-        ):
-            gvar = self.create_getattr_var(names["__getattr__"], name, fullname)
-            if gvar:
-                sym = SymbolTableNode(GDEF, gvar)
-        elif self.is_missing_module(fullname):
-            # We use the fullname of the original definition so that we can
-            # detect whether two names refer to the same thing.
-            var_type = AnyType(TypeOfAny.from_unimported_type)
-            v = Var(name, type=var_type)
-            v._fullname = fullname
-            sym = SymbolTableNode(GDEF, v)
-    elif sym.module_hidden:
-        sym = None
-    return sym
-
-</t>
-<t tx="ekr.20220525082935.205">def is_missing_module(self, module: str) -&gt; bool:
-    return module in self.missing_modules
-
-</t>
-<t tx="ekr.20220525082935.206">def implicit_symbol(
-    self, sym: SymbolTableNode, name: str, parts: list[str], source_type: AnyType
-) -&gt; SymbolTableNode:
-    """Create symbol for a qualified name reference through Any type."""
-    if sym.node is None:
-        basename = None
-    else:
-        basename = sym.node.fullname
-    if basename is None:
-        fullname = name
-    else:
-        fullname = basename + "." + ".".join(parts)
-    var_type = AnyType(TypeOfAny.from_another_any, source_type)
-    var = Var(parts[-1], var_type)
-    var._fullname = fullname
-    return SymbolTableNode(GDEF, var)
-
-</t>
-<t tx="ekr.20220525082935.207">def create_getattr_var(
-    self, getattr_defn: SymbolTableNode, name: str, fullname: str
-) -&gt; Var | None:
-    """Create a dummy variable using module-level __getattr__ return type.
-
-    If not possible, return None.
-
-    Note that multiple Var nodes can be created for a single name. We
-    can use the from_module_getattr and the fullname attributes to
-    check if two dummy Var nodes refer to the same thing. Reusing Var
-    nodes would require non-local mutable state, which we prefer to
-    avoid.
-    """
-    if isinstance(getattr_defn.node, (FuncDef, Var)):
-        node_type = get_proper_type(getattr_defn.node.type)
-        if isinstance(node_type, CallableType):
-            typ = node_type.ret_type
-        else:
-            typ = AnyType(TypeOfAny.from_error)
-        v = Var(name, type=typ)
-        v._fullname = fullname
-        v.from_module_getattr = True
-        return v
-    return None
-
-</t>
-<t tx="ekr.20220525082935.208">def lookup_fully_qualified(self, fullname: str) -&gt; SymbolTableNode:
-    ret = self.lookup_fully_qualified_or_none(fullname)
-    assert ret is not None, fullname
-    return ret
-
-</t>
-<t tx="ekr.20220525082935.209">def lookup_fully_qualified_or_none(self, fullname: str) -&gt; SymbolTableNode | None:
-    """Lookup a fully qualified name that refers to a module-level definition.
-
-    Don't assume that the name is defined. This happens in the global namespace --
-    the local module namespace is ignored. This does not dereference indirect
-    refs.
-
-    Note that this can't be used for names nested in class namespaces.
-    """
-    # TODO: unify/clean-up/simplify lookup methods, see #4157.
-    # TODO: support nested classes (but consider performance impact,
-    #       we might keep the module level only lookup for thing like 'builtins.int').
-    assert "." in fullname
-    module, name = fullname.rsplit(".", maxsplit=1)
-    if module not in self.modules:
-        return None
-    filenode = self.modules[module]
-    result = filenode.names.get(name)
-    if result is None and self.is_incomplete_namespace(module):
-        # TODO: More explicit handling of incomplete refs?
-        self.record_incomplete_ref()
-    return result
 
 </t>
 <t tx="ekr.20220525082935.21">def analyze_func_def(self, defn: FuncDef) -&gt; None:
@@ -15125,3679 +5996,12 @@ def remove_unpack_kwargs(self, defn: FuncDef, typ: CallableType) -&gt; CallableT
     return typ.copy_modified(arg_types=new_arg_types, unpack_kwargs=True)
 
 </t>
-<t tx="ekr.20220525082935.210">def object_type(self) -&gt; Instance:
-    return self.named_type("builtins.object")
-
-</t>
-<t tx="ekr.20220525082935.211">def str_type(self) -&gt; Instance:
-    return self.named_type("builtins.str")
-
-</t>
-<t tx="ekr.20220525082935.212">def named_type(self, fullname: str, args: list[Type] | None = None) -&gt; Instance:
-    sym = self.lookup_fully_qualified(fullname)
-    assert sym, "Internal error: attempted to construct unknown type"
-    node = sym.node
-    assert isinstance(node, TypeInfo)
-    if args:
-        # TODO: assert len(args) == len(node.defn.type_vars)
-        return Instance(node, args)
-    return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
-
-</t>
-<t tx="ekr.20220525082935.213">def named_type_or_none(self, fullname: str, args: list[Type] | None = None) -&gt; Instance | None:
-    sym = self.lookup_fully_qualified_or_none(fullname)
-    if not sym or isinstance(sym.node, PlaceholderNode):
-        return None
-    node = sym.node
-    if isinstance(node, TypeAlias):
-        assert isinstance(node.target, Instance)  # type: ignore[misc]
-        node = node.target.type
-    assert isinstance(node, TypeInfo), node
-    if args is not None:
-        # TODO: assert len(args) == len(node.defn.type_vars)
-        return Instance(node, args)
-    return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
-
-</t>
-<t tx="ekr.20220525082935.214">def builtin_type(self, fully_qualified_name: str) -&gt; Instance:
-    """Legacy function -- use named_type() instead."""
-    return self.named_type(fully_qualified_name)
-
-</t>
-<t tx="ekr.20220525082935.215">def lookup_current_scope(self, name: str) -&gt; SymbolTableNode | None:
-    if self.locals[-1] is not None:
-        return self.locals[-1].get(name)
-    elif self.type is not None:
-        return self.type.names.get(name)
-    else:
-        return self.globals.get(name)
-
-</t>
-<t tx="ekr.20220525082935.216">#
-# Adding symbols
-#
-
-</t>
-<t tx="ekr.20220525082935.217">def add_symbol(
-    self,
-    name: str,
-    node: SymbolNode,
-    context: Context,
-    module_public: bool = True,
-    module_hidden: bool = False,
-    can_defer: bool = True,
-    escape_comprehensions: bool = False,
-) -&gt; bool:
-    """Add symbol to the currently active symbol table.
-
-    Generally additions to symbol table should go through this method or
-    one of the methods below so that kinds, redefinitions, conditional
-    definitions, and skipped names are handled consistently.
-
-    Return True if we actually added the symbol, or False if we refused to do so
-    (because something is not ready).
-
-    If can_defer is True, defer current target if adding a placeholder.
-    """
-    if self.is_func_scope():
-        kind = LDEF
-    elif self.type is not None:
-        kind = MDEF
-    else:
-        kind = GDEF
-    symbol = SymbolTableNode(
-        kind, node, module_public=module_public, module_hidden=module_hidden
-    )
-    return self.add_symbol_table_node(name, symbol, context, can_defer, escape_comprehensions)
-
-</t>
-<t tx="ekr.20220525082935.218">def add_symbol_skip_local(self, name: str, node: SymbolNode) -&gt; None:
-    """Same as above, but skipping the local namespace.
-
-    This doesn't check for previous definition and is only used
-    for serialization of method-level classes.
-
-    Classes defined within methods can be exposed through an
-    attribute type, but method-level symbol tables aren't serialized.
-    This method can be used to add such classes to an enclosing,
-    serialized symbol table.
-    """
-    # TODO: currently this is only used by named tuples and typed dicts.
-    # Use this method also by normal classes, see issue #6422.
-    if self.type is not None:
-        names = self.type.names
-        kind = MDEF
-    else:
-        names = self.globals
-        kind = GDEF
-    symbol = SymbolTableNode(kind, node)
-    names[name] = symbol
-
-</t>
-<t tx="ekr.20220525082935.219">def add_symbol_table_node(
-    self,
-    name: str,
-    symbol: SymbolTableNode,
-    context: Context | None = None,
-    can_defer: bool = True,
-    escape_comprehensions: bool = False,
-) -&gt; bool:
-    """Add symbol table node to the currently active symbol table.
-
-    Return True if we actually added the symbol, or False if we refused
-    to do so (because something is not ready or it was a no-op).
-
-    Generate an error if there is an invalid redefinition.
-
-    If context is None, unconditionally add node, since we can't report
-    an error. Note that this is used by plugins to forcibly replace nodes!
-
-    TODO: Prevent plugins from replacing nodes, as it could cause problems?
-
-    Args:
-        name: short name of symbol
-        symbol: Node to add
-        can_defer: if True, defer current target if adding a placeholder
-        context: error context (see above about None value)
-    """
-    names = self.current_symbol_table(escape_comprehensions=escape_comprehensions)
-    existing = names.get(name)
-    if isinstance(symbol.node, PlaceholderNode) and can_defer:
-        if context is not None:
-            self.process_placeholder(name, "name", context)
-        else:
-            # see note in docstring describing None contexts
-            self.defer()
-    if (
-        existing is not None
-        and context is not None
-        and not is_valid_replacement(existing, symbol)
-    ):
-        # There is an existing node, so this may be a redefinition.
-        # If the new node points to the same node as the old one,
-        # or if both old and new nodes are placeholders, we don't
-        # need to do anything.
-        old = existing.node
-        new = symbol.node
-        if isinstance(new, PlaceholderNode):
-            # We don't know whether this is okay. Let's wait until the next iteration.
-            return False
-        if not is_same_symbol(old, new):
-            if isinstance(new, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
-                self.add_redefinition(names, name, symbol)
-            if not (isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new)):
-                self.name_already_defined(name, context, existing)
-    elif name not in self.missing_names[-1] and "*" not in self.missing_names[-1]:
-        names[name] = symbol
-        self.progress = True
-        return True
-    return False
-
-</t>
-<t tx="ekr.20220525082935.22">def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -&gt; None:
-    """Check basic signature validity and tweak annotation of self/cls argument."""
-    # Only non-static methods are special.
-    functype = func.type
-    if not func.is_static:
-        if func.name in ["__init_subclass__", "__class_getitem__"]:
-            func.is_class = True
-        if not func.arguments:
-            self.fail("Method must have at least one argument", func)
-        elif isinstance(functype, CallableType):
-            self_type = get_proper_type(functype.arg_types[0])
-            if isinstance(self_type, AnyType):
-                leading_type: Type = fill_typevars(info)
-                if func.is_class or func.name == "__new__":
-                    leading_type = self.class_type(leading_type)
-                func.type = replace_implicit_first_type(functype, leading_type)
-
-</t>
-<t tx="ekr.20220525082935.220">def add_redefinition(self, names: SymbolTable, name: str, symbol: SymbolTableNode) -&gt; None:
-    """Add a symbol table node that reflects a redefinition as a function or a class.
-
-    Redefinitions need to be added to the symbol table so that they can be found
-    through AST traversal, but they have dummy names of form 'name-redefinition[N]',
-    where N ranges over 2, 3, ... (omitted for the first redefinition).
-
-    Note: we always store redefinitions independently of whether they are valid or not
-    (so they will be semantically analyzed), the caller should give an error for invalid
-    redefinitions (such as e.g. variable redefined as a class).
-    """
-    i = 1
-    # Don't serialize redefined nodes. They are likely to have
-    # busted internal references which can cause problems with
-    # serialization and they can't have any external references to
-    # them.
-    symbol.no_serialize = True
-    while True:
-        if i == 1:
-            new_name = f"{name}-redefinition"
-        else:
-            new_name = f"{name}-redefinition{i}"
-        existing = names.get(new_name)
-        if existing is None:
-            names[new_name] = symbol
-            return
-        elif existing.node is symbol.node:
-            # Already there
-            return
-        i += 1
-
-</t>
-<t tx="ekr.20220525082935.221">def add_local(self, node: Var | FuncDef | OverloadedFuncDef, context: Context) -&gt; None:
-    """Add local variable or function."""
-    assert self.is_func_scope()
-    name = node.name
-    node._fullname = name
-    self.add_symbol(name, node, context)
-
-</t>
-<t tx="ekr.20220525082935.222">def add_module_symbol(
-    self, id: str, as_id: str, context: Context, module_public: bool, module_hidden: bool
-) -&gt; None:
-    """Add symbol that is a reference to a module object."""
-    if id in self.modules:
-        node = self.modules[id]
-        self.add_symbol(
-            as_id, node, context, module_public=module_public, module_hidden=module_hidden
-        )
-    else:
-        self.add_unknown_imported_symbol(
-            as_id,
-            context,
-            target_name=id,
-            module_public=module_public,
-            module_hidden=module_hidden,
-        )
-
-</t>
-<t tx="ekr.20220525082935.223">def _get_node_for_class_scoped_import(
-    self, name: str, symbol_node: SymbolNode | None, context: Context
-) -&gt; SymbolNode | None:
-    if symbol_node is None:
-        return None
-    # I promise this type checks; I'm just making mypyc issues go away.
-    # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
-    # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
-    # See also https://github.com/mypyc/mypyc/issues/892
-    f = cast(Any, lambda x: x)
-    if isinstance(f(symbol_node), (Decorator, FuncBase, Var)):
-        # For imports in class scope, we construct a new node to represent the symbol and
-        # set its `info` attribute to `self.type`.
-        existing = self.current_symbol_table().get(name)
-        if (
-            # The redefinition checks in `add_symbol_table_node` don't work for our
-            # constructed Var / FuncBase, so check for possible redefinitions here.
-            existing is not None
-            and isinstance(f(existing.node), (Decorator, FuncBase, Var))
-            and (
-                isinstance(f(existing.type), f(AnyType))
-                or f(existing.type) == f(symbol_node).type
-            )
-        ):
-            return existing.node
-
-        # Construct the new node
-        if isinstance(f(symbol_node), (FuncBase, Decorator)):
-            # In theory we could construct a new node here as well, but in practice
-            # it doesn't work well, see #12197
-            typ: Type | None = AnyType(TypeOfAny.from_error)
-            self.fail("Unsupported class scoped import", context)
-        else:
-            typ = f(symbol_node).type
-        symbol_node = Var(name, typ)
-        symbol_node._fullname = self.qualified_name(name)
-        assert self.type is not None  # guaranteed by is_class_scope
-        symbol_node.info = self.type
-        symbol_node.line = context.line
-        symbol_node.column = context.column
-    return symbol_node
-
-</t>
-<t tx="ekr.20220525082935.224">def add_imported_symbol(
-    self,
-    name: str,
-    node: SymbolTableNode,
-    context: Context,
-    module_public: bool,
-    module_hidden: bool,
-) -&gt; None:
-    """Add an alias to an existing symbol through import."""
-    assert not module_hidden or not module_public
-
-    symbol_node: SymbolNode | None = node.node
-
-    if self.is_class_scope():
-        symbol_node = self._get_node_for_class_scoped_import(name, symbol_node, context)
-
-    symbol = SymbolTableNode(
-        node.kind, symbol_node, module_public=module_public, module_hidden=module_hidden
-    )
-    self.add_symbol_table_node(name, symbol, context)
-
-</t>
-<t tx="ekr.20220525082935.225">def add_unknown_imported_symbol(
-    self,
-    name: str,
-    context: Context,
-    target_name: str | None,
-    module_public: bool,
-    module_hidden: bool,
-) -&gt; None:
-    """Add symbol that we don't know what it points to because resolving an import failed.
-
-    This can happen if a module is missing, or it is present, but doesn't have
-    the imported attribute. The `target_name` is the name of symbol in the namespace
-    it is imported from. For example, for 'from mod import x as y' the target_name is
-    'mod.x'. This is currently used only to track logical dependencies.
-    """
-    existing = self.current_symbol_table().get(name)
-    if existing and isinstance(existing.node, Var) and existing.node.is_suppressed_import:
-        # This missing import was already added -- nothing to do here.
-        return
-    var = Var(name)
-    if self.options.logical_deps and target_name is not None:
-        # This makes it possible to add logical fine-grained dependencies
-        # from a missing module. We can't use this by default, since in a
-        # few places we assume that the full name points to a real
-        # definition, but this name may point to nothing.
-        var._fullname = target_name
-    elif self.type:
-        var._fullname = self.type.fullname + "." + name
-        var.info = self.type
-    else:
-        var._fullname = self.qualified_name(name)
-    var.is_ready = True
-    any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
-    var.type = any_type
-    var.is_suppressed_import = True
-    self.add_symbol(
-        name, var, context, module_public=module_public, module_hidden=module_hidden
-    )
-
-</t>
-<t tx="ekr.20220525082935.226">#
-# Other helpers
-#
-
-</t>
-<t tx="ekr.20220525082935.227">@contextmanager
-def tvar_scope_frame(self, frame: TypeVarLikeScope) -&gt; Iterator[None]:
-    old_scope = self.tvar_scope
-    self.tvar_scope = frame
-    yield
-    self.tvar_scope = old_scope
-
-</t>
-<t tx="ekr.20220525082935.228">def defer(self, debug_context: Context | None = None, force_progress: bool = False) -&gt; None:
-    """Defer current analysis target to be analyzed again.
-
-    This must be called if something in the current target is
-    incomplete or has a placeholder node. However, this must *not*
-    be called during the final analysis iteration! Instead, an error
-    should be generated. Often 'process_placeholder' is a good
-    way to either defer or generate an error.
-
-    NOTE: Some methods, such as 'anal_type', 'mark_incomplete' and
-          'record_incomplete_ref', call this implicitly, or when needed.
-          They are usually preferable to a direct defer() call.
-    """
-    assert not self.final_iteration, "Must not defer during final iteration"
-    if force_progress:
-        # Usually, we report progress if we have replaced a placeholder node
-        # with an actual valid node. However, sometimes we need to update an
-        # existing node *in-place*. For example, this is used by type aliases
-        # in context of forward references and/or recursive aliases, and in
-        # similar situations (recursive named tuples etc).
-        self.progress = True
-    self.deferred = True
-    # Store debug info for this deferral.
-    line = (
-        debug_context.line if debug_context else self.statement.line if self.statement else -1
-    )
-    self.deferral_debug_context.append((self.cur_mod_id, line))
-
-</t>
-<t tx="ekr.20220525082935.229">def track_incomplete_refs(self) -&gt; Tag:
-    """Return tag that can be used for tracking references to incomplete names."""
-    return self.num_incomplete_refs
-
-</t>
-<t tx="ekr.20220525082935.23">def set_original_def(self, previous: Node | None, new: FuncDef | Decorator) -&gt; bool:
-    """If 'new' conditionally redefine 'previous', set 'previous' as original
-
-    We reject straight redefinitions of functions, as they are usually
-    a programming error. For example:
-
-      def f(): ...
-      def f(): ...  # Error: 'f' redefined
-    """
-    if isinstance(new, Decorator):
-        new = new.func
-    if (
-        isinstance(previous, (FuncDef, Decorator))
-        and unnamed_function(new.name)
-        and unnamed_function(previous.name)
-    ):
-        return True
-    if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
-        new.original_def = previous
-        return True
-    else:
-        return False
-
-</t>
-<t tx="ekr.20220525082935.230">def found_incomplete_ref(self, tag: Tag) -&gt; bool:
-    """Have we encountered an incomplete reference since starting tracking?"""
-    return self.num_incomplete_refs != tag
-
-</t>
-<t tx="ekr.20220525082935.231">def record_incomplete_ref(self) -&gt; None:
-    """Record the encounter of an incomplete reference and defer current analysis target."""
-    self.defer()
-    self.num_incomplete_refs += 1
-
-</t>
-<t tx="ekr.20220525082935.232">def mark_incomplete(
-    self,
-    name: str,
-    node: Node,
-    becomes_typeinfo: bool = False,
-    module_public: bool = True,
-    module_hidden: bool = False,
-) -&gt; None:
-    """Mark a definition as incomplete (and defer current analysis target).
-
-    Also potentially mark the current namespace as incomplete.
-
-    Args:
-        name: The name that we weren't able to define (or '*' if the name is unknown)
-        node: The node that refers to the name (definition or lvalue)
-        becomes_typeinfo: Pass this to PlaceholderNode (used by special forms like
-            named tuples that will create TypeInfos).
-    """
-    self.defer(node)
-    if name == "*":
-        self.incomplete = True
-    elif not self.is_global_or_nonlocal(name):
-        fullname = self.qualified_name(name)
-        assert self.statement
-        placeholder = PlaceholderNode(
-            fullname, node, self.statement.line, becomes_typeinfo=becomes_typeinfo
-        )
-        self.add_symbol(
-            name,
-            placeholder,
-            module_public=module_public,
-            module_hidden=module_hidden,
-            context=dummy_context(),
-        )
-    self.missing_names[-1].add(name)
-
-</t>
-<t tx="ekr.20220525082935.233">def is_incomplete_namespace(self, fullname: str) -&gt; bool:
-    """Is a module or class namespace potentially missing some definitions?
-
-    If a name is missing from an incomplete namespace, we'll need to defer the
-    current analysis target.
-    """
-    return fullname in self.incomplete_namespaces
-
-</t>
-<t tx="ekr.20220525082935.234">def process_placeholder(self, name: str, kind: str, ctx: Context) -&gt; None:
-    """Process a reference targeting placeholder node.
-
-    If this is not a final iteration, defer current node,
-    otherwise report an error.
-
-    The 'kind' argument indicates if this a name or attribute expression
-    (used for better error message).
-    """
-    if self.final_iteration:
-        self.cannot_resolve_name(name, kind, ctx)
-    else:
-        self.defer(ctx)
-
-</t>
-<t tx="ekr.20220525082935.235">def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -&gt; None:
-    self.fail(f'Cannot resolve {kind} "{name}" (possible cyclic definition)', ctx)
-    if not self.options.disable_recursive_aliases and self.is_func_scope():
-        self.note("Recursive types are not allowed at function scope", ctx)
-
-</t>
-<t tx="ekr.20220525082935.236">def qualified_name(self, name: str) -&gt; str:
-    if self.type is not None:
-        return self.type._fullname + "." + name
-    elif self.is_func_scope():
-        return name
-    else:
-        return self.cur_mod_id + "." + name
-
-</t>
-<t tx="ekr.20220525082935.237">@contextmanager
-def enter(
-    self, function: FuncItem | GeneratorExpr | DictionaryComprehension
-) -&gt; Iterator[None]:
-    """Enter a function, generator or comprehension scope."""
-    names = self.saved_locals.setdefault(function, SymbolTable())
-    self.locals.append(names)
-    is_comprehension = isinstance(function, (GeneratorExpr, DictionaryComprehension))
-    self.is_comprehension_stack.append(is_comprehension)
-    self.global_decls.append(set())
-    self.nonlocal_decls.append(set())
-    # -1 since entering block will increment this to 0.
-    self.block_depth.append(-1)
-    self.missing_names.append(set())
-    try:
-        yield
-    finally:
-        self.locals.pop()
-        self.is_comprehension_stack.pop()
-        self.global_decls.pop()
-        self.nonlocal_decls.pop()
-        self.block_depth.pop()
-        self.missing_names.pop()
-
-</t>
-<t tx="ekr.20220525082935.238">def is_func_scope(self) -&gt; bool:
-    return self.locals[-1] is not None
-
-</t>
-<t tx="ekr.20220525082935.239">def is_nested_within_func_scope(self) -&gt; bool:
-    """Are we underneath a function scope, even if we are in a nested class also?"""
-    return any(l is not None for l in self.locals)
-
-</t>
-<t tx="ekr.20220525082935.24">def update_function_type_variables(self, fun_type: CallableType, defn: FuncItem) -&gt; None:
-    """Make any type variables in the signature of defn explicit.
-
-    Update the signature of defn to contain type variable definitions
-    if defn is generic.
-    """
-    with self.tvar_scope_frame(self.tvar_scope.method_frame()):
-        a = self.type_analyzer()
-        fun_type.variables = a.bind_function_type_variables(fun_type, defn)
-
-</t>
-<t tx="ekr.20220525082935.240">def is_class_scope(self) -&gt; bool:
-    return self.type is not None and not self.is_func_scope()
-
-</t>
-<t tx="ekr.20220525082935.241">def is_module_scope(self) -&gt; bool:
-    return not (self.is_class_scope() or self.is_func_scope())
-
-</t>
-<t tx="ekr.20220525082935.242">def current_symbol_kind(self) -&gt; int:
-    if self.is_class_scope():
-        kind = MDEF
-    elif self.is_func_scope():
-        kind = LDEF
-    else:
-        kind = GDEF
-    return kind
-
-</t>
-<t tx="ekr.20220525082935.243">def current_symbol_table(self, escape_comprehensions: bool = False) -&gt; SymbolTable:
-    if self.is_func_scope():
-        assert self.locals[-1] is not None
-        if escape_comprehensions:
-            assert len(self.locals) == len(self.is_comprehension_stack)
-            # Retrieve the symbol table from the enclosing non-comprehension scope.
-            for i, is_comprehension in enumerate(reversed(self.is_comprehension_stack)):
-                if not is_comprehension:
-                    if i == len(self.locals) - 1:  # The last iteration.
-                        # The caller of the comprehension is in the global space.
-                        names = self.globals
-                    else:
-                        names_candidate = self.locals[-1 - i]
-                        assert (
-                            names_candidate is not None
-                        ), "Escaping comprehension from invalid scope"
-                        names = names_candidate
-                    break
-            else:
-                assert False, "Should have at least one non-comprehension scope"
-        else:
-            names = self.locals[-1]
-        assert names is not None
-    elif self.type is not None:
-        names = self.type.names
-    else:
-        names = self.globals
-    return names
-
-</t>
-<t tx="ekr.20220525082935.244">def is_global_or_nonlocal(self, name: str) -&gt; bool:
-    return self.is_func_scope() and (
-        name in self.global_decls[-1] or name in self.nonlocal_decls[-1]
-    )
-
-</t>
-<t tx="ekr.20220525082935.245">def add_exports(self, exp_or_exps: Iterable[Expression] | Expression) -&gt; None:
-    exps = [exp_or_exps] if isinstance(exp_or_exps, Expression) else exp_or_exps
-    for exp in exps:
-        if isinstance(exp, StrExpr):
-            self.all_exports.append(exp.value)
-
-</t>
-<t tx="ekr.20220525082935.246">def name_not_defined(self, name: str, ctx: Context, namespace: str | None = None) -&gt; None:
-    incomplete = self.is_incomplete_namespace(namespace or self.cur_mod_id)
-    if (
-        namespace is None
-        and self.type
-        and not self.is_func_scope()
-        and self.incomplete_type_stack[-1]
-        and not self.final_iteration
-    ):
-        # We are processing a class body for the first time, so it is incomplete.
-        incomplete = True
-    if incomplete:
-        # Target namespace is incomplete, so it's possible that the name will be defined
-        # later on. Defer current target.
-        self.record_incomplete_ref()
-        return
-    message = f'Name "{name}" is not defined'
-    self.fail(message, ctx, code=codes.NAME_DEFINED)
-
-    if f"builtins.{name}" in SUGGESTED_TEST_FIXTURES:
-        # The user probably has a missing definition in a test fixture. Let's verify.
-        fullname = f"builtins.{name}"
-        if self.lookup_fully_qualified_or_none(fullname) is None:
-            # Yes. Generate a helpful note.
-            self.msg.add_fixture_note(fullname, ctx)
-
-    modules_with_unimported_hints = {
-        name.split(".", 1)[0] for name in TYPES_FOR_UNIMPORTED_HINTS
-    }
-    lowercased = {name.lower(): name for name in TYPES_FOR_UNIMPORTED_HINTS}
-    for module in modules_with_unimported_hints:
-        fullname = f"{module}.{name}".lower()
-        if fullname not in lowercased:
-            continue
-        # User probably forgot to import these types.
-        hint = (
-            'Did you forget to import it from "{module}"?'
-            ' (Suggestion: "from {module} import {name}")'
-        ).format(module=module, name=lowercased[fullname].rsplit(".", 1)[-1])
-        self.note(hint, ctx, code=codes.NAME_DEFINED)
-
-</t>
-<t tx="ekr.20220525082935.247">def already_defined(
-    self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None, noun: str
-) -&gt; None:
-    if isinstance(original_ctx, SymbolTableNode):
-        node: SymbolNode | None = original_ctx.node
-    elif isinstance(original_ctx, SymbolNode):
-        node = original_ctx
-    else:
-        node = None
-
-    if isinstance(original_ctx, SymbolTableNode) and isinstance(original_ctx.node, MypyFile):
-        # Since this is an import, original_ctx.node points to the module definition.
-        # Therefore its line number is always 1, which is not useful for this
-        # error message.
-        extra_msg = " (by an import)"
-    elif node and node.line != -1 and self.is_local_name(node.fullname):
-        # TODO: Using previous symbol node may give wrong line. We should use
-        #       the line number where the binding was established instead.
-        extra_msg = f" on line {node.line}"
-    else:
-        extra_msg = " (possibly by an import)"
-    self.fail(
-        f'{noun} "{unmangle(name)}" already defined{extra_msg}', ctx, code=codes.NO_REDEF
-    )
-</t>
-<t tx="ekr.20220525082935.248">
-def name_already_defined(
-    self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None = None
-) -&gt; None:
-    self.already_defined(name, ctx, original_ctx, noun="Name")
-
-def attribute_already_defined(
-</t>
-<t tx="ekr.20220525082935.249">    self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None = None
-) -&gt; None:
-    self.already_defined(name, ctx, original_ctx, noun="Attribute")
-
-</t>
-<t tx="ekr.20220525082935.25">def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -&gt; None:
-    self.statement = defn
-    self.add_function_to_symbol_table(defn)
-
-    if not self.recurse_into_functions:
-        return
-
-    # NB: Since _visit_overloaded_func_def will call accept on the
-    # underlying FuncDefs, the function might get entered twice.
-    # This is fine, though, because only the outermost function is
-    # used to compute targets.
-    with self.scope.function_scope(defn):
-        self.analyze_overloaded_func_def(defn)
-
-</t>
-<t tx="ekr.20220525082935.250">def is_local_name(self, name: str) -&gt; bool:
-    """Does name look like reference to a definition in the current module?"""
-    return self.is_defined_in_current_module(name) or "." not in name
-
-</t>
-<t tx="ekr.20220525082935.251">def in_checked_function(self) -&gt; bool:
-    """Should we type-check the current function?
-
-    - Yes if --check-untyped-defs is set.
-    - Yes outside functions.
-    - Yes in annotated functions.
-    - No otherwise.
-    """
-    if self.options.check_untyped_defs or not self.function_stack:
-        return True
-
-    current_index = len(self.function_stack) - 1
-    while current_index &gt;= 0:
-        current_func = self.function_stack[current_index]
-        if not isinstance(current_func, LambdaExpr):
-            return not current_func.is_dynamic()
-
-        # Special case, `lambda` inherits the "checked" state from its parent.
-        # Because `lambda` itself cannot be annotated.
-        # `lambdas` can be deeply nested, so we try to find at least one other parent.
-        current_index -= 1
-
-    # This means that we only have a stack of `lambda` functions,
-    # no regular functions.
-    return True
-
-</t>
-<t tx="ekr.20220525082935.252">def fail(
-    self,
-    msg: str,
-    ctx: Context,
-    serious: bool = False,
-    *,
-    code: ErrorCode | None = None,
-    blocker: bool = False,
-) -&gt; None:
-    if not serious and not self.in_checked_function():
-        return
-    # In case it's a bug and we don't really have context
-    assert ctx is not None, msg
-    self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
-
-</t>
-<t tx="ekr.20220525082935.253">def note(self, msg: str, ctx: Context, code: ErrorCode | None = None) -&gt; None:
-    if not self.in_checked_function():
-        return
-    self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity="note", code=code)
-
-</t>
-<t tx="ekr.20220525082935.254">def accept(self, node: Node) -&gt; None:
-    try:
-        node.accept(self)
-    except Exception as err:
-        report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
-
-</t>
-<t tx="ekr.20220525082935.255">def expr_to_analyzed_type(
-    self, expr: Expression, report_invalid_types: bool = True, allow_placeholder: bool = False
-) -&gt; Type | None:
-    if isinstance(expr, CallExpr):
-        # This is a legacy syntax intended mostly for Python 2, we keep it for
-        # backwards compatibility, but new features like generic named tuples
-        # and recursive named tuples will be not supported.
-        expr.accept(self)
-        internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
-            expr, None, self.is_func_scope()
-        )
-        if tvar_defs:
-            self.fail("Generic named tuples are not supported for legacy class syntax", expr)
-            self.note("Use either Python 3 class syntax, or the assignment syntax", expr)
-        if internal_name is None:
-            # Some form of namedtuple is the only valid type that looks like a call
-            # expression. This isn't a valid type.
-            raise TypeTranslationError()
-        elif not info:
-            self.defer(expr)
-            return None
-        assert info.tuple_type, "NamedTuple without tuple type"
-        fallback = Instance(info, [])
-        return TupleType(info.tuple_type.items, fallback=fallback)
-    typ = self.expr_to_unanalyzed_type(expr)
-    return self.anal_type(
-        typ, report_invalid_types=report_invalid_types, allow_placeholder=allow_placeholder
-    )
-
-</t>
-<t tx="ekr.20220525082935.256">def analyze_type_expr(self, expr: Expression) -&gt; None:
-    # There are certain expressions that mypy does not need to semantically analyze,
-    # since they analyzed solely as type. (For example, indexes in type alias definitions
-    # and base classes in class defs). External consumers of the mypy AST may need
-    # them semantically analyzed, however, if they need to treat it as an expression
-    # and not a type. (Which is to say, mypyc needs to do this.) Do the analysis
-    # in a fresh tvar scope in order to suppress any errors about using type variables.
-    with self.tvar_scope_frame(TypeVarLikeScope()):
-        expr.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.257">def type_analyzer(
-    self,
-    *,
-    tvar_scope: TypeVarLikeScope | None = None,
-    allow_tuple_literal: bool = False,
-    allow_unbound_tvars: bool = False,
-    allow_placeholder: bool = False,
-    allow_required: bool = False,
-    allow_param_spec_literals: bool = False,
-    report_invalid_types: bool = True,
-) -&gt; TypeAnalyser:
-    if tvar_scope is None:
-        tvar_scope = self.tvar_scope
-    tpan = TypeAnalyser(
-        self,
-        tvar_scope,
-        self.plugin,
-        self.options,
-        self.is_typeshed_stub_file,
-        allow_unbound_tvars=allow_unbound_tvars,
-        allow_tuple_literal=allow_tuple_literal,
-        report_invalid_types=report_invalid_types,
-        allow_placeholder=allow_placeholder,
-        allow_required=allow_required,
-        allow_param_spec_literals=allow_param_spec_literals,
-    )
-    tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
-    tpan.global_scope = not self.type and not self.function_stack
-    return tpan
-
-</t>
-<t tx="ekr.20220525082935.258">def expr_to_unanalyzed_type(self, node: Expression) -&gt; ProperType:
-    return expr_to_unanalyzed_type(node, self.options, self.is_stub_file)
-
-</t>
-<t tx="ekr.20220525082935.259">def anal_type(
-    self,
-    typ: Type,
-    *,
-    tvar_scope: TypeVarLikeScope | None = None,
-    allow_tuple_literal: bool = False,
-    allow_unbound_tvars: bool = False,
-    allow_placeholder: bool = False,
-    allow_required: bool = False,
-    allow_param_spec_literals: bool = False,
-    report_invalid_types: bool = True,
-    third_pass: bool = False,
-) -&gt; Type | None:
-    """Semantically analyze a type.
-
-    Args:
-        typ: Type to analyze (if already analyzed, this is a no-op)
-        allow_placeholder: If True, may return PlaceholderType if
-            encountering an incomplete definition
-        third_pass: Unused; only for compatibility with old semantic
-            analyzer
-
-    Return None only if some part of the type couldn't be bound *and* it
-    referred to an incomplete namespace or definition. In this case also
-    defer as needed. During a final iteration this won't return None;
-    instead report an error if the type can't be analyzed and return
-    AnyType.
-
-    In case of other errors, report an error message and return AnyType.
-
-    NOTE: The caller shouldn't defer even if this returns None or a
-          placeholder type.
-    """
-    a = self.type_analyzer(
-        tvar_scope=tvar_scope,
-        allow_unbound_tvars=allow_unbound_tvars,
-        allow_tuple_literal=allow_tuple_literal,
-        allow_placeholder=allow_placeholder,
-        allow_required=allow_required,
-        allow_param_spec_literals=allow_param_spec_literals,
-        report_invalid_types=report_invalid_types,
-    )
-    tag = self.track_incomplete_refs()
-    typ = typ.accept(a)
-    if self.found_incomplete_ref(tag):
-        # Something could not be bound yet.
-        return None
-    self.add_type_alias_deps(a.aliases_used)
-    return typ
-
-</t>
-<t tx="ekr.20220525082935.26">def analyze_overloaded_func_def(self, defn: OverloadedFuncDef) -&gt; None:
-    # OverloadedFuncDef refers to any legitimate situation where you have
-    # more than one declaration for the same function in a row.  This occurs
-    # with a @property with a setter or a deleter, and for a classic
-    # @overload.
-
-    defn._fullname = self.qualified_name(defn.name)
-    # TODO: avoid modifying items.
-    defn.items = defn.unanalyzed_items.copy()
-
-    first_item = defn.items[0]
-    first_item.is_overload = True
-    first_item.accept(self)
-
-    if isinstance(first_item, Decorator) and first_item.func.is_property:
-        # This is a property.
-        first_item.func.is_overload = True
-        self.analyze_property_with_multi_part_definition(defn)
-        typ = function_type(first_item.func, self.named_type("builtins.function"))
-        assert isinstance(typ, CallableType)
-        types = [typ]
-    else:
-        # This is an a normal overload. Find the item signatures, the
-        # implementation (if outside a stub), and any missing @overload
-        # decorators.
-        types, impl, non_overload_indexes = self.analyze_overload_sigs_and_impl(defn)
-        defn.impl = impl
-        if non_overload_indexes:
-            self.handle_missing_overload_decorators(
-                defn, non_overload_indexes, some_overload_decorators=len(types) &gt; 0
-            )
-        # If we found an implementation, remove it from the overload item list,
-        # as it's special.
-        if impl is not None:
-            assert impl is defn.items[-1]
-            defn.items = defn.items[:-1]
-        elif not non_overload_indexes:
-            self.handle_missing_overload_implementation(defn)
-
-    if types:
-        defn.type = Overloaded(types)
-        defn.type.line = defn.line
-
-    if not defn.items:
-        # It was not a real overload after all, but function redefinition. We've
-        # visited the redefinition(s) already.
-        if not defn.impl:
-            # For really broken overloads with no items and no implementation we need to keep
-            # at least one item to hold basic information like function name.
-            defn.impl = defn.unanalyzed_items[-1]
-        return
-
-    # We know this is an overload def. Infer properties and perform some checks.
-    self.process_final_in_overload(defn)
-    self.process_static_or_class_method_in_overload(defn)
-    self.process_overload_impl(defn)
-
-def process_overload_impl(self, defn: OverloadedFuncDef) -&gt; None:
-    """Set flags for an overload implementation.
-
-    Currently, this checks for a trivial body in protocols classes,
-    where it makes the method implicitly abstract.
-    """
-    if defn.impl is None:
-        return
-    impl = defn.impl if isinstance(defn.impl, FuncDef) else defn.impl.func
-    if is_trivial_body(impl.body) and self.is_class_scope() and not self.is_stub_file:
-        assert self.type is not None
-        if self.type.is_protocol:
-            impl.abstract_status = IMPLICITLY_ABSTRACT
-        if impl.abstract_status != NOT_ABSTRACT:
-            impl.is_trivial_body = True
-
-</t>
-<t tx="ekr.20220525082935.260">def class_type(self, self_type: Type) -&gt; Type:
-    return TypeType.make_normalized(self_type)
-
-</t>
-<t tx="ekr.20220525082935.261">def schedule_patch(self, priority: int, patch: Callable[[], None]) -&gt; None:
-    self.patches.append((priority, patch))
-
-</t>
-<t tx="ekr.20220525082935.262">def report_hang(self) -&gt; None:
-    print("Deferral trace:")
-    for mod, line in self.deferral_debug_context:
-        print(f"    {mod}:{line}")
-    self.errors.report(
-        -1,
-        -1,
-        "INTERNAL ERROR: maximum semantic analysis iteration count reached",
-</t>
-<t tx="ekr.20220525082935.263">        blocker=True,
-    )
-
-def add_plugin_dependency(self, trigger: str, target: str | None = None) -&gt; None:
-    """Add dependency from trigger to a target.
-
-    If the target is not given explicitly, use the current target.
-    """
-    if target is None:
-        target = self.scope.current_target()
-    self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
-
-</t>
-<t tx="ekr.20220525082935.264">def add_type_alias_deps(self, aliases_used: Iterable[str], target: str | None = None) -&gt; None:
-    """Add full names of type aliases on which the current node depends.
-
-    This is used by fine-grained incremental mode to re-check the corresponding nodes.
-    If `target` is None, then the target node used will be the current scope.
-    """
-    if not aliases_used:
-        # A basic optimization to avoid adding targets with no dependencies to
-        # the `alias_deps` dict.
-        return
-    if target is None:
-        target = self.scope.current_target()
-    self.cur_mod_node.alias_deps[target].update(aliases_used)
-
-</t>
-<t tx="ekr.20220525082935.265">def is_mangled_global(self, name: str) -&gt; bool:
-    # A global is mangled if there exists at least one renamed variant.
-    return unmangle(name) + "'" in self.globals
-
-</t>
-<t tx="ekr.20220525082935.266">def is_initial_mangled_global(self, name: str) -&gt; bool:
-    # If there are renamed definitions for a global, the first one has exactly one prime.
-    return name == unmangle(name) + "'"
-
-</t>
-<t tx="ekr.20220525082935.267">def parse_bool(self, expr: Expression) -&gt; bool | None:
-    if isinstance(expr, NameExpr):
-        if expr.fullname == "builtins.True":
-            return True
-        if expr.fullname == "builtins.False":
-            return False
-    return None
-
-</t>
-<t tx="ekr.20220525082935.268">def set_future_import_flags(self, module_name: str) -&gt; None:
-    if module_name in FUTURE_IMPORTS:
-        self.modules[self.cur_mod_id].future_import_flags.add(FUTURE_IMPORTS[module_name])
-
-</t>
-<t tx="ekr.20220525082935.269">def is_future_flag_set(self, flag: str) -&gt; bool:
-    return self.modules[self.cur_mod_id].is_future_flag_set(flag)
-</t>
-<t tx="ekr.20220525082935.27">def analyze_overload_sigs_and_impl(
-    self, defn: OverloadedFuncDef
-) -&gt; tuple[list[CallableType], OverloadPart | None, list[int]]:
-    """Find overload signatures, the implementation, and items with missing @overload.
-
-    Assume that the first was already analyzed. As a side effect:
-    analyzes remaining items and updates 'is_overload' flags.
-    """
-    types = []
-    non_overload_indexes = []
-    impl: OverloadPart | None = None
-    for i, item in enumerate(defn.items):
-        if i != 0:
-            # Assume that the first item was already visited
-            item.is_overload = True
-            item.accept(self)
-        # TODO: support decorated overloaded functions properly
-        if isinstance(item, Decorator):
-            callable = function_type(item.func, self.named_type("builtins.function"))
-            assert isinstance(callable, CallableType)
-            if not any(refers_to_fullname(dec, OVERLOAD_NAMES) for dec in item.decorators):
-                if i == len(defn.items) - 1 and not self.is_stub_file:
-                    # Last item outside a stub is impl
-                    impl = item
-                else:
-                    # Oops it wasn't an overload after all. A clear error
-                    # will vary based on where in the list it is, record
-                    # that.
-                    non_overload_indexes.append(i)
-            else:
-                item.func.is_overload = True
-                types.append(callable)
-                if item.var.is_property:
-                    self.fail("An overload can not be a property", item)
-        elif isinstance(item, FuncDef):
-            if i == len(defn.items) - 1 and not self.is_stub_file:
-                impl = item
-            else:
-                non_overload_indexes.append(i)
-    return types, impl, non_overload_indexes
-
-</t>
-<t tx="ekr.20220525082935.28">def handle_missing_overload_decorators(
-    self,
-    defn: OverloadedFuncDef,
-    non_overload_indexes: list[int],
-    some_overload_decorators: bool,
-) -&gt; None:
-    """Generate errors for overload items without @overload.
-
-    Side effect: remote non-overload items.
-    """
-    if some_overload_decorators:
-        # Some of them were overloads, but not all.
-        for idx in non_overload_indexes:
-            if self.is_stub_file:
-                self.fail(
-                    "An implementation for an overloaded function "
-                    "is not allowed in a stub file",
-                    defn.items[idx],
-                )
-            else:
-                self.fail(
-                    "The implementation for an overloaded function must come last",
-                    defn.items[idx],
-                )
-    else:
-        for idx in non_overload_indexes[1:]:
-            self.name_already_defined(defn.name, defn.items[idx], defn.items[0])
-        if defn.impl:
-            self.name_already_defined(defn.name, defn.impl, defn.items[0])
-    # Remove the non-overloads
-    for idx in reversed(non_overload_indexes):
-        del defn.items[idx]
-
-</t>
-<t tx="ekr.20220525082935.29">def handle_missing_overload_implementation(self, defn: OverloadedFuncDef) -&gt; None:
-    """Generate error about missing overload implementation (only if needed)."""
-    if not self.is_stub_file:
-        if self.type and self.type.is_protocol and not self.is_func_scope():
-            # An overloaded protocol method doesn't need an implementation,
-            # but if it doesn't have one, then it is considered abstract.
-            for item in defn.items:
-                if isinstance(item, Decorator):
-                    item.func.abstract_status = IS_ABSTRACT
-                else:
-                    item.abstract_status = IS_ABSTRACT
-        else:
-            # TODO: also allow omitting an implementation for abstract methods in ABCs?
-            self.fail(
-                "An overloaded function outside a stub file must have an implementation",
-                defn,
-                code=codes.NO_OVERLOAD_IMPL,
-            )
-
-</t>
-<t tx="ekr.20220525082935.3"># mypyc doesn't properly handle implementing an abstractproperty
-# with a regular attribute so we make them properties
-@property
-def is_stub_file(self) -&gt; bool:
-    return self._is_stub_file
-
-</t>
-<t tx="ekr.20220525082935.30">def process_final_in_overload(self, defn: OverloadedFuncDef) -&gt; None:
-    """Detect the @final status of an overloaded function (and perform checks)."""
-    # If the implementation is marked as @final (or the first overload in
-    # stubs), then the whole overloaded definition if @final.
-    if any(item.is_final for item in defn.items):
-        # We anyway mark it as final because it was probably the intention.
-        defn.is_final = True
-        # Only show the error once per overload
-        bad_final = next(ov for ov in defn.items if ov.is_final)
-        if not self.is_stub_file:
-            self.fail("@final should be applied only to overload implementation", bad_final)
-        elif any(item.is_final for item in defn.items[1:]):
-            bad_final = next(ov for ov in defn.items[1:] if ov.is_final)
-            self.fail(
-                "In a stub file @final must be applied only to the first overload", bad_final
-            )
-    if defn.impl is not None and defn.impl.is_final:
-        defn.is_final = True
-
-</t>
-<t tx="ekr.20220525082935.309">def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -&gt; None:
-    """Perform semantic analysis for all modules in a SCC (import cycle).
-
-    Assume that reachability analysis has already been performed.
-
-    The scc will be processed roughly in the order the modules are included
-    in the list.
-    """
-    patches: Patches = []
-    # Note that functions can't define new module-level attributes
-    # using 'global x', since module top levels are fully processed
-    # before functions. This limitation is unlikely to go away soon.
-    process_top_levels(graph, scc, patches)
-    process_functions(graph, scc, patches)
-    # We use patch callbacks to fix up things when we expect relatively few
-    # callbacks to be required.
-    apply_semantic_analyzer_patches(patches)
-    # Run class decorator hooks (they requite complete MROs and no placeholders).
-    apply_class_plugin_hooks(graph, scc, errors)
-    # This pass might need fallbacks calculated above and the results of hooks.
-    check_type_arguments(graph, scc, errors)
-    calculate_class_properties(graph, scc, errors)
-    check_blockers(graph, scc)
-    # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
-    if "builtins" in scc:
-        cleanup_builtin_scc(graph["builtins"])
-
-
-</t>
-<t tx="ekr.20220525082935.31">def process_static_or_class_method_in_overload(self, defn: OverloadedFuncDef) -&gt; None:
-    class_status = []
-    static_status = []
-    for item in defn.items:
-        if isinstance(item, Decorator):
-            inner = item.func
-        elif isinstance(item, FuncDef):
-            inner = item
-        else:
-            assert False, f"The 'item' variable is an unexpected type: {type(item)}"
-        class_status.append(inner.is_class)
-        static_status.append(inner.is_static)
-
-    if defn.impl is not None:
-        if isinstance(defn.impl, Decorator):
-            inner = defn.impl.func
-        elif isinstance(defn.impl, FuncDef):
-            inner = defn.impl
-        else:
-            assert False, f"Unexpected impl type: {type(defn.impl)}"
-        class_status.append(inner.is_class)
-        static_status.append(inner.is_static)
-
-    if len(set(class_status)) != 1:
-        self.msg.overload_inconsistently_applies_decorator("classmethod", defn)
-    elif len(set(static_status)) != 1:
-        self.msg.overload_inconsistently_applies_decorator("staticmethod", defn)
-    else:
-        defn.is_class = class_status[0]
-        defn.is_static = static_status[0]
-
-</t>
-<t tx="ekr.20220525082935.32">def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -&gt; None:
-    """Analyze a property defined using multiple methods (e.g., using @x.setter).
-
-    Assume that the first method (@property) has already been analyzed.
-    """
-    defn.is_property = True
-    items = defn.items
-    first_item = cast(Decorator, defn.items[0])
-    deleted_items = []
-    for i, item in enumerate(items[1:]):
-        if isinstance(item, Decorator):
-            if len(item.decorators) &gt;= 1:
-                node = item.decorators[0]
-                if isinstance(node, MemberExpr):
-                    if node.name == "setter":
-                        # The first item represents the entire property.
-                        first_item.var.is_settable_property = True
-                        # Get abstractness from the original definition.
-                        item.func.abstract_status = first_item.func.abstract_status
-                else:
-                    self.fail(
-                        f"Only supported top decorator is @{first_item.func.name}.setter", item
-                    )
-            item.func.accept(self)
-        else:
-            self.fail(f'Unexpected definition for property "{first_item.func.name}"', item)
-            deleted_items.append(i + 1)
-    for i in reversed(deleted_items):
-        del items[i]
-
-</t>
-<t tx="ekr.20220525082935.33">def add_function_to_symbol_table(self, func: FuncDef | OverloadedFuncDef) -&gt; None:
-    if self.is_class_scope():
-        assert self.type is not None
-        func.info = self.type
-    func._fullname = self.qualified_name(func.name)
-    self.add_symbol(func.name, func, func)
-
-</t>
 <t tx="ekr.20220525082935.34">def analyze_arg_initializers(self, defn: FuncItem) -&gt; None:
     with self.tvar_scope_frame(self.tvar_scope.method_frame()):
         # Analyze default arguments
         for arg in defn.arguments:
             if arg.initializer:
                 arg.initializer.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.35">def analyze_function_body(self, defn: FuncItem) -&gt; None:
-    is_method = self.is_class_scope()
-    with self.tvar_scope_frame(self.tvar_scope.method_frame()):
-        # Bind the type variables again to visit the body.
-        if defn.type:
-            a = self.type_analyzer()
-            a.bind_function_type_variables(cast(CallableType, defn.type), defn)
-        self.function_stack.append(defn)
-        with self.enter(defn):
-            for arg in defn.arguments:
-                self.add_local(arg.variable, defn)
-
-            # The first argument of a non-static, non-class method is like 'self'
-            # (though the name could be different), having the enclosing class's
-            # instance type.
-            if is_method and not defn.is_static and not defn.is_class and defn.arguments:
-                defn.arguments[0].variable.is_self = True
-
-            defn.body.accept(self)
-        self.function_stack.pop()
-
-</t>
-<t tx="ekr.20220525082935.36">def check_classvar_in_signature(self, typ: ProperType) -&gt; None:
-    t: ProperType
-    if isinstance(typ, Overloaded):
-        for t in typ.items:
-            self.check_classvar_in_signature(t)
-        return
-    if not isinstance(typ, CallableType):
-        return
-    for t in get_proper_types(typ.arg_types) + [get_proper_type(typ.ret_type)]:
-        if self.is_classvar(t):
-            self.fail_invalid_classvar(t)
-            # Show only one error per signature
-            break
-
-</t>
-<t tx="ekr.20220525082935.37">def check_function_signature(self, fdef: FuncItem) -&gt; None:
-    sig = fdef.type
-    assert isinstance(sig, CallableType)
-    if len(sig.arg_types) &lt; len(fdef.arguments):
-        self.fail("Type signature has too few arguments", fdef)
-        # Add dummy Any arguments to prevent crashes later.
-        num_extra_anys = len(fdef.arguments) - len(sig.arg_types)
-        extra_anys = [AnyType(TypeOfAny.from_error)] * num_extra_anys
-        sig.arg_types.extend(extra_anys)
-    elif len(sig.arg_types) &gt; len(fdef.arguments):
-        self.fail("Type signature has too many arguments", fdef, blocker=True)
-
-</t>
-<t tx="ekr.20220525082935.38">def visit_decorator(self, dec: Decorator) -&gt; None:
-    self.statement = dec
-    # TODO: better don't modify them at all.
-    dec.decorators = dec.original_decorators.copy()
-    dec.func.is_conditional = self.block_depth[-1] &gt; 0
-    if not dec.is_overload:
-        self.add_symbol(dec.name, dec, dec)
-    dec.func._fullname = self.qualified_name(dec.name)
-    dec.var._fullname = self.qualified_name(dec.name)
-    for d in dec.decorators:
-        d.accept(self)
-    removed: list[int] = []
-    no_type_check = False
-    could_be_decorated_property = False
-    for i, d in enumerate(dec.decorators):
-        # A bunch of decorators are special cased here.
-        if refers_to_fullname(d, "abc.abstractmethod"):
-            removed.append(i)
-            dec.func.abstract_status = IS_ABSTRACT
-            self.check_decorated_function_is_method("abstractmethod", dec)
-        elif refers_to_fullname(d, ("asyncio.coroutines.coroutine", "types.coroutine")):
-            removed.append(i)
-            dec.func.is_awaitable_coroutine = True
-        elif refers_to_fullname(d, "builtins.staticmethod"):
-            removed.append(i)
-            dec.func.is_static = True
-            dec.var.is_staticmethod = True
-            self.check_decorated_function_is_method("staticmethod", dec)
-        elif refers_to_fullname(d, "builtins.classmethod"):
-            removed.append(i)
-            dec.func.is_class = True
-            dec.var.is_classmethod = True
-            self.check_decorated_function_is_method("classmethod", dec)
-        elif refers_to_fullname(
-            d, ("builtins.property", "abc.abstractproperty", "functools.cached_property")
-        ):
-            removed.append(i)
-            dec.func.is_property = True
-            dec.var.is_property = True
-            if refers_to_fullname(d, "abc.abstractproperty"):
-                dec.func.abstract_status = IS_ABSTRACT
-            elif refers_to_fullname(d, "functools.cached_property"):
-                dec.var.is_settable_property = True
-            self.check_decorated_function_is_method("property", dec)
-        elif refers_to_fullname(d, "typing.no_type_check"):
-            dec.var.type = AnyType(TypeOfAny.special_form)
-            no_type_check = True
-        elif refers_to_fullname(d, FINAL_DECORATOR_NAMES):
-            if self.is_class_scope():
-                assert self.type is not None, "No type set at class scope"
-                if self.type.is_protocol:
-                    self.msg.protocol_members_cant_be_final(d)
-                else:
-                    dec.func.is_final = True
-                    dec.var.is_final = True
-                removed.append(i)
-            else:
-                self.fail("@final cannot be used with non-method functions", d)
-        elif not dec.var.is_property:
-            # We have seen a "non-trivial" decorator before seeing @property, if
-            # we will see a @property later, give an error, as we don't support this.
-            could_be_decorated_property = True
-    for i in reversed(removed):
-        del dec.decorators[i]
-    if (not dec.is_overload or dec.var.is_property) and self.type:
-        dec.var.info = self.type
-        dec.var.is_initialized_in_class = True
-    if not no_type_check and self.recurse_into_functions:
-        dec.func.accept(self)
-    if could_be_decorated_property and dec.decorators and dec.var.is_property:
-        self.fail("Decorators on top of @property are not supported", dec)
-    if (dec.func.is_static or dec.func.is_class) and dec.var.is_property:
-        self.fail("Only instance methods can be decorated with @property", dec)
-    if dec.func.abstract_status == IS_ABSTRACT and dec.func.is_final:
-        self.fail(f"Method {dec.func.name} is both abstract and final", dec)
-
-</t>
-<t tx="ekr.20220525082935.39">def check_decorated_function_is_method(self, decorator: str, context: Context) -&gt; None:
-    if not self.type or self.is_func_scope():
-        self.fail(f'"{decorator}" used with a non-method', context)
-
-</t>
-<t tx="ekr.20220525082935.4">@property
-def is_typeshed_stub_file(self) -&gt; bool:
-    return self._is_typeshed_stub_file
-
-</t>
-<t tx="ekr.20220525082935.40">#
-# Classes
-#
-
-</t>
-<t tx="ekr.20220525082935.41">def visit_class_def(self, defn: ClassDef) -&gt; None:
-    self.statement = defn
-    self.incomplete_type_stack.append(not defn.info)
-    namespace = self.qualified_name(defn.name)
-    with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
-        self.analyze_class(defn)
-    self.incomplete_type_stack.pop()
-
-</t>
-<t tx="ekr.20220525082935.42">def analyze_class(self, defn: ClassDef) -&gt; None:
-    fullname = self.qualified_name(defn.name)
-    if not defn.info and not self.is_core_builtin_class(defn):
-        # Add placeholder so that self-references in base classes can be
-        # resolved.  We don't want this to cause a deferral, since if there
-        # are no incomplete references, we'll replace this with a TypeInfo
-        # before returning.
-        placeholder = PlaceholderNode(fullname, defn, defn.line, becomes_typeinfo=True)
-        self.add_symbol(defn.name, placeholder, defn, can_defer=False)
-
-    tag = self.track_incomplete_refs()
-
-    # Restore base classes after previous iteration (things like Generic[T] might be removed).
-    defn.base_type_exprs.extend(defn.removed_base_type_exprs)
-    defn.removed_base_type_exprs.clear()
-
-    self.infer_metaclass_and_bases_from_compat_helpers(defn)
-
-    bases = defn.base_type_exprs
-    bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(
-        defn, bases, context=defn
-    )
-
-    for tvd in tvar_defs:
-        if isinstance(tvd, TypeVarType) and any(
-            has_placeholder(t) for t in [tvd.upper_bound] + tvd.values
-        ):
-            # Some type variable bounds or values are not ready, we need
-            # to re-analyze this class.
-            self.defer()
-
-    self.analyze_class_keywords(defn)
-    bases_result = self.analyze_base_classes(bases)
-    if bases_result is None or self.found_incomplete_ref(tag):
-        # Something was incomplete. Defer current target.
-        self.mark_incomplete(defn.name, defn)
-        return
-
-    base_types, base_error = bases_result
-    if any(isinstance(base, PlaceholderType) for base, _ in base_types):
-        # We need to know the TypeInfo of each base to construct the MRO. Placeholder types
-        # are okay in nested positions, since they can't affect the MRO.
-        self.mark_incomplete(defn.name, defn)
-        return
-
-    declared_metaclass, should_defer = self.get_declared_metaclass(defn.name, defn.metaclass)
-    if should_defer or self.found_incomplete_ref(tag):
-        # Metaclass was not ready. Defer current target.
-        self.mark_incomplete(defn.name, defn)
-        return
-
-    if self.analyze_typeddict_classdef(defn):
-        if defn.info:
-            self.setup_type_vars(defn, tvar_defs)
-            self.setup_alias_type_vars(defn)
-        return
-
-    if self.analyze_namedtuple_classdef(defn, tvar_defs):
-        return
-
-    # Create TypeInfo for class now that base classes and the MRO can be calculated.
-    self.prepare_class_def(defn)
-    self.setup_type_vars(defn, tvar_defs)
-    if base_error:
-        defn.info.fallback_to_any = True
-
-    with self.scope.class_scope(defn.info):
-        self.configure_base_classes(defn, base_types)
-        defn.info.is_protocol = is_protocol
-        self.recalculate_metaclass(defn, declared_metaclass)
-        defn.info.runtime_protocol = False
-        for decorator in defn.decorators:
-            self.analyze_class_decorator(defn, decorator)
-        self.analyze_class_body_common(defn)
-
-def setup_type_vars(self, defn: ClassDef, tvar_defs: list[TypeVarLikeType]) -&gt; None:
-    defn.type_vars = tvar_defs
-    defn.info.type_vars = []
-    # we want to make sure any additional logic in add_type_vars gets run
-    defn.info.add_type_vars()
-
-def setup_alias_type_vars(self, defn: ClassDef) -&gt; None:
-    assert defn.info.special_alias is not None
-    defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
-    target = defn.info.special_alias.target
-    assert isinstance(target, ProperType)
-    if isinstance(target, TypedDictType):
-        target.fallback.args = tuple(defn.type_vars)
-    elif isinstance(target, TupleType):
-        target.partial_fallback.args = tuple(defn.type_vars)
-    else:
-        assert False, f"Unexpected special alias type: {type(target)}"
-
-</t>
-<t tx="ekr.20220525082935.43">def is_core_builtin_class(self, defn: ClassDef) -&gt; bool:
-    return self.cur_mod_id == "builtins" and defn.name in CORE_BUILTIN_CLASSES
-
-</t>
-<t tx="ekr.20220525082935.44">def analyze_class_body_common(self, defn: ClassDef) -&gt; None:
-    """Parts of class body analysis that are common to all kinds of class defs."""
-    self.enter_class(defn.info)
-    defn.defs.accept(self)
-    self.apply_class_plugin_hooks(defn)
-    self.leave_class()
-
-</t>
-<t tx="ekr.20220525082935.45">def analyze_typeddict_classdef(self, defn: ClassDef) -&gt; bool:
-    if (
-        defn.info
-        and defn.info.typeddict_type
-        and not has_placeholder(defn.info.typeddict_type)
-    ):
-        # This is a valid TypedDict, and it is fully analyzed.
-        return True
-    is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
-    if is_typeddict:
-        for decorator in defn.decorators:
-            decorator.accept(self)
-            if isinstance(decorator, RefExpr):
-                if decorator.fullname in FINAL_DECORATOR_NAMES and info is not None:
-                    info.is_final = True
-        if info is None:
-            self.mark_incomplete(defn.name, defn)
-        else:
-            self.prepare_class_def(defn, info)
-        return True
-    return False
-
-def analyze_namedtuple_classdef(
-    self, defn: ClassDef, tvar_defs: list[TypeVarLikeType]
-) -&gt; bool:
-    """Check if this class can define a named tuple."""
-    if (
-        defn.info
-        and defn.info.is_named_tuple
-        and defn.info.tuple_type
-        and not has_placeholder(defn.info.tuple_type)
-    ):
-        # Don't reprocess everything. We just need to process methods defined
-        # in the named tuple class body.
-        is_named_tuple = True
-        info: TypeInfo | None = defn.info
-    else:
-        is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(
-            defn, self.is_stub_file, self.is_func_scope()
-        )
-    if is_named_tuple:
-        if info is None:
-            self.mark_incomplete(defn.name, defn)
-        else:
-            self.prepare_class_def(defn, info, custom_names=True)
-            self.setup_type_vars(defn, tvar_defs)
-            self.setup_alias_type_vars(defn)
-            with self.scope.class_scope(defn.info):
-                with self.named_tuple_analyzer.save_namedtuple_body(info):
-                    self.analyze_class_body_common(defn)
-        return True
-    return False
-
-</t>
-<t tx="ekr.20220525082935.46">def apply_class_plugin_hooks(self, defn: ClassDef) -&gt; None:
-    """Apply a plugin hook that may infer a more precise definition for a class."""
-
-    for decorator in defn.decorators:
-        decorator_name = self.get_fullname_for_hook(decorator)
-        if decorator_name:
-            hook = self.plugin.get_class_decorator_hook(decorator_name)
-            if hook:
-                hook(ClassDefContext(defn, decorator, self))
-
-    if defn.metaclass:
-        metaclass_name = self.get_fullname_for_hook(defn.metaclass)
-        if metaclass_name:
-            hook = self.plugin.get_metaclass_hook(metaclass_name)
-            if hook:
-                hook(ClassDefContext(defn, defn.metaclass, self))
-
-    for base_expr in defn.base_type_exprs:
-        base_name = self.get_fullname_for_hook(base_expr)
-        if base_name:
-            hook = self.plugin.get_base_class_hook(base_name)
-            if hook:
-                hook(ClassDefContext(defn, base_expr, self))
-
-</t>
-<t tx="ekr.20220525082935.47">def get_fullname_for_hook(self, expr: Expression) -&gt; str | None:
-    if isinstance(expr, CallExpr):
-        return self.get_fullname_for_hook(expr.callee)
-    elif isinstance(expr, IndexExpr):
-        return self.get_fullname_for_hook(expr.base)
-    elif isinstance(expr, RefExpr):
-        if expr.fullname:
-            return expr.fullname
-        # If we don't have a fullname look it up. This happens because base classes are
-        # analyzed in a different manner (see exprtotype.py) and therefore those AST
-        # nodes will not have full names.
-        sym = self.lookup_type_node(expr)
-        if sym:
-            return sym.fullname
-    return None
-
-</t>
-<t tx="ekr.20220525082935.48">def analyze_class_keywords(self, defn: ClassDef) -&gt; None:
-    for value in defn.keywords.values():
-        value.accept(self)
-
-</t>
-<t tx="ekr.20220525082935.49">def enter_class(self, info: TypeInfo) -&gt; None:
-    # Remember previous active class
-    self.type_stack.append(self.type)
-    self.locals.append(None)  # Add class scope
-    self.is_comprehension_stack.append(False)
-    self.block_depth.append(-1)  # The class body increments this to 0
-    self.type = info
-    self.missing_names.append(set())
-
-</t>
-<t tx="ekr.20220525082935.5">@property
-def final_iteration(self) -&gt; bool:
-    return self._final_iteration
-
-</t>
-<t tx="ekr.20220525082935.50">def leave_class(self) -&gt; None:
-    """Restore analyzer state."""
-    self.block_depth.pop()
-    self.locals.pop()
-    self.is_comprehension_stack.pop()
-    self.type = self.type_stack.pop()
-    self.missing_names.pop()
-
-</t>
-<t tx="ekr.20220525082935.51">def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -&gt; None:
-    decorator.accept(self)
-    if isinstance(decorator, RefExpr):
-        if decorator.fullname in RUNTIME_PROTOCOL_DECOS:
-            if defn.info.is_protocol:
-                defn.info.runtime_protocol = True
-            else:
-                self.fail("@runtime_checkable can only be used with protocol classes", defn)
-        elif decorator.fullname in FINAL_DECORATOR_NAMES:
-            defn.info.is_final = True
-
-</t>
-<t tx="ekr.20220525082935.52">def clean_up_bases_and_infer_type_variables(
-    self, defn: ClassDef, base_type_exprs: list[Expression], context: Context
-) -&gt; tuple[list[Expression], list[TypeVarLikeType], bool]:
-    """Remove extra base classes such as Generic and infer type vars.
-
-    For example, consider this class:
-
-      class Foo(Bar, Generic[T]): ...
-
-    Now we will remove Generic[T] from bases of Foo and infer that the
-    type variable 'T' is a type argument of Foo.
-
-    Note that this is performed *before* semantic analysis.
-
-    Returns (remaining base expressions, inferred type variables, is protocol).
-    """
-    removed: list[int] = []
-    declared_tvars: TypeVarLikeList = []
-    is_protocol = False
-    for i, base_expr in enumerate(base_type_exprs):
-        self.analyze_type_expr(base_expr)
-
-        try:
-            base = self.expr_to_unanalyzed_type(base_expr)
-        except TypeTranslationError:
-            # This error will be caught later.
-            continue
-        result = self.analyze_class_typevar_declaration(base)
-        if result is not None:
-            if declared_tvars:
-                self.fail("Only single Generic[...] or Protocol[...] can be in bases", context)
-            removed.append(i)
-            tvars = result[0]
-            is_protocol |= result[1]
-            declared_tvars.extend(tvars)
-        if isinstance(base, UnboundType):
-            sym = self.lookup_qualified(base.name, base)
-            if sym is not None and sym.node is not None:
-                if sym.node.fullname in PROTOCOL_NAMES and i not in removed:
-                    # also remove bare 'Protocol' bases
-                    removed.append(i)
-                    is_protocol = True
-
-    all_tvars = self.get_all_bases_tvars(base_type_exprs, removed)
-    if declared_tvars:
-        if len(remove_dups(declared_tvars)) &lt; len(declared_tvars):
-            self.fail("Duplicate type variables in Generic[...] or Protocol[...]", context)
-        declared_tvars = remove_dups(declared_tvars)
-        if not set(all_tvars).issubset(set(declared_tvars)):
-            self.fail(
-                "If Generic[...] or Protocol[...] is present"
-                " it should list all type variables",
-                context,
-            )
-            # In case of error, Generic tvars will go first
-            declared_tvars = remove_dups(declared_tvars + all_tvars)
-    else:
-        declared_tvars = all_tvars
-    for i in reversed(removed):
-        # We need to actually remove the base class expressions like Generic[T],
-        # mostly because otherwise they will create spurious dependencies in fine
-        # grained incremental mode.
-        defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
-        del base_type_exprs[i]
-    tvar_defs: list[TypeVarLikeType] = []
-    for name, tvar_expr in declared_tvars:
-        tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
-        tvar_defs.append(tvar_def)
-    return base_type_exprs, tvar_defs, is_protocol
-
-</t>
-<t tx="ekr.20220525082935.53">def analyze_class_typevar_declaration(self, base: Type) -&gt; tuple[TypeVarLikeList, bool] | None:
-    """Analyze type variables declared using Generic[...] or Protocol[...].
-
-    Args:
-        base: Non-analyzed base class
-
-    Return None if the base class does not declare type variables. Otherwise,
-    return the type variables.
-    """
-    if not isinstance(base, UnboundType):
-        return None
-    unbound = base
-    sym = self.lookup_qualified(unbound.name, unbound)
-    if sym is None or sym.node is None:
-        return None
-    if (
-        sym.node.fullname == "typing.Generic"
-        or sym.node.fullname in PROTOCOL_NAMES
-        and base.args
-    ):
-        is_proto = sym.node.fullname != "typing.Generic"
-        tvars: TypeVarLikeList = []
-        have_type_var_tuple = False
-        for arg in unbound.args:
-            tag = self.track_incomplete_refs()
-            tvar = self.analyze_unbound_tvar(arg)
-            if tvar:
-                if isinstance(tvar[1], TypeVarTupleExpr):
-                    if have_type_var_tuple:
-                        self.fail("Can only use one type var tuple in a class def", base)
-                        continue
-                    have_type_var_tuple = True
-                tvars.append(tvar)
-            elif not self.found_incomplete_ref(tag):
-                self.fail("Free type variable expected in %s[...]" % sym.node.name, base)
-        return tvars, is_proto
-    return None
-
-</t>
-<t tx="ekr.20220525082935.54">def analyze_unbound_tvar(self, t: Type) -&gt; tuple[str, TypeVarLikeExpr] | None:
-    if not isinstance(t, UnboundType):
-        return None
-    unbound = t
-    sym = self.lookup_qualified(unbound.name, unbound)
-    if sym and isinstance(sym.node, PlaceholderNode):
-        self.record_incomplete_ref()
-    if sym and isinstance(sym.node, ParamSpecExpr):
-        if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
-            # It's bound by our type variable scope
-            return None
-        return unbound.name, sym.node
-    if sym and sym.fullname == "typing_extensions.Unpack":
-        inner_t = unbound.args[0]
-        if not isinstance(inner_t, UnboundType):
-            return None
-        inner_unbound = inner_t
-        inner_sym = self.lookup_qualified(inner_unbound.name, inner_unbound)
-        if inner_sym and isinstance(inner_sym.node, PlaceholderNode):
-            self.record_incomplete_ref()
-        if inner_sym and isinstance(inner_sym.node, TypeVarTupleExpr):
-            if inner_sym.fullname and not self.tvar_scope.allow_binding(inner_sym.fullname):
-                # It's bound by our type variable scope
-                return None
-            return inner_unbound.name, inner_sym.node
-    if sym is None or not isinstance(sym.node, TypeVarExpr):
-        return None
-    elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
-        # It's bound by our type variable scope
-        return None
-    else:
-        assert isinstance(sym.node, TypeVarExpr)
-        return unbound.name, sym.node
-
-</t>
-<t tx="ekr.20220525082935.55">def get_all_bases_tvars(
-    self, base_type_exprs: list[Expression], removed: list[int]
-) -&gt; TypeVarLikeList:
-    """Return all type variable references in bases."""
-    tvars: TypeVarLikeList = []
-    for i, base_expr in enumerate(base_type_exprs):
-        if i not in removed:
-            try:
-                base = self.expr_to_unanalyzed_type(base_expr)
-            except TypeTranslationError:
-                # This error will be caught later.
-                continue
-            base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
-            tvars.extend(base_tvars)
-    return remove_dups(tvars)
-
-</t>
-<t tx="ekr.20220525082935.56">def get_and_bind_all_tvars(self, type_exprs: list[Expression]) -&gt; list[TypeVarLikeType]:
-    """Return all type variable references in item type expressions.
-
-    This is a helper for generic TypedDicts and NamedTuples. Essentially it is
-    a simplified version of the logic we use for ClassDef bases. We duplicate
-    some amount of code, because it is hard to refactor common pieces.
-    """
-    tvars = []
-    for base_expr in type_exprs:
-        try:
-            base = self.expr_to_unanalyzed_type(base_expr)
-        except TypeTranslationError:
-            # This error will be caught later.
-            continue
-        base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
-        tvars.extend(base_tvars)
-    tvars = remove_dups(tvars)  # Variables are defined in order of textual appearance.
-    tvar_defs = []
-    for name, tvar_expr in tvars:
-        tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
-        tvar_defs.append(tvar_def)
-    return tvar_defs
-
-def prepare_class_def(
-    self, defn: ClassDef, info: TypeInfo | None = None, custom_names: bool = False
-) -&gt; None:
-    """Prepare for the analysis of a class definition.
-
-    Create an empty TypeInfo and store it in a symbol table, or if the 'info'
-    argument is provided, store it instead (used for magic type definitions).
-    """
-    if not defn.info:
-        defn.fullname = self.qualified_name(defn.name)
-        # TODO: Nested classes
-        info = info or self.make_empty_type_info(defn)
-        defn.info = info
-        info.defn = defn
-        if not custom_names:
-            # Some special classes (in particular NamedTuples) use custom fullname logic.
-            # Don't override it here (also see comment below, this needs cleanup).
-            if not self.is_func_scope():
-                info._fullname = self.qualified_name(defn.name)
-            else:
-                info._fullname = info.name
-    local_name = defn.name
-    if "@" in local_name:
-        local_name = local_name.split("@")[0]
-    self.add_symbol(local_name, defn.info, defn)
-    if self.is_nested_within_func_scope():
-        # We need to preserve local classes, let's store them
-        # in globals under mangled unique names
-        #
-        # TODO: Putting local classes into globals breaks assumptions in fine-grained
-        #       incremental mode and we should avoid it. In general, this logic is too
-        #       ad-hoc and needs to be removed/refactored.
-        if "@" not in defn.info._fullname:
-            global_name = defn.info.name + "@" + str(defn.line)
-            defn.info._fullname = self.cur_mod_id + "." + global_name
-        else:
-            # Preserve name from previous fine-grained incremental run.
-            global_name = defn.info.name
-        defn.fullname = defn.info._fullname
-        if defn.info.is_named_tuple:
-            # Named tuple nested within a class is stored in the class symbol table.
-            self.add_symbol_skip_local(global_name, defn.info)
-        else:
-            self.globals[global_name] = SymbolTableNode(GDEF, defn.info)
-
-</t>
-<t tx="ekr.20220525082935.57">def make_empty_type_info(self, defn: ClassDef) -&gt; TypeInfo:
-    if (
-        self.is_module_scope()
-        and self.cur_mod_id == "builtins"
-        and defn.name in CORE_BUILTIN_CLASSES
-    ):
-        # Special case core built-in classes. A TypeInfo was already
-        # created for it before semantic analysis, but with a dummy
-        # ClassDef. Patch the real ClassDef object.
-        info = self.globals[defn.name].node
-        assert isinstance(info, TypeInfo)
-    else:
-        info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
-        info.set_line(defn)
-    return info
-
-</t>
-<t tx="ekr.20220525082935.58">def get_name_repr_of_expr(self, expr: Expression) -&gt; str | None:
-    """Try finding a short simplified textual representation of a base class expression."""
-    if isinstance(expr, NameExpr):
-        return expr.name
-    if isinstance(expr, MemberExpr):
-        return get_member_expr_fullname(expr)
-    if isinstance(expr, IndexExpr):
-        return self.get_name_repr_of_expr(expr.base)
-    if isinstance(expr, CallExpr):
-        return self.get_name_repr_of_expr(expr.callee)
-    return None
-
-</t>
-<t tx="ekr.20220525082935.59">def analyze_base_classes(
-    self, base_type_exprs: list[Expression]
-) -&gt; tuple[list[tuple[ProperType, Expression]], bool] | None:
-    """Analyze base class types.
-
-    Return None if some definition was incomplete. Otherwise, return a tuple
-    with these items:
-
-     * List of (analyzed type, original expression) tuples
-     * Boolean indicating whether one of the bases had a semantic analysis error
-    """
-    is_error = False
-    bases = []
-    for base_expr in base_type_exprs:
-        if (
-            isinstance(base_expr, RefExpr)
-            and base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES
-        ):
-            # Ignore magic bases for now.
-            continue
-
-        try:
-            base = self.expr_to_analyzed_type(base_expr, allow_placeholder=True)
-        except TypeTranslationError:
-            name = self.get_name_repr_of_expr(base_expr)
-            if isinstance(base_expr, CallExpr):
-                msg = "Unsupported dynamic base class"
-            else:
-                msg = "Invalid base class"
-            if name:
-                msg += f' "{name}"'
-            self.fail(msg, base_expr)
-            is_error = True
-            continue
-        if base is None:
-            return None
-        base = get_proper_type(base)
-        bases.append((base, base_expr))
-    return bases, is_error
-
-</t>
-<t tx="ekr.20220525082935.6">#
-# Preparing module (performed before semantic analysis)
-#
-
-</t>
-<t tx="ekr.20220525082935.60">def configure_base_classes(
-    self, defn: ClassDef, bases: list[tuple[ProperType, Expression]]
-) -&gt; None:
-    """Set up base classes.
-
-    This computes several attributes on the corresponding TypeInfo defn.info
-    related to the base classes: defn.info.bases, defn.info.mro, and
-    miscellaneous others (at least tuple_type, fallback_to_any, and is_enum.)
-    """
-    base_types: list[Instance] = []
-    info = defn.info
-
-    for base, base_expr in bases:
-        if isinstance(base, TupleType):
-            actual_base = self.configure_tuple_base_class(defn, base)
-            base_types.append(actual_base)
-        elif isinstance(base, Instance):
-            if base.type.is_newtype:
-                self.fail('Cannot subclass "NewType"', defn)
-            base_types.append(base)
-        elif isinstance(base, AnyType):
-            if self.options.disallow_subclassing_any:
-                if isinstance(base_expr, (NameExpr, MemberExpr)):
-                    msg = f'Class cannot subclass "{base_expr.name}" (has type "Any")'
-                else:
-                    msg = 'Class cannot subclass value of type "Any"'
-                self.fail(msg, base_expr)
-            info.fallback_to_any = True
-        elif isinstance(base, TypedDictType):
-            base_types.append(base.fallback)
-        else:
-            msg = "Invalid base class"
-            name = self.get_name_repr_of_expr(base_expr)
-            if name:
-                msg += f' "{name}"'
-            self.fail(msg, base_expr)
-            info.fallback_to_any = True
-        if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
-            if isinstance(base_expr, (NameExpr, MemberExpr)):
-                prefix = f"Base type {base_expr.name}"
-            else:
-                prefix = "Base type"
-            self.msg.unimported_type_becomes_any(prefix, base, base_expr)
-        check_for_explicit_any(
-            base, self.options, self.is_typeshed_stub_file, self.msg, context=base_expr
-        )
-
-    # Add 'object' as implicit base if there is no other base class.
-    if not base_types and defn.fullname != "builtins.object":
-        base_types.append(self.object_type())
-
-    info.bases = base_types
-
-    # Calculate the MRO.
-    if not self.verify_base_classes(defn):
-        self.set_dummy_mro(defn.info)
-        return
-    self.calculate_class_mro(defn, self.object_type)
-
-</t>
-<t tx="ekr.20220525082935.61">def configure_tuple_base_class(self, defn: ClassDef, base: TupleType) -&gt; Instance:
-    info = defn.info
-
-    # There may be an existing valid tuple type from previous semanal iterations.
-    # Use equality to check if it is the case.
-    if info.tuple_type and info.tuple_type != base and not has_placeholder(info.tuple_type):
-        self.fail("Class has two incompatible bases derived from tuple", defn)
-        defn.has_incompatible_baseclass = True
-    if info.special_alias and has_placeholder(info.special_alias.target):
-        self.defer(force_progress=True)
-    info.update_tuple_type(base)
-    self.setup_alias_type_vars(defn)
-
-    if base.partial_fallback.type.fullname == "builtins.tuple" and not has_placeholder(base):
-        # Fallback can only be safely calculated after semantic analysis, since base
-        # classes may be incomplete. Postpone the calculation.
-        self.schedule_patch(PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(base))
-
-    return base.partial_fallback
-
-</t>
-<t tx="ekr.20220525082935.62">def set_dummy_mro(self, info: TypeInfo) -&gt; None:
-    # Give it an MRO consisting of just the class itself and object.
-    info.mro = [info, self.object_type().type]
-    info.bad_mro = True
-
-</t>
-<t tx="ekr.20220525082935.63">def calculate_class_mro(
-    self, defn: ClassDef, obj_type: Callable[[], Instance] | None = None
-) -&gt; None:
-    """Calculate method resolution order for a class.
-
-    `obj_type` exists just to fill in empty base class list in case of an error.
-    """
-    try:
-        calculate_mro(defn.info, obj_type)
-    except MroError:
-        self.fail(
-            "Cannot determine consistent method resolution "
-            'order (MRO) for "%s"' % defn.name,
-            defn,
-        )
-        self.set_dummy_mro(defn.info)
-    # Allow plugins to alter the MRO to handle the fact that `def mro()`
-    # on metaclasses permits MRO rewriting.
-    if defn.fullname:
-        hook = self.plugin.get_customize_class_mro_hook(defn.fullname)
-        if hook:
-            hook(ClassDefContext(defn, FakeExpression(), self))
-
-</t>
-<t tx="ekr.20220525082935.64">def infer_metaclass_and_bases_from_compat_helpers(self, defn: ClassDef) -&gt; None:
-    """Lookup for special metaclass declarations, and update defn fields accordingly.
-
-    * six.with_metaclass(M, B1, B2, ...)
-    * @six.add_metaclass(M)
-    * future.utils.with_metaclass(M, B1, B2, ...)
-    * past.utils.with_metaclass(M, B1, B2, ...)
-    """
-
-    # Look for six.with_metaclass(M, B1, B2, ...)
-    with_meta_expr: Expression | None = None
-    if len(defn.base_type_exprs) == 1:
-        base_expr = defn.base_type_exprs[0]
-        if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
-            base_expr.accept(self)
-            if (
-                base_expr.callee.fullname
-                in {
-                    "six.with_metaclass",
-                    "future.utils.with_metaclass",
-                    "past.utils.with_metaclass",
-                }
-                and len(base_expr.args) &gt;= 1
-                and all(kind == ARG_POS for kind in base_expr.arg_kinds)
-            ):
-                with_meta_expr = base_expr.args[0]
-                defn.base_type_exprs = base_expr.args[1:]
-
-    # Look for @six.add_metaclass(M)
-    add_meta_expr: Expression | None = None
-    for dec_expr in defn.decorators:
-        if isinstance(dec_expr, CallExpr) and isinstance(dec_expr.callee, RefExpr):
-            dec_expr.callee.accept(self)
-            if (
-                dec_expr.callee.fullname == "six.add_metaclass"
-                and len(dec_expr.args) == 1
-                and dec_expr.arg_kinds[0] == ARG_POS
-            ):
-                add_meta_expr = dec_expr.args[0]
-                break
-
-    metas = {defn.metaclass, with_meta_expr, add_meta_expr} - {None}
-    if len(metas) == 0:
-        return
-    if len(metas) &gt; 1:
-        self.fail("Multiple metaclass definitions", defn)
-        return
-    defn.metaclass = metas.pop()
-
-</t>
-<t tx="ekr.20220525082935.65">def verify_base_classes(self, defn: ClassDef) -&gt; bool:
-    info = defn.info
-    cycle = False
-    for base in info.bases:
-        baseinfo = base.type
-        if self.is_base_class(info, baseinfo):
-            self.fail("Cycle in inheritance hierarchy", defn)
-            cycle = True
-    dup = find_duplicate(info.direct_base_classes())
-    if dup:
-        self.fail(f'Duplicate base class "{dup.name}"', defn, blocker=True)
-        return False
-    return not cycle
-
-</t>
-<t tx="ekr.20220525082935.66">def is_base_class(self, t: TypeInfo, s: TypeInfo) -&gt; bool:
-    """Determine if t is a base class of s (but do not use mro)."""
-    # Search the base class graph for t, starting from s.
-    worklist = [s]
-    visited = {s}
-    while worklist:
-        nxt = worklist.pop()
-        if nxt == t:
-            return True
-        for base in nxt.bases:
-            if base.type not in visited:
-                worklist.append(base.type)
-                visited.add(base.type)
-    return False
-
-</t>
-<t tx="ekr.20220525082935.67">def get_declared_metaclass(
-    self, name: str, metaclass_expr: Expression | None
-) -&gt; tuple[Instance | None, bool]:
-    """Returns either metaclass instance or boolean whether we should defer."""
-    declared_metaclass = None
-    if metaclass_expr:
-        metaclass_name = None
-        if isinstance(metaclass_expr, NameExpr):
-            metaclass_name = metaclass_expr.name
-        elif isinstance(metaclass_expr, MemberExpr):
-            metaclass_name = get_member_expr_fullname(metaclass_expr)
-        if metaclass_name is None:
-            self.fail(f'Dynamic metaclass not supported for "{name}"', metaclass_expr)
-            return None, False
-        sym = self.lookup_qualified(metaclass_name, metaclass_expr)
-        if sym is None:
-            # Probably a name error - it is already handled elsewhere
-            return None, False
-        if isinstance(sym.node, Var) and isinstance(get_proper_type(sym.node.type), AnyType):
-            # Create a fake TypeInfo that fallbacks to `Any`, basically allowing
-            # all the attributes. Same thing as we do for `Any` base class.
-            any_info = self.make_empty_type_info(ClassDef(sym.node.name, Block([])))
-            any_info.fallback_to_any = True
-            any_info._fullname = sym.node.fullname
-            if self.options.disallow_subclassing_any:
-                self.fail(
-                    f'Class cannot use "{any_info.fullname}" as a metaclass (has type "Any")',
-                    metaclass_expr,
-                )
-            return Instance(any_info, []), False
-        if isinstance(sym.node, PlaceholderNode):
-            return None, True  # defer later in the caller
-
-        # Support type aliases, like `_Meta: TypeAlias = type`
-        if (
-            isinstance(sym.node, TypeAlias)
-            and sym.node.no_args
-            and isinstance(sym.node.target, ProperType)
-            and isinstance(sym.node.target, Instance)
-        ):
-            metaclass_info: Node | None = sym.node.target.type
-        else:
-            metaclass_info = sym.node
-
-        if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
-            self.fail(f'Invalid metaclass "{metaclass_name}"', metaclass_expr)
-            return None, False
-        if not metaclass_info.is_metaclass():
-            self.fail(
-                'Metaclasses not inheriting from "type" are not supported', metaclass_expr
-            )
-            return None, False
-        inst = fill_typevars(metaclass_info)
-        assert isinstance(inst, Instance)
-        declared_metaclass = inst
-    return declared_metaclass, False
-
-def recalculate_metaclass(self, defn: ClassDef, declared_metaclass: Instance | None) -&gt; None:
-    defn.info.declared_metaclass = declared_metaclass
-    defn.info.metaclass_type = defn.info.calculate_metaclass_type()
-    if any(info.is_protocol for info in defn.info.mro):
-        if (
-            not defn.info.metaclass_type
-            or defn.info.metaclass_type.type.fullname == "builtins.type"
-        ):
-            # All protocols and their subclasses have ABCMeta metaclass by default.
-            # TODO: add a metaclass conflict check if there is another metaclass.
-            abc_meta = self.named_type_or_none("abc.ABCMeta", [])
-            if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
-                defn.info.metaclass_type = abc_meta
-    if defn.info.metaclass_type and defn.info.metaclass_type.type.has_base("enum.EnumMeta"):
-        defn.info.is_enum = True
-        if defn.type_vars:
-            self.fail("Enum class cannot be generic", defn)
-
-</t>
-<t tx="ekr.20220525082935.68">#
-# Imports
-#
-
-</t>
-<t tx="ekr.20220525082935.69">def visit_import(self, i: Import) -&gt; None:
-    self.statement = i
-    for id, as_id in i.ids:
-        # Modules imported in a stub file without using 'import X as X' won't get exported
-        # When implicit re-exporting is disabled, we have the same behavior as stubs.
-        use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
-        if as_id is not None:
-            base_id = id
-            imported_id = as_id
-            module_public = use_implicit_reexport or id.split(".")[-1] == as_id
-        else:
-            base_id = id.split(".")[0]
-            imported_id = base_id
-            module_public = use_implicit_reexport
-        self.add_module_symbol(
-            base_id,
-            imported_id,
-            context=i,
-            module_public=module_public,
-            module_hidden=not module_public,
-        )
-
-</t>
-<t tx="ekr.20220525082935.7">def prepare_file(self, file_node: MypyFile) -&gt; None:
-    """Prepare a freshly parsed file for semantic analysis."""
-    if "builtins" in self.modules:
-        file_node.names["__builtins__"] = SymbolTableNode(GDEF, self.modules["builtins"])
-    if file_node.fullname == "builtins":
-        self.prepare_builtins_namespace(file_node)
-    if file_node.fullname == "typing":
-        self.prepare_typing_namespace(file_node, type_aliases)
-    if file_node.fullname == "typing_extensions":
-        self.prepare_typing_namespace(file_node, typing_extensions_aliases)
-
-</t>
-<t tx="ekr.20220525082935.70">def visit_import_from(self, imp: ImportFrom) -&gt; None:
-    self.statement = imp
-    module_id = self.correct_relative_import(imp)
-    module = self.modules.get(module_id)
-    for id, as_id in imp.names:
-        fullname = module_id + "." + id
-        self.set_future_import_flags(fullname)
-        if module is None:
-            node = None
-        elif module_id == self.cur_mod_id and fullname in self.modules:
-            # Submodule takes precedence over definition in surround package, for
-            # compatibility with runtime semantics in typical use cases. This
-            # could more precisely model runtime semantics by taking into account
-            # the line number beyond which the local definition should take
-            # precedence, but doesn't seem to be important in most use cases.
-            node = SymbolTableNode(GDEF, self.modules[fullname])
-        else:
-            if id == as_id == "__all__" and module_id in self.export_map:
-                self.all_exports[:] = self.export_map[module_id]
-            node = module.names.get(id)
-
-        missing_submodule = False
-        imported_id = as_id or id
-
-        # Modules imported in a stub file without using 'from Y import X as X' will
-        # not get exported.
-        # When implicit re-exporting is disabled, we have the same behavior as stubs.
-        use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
-        module_public = use_implicit_reexport or (as_id is not None and id == as_id)
-
-        # If the module does not contain a symbol with the name 'id',
-        # try checking if it's a module instead.
-        if not node:
-            mod = self.modules.get(fullname)
-            if mod is not None:
-                kind = self.current_symbol_kind()
-                node = SymbolTableNode(kind, mod)
-            elif fullname in self.missing_modules:
-                missing_submodule = True
-        # If it is still not resolved, check for a module level __getattr__
-        if (
-            module
-            and not node
-            and (module.is_stub or self.options.python_version &gt;= (3, 7))
-            and "__getattr__" in module.names
-        ):
-            # We store the fullname of the original definition so that we can
-            # detect whether two imported names refer to the same thing.
-            fullname = module_id + "." + id
-            gvar = self.create_getattr_var(module.names["__getattr__"], imported_id, fullname)
-            if gvar:
-                self.add_symbol(
-                    imported_id,
-                    gvar,
-                    imp,
-                    module_public=module_public,
-                    module_hidden=not module_public,
-                )
-                continue
-
-        if node and not node.module_hidden:
-            self.process_imported_symbol(
-                node, module_id, id, imported_id, fullname, module_public, context=imp
-            )
-        elif module and not missing_submodule:
-            # Target module exists but the imported name is missing or hidden.
-            self.report_missing_module_attribute(
-                module_id,
-                id,
-                imported_id,
-                module_public=module_public,
-                module_hidden=not module_public,
-                context=imp,
-            )
-        else:
-            # Import of a missing (sub)module.
-            self.add_unknown_imported_symbol(
-                imported_id,
-                imp,
-                target_name=fullname,
-                module_public=module_public,
-                module_hidden=not module_public,
-            )
-
-</t>
-<t tx="ekr.20220525082935.71">def process_imported_symbol(
-    self,
-    node: SymbolTableNode,
-    module_id: str,
-    id: str,
-    imported_id: str,
-    fullname: str,
-    module_public: bool,
-    context: ImportBase,
-) -&gt; None:
-    module_hidden = not module_public and (
-        # `from package import submodule` should work regardless of whether package
-        # re-exports submodule, so we shouldn't hide it
-        not isinstance(node.node, MypyFile)
-        or fullname not in self.modules
-        # but given `from somewhere import random_unrelated_module` we should hide
-        # random_unrelated_module
-        or not fullname.startswith(self.cur_mod_id + ".")
-    )
-
-    if isinstance(node.node, PlaceholderNode):
-        if self.final_iteration:
-            self.report_missing_module_attribute(
-                module_id,
-                id,
-                imported_id,
-                module_public=module_public,
-                module_hidden=module_hidden,
-                context=context,
-            )
-            return
-        else:
-            # This might become a type.
-            self.mark_incomplete(
-                imported_id,
-                node.node,
-                module_public=module_public,
-                module_hidden=module_hidden,
-                becomes_typeinfo=True,
-            )
-    existing_symbol = self.globals.get(imported_id)
-    if (
-        existing_symbol
-        and not isinstance(existing_symbol.node, PlaceholderNode)
-        and not isinstance(node.node, PlaceholderNode)
-    ):
-        # Import can redefine a variable. They get special treatment.
-        if self.process_import_over_existing_name(imported_id, existing_symbol, node, context):
-            return
-    if existing_symbol and isinstance(node.node, PlaceholderNode):
-        # Imports are special, some redefinitions are allowed, so wait until
-        # we know what is the new symbol node.
-        return
-    # NOTE: we take the original node even for final `Var`s. This is to support
-    # a common pattern when constants are re-exported (same applies to import *).
-    self.add_imported_symbol(
-        imported_id, node, context, module_public=module_public, module_hidden=module_hidden
-    )
-
-</t>
-<t tx="ekr.20220525082935.72">def report_missing_module_attribute(
-    self,
-    import_id: str,
-    source_id: str,
-    imported_id: str,
-    module_public: bool,
-    module_hidden: bool,
-    context: Node,
-) -&gt; None:
-    # Missing attribute.
-    if self.is_incomplete_namespace(import_id):
-        # We don't know whether the name will be there, since the namespace
-        # is incomplete. Defer the current target.
-        self.mark_incomplete(
-            imported_id, context, module_public=module_public, module_hidden=module_hidden
-        )
-        return
-    message = f'Module "{import_id}" has no attribute "{source_id}"'
-    # Suggest alternatives, if any match is found.
-    module = self.modules.get(import_id)
-    if module:
-        if not self.options.implicit_reexport and source_id in module.names.keys():
-            message = (
-                'Module "{}" does not explicitly export attribute "{}"'
-                "; implicit reexport disabled".format(import_id, source_id)
-            )
-        else:
-            alternatives = set(module.names.keys()).difference({source_id})
-            matches = best_matches(source_id, alternatives)[:3]
-            if matches:
-                suggestion = f"; maybe {pretty_seq(matches, 'or')}?"
-                message += f"{suggestion}"
-    self.fail(message, context, code=codes.ATTR_DEFINED)
-    self.add_unknown_imported_symbol(
-        imported_id,
-        context,
-        target_name=None,
-        module_public=module_public,
-        module_hidden=not module_public,
-    )
-
-    if import_id == "typing":
-        # The user probably has a missing definition in a test fixture. Let's verify.
-        fullname = f"builtins.{source_id.lower()}"
-        if (
-            self.lookup_fully_qualified_or_none(fullname) is None
-            and fullname in SUGGESTED_TEST_FIXTURES
-        ):
-            # Yes. Generate a helpful note.
-            self.msg.add_fixture_note(fullname, context)
-
-</t>
-<t tx="ekr.20220525082935.73">def process_import_over_existing_name(
-    self,
-    imported_id: str,
-    existing_symbol: SymbolTableNode,
-    module_symbol: SymbolTableNode,
-    import_node: ImportBase,
-) -&gt; bool:
-    if existing_symbol.node is module_symbol.node:
-        # We added this symbol on previous iteration.
-        return False
-    if existing_symbol.kind in (LDEF, GDEF, MDEF) and isinstance(
-        existing_symbol.node, (Var, FuncDef, TypeInfo, Decorator, TypeAlias)
-    ):
-        # This is a valid import over an existing definition in the file. Construct a dummy
-        # assignment that we'll use to type check the import.
-        lvalue = NameExpr(imported_id)
-        lvalue.kind = existing_symbol.kind
-        lvalue.node = existing_symbol.node
-        rvalue = NameExpr(imported_id)
-        rvalue.kind = module_symbol.kind
-        rvalue.node = module_symbol.node
-        if isinstance(rvalue.node, TypeAlias):
-            # Suppress bogus errors from the dummy assignment if rvalue is an alias.
-            # Otherwise mypy may complain that alias is invalid in runtime context.
-            rvalue.is_alias_rvalue = True
-        assignment = AssignmentStmt([lvalue], rvalue)
-        for node in assignment, lvalue, rvalue:
-            node.set_line(import_node)
-        import_node.assignments.append(assignment)
-        return True
-    return False
-
-</t>
-<t tx="ekr.20220525082935.74">def correct_relative_import(self, node: ImportFrom | ImportAll) -&gt; str:
-    import_id, ok = correct_relative_import(
-        self.cur_mod_id, node.relative, node.id, self.cur_mod_node.is_package_init_file()
-    )
-    if not ok:
-        self.fail("Relative import climbs too many namespaces", node)
-    return import_id
-
-</t>
-<t tx="ekr.20220525082935.75">def visit_import_all(self, i: ImportAll) -&gt; None:
-    i_id = self.correct_relative_import(i)
-    if i_id in self.modules:
-        m = self.modules[i_id]
-        if self.is_incomplete_namespace(i_id):
-            # Any names could be missing from the current namespace if the target module
-            # namespace is incomplete.
-            self.mark_incomplete("*", i)
-        for name, node in m.names.items():
-            fullname = i_id + "." + name
-            self.set_future_import_flags(fullname)
-            if node is None:
-                continue
-            # if '__all__' exists, all nodes not included have had module_public set to
-            # False, and we can skip checking '_' because it's been explicitly included.
-            if node.module_public and (not name.startswith("_") or "__all__" in m.names):
-                if isinstance(node.node, MypyFile):
-                    # Star import of submodule from a package, add it as a dependency.
-                    self.imports.add(node.node.fullname)
-                existing_symbol = self.lookup_current_scope(name)
-                if existing_symbol and not isinstance(node.node, PlaceholderNode):
-                    # Import can redefine a variable. They get special treatment.
-                    if self.process_import_over_existing_name(name, existing_symbol, node, i):
-                        continue
-                # `from x import *` always reexports symbols
-                self.add_imported_symbol(
-                    name, node, i, module_public=True, module_hidden=False
-                )
-
-    else:
-        # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
-        pass
-
-</t>
-<t tx="ekr.20220525082935.76">#
-# Assignment
-#
-
-</t>
-<t tx="ekr.20220525082935.77">def visit_assignment_expr(self, s: AssignmentExpr) -&gt; None:
-    s.value.accept(self)
-    self.analyze_lvalue(s.target, escape_comprehensions=True, has_explicit_value=True)
-
-</t>
-<t tx="ekr.20220525082935.78">def visit_assignment_stmt(self, s: AssignmentStmt) -&gt; None:
-    self.statement = s
-
-    # Special case assignment like X = X.
-    if self.analyze_identity_global_assignment(s):
-        return
-
-    tag = self.track_incomplete_refs()
-
-    # Here we have a chicken and egg problem: at this stage we can't call
-    # can_be_type_alias(), because we have not enough information about rvalue.
-    # But we can't use a full visit because it may emit extra incomplete refs (namely
-    # when analysing any type applications there) thus preventing the further analysis.
-    # To break the tie, we first analyse rvalue partially, if it can be a type alias.
-    with self.basic_type_applications_set(s):
-        s.rvalue.accept(self)
-    if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
-        # Initializer couldn't be fully analyzed. Defer the current node and give up.
-        # Make sure that if we skip the definition of some local names, they can't be
-        # added later in this scope, since an earlier definition should take precedence.
-        for expr in names_modified_by_assignment(s):
-            self.mark_incomplete(expr.name, expr)
-        return
-    if self.can_possibly_be_index_alias(s):
-        # Now re-visit those rvalues that were we skipped type applications above.
-        # This should be safe as generally semantic analyzer is idempotent.
-        s.rvalue.accept(self)
-
-    # The r.h.s. is now ready to be classified, first check if it is a special form:
-    special_form = False
-    # * type alias
-    if self.check_and_set_up_type_alias(s):
-        s.is_alias_def = True
-        special_form = True
-    # * type variable definition
-    elif self.process_typevar_declaration(s):
-        special_form = True
-    elif self.process_paramspec_declaration(s):
-        special_form = True
-    elif self.process_typevartuple_declaration(s):
-        special_form = True
-    # * type constructors
-    elif self.analyze_namedtuple_assign(s):
-        special_form = True
-    elif self.analyze_typeddict_assign(s):
-        special_form = True
-    elif self.newtype_analyzer.process_newtype_declaration(s):
-        special_form = True
-    elif self.analyze_enum_assign(s):
-        special_form = True
-
-    if special_form:
-        self.record_special_form_lvalue(s)
-        return
-    # Clear the alias flag if assignment turns out not a special form after all. It
-    # may be set to True while there were still placeholders due to forward refs.
-    s.is_alias_def = False
-
-    # OK, this is a regular assignment, perform the necessary analysis steps.
-    s.is_final_def = self.unwrap_final(s)
-    self.analyze_lvalues(s)
-    self.check_final_implicit_def(s)
-    self.store_final_status(s)
-    self.check_classvar(s)
-    self.process_type_annotation(s)
-    self.apply_dynamic_class_hook(s)
-    if not s.type:
-        self.process_module_assignment(s.lvalues, s.rvalue, s)
-    self.process__all__(s)
-    self.process__deletable__(s)
-    self.process__slots__(s)
-
-</t>
-<t tx="ekr.20220525082935.79">def analyze_identity_global_assignment(self, s: AssignmentStmt) -&gt; bool:
-    """Special case 'X = X' in global scope.
-
-    This allows supporting some important use cases.
-
-    Return true if special casing was applied.
-    """
-    if not isinstance(s.rvalue, NameExpr) or len(s.lvalues) != 1:
-        # Not of form 'X = X'
-        return False
-    lvalue = s.lvalues[0]
-    if not isinstance(lvalue, NameExpr) or s.rvalue.name != lvalue.name:
-        # Not of form 'X = X'
-        return False
-    if self.type is not None or self.is_func_scope():
-        # Not in global scope
-        return False
-    # It's an assignment like 'X = X' in the global scope.
-    name = lvalue.name
-    sym = self.lookup(name, s)
-    if sym is None:
-        if self.final_iteration:
-            # Fall back to normal assignment analysis.
-            return False
-        else:
-            self.defer()
-            return True
-    else:
-        if sym.node is None:
-            # Something special -- fall back to normal assignment analysis.
-            return False
-        if name not in self.globals:
-            # The name is from builtins. Add an alias to the current module.
-            self.add_symbol(name, sym.node, s)
-        if not isinstance(sym.node, PlaceholderNode):
-            for node in s.rvalue, lvalue:
-                node.node = sym.node
-                node.kind = GDEF
-                node.fullname = sym.node.fullname
-        return True
-
-</t>
-<t tx="ekr.20220525082935.8">def prepare_typing_namespace(self, file_node: MypyFile, aliases: dict[str, str]) -&gt; None:
-    """Remove dummy alias definitions such as List = TypeAlias(object) from typing.
-
-    They will be replaced with real aliases when corresponding targets are ready.
-    """
-    # This is all pretty unfortunate. typeshed now has a
-    # sys.version_info check for OrderedDict, and we shouldn't
-    # take it out, because it is correct and a typechecker should
-    # use that as a source of truth. But instead we rummage
-    # through IfStmts to remove the info first.  (I tried to
-    # remove this whole machinery and ran into issues with the
-    # builtins/typing import cycle.)
-    def helper(defs: list[Statement]) -&gt; None:
-        for stmt in defs.copy():
-            if isinstance(stmt, IfStmt):
-                for body in stmt.body:
-                    helper(body.body)
-                if stmt.else_body:
-                    helper(stmt.else_body.body)
-            if (
-                isinstance(stmt, AssignmentStmt)
-                and len(stmt.lvalues) == 1
-                and isinstance(stmt.lvalues[0], NameExpr)
-            ):
-                # Assignment to a simple name, remove it if it is a dummy alias.
-                if f"{file_node.fullname}.{stmt.lvalues[0].name}" in aliases:
-                    defs.remove(stmt)
-
-    helper(file_node.defs)
-
-</t>
-<t tx="ekr.20220525082935.80">def should_wait_rhs(self, rv: Expression) -&gt; bool:
-    """Can we already classify this r.h.s. of an assignment or should we wait?
-
-    This returns True if we don't have enough information to decide whether
-    an assignment is just a normal variable definition or a special form.
-    Always return False if this is a final iteration. This will typically cause
-    the lvalue to be classified as a variable plus emit an error.
-    """
-    if self.final_iteration:
-        # No chance, nothing has changed.
-        return False
-    if isinstance(rv, NameExpr):
-        n = self.lookup(rv.name, rv)
-        if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
-            return True
-    elif isinstance(rv, MemberExpr):
-        fname = get_member_expr_fullname(rv)
-        if fname:
-            n = self.lookup_qualified(fname, rv, suppress_errors=True)
-            if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
-                return True
-    elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
-        return self.should_wait_rhs(rv.base)
-    elif isinstance(rv, CallExpr) and isinstance(rv.callee, RefExpr):
-        # This is only relevant for builtin SCC where things like 'TypeVar'
-        # may be not ready.
-        return self.should_wait_rhs(rv.callee)
-    return False
-
-</t>
-<t tx="ekr.20220525082935.81">def can_be_type_alias(self, rv: Expression, allow_none: bool = False) -&gt; bool:
-    """Is this a valid r.h.s. for an alias definition?
-
-    Note: this function should be only called for expressions where self.should_wait_rhs()
-    returns False.
-    """
-    if isinstance(rv, RefExpr) and self.is_type_ref(rv, bare=True):
-        return True
-    if isinstance(rv, IndexExpr) and self.is_type_ref(rv.base, bare=False):
-        return True
-    if self.is_none_alias(rv):
-        return True
-    if allow_none and isinstance(rv, NameExpr) and rv.fullname == "builtins.None":
-        return True
-    if isinstance(rv, OpExpr) and rv.op == "|":
-        if self.is_stub_file:
-            return True
-        if self.can_be_type_alias(rv.left, allow_none=True) and self.can_be_type_alias(
-            rv.right, allow_none=True
-        ):
-            return True
-    return False
-
-def can_possibly_be_index_alias(self, s: AssignmentStmt) -&gt; bool:
-    """Like can_be_type_alias(), but simpler and doesn't require analyzed rvalue.
-
-    Instead, use lvalues/annotations structure to figure out whether this can
-    potentially be a type alias definition. Another difference from above function
-    is that we are only interested IndexExpr and OpExpr rvalues, since only those
-    can be potentially recursive (things like `A = A` are never valid).
-    """
-    if len(s.lvalues) &gt; 1:
-        return False
-    if not isinstance(s.lvalues[0], NameExpr):
-        return False
-    if s.unanalyzed_type is not None and not self.is_pep_613(s):
-        return False
-    if not isinstance(s.rvalue, (IndexExpr, OpExpr)):
-        return False
-    # Something that looks like Foo = Bar[Baz, ...]
-    return True
-
-@contextmanager
-def basic_type_applications_set(self, s: AssignmentStmt) -&gt; Iterator[None]:
-    old = self.basic_type_applications
-    # As an optimization, only use the double visit logic if this
-    # can possibly be a recursive type alias.
-    self.basic_type_applications = self.can_possibly_be_index_alias(s)
-    try:
-        yield
-    finally:
-        self.basic_type_applications = old
-
-</t>
-<t tx="ekr.20220525082935.82">def is_type_ref(self, rv: Expression, bare: bool = False) -&gt; bool:
-    """Does this expression refer to a type?
-
-    This includes:
-      * Special forms, like Any or Union
-      * Classes (except subscripted enums)
-      * Other type aliases
-      * PlaceholderNodes with becomes_typeinfo=True (these can be not ready class
-        definitions, and not ready aliases).
-
-    If bare is True, this is not a base of an index expression, so some special
-    forms are not valid (like a bare Union).
-
-    Note: This method should be only used in context of a type alias definition.
-    This method can only return True for RefExprs, to check if C[int] is a valid
-    target for type alias call this method on expr.base (i.e. on C in C[int]).
-    See also can_be_type_alias().
-    """
-    if not isinstance(rv, RefExpr):
-        return False
-    if isinstance(rv.node, TypeVarLikeExpr):
-        self.fail(f'Type variable "{rv.fullname}" is invalid as target for type alias', rv)
-        return False
-
-    if bare:
-        # These three are valid even if bare, for example
-        # A = Tuple is just equivalent to A = Tuple[Any, ...].
-        valid_refs = {"typing.Any", "typing.Tuple", "typing.Callable"}
-    else:
-        valid_refs = type_constructors
-
-    if isinstance(rv.node, TypeAlias) or rv.fullname in valid_refs:
-        return True
-    if isinstance(rv.node, TypeInfo):
-        if bare:
-            return True
-        # Assignment color = Color['RED'] defines a variable, not an alias.
-        return not rv.node.is_enum
-    if isinstance(rv.node, Var):
-        return rv.node.fullname in NEVER_NAMES
-
-    if isinstance(rv, NameExpr):
-        n = self.lookup(rv.name, rv)
-        if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
-            return True
-    elif isinstance(rv, MemberExpr):
-        fname = get_member_expr_fullname(rv)
-        if fname:
-            # The r.h.s. for variable definitions may not be a type reference but just
-            # an instance attribute, so suppress the errors.
-            n = self.lookup_qualified(fname, rv, suppress_errors=True)
-            if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
-                return True
-    return False
-
-</t>
-<t tx="ekr.20220525082935.83">def is_none_alias(self, node: Expression) -&gt; bool:
-    """Is this a r.h.s. for a None alias?
-
-    We special case the assignments like Void = type(None), to allow using
-    Void in type annotations.
-    """
-    if isinstance(node, CallExpr):
-        if (
-            isinstance(node.callee, NameExpr)
-            and len(node.args) == 1
-            and isinstance(node.args[0], NameExpr)
-        ):
-            call = self.lookup_qualified(node.callee.name, node.callee)
-            arg = self.lookup_qualified(node.args[0].name, node.args[0])
-            if (
-                call is not None
-                and call.node
-                and call.node.fullname == "builtins.type"
-                and arg is not None
-                and arg.node
-                and arg.node.fullname == "builtins.None"
-            ):
-                return True
-    return False
-
-</t>
-<t tx="ekr.20220525082935.84">def record_special_form_lvalue(self, s: AssignmentStmt) -&gt; None:
-    """Record minimal necessary information about l.h.s. of a special form.
-
-    This exists mostly for compatibility with the old semantic analyzer.
-    """
-    lvalue = s.lvalues[0]
-    assert isinstance(lvalue, NameExpr)
-    lvalue.is_special_form = True
-    if self.current_symbol_kind() == GDEF:
-        lvalue.fullname = self.qualified_name(lvalue.name)
-    lvalue.kind = self.current_symbol_kind()
-
-</t>
-<t tx="ekr.20220525082935.85">def analyze_enum_assign(self, s: AssignmentStmt) -&gt; bool:
-    """Check if s defines an Enum."""
-    if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, EnumCallExpr):
-        # Already analyzed enum -- nothing to do here.
-        return True
-    return self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
-
-</t>
-<t tx="ekr.20220525082935.86">def analyze_namedtuple_assign(self, s: AssignmentStmt) -&gt; bool:
-    """Check if s defines a namedtuple."""
-    if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
-        if s.rvalue.analyzed.info.tuple_type and not has_placeholder(
-            s.rvalue.analyzed.info.tuple_type
-        ):
-            return True  # This is a valid and analyzed named tuple definition, nothing to do here.
-    if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
-        return False
-    lvalue = s.lvalues[0]
-    name = lvalue.name
-    namespace = self.qualified_name(name)
-    with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
-        internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
-            s.rvalue, name, self.is_func_scope()
-        )
-        if internal_name is None:
-            return False
-        if isinstance(lvalue, MemberExpr):
-            self.fail("NamedTuple type as an attribute is not supported", lvalue)
-            return False
-        if internal_name != name:
-            self.fail(
-                'First argument to namedtuple() should be "{}", not "{}"'.format(
-                    name, internal_name
-                ),
-                s.rvalue,
-                code=codes.NAME_MATCH,
-            )
-            return True
-        # Yes, it's a valid namedtuple, but defer if it is not ready.
-        if not info:
-            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
-        else:
-            self.setup_type_vars(info.defn, tvar_defs)
-            self.setup_alias_type_vars(info.defn)
-        return True
-
-</t>
-<t tx="ekr.20220525082935.87">def analyze_typeddict_assign(self, s: AssignmentStmt) -&gt; bool:
-    """Check if s defines a typed dict."""
-    if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, TypedDictExpr):
-        if s.rvalue.analyzed.info.typeddict_type and not has_placeholder(
-            s.rvalue.analyzed.info.typeddict_type
-        ):
-            # This is a valid and analyzed typed dict definition, nothing to do here.
-            return True
-    if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
-        return False
-    lvalue = s.lvalues[0]
-    name = lvalue.name
-    namespace = self.qualified_name(name)
-    with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
-        is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
-            s.rvalue, name, self.is_func_scope()
-        )
-        if not is_typed_dict:
-            return False
-        if isinstance(lvalue, MemberExpr):
-            self.fail("TypedDict type as attribute is not supported", lvalue)
-            return False
-        # Yes, it's a valid typed dict, but defer if it is not ready.
-        if not info:
-            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
-        else:
-            defn = info.defn
-            self.setup_type_vars(defn, tvar_defs)
-            self.setup_alias_type_vars(defn)
-        return True
-
-</t>
-<t tx="ekr.20220525082935.88">def analyze_lvalues(self, s: AssignmentStmt) -&gt; None:
-    # We cannot use s.type, because analyze_simple_literal_type() will set it.
-    explicit = s.unanalyzed_type is not None
-    if self.is_final_type(s.unanalyzed_type):
-        # We need to exclude bare Final.
-        assert isinstance(s.unanalyzed_type, UnboundType)
-        if not s.unanalyzed_type.args:
-            explicit = False
-
-    if s.rvalue:
-        if isinstance(s.rvalue, TempNode):
-            has_explicit_value = not s.rvalue.no_rhs
-        else:
-            has_explicit_value = True
-    else:
-        has_explicit_value = False
-
-    for lval in s.lvalues:
-        self.analyze_lvalue(
-            lval,
-            explicit_type=explicit,
-            is_final=s.is_final_def,
-            has_explicit_value=has_explicit_value,
-        )
-
-</t>
-<t tx="ekr.20220525082935.89">def apply_dynamic_class_hook(self, s: AssignmentStmt) -&gt; None:
-    if not isinstance(s.rvalue, CallExpr):
-        return
-    fname = None
-    call = s.rvalue
-    while True:
-        if isinstance(call.callee, RefExpr):
-            fname = call.callee.fullname
-        # check if method call
-        if fname is None and isinstance(call.callee, MemberExpr):
-            callee_expr = call.callee.expr
-            if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
-                method_name = call.callee.name
-                fname = callee_expr.fullname + "." + method_name
-            elif isinstance(callee_expr, CallExpr):
-                # check if chain call
-                call = callee_expr
-                continue
-        break
-    if not fname:
-        return
-    hook = self.plugin.get_dynamic_class_hook(fname)
-    if not hook:
-        return
-    for lval in s.lvalues:
-        if not isinstance(lval, NameExpr):
-            continue
-        hook(DynamicClassDefContext(call, lval.name, self))
-
-</t>
-<t tx="ekr.20220525082935.9">def prepare_builtins_namespace(self, file_node: MypyFile) -&gt; None:
-    """Add certain special-cased definitions to the builtins module.
-
-    Some definitions are too special or fundamental to be processed
-    normally from the AST.
-    """
-    names = file_node.names
-
-    # Add empty definition for core built-in classes, since they are required for basic
-    # operation. These will be completed later on.
-    for name in CORE_BUILTIN_CLASSES:
-        cdef = ClassDef(name, Block([]))  # Dummy ClassDef, will be replaced later
-        info = TypeInfo(SymbolTable(), cdef, "builtins")
-        info._fullname = f"builtins.{name}"
-        names[name] = SymbolTableNode(GDEF, info)
-
-    bool_info = names["bool"].node
-    assert isinstance(bool_info, TypeInfo)
-    bool_type = Instance(bool_info, [])
-
-    special_var_types: list[tuple[str, Type]] = [
-        ("None", NoneType()),
-        # reveal_type is a mypy-only function that gives an error with
-        # the type of its arg.
-        ("reveal_type", AnyType(TypeOfAny.special_form)),
-        # reveal_locals is a mypy-only function that gives an error with the types of
-        # locals
-        ("reveal_locals", AnyType(TypeOfAny.special_form)),
-        ("True", bool_type),
-        ("False", bool_type),
-        ("__debug__", bool_type),
-    ]
-
-    for name, typ in special_var_types:
-        v = Var(name, typ)
-        v._fullname = f"builtins.{name}"
-        file_node.names[name] = SymbolTableNode(GDEF, v)
-
-</t>
-<t tx="ekr.20220525082935.90">def unwrap_final(self, s: AssignmentStmt) -&gt; bool:
-    """Strip Final[...] if present in an assignment.
-
-    This is done to invoke type inference during type checking phase for this
-    assignment. Also, Final[...] doesn't affect type in any way -- it is rather an
-    access qualifier for given `Var`.
-
-    Also perform various consistency checks.
-
-    Returns True if Final[...] was present.
-    """
-    if not s.unanalyzed_type or not self.is_final_type(s.unanalyzed_type):
-        return False
-    assert isinstance(s.unanalyzed_type, UnboundType)
-    if len(s.unanalyzed_type.args) &gt; 1:
-        self.fail("Final[...] takes at most one type argument", s.unanalyzed_type)
-    invalid_bare_final = False
-    if not s.unanalyzed_type.args:
-        s.type = None
-        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
-            invalid_bare_final = True
-            self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
-    else:
-        s.type = s.unanalyzed_type.args[0]
-
-    if s.type is not None and self.is_classvar(s.type):
-        self.fail("Variable should not be annotated with both ClassVar and Final", s)
-        return False
-
-    if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
-        self.fail("Invalid final declaration", s)
-        return False
-    lval = s.lvalues[0]
-    assert isinstance(lval, RefExpr)
-
-    # Reset inferred status if it was set due to simple literal rvalue on previous iteration.
-    # TODO: this is a best-effort quick fix, we should avoid the need to manually sync this,
-    # see https://github.com/python/mypy/issues/6458.
-    if lval.is_new_def:
-        lval.is_inferred_def = s.type is None
-
-    if self.loop_depth &gt; 0:
-        self.fail("Cannot use Final inside a loop", s)
-    if self.type and self.type.is_protocol:
-        self.msg.protocol_members_cant_be_final(s)
-    if (
-        isinstance(s.rvalue, TempNode)
-        and s.rvalue.no_rhs
-        and not self.is_stub_file
-        and not self.is_class_scope()
-    ):
-        if not invalid_bare_final:  # Skip extra error messages.
-            self.msg.final_without_value(s)
-    return True
-
-</t>
-<t tx="ekr.20220525082935.91">def check_final_implicit_def(self, s: AssignmentStmt) -&gt; None:
-    """Do basic checks for final declaration on self in __init__.
-
-    Additional re-definition checks are performed by `analyze_lvalue`.
-    """
-    if not s.is_final_def:
-        return
-    lval = s.lvalues[0]
-    assert isinstance(lval, RefExpr)
-    if isinstance(lval, MemberExpr):
-        if not self.is_self_member_ref(lval):
-            self.fail("Final can be only applied to a name or an attribute on self", s)
-            s.is_final_def = False
-            return
-        else:
-            assert self.function_stack
-            if self.function_stack[-1].name != "__init__":
-                self.fail("Can only declare a final attribute in class body or __init__", s)
-                s.is_final_def = False
-                return
-
-</t>
-<t tx="ekr.20220525082935.92">def store_final_status(self, s: AssignmentStmt) -&gt; None:
-    """If this is a locally valid final declaration, set the corresponding flag on `Var`."""
-    if s.is_final_def:
-        if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
-            node = s.lvalues[0].node
-            if isinstance(node, Var):
-                node.is_final = True
-                node.final_value = self.unbox_literal(s.rvalue)
-                if self.is_class_scope() and (
-                    isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs
-                ):
-                    node.final_unset_in_class = True
-    else:
-        for lval in self.flatten_lvalues(s.lvalues):
-            # Special case: we are working with an `Enum`:
-            #
-            #   class MyEnum(Enum):
-            #       key = 'some value'
-            #
-            # Here `key` is implicitly final. In runtime, code like
-            #
-            #     MyEnum.key = 'modified'
-            #
-            # will fail with `AttributeError: Cannot reassign members.`
-            # That's why we need to replicate this.
-            if (
-                isinstance(lval, NameExpr)
-                and isinstance(self.type, TypeInfo)
-                and self.type.is_enum
-            ):
-                cur_node = self.type.names.get(lval.name, None)
-                if (
-                    cur_node
-                    and isinstance(cur_node.node, Var)
-                    and not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)
-                ):
-                    # Double underscored members are writable on an `Enum`.
-                    # (Except read-only `__members__` but that is handled in type checker)
-                    cur_node.node.is_final = s.is_final_def = not is_dunder(cur_node.node.name)
-
-            # Special case: deferred initialization of a final attribute in __init__.
-            # In this case we just pretend this is a valid final definition to suppress
-            # errors about assigning to final attribute.
-            if isinstance(lval, MemberExpr) and self.is_self_member_ref(lval):
-                assert self.type, "Self member outside a class"
-                cur_node = self.type.names.get(lval.name, None)
-                if cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_final:
-                    assert self.function_stack
-                    top_function = self.function_stack[-1]
-                    if (
-                        top_function.name == "__init__"
-                        and cur_node.node.final_unset_in_class
-                        and not cur_node.node.final_set_in_init
-                        and not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)
-                    ):
-                        cur_node.node.final_set_in_init = True
-                        s.is_final_def = True
-
-</t>
-<t tx="ekr.20220525082935.93">def flatten_lvalues(self, lvalues: list[Expression]) -&gt; list[Expression]:
-    res: list[Expression] = []
-    for lv in lvalues:
-        if isinstance(lv, (TupleExpr, ListExpr)):
-            res.extend(self.flatten_lvalues(lv.items))
-        else:
-            res.append(lv)
-    return res
-
-</t>
-<t tx="ekr.20220525082935.94">def unbox_literal(self, e: Expression) -&gt; int | float | bool | str | None:
-    if isinstance(e, (IntExpr, FloatExpr, StrExpr)):
-        return e.value
-    elif isinstance(e, NameExpr) and e.name in ("True", "False"):
-        return True if e.name == "True" else False
-    return None
-
-</t>
-<t tx="ekr.20220525082935.95">def process_type_annotation(self, s: AssignmentStmt) -&gt; None:
-    """Analyze type annotation or infer simple literal type."""
-    &lt;&lt; define callers &amp; callerName &gt;&gt;
-    if s.type:
-        lvalue = s.lvalues[-1]
-        allow_tuple_literal = isinstance(lvalue, TupleExpr)
-        analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
-        # Don't store not ready types (including placeholders).
-        if analyzed is None or has_placeholder(analyzed):
-            self.defer(s)
-            return
-        s.type = analyzed
-        if (
-            self.type
-            and self.type.is_protocol
-            and isinstance(lvalue, NameExpr)
-            and isinstance(s.rvalue, TempNode)
-            and s.rvalue.no_rhs
-        ):
-            if isinstance(lvalue.node, Var):
-                lvalue.node.is_abstract_var = True
-    else:
-        if (
-            self.type
-            and self.type.is_protocol
-            and self.is_annotated_protocol_member(s)
-            and not self.is_func_scope()
-        ):
-            self.fail("All protocol members must have explicitly declared types", s)
-        # Set the type if the rvalue is a simple literal (even if the above error occurred).
-        if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
-            ref_expr = s.lvalues[0]
-            safe_literal_inference = True
-            if self.type and isinstance(ref_expr, NameExpr) and len(self.type.mro) &gt; 1:
-                # Check if there is a definition in supertype. If yes, we can't safely
-                # decide here what to infer: int or Literal[42].
-                safe_literal_inference = self.type.mro[1].get(ref_expr.name) is None
-            if safe_literal_inference and ref_expr.is_inferred_def:
-                s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
-    if s.type:
-        # Store type into nodes.
-        for lvalue in s.lvalues:
-            self.store_declared_types(lvalue, s.type)
-
-</t>
-<t tx="ekr.20220525082935.96">def is_annotated_protocol_member(self, s: AssignmentStmt) -&gt; bool:
-    """Check whether a protocol member is annotated.
-
-    There are some exceptions that can be left unannotated, like ``__slots__``."""
-    return any(
-        (isinstance(lv, NameExpr) and lv.name != "__slots__" and lv.is_inferred_def)
-        for lv in s.lvalues
-    )
-
-</t>
-<t tx="ekr.20220525082935.97">def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -&gt; Type | None:
-    """Return builtins.int if rvalue is an int literal, etc.
-    If this is a 'Final' context, we return "Literal[...]" instead."""
-    if self.options.semantic_analysis_only or self.function_stack:
-        # Skip this if we're only doing the semantic analysis pass.
-        # This is mostly to avoid breaking unit tests.
-        # Also skip inside a function; this is to avoid confusing
-        # the code that handles dead code due to isinstance()
-        # inside type variables with value restrictions (like
-        # AnyStr).
-        return None
-    if isinstance(rvalue, FloatExpr):
-        return self.named_type_or_none("builtins.float")
-
-    value: LiteralValue | None = None
-    type_name: str | None = None
-    if isinstance(rvalue, IntExpr):
-        value, type_name = rvalue.value, "builtins.int"
-    if isinstance(rvalue, StrExpr):
-        value, type_name = rvalue.value, "builtins.str"
-    if isinstance(rvalue, BytesExpr):
-        value, type_name = rvalue.value, "builtins.bytes"
-
-    if type_name is not None:
-        assert value is not None
-        typ = self.named_type_or_none(type_name)
-        if typ and is_final:
-            return typ.copy_modified(
-                last_known_value=LiteralType(
-                    value=value, fallback=typ, line=typ.line, column=typ.column
-                )
-            )
-        return typ
-
-    return None
-
-</t>
-<t tx="ekr.20220525082935.98">def analyze_alias(
-    self, rvalue: Expression, allow_placeholder: bool = False
-) -&gt; tuple[Type | None, list[str], set[str], list[str]]:
-    """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
-
-    If yes, return the corresponding type, a list of
-    qualified type variable names for generic aliases, a set of names the alias depends on,
-    and a list of type variables if the alias is generic.
-    An schematic example for the dependencies:
-        A = int
-        B = str
-        analyze_alias(Dict[A, B])[2] == {'__main__.A', '__main__.B'}
-    """
-    dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
-    global_scope = not self.type and not self.function_stack
-    res = analyze_type_alias(
-        rvalue,
-        self,
-        self.tvar_scope,
-        self.plugin,
-        self.options,
-        self.is_typeshed_stub_file,
-        allow_placeholder=allow_placeholder,
-        in_dynamic_func=dynamic,
-        global_scope=global_scope,
-    )
-    typ: Type | None = None
-    if res:
-        typ, depends_on = res
-        found_type_vars = typ.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
-        alias_tvars = [name for (name, node) in found_type_vars]
-        qualified_tvars = [node.fullname for (name, node) in found_type_vars]
-    else:
-        alias_tvars = []
-        depends_on = set()
-        qualified_tvars = []
-    return typ, alias_tvars, depends_on, qualified_tvars
-
-def is_pep_613(self, s: AssignmentStmt) -&gt; bool:
-    if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
-        lookup = self.lookup_qualified(s.unanalyzed_type.name, s, suppress_errors=True)
-        if lookup and lookup.fullname in TYPE_ALIAS_NAMES:
-            return True
-    return False
-
-</t>
-<t tx="ekr.20220525082935.99">def check_and_set_up_type_alias(self, s: AssignmentStmt) -&gt; bool:
-    """Check if assignment creates a type alias and set it up as needed.
-
-    Return True if it is a type alias (even if the target is not ready),
-    or False otherwise.
-
-    Note: the resulting types for subscripted (including generic) aliases
-    are also stored in rvalue.analyzed.
-    """
-    if s.invalid_recursive_alias:
-        return True
-    lvalue = s.lvalues[0]
-    if len(s.lvalues) &gt; 1 or not isinstance(lvalue, NameExpr):
-        # First rule: Only simple assignments like Alias = ... create aliases.
-        return False
-
-    pep_613 = self.is_pep_613(s)
-    if not pep_613 and s.unanalyzed_type is not None:
-        # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
-        # unless using PEP 613 `cls: TypeAlias = A`
-        return False
-
-    if isinstance(s.rvalue, CallExpr) and s.rvalue.analyzed:
-        return False
-
-    existing = self.current_symbol_table().get(lvalue.name)
-    # Third rule: type aliases can't be re-defined. For example:
-    #     A: Type[float] = int
-    #     A = float  # OK, but this doesn't define an alias
-    #     B = int
-    #     B = float  # Error!
-    # Don't create an alias in these cases:
-    if existing and (
-        isinstance(existing.node, Var)  # existing variable
-        or (isinstance(existing.node, TypeAlias) and not s.is_alias_def)  # existing alias
-        or (isinstance(existing.node, PlaceholderNode) and existing.node.node.line &lt; s.line)
-    ):  # previous incomplete definition
-        # TODO: find a more robust way to track the order of definitions.
-        # Note: if is_alias_def=True, this is just a node from previous iteration.
-        if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
-            self.fail(
-                'Cannot assign multiple types to name "{}"'
-                ' without an explicit "Type[...]" annotation'.format(lvalue.name),
-                lvalue,
-            )
-        return False
-
-    non_global_scope = self.type or self.is_func_scope()
-    if not pep_613 and isinstance(s.rvalue, RefExpr) and non_global_scope:
-        # Fourth rule (special case): Non-subscripted right hand side creates a variable
-        # at class and function scopes. For example:
-        #
-        #   class Model:
-        #       ...
-        #   class C:
-        #       model = Model # this is automatically a variable with type 'Type[Model]'
-        #
-        # without this rule, this typical use case will require a lot of explicit
-        # annotations (see the second rule).
-        return False
-    rvalue = s.rvalue
-    if not pep_613 and not self.can_be_type_alias(rvalue):
-        return False
-
-    if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
-        # Cannot redefine existing node as type alias.
-        return False
-
-    res: Type | None = None
-    if self.is_none_alias(rvalue):
-        res = NoneType()
-        alias_tvars: list[str] = []
-        depends_on: set[str] = set()
-        qualified_tvars: list[str] = []
-    else:
-        tag = self.track_incomplete_refs()
-        res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(
-            rvalue, allow_placeholder=True
-        )
-        if not res:
-            return False
-        if not self.options.disable_recursive_aliases and not self.is_func_scope():
-            # Only marking incomplete for top-level placeholders makes recursive aliases like
-            # `A = Sequence[str | A]` valid here, similar to how we treat base classes in class
-            # definitions, allowing `class str(Sequence[str]): ...`
-            incomplete_target = isinstance(res, ProperType) and isinstance(
-                res, PlaceholderType
-            )
-        else:
-            incomplete_target = has_placeholder(res)
-        if self.found_incomplete_ref(tag) or incomplete_target:
-            # Since we have got here, we know this must be a type alias (incomplete refs
-            # may appear in nested positions), therefore use becomes_typeinfo=True.
-            self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
-            return True
-    self.add_type_alias_deps(depends_on)
-    # In addition to the aliases used, we add deps on unbound
-    # type variables, since they are erased from target type.
-    self.add_type_alias_deps(qualified_tvars)
-    # The above are only direct deps on other aliases.
-    # For subscripted aliases, type deps from expansion are added in deps.py
-    # (because the type is stored).
-    check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg, context=s)
-    # When this type alias gets "inlined", the Any is not explicit anymore,
-    # so we need to replace it with non-explicit Anys.
-    res = make_any_non_explicit(res)
-    # Note: with the new (lazy) type alias representation we only need to set no_args to True
-    # if the expected number of arguments is non-zero, so that aliases like A = List work.
-    # However, eagerly expanding aliases like Text = str is a nice performance optimization.
-    no_args = isinstance(res, Instance) and not res.args  # type: ignore[misc]
-    fix_instance_types(res, self.fail, self.note, self.options.python_version)
-    # Aliases defined within functions can't be accessed outside
-    # the function, since the symbol table will no longer
-    # exist. Work around by expanding them eagerly when used.
-    eager = self.is_func_scope()
-    alias_node = TypeAlias(
-        res,
-        self.qualified_name(lvalue.name),
-        s.line,
-        s.column,
-        alias_tvars=alias_tvars,
-        no_args=no_args,
-        eager=eager,
-    )
-    if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
-        s.rvalue.analyzed = TypeAliasExpr(alias_node)
-        s.rvalue.analyzed.line = s.line
-        # we use the column from resulting target, to get better location for errors
-        s.rvalue.analyzed.column = res.column
-    elif isinstance(s.rvalue, RefExpr):
-        s.rvalue.is_alias_rvalue = True
-
-    if existing:
-        # An alias gets updated.
-        updated = False
-        if isinstance(existing.node, TypeAlias):
-            if existing.node.target != res:
-                # Copy expansion to the existing alias, this matches how we update base classes
-                # for a TypeInfo _in place_ if there are nested placeholders.
-                existing.node.target = res
-                existing.node.alias_tvars = alias_tvars
-                existing.node.no_args = no_args
-                updated = True
-        else:
-            # Otherwise just replace existing placeholder with type alias.
-            existing.node = alias_node
-            updated = True
-        if updated:
-            if self.final_iteration:
-                self.cannot_resolve_name(lvalue.name, "name", s)
-                return True
-            else:
-                # We need to defer so that this change can get propagated to base classes.
-                self.defer(s, force_progress=True)
-    else:
-        self.add_symbol(lvalue.name, alias_node, s)
-    if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
-        alias_node.normalized = rvalue.node.normalized
-    current_node = existing.node if existing else alias_node
-    assert isinstance(current_node, TypeAlias)
-    self.disable_invalid_recursive_aliases(s, current_node)
-    if self.is_class_scope():
-        assert self.type is not None
-        if self.type.is_protocol:
-            self.fail("Type aliases are prohibited in protocol bodies", s)
-            if not lvalue.name[0].isupper():
-                self.note("Use variable annotation syntax to define protocol members", s)
-    return True
-
-</t>
-<t tx="ekr.20220525082936.34">@mypyc_attr(allow_interpreted_subclasses=True)
-class TypeTranslator(TypeVisitor[Type]):
-    """Identity type transformation.
-
-    Subclass this and override some methods to implement a non-trivial
-    transformation.
-    """
-
-    @others
-</t>
-<t tx="ekr.20220525082936.35">def visit_unbound_type(self, t: UnboundType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.36">def visit_any(self, t: AnyType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.37">def visit_none_type(self, t: NoneType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.38">def visit_uninhabited_type(self, t: UninhabitedType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.39">def visit_erased_type(self, t: ErasedType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.40">def visit_deleted_type(self, t: DeletedType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.41">def visit_instance(self, t: Instance) -&gt; Type:
-    last_known_value: LiteralType | None = None
-    if t.last_known_value is not None:
-        raw_last_known_value = t.last_known_value.accept(self)
-        assert isinstance(raw_last_known_value, LiteralType)  # type: ignore[misc]
-        last_known_value = raw_last_known_value
-    return Instance(
-        typ=t.type,
-        args=self.translate_types(t.args),
-        line=t.line,
-        column=t.column,
-        last_known_value=last_known_value,
-    )
-
-</t>
-<t tx="ekr.20220525082936.42">def visit_type_var(self, t: TypeVarType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.43">def visit_param_spec(self, t: ParamSpecType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.44">def visit_parameters(self, t: Parameters) -&gt; Type:
-    return t.copy_modified(arg_types=self.translate_types(t.arg_types))
-
-</t>
-<t tx="ekr.20220525082936.45">def visit_type_var_tuple(self, t: TypeVarTupleType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.46">def visit_partial_type(self, t: PartialType) -&gt; Type:
-    return t
-
-</t>
-<t tx="ekr.20220525082936.47">def visit_unpack_type(self, t: UnpackType) -&gt; Type:
-    return UnpackType(t.type.accept(self))
-
-</t>
-<t tx="ekr.20220525082936.48">def visit_callable_type(self, t: CallableType) -&gt; Type:
-    return t.copy_modified(
-        arg_types=self.translate_types(t.arg_types),
-        ret_type=t.ret_type.accept(self),
-        variables=self.translate_variables(t.variables),
-    )
-
-</t>
-<t tx="ekr.20220525082936.49">def visit_tuple_type(self, t: TupleType) -&gt; Type:
-    return TupleType(
-        self.translate_types(t.items),
-        # TODO: This appears to be unsafe.
-        cast(Any, t.partial_fallback.accept(self)),
-        t.line,
-        t.column,
-    )
-
-</t>
-<t tx="ekr.20220525082936.50">def visit_typeddict_type(self, t: TypedDictType) -&gt; Type:
-    items = {item_name: item_type.accept(self) for (item_name, item_type) in t.items.items()}
-    return TypedDictType(
-        items,
-        t.required_keys,
-        # TODO: This appears to be unsafe.
-        cast(Any, t.fallback.accept(self)),
-        t.line,
-        t.column,
-    )
-
-</t>
-<t tx="ekr.20220525082936.51">def visit_literal_type(self, t: LiteralType) -&gt; Type:
-    fallback = t.fallback.accept(self)
-    assert isinstance(fallback, Instance)  # type: ignore[misc]
-    return LiteralType(value=t.value, fallback=fallback, line=t.line, column=t.column)
-
-</t>
-<t tx="ekr.20220525082936.52">def visit_union_type(self, t: UnionType) -&gt; Type:
-    return UnionType(self.translate_types(t.items), t.line, t.column)
-
-</t>
-<t tx="ekr.20220525082936.53">def translate_types(self, types: Iterable[Type]) -&gt; list[Type]:
-    return [t.accept(self) for t in types]
-
-</t>
-<t tx="ekr.20220525082936.54">def translate_variables(
-    self, variables: Sequence[TypeVarLikeType]
-) -&gt; Sequence[TypeVarLikeType]:
-    return variables
-
-</t>
-<t tx="ekr.20220525082936.55">def visit_overloaded(self, t: Overloaded) -&gt; Type:
-    items: list[CallableType] = []
-    for item in t.items:
-        new = item.accept(self)
-        assert isinstance(new, CallableType)  # type: ignore[misc]
-        items.append(new)
-    return Overloaded(items=items)
-
-</t>
-<t tx="ekr.20220525082936.56">def visit_type_type(self, t: TypeType) -&gt; Type:
-    return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
-
-</t>
-<t tx="ekr.20220525082936.57">@abstractmethod
-def visit_type_alias_type(self, t: TypeAliasType) -&gt; Type:
-    # This method doesn't have a default implementation for type translators,
-    # because type aliases are special: some information is contained in the
-    # TypeAlias node, and we normally don't generate new nodes. Every subclass
-    # must implement this depending on its semantics.
-    pass
-
 
 </t>
 <t tx="ekr.20220526075331.1"></t>
@@ -18953,19 +6157,15 @@ def ekr_f_not_annotated2(b: int, ekr_a="abc") -&gt; None:
 # b="xyz"
 # c: str
 </t>
-<t tx="ekr.20220603081942.1"></t>
 <t tx="ekr.20220603103251.1">@language python
 @nowrap
 
 # 
 # State.compute_dependencies: Every module implicitly depends on 'builtins'
 # 'c:\\repos\\ekr-mypy\\mypy\\typeshed\\stdlib\\builtins.pyi'</t>
-<t tx="ekr.20220605090347.1"></t>
 <t tx="ekr.20220606071921.1"></t>
 <t tx="ekr.20220606071936.1">c.backup_helper(sub_dir='mypy.leo')
 </t>
-<t tx="ekr.20220606085857.1"></t>
-<t tx="ekr.20220606101206.1">@nosearch</t>
 <t tx="ekr.20220607072154.1">@nosearch
 
 callers:
@@ -19367,7 +6567,6 @@ anal_type, accept,
 visit_unbound_type, visit_unbound_type_nonoptional, try_analyze_special_unbound_type,
 analyze_callable_type, accept, visit_callable_type
 </t>
-<t tx="ekr.20220608151139.1"></t>
 <t tx="ekr.20220612050429.1">def callers(n: int=4) -&gt; str:
     """
     Return a string containing a comma-separated list of the callers
@@ -19393,7 +6592,6 @@ def callerName(n: int) -&gt; str:
     except Exception:
         return ''
 </t>
-<t tx="ekr.20220612061447.1"></t>
 <t tx="ekr.20220613154216.1"></t>
 <t tx="ekr.20220614100511.1">"""The semantic analyzer.
 
@@ -19472,12 +6670,6 @@ will be incomplete.
 """
 </t>
 <t tx="ekr.20220614100654.1"></t>
-<t tx="ekr.20220614100953.1"></t>
-<t tx="ekr.20220614101046.1"></t>
-<t tx="ekr.20220614101128.1"></t>
-<t tx="ekr.20220614101220.1"></t>
-<t tx="ekr.20220614101246.1"></t>
-<t tx="ekr.20220614101407.1"></t>
 <t tx="ekr.20220617075745.1">"""Plugin system for extending mypy.
 
 At large scale the plugin system works as following:
@@ -19599,99 +6791,6 @@ You can use `api.options.new_semantic_analyzer` to check whether the new
 semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 </t>
-<t tx="ekr.20220617084344.1">sources, options = process_options(args, stdout=stdout, stderr=stderr, fscache=fscache)
-if clean_exit:
-    options.fast_exit = False
-
-formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
-
-if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
-    # Since --install-types performs user input, we want regular stdout and stderr.
-    fail("error: --install-types not supported in this mode of running mypy", stderr, options)
-
-if options.non_interactive and not options.install_types:
-    fail("error: --non-interactive is only supported with --install-types", stderr, options)
-
-if options.install_types and not options.incremental:
-    fail(
-        "error: --install-types not supported with incremental mode disabled", stderr, options
-    )
-
-if options.install_types and options.python_executable is None:
-    fail(
-        "error: --install-types not supported without python executable or site packages",
-        stderr,
-        options,
-    )
-
-</t>
-<t tx="ekr.20220617085103.1">if options.non_interactive:
-    missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
-    if missing_pkgs:
-        # Install missing type packages and rerun build.
-        install_types(formatter, options, after_run=True, non_interactive=True)
-        fscache.flush()
-        print()
-        res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
-    show_messages(messages, stderr, formatter, options)
-
-if MEM_PROFILE:
-    from mypy.memprofile import print_memory_profile
-
-    print_memory_profile()
-
-code = 0
-if messages:
-    code = 2 if blockers else 1
-if options.error_summary:
-    n_errors, n_notes, n_files = util.count_stats(messages)
-    if n_errors:
-        summary = formatter.format_error(
-            n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
-        )
-        stdout.write(summary + "\n")
-    # Only notes should also output success
-    elif not messages or n_notes == len(messages):
-        stdout.write(formatter.format_success(len(sources), options.color_output) + "\n")
-    stdout.flush()
-
-if options.install_types and not options.non_interactive:
-    result = install_types(formatter, options, after_run=True, non_interactive=False)
-    if result:
-        print()
-        print("note: Run mypy again for up-to-date results with installed types")
-        code = 2
-
-if options.fast_exit:
-    # Exit without freeing objects -- it's faster.
-    #
-    # NOTE: We don't flush all open files on exit (or run other destructors)!
-    util.hard_exit(code)
-elif code:
-    sys.exit(code)
-</t>
-<t tx="ekr.20220617085407.1">if (
-    options.warn_unused_configs
-    and options.unused_configs
-    and not options.incremental
-    and not options.non_interactive
-):
-    print(
-        "Warning: unused section(s) in %s: %s"
-        % (
-            options.config_file,
-            get_config_module_names(
-                options.config_file,
-                [
-                    glob
-                    for glob in options.per_module_options.keys()
-                    if glob in options.unused_configs
-                ],
-            ),
-        ),
-        file=stderr,
-    )
-</t>
 <t tx="ekr.20220617085508.1">"""Analyze a program.
 
 A single call to build performs parsing, semantic analysis and optionally
@@ -19715,268 +6814,6 @@ Args:
 
 """
 </t>
-<t tx="ekr.20220617090951.1"># This is a kind of unfortunate hack to work around some of fine-grained's
-# fragility: if we have loaded less than 50% of the specified files from
-# cache in fine-grained cache mode, load the graph again honestly.
-# In this case, we just turn the cache off entirely, so we don't need
-# to worry about some files being loaded and some from cache and so
-# that fine-grained mode never *writes* to the cache.
-if manager.use_fine_grained_cache() and len(graph) &lt; 0.50 * len(sources):
-    manager.log("Redoing load_graph without cache because too much was missing")
-    manager.cache_enabled = False
-    graph = load_graph(sources, manager)
-
-t1 = time.time()
-manager.add_stats(
-    graph_size=len(graph),
-    stubs_found=sum(g.path is not None and g.path.endswith(".pyi") for g in graph.values()),
-    graph_load_time=(t1 - t0),
-    fm_cache_size=len(manager.find_module_cache.results),
-)
-if not graph:
-    print("Nothing to do?!", file=stdout)
-    return graph
-manager.log(f"Loaded graph with {len(graph)} nodes ({t1 - t0:.3f} sec)")
-if manager.options.dump_graph:
-    dump_graph(graph, stdout)
-    return graph
-
-# Fine grained dependencies that didn't have an associated module in the build
-# are serialized separately, so we read them after we load the graph.
-# We need to read them both for running in daemon mode and if we are generating
-# a fine-grained cache (so that we can properly update them incrementally).
-# The `read_deps_cache` will also validate
-# the deps cache against the loaded individual cache files.
-if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
-    t2 = time.time()
-    fg_deps_meta = read_deps_cache(manager, graph)
-    manager.add_stats(load_fg_deps_time=time.time() - t2)
-    if fg_deps_meta is not None:
-        manager.fg_deps_meta = fg_deps_meta
-    elif manager.stats.get("fresh_metas", 0) &gt; 0:
-        # Clear the stats so we don't infinite loop because of positive fresh_metas
-        manager.stats.clear()
-        # There were some cache files read, but no fine-grained dependencies loaded.
-        manager.log("Error reading fine-grained dependencies cache -- aborting cache load")
-        manager.cache_enabled = False
-        manager.log("Falling back to full run -- reloading graph...")
-        return dispatch(sources, manager, stdout)
-
-</t>
-<t tx="ekr.20220617091557.1">if len(fresh_scc_queue) &gt; 0:
-    manager.log(f"Processing {len(fresh_scc_queue)} queued fresh SCCs")
-    # Defer processing fresh SCCs until we actually run into a stale SCC
-    # and need the earlier modules to be loaded.
-    #
-    # Note that `process_graph` may end with us not having processed every
-    # single fresh SCC. This is intentional -- we don't need those modules
-    # loaded if there are no more stale SCCs to be rechecked.
-    #
-    # Also note we shouldn't have to worry about transitive_error here,
-    # since modules with transitive errors aren't written to the cache,
-    # and if any dependencies were changed, this SCC would be stale.
-    # (Also, in quick_and_dirty mode we don't care about transitive errors.)
-    #
-    # TODO: see if it's possible to determine if we need to process only a
-    # _subset_ of the past SCCs instead of having to process them all.
-    for prev_scc in fresh_scc_queue:
-        process_fresh_modules(graph, prev_scc, manager)
-    fresh_scc_queue = []
-size = len(scc)
-if size == 1:
-    manager.log(f"Processing SCC singleton ({scc_str}) as {fresh_msg}")
-else:
-    manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
-</t>
-<t tx="ekr.20220617091730.1"># Order the SCC's nodes using a heuristic.
-# Note that ascc is a set, and scc is a list.
-scc = order_ascc(graph, ascc)
-# Make the order of the SCC that includes 'builtins' and 'typing',
-# among other things, predictable. Various things may  break if
-# the order changes.
-if "builtins" in ascc:
-    scc = sorted(scc, reverse=True)
-    # If builtins is in the list, move it last.  (This is a bit of
-    # a hack, but it's necessary because the builtins module is
-    # part of a small cycle involving at least {builtins, abc,
-    # typing}.  Of these, builtins must be processed last or else
-    # some builtin objects will be incompletely processed.)
-    scc.remove("builtins")
-    scc.append("builtins")
-if manager.options.verbosity &gt;= 2:
-    for id in scc:
-        manager.trace(
-            f"Priorities for {id}:",
-            " ".join(
-                "%s:%d" % (x, graph[id].priorities[x])
-                for x in graph[id].dependencies
-                if x in ascc and x in graph[id].priorities
-            ),
-        )
-# Because the SCCs are presented in topological sort order, we
-# don't need to look at dependencies recursively for staleness
-# -- the immediate dependencies are sufficient.
-stale_scc = {id for id in scc if not graph[id].is_fresh()}
-fresh = not stale_scc
-deps = set()
-for id in scc:
-    deps.update(graph[id].dependencies)
-deps -= ascc
-stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
-fresh = fresh and not stale_deps
-undeps = set()
-if fresh:
-    # Check if any dependencies that were suppressed according
-    # to the cache have been added back in this run.
-    # NOTE: Newly suppressed dependencies are handled by is_fresh().
-    for id in scc:
-        undeps.update(graph[id].suppressed)
-    undeps &amp;= graph.keys()
-    if undeps:
-        fresh = False
-if fresh:
-    # All cache files are fresh.  Check that no dependency's
-    # cache file is newer than any scc node's cache file.
-    oldest_in_scc = min(graph[id].xmeta.data_mtime for id in scc)
-    viable = {id for id in stale_deps if graph[id].meta is not None}
-    newest_in_deps = (
-        0 if not viable else max(graph[dep].xmeta.data_mtime for dep in viable)
-    )
-    if manager.options.verbosity &gt;= 3:  # Dump all mtimes for extreme debugging.
-        all_ids = sorted(ascc | viable, key=lambda id: graph[id].xmeta.data_mtime)
-        for id in all_ids:
-            if id in scc:
-                if graph[id].xmeta.data_mtime &lt; newest_in_deps:
-                    key = "*id:"
-                else:
-                    key = "id:"
-            else:
-                if graph[id].xmeta.data_mtime &gt; oldest_in_scc:
-                    key = "+dep:"
-                else:
-                    key = "dep:"
-            manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
-    # If equal, give the benefit of the doubt, due to 1-sec time granularity
-    # (on some platforms).
-    if oldest_in_scc &lt; newest_in_deps:
-        fresh = False
-        fresh_msg = f"out of date by {newest_in_deps - oldest_in_scc:.0f} seconds"
-    else:
-        fresh_msg = "fresh"
-elif undeps:
-    fresh_msg = f"stale due to changed suppression ({' '.join(sorted(undeps))})"
-elif stale_scc:
-    fresh_msg = "inherently stale"
-    if stale_scc != ascc:
-        fresh_msg += f" ({' '.join(sorted(stale_scc))})"
-    if stale_deps:
-        fresh_msg += f" with stale deps ({' '.join(sorted(stale_deps))})"
-else:
-    fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
-
-# Initialize transitive_error for all SCC members from union
-# of transitive_error of dependencies.
-if any(graph[dep].transitive_error for dep in deps if dep in graph):
-    for id in scc:
-        graph[id].transitive_error = True
-
-</t>
-<t tx="ekr.20220617092314.1"># Update plugins snapshot.
-write_plugins_snapshot(manager)
-manager.old_plugins_snapshot = manager.plugins_snapshot
-if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
-    # If we are running a daemon or are going to write cache for further fine grained use,
-    # then we need to collect fine grained protocol dependencies.
-    # Since these are a global property of the program, they are calculated after we
-    # processed the whole graph.
-    TypeState.add_all_protocol_deps(manager.fg_deps)
-    if not manager.options.fine_grained_incremental:
-        rdeps = generate_deps_for_cache(manager, graph)
-        write_deps_cache(rdeps, manager, graph)
-
-</t>
-<t tx="ekr.20220617092355.1">if manager.options.dump_deps:
-    # This speeds up startup a little when not using the daemon mode.
-    from mypy.server.deps import dump_all_dependencies
-
-    dump_all_dependencies(
-        manager.modules, manager.all_types, manager.options.python_version, manager.options
-    )
-</t>
-<t tx="ekr.20220617092600.1">
-# Construct a build manager object to hold state during the build.
-#
-# Ignore current directory prefix in error messages.
-manager = BuildManager(
-    data_dir,
-    search_paths,
-    ignore_prefix=os.getcwd(),
-    source_set=source_set,
-    reports=reports,
-    options=options,
-    version_id=__version__,
-    plugin=plugin,
-    plugins_snapshot=snapshot,
-    errors=errors,
-    flush_errors=flush_errors,
-    fscache=fscache,
-    stdout=stdout,
-    stderr=stderr,
-)
-manager.trace(repr(options))
-
-</t>
-<t tx="ekr.20220617092625.1">errors = Errors(
-    options.show_error_context,
-    options.show_column_numbers,
-    options.hide_error_codes,
-    options.pretty,
-    options.show_error_end,
-    lambda path: read_py_file(path, cached_read),
-    options.show_absolute_path,
-    options.many_errors_threshold,
-    options,
-)
-</t>
-<t tx="ekr.20220617092846.1">t0 = time.time()
-manager.metastore.commit()
-manager.add_stats(cache_commit_time=time.time() - t0)
-manager.log(
-    "Build finished in %.3f seconds with %d modules, and %d errors"
-    % (
-        time.time() - manager.start_time,
-        len(manager.modules),
-        manager.errors.num_messages(),
-    )
-)
-manager.dump_stats()
-if reports is not None:
-    # Finish the HTML or XML reports even if CompileError was raised.
-    reports.finish()
-if not cache_dir_existed and os.path.isdir(options.cache_dir):
-    add_catch_all_gitignore(options.cache_dir)
-    exclude_from_backups(options.cache_dir)
-if os.path.isdir(options.cache_dir):
-    record_missing_stub_packages(options.cache_dir, manager.missing_stub_packages)
-
-
-</t>
-<t tx="ekr.20220617093043.1">sccs_left = len(fresh_scc_queue)
-nodes_left = sum(len(scc) for scc in fresh_scc_queue)
-manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
-if sccs_left:
-    manager.log(
-        "{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)".format(
-            sccs_left, nodes_left
-        )
-    )
-    manager.trace(str(fresh_scc_queue))
-else:
-    manager.log("No fresh SCCs left in queue")
-
-
-</t>
-<t tx="ekr.20220619062539.1"></t>
 <t tx="ekr.20220619083632.1">@nosearch
 
 # Ignore Case, Head, Body
@@ -22164,13 +9001,6 @@ Alignment of first line difference:
 </t>
 <t tx="ekr.20220925073606.1"></t>
 <t tx="ekr.20220930225101.1"></t>
-<t tx="ekr.20221001054943.1">@language rest
-@wrap
-
-- Be able to single-step through unit tests.
-
-@language python
-</t>
 <t tx="ekr.20221003060449.1"></t>
 <t tx="ekr.20221003060506.1">@language rest
 @wrap
@@ -22340,11 +9170,6 @@ So clearly the startup logic is analyzing a lot of modules!
 More tracing reveals that the **load_graph** function in build.py returns a list of *many* modules, given only ekr_test.py as input.
 
 **Summary**: It's still not clear *why* mypy analyzes all these modules, or whether command-line modules might disable the analysis.</t>
-<t tx="ekr.20221004064034.10"># Later
-def ekr_f_not_annotated2(b: int, ekr_a="abc") -&gt; None:
-    pass
-    
-</t>
 <t tx="ekr.20221004064034.100">def get_commits_starting_at(repo_folder_path: str, start_commit: str) -&gt; list[tuple[str, str]]:
     print(f"Fetching commits starting at {start_commit}")
     return get_commits(repo_folder_path, f"{start_commit}^..HEAD")
@@ -32377,11 +19202,6 @@ class BuildResult:
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
     extra_plugins = extra_plugins or []
-    
-    ### from leo.core import leoGlobals as g  ###
-    ### g.printObj([repr(z) for z in sources])
-    
-    ### import pdb ; pdb.set_trace()  ###
 
     try:
         result = _build(
@@ -32415,6 +19235,7 @@ class BuildResult:
     stderr: TextIO,
     extra_plugins: Sequence[Plugin],
 ) -&gt; BuildResult:
+
     if platform.python_implementation() == "CPython":
         # This seems the most reasonable place to tune garbage collection.
         gc.set_threshold(150 * 1000)
@@ -35201,6 +22022,7 @@ pytest_plugins = ["mypy.test.data"]
 
 </t>
 <t tx="ekr.20221004064034.304">def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) -&gt; Graph:
+
     log_configuration(manager, sources)
 
     t0 = time.time()
@@ -35658,6 +22480,8 @@ pytest_plugins = ["mypy.test.data"]
                 manager.log(f"Processing SCC singleton ({scc_str}) as {fresh_msg}")
             else:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
+            if 0:  ###
+                &lt;&lt; Leo traces &gt;&gt;
             process_stale_scc(graph, scc, manager)
 
     sccs_left = len(fresh_scc_queue)
@@ -44192,16 +31016,6 @@ OVERLAPPING_TYPES_ALLOWLIST: Final = [
 
 
 </t>
-<t tx="ekr.20221004064034.6">@path C:/Repos/ekr-mypy2/
-"""Stand-alone test file for issue #12352"""
-
-@others
-# a: str="abc"
-# b="xyz"
-# c: str
-@language python
-@tabwidth -4
-</t>
 <t tx="ekr.20221004064034.60">@coroutine
 def decorated_host_generator(func) -&gt; Generator[str, None, None]:
     yield "a"
@@ -48001,10 +34815,6 @@ if __name__ == "__main__":
     return make_simplified_union(value_types)
 
 </t>
-<t tx="ekr.20221004064034.7">def ekr_f_annotated(ekr_a: str) -&gt; None:
-    pass
-    
-</t>
 <t tx="ekr.20221004064034.70">@path C:/Repos/ekr-mypy2/misc/
 #!/usr/bin/env python3
 """Produce a diff between mypy caches.
@@ -50323,11 +37133,6 @@ from mypy import state
         mx.msg.possible_missing_await(mx.context)
     return res_type
 
-
-</t>
-<t tx="ekr.20221004064034.8"># Passes with legacy mypy.
-def ekr_f_annotated_initialized(ekr_a: str="abc") -&gt; None:
-    pass
 
 </t>
 <t tx="ekr.20221004064034.80">def run_mypy(mypy_and_args: list[str], filename: str, tmp_name: str) -&gt; str:
@@ -53676,12 +40481,6 @@ toml_config_types.update(
 )
 
 
-</t>
-<t tx="ekr.20221004064034.9"># Fails with legacy mypy.
-# Change this case!
-def ekr_f_not_annotated(ekr_a="abc", i=1, f=0.1, aBool=True, ekr_b=b's' ) -&gt; None:
-    pass
-    
 </t>
 <t tx="ekr.20221004064034.90">def is_method(self, node):
     """Return whether the node occurs (directly) inside a class."""
@@ -67543,6 +54342,8 @@ core_modules: Final = ["typing", "builtins", "abc", "collections"]
     The scc will be processed roughly in the order the modules are included
     in the list.
     """
+    if 0:  ###
+        &lt;&lt; Leo traces &gt;&gt;
     patches: Patches = []
     # Note that functions can't define new module-level attributes
     # using 'global x', since module top levels are fully processed
@@ -67865,6 +54666,8 @@ core_modules: Final = ["typing", "builtins", "abc", "collections"]
 
 </t>
 <t tx="ekr.20221004064035.1528">def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -&gt; None:
+    if 0:  ###
+        &lt;&lt; Leo traces &gt;&gt;
     for module in scc:
         state = graph[module]
         assert state.tree
@@ -88224,6 +75027,9 @@ _dummy: Final[Any] = object()
     @others
 </t>
 <t tx="ekr.20221004064035.2621">def __init__(self, line: int = -1, column: int = -1) -&gt; None:
+    if 0:  ###
+        from leo.core import leoGlobals as g
+        g.trace(f"(Type) {line:3} {column:3}", g.callers())
     super().__init__(line, column)
     self.can_be_true = self.can_be_true_default()
     self.can_be_false = self.can_be_false_default()
@@ -89321,6 +76127,12 @@ def deserialize(cls, data: JsonDict) -&gt; UninhabitedType:
     __slots__ = ()
 
     @others
+
+# NoneType used to be called NoneTyp so to avoid needlessly breaking
+# external plugins we keep that alias here.
+NoneTyp = NoneType
+
+
 </t>
 <t tx="ekr.20221004064035.2734">def __init__(self, line: int = -1, column: int = -1) -&gt; None:
     super().__init__(line, column)
@@ -89385,12 +76197,6 @@ def deserialize(cls, data: JsonDict) -&gt; NoneType:
 </t>
 <t tx="ekr.20221004064035.2741">def is_singleton_type(self) -&gt; bool:
     return True
-
-
-</t>
-<t tx="ekr.20221004064035.2742"># NoneType used to be called NoneTyp so to avoid needlessly breaking
-# external plugins we keep that alias here.
-NoneTyp = NoneType
 
 
 </t>
@@ -92477,8 +79283,6 @@ from mypy.types import (
 <t tx="ekr.20221004064035.3005">@trait
 class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     """Visitor that traverses all components of a type"""
-
-    # Atomic types
 
     @others
 </t>
@@ -105300,7 +92104,6 @@ if sys.platform not in ("darwin", "win32"):
 
     res = None
     try:
-        ### import pdb ; pdb.set_trace()  ###
         res = build.build(sources=sources, options=options, alt_lib_path=test_temp_dir)
         a = res.errors
     except CompileError as e:
@@ -105769,7 +92572,6 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
 
 
 </t>
-<t tx="ekr.20221005074708.1"></t>
 <t tx="ekr.20221005080738.1"></t>
 <t tx="ekr.20221005080808.1"></t>
 <t tx="ekr.20221005080846.1"></t>
@@ -105785,6 +92587,8 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
 @language md
 
 Private (for now) mypy notes.
+
+*** Must have a "guide".  Unit tests can be that guide.
 
 [Markdown best practices](https://www.markdownguide.org/basic-syntax/)
 
@@ -105822,7 +92626,7 @@ echo off
 
 cd c:\Repos\ekr-mypy2
 
-rem -s disable redirection of stdout (so g.trace works).
+REM -s disable redirection of stdout (so g.trace works).
 
 pytest -n0 -s --mypy-verbose --verbose -k testForcedAssignment</t>
 <t tx="ekr.20221025081332.1"># Python 3.10: sitecustomize.py
@@ -105840,5 +92644,4227 @@ if 0:
 	for z in sys.path:
 		print(z)</t>
 <t tx="ekr.20221025092126.1"></t>
+<t tx="ekr.20221025092947.1">@language rest
+@wrap
+
+load_graph returns:
+
+{
+  __main__:     &lt;mypy.build.State object at 0x000001E8BEB69870&gt;,
+  builtins:     &lt;mypy.build.State object at 0x000001E8BEB69810&gt;,
+    typing:     &lt;mypy.build.State object at 0x000001E8BEE07FD0&gt;
+}
+
+@language python
+</t>
+<t tx="ekr.20221025093106.1">from leo.core import leoGlobals as g
+assert g
+import pdb ; pdb.set_trace()
+</t>
+<t tx="ekr.20221025094156.1"></t>
+<t tx="ekr.20221025094347.1"></t>
+<t tx="ekr.20221025094656.1">@language python
+@path C:\Repos\ekr-mypy2\test-data\unit
+[case testForcedAssignment]
+x = 1 # type: object
+y = 1
+def f(): x, y  # Prevent independent redefinition
+y = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+x = 2
+y = x
+[builtins fixtures/tuple.pyi]
+
+[case testJoinAny]
+from typing import List, Any
+
+x = None # type: List[Any]
+
+def foo() -&gt; List[int]: pass
+def bar() -&gt; List[str]: pass
+
+if bool():
+    x = foo()
+else:
+    x = bar()
+
+x * 2
+[builtins fixtures/list.pyi]
+
+[case testGeneratorExpressionTypes]
+class A: y = 1
+x = [A()]
+y = [x]
+
+z = [1,2]
+z = [a.y for b in y for a in b]
+[builtins fixtures/list.pyi]
+
+[case testIsinstanceNestedTuple]
+from typing import Union, List, Tuple, Dict
+
+def f(x: Union[int, str, List]) -&gt; None:
+    if isinstance(x, (str, (int,))):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        x[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
+        x[1]
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    if isinstance(x, (str, (list,))):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        x[1]
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testClassAttributeInitialization]
+class A:
+    x = None # type: int
+    def __init__(self) -&gt; None:
+        self.y = None # type: int
+        z = self.x
+        w = self.y
+
+[case testAssignmentSubtypes]
+from typing import Union
+
+def foo(x: Union[str, int]):
+    if isinstance(x, int):
+        x = 'a'
+    x + 'a'
+    z = x
+    y = [x]
+    y[0] + 'a'
+    # TODO: should we allow these two lines?
+    y + [1]  # E: List item 0 has incompatible type "int"; expected "str"
+    z = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+x = None # type: int
+y = [x]
+[builtins fixtures/isinstancelist.pyi]
+
+[case testFunctionDefaultArgs]
+class A: pass
+class B(A): y = 1
+
+x =  A()
+
+def foo(x: A = B()):
+    x.y   # E: "A" has no attribute "y"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceFancyConditionals]
+class A: pass
+
+class B(A):
+    y = 1
+
+x =  A()
+if isinstance(x, B):
+    x.y
+while isinstance(x, B):
+    x.y
+while isinstance(x, B):
+    x.y
+    x = B()
+[builtins fixtures/isinstance.pyi]
+
+[case testSubtypingWithAny]
+class A:
+    y = 1
+
+class B(A):
+    z = 1
+
+def foo(): pass
+
+x = A()
+if int():
+    x = B()
+    x.z
+    x = foo()
+    x.z          # E: "A" has no attribute "z"
+    x.y
+
+[case testSingleMultiAssignment]
+x = 'a'
+(x,) = ('a',)
+
+[case testUnionMultiAssignment]
+from typing import Union
+x = None # type: Union[int, str]
+if int():
+    x = 1
+    x = 'a'
+    x + 1    # E: Unsupported operand types for + ("str" and "int")
+    x = 1
+    (x, y) = ('a', 1)
+    x + 1    # E: Unsupported operand types for + ("str" and "int")
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnionIfZigzag]
+from typing import Union
+
+def f(x: Union[int, str]) -&gt; None:
+    if 1: # Without this, the assignment below could create a new variable "x" of type "int"
+        x = 1
+        if x:
+            x = 'a'
+            x = 1
+        x + 1
+    x + 1
+[builtins fixtures/isinstancelist.pyi]
+
+[case testTwoLoopsUnion]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+def bar() -&gt; None:
+    x = foo()
+    if isinstance(x, int):
+        return
+    while bool():
+        x + 'a'
+        while bool():
+            x = foo()
+            if bool():
+                return
+            x = 'a'
+    x + 'a'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testComplicatedBlocks]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+def bar() -&gt; None:
+    x = foo()
+    if isinstance(x, int):
+        return
+    while bool():
+        x + 'a'
+        while bool():
+            x = foo()
+            if bool():
+                return
+            x = 'a'
+    x + 'a'
+
+    x = foo()
+    if isinstance(x, int):
+        return
+    while bool():
+        x + 'a'
+        while bool():
+            x + 'a'         # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
+            x = foo()
+            if bool():
+                continue
+            x = 'a'
+        x = 'a'
+    x + 'a'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnionTryExcept]
+class A:
+    y = A()
+
+class B(A):
+    z = 1
+
+x = A()
+def f(): x # Prevent redefinition of x
+x = B()
+x.z
+try:
+    x.z
+    x = A()
+    x = B()
+    x.z
+except:
+    pass
+x.z           # E: "A" has no attribute "z"
+
+[case testUnionTryExcept2]
+class A:
+    y = A()
+
+class B(A):
+    z = 1
+
+x = A()
+try:
+    x.z # E: "A" has no attribute "z"
+    x = A()
+    x = B()
+    x.z
+except:
+    x.z # E: "A" has no attribute "z"
+    x = B()
+    x.z
+else:
+    x = B()
+x.z
+
+[case testUnionTryExcept3]
+class A:
+    y = A()
+
+class B(A):
+    z = 1
+
+x = A()
+def f(): x # Prevent redefinition of x
+x = B()
+try:
+    raise BaseException()
+    x = A()
+except:
+    pass
+x.z
+x = B()
+try:
+    x = A()
+    raise BaseException()
+except:
+    pass
+x.z           # E: "A" has no attribute "z"
+x = B()
+try:
+    pass
+except:
+    x = A()
+    raise BaseException()
+x.z
+try:
+    x = A()
+except:
+    pass
+x.z           # E: "A" has no attribute "z"
+x = B()
+try:
+    pass
+except:
+    x = A()
+x.z           # E: "A" has no attribute "z"
+[builtins fixtures/exception.pyi]
+
+[case testUnionTryExcept4]
+class A: pass
+
+class B(A):
+    z = 1
+
+x = A()
+while bool():
+    try:
+        x.z # E: "A" has no attribute "z"
+        x = A()
+    except:
+        x = B()
+    else:
+        x = B()
+    x.z
+[builtins fixtures/exception.pyi]
+
+[case testUnionTryFinally]
+class A: pass
+
+class B(A):
+    b = 1
+
+x = A()
+def f(): x  # Prevent redefinition
+x = B()
+try:
+    x = A()
+    x.b # E: "A" has no attribute "b"
+    x = B()
+finally:
+    x.b  # E: "A" has no attribute "b"
+x.b
+
+[case testUnionTryFinally2]
+class A: pass
+
+class B(A):
+    b = 1
+
+x = A()
+def f(): x  # Prevent redefinition
+x = B()
+try:
+    x = A()
+    x = B()
+except:
+    pass
+finally:
+    pass
+x.b      # E: "A" has no attribute "b"
+
+[case testUnionTryFinally3]
+class A: pass
+
+class B(A):
+    b = 1
+
+x = A()
+def f(): x  # Prevent redefinition
+x = B()
+try:
+    x = A()
+    x = B()
+except:
+    pass
+finally:
+    x = B()
+x.b
+
+[case testUnionTryFinally4]
+class A: pass
+
+class B(A):
+    b = 1
+
+while 2:
+    x = A()
+    def f(): x  # Prevents redefinition
+    x = B()
+    try:
+        x = A()
+        x = B()
+    except:
+        pass
+    finally:
+        x.b     # E: "A" has no attribute "b"
+        if not isinstance(x, B):
+            break
+    x.b
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnionTryFinally5]
+class A: pass
+
+class B(A):
+    b = 1
+
+while 2:
+    x = A()
+    try:
+        x = A()
+        x = B()
+    finally:
+        x.b    # E: "A" has no attribute "b"
+        break
+        x.b
+    x.b
+
+[case testUnionTryFinally6]
+class A: pass
+
+class B(A):
+    b = 1
+
+def f() -&gt; int:
+    x = B()  # type: A
+    try:
+        x = B()
+    except:
+        x = A()
+        # An exception could occur here
+        x = B()
+    finally:
+        return x.b # E: "A" has no attribute "b"
+
+[case testUnionListIsinstance]
+from typing import Union, List
+
+def f(x: Union[List[int], List[str], int]) -&gt; None:
+    if isinstance(x, list):
+        a = x[0]
+        if isinstance(a, int):
+            a + 1
+            a + 'x' # E: Unsupported operand types for + ("int" and "str")
+
+        # type of a?
+        reveal_type(x) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+        x + 1 # E: Unsupported operand types for + ("List[int]" and "int") \
+              # E: Unsupported operand types for + ("List[str]" and "int") \
+              # N: Left operand is of type "Union[List[int], List[str]]"
+    else:
+        x[0] # E: Value of type "int" is not indexable
+        x + 1
+    x[0] # E: Value of type "Union[List[int], List[str], int]" is not indexable
+    x + 1 # E: Unsupported operand types for + ("List[int]" and "int") \
+          # E: Unsupported operand types for + ("List[str]" and "int") \
+          # N: Left operand is of type "Union[List[int], List[str], int]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnionListIsinstance2]
+from typing import Union, List
+
+class A:
+    a = 1
+
+class B: pass
+class C: pass
+
+def g(x: Union[A, B]) -&gt; A: pass
+def h(x: C) -&gt; A: pass
+def f(x: Union[A, B, C]) -&gt; None:
+    if isinstance(x, C):
+        x = h(x)
+    else:
+        x = g(x)
+    x.a
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnionStrictDefnBasic]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+if int():
+    x = 1
+    x = x + 1
+    x = foo()
+    x = x + 1                # E: Unsupported operand types for + ("str" and "int") \
+                             # N: Left operand is of type "Union[int, str]"
+if isinstance(x, str):
+   x = x + 1             # E: Unsupported operand types for + ("str" and "int")
+   x = 1
+   x = x + 1
+[builtins fixtures/isinstancelist.pyi]
+
+[case testSubtypeRedefinitionBasic]
+from typing import Union
+
+class A: pass
+
+class B(A):
+    y = 1
+
+x = A()
+x.y        # E: "A" has no attribute "y"
+x = B()
+x.y        # OK: x is known to be a B
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceBasic]
+from typing import Union
+x = None # type: Union[int, str]
+if isinstance(x, str):
+    x = x + 1   # E: Unsupported operand types for + ("str" and "int")
+    x = x + 'a'
+else:
+    x = x + 'a' # E: Unsupported operand types for + ("int" and "str")
+    x = x + 1
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceIndexing]
+from typing import Union
+x = None # type: Union[int, str]
+j = [x]
+if isinstance(j[0], str):
+    j[0] = j[0] + 'a'
+    j[0] = j[0] + 1   # E: Unsupported operand types for + ("str" and "int")
+else:
+    j[0] = j[0] + 'a' # E: Unsupported operand types for + ("int" and "str")
+    j[0] = j[0] + 1
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceSubClassMember]
+from typing import Union
+
+class Animal: pass
+
+class Dog(Animal):
+    paws = 4  # type: Union[int, str]
+
+    def bark(self): pass
+
+class House:
+    pet = None  # type: Animal
+
+h = House()
+h.pet = Dog()
+
+while bool():
+    if isinstance(h.pet, Dog):
+        if isinstance(h.pet.paws, str):
+            x = h.pet.paws + 'a'
+        y = h.pet.paws + 1   # E: Unsupported operand types for + ("str" and "int") \
+                             # N: Left operand is of type "Union[int, str]"
+        z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str") \
+                             # N: Left operand is of type "Union[int, str]"
+        if isinstance(h.pet.paws, str):
+            x = h.pet.paws + 'a'
+            break
+        y = h.pet.paws + 1
+        z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceSubClassReset]
+class A:
+    pass
+
+class B(A):
+    b = 1
+
+class C:
+    a = A()
+
+x = C()
+x.a.b                   # E: "A" has no attribute "b"
+if isinstance(x.a, B):
+    x.a.b
+    x = C()
+    x.a.b               # E: "A" has no attribute "b"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceTuple]
+from typing import Union
+
+class A: pass
+
+class B:
+    def method2(self, arg: int):
+        return 123
+
+class C:
+    def method2(self, arg: int):
+        return 456
+
+    def method3(self, arg: str):
+        return 'abc'
+
+v = A() # type: Union[A, B, C]
+
+if isinstance(v, (B, C)):
+    v.method2(123)
+    v.method3('xyz') # E: Item "B" of "Union[B, C]" has no attribute "method3"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceNeverWidens]
+from typing import Union
+
+class A: pass
+class B: pass
+class C: pass
+
+a = A()  # type: A
+assert isinstance(a, (A, B))
+reveal_type(a)  # N: Revealed type is "__main__.A"
+
+b = A()  # type: Union[A, B]
+assert isinstance(b, (A, B, C))
+reveal_type(b)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+[builtins fixtures/isinstance.pyi]
+
+[case testMemberAssignmentChanges]
+from typing import Union
+
+class Dog:
+    paws = 1  # type: Union[int, str]
+
+pet = Dog()
+
+pet.paws + 'a'  # E: Unsupported operand types for + ("int" and "str") \
+                # N: Left operand is of type "Union[int, str]"
+pet.paws = 'a'
+pet.paws + 'a'
+pet.paws = 1
+pet.paws + 1
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceSubClassMemberHard]
+from typing import Union
+
+class Animal:
+    pass
+
+class Dog(Animal):
+    paws = 4  # type: Union[int, str]
+
+    def bark(self): pass
+
+class House:
+    pet = None  # type: Animal
+
+h = House()
+h.pet = Dog()
+
+if isinstance(h.pet, Dog):
+    if isinstance(h.pet.paws, str):
+        for i in [1]:
+            # TODO: should we allow this if iterable is of length one or zero?
+            h.pet.paws + 'a'  # E: Unsupported operand types for + ("int" and "str") \
+                              # N: Left operand is of type "Union[int, str]"
+            if bool():
+                break
+            h.pet.paws = 1
+            h.pet.paws + 1
+
+    if isinstance(h.pet.paws, str):
+        h.pet.paws + 'a'
+    else:
+        h.pet.paws + 1
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceReturn]
+from typing import Union
+
+def foo() -&gt; None:
+    x = 1 # type: Union[int, str]
+    if isinstance(x, int):
+        return
+    y = x + 'asdad'
+
+def bar() -&gt; None:
+    x = 1 # type: Union[int, str]
+    if isinstance(x, int):
+        return
+    else:
+        pass
+    y = x + 'asdad'
+
+foo()
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceBadBreak]
+from typing import Union
+
+def foo() -&gt; None:
+    x = None # type: Union[int, str]
+    if isinstance(x, int):
+        for z in [1,2]:
+            break
+    else:
+        pass
+    y = x + 'asdad'    # E: Unsupported operand types for + ("int" and "str") \
+                       # N: Left operand is of type "Union[int, str]"
+
+foo()
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceThreeUnion]
+from typing import Union, List
+
+x = None # type: Union[int, str, List[int]]
+
+while bool():
+    if isinstance(x, int):
+        x + 1
+    elif isinstance(x, str):
+        x + 'a'
+    else:
+        x + [1]
+    x + 'a'           # E: Unsupported operand types for + ("int" and "str") \
+                      # E: Unsupported operand types for + ("List[int]" and "str") \
+                      # N: Left operand is of type "Union[int, str, List[int]]"
+
+x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
+                      # E: Unsupported operand types for + ("str" and "List[int]") \
+                      # N: Left operand is of type "Union[int, str, List[int]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceThreeUnion2]
+from typing import Union, List
+x = None # type: Union[int, str, List[int]]
+while bool():
+    if isinstance(x, int):
+        x + 1
+        break
+    elif isinstance(x, str):
+        x + 'a'
+        break
+    x + [1]
+    x + 'a'           # E: Unsupported operand types for + ("List[int]" and "str")
+x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
+                      # E: Unsupported operand types for + ("str" and "List[int]") \
+                      # N: Left operand is of type "Union[int, str, List[int]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceThreeUnion3]
+from typing import Union, List
+
+while bool():
+    x = None # type: Union[int, str, List[int]]
+    def f(): x  # Prevent redefinition
+    x = 1
+    if isinstance(x, int):
+        x + 1
+        break
+    elif isinstance(x, str):
+        x + 'a'
+        break
+    x + [1]           # These lines aren't reached because x was an int
+    x + 'a'
+x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
+                      # E: Unsupported operand types for + ("str" and "List[int]") \
+                      # N: Left operand is of type "Union[int, str, List[int]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRemovingTypeRepeatedly]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+for i in [1, 2]:
+    x = foo()
+    x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
+    if isinstance(x, int):
+        break
+    x + 'a'
+
+    x = foo()
+    x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
+    if isinstance(x, int):
+        break
+    x + 'a'
+
+    x = foo()
+    x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
+    if isinstance(x, int):
+        break
+    x + 'a'
+
+x + 'a'                    # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testModifyRepeatedly]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+def f(): x  # Prevent redefinition
+x + 1     # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
+x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
+          # N: Left operand is of type "Union[int, str]"
+
+x = 1
+x + 1
+x + 'a'   # E: Unsupported operand types for + ("int" and "str")
+
+x = 'a'
+x + 1     # E: Unsupported operand types for + ("str" and "int")
+x + 'a'
+
+x = foo()
+x + 1     # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
+x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
+          # N: Left operand is of type "Union[int, str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testModifyLoop]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+def f(): x  # Prevent redefinition
+x + 1      # E: Unsupported operand types for + ("str" and "int") \
+           # N: Left operand is of type "Union[int, str]"
+x = 'a'
+x + 1      # E: Unsupported operand types for + ("str" and "int")
+x = 1
+x + 1
+
+while bool():
+      x + 1    # E: Unsupported operand types for + ("str" and "int") \
+               # N: Left operand is of type "Union[int, str]"
+      x = 'a'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testModifyLoop2]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+def f(): x  # Prevent redefinition
+x + 1      # E: Unsupported operand types for + ("str" and "int") \
+           # N: Left operand is of type "Union[int, str]"
+x = 'a'
+x + 1      # E: Unsupported operand types for + ("str" and "int")
+x = 1
+x + 1
+
+for i in [1]:
+      x = 'a'
+
+x + 1    # E: Unsupported operand types for + ("str" and "int") \
+         # N: Left operand is of type "Union[int, str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testModifyLoop3]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+def f(): x  # Prevent redefinition
+x = 1
+
+while bool():
+    x + 1
+    x = 'a'
+    break
+else:
+    x + 1
+x + 1      # E: Unsupported operand types for + ("str" and "int") \
+           # N: Left operand is of type "Union[int, str]"
+x = 1
+for y in [1]:
+    x + 1
+    x = 'a'
+    break
+else:
+    x + 1
+x + 1      # E: Unsupported operand types for + ("str" and "int") \
+           # N: Left operand is of type "Union[int, str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testModifyLoopWhile4]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+def f(): x  # Prevent redefinition
+x = 1
+
+while bool():
+    x + 1
+    if bool():
+        x = 'a'
+        break
+else:
+    x + 1
+    x = 'a'
+x + 'a'
+x = 1
+while bool():
+    x + 1 # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
+    if bool():
+        x = 'a'
+        continue
+else:
+    x + 1 # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
+    x = 'a'
+x + 'a'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testModifyLoopFor4]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+def f(): x # Prevent redefinition
+x = 1
+
+for y in [1]:
+    x + 1
+    if bool():
+        x = 'a'
+        break
+else:
+    x + 1
+    x = 'a'
+x + 'a'
+x = 1
+for y in [1]:
+    x + 1 # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
+    if bool():
+        x = 'a'
+        continue
+else:
+    x + 1 # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
+    x = 'a'
+x + 'a'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testModifyNestedLoop]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+def f(): x  # Prevent redefinition
+x = 1
+
+for y in [1]:
+    for z in [1]:
+        break
+    else:
+        x = 'a'
+        break
+else:
+    x + 1
+x + 1 # E: Unsupported operand types for + ("str" and "int") \
+      # N: Left operand is of type "Union[int, str]"
+x = 1
+while bool():
+    while bool():
+        break
+    else:
+        x = 'a'
+        break
+else:
+    x + 1
+x + 1 # E: Unsupported operand types for + ("str" and "int") \
+      # N: Left operand is of type "Union[int, str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testModifyLoopLong]
+from typing import Union
+
+class A: a = 1
+
+def foo() -&gt; Union[int, str, A]: pass
+
+def bar() -&gt; None:
+    x = foo()
+    x + 1  # E: Unsupported left operand type for + ("A") \
+           # N: Left operand is of type "Union[int, str, A]" \
+           # E: Unsupported operand types for + ("str" and "int")
+    if isinstance(x, A):
+       x.a
+    else:
+       if isinstance(x, int):
+          x + 1
+          x + 'a'  # E: Unsupported operand types for + ("int" and "str")
+       else:
+          x + 'a'
+          x.a      # E: "str" has no attribute "a"
+       x = A()
+
+    if isinstance(x, str):
+       x + 'a'
+    else:
+       while bool():
+          if isinstance(x, int):
+             x + 1
+          else:
+             x.a
+          break
+       while bool():
+          if isinstance(x, int):
+             x + 1
+          else:
+             x.a
+          continue
+
+       while bool():
+          if isinstance(x, int):
+             x + 1
+          else:
+             x.a     # E: Item "str" of "Union[str, A]" has no attribute "a"
+          x = 'a'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testWhileExitCondition1]
+from typing import Union
+x = 1  # type: Union[int, str]
+while isinstance(x, int):
+    if bool():
+        continue
+    x = 'a'
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
+
+[case testWhileExitCondition2]
+from typing import Union
+x = 1  # type: Union[int, str]
+while isinstance(x, int):
+    if bool():
+        break
+    x = 'a'
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/isinstance.pyi]
+
+[case testWhileLinkedList]
+from typing import Union
+LinkedList = Union['Cons', 'Nil']
+class Nil: pass
+class Cons:
+    tail = None  # type: LinkedList
+def last(x: LinkedList) -&gt; Nil:
+    while isinstance(x, Cons):
+        x = x.tail
+    return x
+[builtins fixtures/isinstance.pyi]
+
+[case testReturnAndFlow]
+def foo() -&gt; int:
+    return 1 and 2
+    return 'a'
+[case testCastIsinstance]
+from typing import Union
+
+def foo() -&gt; Union[int, str]: pass
+
+x = foo()
+y = 1 # type: int
+
+if isinstance(x, str):
+    x = y
+x + 1
+x + 'a'   # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnreachableCode]
+x = 1 # type: int
+
+while bool():
+    x = 'a'           # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    break
+    x = 'a'           # Note: no error because unreachable code
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnreachableCode2]
+x = 1
+while bool():
+    try:
+        pass
+    except:
+        continue
+    else:
+        continue
+    x + 'a'
+[builtins fixtures/isinstance.pyi]
+
+[case testUnreachableWhileTrue]
+def f(x: int) -&gt; None:
+    while True:
+        if x:
+            return
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableAssertFalse]
+def f() -&gt; None:
+    assert False
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableAssertFalse2]
+def f() -&gt; None:
+    # The old parser doesn't understand the syntax below
+    assert False, "hi"
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableReturnOrAssertFalse]
+def f(x: int) -&gt; int:
+    if x:
+        return x
+    else:
+        assert False
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableTryExcept]
+def f() -&gt; None:
+    try:
+        f()
+        return
+    except BaseException:
+        return
+    1()
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableTryExceptElse]
+def f() -&gt; None:
+    try:
+        f()
+    except BaseException:
+        return
+    else:
+        return
+    1()
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableTryReturnFinally1]
+def f() -&gt; None:
+    try:
+        return
+    finally:
+        pass
+    1()
+
+[case testUnreachableTryReturnFinally2]
+def f() -&gt; None:
+    try:
+        pass
+    finally:
+        return
+    1()
+
+[case testUnreachableTryReturnExceptRaise]
+def f() -&gt; None:
+    try:
+        return
+    except:
+        raise
+    1()
+
+[case testUnreachableReturnLambda]
+from typing import Callable
+def g(t: Callable[[int], int]) -&gt; int: pass
+def f() -&gt; int:
+    return g(lambda x: x)
+    1()
+
+[case testIsinstanceAnd]
+class A: pass
+
+class B(A):
+    flag = 1
+
+x = B() # type: A
+
+if isinstance(x, B) and 1:
+   x.flag
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceShortcircuit]
+class A:
+    pass
+
+class B(A):
+    flag = 1
+
+x = B() # type: A
+
+if isinstance(x, B) and x.flag:
+    pass
+if isinstance(x, B) or x.flag: # E: "A" has no attribute "flag"
+    pass
+if not isinstance(x, B) or x.flag:
+    pass
+if not isinstance(x, B) and x.flag: # E: "A" has no attribute "flag"
+    pass
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceExpression]
+class A:
+    pass
+
+class B(A):
+    flag = 1
+
+x = B() # type: A
+
+x.flag if isinstance(x, B) else 0
+0 if not isinstance(x, B) else x.flag
+0 if isinstance(x, B) else x.flag # E: "A" has no attribute "flag"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceMultiAnd]
+class A: pass
+
+class B(A):
+    flag = 1
+
+class C(A):
+    glaf = 1
+
+x = B() # type: A
+y = C() # type: A
+
+if isinstance(x, B) and isinstance(y, C):
+    x.flag += 1
+    y.glaf += 1
+    x() # E: "B" not callable
+    y() # E: "C" not callable
+else:
+    x() # E: "A" not callable
+    y() # E: "A" not callable
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceMultiAndSpecialCase]
+class A:
+    # Ensure A.__add__ and int.__add__ are different to
+    # force 'isinstance(y, int)' checks below to never succeed.
+    def __add__(self, other: A) -&gt; A: pass
+
+class B(A):
+    flag = 1
+
+class C(A):
+    glaf = 1
+
+x = B() # type: A
+y = C() # type: A
+
+if isinstance(x, B) and isinstance(y, int):
+    1() # type checking skipped
+if isinstance(y, int) and isinstance(x, B):
+    1() # type checking skipped
+if isinstance(y, int) and y &gt; 42:
+    1() # type checking skipped
+[builtins fixtures/isinstancelist.pyi]
+
+[case testReturnWithCallExprAndIsinstance]
+from typing import Union
+
+def f(x: Union[int, str]) -&gt; None:
+    if not isinstance(x, int):
+        return foo()
+    x()  # E: "int" not callable
+
+def foo(): pass
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceOr1]
+from typing import Optional
+
+def f(a: bool, x: object) -&gt; Optional[int]:
+    if a or not isinstance(x, int):
+        return None
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    return x
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceOr2]
+from typing import Optional
+
+def g(a: bool, x: object) -&gt; Optional[int]:
+    if not isinstance(x, int) or a:
+        return None
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    return x
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceOr3]
+from typing import Optional
+
+def h(a: bool, x: object) -&gt; Optional[int]:
+    if a or isinstance(x, int):
+        return None
+    return x # E: Incompatible return value type (got "object", expected "Optional[int]")
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceWithOverlappingUnionType]
+from typing import Union
+
+def f(x: Union[float, int]) -&gt; None:
+    if isinstance(x, float):
+        pass
+    if not isinstance(x, int):
+        f(x)
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceWithOverlappingUnionType2]
+from typing import Union
+
+class A: pass
+class B(A): pass
+
+def f(x: Union[A, B]) -&gt; None:
+    if isinstance(x, A):
+        pass
+    if not isinstance(x, B):
+        f(x)
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceWithOverlappingPromotionTypes]
+from typing import Union
+
+class FloatLike: pass
+class IntLike(FloatLike): pass
+
+def f1(x: Union[float, int]) -&gt; None:
+    # We ignore promotions in isinstance checks
+    if isinstance(x, float):
+        reveal_type(x)  # N: Revealed type is "builtins.float"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def f2(x: Union[FloatLike, IntLike]) -&gt; None:
+    # ...but not regular subtyping relationships
+    if isinstance(x, FloatLike):
+        reveal_type(x)  # N: Revealed type is "Union[__main__.FloatLike, __main__.IntLike]"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceOfSuperclass]
+class A: pass
+class B(A): pass
+
+x = B()
+if isinstance(x, A):
+    reveal_type(x)  # N: Revealed type is "__main__.B"
+if not isinstance(x, A):
+    reveal_type(x)  # unreachable
+    x = A()
+reveal_type(x)  # N: Revealed type is "__main__.B"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceOfNonoverlapping]
+class A: pass
+class B: pass
+
+x = B()
+if isinstance(x, A):
+    reveal_type(x)  # N: Revealed type is "__main__.&lt;subclass of "B" and "A"&gt;"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.B"
+reveal_type(x)  # N: Revealed type is "__main__.B"
+[builtins fixtures/isinstance.pyi]
+
+[case testAssertIsinstance]
+def f(x: object):
+    assert isinstance(x, int)
+    y = 0 # type: int
+    y = x
+[builtins fixtures/isinstance.pyi]
+
+[case testUnionAssertIsinstance]
+from typing import Union
+
+def f(x: Union[str, int]):
+    assert isinstance(x, int)
+    y = 0 # type: int
+    y = x
+[builtins fixtures/isinstance.pyi]
+
+[case testAnyAssertIsinstance]
+from typing import Any
+
+def f(x: Any):
+    assert isinstance(x, int)  # this should narrow x to type int
+    x + "foo"  # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceOfGenericClassRetainsParameters]
+from typing import List, Union
+
+def f(x: Union[List[int], str]) -&gt; None:
+    if isinstance(x, list):
+        x[0]() # E: "int" not callable
+    else:
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceOrIsinstance]
+class A: pass
+
+class B(A):
+    flag = 1
+
+class C(A):
+    flag = 2
+
+x1 = A()
+if isinstance(x1, B) or isinstance(x1, C):
+    reveal_type(x1) # N: Revealed type is "Union[__main__.B, __main__.C]"
+    f = x1.flag  # type: int
+else:
+    reveal_type(x1) # N: Revealed type is "__main__.A"
+    f = 0
+reveal_type(x1) # N: Revealed type is "__main__.A"
+x2 = A()
+if isinstance(x2, A) or isinstance(x2, C):
+    reveal_type(x2) # N: Revealed type is "__main__.A"
+    f = x2.flag # E: "A" has no attribute "flag"
+else:
+    # unreachable
+    1()
+reveal_type(x2) # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
+[case testComprehensionIsInstance]
+from typing import List, Union
+a = [] # type: List[Union[int, str]]
+l = [x for x in a if isinstance(x, int)]
+g = (x for x in a if isinstance(x, int))
+d = {0: x for x in a if isinstance(x, int)}
+reveal_type(l) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(g) # N: Revealed type is "typing.Generator[builtins.int, None, None]"
+reveal_type(d) # N: Revealed type is "builtins.dict[builtins.int, builtins.int]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceInWrongOrderInBooleanOp]
+class A:
+    m = 1
+
+def f(x: object) -&gt; None:
+    if x.m and isinstance(x, A) or False:  # E: "object" has no attribute "m"
+        pass
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceAndOr]
+class A:
+    a = None  # type: A
+
+def f(x: object) -&gt; None:
+    b = isinstance(x, A) and x.a or A()
+    reveal_type(b)  # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceWithUnknownType]
+from typing import Union
+
+def f(x: Union[int, str], typ: type) -&gt; None:
+    if isinstance(x, (typ, int)):
+        x + 1  # E: Unsupported operand types for + ("str" and "int") \
+               # N: Left operand is of type "Union[int, str]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithBoundedType]
+from typing import Union, Type
+
+class A: pass
+
+def f(x: Union[int, A], a: Type[A]) -&gt; None:
+    if isinstance(x, (a, int)):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, __main__.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, __main__.A]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithEmtpy2ndArg]
+from typing import Union
+
+def f(x: Union[int, str]) -&gt; None:
+    if isinstance(x, ()):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithTypeObject]
+from typing import Union, Type
+
+class A: pass
+
+def f(x: Union[int, A], a: Type[A]) -&gt; None:
+    if isinstance(x, a):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    elif isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, __main__.A]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclassUnreachable]
+from typing import Type, Sequence, Union
+
+x: Type[str]
+if issubclass(x, int):
+    reveal_type(x)  # unreachable block
+
+class X: pass
+class Y(X): pass
+class Z(X): pass
+
+a: Union[Type[Y], Type[Z]]
+if issubclass(a, X):
+    reveal_type(a)  # N: Revealed type is "Union[Type[__main__.Y], Type[__main__.Z]]"
+else:
+    reveal_type(a)  # unreachable block
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclasDestructuringUnions1]
+from typing import Union, List, Tuple, Dict, Type
+def f(x: Union[Type[int], Type[str], Type[List]]) -&gt; None:
+    if issubclass(x, (str, (int,))):
+        reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str]]"
+        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # N: Revealed type is "Type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
+        x()[1]
+    reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]"
+    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    if issubclass(x, (str, (list,))):
+        reveal_type(x)  # N: Revealed type is "Union[Type[builtins.str], Type[builtins.list[Any]]]"
+        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        x()[1]
+    reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]"
+    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclasDestructuringUnions2]
+from typing import Union, List, Tuple, Dict, Type
+
+def f(x: Type[Union[int, str, List]]) -&gt; None:
+    if issubclass(x, (str, (int,))):
+        reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str]]"
+        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # N: Revealed type is "Type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
+        x()[1]
+    reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]"
+    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    if issubclass(x, (str, (list,))):
+        reveal_type(x)  # N: Revealed type is "Union[Type[builtins.str], Type[builtins.list[Any]]]"
+        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        x()[1]
+    reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]"
+    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclasDestructuringUnions3]
+from typing import Union, List, Tuple, Dict, Type
+
+def f(x: Type[Union[int, str, List]]) -&gt; None:
+    reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]"
+    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    if issubclass(x, (str, (int,))):
+        reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str]]"
+        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # N: Revealed type is "Type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
+        x()[1]
+    reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]"
+    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    if issubclass(x, (str, (list,))):
+        reveal_type(x)  # N: Revealed type is "Union[Type[builtins.str], Type[builtins.list[Any]]]"
+        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        x()[1]
+    reveal_type(x)  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]"
+    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclass]
+from typing import Type, ClassVar
+
+class Goblin:
+    level: int
+
+class GoblinAmbusher(Goblin):
+    job: ClassVar[str] = 'Ranger'
+
+def test_issubclass(cls: Type[Goblin]) -&gt; None:
+    if issubclass(cls, GoblinAmbusher):
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.GoblinAmbusher]"
+        cls.level
+        cls.job
+        ga = cls()
+        ga.level = 15
+        ga.job
+        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.Goblin]"
+        cls.level
+        cls.job  # E: "Type[Goblin]" has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclassDeepHierarchy]
+from typing import Type, ClassVar
+
+class Mob: pass
+
+class Goblin(Mob):
+    level: int
+
+class GoblinAmbusher(Goblin):
+    job: ClassVar[str] = 'Ranger'
+
+def test_issubclass(cls: Type[Mob]) -&gt; None:
+    if issubclass(cls, Goblin):
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.Goblin]"
+        cls.level
+        cls.job  # E: "Type[Goblin]" has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
+        if issubclass(cls, GoblinAmbusher):
+            reveal_type(cls)  # N: Revealed type is "Type[__main__.GoblinAmbusher]"
+            cls.level
+            cls.job
+            g = cls()
+            g.level = 15
+            g.job
+            g.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.Mob]"
+        cls.job  # E: "Type[Mob]" has no attribute "job"
+        cls.level  # E: "Type[Mob]" has no attribute "level"
+        m = cls()
+        m.level = 15  # E: "Mob" has no attribute "level"
+        m.job  # E: "Mob" has no attribute "job"
+        if issubclass(cls, GoblinAmbusher):
+            reveal_type(cls)  # N: Revealed type is "Type[__main__.GoblinAmbusher]"
+            cls.job
+            cls.level
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
+
+    if issubclass(cls, GoblinAmbusher):
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.GoblinAmbusher]"
+        cls.level
+        cls.job
+        ga = cls()
+        ga.level = 15
+        ga.job
+        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclassTuple]
+from typing import Type, ClassVar
+
+class Mob: pass
+
+class Goblin(Mob):
+    level: int
+
+class GoblinAmbusher(Goblin):
+    job: ClassVar[str] = 'Ranger'
+
+class GoblinDigger(Goblin):
+    job: ClassVar[str] = 'Thief'
+
+def test_issubclass(cls: Type[Mob]) -&gt; None:
+    if issubclass(cls, (Goblin, GoblinAmbusher)):
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.Goblin]"
+        cls.level
+        cls.job  # E: "Type[Goblin]" has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
+        if issubclass(cls, GoblinAmbusher):
+            cls.level
+            reveal_type(cls)  # N: Revealed type is "Type[__main__.GoblinAmbusher]"
+            cls.job
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.Mob]"
+        cls.job  # E: "Type[Mob]" has no attribute "job"
+        cls.level  # E: "Type[Mob]" has no attribute "level"
+        m = cls()
+        m.level = 15  # E: "Mob" has no attribute "level"
+        m.job  # E: "Mob" has no attribute "job"
+        if issubclass(cls, GoblinAmbusher):
+            reveal_type(cls)  # N: Revealed type is "Type[__main__.GoblinAmbusher]"
+            cls.job
+            cls.level
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+
+    if issubclass(cls, (GoblinDigger, GoblinAmbusher)):
+        reveal_type(cls)  # N: Revealed type is "Union[Type[__main__.GoblinDigger], Type[__main__.GoblinAmbusher]]"
+        cls.level
+        cls.job
+        g = cls()
+        g.level = 15
+        g.job
+        g.job = "Warrior" # E: Cannot assign to class variable "job" via instance
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclassBuiltins]
+from typing import List, Type
+
+class MyList(List): pass
+class MyIntList(List[int]): pass
+
+def f(cls: Type[object]) -&gt; None:
+    if issubclass(cls, MyList):
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.MyList]"
+        cls()[0]
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.object]"
+        cls()[0]  # E: Value of type "object" is not indexable
+
+    if issubclass(cls, MyIntList):
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.MyIntList]"
+        cls()[0] + 1
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceTypeArgs]
+from typing import Iterable, TypeVar
+x = 1
+T = TypeVar('T')
+
+isinstance(x, Iterable)
+isinstance(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testIsinstanceAnyAlias]
+from typing import Any
+A = Any
+isinstance(object(), A)  # E: Cannot use isinstance() with Any type
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceTypeArgsAliases]
+from typing import Iterable, TypeVar
+x = 1
+T = TypeVar('T')
+It = Iterable
+It2 = Iterable[T]
+
+isinstance(x, It[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, It)
+isinstance(x, It2[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, It2)  # E: Parameterized generics cannot be used with class or instance checks
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testIssubclassTypeArgs]
+from typing import Iterable, TypeVar
+x = int
+T = TypeVar('T')
+issubclass(x, Iterable)
+issubclass(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
+issubclass(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
+issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testIssubclassWithMetaclasses]
+class FooMetaclass(type): ...
+class Foo(metaclass=FooMetaclass): ...
+class Bar: ...
+
+fm: FooMetaclass
+reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
+if issubclass(fm, Foo):
+    reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
+if issubclass(fm, Bar):
+    reveal_type(fm)  # N: Revealed type is "None"
+[builtins fixtures/isinstance.pyi]
+
+[case testIssubclassWithMetaclassesStrictOptional]
+# flags: --strict-optional
+class FooMetaclass(type): ...
+class BarMetaclass(type): ...
+class Foo(metaclass=FooMetaclass): ...
+class Bar(metaclass=BarMetaclass): ...
+class Baz: ...
+
+fm: FooMetaclass
+reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
+if issubclass(fm, Foo):
+    reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
+if issubclass(fm, Bar):
+    reveal_type(fm)  # N: Revealed type is "&lt;nothing&gt;"
+if issubclass(fm, Baz):
+    reveal_type(fm)  # N: Revealed type is "&lt;nothing&gt;"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceAndNarrowTypeVariable]
+from typing import TypeVar
+
+class A: pass
+class B(A): pass
+
+T = TypeVar('T', bound=A)
+
+def f(x: T) -&gt; None:
+    if isinstance(x, B):
+        reveal_type(x) # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(x) # N: Revealed type is "T`-1"
+    reveal_type(x) # N: Revealed type is "T`-1"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceAndTypeType]
+from typing import Type
+def f(x: Type[int]) -&gt; None:
+    if isinstance(x, type):
+        reveal_type(x) # N: Revealed type is "Type[builtins.int]"
+    else:
+        reveal_type(x)  # Unreachable
+    reveal_type(x) # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceVariableSubstitution]
+T = (int, str)
+U = (list, T)
+x: object = None
+
+if isinstance(x, T):
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+if isinstance(x, U):
+    reveal_type(x)  # N: Revealed type is "Union[builtins.list[Any], builtins.int, builtins.str]"
+
+if isinstance(x, (set, (list, T))):
+    reveal_type(x)  # N: Revealed type is "Union[builtins.set[Any], builtins.list[Any], builtins.int, builtins.str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTooFewArgs]
+isinstance() # E: Missing positional arguments "x", "t" in call to "isinstance"
+x: object
+if isinstance(): # E: Missing positional arguments "x", "t" in call to "isinstance"
+    x = 1
+    reveal_type(x) # N: Revealed type is "builtins.int"
+if isinstance(x): # E: Missing positional argument "t" in call to "isinstance"
+    x = 1
+    reveal_type(x) # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsSubclassTooFewArgs]
+from typing import Type
+
+issubclass() # E: Missing positional arguments "x", "t" in call to "issubclass"
+y: Type[object]
+if issubclass(): # E: Missing positional arguments "x", "t" in call to "issubclass"
+    reveal_type(y) # N: Revealed type is "Type[builtins.object]"
+if issubclass(y): # E: Missing positional argument "t" in call to "issubclass"
+    reveal_type(y) # N: Revealed type is "Type[builtins.object]"
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTooManyArgs]
+isinstance(1, 1, 1) # E: Too many arguments for "isinstance" \
+         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[type, Tuple[Any, ...]]"
+x: object
+if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
+    reveal_type(x) # N: Revealed type is "builtins.object"
+    x = 1
+    reveal_type(x) # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceNarrowAny]
+from typing import Any
+
+def narrow_any_to_str_then_reassign_to_int() -&gt; None:
+    v = 1 # type: Any
+
+    if isinstance(v, str):
+        reveal_type(v)  # N: Revealed type is "builtins.str"
+        v = 2
+        reveal_type(v)  # N: Revealed type is "Any"
+
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeAfterInList]
+# flags: --strict-optional
+from typing import List, Optional
+
+x: List[int]
+y: Optional[int]
+
+if y in x:
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+if y not in x:
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+else:
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNarrowTypeAfterInListOfOptional]
+# flags: --strict-optional
+from typing import List, Optional
+
+x: List[Optional[int]]
+y: Optional[int]
+
+if y not in x:
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+else:
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNarrowTypeAfterInListNonOverlapping]
+# flags: --strict-optional
+from typing import List, Optional
+
+x: List[str]
+y: Optional[int]
+
+if y in x:
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+else:
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNarrowTypeAfterInListNested]
+# flags: --strict-optional
+from typing import List, Optional, Any
+
+x: Optional[int]
+lst: Optional[List[int]]
+nested_any: List[List[Any]]
+
+if lst in nested_any:
+    reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int]"
+if x in nested_any:
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNarrowTypeAfterInTuple]
+# flags: --strict-optional
+from typing import Optional
+class A: pass
+class B(A): pass
+class C(A): pass
+
+y: Optional[B]
+if y in (B(), C()):
+    reveal_type(y) # N: Revealed type is "__main__.B"
+else:
+    reveal_type(y) # N: Revealed type is "Union[__main__.B, None]"
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNarrowTypeAfterInNamedTuple]
+# flags: --strict-optional
+from typing import NamedTuple, Optional
+class NT(NamedTuple):
+    x: int
+    y: int
+nt: NT
+
+y: Optional[int]
+if y not in nt:
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+else:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNarrowTypeAfterInDict]
+# flags: --strict-optional
+from typing import Dict, Optional
+x: Dict[str, int]
+y: Optional[str]
+
+if y in x:
+    reveal_type(y) # N: Revealed type is "builtins.str"
+else:
+    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+if y not in x:
+    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+else:
+    reveal_type(y) # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testNarrowTypeAfterInNoAnyOrObject]
+# flags: --strict-optional
+from typing import Any, List, Optional
+x: List[Any]
+z: List[object]
+
+y: Optional[int]
+if y in x:
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+else:
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+
+if y not in z:
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+else:
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNarrowTypeAfterInUserDefined]
+# flags: --strict-optional
+from typing import Container, Optional
+
+class C(Container[int]):
+    def __contains__(self, item: object) -&gt; bool:
+        return item is 'surprise'
+
+y: Optional[int]
+# We never trust user defined types
+if y in C():
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+else:
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+if y not in C():
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+else:
+    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNarrowTypeAfterInSet]
+# flags: --strict-optional
+from typing import Optional, Set
+s: Set[str]
+
+y: Optional[str]
+if y in {'a', 'b', 'c'}:
+    reveal_type(y) # N: Revealed type is "builtins.str"
+else:
+    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+if y not in s:
+    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+else:
+    reveal_type(y) # N: Revealed type is "builtins.str"
+[builtins fixtures/set.pyi]
+[out]
+
+[case testNarrowTypeAfterInTypedDict]
+# flags: --strict-optional
+from typing import Optional
+from mypy_extensions import TypedDict
+class TD(TypedDict):
+    a: int
+    b: str
+td: TD
+
+def f() -&gt; None:
+    x: Optional[str]
+    if x not in td:
+        return
+    reveal_type(x) # N: Revealed type is "builtins.str"
+[typing fixtures/typing-typeddict.pyi]
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testIsinstanceWidensWithAnyArg]
+from typing import Any
+class A: ...
+B: Any
+x: A
+x.foo()  # E: "A" has no attribute "foo"
+assert isinstance(x, B)
+x.foo()
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceWidensUnionWithAnyArg]
+from typing import Any, Union
+class A: ...
+B: Any
+x: Union[A, B]
+reveal_type(x)  # N: Revealed type is "Union[__main__.A, Any]"
+assert isinstance(x, B)
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceIgnoredImport]
+from typing import Union
+from foo import A  # type: ignore
+def f(x: Union[A, str]) -&gt; None:
+    x.method_only_in_a()  # E: Item "str" of "Union[Any, str]" has no attribute "method_only_in_a"
+    if isinstance(x, A):
+        x.method_only_in_a()
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceIgnoredImportDualAny]
+from typing import Any
+from foo import Bad, OtherBad  # type: ignore
+x: Any
+if isinstance(x, Bad):
+    reveal_type(x)  # N: Revealed type is "Any"
+else:
+    reveal_type(x)  # N: Revealed type is "Any"
+
+if isinstance(x, (Bad, OtherBad)):
+    reveal_type(x)  # N: Revealed type is "Any"
+else:
+    reveal_type(x)  # N: Revealed type is "Any"
+
+y: object
+if isinstance(y, Bad):
+    reveal_type(y)  # N: Revealed type is "Any"
+else:
+    reveal_type(y)  # N: Revealed type is "builtins.object"
+
+class Ok: pass
+z: Any
+if isinstance(z, Ok):
+    reveal_type(z)  # N: Revealed type is "__main__.Ok"
+else:
+    reveal_type(z)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional]
+# flags: --strict-optional
+from typing import Optional, Union
+
+class A: pass
+
+def foo1(x: Union[A, str, None]) -&gt; None:
+    if x is None:
+        reveal_type(x)      # N: Revealed type is "None"
+    elif isinstance(x, A):
+        reveal_type(x)      # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)      # N: Revealed type is "builtins.str"
+
+def foo2(x: Optional[str]) -&gt; None:
+    if x is None:
+        reveal_type(x)      # N: Revealed type is "None"
+    elif isinstance(x, A):
+        reveal_type(x)      # N: Revealed type is "__main__.&lt;subclass of "str" and "A"&gt;"
+    else:
+        reveal_type(x)      # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional]
+# flags: --no-strict-optional
+from typing import Optional, Union
+
+class A: pass
+
+def foo1(x: Union[A, str, None]) -&gt; None:
+    if x is None:
+        reveal_type(x)      # N: Revealed type is "None"
+    elif isinstance(x, A):
+        # Note that Union[None, A] == A in no-strict-optional
+        reveal_type(x)      # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)      # N: Revealed type is "builtins.str"
+
+def foo2(x: Optional[str]) -&gt; None:
+    if x is None:
+        reveal_type(x)      # N: Revealed type is "None"
+    elif isinstance(x, A):
+        reveal_type(x)      # N: Revealed type is "__main__.&lt;subclass of "str" and "A"&gt;"
+    else:
+        reveal_type(x)      # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneCheckDoesNotNarrowWhenUsingTypeVars]
+# flags: --strict-optional
+
+# Note: this test (and the following one) are testing checker.conditional_type_map:
+# if you set the 'prohibit_none_typevar_overlap' keyword argument to False when calling
+# 'is_overlapping_types', the binder will incorrectly infer that 'out' has a type of
+# Union[T, None] after the if statement.
+
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -&gt; T:
+    out = None
+    out = x
+    if out is None:
+        pass
+    return out
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneCheckDoesNotNarrowWhenUsingTypeVarsNoStrictOptional]
+# flags: --no-strict-optional
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -&gt; T:
+    out = None
+    out = x
+    if out is None:
+        pass
+    return out
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneAndGenericTypesOverlapNoStrictOptional]
+# flags: --no-strict-optional
+from typing import Union, Optional, List
+
+# Note: this test is indirectly making sure meet.is_overlapping_types
+# correctly ignores 'None' in unions.
+
+def foo(x: Optional[List[str]]) -&gt; None:
+    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+    assert isinstance(x, list)
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str]"
+
+def bar(x: Union[List[str], List[int], None]) -&gt; None:
+    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int], None]"
+    assert isinstance(x, list)
+    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNoneAndGenericTypesOverlapStrictOptional]
+# flags: --strict-optional
+from typing import Union, Optional, List
+
+# This test is the same as the one above, except for strict-optional.
+# It isn't testing anything explicitly and mostly exists for the sake
+# of completeness.
+
+def foo(x: Optional[List[str]]) -&gt; None:
+    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+    assert isinstance(x, list)
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str]"
+
+def bar(x: Union[List[str], List[int], None]) -&gt; None:
+    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int], None]"
+    assert isinstance(x, list)
+    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithStarExpression]
+from typing import Union, List, Tuple
+
+def f(var: Union[List[str], Tuple[str, str], str]) -&gt; None:
+    reveal_type(var)  # N: Revealed type is "Union[builtins.list[builtins.str], Tuple[builtins.str, builtins.str], builtins.str]"
+    if isinstance(var, (list, *(str, int))):
+        reveal_type(var)  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithStarExpressionAndVariable]
+from typing import Union
+
+def f(var: Union[int, str]) -&gt; None:
+    reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    some_types = (str, tuple)
+    another_type = list
+    if isinstance(var, (*some_types, another_type)):
+        reveal_type(var)  # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithWrongStarExpression]
+var = 'some string'
+if isinstance(var, *(str, int)):  # E: Too many arguments for "isinstance"
+    pass
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceAdHocIntersectionBasic]
+class A:
+    def f1(self) -&gt; int: ...
+class B:
+    def f2(self) -&gt; int: ...
+class C:
+    def f3(self) -&gt; int: ...
+
+x: A
+if isinstance(x, B):
+    reveal_type(x)           # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;"
+    if isinstance(x, C):
+        reveal_type(x)       # N: Revealed type is "__main__.&lt;subclass of "A", "B", and "C"&gt;"
+        reveal_type(x.f1())  # N: Revealed type is "builtins.int"
+        reveal_type(x.f2())  # N: Revealed type is "builtins.int"
+        reveal_type(x.f3())  # N: Revealed type is "builtins.int"
+        x.bad()              # E: "&lt;subclass of "A", "B", and "C"&gt;" has no attribute "bad"
+    else:
+        reveal_type(x)       # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;"
+else:
+    reveal_type(x)           # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionRepeatedChecks]
+# flags: --warn-unreachable
+
+class A: pass
+class B: pass
+
+x: A
+if isinstance(x, B):
+    reveal_type(x)      # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;"
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;"
+    if isinstance(x, B):
+        reveal_type(x)  # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionIncompatibleClasses]
+# flags: --warn-unreachable
+class A:
+    def f(self) -&gt; int: ...
+class B:
+    def f(self) -&gt; str: ...
+class C:
+    def f(self) -&gt; str: ...
+
+class Example(A, B): pass  # E: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+x: A
+if isinstance(x, B):  # E: Subclass of "A" and "B" cannot exist: would have incompatible method signatures
+    reveal_type(x)    # E: Statement is unreachable
+else:
+    reveal_type(x)    # N: Revealed type is "__main__.A"
+
+y: C
+if isinstance(y, B):
+    reveal_type(y)        # N: Revealed type is "__main__.&lt;subclass of "C" and "B"&gt;"
+    if isinstance(y, A):  # E: Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
+        reveal_type(y)    # E: Statement is unreachable
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionReversed]
+# flags: --warn-unreachable
+
+from abc import abstractmethod
+from typing_extensions import Literal
+
+class A0:
+    def f(self) -&gt; Literal[0]:
+        ...
+
+class A1:
+    def f(self) -&gt; Literal[1]:
+        ...
+
+class A2:
+    def f(self) -&gt; Literal[2]:
+        ...
+
+class B:
+    @abstractmethod
+    def f(self) -&gt; Literal[1, 2]:
+        ...
+
+    def t0(self) -&gt; None:
+        if isinstance(self, A0):        # E: Subclass of "B" and "A0" cannot exist: would have incompatible method signatures
+            x0: Literal[0] = self.f()   # E: Statement is unreachable
+
+    def t1(self) -&gt; None:
+        if isinstance(self, A1):
+            reveal_type(self)           # N: Revealed type is "__main__.&lt;subclass of "A1" and "B"&gt;"
+            x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[0]")
+            x1: Literal[1] = self.f()
+
+    def t2(self) -&gt; None:
+        if isinstance(self, (A0, A1)):  # E: Subclass of "B" and "A0" cannot exist: would have incompatible method signatures
+            reveal_type(self)           # N: Revealed type is "__main__.&lt;subclass of "A1" and "B"&gt;1"
+            x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[0]")
+            x1: Literal[1] = self.f()
+
+    def t3(self) -&gt; None:
+        if isinstance(self, (A1, A2)):
+            reveal_type(self)           # N: Revealed type is "Union[__main__.&lt;subclass of "A1" and "B"&gt;2, __main__.&lt;subclass of "A2" and "B"&gt;]"
+            x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1, 2]", variable has type "Literal[0]")
+            x1: Literal[1] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1, 2]", variable has type "Literal[1]")
+
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionGenerics]
+# flags: --warn-unreachable
+from typing import Generic, TypeVar
+
+class Parent: pass
+class Child(Parent): pass
+
+T = TypeVar('T')
+class A(Generic[T]):
+    def f(self) -&gt; T: ...
+class B:
+    def f(self) -&gt; Parent: ...
+
+x: A[int]
+if isinstance(x, B):    # E: Subclass of "A[int]" and "B" cannot exist: would have incompatible method signatures
+    reveal_type(x)      # E: Statement is unreachable
+else:
+    reveal_type(x)      # N: Revealed type is "__main__.A[builtins.int]"
+
+y: A[Parent]
+if isinstance(y, B):
+    reveal_type(y)      # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;"
+    reveal_type(y.f())  # N: Revealed type is "__main__.Parent"
+else:
+    reveal_type(y)      # N: Revealed type is "__main__.A[__main__.Parent]"
+
+z: A[Child]
+if isinstance(z, B):
+    reveal_type(z)      # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;1"
+    reveal_type(z.f())  # N: Revealed type is "__main__.Child"
+else:
+    reveal_type(z)      # N: Revealed type is "__main__.A[__main__.Child]"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionGenericsWithValues]
+# flags: --warn-unreachable
+from typing import TypeVar
+
+class A:
+    attr: int
+class B:
+    attr: int
+class C:
+    attr: str
+
+T1 = TypeVar('T1', A, B)
+def f1(x: T1) -&gt; T1:
+    if isinstance(x, A):
+        reveal_type(x)      # N: Revealed type is "__main__.A" \
+                            # N: Revealed type is "__main__.&lt;subclass of "B" and "A"&gt;"
+        if isinstance(x, B):
+            reveal_type(x)  # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;" \
+                            # N: Revealed type is "__main__.&lt;subclass of "B" and "A"&gt;"
+        else:
+            reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)      # N: Revealed type is "__main__.B"
+    return x
+
+T2 = TypeVar('T2', B, C)
+def f2(x: T2) -&gt; T2:
+    if isinstance(x, B):
+        reveal_type(x)      # N: Revealed type is "__main__.B"
+        # Note: even though --warn-unreachable is set, we don't report
+        # errors for the below: we don't yet have a way of filtering out
+        # reachability errors that occur for only one variation of the
+        # TypeVar yet.
+        if isinstance(x, C):
+            reveal_type(x)
+        else:
+            reveal_type(x)  # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(x)      # N: Revealed type is "__main__.C"
+    return x
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn]
+# flags: --warn-unreachable
+from typing import TypeVar
+
+class A:
+    attr: int
+class B:
+    attr: int
+class C:
+    attr: str
+
+T1 = TypeVar('T1', A, B)
+def f1(x: T1) -&gt; T1:
+    if isinstance(x, A):
+        # The error message is confusing, but we indeed do run into problems if
+        # 'x' is a subclass of A and B
+        return A()   # E: Incompatible return value type (got "A", expected "B")
+    else:
+        return B()
+
+T2 = TypeVar('T2', B, C)
+def f2(x: T2) -&gt; T2:
+    if isinstance(x, B):
+        # In contrast, it's impossible for a subclass of "B" and "C" to
+        # exist, so this is fine
+        return B()
+    else:
+        return C()
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionUsage]
+# flags: --warn-unreachable
+class A: pass
+class B: pass
+class Concrete(A, B): pass
+
+def accept_a(a: A) -&gt; None: pass
+def accept_b(a: B) -&gt; None: pass
+def accept_concrete(c: Concrete) -&gt; None: pass
+
+x: A
+if isinstance(x, B):
+    var = x
+    reveal_type(var)      # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;"
+    accept_a(var)
+    accept_b(var)
+    accept_concrete(var)  # E: Argument 1 to "accept_concrete" has incompatible type "&lt;subclass of "A" and "B"&gt;"; expected "Concrete"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionReinfer]
+# flags: --warn-unreachable
+class A: pass
+class B: pass
+
+x: A
+assert isinstance(x, B)
+reveal_type(x)      # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;"
+
+y: A
+assert isinstance(y, B)
+reveal_type(y)      # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;1"
+
+x = y
+reveal_type(x)      # N: Revealed type is "__main__.&lt;subclass of "A" and "B"&gt;1"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionWithUnions]
+# flags: --warn-unreachable
+from typing import Type, Union
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+
+v1: A
+if isinstance(v1, (B, C)):
+    reveal_type(v1)  # N: Revealed type is "Union[__main__.&lt;subclass of "A" and "B"&gt;, __main__.&lt;subclass of "A" and "C"&gt;]"
+
+v2: Union[A, B]
+if isinstance(v2, C):
+    reveal_type(v2)  # N: Revealed type is "Union[__main__.&lt;subclass of "A" and "C"&gt;1, __main__.&lt;subclass of "B" and "C"&gt;]"
+
+v3: Union[A, B]
+if isinstance(v3, (C, D)):
+    reveal_type(v3)  # N: Revealed type is "Union[__main__.&lt;subclass of "A" and "C"&gt;2, __main__.&lt;subclass of "A" and "D"&gt;, __main__.&lt;subclass of "B" and "C"&gt;1, __main__.&lt;subclass of "B" and "D"&gt;]"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionSameNames]
+# flags: --warn-unreachable
+from foo import A as A2
+class A: pass
+
+x: A
+if isinstance(x, A2):
+    reveal_type(x)  # N: Revealed type is "__main__.&lt;subclass of "A" and "A"&gt;"
+
+[file foo.py]
+class A: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionBadMro]
+# flags: --warn-unreachable
+class X: pass
+class Y: pass
+class A(X, Y): pass
+class B(Y, X): pass
+
+foo: A
+if isinstance(foo, B):  # E: Subclass of "A" and "B" cannot exist: would have inconsistent method resolution order
+    reveal_type(foo)    # E: Statement is unreachable
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionAmbiguousClass]
+# flags: --warn-unreachable
+from typing import Any
+
+class Concrete:
+    x: int
+class Ambiguous:
+    x: Any
+
+# We bias towards assuming these two classes could be overlapping
+foo: Concrete
+if isinstance(foo, Ambiguous):
+    reveal_type(foo)    # N: Revealed type is "__main__.&lt;subclass of "Concrete" and "Ambiguous"&gt;"
+    reveal_type(foo.x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsSubclassAdHocIntersection]
+# flags: --warn-unreachable
+from typing import Type
+
+class A:
+    x: int
+class B:
+    x: int
+class C:
+    x: str
+
+x: Type[A]
+if issubclass(x, B):
+    reveal_type(x)        # N: Revealed type is "Type[__main__.&lt;subclass of "A" and "B"&gt;]"
+    if issubclass(x, C):  # E: Subclass of "A", "B", and "C" cannot exist: would have incompatible method signatures
+        reveal_type(x)    # E: Statement is unreachable
+    else:
+        reveal_type(x)    # N: Revealed type is "Type[__main__.&lt;subclass of "A" and "B"&gt;]"
+else:
+    reveal_type(x)        # N: Revealed type is "Type[__main__.A]"
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsCheck]
+from typing import Any
+
+y: Any
+if type(y) == int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+
+[case testMultipleTypeEqualsCheck]
+from typing import Any
+
+x: Any
+y: Any
+if type(x) == type(y) == int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsCheckUsingIs]
+from typing import Any
+
+y: Any
+if type(y) is int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsNarrowingUnionWithElse]
+from typing import Union
+
+x: Union[int, str]
+if type(x) is int:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testTypeEqualsMultipleTypesShouldntNarrow]
+# make sure we don't do any narrowing if there are multiple types being compared
+
+from typing import Union
+
+x: Union[int, str]
+if type(x) == int == str:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+# mypy shows an error about "Unsupported left operand type for !=" if we don't include this
+[builtins fixtures/typing-medium.pyi]
+# mypy thinks int isn't defined unless we include this
+[builtins fixtures/primitives.pyi]
+[case testTypeNotEqualsCheck]
+from typing import Union
+
+x: Union[int, str]
+if type(x) != int:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+# mypy shows an error about "Unsupported left operand type for !=" if we don't include this
+[builtins fixtures/typing-medium.pyi]
+# mypy thinks int isn't defined unless we include this
+[builtins fixtures/primitives.pyi]
+
+[case testTypeNotEqualsCheckUsingIsNot]
+from typing import Union
+
+x: Union[int, str]
+if type(x) is not int:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[case testNarrowInElseCaseIfFinal]
+from typing import final, Union
+@final
+class C:
+    pass
+class D:
+    pass
+
+x: Union[C, D]
+if type(x) is C:
+    reveal_type(x)  # N: Revealed type is "__main__.C"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.D"
+[case testNarrowInIfCaseIfFinalUsingIsNot]
+from typing import final, Union
+@final
+class C:
+    pass
+class D:
+    pass
+
+x: Union[C, D]
+if type(x) is not C:
+    reveal_type(x)  # N: Revealed type is "__main__.D"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.C"
+
+[case testHasAttrExistingAttribute]
+class C:
+    x: int
+c: C
+if hasattr(c, "x"):
+    reveal_type(c.x)  # N: Revealed type is "builtins.int"
+else:
+    # We don't mark this unreachable since people may check for deleted attributes
+    reveal_type(c.x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeInstance]
+class B: ...
+b: B
+if hasattr(b, "x"):
+    reveal_type(b.x)  # N: Revealed type is "Any"
+else:
+    b.x  # E: "B" has no attribute "x"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeFunction]
+def foo(x: int) -&gt; None: ...
+if hasattr(foo, "x"):
+    reveal_type(foo.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeClassObject]
+class C: ...
+if hasattr(C, "x"):
+    reveal_type(C.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeTypeType]
+from typing import Type
+class C: ...
+c: Type[C]
+if hasattr(c, "x"):
+    reveal_type(c.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeTypeVar]
+from typing import TypeVar
+
+T = TypeVar("T")
+def foo(x: T) -&gt; T:
+    if hasattr(x, "x"):
+        reveal_type(x.x)  # N: Revealed type is "Any"
+        return x
+    else:
+        return x
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeChained]
+class B: ...
+b: B
+if hasattr(b, "x"):
+    reveal_type(b.x)  # N: Revealed type is "Any"
+elif hasattr(b, "y"):
+    reveal_type(b.y)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeNested]
+class A: ...
+class B: ...
+
+x: A
+if hasattr(x, "x"):
+    if isinstance(x, B):
+        reveal_type(x.x)  # N: Revealed type is "Any"
+
+if hasattr(x, "x") and hasattr(x, "y"):
+    reveal_type(x.x)  # N: Revealed type is "Any"
+    reveal_type(x.y)  # N: Revealed type is "Any"
+
+if hasattr(x, "x"):
+    if hasattr(x, "y"):
+        reveal_type(x.x)  # N: Revealed type is "Any"
+        reveal_type(x.y)  # N: Revealed type is "Any"
+
+if hasattr(x, "x") or hasattr(x, "y"):
+    x.x  # E: "A" has no attribute "x"
+    x.y  # E: "A" has no attribute "y"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrPreciseType]
+class A: ...
+
+x: A
+if hasattr(x, "a") and isinstance(x.a, int):
+    reveal_type(x.a)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeUnion]
+from typing import Union
+
+class A: ...
+class B:
+    x: int
+
+xu: Union[A, B]
+if hasattr(xu, "x"):
+    reveal_type(xu)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+    reveal_type(xu.x)  # N: Revealed type is "Union[Any, builtins.int]"
+else:
+    reveal_type(xu)  # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeOuterUnion]
+from typing import Union
+
+class A: ...
+class B: ...
+xu: Union[A, B]
+if isinstance(xu, B):
+    if hasattr(xu, "x"):
+        reveal_type(xu.x)  # N: Revealed type is "Any"
+
+if isinstance(xu, B) and hasattr(xu, "x"):
+        reveal_type(xu.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrDoesntInterfereGetAttr]
+class C:
+    def __getattr__(self, attr: str) -&gt; str: ...
+
+c: C
+if hasattr(c, "foo"):
+    reveal_type(c.foo)  # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeLiteral]
+from typing import Final
+class B: ...
+b: B
+ATTR: Final = "x"
+if hasattr(b, ATTR):
+    reveal_type(b.x)  # N: Revealed type is "Any"
+else:
+    b.x  # E: "B" has no attribute "x"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrDeferred]
+def foo() -&gt; str: ...
+
+class Test:
+    def stream(self) -&gt; None:
+        if hasattr(self, "_body"):
+            reveal_type(self._body)  # N: Revealed type is "builtins.str"
+
+    def body(self) -&gt; str:
+        if not hasattr(self, "_body"):
+            self._body = foo()
+        return self._body
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrModule]
+import mod
+
+if hasattr(mod, "y"):
+    reveal_type(mod.y)  # N: Revealed type is "Any"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+else:
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+
+if hasattr(mod, "x"):
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+else:
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+x: int
+[builtins fixtures/module.pyi]
+
+[case testHasAttrDoesntInterfereModuleGetAttr]
+import mod
+
+if hasattr(mod, "y"):
+    reveal_type(mod.y)  # N: Revealed type is "builtins.str"
+
+[file mod.py]
+def __getattr__(attr: str) -&gt; str: ...
+[builtins fixtures/module.pyi]
+</t>
+<t tx="ekr.20221025095256.1"></t>
+<t tx="ekr.20221025101510.1"></t>
+<t tx="ekr.20221025101528.1">@language rest
+@wrap
+
+
+@language python
+</t>
+<t tx="ekr.20221025104027.1">"""Utilities for processing .test files containing test case descriptions."""
+@path C:/Repos/ekr-mypy2/mypy/test/
+
+from __future__ import annotations
+
+import os
+import os.path
+import posixpath
+import re
+import shutil
+import sys
+import tempfile
+from abc import abstractmethod
+from typing import Any, Iterator, NamedTuple, Pattern, Union
+from typing_extensions import Final, TypeAlias as _TypeAlias
+
+import pytest
+
+from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
+
+root_dir = os.path.normpath(PREFIX)
+
+# Debuggers that we support for debugging mypyc run tests
+# implementation of using each of these debuggers is in test_run.py
+# TODO: support more debuggers
+SUPPORTED_DEBUGGERS: Final = ["gdb", "lldb"]
+
+
+# File modify/create operation: copy module contents from source_path.
+class UpdateFile(NamedTuple):
+    module: str
+    content: str
+    target_path: str
+
+
+# File delete operation: delete module file.
+class DeleteFile(NamedTuple):
+    module: str
+    path: str
+
+
+FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
+
+
+def parse_test_case(case: DataDrivenTestCase) -&gt; None:
+    """Parse and prepare a single case from suite with test case descriptions.
+
+    This method is part of the setup phase, just before the test case is run.
+    """
+    test_items = parse_test_data(case.data, case.name)
+    base_path = case.suite.base_path
+    if case.suite.native_sep:
+        join = os.path.join
+    else:
+        join = posixpath.join
+
+    out_section_missing = case.suite.required_out_section
+    normalize_output = True
+
+    files: list[tuple[str, str]] = []  # path and contents
+    output_files: list[tuple[str, str | Pattern[str]]] = []  # output path and contents
+    output: list[str] = []  # Regular output errors
+    output2: dict[int, list[str]] = {}  # Output errors for incremental, runs 2+
+    deleted_paths: dict[int, set[str]] = {}  # from run number of paths
+    stale_modules: dict[int, set[str]] = {}  # from run number to module names
+    rechecked_modules: dict[int, set[str]] = {}  # from run number module names
+    triggered: list[str] = []  # Active triggers (one line per incremental step)
+    targets: dict[int, list[str]] = {}  # Fine-grained targets (per fine-grained update)
+
+    # Process the parsed items. Each item has a header of form [id args],
+    # optionally followed by lines of text.
+    item = first_item = test_items[0]
+    for item in test_items[1:]:
+        if item.id in {"file", "outfile", "outfile-re"}:
+            # Record an extra file needed for the test case.
+            assert item.arg is not None
+            contents = expand_variables("\n".join(item.data))
+            file_entry = (join(base_path, item.arg), contents)
+            if item.id == "file":
+                files.append(file_entry)
+            elif item.id == "outfile-re":
+                output_files.append((file_entry[0], re.compile(file_entry[1].rstrip(), re.S)))
+            else:
+                output_files.append(file_entry)
+        elif item.id in ("builtins", "builtins_py2"):
+            # Use an alternative stub file for the builtins module.
+            assert item.arg is not None
+            mpath = join(os.path.dirname(case.file), item.arg)
+            fnam = "builtins.pyi" if item.id == "builtins" else "__builtin__.pyi"
+            with open(mpath, encoding="utf8") as f:
+                files.append((join(base_path, fnam), f.read()))
+        elif item.id == "typing":
+            # Use an alternative stub file for the typing module.
+            assert item.arg is not None
+            src_path = join(os.path.dirname(case.file), item.arg)
+            with open(src_path, encoding="utf8") as f:
+                files.append((join(base_path, "typing.pyi"), f.read()))
+        elif re.match(r"stale[0-9]*$", item.id):
+            passnum = 1 if item.id == "stale" else int(item.id[len("stale") :])
+            assert passnum &gt; 0
+            modules = set() if item.arg is None else {t.strip() for t in item.arg.split(",")}
+            stale_modules[passnum] = modules
+        elif re.match(r"rechecked[0-9]*$", item.id):
+            passnum = 1 if item.id == "rechecked" else int(item.id[len("rechecked") :])
+            assert passnum &gt; 0
+            modules = set() if item.arg is None else {t.strip() for t in item.arg.split(",")}
+            rechecked_modules[passnum] = modules
+        elif re.match(r"targets[0-9]*$", item.id):
+            passnum = 1 if item.id == "targets" else int(item.id[len("targets") :])
+            assert passnum &gt; 0
+            reprocessed = [] if item.arg is None else [t.strip() for t in item.arg.split(",")]
+            targets[passnum] = reprocessed
+        elif item.id == "delete":
+            # File/directory to delete during a multi-step test case
+            assert item.arg is not None
+            m = re.match(r"(.*)\.([0-9]+)$", item.arg)
+            assert m, f"Invalid delete section: {item.arg}"
+            num = int(m.group(2))
+            assert num &gt;= 2, f"Can't delete during step {num}"
+            full = join(base_path, m.group(1))
+            deleted_paths.setdefault(num, set()).add(full)
+        elif re.match(r"out[0-9]*$", item.id):
+            if item.arg is None:
+                args = []
+            else:
+                args = item.arg.split(",")
+
+            version_check = True
+            for arg in args:
+                if arg == "skip-path-normalization":
+                    normalize_output = False
+                if arg.startswith("version"):
+                    compare_op = arg[7:9]
+                    if compare_op not in {"&gt;=", "=="}:
+                        raise ValueError(
+                            "{}, line {}: Only &gt;= and == version checks are currently supported".format(
+                                case.file, item.line
+                            )
+                        )
+                    version_str = arg[9:]
+                    try:
+                        version = tuple(int(x) for x in version_str.split("."))
+                    except ValueError:
+                        raise ValueError(
+                            '{}, line {}: "{}" is not a valid python version'.format(
+                                case.file, item.line, version_str
+                            )
+                        )
+                    if compare_op == "&gt;=":
+                        version_check = sys.version_info &gt;= version
+                    elif compare_op == "==":
+                        if not 1 &lt; len(version) &lt; 4:
+                            raise ValueError(
+                                "{}, line {}: Only minor or patch version checks "
+                                'are currently supported with "==": "{}"'.format(
+                                    case.file, item.line, version_str
+                                )
+                            )
+                        version_check = sys.version_info[: len(version)] == version
+            if version_check:
+                tmp_output = [expand_variables(line) for line in item.data]
+                if os.path.sep == "\\" and normalize_output:
+                    tmp_output = [fix_win_path(line) for line in tmp_output]
+                if item.id == "out" or item.id == "out1":
+                    output = tmp_output
+                else:
+                    passnum = int(item.id[len("out") :])
+                    assert passnum &gt; 1
+                    output2[passnum] = tmp_output
+                out_section_missing = False
+        elif item.id == "triggered" and item.arg is None:
+            triggered = item.data
+        else:
+            raise ValueError(
+                f"Invalid section header {item.id} in {case.file} at line {item.line}"
+            )
+
+    if out_section_missing:
+        raise ValueError(f"{case.file}, line {first_item.line}: Required output section not found")
+
+    for passnum in stale_modules.keys():
+        if passnum not in rechecked_modules:
+            # If the set of rechecked modules isn't specified, make it the same as the set
+            # of modules with a stale public interface.
+            rechecked_modules[passnum] = stale_modules[passnum]
+        if (
+            passnum in stale_modules
+            and passnum in rechecked_modules
+            and not stale_modules[passnum].issubset(rechecked_modules[passnum])
+        ):
+            raise ValueError(
+                (
+                    "Stale modules after pass {} must be a subset of rechecked modules ({}:{})"
+                ).format(passnum, case.file, first_item.line)
+            )
+
+    input = first_item.data
+    expand_errors(input, output, "main")
+    for file_path, contents in files:
+        expand_errors(contents.split("\n"), output, file_path)
+
+    case.input = input
+    case.output = output
+    case.output2 = output2
+    case.last_line = case.line + item.line + len(item.data) - 2
+    case.files = files
+    case.output_files = output_files
+    case.expected_stale_modules = stale_modules
+    case.expected_rechecked_modules = rechecked_modules
+    case.deleted_paths = deleted_paths
+    case.triggered = triggered or []
+    case.normalize_output = normalize_output
+    case.expected_fine_grained_targets = targets
+
+
+class DataDrivenTestCase(pytest.Item):
+    """Holds parsed data-driven test cases, and handles directory setup and teardown."""
+
+    # Override parent member type
+    parent: DataSuiteCollector
+
+    input: list[str]
+    output: list[str]  # Output for the first pass
+    output2: dict[int, list[str]]  # Output for runs 2+, indexed by run number
+
+    # full path of test suite
+    file = ""
+    line = 0
+
+    # (file path, file content) tuples
+    files: list[tuple[str, str]]
+    expected_stale_modules: dict[int, set[str]]
+    expected_rechecked_modules: dict[int, set[str]]
+    expected_fine_grained_targets: dict[int, list[str]]
+
+    # Whether or not we should normalize the output to standardize things like
+    # forward vs backward slashes in file paths for Windows vs Linux.
+    normalize_output = True
+
+    # Extra attributes used by some tests.
+    last_line: int
+    output_files: list[tuple[str, str | Pattern[str]]]  # Path and contents for output files
+    deleted_paths: dict[int, set[str]]  # Mapping run number -&gt; paths
+    triggered: list[str]  # Active triggers (one line per incremental step)
+
+    def __init__(
+        self,
+        parent: DataSuiteCollector,
+        suite: DataSuite,
+        file: str,
+        name: str,
+        writescache: bool,
+        only_when: str,
+        platform: str | None,
+        skip: bool,
+        xfail: bool,
+        data: str,
+        line: int,
+    ) -&gt; None:
+        super().__init__(name, parent)
+        self.suite = suite
+        self.file = file
+        self.writescache = writescache
+        self.only_when = only_when
+        if (platform == "windows" and sys.platform != "win32") or (
+            platform == "posix" and sys.platform == "win32"
+        ):
+            skip = True
+        self.skip = skip
+        self.xfail = xfail
+        self.data = data
+        self.line = line
+        self.old_cwd: str | None = None
+        self.tmpdir: tempfile.TemporaryDirectory[str] | None = None
+
+    def runtest(self) -&gt; None:
+        if self.skip:
+            pytest.skip()
+        # TODO: add a better error message for when someone uses skip and xfail at the same time
+        elif self.xfail:
+            self.add_marker(pytest.mark.xfail)
+        parent = self.getparent(DataSuiteCollector)
+        assert parent is not None, "Should not happen"
+        suite = parent.obj()
+        suite.setup()
+        try:
+            suite.run_case(self)
+        except Exception:
+            # As a debugging aid, support copying the contents of the tmp directory somewhere
+            save_dir: str | None = self.config.getoption("--save-failures-to", None)
+            if save_dir:
+                assert self.tmpdir is not None
+                target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
+                print(f"Copying data from test {self.name} to {target_dir}")
+                if not os.path.isabs(target_dir):
+                    assert self.old_cwd
+                    target_dir = os.path.join(self.old_cwd, target_dir)
+                shutil.copytree(self.tmpdir.name, target_dir)
+            raise
+
+    def setup(self) -&gt; None:
+        parse_test_case(case=self)
+        self.old_cwd = os.getcwd()
+        self.tmpdir = tempfile.TemporaryDirectory(prefix="mypy-test-")
+        os.chdir(self.tmpdir.name)
+        os.mkdir(test_temp_dir)
+
+        # Precalculate steps for find_steps()
+        steps: dict[int, list[FileOperation]] = {}
+
+        for path, content in self.files:
+            m = re.match(r".*\.([0-9]+)$", path)
+            if m:
+                # Skip writing subsequent incremental steps - rather
+                # store them as operations.
+                num = int(m.group(1))
+                assert num &gt;= 2
+                target_path = re.sub(r"\.[0-9]+$", "", path)
+                module = module_from_path(target_path)
+                operation = UpdateFile(module, content, target_path)
+                steps.setdefault(num, []).append(operation)
+            else:
+                # Write the first incremental steps
+                dir = os.path.dirname(path)
+                os.makedirs(dir, exist_ok=True)
+                with open(path, "w", encoding="utf8") as f:
+                    f.write(content)
+
+        for num, paths in self.deleted_paths.items():
+            assert num &gt;= 2
+            for path in paths:
+                module = module_from_path(path)
+                steps.setdefault(num, []).append(DeleteFile(module, path))
+        max_step = max(steps) if steps else 2
+        self.steps = [steps.get(num, []) for num in range(2, max_step + 1)]
+
+    def teardown(self) -&gt; None:
+        assert self.old_cwd is not None and self.tmpdir is not None, "test was not properly set up"
+        os.chdir(self.old_cwd)
+        try:
+            self.tmpdir.cleanup()
+        except OSError:
+            pass
+        self.old_cwd = None
+        self.tmpdir = None
+
+    def reportinfo(self) -&gt; tuple[str, int, str]:
+        return self.file, self.line, self.name
+
+    def repr_failure(self, excinfo: Any, style: Any | None = None) -&gt; str:
+        if excinfo.errisinstance(SystemExit):
+            # We assume that before doing exit() (which raises SystemExit) we've printed
+            # enough context about what happened so that a stack trace is not useful.
+            # In particular, uncaught exceptions during semantic analysis or type checking
+            # call exit() and they already print out a stack trace.
+            excrepr = excinfo.exconly()
+        else:
+            self.parent._prunetraceback(excinfo)
+            excrepr = excinfo.getrepr(style="short")
+
+        return f"data: {self.file}:{self.line}:\n{excrepr}"
+
+    def find_steps(self) -&gt; list[list[FileOperation]]:
+        """Return a list of descriptions of file operations for each incremental step.
+
+        The first list item corresponds to the first incremental step, the second for the
+        second step, etc. Each operation can either be a file modification/creation (UpdateFile)
+        or deletion (DeleteFile).
+
+        Defaults to having two steps if there aern't any operations.
+        """
+        return self.steps
+
+
+def module_from_path(path: str) -&gt; str:
+    path = re.sub(r"\.pyi?$", "", path)
+    # We can have a mix of Unix-style and Windows-style separators.
+    parts = re.split(r"[/\\]", path)
+    del parts[0]
+    module = ".".join(parts)
+    module = re.sub(r"\.__init__$", "", module)
+    return module
+
+
+class TestItem:
+    """Parsed test caseitem.
+
+    An item is of the form
+      [id arg]
+      .. data ..
+    """
+
+    id = ""
+    arg: str | None = ""
+
+    # Text data, array of 8-bit strings
+    data: list[str]
+
+    file = ""
+    line = 0  # Line number in file
+
+    def __init__(self, id: str, arg: str | None, data: list[str], line: int) -&gt; None:
+        self.id = id
+        self.arg = arg
+        self.data = data
+        self.line = line
+
+
+def parse_test_data(raw_data: str, name: str) -&gt; list[TestItem]:
+    """Parse a list of lines that represent a sequence of test items."""
+
+    lines = ["", "[case " + name + "]"] + raw_data.split("\n")
+    ret: list[TestItem] = []
+    data: list[str] = []
+
+    id: str | None = None
+    arg: str | None = None
+
+    i = 0
+    i0 = 0
+    while i &lt; len(lines):
+        s = lines[i].strip()
+
+        if lines[i].startswith("[") and s.endswith("]"):
+            if id:
+                data = collapse_line_continuation(data)
+                data = strip_list(data)
+                ret.append(TestItem(id, arg, strip_list(data), i0 + 1))
+
+            i0 = i
+            id = s[1:-1]
+            arg = None
+            if " " in id:
+                arg = id[id.index(" ") + 1 :]
+                id = id[: id.index(" ")]
+            data = []
+        elif lines[i].startswith("\\["):
+            data.append(lines[i][1:])
+        elif not lines[i].startswith("--"):
+            data.append(lines[i])
+        elif lines[i].startswith("----"):
+            data.append(lines[i][2:])
+        i += 1
+
+    # Process the last item.
+    if id:
+        data = collapse_line_continuation(data)
+        data = strip_list(data)
+        ret.append(TestItem(id, arg, data, i0 + 1))
+
+    return ret
+
+
+def strip_list(l: list[str]) -&gt; list[str]:
+    """Return a stripped copy of l.
+
+    Strip whitespace at the end of all lines, and strip all empty
+    lines from the end of the array.
+    """
+
+    r: list[str] = []
+    for s in l:
+        # Strip spaces at end of line
+        r.append(re.sub(r"\s+$", "", s))
+
+    while len(r) &gt; 0 and r[-1] == "":
+        r.pop()
+
+    return r
+
+
+def collapse_line_continuation(l: list[str]) -&gt; list[str]:
+    r: list[str] = []
+    cont = False
+    for s in l:
+        ss = re.sub(r"\\$", "", s)
+        if cont:
+            r[-1] += re.sub("^ +", "", ss)
+        else:
+            r.append(ss)
+        cont = s.endswith("\\")
+    return r
+
+
+def expand_variables(s: str) -&gt; str:
+    return s.replace("&lt;ROOT&gt;", root_dir)
+
+
+def expand_errors(input: list[str], output: list[str], fnam: str) -&gt; None:
+    """Transform comments such as '# E: message' or
+    '# E:3: message' in input.
+
+    The result is lines like 'fnam:line: error: message'.
+    """
+
+    for i in range(len(input)):
+        # The first in the split things isn't a comment
+        for possible_err_comment in input[i].split(" # ")[1:]:
+            m = re.search(
+                r"^([ENW]):((?P&lt;col&gt;\d+):)? (?P&lt;message&gt;.*)$", possible_err_comment.strip()
+            )
+            if m:
+                if m.group(1) == "E":
+                    severity = "error"
+                elif m.group(1) == "N":
+                    severity = "note"
+                elif m.group(1) == "W":
+                    severity = "warning"
+                col = m.group("col")
+                message = m.group("message")
+                message = message.replace("\\#", "#")  # adds back escaped # character
+                if col is None:
+                    output.append(f"{fnam}:{i + 1}: {severity}: {message}")
+                else:
+                    output.append(f"{fnam}:{i + 1}:{col}: {severity}: {message}")
+
+
+def fix_win_path(line: str) -&gt; str:
+    r"""Changes Windows paths to Linux paths in error messages.
+
+    E.g. foo\bar.py -&gt; foo/bar.py.
+    """
+    line = line.replace(root_dir, root_dir.replace("\\", "/"))
+    m = re.match(r"^([\S/]+):(\d+:)?(\s+.*)", line)
+    if not m:
+        return line
+    else:
+        filename, lineno, message = m.groups()
+        return "{}:{}{}".format(filename.replace("\\", "/"), lineno or "", message)
+
+
+def fix_cobertura_filename(line: str) -&gt; str:
+    r"""Changes filename paths to Linux paths in Cobertura output files.
+
+    E.g. filename="pkg\subpkg\a.py" -&gt; filename="pkg/subpkg/a.py".
+    """
+    m = re.search(r'&lt;class .* filename="(?P&lt;filename&gt;.*?)"', line)
+    if not m:
+        return line
+    return "{}{}{}".format(
+        line[: m.start(1)], m.group("filename").replace("\\", "/"), line[m.end(1) :]
+    )
+
+
+##
+#
+# pytest setup
+#
+##
+
+
+# This function name is special to pytest.  See
+# https://docs.pytest.org/en/latest/reference.html#initialization-hooks
+def pytest_addoption(parser: Any) -&gt; None:
+    group = parser.getgroup("mypy")
+    group.addoption(
+        "--update-data",
+        action="store_true",
+        default=False,
+        help="Update test data to reflect actual output (supported only for certain tests)",
+    )
+    group.addoption(
+        "--save-failures-to",
+        default=None,
+        help="Copy the temp directories from failing tests to a target directory",
+    )
+    group.addoption(
+        "--mypy-verbose", action="count", help="Set the verbose flag when creating mypy Options"
+    )
+    group.addoption(
+        "--mypyc-showc",
+        action="store_true",
+        default=False,
+        help="Display C code on mypyc test failures",
+    )
+    group.addoption(
+        "--mypyc-debug",
+        default=None,
+        dest="debugger",
+        choices=SUPPORTED_DEBUGGERS,
+        help="Run the first mypyc run test with the specified debugger",
+    )
+
+
+# This function name is special to pytest.  See
+# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
+def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -&gt; Any | None:
+    """Called by pytest on each object in modules configured in conftest.py files.
+
+    collector is pytest.Collector, returns Optional[pytest.Class]
+    """
+    if isinstance(obj, type):
+        # Only classes derived from DataSuite contain test cases, not the DataSuite class itself
+        if issubclass(obj, DataSuite) and obj is not DataSuite:
+            # Non-None result means this obj is a test case.
+            # The collect method of the returned DataSuiteCollector instance will be called later,
+            # with self.obj being obj.
+            return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
+                parent=collector, name=name
+            )
+    return None
+
+
+def split_test_cases(
+    parent: DataFileCollector, suite: DataSuite, file: str
+) -&gt; Iterator[DataDrivenTestCase]:
+    """Iterate over raw test cases in file, at collection time, ignoring sub items.
+
+    The collection phase is slow, so any heavy processing should be deferred to after
+    uninteresting tests are filtered (when using -k PATTERN switch).
+    """
+    with open(file, encoding="utf-8") as f:
+        data = f.read()
+    # number of groups in the below regex
+    NUM_GROUPS = 7
+    cases = re.split(
+        r"^\[case ([a-zA-Z_0-9]+)"
+        r"(-writescache)?"
+        r"(-only_when_cache|-only_when_nocache)?"
+        r"(-posix|-windows)?"
+        r"(-skip)?"
+        r"(-xfail)?"
+        r"\][ \t]*$\n",
+        data,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    line_no = cases[0].count("\n") + 1
+    test_names = set()
+    for i in range(1, len(cases), NUM_GROUPS):
+        name, writescache, only_when, platform_flag, skip, xfail, data = cases[i : i + NUM_GROUPS]
+        if name in test_names:
+            raise RuntimeError(
+                'Found a duplicate test name "{}" in {} on line {}'.format(
+                    name, parent.name, line_no
+                )
+            )
+        platform = platform_flag[1:] if platform_flag else None
+        yield DataDrivenTestCase.from_parent(
+            parent=parent,
+            suite=suite,
+            file=file,
+            name=add_test_name_suffix(name, suite.test_name_suffix),
+            writescache=bool(writescache),
+            only_when=only_when,
+            platform=platform,
+            skip=bool(skip),
+            xfail=bool(xfail),
+            data=data,
+            line=line_no,
+        )
+        line_no += data.count("\n") + 1
+
+        # Record existing tests to prevent duplicates:
+        test_names.update({name})
+
+
+class DataSuiteCollector(pytest.Class):
+    def collect(self) -&gt; Iterator[DataFileCollector]:
+        """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
+
+        # obj is the object for which pytest_pycollect_makeitem returned self.
+        suite: DataSuite = self.obj
+
+        assert os.path.isdir(
+            suite.data_prefix
+        ), f"Test data prefix ({suite.data_prefix}) not set correctly"
+
+        for data_file in suite.files:
+            yield DataFileCollector.from_parent(parent=self, name=data_file)
+
+
+class DataFileCollector(pytest.Collector):
+    """Represents a single `.test` data driven test file.
+
+    More context: https://github.com/python/mypy/issues/11662
+    """
+
+    parent: DataSuiteCollector
+
+    @classmethod  # We have to fight with pytest here:
+    def from_parent(  # type: ignore[override]
+        cls, parent: DataSuiteCollector, *, name: str
+    ) -&gt; DataFileCollector:
+        collector = super().from_parent(parent, name=name)
+        assert isinstance(collector, DataFileCollector)
+        return collector
+
+    def collect(self) -&gt; Iterator[DataDrivenTestCase]:
+        yield from split_test_cases(
+            parent=self,
+            suite=self.parent.obj,
+            file=os.path.join(self.parent.obj.data_prefix, self.name),
+        )
+
+
+def add_test_name_suffix(name: str, suffix: str) -&gt; str:
+    # Find magic suffix of form "-foobar" (used for things like "-skip").
+    m = re.search(r"-[-A-Za-z0-9]+$", name)
+    if m:
+        # Insert suite-specific test name suffix before the magic suffix
+        # which must be the last thing in the test case name since we
+        # are using endswith() checks.
+        magic_suffix = m.group(0)
+        return name[: -len(magic_suffix)] + suffix + magic_suffix
+    else:
+        return name + suffix
+
+
+def is_incremental(testcase: DataDrivenTestCase) -&gt; bool:
+    return "incremental" in testcase.name.lower() or "incremental" in testcase.file
+
+
+def has_stable_flags(testcase: DataDrivenTestCase) -&gt; bool:
+    if any(re.match(r"# flags[2-9]:", line) for line in testcase.input):
+        return False
+    for filename, contents in testcase.files:
+        if os.path.basename(filename).startswith("mypy.ini."):
+            return False
+    return True
+
+
+class DataSuite:
+    # option fields - class variables
+    files: list[str]
+
+    base_path = test_temp_dir
+
+    # Allow external users of the test code to override the data prefix
+    data_prefix = test_data_prefix
+
+    required_out_section = False
+
+    native_sep = False
+
+    # Name suffix automatically added to each test case in the suite (can be
+    # used to distinguish test cases in suites that share data files)
+    test_name_suffix = ""
+
+    def setup(self) -&gt; None:
+        """Setup fixtures (ad-hoc)"""
+
+    @abstractmethod
+    def run_case(self, testcase: DataDrivenTestCase) -&gt; None:
+        raise NotImplementedError
+</t>
+<t tx="ekr.20221025104126.1">@path C:/Repos/ekr-mypy2/mypy/test/
+from __future__ import annotations
+
+import contextlib
+import os
+import pathlib
+import re
+import shutil
+import sys
+import time
+from typing import Any, Callable, Iterable, Iterator, Pattern
+
+# Exporting Suite as alias to TestCase for backwards compatibility
+# TODO: avoid aliasing - import and subclass TestCase directly
+from unittest import TestCase
+
+Suite = TestCase  # re-exporting
+
+import pytest
+
+import mypy.api as api
+import mypy.version
+from mypy import defaults
+from mypy.main import process_options
+from mypy.options import Options
+from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DeleteFile, UpdateFile, fix_cobertura_filename
+
+skip = pytest.mark.skip
+
+# AssertStringArraysEqual displays special line alignment helper messages if
+# the first different line has at least this many characters,
+MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
+
+
+def run_mypy(args: list[str]) -&gt; None:
+    __tracebackhide__ = True
+    # We must enable site packages even though they could cause problems,
+    # since stubs for typing_extensions live there.
+    outval, errval, status = api.run(args + ["--show-traceback", "--no-silence-site-packages"])
+    if status != 0:
+        sys.stdout.write(outval)
+        sys.stderr.write(errval)
+        pytest.fail(msg="Sample check failed", pytrace=False)
+
+
+def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str) -&gt; None:
+    """Assert that two string arrays are equal.
+
+    We consider "can't" and "cannot" equivalent, by replacing the
+    former with the latter before comparing.
+
+    Display any differences in a human-readable form.
+    """
+    __tracebackhide__ = True
+
+    actual = clean_up(actual)
+    actual = [line.replace("can't", "cannot") for line in actual]
+    expected = [line.replace("can't", "cannot") for line in expected]
+
+    if actual != expected:
+        num_skip_start = num_skipped_prefix_lines(expected, actual)
+        num_skip_end = num_skipped_suffix_lines(expected, actual)
+
+        sys.stderr.write("Expected:\n")
+
+        # If omit some lines at the beginning, indicate it by displaying a line
+        # with '...'.
+        if num_skip_start &gt; 0:
+            sys.stderr.write("  ...\n")
+
+        # Keep track of the first different line.
+        first_diff = -1
+
+        # Display only this many first characters of identical lines.
+        width = 75
+
+        for i in range(num_skip_start, len(expected) - num_skip_end):
+            if i &gt;= len(actual) or expected[i] != actual[i]:
+                if first_diff &lt; 0:
+                    first_diff = i
+                sys.stderr.write(f"  {expected[i]:&lt;45} (diff)")
+            else:
+                e = expected[i]
+                sys.stderr.write("  " + e[:width])
+                if len(e) &gt; width:
+                    sys.stderr.write("...")
+            sys.stderr.write("\n")
+        if num_skip_end &gt; 0:
+            sys.stderr.write("  ...\n")
+
+        sys.stderr.write("Actual:\n")
+
+        if num_skip_start &gt; 0:
+            sys.stderr.write("  ...\n")
+
+        for j in range(num_skip_start, len(actual) - num_skip_end):
+            if j &gt;= len(expected) or expected[j] != actual[j]:
+                sys.stderr.write(f"  {actual[j]:&lt;45} (diff)")
+            else:
+                a = actual[j]
+                sys.stderr.write("  " + a[:width])
+                if len(a) &gt; width:
+                    sys.stderr.write("...")
+            sys.stderr.write("\n")
+        if not actual:
+            sys.stderr.write("  (empty)\n")
+        if num_skip_end &gt; 0:
+            sys.stderr.write("  ...\n")
+
+        sys.stderr.write("\n")
+
+        if 0 &lt;= first_diff &lt; len(actual) and (
+            len(expected[first_diff]) &gt;= MIN_LINE_LENGTH_FOR_ALIGNMENT
+            or len(actual[first_diff]) &gt;= MIN_LINE_LENGTH_FOR_ALIGNMENT
+        ):
+            # Display message that helps visualize the differences between two
+            # long lines.
+            show_align_message(expected[first_diff], actual[first_diff])
+
+        raise AssertionError(msg)
+
+
+def assert_module_equivalence(name: str, expected: Iterable[str], actual: Iterable[str]) -&gt; None:
+    expected_normalized = sorted(expected)
+    actual_normalized = sorted(set(actual).difference({"__main__"}))
+    assert_string_arrays_equal(
+        expected_normalized,
+        actual_normalized,
+        ("Actual modules ({}) do not match expected modules ({}) " 'for "[{} ...]"').format(
+            ", ".join(actual_normalized), ", ".join(expected_normalized), name
+        ),
+    )
+
+
+def assert_target_equivalence(name: str, expected: list[str], actual: list[str]) -&gt; None:
+    """Compare actual and expected targets (order sensitive)."""
+    assert_string_arrays_equal(
+        expected,
+        actual,
+        ("Actual targets ({}) do not match expected targets ({}) " 'for "[{} ...]"').format(
+            ", ".join(actual), ", ".join(expected), name
+        ),
+    )
+
+
+def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -&gt; None:
+    assert testcase.old_cwd is not None, "test was not properly set up"
+    testcase_path = os.path.join(testcase.old_cwd, testcase.file)
+    with open(testcase_path, encoding="utf8") as f:
+        data_lines = f.read().splitlines()
+    test = "\n".join(data_lines[testcase.line : testcase.last_line])
+
+    mapping: dict[str, list[str]] = {}
+    for old, new in zip(testcase.output, output):
+        PREFIX = "error:"
+        ind = old.find(PREFIX)
+        if ind != -1 and old[:ind] == new[:ind]:
+            old, new = old[ind + len(PREFIX) :], new[ind + len(PREFIX) :]
+        mapping.setdefault(old, []).append(new)
+
+    for old in mapping:
+        if test.count(old) == len(mapping[old]):
+            betweens = test.split(old)
+
+            # Interleave betweens and mapping[old]
+            from itertools import chain
+
+            interleaved = [betweens[0]] + list(
+                chain.from_iterable(zip(mapping[old], betweens[1:]))
+            )
+            test = "".join(interleaved)
+
+    data_lines[testcase.line : testcase.last_line] = [test]
+    data = "\n".join(data_lines)
+    with open(testcase_path, "w", encoding="utf8") as f:
+        print(data, file=f)
+
+
+def show_align_message(s1: str, s2: str) -&gt; None:
+    """Align s1 and s2 so that the their first difference is highlighted.
+
+    For example, if s1 is 'foobar' and s2 is 'fobar', display the
+    following lines:
+
+      E: foobar
+      A: fobar
+           ^
+
+    If s1 and s2 are long, only display a fragment of the strings around the
+    first difference. If s1 is very short, do nothing.
+    """
+
+    # Seeing what went wrong is trivial even without alignment if the expected
+    # string is very short. In this case do nothing to simplify output.
+    if len(s1) &lt; 4:
+        return
+
+    maxw = 72  # Maximum number of characters shown
+
+    sys.stderr.write("Alignment of first line difference:\n")
+
+    trunc = False
+    while s1[:30] == s2[:30]:
+        s1 = s1[10:]
+        s2 = s2[10:]
+        trunc = True
+
+    if trunc:
+        s1 = "..." + s1
+        s2 = "..." + s2
+
+    max_len = max(len(s1), len(s2))
+    extra = ""
+    if max_len &gt; maxw:
+        extra = "..."
+
+    # Write a chunk of both lines, aligned.
+    sys.stderr.write(f"  E: {s1[:maxw]}{extra}\n")
+    sys.stderr.write(f"  A: {s2[:maxw]}{extra}\n")
+    # Write an indicator character under the different columns.
+    sys.stderr.write("     ")
+    for j in range(min(maxw, max(len(s1), len(s2)))):
+        if s1[j : j + 1] != s2[j : j + 1]:
+            sys.stderr.write("^")  # Difference
+            break
+        else:
+            sys.stderr.write(" ")  # Equal
+    sys.stderr.write("\n")
+
+
+def clean_up(a: list[str]) -&gt; list[str]:
+    """Remove common directory prefix from all strings in a.
+
+    This uses a naive string replace; it seems to work well enough. Also
+    remove trailing carriage returns.
+    """
+    res = []
+    pwd = os.getcwd()
+    driver = pwd + "/driver.py"
+    for s in a:
+        prefix = os.sep
+        ss = s
+        for p in prefix, prefix.replace(os.sep, "/"):
+            if p != "/" and p != "//" and p != "\\" and p != "\\\\":
+                ss = ss.replace(p, "")
+        # Ignore spaces at end of line.
+        ss = re.sub(" +$", "", ss)
+        # Remove pwd from driver.py's path
+        ss = ss.replace(driver, "driver.py")
+        res.append(re.sub("\\r$", "", ss))
+    return res
+
+
+@contextlib.contextmanager
+def local_sys_path_set() -&gt; Iterator[None]:
+    """Temporary insert current directory into sys.path.
+
+    This can be used by test cases that do runtime imports, for example
+    by the stubgen tests.
+    """
+    old_sys_path = sys.path[:]
+    if not ("" in sys.path or "." in sys.path):
+        sys.path.insert(0, "")
+    try:
+        yield
+    finally:
+        sys.path = old_sys_path
+
+
+def num_skipped_prefix_lines(a1: list[str], a2: list[str]) -&gt; int:
+    num_eq = 0
+    while num_eq &lt; min(len(a1), len(a2)) and a1[num_eq] == a2[num_eq]:
+        num_eq += 1
+    return max(0, num_eq - 4)
+
+
+def num_skipped_suffix_lines(a1: list[str], a2: list[str]) -&gt; int:
+    num_eq = 0
+    while num_eq &lt; min(len(a1), len(a2)) and a1[-num_eq - 1] == a2[-num_eq - 1]:
+        num_eq += 1
+    return max(0, num_eq - 4)
+
+
+def testfile_pyversion(path: str) -&gt; tuple[int, int]:
+    if path.endswith("python310.test"):
+        return 3, 10
+    else:
+        return defaults.PYTHON3_VERSION
+
+
+def normalize_error_messages(messages: list[str]) -&gt; list[str]:
+    """Translate an array of error messages to use / as path separator."""
+
+    a = []
+    for m in messages:
+        a.append(m.replace(os.sep, "/"))
+    return a
+
+
+def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -&gt; None:
+    """Retry callback with exponential backoff when it raises OSError.
+
+    If the function still generates an error after max_wait seconds, propagate
+    the exception.
+
+    This can be effective against random file system operation failures on
+    Windows.
+    """
+    t0 = time.time()
+    wait_time = 0.01
+    while True:
+        try:
+            func()
+            return
+        except OSError:
+            wait_time = min(wait_time * 2, t0 + max_wait - time.time())
+            if wait_time &lt;= 0.01:
+                # Done enough waiting, the error seems persistent.
+                raise
+            time.sleep(wait_time)
+
+
+def good_repr(obj: object) -&gt; str:
+    if isinstance(obj, str):
+        if obj.count("\n") &gt; 1:
+            bits = ["'''\\"]
+            for line in obj.split("\n"):
+                # force repr to use ' not ", then cut it off
+                bits.append(repr('"' + line)[2:-1])
+            bits[-1] += "'''"
+            return "\n".join(bits)
+    return repr(obj)
+
+
+def assert_equal(a: object, b: object, fmt: str = "{} != {}") -&gt; None:
+    __tracebackhide__ = True
+    if a != b:
+        raise AssertionError(fmt.format(good_repr(a), good_repr(b)))
+
+
+def typename(t: type) -&gt; str:
+    if "." in str(t):
+        return str(t).split(".")[-1].rstrip("'&gt;")
+    else:
+        return str(t)[8:-2]
+
+
+def assert_type(typ: type, value: object) -&gt; None:
+    __tracebackhide__ = True
+    if type(value) != typ:
+        raise AssertionError(f"Invalid type {typename(type(value))}, expected {typename(typ)}")
+
+
+def parse_options(
+    program_text: str, testcase: DataDrivenTestCase, incremental_step: int
+) -&gt; Options:
+    """Parse comments like '# flags: --foo' in a test case."""
+    options = Options()
+    flags = re.search("# flags: (.*)$", program_text, flags=re.MULTILINE)
+    if incremental_step &gt; 1:
+        flags2 = re.search(f"# flags{incremental_step}: (.*)$", program_text, flags=re.MULTILINE)
+        if flags2:
+            flags = flags2
+
+    if flags:
+        flag_list = flags.group(1).split()
+        flag_list.append("--no-site-packages")  # the tests shouldn't need an installed Python
+        targets, options = process_options(flag_list, require_targets=False)
+        if targets:
+            # TODO: support specifying targets via the flags pragma
+            raise RuntimeError("Specifying targets via the flags pragma is not supported.")
+        if "--show-error-codes" not in flag_list:
+            options.hide_error_codes = True
+    else:
+        flag_list = []
+        options = Options()
+        # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
+        options.strict_optional = False
+        options.error_summary = False
+        options.hide_error_codes = True
+
+    # Allow custom python version to override testfile_pyversion.
+    if all(flag.split("=")[0] not in ["--python-version", "-2", "--py2"] for flag in flag_list):
+        options.python_version = testfile_pyversion(testcase.file)
+
+    if testcase.config.getoption("--mypy-verbose"):
+        options.verbosity = testcase.config.getoption("--mypy-verbose")
+
+    return options
+
+
+def split_lines(*streams: bytes) -&gt; list[str]:
+    """Returns a single list of string lines from the byte streams in args."""
+    return [s for stream in streams for s in stream.decode("utf8").splitlines()]
+
+
+def write_and_fudge_mtime(content: str, target_path: str) -&gt; None:
+    # In some systems, mtime has a resolution of 1 second which can
+    # cause annoying-to-debug issues when a file has the same size
+    # after a change. We manually set the mtime to circumvent this.
+    # Note that we increment the old file's mtime, which guarantees a
+    # different value, rather than incrementing the mtime after the
+    # copy, which could leave the mtime unchanged if the old file had
+    # a similarly fudged mtime.
+    new_time = None
+    if os.path.isfile(target_path):
+        new_time = os.stat(target_path).st_mtime + 1
+
+    dir = os.path.dirname(target_path)
+    os.makedirs(dir, exist_ok=True)
+    with open(target_path, "w", encoding="utf-8") as target:
+        target.write(content)
+
+    if new_time:
+        os.utime(target_path, times=(new_time, new_time))
+
+
+def perform_file_operations(operations: list[UpdateFile | DeleteFile]) -&gt; None:
+    for op in operations:
+        if isinstance(op, UpdateFile):
+            # Modify/create file
+            write_and_fudge_mtime(op.content, op.target_path)
+        else:
+            # Delete file/directory
+            if os.path.isdir(op.path):
+                # Sanity check to avoid unexpected deletions
+                assert op.path.startswith("tmp")
+                shutil.rmtree(op.path)
+            else:
+                # Use retries to work around potential flakiness on Windows (AppVeyor).
+                path = op.path
+                retry_on_error(lambda: os.remove(path))
+
+
+def check_test_output_files(
+    testcase: DataDrivenTestCase, step: int, strip_prefix: str = ""
+) -&gt; None:
+    for path, expected_content in testcase.output_files:
+        if path.startswith(strip_prefix):
+            path = path[len(strip_prefix) :]
+        if not os.path.exists(path):
+            raise AssertionError(
+                "Expected file {} was not produced by test case{}".format(
+                    path, " on step %d" % step if testcase.output2 else ""
+                )
+            )
+        with open(path, encoding="utf8") as output_file:
+            actual_output_content = output_file.read()
+
+        if isinstance(expected_content, Pattern):
+            if expected_content.fullmatch(actual_output_content) is not None:
+                continue
+            raise AssertionError(
+                "Output file {} did not match its expected output pattern\n---\n{}\n---".format(
+                    path, actual_output_content
+                )
+            )
+
+        normalized_output = normalize_file_output(
+            actual_output_content.splitlines(), os.path.abspath(test_temp_dir)
+        )
+        # We always normalize things like timestamp, but only handle operating-system
+        # specific things if requested.
+        if testcase.normalize_output:
+            if testcase.suite.native_sep and os.path.sep == "\\":
+                normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
+            normalized_output = normalize_error_messages(normalized_output)
+        assert_string_arrays_equal(
+            expected_content.splitlines(),
+            normalized_output,
+            "Output file {} did not match its expected output{}".format(
+                path, " on step %d" % step if testcase.output2 else ""
+            ),
+        )
+
+
+def normalize_file_output(content: list[str], current_abs_path: str) -&gt; list[str]:
+    """Normalize file output for comparison."""
+    timestamp_regex = re.compile(r"\d{10}")
+    result = [x.replace(current_abs_path, "$PWD") for x in content]
+    version = mypy.version.__version__
+    result = [re.sub(r"\b" + re.escape(version) + r"\b", "$VERSION", x) for x in result]
+    # We generate a new mypy.version when building mypy wheels that
+    # lacks base_version, so handle that case.
+    base_version = getattr(mypy.version, "base_version", version)
+    result = [re.sub(r"\b" + re.escape(base_version) + r"\b", "$VERSION", x) for x in result]
+    result = [timestamp_regex.sub("$TIMESTAMP", x) for x in result]
+    return result
+
+
+def find_test_files(pattern: str, exclude: list[str] | None = None) -&gt; list[str]:
+    return [
+        path.name
+        for path in (pathlib.Path(test_data_prefix).rglob(pattern))
+        if path.name not in (exclude or [])
+    ]
+</t>
+<t tx="ekr.20221025104200.1"></t>
+<t tx="ekr.20221026034938.1">### Diary: 2022/10/25</t>
+<t tx="ekr.20221026035003.1">### Diary: 2022/10/26
+
+Unit tests are *one* way (the preferred way?) to execute code snippets.
+Running mypy on an external test file is another way.
+
+Closures provide local context for inference.
+
+Inference is *straightforward* given a context.
+
+The Hindley-Milner rules correspond to straightforward instances.</t>
+<t tx="ekr.20221026035450.1">### Ongoing questions
+
+- What creates the long pdb signon?
+  sitepackages/_pytest/debugging.py
+
+- How to set manager options?</t>
+<t tx="ekr.20221026035745.1">### To do
+
+See contents of tmp/temp directories.
+- Look at folder before deleting it?
+- Find the code that writes to temp directories?
+
+Dump sources and configuration settings.
+
+</t>
+<t tx="ekr.20221026040217.1"></t>
+<t tx="ekr.20221026040242.1"></t>
+<t tx="ekr.20221026083053.1"></t>
+<t tx="ekr.20221026083444.1"># Atomic types
+
+</t>
 </tnodes>
 </leo_file>
