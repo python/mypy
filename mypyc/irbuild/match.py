@@ -2,26 +2,25 @@ from contextlib import contextmanager
 from typing import Generator
 
 from mypy.nodes import MatchStmt, NameExpr, TypeInfo
-from mypyc.ir.ops import Value, BasicBlock
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
-    OrPattern,
     MappingPattern,
+    OrPattern,
     Pattern,
-    SingletonPattern,
     SequencePattern,
+    SingletonPattern,
     StarredPattern,
     ValuePattern,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, TupleType
-
-from mypyc.primitives.dict_ops import check_dict, dict_copy, dict_del_item, dict_get_item_op
-from mypyc.primitives.misc_ops import slow_isinstance_op
-from mypyc.primitives.list_ops import check_list, list_get_item_op, list_slice_op
-from mypyc.primitives.generic_ops import generic_ssize_t_len_op
+from mypyc.ir.ops import BasicBlock, Value
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.primitives.dict_ops import check_dict, dict_copy, dict_del_item, dict_get_item_op
+from mypyc.primitives.generic_ops import generic_ssize_t_len_op
+from mypyc.primitives.list_ops import check_list, list_get_item_op, list_slice_op
+from mypyc.primitives.misc_ops import slow_isinstance_op
 
 # From: https://peps.python.org/pep-0634/#class-patterns
 MATCHABLE_BUILTINS = {
