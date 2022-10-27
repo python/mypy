@@ -2128,3 +2128,18 @@ Ts = TypeVarTuple("Ts")  # E: "TypeVarTuple" support is experimental, use --enab
 from typing_extensions import TypeVarTuple
 Ts = TypeVarTuple("Ts")  # OK
 [builtins fixtures/tuple.pyi]
+
+
+[case testDisableBytearrayPromotion]
+# flags: --disable-bytearray-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))
+[builtins fixtures/primitives.pyi]
+
+[case testDisableMemoryviewPromotion]
+# flags: --disable-memoryview-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+[builtins fixtures/primitives.pyi]

@@ -46,6 +46,7 @@ files = [
     "irbuild-singledispatch.test",
     "irbuild-constant-fold.test",
     "irbuild-match.test",
+    "irbuild-glue-methods.test",
 ]
 
 

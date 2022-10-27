@@ -64,7 +64,7 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2"
         - name: Test suite with py311-ubuntu, mypyc-compiled
-          python: '3.11-dev'
+          python: '3.11'
           arch: x64
           os: ubuntu-latest
           toxenv: py
