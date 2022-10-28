@@ -24,7 +24,7 @@ from mypy.nodes import (
     ReturnStmt,
     TupleExpr,
     WhileStmt,
-    WithStmt,
+    WithStmt, TryStmt,
 )
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
@@ -55,6 +55,9 @@ class BranchState:
         self.must_be_defined = set(must_be_defined)
         self.skipped = skipped
 
+    def copy(self) -> BranchState:
+        return BranchState(must_be_defined=set(self.must_be_defined), may_be_defined=set(self.may_be_defined), skipped=self.skipped)
+
 
 class BranchStatement:
     def __init__(self, initial_state: BranchState) -> None:
@@ -65,6 +68,11 @@ class BranchStatement:
                 may_be_defined=self.initial_state.may_be_defined,
             )
         ]
+
+    def copy(self) -> BranchStatement:
+        result = BranchStatement(self.initial_state)
+        result.branches = [b.copy() for b in self.branches]
+        return result
 
     def next_branch(self) -> None:
         self.branches.append(
@@ -116,13 +124,21 @@ class BranchStatement:
         may_be_defined = all_vars.difference(must_be_defined)
         return BranchState(may_be_defined=may_be_defined, must_be_defined=must_be_defined)
 
-
 class DefinedVariableTracker:
     """DefinedVariableTracker manages the state and scope for the UndefinedVariablesVisitor."""
 
     def __init__(self) -> None:
         # There's always at least one scope. Within each scope, there's at least one "global" BranchingStatement.
         self.scopes: list[list[BranchStatement]] = [[BranchStatement(BranchState())]]
+        # disable_branch_skip is used to disable skipping a branch due to a return/raise/etc. This is useful
+        # in things like try/except statements.
+        self.disable_branch_skip = False
+
+    def copy(self) -> DefinedVariableTracker:
+        result = DefinedVariableTracker()
+        result.scopes = [s.copy() for s in self.scopes]
+        result.disable_branch_skip = self.disable_branch_skip
+        return result
 
     def _scope(self) -> list[BranchStatement]:
         assert len(self.scopes) > 0
@@ -150,7 +166,7 @@ class DefinedVariableTracker:
 
     def skip_branch(self) -> None:
         # Only skip branch if we're outside of "root" branch statement.
-        if len(self._scope()) > 1:
+        if len(self._scope()) > 1 and not self.disable_branch_skip:
             self._scope()[-1].skip_branch()
 
     def record_declaration(self, name: str) -> None:
@@ -285,6 +301,51 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         if isinstance(self.type_map.get(o.expr, None), UninhabitedType):
             self.tracker.skip_branch()
         super().visit_expression_stmt(o)
+
+    def visit_try_stmt(self, o: TryStmt) -> None:
+        self.process_try(o)
+        # old_tracker = self.tracker
+        # finally_tracker = self.tracker.copy()
+        # finally_tracker.disable_branch_skip = True
+        # self.tracker = finally_tracker
+        # self.process_try(o, process_jumps=False)
+        # self.tracker = old_tracker
+
+    def process_try(self, o: TryStmt) -> None:
+        # todo(stas): this comment is no longer correct:
+        # This checker treats try statements as the following exclusive branches:
+        #   - try body
+        #   - except bodies
+        #   - else body
+        # This is technically incorrect (because the try body may be executed as well as except or else bodies.
+        # For the purposes of this check, it's an accepted source of false positive errors.
+        # todo(stas): test when try except is inside an if with a raise -- that probably shouldn't skip any branches?
+        self.tracker.start_branch_statement()
+        self.tracker.disable_branch_skip = True
+        o.body.accept(self)
+        self.tracker.disable_branch_skip = False
+        for i in range(len(o.types)):
+            self.tracker.next_branch()
+            tp = o.types[i]
+            if tp is not None:
+                tp.accept(self)
+            o.handlers[i].accept(self)
+        for v in o.vars:
+            if v is not None:
+                v.accept(self)
+        if o.else_body is not None:
+            # We don't want `raise` or `return` inside try/except to prevent an undefined variable from registering.
+            # self.tracker.next_branch()
+            # self.tracker.disable_branch_skip = True
+            o.body.accept(self)
+            # self.tracker.disable_branch_skip = False
+            o.else_body.accept(self)
+        self.tracker.end_branch_statement()
+        # todo(stas): finally should be executed regardless of returns, raises, etc (i.e. we shouldn't skip branches
+        # for `finally`)
+        # todo(stas): test case for raise in except clause
+        if o.finally_body is not None:
+            o.finally_body.accept(self)
 
     def visit_while_stmt(self, o: WhileStmt) -> None:
         o.expr.accept(self)
