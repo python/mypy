@@ -248,12 +248,11 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
-        min_len = len(patterns)
-
         self.builder.activate_block(self.code_block)
         self.code_block = BasicBlock()
 
         actual_len = self.builder.call_c(generic_ssize_t_len_op, [self.subject], seq_pattern.line)
+        min_len = len(patterns)
 
         is_long_enough = self.builder.binary_op(
             actual_len,
@@ -263,9 +262,6 @@ class MatchVisitor(TraverserVisitor):
         )
 
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
-
-        if not min_len:
-            return
 
         for i, pattern in enumerate(patterns):
             self.builder.activate_block(self.code_block)

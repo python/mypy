@@ -1752,3 +1752,68 @@ L3:
 L4:
     r12 = box(None, 1)
     return r12
+[case testMatchSequenceCaptureAll_python3_10]
+def f(x):
+    match x:
+        case [*rest]:
+            print("matched")
+[out]
+def f(x):
+    x :: object
+    r0 :: int32
+    r1 :: bit
+    r2 :: native_int
+    r3, r4 :: bit
+    r5 :: native_int
+    r6 :: list
+    r7, r8 :: bit
+    r9, r10, r11 :: int
+    r12, rest :: object
+    r13 :: str
+    r14 :: object
+    r15 :: str
+    r16 :: object
+    r17 :: object[1]
+    r18 :: object_ptr
+    r19, r20 :: object
+L0:
+    r0 = PyList_Check(x)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L8 :: bool
+L1:
+    r2 = PyObject_Size(x)
+    r3 = r2 >= 0 :: signed
+    r4 = r2 >= 0 :: signed
+    if r4 goto L2 else goto L8 :: bool
+L2:
+    r5 = r2 - 0
+    r6 = cast(list, x)
+    r7 = r5 <= 4611686018427387903 :: signed
+    if r7 goto L3 else goto L4 :: bool
+L3:
+    r8 = r5 >= -4611686018427387904 :: signed
+    if r8 goto L5 else goto L4 :: bool
+L4:
+    r9 = CPyTagged_FromInt64(r5)
+    r10 = r9
+    goto L6
+L5:
+    r11 = r5 << 1
+    r10 = r11
+L6:
+    r12 = CPyList_GetSlice(r6, 0, r10)
+    rest = r12
+L7:
+    r13 = 'matched'
+    r14 = builtins :: module
+    r15 = 'print'
+    r16 = CPyObject_GetAttr(r14, r15)
+    r17 = [r13]
+    r18 = load_address r17
+    r19 = _PyObject_Vectorcall(r16, r18, 1, 0)
+    keep_alive r13
+    goto L9
+L8:
+L9:
+    r20 = box(None, 1)
+    return r20
