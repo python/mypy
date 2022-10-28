@@ -14,7 +14,7 @@ from mypy.patterns import (
     ValuePattern,
 )
 from mypy.traverser import TraverserVisitor
-from mypy.types import Instance, TupleType
+from mypy.types import Instance, TupleType, get_proper_type
 from mypyc.ir.ops import BasicBlock, Value
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.primitives.dict_ops import check_dict, dict_copy, dict_del_item, dict_get_item_op
@@ -136,14 +136,18 @@ class MatchVisitor(TraverserVisitor):
             assert isinstance(node, TypeInfo)
 
             ty = node.names.get("__match_args__")
-            assert ty and isinstance(ty.type, TupleType)
+            assert ty
+
+            match_args_type = get_proper_type(ty.type)
+            assert isinstance(match_args_type, TupleType)
 
             match_args: List[str] = []
 
-            for item in ty.type.items:
-                assert isinstance(item, Instance) and item.last_known_value
+            for item in match_args_type.items:
+                proper_item = get_proper_type(item)
+                assert isinstance(proper_item, Instance) and proper_item.last_known_value
 
-                match_arg = item.last_known_value.value
+                match_arg = proper_item.last_known_value.value
                 assert isinstance(match_arg, str)
 
                 match_args.append(match_arg)

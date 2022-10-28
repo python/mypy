@@ -62,12 +62,14 @@ files = [
     "run-dunders.test",
     "run-singledispatch.test",
     "run-attrs.test",
-    "run-match.test",
 ]
 
 files.append("run-python37.test")
 if sys.version_info >= (3, 8):
     files.append("run-python38.test")
+
+if sys.version_info >= (3, 10):
+    files.append("run-match.test")
 
 setup_format = """\
 from setuptools import setup
