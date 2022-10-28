@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Generator
+from typing import Generator, Optional, List, Tuple
 
 from mypy.nodes import MatchStmt, NameExpr, TypeInfo
 from mypy.patterns import (
@@ -46,7 +46,7 @@ class MatchVisitor(TraverserVisitor):
     subject: Value
     match: MatchStmt
 
-    as_pattern: AsPattern | None = None
+    as_pattern: Optional[AsPattern] = None
 
     def __init__(self, builder: IRBuilder, match_node: MatchStmt) -> None:
         self.builder = builder
@@ -61,7 +61,9 @@ class MatchVisitor(TraverserVisitor):
     def build_match_body(self, index: int) -> None:
         self.builder.activate_block(self.code_block)
 
-        if guard := self.match.guards[index]:
+        guard = self.match.guards[index]
+
+        if guard:
             self.code_block = BasicBlock()
 
             cond = self.builder.accept(guard)
@@ -136,7 +138,7 @@ class MatchVisitor(TraverserVisitor):
             ty = node.names.get("__match_args__")
             assert ty and isinstance(ty.type, TupleType)
 
-            match_args: list[str] = []
+            match_args: List[str] = []
 
             for item in ty.type.items:
                 assert isinstance(item, Instance) and item.last_known_value
@@ -200,7 +202,7 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_dict, self.code_block, self.next_block)
 
-        keys: list[Value] = []
+        keys: List[Value] = []
 
         for key, value in zip(pattern.keys, pattern.values):
             self.builder.activate_block(self.code_block)
@@ -321,10 +323,10 @@ class MatchVisitor(TraverserVisitor):
 
 def prep_sequence_pattern(
     seq_pattern: SequencePattern,
-) -> tuple[int | None, NameExpr | None, list[Pattern]]:
-    star_index: int | None = None
-    capture: NameExpr | None = None
-    patterns: list[Pattern] = []
+) -> Tuple[Optional[int], Optional[NameExpr], List[Pattern]]:
+    star_index: Optional[int] = None
+    capture: Optional[NameExpr] = None
+    patterns: List[Pattern] = []
 
     for i, pattern in enumerate(seq_pattern.patterns):
         if isinstance(pattern, StarredPattern):
