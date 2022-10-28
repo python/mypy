@@ -55,9 +55,6 @@ class BranchState:
         self.must_be_defined = set(must_be_defined)
         self.skipped = skipped
 
-    def copy(self) -> BranchState:
-        return BranchState(must_be_defined=set(self.must_be_defined), may_be_defined=set(self.may_be_defined), skipped=self.skipped)
-
 
 class BranchStatement:
     def __init__(self, initial_state: BranchState) -> None:
@@ -68,11 +65,6 @@ class BranchStatement:
                 may_be_defined=self.initial_state.may_be_defined,
             )
         ]
-
-    def copy(self) -> BranchStatement:
-        result = BranchStatement(self.initial_state)
-        result.branches = [b.copy() for b in self.branches]
-        return result
 
     def next_branch(self) -> None:
         self.branches.append(
@@ -133,12 +125,6 @@ class DefinedVariableTracker:
         # disable_branch_skip is used to disable skipping a branch due to a return/raise/etc. This is useful
         # in things like try/except statements.
         self.disable_branch_skip = False
-
-    def copy(self) -> DefinedVariableTracker:
-        result = DefinedVariableTracker()
-        result.scopes = [s.copy() for s in self.scopes]
-        result.disable_branch_skip = self.disable_branch_skip
-        return result
 
     def _scope(self) -> list[BranchStatement]:
         assert len(self.scopes) > 0
@@ -303,53 +289,66 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_expression_stmt(o)
 
     def visit_try_stmt(self, o: TryStmt) -> None:
-        self.process_try(o)
-        # old_tracker = self.tracker
-        # finally_tracker = self.tracker.copy()
-        # finally_tracker.disable_branch_skip = True
-        # self.tracker = finally_tracker
-        # self.process_try(o, process_jumps=False)
-        # self.tracker = old_tracker
+        # We're processing the try statement twice. Include only the one where we allow jumps in the scope
+        # for code that exists after the try statement.
+        self.tracker.enter_scope()
+        self.process_try_stmt(o, allow_all_jumps=False)
+        self.tracker.exit_scope()
+        self.process_try_stmt(o, allow_all_jumps=True)
 
-    def process_try(self, o: TryStmt) -> None:
-        # todo(stas): this comment is no longer correct:
-        # This checker treats try statements as the following exclusive branches:
-        #   - try body
-        #   - except bodies
-        #   - else body
-        # This is technically incorrect (because the try body may be executed as well as except or else bodies.
-        # For the purposes of this check, it's an accepted source of false positive errors.
-        # todo(stas): test when try except is inside an if with a raise -- that probably shouldn't skip any branches?
+    def process_try_stmt(self, o: TryStmt, allow_all_jumps: bool) -> None:
+        """
+        Processes try statement decomposing it into the following branches:
+        - try body + else
+        - try body + except clauses (every except clause is a separate branch).
+            - Every except clause is decomposed into something like:
+                if ...:
+                    `try` body
+                `except` body
+            - This is necessary so that all the variables inside `try` body are conditionally defined.
+
+        Note that finding partially defined vars in `finally` requires different handling from
+        the rest of the code. In particular, we want to disallow skipping branches due to jump
+        statements in except/else clauses for finally but not for other cases. Imagine a case like:
+        def f() -> int:
+            try:
+                x = 1
+            except:
+                # This jump statement needs to be handled differently depending on whether or
+                # not we're trying to process `finally` or not.
+                return 0
+            finally:
+                # `x` may be undefined here.
+                pass
+            # `x` is always defined here.
+            return x
+        """
         self.tracker.start_branch_statement()
-        # Try can be treated as a separate branch.
+        # The body branch should never be skipped because it will go `finally` unconditionally
+        # (or it could go to an except clause).
         self.tracker.disable_branch_skip = True
         o.body.accept(self)
+        if allow_all_jumps:
+            self.tracker.disable_branch_skip = False
         if o.else_body is not None:
-            # `else` is executed when both of the following are true:
-            #   - No exception was raised in the `try` body.
-            #   - Function didn't return within the `try` body.
-            # o.body.accept(self)
             o.else_body.accept(self)
-        self.tracker.disable_branch_skip = False
         for i in range(len(o.types)):
             self.tracker.next_branch()
             tp = o.types[i]
             if tp is not None:
                 tp.accept(self)
+            # Create a `fake` branch statement, so that all variables from the `body` are conditionally
+            # defined.
+            self.tracker.start_branch_statement()
+            o.body.accept(self)
+            self.tracker.next_branch()
+            self.tracker.end_branch_statement()
             o.handlers[i].accept(self)
         for v in o.vars:
             if v is not None:
                 v.accept(self)
-        if o.else_body is not None:
-            # `else` is executed when both of the following are true:
-            #   - No exception was raised in the `try` body.
-            #   - Function didn't return within the `try` body.
-            o.body.accept(self)
-            o.else_body.accept(self)
+        self.tracker.disable_branch_skip = False
         self.tracker.end_branch_statement()
-        # todo(stas): finally should be executed regardless of returns, raises, etc (i.e. we shouldn't skip branches
-        # for `finally`)
-        # todo(stas): test case for raise in except clause
         if o.finally_body is not None:
             o.finally_body.accept(self)
 

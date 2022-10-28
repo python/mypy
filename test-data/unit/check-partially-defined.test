@@ -332,17 +332,24 @@ def f3() -> int:
     try:
         x = 1
     except:
-        return 0
+        y = x  # E: Name "x" may be undefined
     return x
 
 def f4() -> int:
     try:
         x = 1
     except:
+        return 0
+    return x
+
+def f5() -> int:
+    try:
+        x = 1
+    except:
         raise
     return x
 
-def f5() -> None:
+def f6() -> None:
     try:
         pass
     except BaseException as e:
@@ -350,14 +357,13 @@ def f5() -> None:
     # This case is covered by the other check, not by partially defined check.
     y = e # E: Trying to read deleted variable "e"
 
-def f6() -> int:
+def f7() -> int:
     try:
-        x = 1
+        if int():
+            x = 1
         assert False
     except:
         pass
-    # This is a false-positive. Technically, x is always defined but mypy isn't
-    # smart enough (yet) to detect this.
     return x  # E: Name "x" may be undefined
 [builtins fixtures/exception.pyi]
 
@@ -409,6 +415,16 @@ def f3() -> int:
         y = x  # E: Name "x" may be undefined
     return x
 
+def f4() -> int:
+    try:
+        x = 0
+    except BaseException:
+        raise
+    finally:
+        y = x  # E: Name "x" may be undefined
+    return y
+[builtins fixtures/exception.pyi]
+
 [case testTryElse]
 # flags: --enable-error-code partially-defined
 def f1() -> int:
@@ -447,6 +463,15 @@ def f4() -> int:
         x = 2
     else:
         pass
+    return x
+
+def f5() -> int:
+    try:
+        pass
+    except:
+        x = 1
+    else:
+        return 1
     return x
 [builtins fixtures/exception.pyi]
 
