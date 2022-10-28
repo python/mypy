@@ -321,8 +321,15 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         # For the purposes of this check, it's an accepted source of false positive errors.
         # todo(stas): test when try except is inside an if with a raise -- that probably shouldn't skip any branches?
         self.tracker.start_branch_statement()
+        # Try can be treated as a separate branch.
         self.tracker.disable_branch_skip = True
         o.body.accept(self)
+        if o.else_body is not None:
+            # `else` is executed when both of the following are true:
+            #   - No exception was raised in the `try` body.
+            #   - Function didn't return within the `try` body.
+            # o.body.accept(self)
+            o.else_body.accept(self)
         self.tracker.disable_branch_skip = False
         for i in range(len(o.types)):
             self.tracker.next_branch()
@@ -334,11 +341,10 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             if v is not None:
                 v.accept(self)
         if o.else_body is not None:
-            # We don't want `raise` or `return` inside try/except to prevent an undefined variable from registering.
-            # self.tracker.next_branch()
-            # self.tracker.disable_branch_skip = True
+            # `else` is executed when both of the following are true:
+            #   - No exception was raised in the `try` body.
+            #   - Function didn't return within the `try` body.
             o.body.accept(self)
-            # self.tracker.disable_branch_skip = False
             o.else_body.accept(self)
         self.tracker.end_branch_statement()
         # todo(stas): finally should be executed regardless of returns, raises, etc (i.e. we shouldn't skip branches

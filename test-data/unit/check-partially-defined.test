@@ -419,7 +419,7 @@ def f1() -> int:
     else:
         x = 2
     finally:
-        y = x  # E: Name "x" may be undefined
+        y = x
     return y
 
 def f2() -> int:
@@ -437,8 +437,17 @@ def f3() -> int:
     except:
         x = 1
     else:
-        y = 1
+        pass
     return x  # E: Name "x" may be undefined
+
+def f4() -> int:
+    try:
+        x = 1
+    except:
+        x = 2
+    else:
+        pass
+    return x
 [builtins fixtures/exception.pyi]
 
 [case testNoReturn]
