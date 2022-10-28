@@ -22,9 +22,10 @@ from mypy.nodes import (
     NameExpr,
     RaiseStmt,
     ReturnStmt,
+    TryStmt,
     TupleExpr,
     WhileStmt,
-    WithStmt, TryStmt,
+    WithStmt,
 )
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
@@ -115,6 +116,7 @@ class BranchStatement:
             all_vars.update(b.must_be_defined)
         may_be_defined = all_vars.difference(must_be_defined)
         return BranchState(may_be_defined=may_be_defined, must_be_defined=must_be_defined)
+
 
 class DefinedVariableTracker:
     """DefinedVariableTracker manages the state and scope for the UndefinedVariablesVisitor."""
