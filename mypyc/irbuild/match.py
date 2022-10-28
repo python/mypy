@@ -250,9 +250,6 @@ class MatchVisitor(TraverserVisitor):
 
         min_len = len(patterns)
 
-        if not min_len:
-            return
-
         self.builder.activate_block(self.code_block)
         self.code_block = BasicBlock()
 
@@ -266,6 +263,9 @@ class MatchVisitor(TraverserVisitor):
         )
 
         self.builder.add_bool_branch(is_long_enough, self.code_block, self.next_block)
+
+        if not min_len:
+            return
 
         for i, pattern in enumerate(patterns):
             self.builder.activate_block(self.code_block)

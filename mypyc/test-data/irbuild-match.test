@@ -1204,31 +1204,38 @@ def f(x):
     x :: object
     r0 :: int32
     r1 :: bit
-    r2 :: str
-    r3 :: object
-    r4 :: str
-    r5 :: object
-    r6 :: object[1]
-    r7 :: object_ptr
-    r8, r9 :: object
+    r2 :: native_int
+    r3, r4 :: bit
+    r5 :: str
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11, r12 :: object
 L0:
     r0 = PyList_Check(x)
     r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    if r1 goto L1 else goto L3 :: bool
 L1:
-    r2 = 'matched'
-    r3 = builtins :: module
-    r4 = 'print'
-    r5 = CPyObject_GetAttr(r3, r4)
-    r6 = [r2]
-    r7 = load_address r6
-    r8 = _PyObject_Vectorcall(r5, r7, 1, 0)
-    keep_alive r2
-    goto L3
+    r2 = PyObject_Size(x)
+    r3 = r2 >= 0 :: signed
+    r4 = r2 == 0
+    if r4 goto L2 else goto L3 :: bool
 L2:
+    r5 = 'matched'
+    r6 = builtins :: module
+    r7 = 'print'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [r5]
+    r10 = load_address r9
+    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
+    keep_alive r5
+    goto L4
 L3:
-    r9 = box(None, 1)
-    return r9
+L4:
+    r12 = box(None, 1)
+    return r12
 [case testMatchFixedLengthSequencePattern_python3_10]
 def f(x):
     match x:
