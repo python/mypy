@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Generator, Optional, List, Tuple
+from typing import Generator, List, Optional, Tuple
 
 from mypy.nodes import MatchStmt, NameExpr, TypeInfo
 from mypy.patterns import (
@@ -143,18 +143,18 @@ class MatchVisitor(TraverserVisitor):
             for item in ty.type.items:
                 assert isinstance(item, Instance) and item.last_known_value
 
-                value = item.last_known_value.value
-                assert isinstance(value, str)
+                match_arg = item.last_known_value.value
+                assert isinstance(match_arg, str)
 
-                match_args.append(value)
+                match_args.append(match_arg)
 
             for i, expr in enumerate(pattern.positionals):
                 self.builder.activate_block(self.code_block)
                 self.code_block = BasicBlock()
 
-                value = self.builder.py_get_attr(self.subject, match_args[i], expr.line)
+                positional = self.builder.py_get_attr(self.subject, match_args[i], expr.line)
 
-                with self.enter_subpattern(value):
+                with self.enter_subpattern(positional):
                     expr.accept(self)
 
         for key, value in zip(pattern.keyword_keys, pattern.keyword_values):
@@ -232,8 +232,8 @@ class MatchVisitor(TraverserVisitor):
 
             self.builder.assign(target, rest, pattern.rest.line)
 
-            for i, key in enumerate(keys):
-                self.builder.call_c(dict_del_item, [rest, key], pattern.keys[i].line)
+            for i, key_name in enumerate(keys):
+                self.builder.call_c(dict_del_item, [rest, key_name], pattern.keys[i].line)
 
             self.builder.goto(self.code_block)
 
