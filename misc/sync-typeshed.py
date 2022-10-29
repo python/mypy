@@ -184,8 +184,10 @@ def main() -> None:
     subprocess.run(["git", "commit", "-m", message], check=True)
     print("Created typeshed sync commit.")
 
-    # Currently just LiteralString reverts
-    commits_to_cherry_pick = ["780534b13722b7b0422178c049a1cbbf4ea4255b"]
+    commits_to_cherry_pick = [
+        "780534b13722b7b0422178c049a1cbbf4ea4255b",  # LiteralString reverts
+        "5319fa34a8004c1568bb6f032a07b8b14cc95bed",  # sum reverts
+    ]
     for commit in commits_to_cherry_pick:
         subprocess.run(["git", "cherry-pick", commit], check=True)
         print(f"Cherry-picked {commit}.")
