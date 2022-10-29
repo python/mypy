@@ -1563,11 +1563,11 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 # Instead, we special-case the most common examples of this: bool and literal integers.
 if sys.version_info >= (3, 8):
     @overload
-    def sum(__iterable: Iterable[bool | _LiteralInteger], start: int = ...) -> int: ...  # type: ignore[misc]
+    def sum(__iterable: Iterable[bool], start: int = ...) -> int: ...  # type: ignore[misc]
 
 else:
     @overload
-    def sum(__iterable: Iterable[bool | _LiteralInteger], __start: int = ...) -> int: ...  # type: ignore[misc]
+    def sum(__iterable: Iterable[bool], __start: int = ...) -> int: ...  # type: ignore[misc]
 
 @overload
 def sum(__iterable: Iterable[_SupportsSumNoDefaultT]) -> _SupportsSumNoDefaultT | Literal[0]: ...
