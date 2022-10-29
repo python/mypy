@@ -1590,7 +1590,7 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 # without creating many false-positive errors (see #7578).
 # Instead, we special-case the most common examples of this: bool and literal integers.
 @overload
-def sum(__iterable: Iterable[bool | _LiteralInteger], start: int = 0) -> int: ...  # type: ignore[overload-overlap]
+def sum(__iterable: Iterable[bool], start: int = 0) -> int: ...  # type: ignore[overload-overlap]
 @overload
 def sum(__iterable: Iterable[_SupportsSumNoDefaultT]) -> _SupportsSumNoDefaultT | Literal[0]: ...
 @overload
