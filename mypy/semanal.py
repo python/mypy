@@ -69,6 +69,8 @@ from mypy.mro import MroError, calculate_mro
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
     CONTRAVARIANT,
     COVARIANT,
     GDEF,
@@ -843,6 +845,7 @@ class SemanticAnalyzer(
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
+                self.check_paramspec_definition(defn)
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
@@ -1281,6 +1284,64 @@ class SemanticAnalyzer(
             sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail("Type signature has too many arguments", fdef, blocker=True)
+
+    def check_paramspec_definition(self, defn: FuncDef) -> None:
+        func = defn.type
+        assert isinstance(func, CallableType)
+
+        if not any(isinstance(var, ParamSpecType) for var in func.variables):
+            return  # Function does not have param spec variables
+
+        args = func.var_arg()
+        kwargs = func.kw_arg()
+        if args is None and kwargs is None:
+            return  # Looks like this function does not have starred args
+
+        args_defn_type = None
+        kwargs_defn_type = None
+        for arg_def, arg_kind in zip(defn.arguments, defn.arg_kinds):
+            if arg_kind == ARG_STAR:
+                args_defn_type = arg_def.type_annotation
+            elif arg_kind == ARG_STAR2:
+                kwargs_defn_type = arg_def.type_annotation
+
+        # This may happen on invalid `ParamSpec` args / kwargs definition,
+        # type analyzer sets types of arguments to `Any`, but keeps
+        # definition types as `UnboundType` for now.
+        if not (
+            (isinstance(args_defn_type, UnboundType) and args_defn_type.name.endswith(".args"))
+            or (
+                isinstance(kwargs_defn_type, UnboundType)
+                and kwargs_defn_type.name.endswith(".kwargs")
+            )
+        ):
+            # Looks like both `*args` and `**kwargs` are not `ParamSpec`
+            # It might be something else, skipping.
+            return
+
+        args_type = args.typ if args is not None else None
+        kwargs_type = kwargs.typ if kwargs is not None else None
+
+        if (
+            not isinstance(args_type, ParamSpecType)
+            or not isinstance(kwargs_type, ParamSpecType)
+            or args_type.name != kwargs_type.name
+        ):
+            if isinstance(args_defn_type, UnboundType) and args_defn_type.name.endswith(".args"):
+                param_name = args_defn_type.name.split(".")[0]
+            elif isinstance(kwargs_defn_type, UnboundType) and kwargs_defn_type.name.endswith(
+                ".kwargs"
+            ):
+                param_name = kwargs_defn_type.name.split(".")[0]
+            else:
+                # Fallback for cases that probably should not ever happen:
+                param_name = "P"
+
+            self.fail(
+                f'ParamSpec must have "*args" typed as "{param_name}.args" and "**kwargs" typed as "{param_name}.kwargs"',
+                func,
+                code=codes.VALID_TYPE,
+            )
 
     def visit_decorator(self, dec: Decorator) -> None:
         self.statement = dec
