@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifndef Py_TPFLAGS_SEQUENCE
+#define Py_TPFLAGS_SEQUENCE (1 << 5)
+#endif
+
 PyObject *CPyList_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
 
