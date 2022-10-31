@@ -1008,7 +1008,7 @@ def f(x):
     r7 :: object_ptr
     r8, r9 :: object
 L0:
-    r0 = PyDict_Check(x)
+    r0 = CPyMapping_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -1038,54 +1038,50 @@ def f(x):
     r2 :: str
     r3 :: int32
     r4 :: bit
-    r5 :: bool
-    r6 :: dict
+    r5 :: object
+    r6 :: str
     r7 :: object
-    r8 :: str
-    r9 :: object
-    r10 :: int32
-    r11 :: bit
-    r12 :: bool
+    r8 :: int32
+    r9 :: bit
+    r10 :: bool
+    r11 :: str
+    r12 :: object
     r13 :: str
     r14 :: object
-    r15 :: str
-    r16 :: object
-    r17 :: object[1]
-    r18 :: object_ptr
-    r19, r20 :: object
+    r15 :: object[1]
+    r16 :: object_ptr
+    r17, r18 :: object
 L0:
-    r0 = PyDict_Check(x)
+    r0 = CPyMapping_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L4 :: bool
 L1:
     r2 = 'key'
-    r3 = PySequence_Contains(x, r2)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: int32 to builtins.bool
-    if r5 goto L2 else goto L4 :: bool
+    r3 = PyMapping_HasKey(x, r2)
+    r4 = r3 != 0
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r6 = cast(dict, x)
-    r7 = CPyDict_GetItem(r6, r2)
-    r8 = 'value'
-    r9 = PyObject_RichCompare(r7, r8, 2)
-    r10 = PyObject_IsTrue(r9)
-    r11 = r10 >= 0 :: signed
-    r12 = truncate r10: int32 to builtins.bool
-    if r12 goto L3 else goto L4 :: bool
+    r5 = PyObject_GetItem(x, r2)
+    r6 = 'value'
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    if r10 goto L3 else goto L4 :: bool
 L3:
-    r13 = 'matched'
-    r14 = builtins :: module
-    r15 = 'print'
-    r16 = CPyObject_GetAttr(r14, r15)
-    r17 = [r13]
-    r18 = load_address r17
-    r19 = _PyObject_Vectorcall(r16, r18, 1, 0)
-    keep_alive r13
+    r11 = 'matched'
+    r12 = builtins :: module
+    r13 = 'print'
+    r14 = CPyObject_GetAttr(r12, r13)
+    r15 = [r11]
+    r16 = load_address r15
+    r17 = _PyObject_Vectorcall(r14, r16, 1, 0)
+    keep_alive r11
     goto L5
 L4:
 L5:
-    r20 = box(None, 1)
-    return r20
+    r18 = box(None, 1)
+    return r18
 [case testMatchMappingPatternWithRest_python3_10]
 def f(x):
     match x:
@@ -1105,7 +1101,7 @@ def f(x):
     r8 :: object_ptr
     r9, r10 :: object
 L0:
-    r0 = PyDict_Check(x)
+    r0 = CPyMapping_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L3 :: bool
 L1:
@@ -1138,62 +1134,58 @@ def f(x):
     r2 :: str
     r3 :: int32
     r4 :: bit
-    r5 :: bool
-    r6 :: dict
+    r5 :: object
+    r6 :: str
     r7 :: object
-    r8 :: str
-    r9 :: object
-    r10 :: int32
-    r11 :: bit
-    r12 :: bool
-    r13, rest :: dict
-    r14 :: int32
-    r15 :: bit
+    r8 :: int32
+    r9 :: bit
+    r10 :: bool
+    r11, rest :: dict
+    r12 :: int32
+    r13 :: bit
+    r14 :: str
+    r15 :: object
     r16 :: str
     r17 :: object
-    r18 :: str
-    r19 :: object
-    r20 :: object[1]
-    r21 :: object_ptr
-    r22, r23 :: object
+    r18 :: object[1]
+    r19 :: object_ptr
+    r20, r21 :: object
 L0:
-    r0 = PyDict_Check(x)
+    r0 = CPyMapping_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L5 :: bool
 L1:
     r2 = 'key'
-    r3 = PySequence_Contains(x, r2)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: int32 to builtins.bool
-    if r5 goto L2 else goto L5 :: bool
+    r3 = PyMapping_HasKey(x, r2)
+    r4 = r3 != 0
+    if r4 goto L2 else goto L5 :: bool
 L2:
-    r6 = cast(dict, x)
-    r7 = CPyDict_GetItem(r6, r2)
-    r8 = 'value'
-    r9 = PyObject_RichCompare(r7, r8, 2)
-    r10 = PyObject_IsTrue(r9)
-    r11 = r10 >= 0 :: signed
-    r12 = truncate r10: int32 to builtins.bool
-    if r12 goto L3 else goto L5 :: bool
+    r5 = PyObject_GetItem(x, r2)
+    r6 = 'value'
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    if r10 goto L3 else goto L5 :: bool
 L3:
-    r13 = CPyDict_FromAny(x)
-    rest = r13
-    r14 = PyDict_DelItem(r13, r2)
-    r15 = r14 >= 0 :: signed
+    r11 = CPyDict_FromAny(x)
+    rest = r11
+    r12 = PyDict_DelItem(r11, r2)
+    r13 = r12 >= 0 :: signed
 L4:
-    r16 = 'matched'
-    r17 = builtins :: module
-    r18 = 'print'
-    r19 = CPyObject_GetAttr(r17, r18)
-    r20 = [r16]
-    r21 = load_address r20
-    r22 = _PyObject_Vectorcall(r19, r21, 1, 0)
-    keep_alive r16
+    r14 = 'matched'
+    r15 = builtins :: module
+    r16 = 'print'
+    r17 = CPyObject_GetAttr(r15, r16)
+    r18 = [r14]
+    r19 = load_address r18
+    r20 = _PyObject_Vectorcall(r17, r19, 1, 0)
+    keep_alive r14
     goto L6
 L5:
 L6:
-    r23 = box(None, 1)
-    return r23
+    r21 = box(None, 1)
+    return r21
 [case testMatchEmptySequencePattern_python3_10]
 def f(x):
     match x:
@@ -1214,7 +1206,7 @@ def f(x):
     r10 :: object_ptr
     r11, r12 :: object
 L0:
-    r0 = PyList_Check(x)
+    r0 = CPySequence_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L3 :: bool
 L1:
@@ -1248,25 +1240,23 @@ def f(x):
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
-    r5 :: list
-    r6, r7, r8 :: object
-    r9 :: int32
-    r10 :: bit
-    r11 :: bool
-    r12 :: list
-    r13, r14, r15 :: object
-    r16 :: int32
-    r17 :: bit
-    r18 :: bool
+    r5, r6, r7 :: object
+    r8 :: int32
+    r9 :: bit
+    r10 :: bool
+    r11, r12, r13 :: object
+    r14 :: int32
+    r15 :: bit
+    r16 :: bool
+    r17 :: str
+    r18 :: object
     r19 :: str
     r20 :: object
-    r21 :: str
-    r22 :: object
-    r23 :: object[1]
-    r24 :: object_ptr
-    r25, r26 :: object
+    r21 :: object[1]
+    r22 :: object_ptr
+    r23, r24 :: object
 L0:
-    r0 = PyList_Check(x)
+    r0 = CPySequence_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L5 :: bool
 L1:
@@ -1275,37 +1265,35 @@ L1:
     r4 = r2 == 2
     if r4 goto L2 else goto L5 :: bool
 L2:
-    r5 = cast(list, x)
-    r6 = CPyList_GetItem(r5, 0)
-    r7 = object 1
-    r8 = PyObject_RichCompare(r6, r7, 2)
-    r9 = PyObject_IsTrue(r8)
-    r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
-    if r11 goto L3 else goto L5 :: bool
+    r5 = PySequence_GetItem(x, 0)
+    r6 = object 1
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    if r10 goto L3 else goto L5 :: bool
 L3:
-    r12 = cast(list, x)
-    r13 = CPyList_GetItem(r12, 2)
-    r14 = object 2
-    r15 = PyObject_RichCompare(r13, r14, 2)
-    r16 = PyObject_IsTrue(r15)
-    r17 = r16 >= 0 :: signed
-    r18 = truncate r16: int32 to builtins.bool
-    if r18 goto L4 else goto L5 :: bool
+    r11 = PySequence_GetItem(x, 1)
+    r12 = object 2
+    r13 = PyObject_RichCompare(r11, r12, 2)
+    r14 = PyObject_IsTrue(r13)
+    r15 = r14 >= 0 :: signed
+    r16 = truncate r14: int32 to builtins.bool
+    if r16 goto L4 else goto L5 :: bool
 L4:
-    r19 = 'matched'
-    r20 = builtins :: module
-    r21 = 'print'
-    r22 = CPyObject_GetAttr(r20, r21)
-    r23 = [r19]
-    r24 = load_address r23
-    r25 = _PyObject_Vectorcall(r22, r24, 1, 0)
-    keep_alive r19
+    r17 = 'matched'
+    r18 = builtins :: module
+    r19 = 'print'
+    r20 = CPyObject_GetAttr(r18, r19)
+    r21 = [r17]
+    r22 = load_address r21
+    r23 = _PyObject_Vectorcall(r20, r22, 1, 0)
+    keep_alive r17
     goto L6
 L5:
 L6:
-    r26 = box(None, 1)
-    return r26
+    r24 = box(None, 1)
+    return r24
 [case testMatchSequencePatternWithTrailingUnboundStar_python3_10]
 def f(x):
     match x:
@@ -1318,25 +1306,23 @@ def f(x):
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
-    r5 :: list
-    r6, r7, r8 :: object
-    r9 :: int32
-    r10 :: bit
-    r11 :: bool
-    r12 :: list
-    r13, r14, r15 :: object
-    r16 :: int32
-    r17 :: bit
-    r18 :: bool
+    r5, r6, r7 :: object
+    r8 :: int32
+    r9 :: bit
+    r10 :: bool
+    r11, r12, r13 :: object
+    r14 :: int32
+    r15 :: bit
+    r16 :: bool
+    r17 :: str
+    r18 :: object
     r19 :: str
     r20 :: object
-    r21 :: str
-    r22 :: object
-    r23 :: object[1]
-    r24 :: object_ptr
-    r25, r26 :: object
+    r21 :: object[1]
+    r22 :: object_ptr
+    r23, r24 :: object
 L0:
-    r0 = PyList_Check(x)
+    r0 = CPySequence_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L5 :: bool
 L1:
@@ -1345,37 +1331,35 @@ L1:
     r4 = r2 >= 2 :: signed
     if r4 goto L2 else goto L5 :: bool
 L2:
-    r5 = cast(list, x)
-    r6 = CPyList_GetItem(r5, 0)
-    r7 = object 1
-    r8 = PyObject_RichCompare(r6, r7, 2)
-    r9 = PyObject_IsTrue(r8)
-    r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
-    if r11 goto L3 else goto L5 :: bool
+    r5 = PySequence_GetItem(x, 0)
+    r6 = object 1
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    if r10 goto L3 else goto L5 :: bool
 L3:
-    r12 = cast(list, x)
-    r13 = CPyList_GetItem(r12, 2)
-    r14 = object 2
-    r15 = PyObject_RichCompare(r13, r14, 2)
-    r16 = PyObject_IsTrue(r15)
-    r17 = r16 >= 0 :: signed
-    r18 = truncate r16: int32 to builtins.bool
-    if r18 goto L4 else goto L5 :: bool
+    r11 = PySequence_GetItem(x, 1)
+    r12 = object 2
+    r13 = PyObject_RichCompare(r11, r12, 2)
+    r14 = PyObject_IsTrue(r13)
+    r15 = r14 >= 0 :: signed
+    r16 = truncate r14: int32 to builtins.bool
+    if r16 goto L4 else goto L5 :: bool
 L4:
-    r19 = 'matched'
-    r20 = builtins :: module
-    r21 = 'print'
-    r22 = CPyObject_GetAttr(r20, r21)
-    r23 = [r19]
-    r24 = load_address r23
-    r25 = _PyObject_Vectorcall(r22, r24, 1, 0)
-    keep_alive r19
+    r17 = 'matched'
+    r18 = builtins :: module
+    r19 = 'print'
+    r20 = CPyObject_GetAttr(r18, r19)
+    r21 = [r17]
+    r22 = load_address r21
+    r23 = _PyObject_Vectorcall(r20, r22, 1, 0)
+    keep_alive r17
     goto L6
 L5:
 L6:
-    r26 = box(None, 1)
-    return r26
+    r24 = box(None, 1)
+    return r24
 [case testMatchSequencePatternWithTrailingBoundStar_python3_10]
 def f(x):
     match x:
@@ -1388,87 +1372,66 @@ def f(x):
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
-    r5 :: list
-    r6, r7, r8 :: object
-    r9 :: int32
-    r10 :: bit
-    r11 :: bool
-    r12 :: list
-    r13, r14, r15 :: object
-    r16 :: int32
-    r17 :: bit
-    r18 :: bool
-    r19 :: native_int
-    r20 :: list
-    r21, r22 :: bit
-    r23, r24, r25 :: int
-    r26, rest :: object
-    r27 :: str
-    r28 :: object
-    r29 :: str
-    r30 :: object
-    r31 :: object[1]
-    r32 :: object_ptr
-    r33, r34 :: object
+    r5, r6, r7 :: object
+    r8 :: int32
+    r9 :: bit
+    r10 :: bool
+    r11, r12, r13 :: object
+    r14 :: int32
+    r15 :: bit
+    r16 :: bool
+    r17 :: native_int
+    r18, rest :: object
+    r19 :: str
+    r20 :: object
+    r21 :: str
+    r22 :: object
+    r23 :: object[1]
+    r24 :: object_ptr
+    r25, r26 :: object
 L0:
-    r0 = PyList_Check(x)
+    r0 = CPySequence_Check(x)
     r1 = r0 != 0
-    if r1 goto L1 else goto L10 :: bool
+    if r1 goto L1 else goto L6 :: bool
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
     r4 = r2 >= 2 :: signed
-    if r4 goto L2 else goto L10 :: bool
+    if r4 goto L2 else goto L6 :: bool
 L2:
-    r5 = cast(list, x)
-    r6 = CPyList_GetItem(r5, 0)
-    r7 = object 1
-    r8 = PyObject_RichCompare(r6, r7, 2)
-    r9 = PyObject_IsTrue(r8)
-    r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
-    if r11 goto L3 else goto L10 :: bool
+    r5 = PySequence_GetItem(x, 0)
+    r6 = object 1
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    if r10 goto L3 else goto L6 :: bool
 L3:
-    r12 = cast(list, x)
-    r13 = CPyList_GetItem(r12, 2)
-    r14 = object 2
-    r15 = PyObject_RichCompare(r13, r14, 2)
-    r16 = PyObject_IsTrue(r15)
-    r17 = r16 >= 0 :: signed
-    r18 = truncate r16: int32 to builtins.bool
-    if r18 goto L4 else goto L10 :: bool
+    r11 = PySequence_GetItem(x, 1)
+    r12 = object 2
+    r13 = PyObject_RichCompare(r11, r12, 2)
+    r14 = PyObject_IsTrue(r13)
+    r15 = r14 >= 0 :: signed
+    r16 = truncate r14: int32 to builtins.bool
+    if r16 goto L4 else goto L6 :: bool
 L4:
-    r19 = r2 - 0
-    r20 = cast(list, x)
-    r21 = r19 <= 4611686018427387903 :: signed
-    if r21 goto L5 else goto L6 :: bool
+    r17 = r2 - 0
+    r18 = PySequence_GetSlice(x, 2, r17)
+    rest = r18
 L5:
-    r22 = r19 >= -4611686018427387904 :: signed
-    if r22 goto L7 else goto L6 :: bool
+    r19 = 'matched'
+    r20 = builtins :: module
+    r21 = 'print'
+    r22 = CPyObject_GetAttr(r20, r21)
+    r23 = [r19]
+    r24 = load_address r23
+    r25 = _PyObject_Vectorcall(r22, r24, 1, 0)
+    keep_alive r19
+    goto L7
 L6:
-    r23 = CPyTagged_FromInt64(r19)
-    r24 = r23
-    goto L8
 L7:
-    r25 = r19 << 1
-    r24 = r25
-L8:
-    r26 = CPyList_GetSlice(r20, 4, r24)
-    rest = r26
-L9:
-    r27 = 'matched'
-    r28 = builtins :: module
-    r29 = 'print'
-    r30 = CPyObject_GetAttr(r28, r29)
-    r31 = [r27]
-    r32 = load_address r31
-    r33 = _PyObject_Vectorcall(r30, r32, 1, 0)
-    keep_alive r27
-    goto L11
-L10:
-L11:
-    r34 = box(None, 1)
-    return r34
+    r26 = box(None, 1)
+    return r26
 [case testMatchSequenceWithStarPatternInTheMiddle_python3_10]
 def f(x):
     match x:
@@ -1481,108 +1444,72 @@ def f(x):
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
-    r5 :: list
-    r6 :: object
-    r7 :: str
-    r8 :: object
-    r9 :: int32
-    r10 :: bit
-    r11 :: bool
-    r12 :: native_int
-    r13 :: list
-    r14, r15 :: bit
-    r16, r17, r18 :: int
-    r19 :: object
+    r5 :: object
+    r6 :: str
+    r7 :: object
+    r8 :: int32
+    r9 :: bit
+    r10 :: bool
+    r11 :: native_int
+    r12 :: object
+    r13 :: str
+    r14 :: object
+    r15 :: int32
+    r16 :: bit
+    r17 :: bool
+    r18 :: native_int
+    r19, rest :: object
     r20 :: str
     r21 :: object
-    r22 :: int32
-    r23 :: bit
-    r24 :: bool
-    r25 :: native_int
-    r26 :: list
-    r27, r28 :: bit
-    r29, r30, r31 :: int
-    r32, rest :: object
-    r33 :: str
-    r34 :: object
-    r35 :: str
-    r36 :: object
-    r37 :: object[1]
-    r38 :: object_ptr
-    r39, r40 :: object
+    r22 :: str
+    r23 :: object
+    r24 :: object[1]
+    r25 :: object_ptr
+    r26, r27 :: object
 L0:
-    r0 = PyList_Check(x)
+    r0 = CPySequence_Check(x)
     r1 = r0 != 0
-    if r1 goto L1 else goto L14 :: bool
+    if r1 goto L1 else goto L6 :: bool
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
     r4 = r2 >= 2 :: signed
-    if r4 goto L2 else goto L14 :: bool
+    if r4 goto L2 else goto L6 :: bool
 L2:
-    r5 = cast(list, x)
-    r6 = CPyList_GetItem(r5, 0)
-    r7 = 'start'
-    r8 = PyObject_RichCompare(r6, r7, 2)
-    r9 = PyObject_IsTrue(r8)
-    r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
-    if r11 goto L3 else goto L14 :: bool
+    r5 = PySequence_GetItem(x, 0)
+    r6 = 'start'
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    if r10 goto L3 else goto L6 :: bool
 L3:
-    r12 = r2 - 1
-    r13 = cast(list, x)
-    r14 = r12 <= 4611686018427387903 :: signed
-    if r14 goto L4 else goto L5 :: bool
+    r11 = r2 - 1
+    r12 = PySequence_GetItem(x, r11)
+    r13 = 'end'
+    r14 = PyObject_RichCompare(r12, r13, 2)
+    r15 = PyObject_IsTrue(r14)
+    r16 = r15 >= 0 :: signed
+    r17 = truncate r15: int32 to builtins.bool
+    if r17 goto L4 else goto L6 :: bool
 L4:
-    r15 = r12 >= -4611686018427387904 :: signed
-    if r15 goto L6 else goto L5 :: bool
+    r18 = r2 - 1
+    r19 = PySequence_GetSlice(x, 1, r18)
+    rest = r19
 L5:
-    r16 = CPyTagged_FromInt64(r12)
-    r17 = r16
+    r20 = 'matched'
+    r21 = builtins :: module
+    r22 = 'print'
+    r23 = CPyObject_GetAttr(r21, r22)
+    r24 = [r20]
+    r25 = load_address r24
+    r26 = _PyObject_Vectorcall(r23, r25, 1, 0)
+    keep_alive r20
     goto L7
 L6:
-    r18 = r12 << 1
-    r17 = r18
 L7:
-    r19 = CPyList_GetItem(r13, r17)
-    r20 = 'end'
-    r21 = PyObject_RichCompare(r19, r20, 2)
-    r22 = PyObject_IsTrue(r21)
-    r23 = r22 >= 0 :: signed
-    r24 = truncate r22: int32 to builtins.bool
-    if r24 goto L8 else goto L14 :: bool
-L8:
-    r25 = r2 - 1
-    r26 = cast(list, x)
-    r27 = r25 <= 4611686018427387903 :: signed
-    if r27 goto L9 else goto L10 :: bool
-L9:
-    r28 = r25 >= -4611686018427387904 :: signed
-    if r28 goto L11 else goto L10 :: bool
-L10:
-    r29 = CPyTagged_FromInt64(r25)
-    r30 = r29
-    goto L12
-L11:
-    r31 = r25 << 1
-    r30 = r31
-L12:
-    r32 = CPyList_GetSlice(r26, 2, r30)
-    rest = r32
-L13:
-    r33 = 'matched'
-    r34 = builtins :: module
-    r35 = 'print'
-    r36 = CPyObject_GetAttr(r34, r35)
-    r37 = [r33]
-    r38 = load_address r37
-    r39 = _PyObject_Vectorcall(r36, r38, 1, 0)
-    keep_alive r33
-    goto L15
-L14:
-L15:
-    r40 = box(None, 1)
-    return r40
+    r27 = box(None, 1)
+    return r27
 [case testMatchSequenceWithStarPatternAtTheStart_python3_10]
 def f(x):
     match x:
@@ -1596,120 +1523,69 @@ def f(x):
     r2 :: native_int
     r3, r4 :: bit
     r5 :: native_int
-    r6 :: list
-    r7, r8 :: bit
-    r9, r10, r11 :: int
-    r12, r13, r14 :: object
-    r15 :: int32
-    r16 :: bit
-    r17 :: bool
-    r18 :: native_int
-    r19 :: list
-    r20, r21 :: bit
-    r22, r23, r24 :: int
-    r25, r26, r27 :: object
-    r28 :: int32
-    r29 :: bit
-    r30 :: bool
-    r31 :: native_int
-    r32 :: list
-    r33, r34 :: bit
-    r35, r36, r37 :: int
-    r38, rest :: object
-    r39 :: str
-    r40 :: object
-    r41 :: str
-    r42 :: object
-    r43 :: object[1]
-    r44 :: object_ptr
-    r45, r46 :: object
+    r6, r7, r8 :: object
+    r9 :: int32
+    r10 :: bit
+    r11 :: bool
+    r12 :: native_int
+    r13, r14, r15 :: object
+    r16 :: int32
+    r17 :: bit
+    r18 :: bool
+    r19 :: native_int
+    r20, rest :: object
+    r21 :: str
+    r22 :: object
+    r23 :: str
+    r24 :: object
+    r25 :: object[1]
+    r26 :: object_ptr
+    r27, r28 :: object
 L0:
-    r0 = PyList_Check(x)
+    r0 = CPySequence_Check(x)
     r1 = r0 != 0
-    if r1 goto L1 else goto L18 :: bool
+    if r1 goto L1 else goto L6 :: bool
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
     r4 = r2 >= 2 :: signed
-    if r4 goto L2 else goto L18 :: bool
+    if r4 goto L2 else goto L6 :: bool
 L2:
     r5 = r2 - 2
-    r6 = cast(list, x)
-    r7 = r5 <= 4611686018427387903 :: signed
-    if r7 goto L3 else goto L4 :: bool
+    r6 = PySequence_GetItem(x, r5)
+    r7 = object 1
+    r8 = PyObject_RichCompare(r6, r7, 2)
+    r9 = PyObject_IsTrue(r8)
+    r10 = r9 >= 0 :: signed
+    r11 = truncate r9: int32 to builtins.bool
+    if r11 goto L3 else goto L6 :: bool
 L3:
-    r8 = r5 >= -4611686018427387904 :: signed
-    if r8 goto L5 else goto L4 :: bool
+    r12 = r2 - 1
+    r13 = PySequence_GetItem(x, r12)
+    r14 = object 2
+    r15 = PyObject_RichCompare(r13, r14, 2)
+    r16 = PyObject_IsTrue(r15)
+    r17 = r16 >= 0 :: signed
+    r18 = truncate r16: int32 to builtins.bool
+    if r18 goto L4 else goto L6 :: bool
 L4:
-    r9 = CPyTagged_FromInt64(r5)
-    r10 = r9
-    goto L6
+    r19 = r2 - 2
+    r20 = PySequence_GetSlice(x, 0, r19)
+    rest = r20
 L5:
-    r11 = r5 << 1
-    r10 = r11
+    r21 = 'matched'
+    r22 = builtins :: module
+    r23 = 'print'
+    r24 = CPyObject_GetAttr(r22, r23)
+    r25 = [r21]
+    r26 = load_address r25
+    r27 = _PyObject_Vectorcall(r24, r26, 1, 0)
+    keep_alive r21
+    goto L7
 L6:
-    r12 = CPyList_GetItem(r6, r10)
-    r13 = object 1
-    r14 = PyObject_RichCompare(r12, r13, 2)
-    r15 = PyObject_IsTrue(r14)
-    r16 = r15 >= 0 :: signed
-    r17 = truncate r15: int32 to builtins.bool
-    if r17 goto L7 else goto L18 :: bool
 L7:
-    r18 = r2 - 1
-    r19 = cast(list, x)
-    r20 = r18 <= 4611686018427387903 :: signed
-    if r20 goto L8 else goto L9 :: bool
-L8:
-    r21 = r18 >= -4611686018427387904 :: signed
-    if r21 goto L10 else goto L9 :: bool
-L9:
-    r22 = CPyTagged_FromInt64(r18)
-    r23 = r22
-    goto L11
-L10:
-    r24 = r18 << 1
-    r23 = r24
-L11:
-    r25 = CPyList_GetItem(r19, r23)
-    r26 = object 2
-    r27 = PyObject_RichCompare(r25, r26, 2)
-    r28 = PyObject_IsTrue(r27)
-    r29 = r28 >= 0 :: signed
-    r30 = truncate r28: int32 to builtins.bool
-    if r30 goto L12 else goto L18 :: bool
-L12:
-    r31 = r2 - 2
-    r32 = cast(list, x)
-    r33 = r31 <= 4611686018427387903 :: signed
-    if r33 goto L13 else goto L14 :: bool
-L13:
-    r34 = r31 >= -4611686018427387904 :: signed
-    if r34 goto L15 else goto L14 :: bool
-L14:
-    r35 = CPyTagged_FromInt64(r31)
-    r36 = r35
-    goto L16
-L15:
-    r37 = r31 << 1
-    r36 = r37
-L16:
-    r38 = CPyList_GetSlice(r32, 0, r36)
-    rest = r38
-L17:
-    r39 = 'matched'
-    r40 = builtins :: module
-    r41 = 'print'
-    r42 = CPyObject_GetAttr(r40, r41)
-    r43 = [r39]
-    r44 = load_address r43
-    r45 = _PyObject_Vectorcall(r42, r44, 1, 0)
-    keep_alive r39
-    goto L19
-L18:
-L19:
-    r46 = box(None, 1)
-    return r46
+    r28 = box(None, 1)
+    return r28
 [case testMatchBuiltinClassPattern_python3_10]
 def f(x):
     match x:
@@ -1765,55 +1641,38 @@ def f(x):
     r2 :: native_int
     r3, r4 :: bit
     r5 :: native_int
-    r6 :: list
-    r7, r8 :: bit
-    r9, r10, r11 :: int
-    r12, rest :: object
-    r13 :: str
-    r14 :: object
-    r15 :: str
-    r16 :: object
-    r17 :: object[1]
-    r18 :: object_ptr
-    r19, r20 :: object
+    r6, rest :: object
+    r7 :: str
+    r8 :: object
+    r9 :: str
+    r10 :: object
+    r11 :: object[1]
+    r12 :: object_ptr
+    r13, r14 :: object
 L0:
-    r0 = PyList_Check(x)
+    r0 = CPySequence_Check(x)
     r1 = r0 != 0
-    if r1 goto L1 else goto L8 :: bool
+    if r1 goto L1 else goto L4 :: bool
 L1:
     r2 = PyObject_Size(x)
     r3 = r2 >= 0 :: signed
     r4 = r2 >= 0 :: signed
-    if r4 goto L2 else goto L8 :: bool
+    if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = r2 - 0
-    r6 = cast(list, x)
-    r7 = r5 <= 4611686018427387903 :: signed
-    if r7 goto L3 else goto L4 :: bool
+    r6 = PySequence_GetSlice(x, 0, r5)
+    rest = r6
 L3:
-    r8 = r5 >= -4611686018427387904 :: signed
-    if r8 goto L5 else goto L4 :: bool
+    r7 = 'matched'
+    r8 = builtins :: module
+    r9 = 'print'
+    r10 = CPyObject_GetAttr(r8, r9)
+    r11 = [r7]
+    r12 = load_address r11
+    r13 = _PyObject_Vectorcall(r10, r12, 1, 0)
+    keep_alive r7
+    goto L5
 L4:
-    r9 = CPyTagged_FromInt64(r5)
-    r10 = r9
-    goto L6
 L5:
-    r11 = r5 << 1
-    r10 = r11
-L6:
-    r12 = CPyList_GetSlice(r6, 0, r10)
-    rest = r12
-L7:
-    r13 = 'matched'
-    r14 = builtins :: module
-    r15 = 'print'
-    r16 = CPyObject_GetAttr(r14, r15)
-    r17 = [r13]
-    r18 = load_address r17
-    r19 = _PyObject_Vectorcall(r16, r18, 1, 0)
-    keep_alive r13
-    goto L9
-L8:
-L9:
-    r20 = box(None, 1)
-    return r20
+    r14 = box(None, 1)
+    return r14

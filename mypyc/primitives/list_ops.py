@@ -278,10 +278,23 @@ list_slice_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Check that the object is a list or a subclass of list
-check_list = custom_op(
+supports_sequence_protocol = custom_op(
     arg_types=[object_rprimitive],
     return_type=c_int_rprimitive,
-    c_function_name="PyList_Check",
+    c_function_name="CPySequence_Check",
     error_kind=ERR_NEVER,
+)
+
+sequence_get_item = custom_op(
+    arg_types=[object_rprimitive, c_pyssize_t_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PySequence_GetItem",
+    error_kind=ERR_NEVER,
+)
+
+sequence_get_slice = custom_op(
+    arg_types=[object_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PySequence_GetSlice",
+    error_kind=ERR_MAGIC,
 )

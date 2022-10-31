@@ -325,3 +325,7 @@ PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     }
     return CPyObject_GetSlice(obj, start, end);
 }
+
+int CPySequence_Check(PyObject *obj) {
+    return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_SEQUENCE;
+}

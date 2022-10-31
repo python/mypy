@@ -230,3 +230,54 @@ test 21 ('')
 test 21 (' as well')
 test sequence final
 test final
+[case testCustomMappingAndSequenceObjects_python3_10]
+def f(x):
+    match x:
+        case {"key": "value", **rest}:
+            print(rest, type(rest))
+
+        case [1, 2, *rest2]:
+            print(rest2, type(rest2))
+
+[file driver.py]
+from collections.abc import Mapping, Sequence
+
+from native import f
+
+class CustomMapping(Mapping):
+    inner: dict
+
+    def __init__(self, inner: dict) -> None:
+        self.inner = inner
+
+    def __getitem__(self, key):
+        return self.inner[key]
+
+    def __iter__(self):
+        return iter(self.inner)
+
+    def __len__(self) -> int:
+        return len(self.inner)
+
+
+class CustomSequence(Sequence):
+    inner: list
+
+    def __init__(self, inner: list) -> None:
+        self.inner = inner
+
+    def __getitem__(self, index: int) -> None:
+        return self.inner[index]
+
+    def __len__(self) -> int:
+        return len(self.inner)
+
+mapping = CustomMapping({"key": "value", "some": "data"})
+sequence = CustomSequence([1, 2, 3])
+
+f(mapping)
+f(sequence)
+
+[out]
+{'some': 'data'} <class 'dict'>
+[3] <class 'list'>

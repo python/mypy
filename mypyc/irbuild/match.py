@@ -16,10 +16,20 @@ from mypy.patterns import (
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, TupleType, get_proper_type
 from mypyc.ir.ops import BasicBlock, Value
+from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.primitives.dict_ops import check_dict, dict_copy, dict_del_item, dict_get_item_op
+from mypyc.primitives.dict_ops import (
+    dict_copy,
+    dict_del_item,
+    mapping_has_key,
+    supports_mapping_protocol,
+)
 from mypyc.primitives.generic_ops import generic_ssize_t_len_op
-from mypyc.primitives.list_ops import check_list, list_get_item_op, list_slice_op
+from mypyc.primitives.list_ops import (
+    sequence_get_item,
+    sequence_get_slice,
+    supports_sequence_protocol,
+)
 from mypyc.primitives.misc_ops import slow_isinstance_op
 
 # From: https://peps.python.org/pep-0634/#class-patterns
@@ -197,12 +207,7 @@ class MatchVisitor(TraverserVisitor):
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_mapping_pattern(self, pattern: MappingPattern) -> None:
-        # TODO: technically this should accept any object that supports the
-        # mapping protocol, but the PyMapping_Check function returns true for
-        # string types, which is confusing. This should work for the time
-        # being, but will need to be changed at some point.
-
-        is_dict = self.builder.call_c(check_dict, [self.subject], pattern.line)
+        is_dict = self.builder.call_c(supports_mapping_protocol, [self.subject], pattern.line)
 
         self.builder.add_bool_branch(is_dict, self.code_block, self.next_block)
 
@@ -215,13 +220,15 @@ class MatchVisitor(TraverserVisitor):
             key_value = self.builder.accept(key)
             keys.append(key_value)
 
-            exists = self.builder.binary_op(key_value, self.subject, "in", pattern.line)
+            exists = self.builder.call_c(mapping_has_key, [self.subject, key_value], pattern.line)
 
             self.builder.add_bool_branch(exists, self.code_block, self.next_block)
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
-            item = self.builder.call_c(dict_get_item_op, [self.subject, key_value], pattern.line)
+            item = self.builder.gen_method_call(
+                self.subject, "__getitem__", [key_value], object_rprimitive, pattern.line
+            )
 
             with self.enter_subpattern(item):
                 value.accept(self)
@@ -244,7 +251,7 @@ class MatchVisitor(TraverserVisitor):
     def visit_sequence_pattern(self, seq_pattern: SequencePattern) -> None:
         star_index, capture, patterns = prep_sequence_pattern(seq_pattern)
 
-        is_list = self.builder.call_c(check_list, [self.subject], seq_pattern.line)
+        is_list = self.builder.call_c(supports_sequence_protocol, [self.subject], seq_pattern.line)
 
         self.builder.add_bool_branch(is_list, self.code_block, self.next_block)
 
@@ -275,7 +282,7 @@ class MatchVisitor(TraverserVisitor):
             else:
                 current = self.builder.load_int(i)
 
-            item = self.builder.call_c(list_get_item_op, [self.subject, current], pattern.line)
+            item = self.builder.call_c(sequence_get_item, [self.subject, current], pattern.line)
 
             with self.enter_subpattern(item):
                 pattern.accept(self)
@@ -289,7 +296,7 @@ class MatchVisitor(TraverserVisitor):
             )
 
             rest = self.builder.call_c(
-                list_slice_op,
+                sequence_get_slice,
                 [self.subject, self.builder.load_int(star_index), capture_end],
                 capture.line,
             )

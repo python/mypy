@@ -436,3 +436,7 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
     Py_INCREF(ret.f3);
     return ret;
 }
+
+int CPyMapping_Check(PyObject *obj) {
+    return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_MAPPING;
+}
