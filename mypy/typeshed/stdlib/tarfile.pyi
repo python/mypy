@@ -6,7 +6,7 @@ from builtins import list as _list, type as Type  # aliases to avoid name clashe
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from gzip import _ReadableFileobj as _GzipReadableFileobj, _WritableFileobj as _GzipWritableFileobj
 from types import TracebackType
-from typing import IO, Protocol, overload
+from typing import IO, ClassVar, Protocol, overload
 from typing_extensions import Literal
 
 __all__ = [
@@ -110,7 +110,7 @@ class ExFileObject(io.BufferedReader):
     def __init__(self, tarfile: TarFile, tarinfo: TarInfo) -> None: ...
 
 class TarFile:
-    OPEN_METH: Mapping[str, str]
+    OPEN_METH: ClassVar[Mapping[str, str]]
     name: StrOrBytesPath | None
     mode: Literal["r", "a", "w", "x"]
     fileobj: _Fileobj | None
@@ -294,28 +294,18 @@ class TarFile:
     def chown(self, tarinfo: TarInfo, targetpath: StrOrBytesPath, numeric_owner: bool) -> None: ...  # undocumented
     def chmod(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
     def utime(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
-    if sys.version_info >= (3, 7):
-        def add(
-            self,
-            name: StrPath,
-            arcname: StrPath | None = ...,
-            recursive: bool = ...,
-            *,
-            filter: Callable[[TarInfo], TarInfo | None] | None = ...,
-        ) -> None: ...
-    else:
-        def add(
-            self,
-            name: StrPath,
-            arcname: StrPath | None = ...,
-            recursive: bool = ...,
-            exclude: Callable[[str], bool] | None = ...,
-            *,
-            filter: Callable[[TarInfo], TarInfo | None] | None = ...,
-        ) -> None: ...
-
+    def add(
+        self,
+        name: StrPath,
+        arcname: StrPath | None = ...,
+        recursive: bool = ...,
+        *,
+        filter: Callable[[TarInfo], TarInfo | None] | None = ...,
+    ) -> None: ...
     def addfile(self, tarinfo: TarInfo, fileobj: IO[bytes] | None = ...) -> None: ...
-    def gettarinfo(self, name: str | None = ..., arcname: str | None = ..., fileobj: IO[bytes] | None = ...) -> TarInfo: ...
+    def gettarinfo(
+        self, name: StrOrBytesPath | None = ..., arcname: str | None = ..., fileobj: IO[bytes] | None = ...
+    ) -> TarInfo: ...
     def close(self) -> None: ...
 
 if sys.version_info >= (3, 9):

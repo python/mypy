@@ -1109,3 +1109,11 @@ class A(ABC):
     @final # E: Method B is both abstract and final
     @abstractmethod
     def B(self) -> None: ...
+
+[case testFinalClassVariableRedefinitionDoesNotCrash]
+# This used to crash -- see #12950
+from typing import Final
+
+class MyClass:
+    a: None
+    a: Final[int] = 1  # E: Cannot redefine an existing name as final  # E: Name "a" already defined on line 5

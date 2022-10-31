@@ -30,19 +30,19 @@ def test_import_as_submodule_within_function() -> None:
 #     assert 'nob' not in globals()
 
 def test_import_module_without_stub_in_function() -> None:
-    # 'virtualenv' must not have a stub in typeshed for this test case
-    import virtualenv  # type: ignore
+    # 'psutil' must not have a stub in typeshed for this test case
+    import psutil  # type: ignore
     # TODO: We shouldn't add local imports to globals()
-    # assert 'virtualenv' not in globals()
-    assert isinstance(virtualenv.__name__, str)
+    # assert 'psutil' not in globals()
+    assert isinstance(psutil.__name__, str)
 
 def test_import_as_module_without_stub_in_function() -> None:
-    # 'virtualenv' must not have a stub in typeshed for this test case
-    import virtualenv as vv  # type: ignore
-    assert 'virtualenv' not in globals()
+    # 'psutil' must not have a stub in typeshed for this test case
+    import psutil as pp  # type: ignore
+    assert 'psutil' not in globals()
     # TODO: We shouldn't add local imports to globals()
-    # assert 'vv' not in globals()
-    assert isinstance(vv.__name__, str)
+    # assert 'pp' not in globals()
+    assert isinstance(pp.__name__, str)
 
 [file testmodule.py]
 def factorial(x: int) -> int:

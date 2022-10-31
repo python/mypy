@@ -1,17 +1,37 @@
 """Utilities related to determining the reachability of code (in semantic analysis)."""
 
-from typing import Tuple, TypeVar, Union, Optional
+from __future__ import annotations
+
+from typing import Tuple, TypeVar
 from typing_extensions import Final
 
+from mypy.literals import literal
 from mypy.nodes import (
-    Expression, IfStmt, Block, AssertStmt, MatchStmt, NameExpr, UnaryExpr, MemberExpr, OpExpr,
-    ComparisonExpr, StrExpr, UnicodeExpr, CallExpr, IntExpr, TupleExpr, IndexExpr, SliceExpr,
-    Import, ImportFrom, ImportAll, LITERAL_YES
+    LITERAL_YES,
+    AssertStmt,
+    Block,
+    CallExpr,
+    ComparisonExpr,
+    Expression,
+    FuncDef,
+    IfStmt,
+    Import,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    IntExpr,
+    MatchStmt,
+    MemberExpr,
+    NameExpr,
+    OpExpr,
+    SliceExpr,
+    StrExpr,
+    TupleExpr,
+    UnaryExpr,
 )
 from mypy.options import Options
-from mypy.patterns import Pattern, AsPattern, OrPattern
+from mypy.patterns import AsPattern, OrPattern, Pattern
 from mypy.traverser import TraverserVisitor
-from mypy.literals import literal
 
 # Inferred truth value of an expression.
 ALWAYS_TRUE: Final = 1
@@ -28,14 +48,7 @@ inverted_truth_mapping: Final = {
     MYPY_FALSE: MYPY_TRUE,
 }
 
-reverse_op: Final = {
-    "==": "==",
-    "!=": "!=",
-    "<": ">",
-    ">": "<",
-    "<=": ">=",
-    ">=": "<=",
-}
+reverse_op: Final = {"==": "==", "!=": "!=", "<": ">", ">": "<", "<=": ">=", ">=": "<="}
 
 
 def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
@@ -51,7 +64,7 @@ def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
                 # This condition is false at runtime; this will affect
                 # import priorities.
                 mark_block_mypy_only(s.body[i])
-            for body in s.body[i + 1:]:
+            for body in s.body[i + 1 :]:
                 mark_block_unreachable(body)
 
             # Make sure else body always exists and is marked as
@@ -73,13 +86,17 @@ def infer_reachability_of_match_statement(s: MatchStmt, options: Options) -> Non
         else:
             guard_value = ALWAYS_TRUE
 
-        if pattern_value in (ALWAYS_FALSE, MYPY_FALSE) \
-                or guard_value in (ALWAYS_FALSE, MYPY_FALSE):
+        if pattern_value in (ALWAYS_FALSE, MYPY_FALSE) or guard_value in (
+            ALWAYS_FALSE,
+            MYPY_FALSE,
+        ):
             # The case is considered always false, so we skip the case body.
             mark_block_unreachable(s.bodies[i])
-        elif pattern_value in (ALWAYS_FALSE, MYPY_TRUE) \
-                and guard_value in (ALWAYS_TRUE, MYPY_TRUE):
-            for body in s.bodies[i + 1:]:
+        elif pattern_value in (ALWAYS_FALSE, MYPY_TRUE) and guard_value in (
+            ALWAYS_TRUE,
+            MYPY_TRUE,
+        ):
+            for body in s.bodies[i + 1 :]:
                 mark_block_unreachable(body)
 
         if guard_value == MYPY_TRUE:
@@ -100,11 +117,11 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
     false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
     """
     pyversion = options.python_version
-    name = ''
+    name = ""
     negated = False
     alias = expr
     if isinstance(alias, UnaryExpr):
-        if alias.op == 'not':
+        if alias.op == "not":
             expr = alias.expr
             negated = True
     result = TRUTH_VALUE_UNKNOWN
@@ -112,10 +129,11 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
-    elif isinstance(expr, OpExpr) and expr.op in ('and', 'or'):
+    elif isinstance(expr, OpExpr) and expr.op in ("and", "or"):
         left = infer_condition_value(expr.left, options)
-        if ((left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'and') or
-                (left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'or')):
+        if (left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "and") or (
+            left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "or"
+        ):
             # Either `True and <other>` or `False or <other>`: the result will
             # always be the right-hand-side.
             return infer_condition_value(expr.right, options)
@@ -128,11 +146,11 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
         if result == TRUTH_VALUE_UNKNOWN:
             result = consider_sys_platform(expr, options.platform)
     if result == TRUTH_VALUE_UNKNOWN:
-        if name == 'PY2':
-            result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
-        elif name == 'PY3':
-            result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
-        elif name == 'MYPY' or name == 'TYPE_CHECKING':
+        if name == "PY2":
+            result = ALWAYS_FALSE
+        elif name == "PY3":
+            result = ALWAYS_TRUE
+        elif name == "MYPY" or name == "TYPE_CHECKING":
             result = MYPY_TRUE
         elif name in options.always_true:
             result = ALWAYS_TRUE
@@ -146,14 +164,15 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
 def infer_pattern_value(pattern: Pattern) -> int:
     if isinstance(pattern, AsPattern) and pattern.pattern is None:
         return ALWAYS_TRUE
-    elif isinstance(pattern, OrPattern) and \
-            any(infer_pattern_value(p) == ALWAYS_TRUE for p in pattern.patterns):
+    elif isinstance(pattern, OrPattern) and any(
+        infer_pattern_value(p) == ALWAYS_TRUE for p in pattern.patterns
+    ):
         return ALWAYS_TRUE
     else:
         return TRUTH_VALUE_UNKNOWN
 
 
-def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> int:
+def consider_sys_version_info(expr: Expression, pyversion: tuple[int, ...]) -> int:
     """Consider whether expr is a comparison involving sys.version_info.
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
@@ -169,7 +188,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
     if len(expr.operators) > 1:
         return TRUTH_VALUE_UNKNOWN
     op = expr.operators[0]
-    if op not in ('==', '!=', '<=', '>=', '<', '>'):
+    if op not in ("==", "!=", "<=", ">=", "<", ">"):
         return TRUTH_VALUE_UNKNOWN
 
     index = contains_sys_version_info(expr.operands[0])
@@ -192,7 +211,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
             hi = 2
         if 0 <= lo < hi <= 2:
             val = pyversion[lo:hi]
-            if len(val) == len(thing) or len(val) > len(thing) and op not in ('==', '!='):
+            if len(val) == len(thing) or len(val) > len(thing) and op not in ("==", "!="):
                 return fixed_comparison(val, op, thing)
     return TRUTH_VALUE_UNKNOWN
 
@@ -211,22 +230,22 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
         if len(expr.operators) > 1:
             return TRUTH_VALUE_UNKNOWN
         op = expr.operators[0]
-        if op not in ('==', '!='):
+        if op not in ("==", "!="):
             return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.operands[0], 'platform'):
+        if not is_sys_attr(expr.operands[0], "platform"):
             return TRUTH_VALUE_UNKNOWN
         right = expr.operands[1]
-        if not isinstance(right, (StrExpr, UnicodeExpr)):
+        if not isinstance(right, StrExpr):
             return TRUTH_VALUE_UNKNOWN
         return fixed_comparison(platform, op, right.value)
     elif isinstance(expr, CallExpr):
         if not isinstance(expr.callee, MemberExpr):
             return TRUTH_VALUE_UNKNOWN
-        if len(expr.args) != 1 or not isinstance(expr.args[0], (StrExpr, UnicodeExpr)):
+        if len(expr.args) != 1 or not isinstance(expr.args[0], StrExpr):
             return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.callee.expr, 'platform'):
+        if not is_sys_attr(expr.callee.expr, "platform"):
             return TRUTH_VALUE_UNKNOWN
-        if expr.callee.name != 'startswith':
+        if expr.callee.name != "startswith":
             return TRUTH_VALUE_UNKNOWN
         if platform.startswith(expr.args[0].value):
             return ALWAYS_TRUE
@@ -236,28 +255,27 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
         return TRUTH_VALUE_UNKNOWN
 
 
-Targ = TypeVar('Targ', int, str, Tuple[int, ...])
+Targ = TypeVar("Targ", int, str, Tuple[int, ...])
 
 
 def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
     rmap = {False: ALWAYS_FALSE, True: ALWAYS_TRUE}
-    if op == '==':
+    if op == "==":
         return rmap[left == right]
-    if op == '!=':
+    if op == "!=":
         return rmap[left != right]
-    if op == '<=':
+    if op == "<=":
         return rmap[left <= right]
-    if op == '>=':
+    if op == ">=":
         return rmap[left >= right]
-    if op == '<':
+    if op == "<":
         return rmap[left < right]
-    if op == '>':
+    if op == ">":
         return rmap[left > right]
     return TRUTH_VALUE_UNKNOWN
 
 
-def contains_int_or_tuple_of_ints(expr: Expression
-                                  ) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
+def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int, ...]:
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, TupleExpr):
@@ -271,11 +289,10 @@ def contains_int_or_tuple_of_ints(expr: Expression
     return None
 
 
-def contains_sys_version_info(expr: Expression
-                              ) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
-    if is_sys_attr(expr, 'version_info'):
+def contains_sys_version_info(expr: Expression) -> None | int | tuple[int | None, int | None]:
+    if is_sys_attr(expr, "version_info"):
         return (None, None)  # Same as sys.version_info[:]
-    if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, 'version_info'):
+    if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, "version_info"):
         index = expr.index
         if isinstance(index, IntExpr):
             return index.value
@@ -301,7 +318,7 @@ def is_sys_attr(expr: Expression, name: str) -> bool:
     # - import sys as _sys
     # - from sys import version_info
     if isinstance(expr, MemberExpr) and expr.name == name:
-        if isinstance(expr.expr, NameExpr) and expr.expr.name == 'sys':
+        if isinstance(expr.expr, NameExpr) and expr.expr.name == "sys":
             # TODO: Guard against a local named sys, etc.
             # (Though later passes will still do most checking.)
             return True
@@ -340,4 +357,7 @@ class MarkImportsMypyOnlyVisitor(TraverserVisitor):
         node.is_mypy_only = True
 
     def visit_import_all(self, node: ImportAll) -> None:
+        node.is_mypy_only = True
+
+    def visit_func_def(self, node: FuncDef) -> None:
         node.is_mypy_only = True

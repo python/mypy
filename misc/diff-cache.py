@@ -5,13 +5,14 @@ With some infrastructure, this can allow for distributing small cache diffs to u
 many cases instead of full cache artifacts.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
 import sys
-
 from collections import defaultdict
-from typing import Any, Dict, Optional, Set
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,7 +26,7 @@ def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
         return FilesystemMetadataStore(input_dir)
 
 
-def merge_deps(all: Dict[str, Set[str]], new: Dict[str, Set[str]]) -> None:
+def merge_deps(all: dict[str, set[str]], new: dict[str, set[str]]) -> None:
     for k, v in new.items():
         all.setdefault(k, set()).update(v)
 
@@ -59,12 +60,8 @@ def load(cache: MetadataStore, s: str) -> Any:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--verbose", action="store_true", default=False, help="Increase verbosity"
-    )
-    parser.add_argument(
-        "--sqlite", action="store_true", default=False, help="Use a sqlite cache"
-    )
+    parser.add_argument("--verbose", action="store_true", default=False, help="Increase verbosity")
+    parser.add_argument("--sqlite", action="store_true", default=False, help="Use a sqlite cache")
     parser.add_argument("input_dir1", help="Input directory for the cache")
     parser.add_argument("input_dir2", help="Input directory for the cache")
     parser.add_argument("output", help="Output file")
@@ -73,13 +70,13 @@ def main() -> None:
     cache1 = make_cache(args.input_dir1, args.sqlite)
     cache2 = make_cache(args.input_dir2, args.sqlite)
 
-    type_misses: Dict[str, int] = defaultdict(int)
-    type_hits: Dict[str, int] = defaultdict(int)
+    type_misses: dict[str, int] = defaultdict(int)
+    type_hits: dict[str, int] = defaultdict(int)
 
-    updates: Dict[str, Optional[str]] = {}
+    updates: dict[str, str | None] = {}
 
-    deps1: Dict[str, Set[str]] = {}
-    deps2: Dict[str, Set[str]] = {}
+    deps1: dict[str, set[str]] = {}
+    deps2: dict[str, set[str]] = {}
 
     misses = hits = 0
     cache1_all = list(cache1.list_all())

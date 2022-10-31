@@ -1,5 +1,7 @@
 """AST triggers that are used for fine-grained dependency handling."""
 
+from __future__ import annotations
+
 from typing_extensions import Final
 
 # Used as a suffix for triggers to handle "from m import *" dependencies (see also
@@ -9,7 +11,7 @@ WILDCARD_TAG: Final = "[wildcard]"
 
 
 def make_trigger(name: str) -> str:
-    return f'<{name}>'
+    return f"<{name}>"
 
 
 def make_wildcard_trigger(module: str) -> str:
@@ -21,4 +23,4 @@ def make_wildcard_trigger(module: str) -> str:
 
     This is used for "from m import *" dependencies.
     """
-    return f'<{module}{WILDCARD_TAG}>'
+    return f"<{module}{WILDCARD_TAG}>"

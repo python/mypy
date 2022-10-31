@@ -8,13 +8,14 @@ We provide two implementations.
    on OS X.
 """
 
+from __future__ import annotations
+
 import binascii
 import os
 import time
-
 from abc import abstractmethod
-from typing import List, Iterable, Any, Optional
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Iterable
+
 if TYPE_CHECKING:
     # We avoid importing sqlite3 unless we are using it so we can mostly work
     # on semi-broken pythons that are missing it.
@@ -30,7 +31,6 @@ class MetadataStore:
 
         Raises FileNotFound if the entry does not exist.
         """
-        pass
 
     @abstractmethod
     def read(self, name: str) -> str:
@@ -38,10 +38,9 @@ class MetadataStore:
 
         Raises FileNotFound if the entry does not exist.
         """
-        pass
 
     @abstractmethod
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
         """Write a metadata entry.
 
         If mtime is specified, set it as the mtime of the entry. Otherwise,
@@ -53,7 +52,6 @@ class MetadataStore:
     @abstractmethod
     def remove(self, name: str) -> None:
         """Delete a metadata entry"""
-        pass
 
     @abstractmethod
     def commit(self) -> None:
@@ -63,14 +61,14 @@ class MetadataStore:
         there is no guarantee that changes are not made until it is
         called.
         """
-        pass
 
     @abstractmethod
-    def list_all(self) -> Iterable[str]: ...
+    def list_all(self) -> Iterable[str]:
+        ...
 
 
 def random_string() -> str:
-    return binascii.hexlify(os.urandom(8)).decode('ascii')
+    return binascii.hexlify(os.urandom(8)).decode("ascii")
 
 
 class FilesystemMetadataStore(MetadataStore):
@@ -98,17 +96,17 @@ class FilesystemMetadataStore(MetadataStore):
         with open(os.path.join(self.cache_dir_prefix, name)) as f:
             return f.read()
 
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
 
         if not self.cache_dir_prefix:
             return False
 
         path = os.path.join(self.cache_dir_prefix, name)
-        tmp_filename = path + '.' + random_string()
+        tmp_filename = path + "." + random_string()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(tmp_filename, 'w') as f:
+            with open(tmp_filename, "w") as f:
                 f.write(data)
             os.replace(tmp_filename, path)
             if mtime is not None:
@@ -137,19 +135,19 @@ class FilesystemMetadataStore(MetadataStore):
                 yield os.path.join(dir, file)
 
 
-SCHEMA = '''
+SCHEMA = """
 CREATE TABLE IF NOT EXISTS files (
     path TEXT UNIQUE NOT NULL,
     mtime REAL,
     data TEXT
 );
 CREATE INDEX IF NOT EXISTS path_idx on files(path);
-'''
+"""
 # No migrations yet
-MIGRATIONS: List[str] = []
+MIGRATIONS: list[str] = []
 
 
-def connect_db(db_file: str) -> 'sqlite3.Connection':
+def connect_db(db_file: str) -> sqlite3.Connection:
     import sqlite3.dbapi2
 
     db = sqlite3.dbapi2.connect(db_file)
@@ -172,14 +170,14 @@ class SqliteMetadataStore(MetadataStore):
             return
 
         os.makedirs(cache_dir_prefix, exist_ok=True)
-        self.db = connect_db(os.path.join(cache_dir_prefix, 'cache.db'))
+        self.db = connect_db(os.path.join(cache_dir_prefix, "cache.db"))
 
     def _query(self, name: str, field: str) -> Any:
         # Raises FileNotFound for consistency with the file system version
         if not self.db:
             raise FileNotFoundError()
 
-        cur = self.db.execute(f'SELECT {field} FROM files WHERE path = ?', (name,))
+        cur = self.db.execute(f"SELECT {field} FROM files WHERE path = ?", (name,))
         results = cur.fetchall()
         if not results:
             raise FileNotFoundError()
@@ -187,12 +185,16 @@ class SqliteMetadataStore(MetadataStore):
         return results[0][0]
 
     def getmtime(self, name: str) -> float:
-        return self._query(name, 'mtime')
+        mtime = self._query(name, "mtime")
+        assert isinstance(mtime, float)
+        return mtime
 
     def read(self, name: str) -> str:
-        return self._query(name, 'data')
+        data = self._query(name, "data")
+        assert isinstance(data, str)
+        return data
 
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
         import sqlite3
 
         if not self.db:
@@ -200,8 +202,10 @@ class SqliteMetadataStore(MetadataStore):
         try:
             if mtime is None:
                 mtime = time.time()
-            self.db.execute('INSERT OR REPLACE INTO files(path, mtime, data) VALUES(?, ?, ?)',
-                            (name, mtime, data))
+            self.db.execute(
+                "INSERT OR REPLACE INTO files(path, mtime, data) VALUES(?, ?, ?)",
+                (name, mtime, data),
+            )
         except sqlite3.OperationalError:
             return False
         return True
@@ -210,7 +214,7 @@ class SqliteMetadataStore(MetadataStore):
         if not self.db:
             raise FileNotFoundError()
 
-        self.db.execute('DELETE FROM files WHERE path = ?', (name,))
+        self.db.execute("DELETE FROM files WHERE path = ?", (name,))
 
     def commit(self) -> None:
         if self.db:
@@ -218,5 +222,5 @@ class SqliteMetadataStore(MetadataStore):
 
     def list_all(self) -> Iterable[str]:
         if self.db:
-            for row in self.db.execute('SELECT path FROM files'):
+            for row in self.db.execute("SELECT path FROM files"):
                 yield row[0]

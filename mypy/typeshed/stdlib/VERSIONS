@@ -14,46 +14,47 @@
 #
 # Python versions before 2.7 are ignored, so any module that was already
 # present in 2.7 will have "2.7" as its minimum version. Version ranges
-# for unsupported versions of Python 3 (currently 3.5 and lower) are
-# generally accurate but we do not guarantee their correctness.
+# for unsupported versions of Python 3 are generally accurate but we do
+# not guarantee their correctness.
 
 __future__: 2.7-
 __main__: 2.7-
 _ast: 2.7-
 _bisect: 2.7-
-_bootlocale: 3.6-3.9
+_bootlocale: 3.4-3.9
 _codecs: 2.7-
 _collections_abc: 3.3-
-_compat_pickle: 3.6-
-_compression: 3.6-
+_compat_pickle: 3.1-
+_compression: 3.5-
 _csv: 2.7-
+_ctypes: 2.7-
 _curses: 2.7-
-_decimal: 3.6-
-_dummy_thread: 3.6-3.8
+_decimal: 3.3-
+_dummy_thread: 3.0-3.8
 _dummy_threading: 2.7-3.8
 _heapq: 2.7-
-_imp: 3.6-
+_imp: 3.0-
 _json: 2.7-
 _markupbase: 2.7-
 _msi: 2.7-
-_operator: 3.6-
+_operator: 3.4-
 _osx_support: 2.7-
-_posixsubprocess: 3.6-
+_posixsubprocess: 3.2-
 _py_abc: 3.7-
-_pydecimal: 3.6-
+_pydecimal: 3.5-
 _random: 2.7-
-_sitebuiltins: 3.6-
+_sitebuiltins: 3.4-
 _socket: 3.0-  # present in 2.7 at runtime, but not in typeshed
-_stat: 3.6-
+_stat: 3.4-
 _thread: 2.7-
-_threading_local: 3.6-
+_threading_local: 2.7-
 _tkinter: 2.7-
-_tracemalloc: 3.6-
+_tracemalloc: 3.4-
 _typeshed: 2.7-  # not present at runtime, only for type checking
 _warnings: 2.7-
 _weakref: 2.7-
 _weakrefset: 2.7-
-_winapi: 3.6-
+_winapi: 3.3-
 abc: 2.7-
 aifc: 2.7-
 antigravity: 2.7-
@@ -63,13 +64,13 @@ ast: 2.7-
 asynchat: 2.7-
 asyncio: 3.4-
 asyncio.mixins: 3.10-
-asyncio.compat: 3.4-3.6
 asyncio.exceptions: 3.8-
 asyncio.format_helpers: 3.7-
 asyncio.runners: 3.7-
 asyncio.staggered: 3.8-
 asyncio.taskgroups: 3.11-
 asyncio.threads: 3.9-
+asyncio.timeouts: 3.11-
 asyncio.trsock: 3.8-
 asyncore: 2.7-
 atexit: 2.7-
@@ -163,7 +164,6 @@ locale: 2.7-
 logging: 2.7-
 lzma: 3.3-
 macpath: 2.7-3.7
-macurl2path: 2.7-3.6
 mailbox: 2.7-
 mailcap: 2.7-
 marshal: 2.7-
@@ -174,6 +174,7 @@ modulefinder: 2.7-
 msilib: 2.7-
 msvcrt: 2.7-
 multiprocessing: 2.7-
+multiprocessing.resource_tracker: 3.8-
 multiprocessing.shared_memory: 3.8-
 netrc: 2.7-
 nis: 2.7-
@@ -290,7 +291,7 @@ wsgiref.types: 3.11-
 xdrlib: 2.7-
 xml: 2.7-
 xmlrpc: 3.0-
-xxlimited: 3.6-
+xxlimited: 3.2-
 zipapp: 3.5-
 zipfile: 2.7-
 zipimport: 2.7-

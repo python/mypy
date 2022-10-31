@@ -1,65 +1,37 @@
 import sys
+from _typeshed import ProfileFunction, TraceFunction
 from collections.abc import Callable, Iterable, Mapping
-from types import FrameType, TracebackType
+from types import TracebackType
 from typing import Any, TypeVar
-from typing_extensions import TypeAlias
 
-# TODO recursive type
-_TF: TypeAlias = Callable[[FrameType, str, Any], Callable[..., Any] | None]
-
-_PF: TypeAlias = Callable[[FrameType, str, Any], None]
 _T = TypeVar("_T")
 
+__all__ = [
+    "get_ident",
+    "active_count",
+    "Condition",
+    "current_thread",
+    "enumerate",
+    "main_thread",
+    "TIMEOUT_MAX",
+    "Event",
+    "Lock",
+    "RLock",
+    "Semaphore",
+    "BoundedSemaphore",
+    "Thread",
+    "Barrier",
+    "BrokenBarrierError",
+    "Timer",
+    "ThreadError",
+    "setprofile",
+    "settrace",
+    "local",
+    "stack_size",
+]
+
 if sys.version_info >= (3, 8):
-    __all__ = [
-        "get_ident",
-        "active_count",
-        "Condition",
-        "current_thread",
-        "enumerate",
-        "main_thread",
-        "TIMEOUT_MAX",
-        "Event",
-        "Lock",
-        "RLock",
-        "Semaphore",
-        "BoundedSemaphore",
-        "Thread",
-        "Barrier",
-        "BrokenBarrierError",
-        "Timer",
-        "ThreadError",
-        "setprofile",
-        "settrace",
-        "local",
-        "stack_size",
-        "excepthook",
-        "ExceptHookArgs",
-    ]
-else:
-    __all__ = [
-        "get_ident",
-        "active_count",
-        "Condition",
-        "current_thread",
-        "enumerate",
-        "main_thread",
-        "TIMEOUT_MAX",
-        "Event",
-        "Lock",
-        "RLock",
-        "Semaphore",
-        "BoundedSemaphore",
-        "Thread",
-        "Barrier",
-        "BrokenBarrierError",
-        "Timer",
-        "ThreadError",
-        "setprofile",
-        "settrace",
-        "local",
-        "stack_size",
-    ]
+    __all__ += ["ExceptHookArgs", "excepthook"]
 
 def active_count() -> int: ...
 def current_thread() -> Thread: ...
@@ -67,8 +39,8 @@ def currentThread() -> Thread: ...
 def get_ident() -> int: ...
 def enumerate() -> list[Thread]: ...
 def main_thread() -> Thread: ...
-def settrace(func: _TF) -> None: ...
-def setprofile(func: _PF | None) -> None: ...
+def settrace(func: TraceFunction) -> None: ...
+def setprofile(func: ProfileFunction | None) -> None: ...
 def stack_size(size: int = ...) -> int: ...
 
 TIMEOUT_MAX: float
@@ -88,7 +60,7 @@ class Thread:
     def __init__(
         self,
         group: None = ...,
-        target: Callable[..., Any] | None = ...,
+        target: Callable[..., object] | None = ...,
         name: str | None = ...,
         args: Iterable[Any] = ...,
         kwargs: Mapping[str, Any] | None = ...,
@@ -114,7 +86,6 @@ class Thread:
 class _DummyThread(Thread): ...
 
 class Lock:
-    def __init__(self) -> None: ...
     def __enter__(self) -> bool: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
@@ -124,7 +95,6 @@ class Lock:
     def locked(self) -> bool: ...
 
 class _RLock:
-    def __init__(self) -> None: ...
     def __enter__(self) -> bool: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
@@ -163,7 +133,6 @@ class Semaphore:
 class BoundedSemaphore(Semaphore): ...
 
 class Event:
-    def __init__(self) -> None: ...
     def is_set(self) -> bool: ...
     def set(self) -> None: ...
     def clear(self) -> None: ...
@@ -179,7 +148,7 @@ class Timer(Thread):
     def __init__(
         self,
         interval: float,
-        function: Callable[..., Any],
+        function: Callable[..., object],
         args: Iterable[Any] | None = ...,
         kwargs: Mapping[str, Any] | None = ...,
     ) -> None: ...

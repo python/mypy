@@ -1,10 +1,10 @@
 import http.server
 import pydoc
 import socketserver
-import sys
 from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
-from typing import Any, Pattern, Protocol
+from re import Pattern
+from typing import Any, ClassVar, Protocol
 from typing_extensions import TypeAlias
 from xmlrpc.client import Fault
 
@@ -48,11 +48,7 @@ class SimpleXMLRPCDispatcher:  # undocumented
     use_builtin_types: bool
     def __init__(self, allow_none: bool = ..., encoding: str | None = ..., use_builtin_types: bool = ...) -> None: ...
     def register_instance(self, instance: Any, allow_dotted_names: bool = ...) -> None: ...
-    if sys.version_info >= (3, 7):
-        def register_function(self, function: _DispatchProtocol | None = ..., name: str | None = ...) -> Callable[..., Any]: ...
-    else:
-        def register_function(self, function: _DispatchProtocol, name: str | None = ...) -> Callable[..., Any]: ...
-
+    def register_function(self, function: _DispatchProtocol | None = ..., name: str | None = ...) -> Callable[..., Any]: ...
     def register_introspection_functions(self) -> None: ...
     def register_multicall_functions(self) -> None: ...
     def _marshaled_dispatch(
@@ -68,8 +64,7 @@ class SimpleXMLRPCDispatcher:  # undocumented
     def _dispatch(self, method: str, params: Iterable[_Marshallable]) -> _Marshallable: ...  # undocumented
 
 class SimpleXMLRPCRequestHandler(http.server.BaseHTTPRequestHandler):
-
-    rpc_paths: tuple[str, str]
+    rpc_paths: ClassVar[tuple[str, ...]]
     encode_threshold: int  # undocumented
     aepattern: Pattern[str]  # undocumented
     def accept_encodings(self) -> dict[str, float]: ...
@@ -77,11 +72,9 @@ class SimpleXMLRPCRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self) -> None: ...
     def decode_request_content(self, data: bytes) -> bytes | None: ...
     def report_404(self) -> None: ...
-    def log_request(self, code: int | str = ..., size: int | str = ...) -> None: ...
 
 class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
 
-    allow_reuse_address: bool
     _send_traceback_handler: bool
     def __init__(
         self,
@@ -97,8 +90,6 @@ class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
 class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
 
     dispatchers: dict[str, SimpleXMLRPCDispatcher]
-    allow_none: bool
-    encoding: str
     def __init__(
         self,
         addr: tuple[str, int],
@@ -111,12 +102,6 @@ class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
     ) -> None: ...
     def add_dispatcher(self, path: str, dispatcher: SimpleXMLRPCDispatcher) -> SimpleXMLRPCDispatcher: ...
     def get_dispatcher(self, path: str) -> SimpleXMLRPCDispatcher: ...
-    def _marshaled_dispatch(
-        self,
-        data: str,
-        dispatch_method: Callable[[str | None, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = ...,
-        path: Any | None = ...,
-    ) -> str: ...
 
 class CGIXMLRPCRequestHandler(SimpleXMLRPCDispatcher):
     def __init__(self, allow_none: bool = ..., encoding: str | None = ..., use_builtin_types: bool = ...) -> None: ...
@@ -142,7 +127,6 @@ class XMLRPCDocGenerator:  # undocumented
     server_name: str
     server_documentation: str
     server_title: str
-    def __init__(self) -> None: ...
     def set_server_title(self, server_title: str) -> None: ...
     def set_server_name(self, server_name: str) -> None: ...
     def set_server_documentation(self, server_documentation: str) -> None: ...

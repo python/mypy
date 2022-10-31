@@ -2,45 +2,29 @@ import sys
 from _typeshed import Self
 from collections.abc import Sequence
 from email.message import Message as _Message
+from re import Pattern
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Pattern, Protocol, overload
+from typing import Any, Protocol, overload
 from typing_extensions import TypeAlias
 
-if sys.version_info >= (3, 7):
-    __all__ = [
-        "SMTPException",
-        "SMTPNotSupportedError",
-        "SMTPServerDisconnected",
-        "SMTPResponseException",
-        "SMTPSenderRefused",
-        "SMTPRecipientsRefused",
-        "SMTPDataError",
-        "SMTPConnectError",
-        "SMTPHeloError",
-        "SMTPAuthenticationError",
-        "quoteaddr",
-        "quotedata",
-        "SMTP",
-        "SMTP_SSL",
-    ]
-else:
-    __all__ = [
-        "SMTPException",
-        "SMTPServerDisconnected",
-        "SMTPResponseException",
-        "SMTPSenderRefused",
-        "SMTPRecipientsRefused",
-        "SMTPDataError",
-        "SMTPConnectError",
-        "SMTPHeloError",
-        "SMTPAuthenticationError",
-        "quoteaddr",
-        "quotedata",
-        "SMTP",
-        "SMTP_SSL",
-    ]
+__all__ = [
+    "SMTPException",
+    "SMTPServerDisconnected",
+    "SMTPResponseException",
+    "SMTPSenderRefused",
+    "SMTPRecipientsRefused",
+    "SMTPDataError",
+    "SMTPConnectError",
+    "SMTPHeloError",
+    "SMTPAuthenticationError",
+    "quoteaddr",
+    "quotedata",
+    "SMTP",
+    "SMTP_SSL",
+    "SMTPNotSupportedError",
+]
 
 _Reply: TypeAlias = tuple[int, bytes]
 _SendErrs: TypeAlias = dict[str, _Reply]
@@ -65,7 +49,6 @@ class SMTPResponseException(SMTPException):
     def __init__(self, code: int, msg: bytes | str) -> None: ...
 
 class SMTPSenderRefused(SMTPResponseException):
-    smtp_code: int
     smtp_error: bytes
     sender: str
     args: tuple[int, bytes, str]
@@ -167,7 +150,6 @@ class SMTP:
     def quit(self) -> _Reply: ...
 
 class SMTP_SSL(SMTP):
-    default_port: int
     keyfile: str | None
     certfile: str | None
     context: SSLContext

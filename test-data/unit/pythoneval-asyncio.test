@@ -364,7 +364,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:17: error: Argument 1 to "add_done_callback" of "Future" has incompatible type "Callable[[Future[int]], None]"; expected "Callable[[Future[str]], Any]"
+_program.py:17: error: Argument 1 to "add_done_callback" of "Future" has incompatible type "Callable[[Future[int]], None]"; expected "Callable[[Future[str]], object]"
 
 [case testErrorOneMoreFutureInReturnType]
 import typing
@@ -429,6 +429,7 @@ loop.run_until_complete(h())
 loop.close()
 [out]
 _program.py:16: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[int]")
+_program.py:16: note: Maybe you forgot to use "await"?
 
 [case testErrorAssignmentDifferentType]
 import typing

@@ -10,6 +10,10 @@ class _SpecialForm:
     def __getitem__(self, typeargs: Any) -> Any:
         pass
 
+    def __call__(self, arg: Any) -> Any:
+        pass
+
+NamedTuple = 0
 Protocol: _SpecialForm = ...
 def runtime_checkable(x: _T) -> _T: pass
 runtime = runtime_checkable

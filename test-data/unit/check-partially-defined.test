@@ -1,0 +1,369 @@
+[case testDefinedInOneBranch]
+# flags: --enable-error-code partially-defined
+if int():
+    a = 1
+else:
+    x = 2
+z = a + 1  # E: Name "a" may be undefined
+z = a + 1  # We only report the error on first occurrence.
+
+[case testElif]
+# flags: --enable-error-code partially-defined
+if int():
+    a = 1
+elif int():
+    a = 2
+else:
+    x = 3
+
+z = a + 1  # E: Name "a" may be undefined
+
+[case testUsedInIf]
+# flags: --enable-error-code partially-defined
+if int():
+    y = 1
+if int():
+    x = y  # E: Name "y" may be undefined
+
+[case testDefinedInAllBranches]
+# flags: --enable-error-code partially-defined
+if int():
+    a = 1
+elif int():
+    a = 2
+else:
+    a = 3
+z = a + 1
+
+[case testOmittedElse]
+# flags: --enable-error-code partially-defined
+if int():
+    a = 1
+z = a + 1  # E: Name "a" may be undefined
+
+[case testUpdatedInIf]
+# flags: --enable-error-code partially-defined
+# Variable a is already defined. Just updating it in an "if" is acceptable.
+a = 1
+if int():
+    a = 2
+z = a + 1
+
+[case testNestedIf]
+# flags: --enable-error-code partially-defined
+if int():
+    if int():
+        a = 1
+        x = 1
+        x = x + 1
+    else:
+        a = 2
+    b = a + x  # E: Name "x" may be undefined
+    b = b + 1
+else:
+    b = 2
+z = a + b  # E: Name "a" may be undefined
+
+[case testVeryNestedIf]
+# flags: --enable-error-code partially-defined
+if int():
+    if int():
+        if int():
+            a = 1
+        else:
+            a = 2
+        x = a
+    else:
+        a = 2
+    b = a
+else:
+    b = 2
+z = a + b  # E: Name "a" may be undefined
+
+[case testTupleUnpack]
+# flags: --enable-error-code partially-defined
+
+if int():
+    (x, y) = (1, 2)
+else:
+    [y, z] = [1, 2]
+a = y + x  # E: Name "x" may be undefined
+a = y + z  # E: Name "z" may be undefined
+
+[case testRedefined]
+# flags: --enable-error-code partially-defined
+y = 3
+if int():
+    if int():
+        y = 2
+    x = y + 2
+else:
+    if int():
+        y = 2
+    x = y + 2
+
+x = y + 2
+
+[case testGenerator]
+# flags: --enable-error-code partially-defined
+if int():
+    a = 3
+s = [a + 1 for a in [1, 2, 3]]
+x = a  # E: Name "a" may be undefined
+
+[case testScope]
+# flags: --enable-error-code partially-defined
+def foo() -> None:
+    if int():
+        y = 2
+
+if int():
+    y = 3
+x = y  # E: Name "y" may be undefined
+
+[case testFuncParams]
+# flags: --enable-error-code partially-defined
+def foo(a: int) -> None:
+    if int():
+        a = 2
+    x = a
+
+[case testWhile]
+# flags: --enable-error-code partially-defined
+while int():
+    x = 1
+
+y = x  # E: Name "x" may be undefined
+
+while int():
+    z = 1
+else:
+    z = 2
+
+y = z  # No error.
+
+while True:
+    k = 1
+    if int():
+        break
+y = k # No error.
+
+[case testForLoop]
+# flags: --enable-error-code partially-defined
+for x in [1, 2, 3]:
+    if x:
+        x = 1
+    y = x
+    z = 1
+else:
+    z = 2
+
+a = z + y  # E: Name "y" may be undefined
+
+[case testReturn]
+# flags: --enable-error-code partially-defined
+def f1() -> int:
+    if int():
+        x = 1
+    else:
+        return 0
+    return x
+
+def f2() -> int:
+    if int():
+        x = 1
+    elif int():
+        return 0
+    else:
+        x = 2
+    return x
+
+def f3() -> int:
+    if int():
+        x = 1
+    elif int():
+        return 0
+    else:
+        y = 2
+    return x  # E: Name "x" may be undefined
+
+def f4() -> int:
+    if int():
+        x = 1
+    elif int():
+        return 0
+    else:
+        return 0
+    return x
+
+def f5() -> int:
+    # This is a test against crashes.
+    if int():
+        return 1
+    if int():
+        return 2
+    else:
+        return 3
+    return 1
+
+[case testAssert]
+# flags: --enable-error-code partially-defined
+def f1() -> int:
+    if int():
+        x = 1
+    else:
+        assert False, "something something"
+    return x
+
+def f2() -> int:
+    if int():
+        x = 1
+    elif int():
+        assert False
+    else:
+        y = 2
+    return x  # E: Name "x" may be undefined
+
+[case testRaise]
+# flags: --enable-error-code partially-defined
+def f1() -> int:
+    if int():
+        x = 1
+    else:
+        raise BaseException("something something")
+    return x
+
+def f2() -> int:
+    if int():
+        x = 1
+    elif int():
+        raise BaseException("something something")
+    else:
+        y = 2
+    return x  # E: Name "x" may be undefined
+[builtins fixtures/exception.pyi]
+
+[case testContinue]
+# flags: --enable-error-code partially-defined
+def f1() -> int:
+    while int():
+        if int():
+            x = 1
+        else:
+            continue
+        y = x
+    else:
+        x = 2
+    return x
+
+def f2() -> int:
+    while int():
+        if int():
+            x = 1
+            z = 1
+        elif int():
+            pass
+        else:
+            continue
+        y = x  # E: Name "x" may be undefined
+    else:
+        x = 2
+        z = 2
+    return z  # E: Name "z" may be undefined
+
+def f3() -> None:
+    while True:
+        if int():
+            x = 2
+        elif int():
+            continue
+        else:
+            continue
+        y = x
+
+[case testBreak]
+# flags: --enable-error-code partially-defined
+def f1() -> None:
+    while int():
+        if int():
+            x = 1
+        else:
+            break
+        y = x  # No error -- x is always defined.
+
+def f2() -> None:
+    while int():
+        if int():
+            x = 1
+        elif int():
+            pass
+        else:
+            break
+        y = x  # E: Name "x" may be undefined
+
+def f3() -> None:
+    while int():
+        x = 1
+        while int():
+            if int():
+                x = 2
+            else:
+                break
+        y = x
+    z = x  # E: Name "x" may be undefined
+
+[case testNoReturn]
+# flags: --enable-error-code partially-defined
+
+from typing import NoReturn
+def fail() -> NoReturn:
+    assert False
+
+def f() -> None:
+    if int():
+        x = 1
+    elif int():
+        x = 2
+        y = 3
+    else:
+        # This has a NoReturn type, so we can skip it.
+        fail()
+    z = y  # E: Name "y" may be undefined
+    z = x
+
+[case testDictComprehension]
+# flags: --enable-error-code partially-defined
+
+def f() -> None:
+    for _ in [1, 2]:
+        key = 2
+        val = 2
+
+    x = (
+        key,  # E: Name "key" may be undefined
+        val,  # E: Name "val" may be undefined
+    )
+
+    d = [(0, "a"), (1, "b")]
+    {val: key for key, val in d}
+[builtins fixtures/dict.pyi]
+
+[case testWithStmt]
+# flags: --enable-error-code partially-defined
+from contextlib import contextmanager
+
+@contextmanager
+def ctx(*args):
+    yield 1
+
+def f() -> None:
+    if int():
+        a = b = 1
+        x = 1
+
+    with ctx() as a, ctx(a) as b, ctx(x) as x:  # E: Name "x" may be undefined
+        c = a
+        c = b
+    d = a
+    d = b
+[builtins fixtures/tuple.pyi]

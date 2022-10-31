@@ -1,4 +1,3 @@
-import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from collections.abc import Iterator
 from typing import Any
@@ -15,11 +14,10 @@ def iter_unpack(__format: str | bytes, __buffer: ReadableBuffer) -> Iterator[tup
 def calcsize(__format: str | bytes) -> int: ...
 
 class Struct:
-    if sys.version_info >= (3, 7):
-        format: str
-    else:
-        format: bytes
-    size: int
+    @property
+    def format(self) -> str: ...
+    @property
+    def size(self) -> int: ...
     def __init__(self, format: str | bytes) -> None: ...
     def pack(self, *v: Any) -> bytes: ...
     def pack_into(self, buffer: WriteableBuffer, offset: int, *v: Any) -> None: ...

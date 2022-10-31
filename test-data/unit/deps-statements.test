@@ -80,56 +80,6 @@ def g() -> None:
 <m.f1> -> m.g
 <m.f2> -> m.g
 
-[case testPrintStmt_python2]
-def f1(): # type: () -> int
-    pass
-def f2(): # type: () -> int
-    pass
-
-def g1(): # type: () -> None
-    print f1()
-
-def g2(): # type: () -> None
-    print f1(), f2()
-[out]
-<m.f1> -> m.g1, m.g2
-<m.f2> -> m.g2
-
-[case testPrintStmtWithFile_python2]
-class A:
-    def write(self, s): # type: (str) -> None
-        pass
-
-def f1(): # type: () -> A
-    pass
-def f2(): # type: () -> int
-    pass
-
-def g(): # type: () -> None
-    print >>f1(), f2()
-[out]
-<m.A.write> -> m.g
-<m.A> -> <m.f1>, m.A, m.f1
-<m.f2> -> m.g
-
-[case testExecStmt_python2]
-def f1(): pass
-def f2(): pass
-def f3(): pass
-
-def g1(): # type: () -> None
-    exec f1()
-
-def g2(): # type: () -> None
-    exec f1() in f2()
-
-def g3(): # type: () -> None
-    exec f1() in f2(), f3()
-[out]
-<m.f1> -> m.g1, m.g2, m.g3
-<m.f2> -> m.g2, m.g3
-<m.f3> -> m.g3
-
 [case testForStmt]
 from typing import Iterator
 

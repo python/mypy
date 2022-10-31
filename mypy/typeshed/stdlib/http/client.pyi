@@ -1,12 +1,11 @@
 import email.message
 import io
 import ssl
-import sys
 import types
 from _typeshed import Self, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket
-from typing import IO, Any, BinaryIO, Protocol, TypeVar, overload
+from typing import IO, Any, BinaryIO, TypeVar, overload
 from typing_extensions import TypeAlias
 
 __all__ = [
@@ -126,7 +125,6 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     @overload
     def getheader(self, name: str, default: _T) -> str | _T: ...
     def getheaders(self) -> list[tuple[str, str]]: ...
-    def fileno(self) -> int: ...
     def isclosed(self) -> bool: ...
     def __iter__(self) -> Iterator[bytes]: ...
     def __enter__(self: Self) -> Self: ...
@@ -138,23 +136,6 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     def getcode(self) -> int: ...
     def begin(self) -> None: ...
 
-# This is an API stub only for the class below, not a class itself.
-# urllib.request uses it for a parameter.
-class _HTTPConnectionProtocol(Protocol):
-    if sys.version_info >= (3, 7):
-        def __call__(
-            self,
-            host: str,
-            port: int | None = ...,
-            timeout: float = ...,
-            source_address: tuple[str, int] | None = ...,
-            blocksize: int = ...,
-        ) -> HTTPConnection: ...
-    else:
-        def __call__(
-            self, host: str, port: int | None = ..., timeout: float = ..., source_address: tuple[str, int] | None = ...
-        ) -> HTTPConnection: ...
-
 class HTTPConnection:
     auto_open: int  # undocumented
     debuglevel: int
@@ -163,21 +144,15 @@ class HTTPConnection:
     timeout: float | None
     host: str
     port: int
-    sock: Any
-    if sys.version_info >= (3, 7):
-        def __init__(
-            self,
-            host: str,
-            port: int | None = ...,
-            timeout: float | None = ...,
-            source_address: tuple[str, int] | None = ...,
-            blocksize: int = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self, host: str, port: int | None = ..., timeout: float | None = ..., source_address: tuple[str, int] | None = ...
-        ) -> None: ...
-
+    sock: socket | Any  # can be `None` if `.connect()` was not called
+    def __init__(
+        self,
+        host: str,
+        port: int | None = ...,
+        timeout: float | None = ...,
+        source_address: tuple[str, int] | None = ...,
+        blocksize: int = ...,
+    ) -> None: ...
     def request(
         self, method: str, url: str, body: _DataType | None = ..., headers: Mapping[str, str] = ..., *, encode_chunked: bool = ...
     ) -> None: ...
@@ -192,33 +167,21 @@ class HTTPConnection:
     def send(self, data: _DataType) -> None: ...
 
 class HTTPSConnection(HTTPConnection):
-    if sys.version_info >= (3, 7):
-        def __init__(
-            self,
-            host: str,
-            port: int | None = ...,
-            key_file: str | None = ...,
-            cert_file: str | None = ...,
-            timeout: float | None = ...,
-            source_address: tuple[str, int] | None = ...,
-            *,
-            context: ssl.SSLContext | None = ...,
-            check_hostname: bool | None = ...,
-            blocksize: int = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            host: str,
-            port: int | None = ...,
-            key_file: str | None = ...,
-            cert_file: str | None = ...,
-            timeout: float | None = ...,
-            source_address: tuple[str, int] | None = ...,
-            *,
-            context: ssl.SSLContext | None = ...,
-            check_hostname: bool | None = ...,
-        ) -> None: ...
+    # Can be `None` if `.connect()` was not called:
+    sock: ssl.SSLSocket | Any  # type: ignore[override]
+    def __init__(
+        self,
+        host: str,
+        port: int | None = ...,
+        key_file: str | None = ...,
+        cert_file: str | None = ...,
+        timeout: float | None = ...,
+        source_address: tuple[str, int] | None = ...,
+        *,
+        context: ssl.SSLContext | None = ...,
+        check_hostname: bool | None = ...,
+        blocksize: int = ...,
+    ) -> None: ...
 
 class HTTPException(Exception): ...
 

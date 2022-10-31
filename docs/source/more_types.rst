@@ -60,12 +60,6 @@ pip to use :py:data:`~typing.NoReturn` in your code. Python 3 command line:
 
     python3 -m pip install --upgrade typing-extensions
 
-This works for Python 2:
-
-.. code-block:: text
-
-    pip install --upgrade typing-extensions
-
 .. _newtypes:
 
 NewTypes
@@ -810,10 +804,9 @@ classes are generic, self-type allows giving them precise signatures:
 .. code-block:: python
 
    T = TypeVar('T')
+   Q = TypeVar('Q', bound='Base[Any]')
 
    class Base(Generic[T]):
-       Q = TypeVar('Q', bound='Base[T]')
-
        def __init__(self, item: T) -> None:
            self.item = item
 
@@ -846,7 +839,7 @@ expect to get back when ``await``-ing the coroutine.
    import asyncio
 
    async def format_string(tag: str, count: int) -> str:
-       return 'T-minus {} ({})'.format(count, tag)
+       return f'T-minus {count} ({tag})'
 
    async def countdown_1(tag: str, count: int) -> str:
        while count > 0:
@@ -888,7 +881,7 @@ You may also choose to create a subclass of :py:class:`~typing.Awaitable` instea
 
        def __await__(self) -> Generator[Any, None, str]:
            for i in range(n, 0, -1):
-               print('T-minus {} ({})'.format(i, tag))
+               print(f'T-minus {i} ({tag})')
                yield from asyncio.sleep(0.1)
            return "Blastoff!"
 
@@ -925,7 +918,7 @@ To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
 
    async def countdown_4(tag: str, n: int) -> str:
        async for i in arange(n, 0, -1):
-           print('T-minus {} ({})'.format(i, tag))
+           print(f'T-minus {i} ({tag})')
            await asyncio.sleep(0.1)
        return "Blastoff!"
 
@@ -947,7 +940,7 @@ generator type as the return type:
    @asyncio.coroutine
    def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
        while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
+           print(f'T-minus {count} ({tag})')
            yield from asyncio.sleep(0.1)
            count -= 1
        return "Blastoff!"
@@ -1051,7 +1044,7 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 
    def print_typed_dict(obj: Mapping[str, object]) -> None:
        for key, value in obj.items():
-           print('{}: {}'.format(key, value))
+           print(f'{key}: {value}')
 
    print_typed_dict(Movie(name='Toy Story', year=1995))  # OK
 
@@ -1064,12 +1057,6 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
    .. code-block:: text
 
       python3 -m pip install --upgrade typing-extensions
-
-   Or, if you are using Python 2:
-
-   .. code-block:: text
-
-      pip install --upgrade typing-extensions
 
 Totality
 --------
@@ -1136,13 +1123,6 @@ of supported operations:
 * :py:meth:`d1.update(d2) <dict.update>`
 * :py:meth:`d.pop(key[, default]) <dict.pop>` (partial ``TypedDict``\s only)
 * ``del d[key]`` (partial ``TypedDict``\s only)
-
-In Python 2 code, these methods are also supported:
-
-* ``has_key(key)``
-* ``viewitems()``
-* ``viewkeys()``
-* ``viewvalues()``
 
 .. note::
 

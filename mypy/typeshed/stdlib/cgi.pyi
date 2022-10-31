@@ -2,42 +2,27 @@ import sys
 from _typeshed import Self, SupportsGetItem, SupportsItemAccess
 from builtins import list as _list, type as _type
 from collections.abc import Iterable, Iterator, Mapping
+from email.message import Message
 from types import TracebackType
 from typing import IO, Any, Protocol
 
-if sys.version_info >= (3, 8):
-    __all__ = [
-        "MiniFieldStorage",
-        "FieldStorage",
-        "parse",
-        "parse_multipart",
-        "parse_header",
-        "test",
-        "print_exception",
-        "print_environ",
-        "print_form",
-        "print_directory",
-        "print_arguments",
-        "print_environ_usage",
-    ]
-else:
-    __all__ = [
-        "MiniFieldStorage",
-        "FieldStorage",
-        "parse",
-        "parse_qs",
-        "parse_qsl",
-        "parse_multipart",
-        "parse_header",
-        "test",
-        "print_exception",
-        "print_environ",
-        "print_form",
-        "print_directory",
-        "print_arguments",
-        "print_environ_usage",
-        "escape",
-    ]
+__all__ = [
+    "MiniFieldStorage",
+    "FieldStorage",
+    "parse",
+    "parse_multipart",
+    "parse_header",
+    "test",
+    "print_exception",
+    "print_environ",
+    "print_form",
+    "print_directory",
+    "print_arguments",
+    "print_environ_usage",
+]
+
+if sys.version_info < (3, 8):
+    __all__ += ["parse_qs", "parse_qsl", "escape"]
 
 def parse(
     fp: IO[Any] | None = ...,
@@ -51,13 +36,9 @@ if sys.version_info < (3, 8):
     def parse_qs(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> dict[str, list[str]]: ...
     def parse_qsl(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> list[tuple[str, str]]: ...
 
-if sys.version_info >= (3, 7):
-    def parse_multipart(
-        fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = ..., errors: str = ..., separator: str = ...
-    ) -> dict[str, list[Any]]: ...
-
-else:
-    def parse_multipart(fp: IO[Any], pdict: SupportsGetItem[str, bytes]) -> dict[str, list[bytes]]: ...
+def parse_multipart(
+    fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = ..., errors: str = ..., separator: str = ...
+) -> dict[str, list[Any]]: ...
 
 class _Environ(Protocol):
     def __getitem__(self, __k: str) -> str: ...
@@ -92,7 +73,7 @@ class FieldStorage:
     keep_blank_values: int
     strict_parsing: int
     qs_on_post: str | None
-    headers: Mapping[str, str]
+    headers: Mapping[str, str] | Message
     fp: IO[bytes]
     encoding: str
     errors: str
@@ -113,7 +94,7 @@ class FieldStorage:
     def __init__(
         self,
         fp: IO[Any] | None = ...,
-        headers: Mapping[str, str] | None = ...,
+        headers: Mapping[str, str] | Message | None = ...,
         outerboundary: bytes = ...,
         environ: SupportsGetItem[str, str] = ...,
         keep_blank_values: int = ...,

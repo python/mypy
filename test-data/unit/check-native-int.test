@@ -1,0 +1,186 @@
+[case testNativeIntBasics]
+from mypy_extensions import i32, i64
+
+def f(x: int) -> i32:
+    return i32(x)
+
+def g(x: i32) -> None:
+    pass
+
+reveal_type(i32(1) + i32(2))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(i64(1) + i64(2))  # N: Revealed type is "mypy_extensions.i64"
+i32(1) + i64(2)  # E: Unsupported operand types for + ("i32" and "i64")
+i64(1) + i32(2)  # E: Unsupported operand types for + ("i64" and "i32")
+g(i32(2))
+g(i64(2))  # E: Argument 1 to "g" has incompatible type "i64"; expected "i32"
+[builtins fixtures/dict.pyi]
+
+[case testNativeIntCoercions]
+from mypy_extensions import i32, i64
+
+def f1(x: int) -> None: pass
+def f2(x: i32) -> None: pass
+
+a: i32 = 1
+b: i64 = 2
+c: i64 = a  # E: Incompatible types in assignment (expression has type "i32", variable has type "i64")
+d: i64 = i64(a)
+e: i32 = b  # E: Incompatible types in assignment (expression has type "i64", variable has type "i32")
+f: i32 = i32(b)
+g: int = a
+h: int = b
+
+f1(1)
+f1(a)
+f1(b)
+f2(1)
+f2(g)
+f2(h)
+f2(a)
+f2(b)  # E: Argument 1 to "f2" has incompatible type "i64"; expected "i32"
+[builtins fixtures/dict.pyi]
+
+[case testNativeIntJoins]
+from typing import TypeVar, Any
+from mypy_extensions import i32, i64
+
+T = TypeVar('T')
+
+def join(x: T, y: T) -> T: return x
+
+n32: i32 = 0
+n64: i64 = 1
+n = 2
+
+reveal_type(join(n32, n))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(join(n, n32))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(join(n64, n))  # N: Revealed type is "mypy_extensions.i64"
+reveal_type(join(n, n64))  # N: Revealed type is "mypy_extensions.i64"
+# i32 and i64 aren't treated as compatible
+reveal_type(join(n32, n64))  # N: Revealed type is "builtins.object"
+reveal_type(join(n64, n32))  # N: Revealed type is "builtins.object"
+
+a: Any
+reveal_type(join(n, a))    # N: Revealed type is "Any"
+reveal_type(join(n32, a))  # N: Revealed type is "Any"
+reveal_type(join(a, n64))  # N: Revealed type is "Any"
+reveal_type(join(n64, a))  # N: Revealed type is "Any"
+reveal_type(join(a, n64))  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+
+[case testNativeIntMeets]
+# flags: --strict-optional
+from typing import TypeVar, Callable, Any
+from mypy_extensions import i32, i64
+
+T = TypeVar('T')
+
+def f32(x: i32) -> None: pass
+def f64(x: i64) -> None: pass
+def f(x: int) -> None: pass
+def fa(x: Any) -> None: pass
+
+def meet(c1: Callable[[T], None], c2: Callable[[T], None]) -> T:
+    pass
+
+reveal_type(meet(f32, f))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(meet(f, f32))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(meet(f64, f))  # N: Revealed type is "mypy_extensions.i64"
+reveal_type(meet(f, f64))  # N: Revealed type is "mypy_extensions.i64"
+reveal_type(meet(f32, f64))  # N: Revealed type is "<nothing>"
+reveal_type(meet(f64, f32))  # N: Revealed type is "<nothing>"
+
+reveal_type(meet(f, fa))    # N: Revealed type is "builtins.int"
+reveal_type(meet(f32, fa))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(meet(fa, f32))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(meet(f64, fa))  # N: Revealed type is "mypy_extensions.i64"
+reveal_type(meet(fa, f64))  # N: Revealed type is "mypy_extensions.i64"
+[builtins fixtures/dict.pyi]
+
+[case testNativeIntCoerceInArithmetic]
+from mypy_extensions import i32, i64
+
+reveal_type(i32(1) + 1)  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(1 + i32(1))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(i64(1) + 1)  # N: Revealed type is "mypy_extensions.i64"
+reveal_type(1 + i64(1))  # N: Revealed type is "mypy_extensions.i64"
+n = int()
+reveal_type(i32(1) + n)  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(n + i32(1))  # N: Revealed type is "mypy_extensions.i32"
+[builtins fixtures/dict.pyi]
+
+[case testNativeIntNoNarrowing]
+from mypy_extensions import i32
+
+x: i32 = 1
+if int():
+    x = 2
+    reveal_type(x)  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(x)  # N: Revealed type is "mypy_extensions.i32"
+
+y = 1
+if int():
+    # We don't narrow an int down to i32, since they have different
+    # representations.
+    y = i32(1)
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+
+[case testNativeIntFloatConversion]
+# flags: --strict-optional
+from typing import TypeVar, Callable
+from mypy_extensions import i32
+
+x: i32 = 1.1  # E: Incompatible types in assignment (expression has type "float", variable has type "i32")
+y: float = i32(1)  # E: Incompatible types in assignment (expression has type "i32", variable has type "float")
+
+T = TypeVar('T')
+
+def join(x: T, y: T) -> T: return x
+
+reveal_type(join(x, y))  # N: Revealed type is "builtins.object"
+reveal_type(join(y, x))  # N: Revealed type is "builtins.object"
+
+def meet(c1: Callable[[T], None], c2: Callable[[T], None]) -> T:
+    pass
+
+def ff(x: float) -> None: pass
+def fi32(x: i32) -> None: pass
+
+reveal_type(meet(ff, fi32))  # N: Revealed type is "<nothing>"
+reveal_type(meet(fi32, ff))  # N: Revealed type is "<nothing>"
+[builtins fixtures/dict.pyi]
+
+[case testNativeIntForLoopRange]
+from mypy_extensions import i64, i32
+
+for a in range(i64(5)):
+    reveal_type(a)  # N: Revealed type is "mypy_extensions.i64"
+
+for b in range(0, i32(5)):
+    reveal_type(b)  # N: Revealed type is "mypy_extensions.i32"
+
+for c in range(i64(0), 5):
+    reveal_type(c)  # N: Revealed type is "mypy_extensions.i64"
+
+for d in range(i64(0), i64(5)):
+    reveal_type(d)  # N: Revealed type is "mypy_extensions.i64"
+
+for e in range(i64(0), i32(5)):
+    reveal_type(e)  # N: Revealed type is "builtins.int"
+
+for f in range(0, i64(3), 2):
+    reveal_type(f)  # N: Revealed type is "mypy_extensions.i64"
+
+n = 5
+for g in range(0, n, i64(2)):
+    reveal_type(g)  # N: Revealed type is "mypy_extensions.i64"
+[builtins fixtures/primitives.pyi]
+
+[case testNativeIntComprehensionRange]
+from mypy_extensions import i64, i32
+
+reveal_type([a for a in range(i64(5))])  # N: Revealed type is "builtins.list[mypy_extensions.i64]"
+[reveal_type(a) for a in range(0, i32(5))]  # N: Revealed type is "mypy_extensions.i32"
+[builtins fixtures/primitives.pyi]

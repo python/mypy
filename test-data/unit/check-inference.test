@@ -448,7 +448,7 @@ g(None) # Ok
 f()     # Ok because not used to infer local variable type
 g(a)
 
-def f() -> T: pass
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 def g(a: T) -> None: pass
 [out]
 
@@ -1276,6 +1276,21 @@ class A:
 def h(x: Callable[[], int]) -> None:
     pass
 
+[case testLambdaJoinWithDynamicConstructor]
+from typing import Any, Union
+
+class Wrapper:
+    def __init__(self, x: Any) -> None: ...
+
+def f(cond: bool) -> Any:
+    f = Wrapper if cond else lambda x: x
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any"
+    return f(3)
+
+def g(cond: bool) -> Any:
+    f = lambda x: x if cond else Wrapper
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any"
+    return f(3)
 
 -- Boolean operators
 -- -----------------
@@ -1475,9 +1490,8 @@ class A:
         self.x = [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 class B(A):
-    # TODO?: This error is kind of a false positive, unfortunately
     @property
-    def x(self) -> List[int]:  # E: Signature of "x" incompatible with supertype "A"
+    def x(self) -> List[int]:  # E: Cannot override writeable attribute with read-only property
         return [123]
 [builtins fixtures/list.pyi]
 
@@ -2341,7 +2355,7 @@ def main() -> None:
 [case testDontMarkUnreachableAfterInferenceUninhabited]
 from typing import TypeVar
 T = TypeVar('T')
-def f() -> T: pass
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 
 class C:
     x = f() # E: Need type annotation for "x"
@@ -2394,7 +2408,7 @@ if bool():
 
 [case testLocalPartialTypesWithGlobalInitializedToNone]
 # flags: --local-partial-types
-x = None # E: Need type annotation for "x"
+x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 def f() -> None:
     global x
@@ -2405,7 +2419,7 @@ reveal_type(x) # N: Revealed type is "None"
 
 [case testLocalPartialTypesWithGlobalInitializedToNone2]
 # flags: --local-partial-types
-x = None # E: Need type annotation for "x"
+x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 def f():
     global x
@@ -2454,7 +2468,7 @@ reveal_type(a)  # N: Revealed type is "builtins.str"
 [case testLocalPartialTypesWithClassAttributeInitializedToNone]
 # flags: --local-partial-types
 class A:
-    x = None # E: Need type annotation for "x"
+    x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
     def f(self) -> None:
         self.x = 1
@@ -2637,7 +2651,7 @@ from typing import List
 def f(x): pass
 
 class A:
-    x = None  # E: Need type annotation for "x"
+    x = None  # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
     def f(self, p: List[str]) -> None:
         self.x = f(p)
@@ -2647,7 +2661,7 @@ class A:
 [case testLocalPartialTypesAccessPartialNoneAttribute]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for "a"
+    a = None  # E: Need type annotation for "a" (hint: "a: Optional[<type>] = ...")
 
     def f(self, x) -> None:
         C.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
@@ -2655,7 +2669,7 @@ class C:
 [case testLocalPartialTypesAccessPartialNoneAttribute2]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for "a"
+    a = None  # E: Need type annotation for "a" (hint: "a: Optional[<type>] = ...")
 
     def f(self, x) -> None:
         self.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
@@ -3132,13 +3146,6 @@ y['a'] = []
 reveal_type(y)  # N: Revealed type is "collections.defaultdict[Any, Any]"
 [builtins fixtures/dict.pyi]
 
-[case testJoinOfStrAndUnicodeSubclass_python2]
-class S(unicode): pass
-reveal_type(S() if bool() else '')  # N: Revealed type is "builtins.unicode"
-reveal_type('' if bool() else S())  # N: Revealed type is "builtins.unicode"
-reveal_type(S() if bool() else str())  # N: Revealed type is "builtins.unicode"
-reveal_type(str() if bool() else S())  # N: Revealed type is "builtins.unicode"
-
 [case testInferCallableReturningNone1]
 # flags: --no-strict-optional
 from typing import Callable, TypeVar
@@ -3255,3 +3262,123 @@ reveal_type(x)  # N: Revealed type is "builtins.bytes"
 if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/dict.pyi]
+
+[case testSuggestPep604AnnotationForPartialNone]
+# flags: --local-partial-types --python-version 3.10
+x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
+
+[case testTupleContextFromIterable]
+from typing import TypeVar, Iterable, List, Union
+
+T = TypeVar("T")
+
+def foo(x: List[T]) -> List[T]: ...
+x: Iterable[List[Union[int, str]]] = (foo([1]), foo(["a"]))
+[builtins fixtures/tuple.pyi]
+
+[case testTupleContextFromIterable2]
+from typing import Dict, Iterable, Tuple, Union
+
+def foo(x: Union[Tuple[str, Dict[str, int], str], Iterable[object]]) -> None: ...
+foo(("a", {"a": "b"}, "b"))
+[builtins fixtures/dict.pyi]
+
+[case testUseSupertypeAsInferenceContext]
+# flags: --strict-optional
+from typing import List, Optional
+
+class B:
+    x: List[Optional[int]]
+
+class C(B):
+    x = [1]
+
+reveal_type(C().x)  # N: Revealed type is "builtins.list[Union[builtins.int, None]]"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextInvalidType]
+from typing import List
+class P:
+    x: List[int]
+class C(P):
+    x = ['a']  # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartial]
+from typing import List
+
+class A:
+    x: List[str]
+
+class B(A):
+    x = []
+
+reveal_type(B().x)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartialError]
+class A:
+    x = ['a', 'b']
+
+class B(A):
+    x = []
+    x.append(2)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "str"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextPartialErrorProperty]
+from typing import List
+
+class P:
+    @property
+    def x(self) -> List[int]: ...
+class C(P):
+    x = []
+
+C.x.append("no")  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeAsInferenceContextConflict]
+from typing import List
+class P:
+    x: List[int]
+class M:
+    x: List[str]
+class C(P, M):
+    x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+reveal_type(C.x)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/list.pyi]
+
+[case testNoPartialInSupertypeAsContext]
+class A:
+    args = {}  # E: Need type annotation for "args" (hint: "args: Dict[<type>, <type>] = ...")
+    def f(self) -> None:
+        value = {1: "Hello"}
+        class B(A):
+            args = value
+[builtins fixtures/dict.pyi]
+
+[case testInferSimpleLiteralInClassBodyCycle]
+import a
+[file a.py]
+import b
+reveal_type(b.B.x)
+class A:
+    x = 42
+[file b.py]
+import a
+reveal_type(a.A.x)
+class B:
+    x = 42
+[out]
+tmp/b.py:2: note: Revealed type is "builtins.int"
+tmp/a.py:2: note: Revealed type is "builtins.int"
+
+[case testUnionTypeCallableInference]
+from typing import Callable, Type, TypeVar, Union
+
+class A:
+    def __init__(self, x: str) -> None: ...
+
+T = TypeVar("T")
+def type_or_callable(value: T, tp: Union[Type[T], Callable[[int], T]]) -> T: ...
+reveal_type(type_or_callable(A("test"), A))  # N: Revealed type is "__main__.A"

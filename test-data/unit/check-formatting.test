@@ -34,19 +34,6 @@ xs: str
 '%(name)s' % {'name': b'value'}  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior
 [builtins fixtures/primitives.pyi]
 
-[case testStringInterpolationSBytesVsStrResultsPy2]
-# flags: --python-version 2.7
-xs = 'x'
-xu = u'x'
-
-reveal_type('%s' % xu)  # N: Revealed type is "builtins.unicode"
-reveal_type('%s, %d' % (u'abc', 42))  # N: Revealed type is "builtins.unicode"
-reveal_type('%(key)s' % {'key': xu})  # N: Revealed type is "builtins.unicode"
-reveal_type('%r' % xu)  # N: Revealed type is "builtins.str"
-reveal_type('%s' % xs)  # N: Revealed type is "builtins.str"
-[builtins fixtures/primitives.pyi]
-[typing fixtures/typing-medium.pyi]
-
 [case testStringInterpolationCount]
 '%d %d' % 1  # E: Not enough arguments for format string
 '%d %d' % (1, 2)
@@ -68,12 +55,6 @@ a = None # type: Any
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character "W"
 '%b' % 1  # E: Format character "b" is only supported on bytes patterns
-
-[case testStringInterPolationPython2]
-# flags: --python-version 2.7
-b'%b' % 1  # E: Format character "b" is only supported in Python 3.5 and later
-b'%s' % 1
-b'%a' % 1  # E: Format character "a" is only supported in Python 3
 
 [case testStringInterpolationWidth]
 '%2f' % 3.14
@@ -116,18 +97,6 @@ b'%a' % 1  # E: Format character "a" is only supported in Python 3
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
-[case testStringInterPolationCPython2]
-# flags: --py2 --no-strict-optional
-'%c' % 1
-'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
-'%c' % 's'
-'%c' % ''    # E: "%c" requires int or char
-'%c' % 'ab'  # E: "%c" requires int or char
-'%c' % b'a'
-'%c' % b''   # E: "%c" requires int or char
-'%c' % b'ab' # E: "%c" requires int or char
-[builtins_py2 fixtures/python2.pyi]
-
 [case testStringInterpolationC]
 # flags: --python-version 3.6
 '%c' % 1
@@ -165,13 +134,6 @@ ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[in
 '%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "Mapping[str, Any]")
 b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "Mapping[bytes, Any]")
 [builtins fixtures/primitives.pyi]
-
-[case testStringInterpolationMappingInvalidDictTypesPy2]
-# flags: --py2 --no-strict-optional
-from typing import Any, Dict
-di = None # type: Dict[int, int]
-'%()d' % di  # E: Format requires a mapping (expression has type "Dict[int, int]", expected type for mapping is "Union[Mapping[str, Any], Mapping[unicode, Any]]")
-[builtins_py2 fixtures/python2.pyi]
 
 [case testStringInterpolationMappingInvalidSpecifiers]
 '%(a)d %d' % 1  # E: String interpolation mixes specifier with and without mapping keys
@@ -244,9 +206,6 @@ t5: Iterable[str] = ('A', 'B')
 '%s %s' % t5
 [builtins fixtures/tuple.pyi]
 
-[case testUnicodeInterpolation_python2]
-u'%s' % (u'abc',)
-
 
 -- Bytes interpolation
 -- --------------------
@@ -260,18 +219,6 @@ b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
 b'%b' % 1  # E: Incompatible types in string interpolation (expression has type "int", placeholder has type "bytes")
 b'%b' % b'1'
 b'%a' % 3
-
-[case testBytesInterPolationCPython2]
-# flags: --py2 --no-strict-optional
-b'%c' % 1
-b'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
-b'%c' % 's'
-b'%c' % ''    # E: "%c" requires int or char
-b'%c' % 'ab'  # E: "%c" requires int or char
-b'%c' % b'a'
-b'%c' % b''   # E: "%c" requires int or char
-b'%c' % b'aa' # E: "%c" requires int or char
-[builtins_py2 fixtures/python2.pyi]
 
 [case testBytesInterpolationC]
 # flags: --python-version 3.6
@@ -521,46 +468,6 @@ class D(bytes):
 
 '{}'.format(D())
 [builtins fixtures/primitives.pyi]
-
-[case testFormatCallFormatTypesBytesNotPy2]
-# flags: --py2
-from typing import Union, TypeVar, NewType, Generic
-
-A = TypeVar('A', str, unicode)
-B = TypeVar('B', bound=str)
-
-x = ''  # type: Union[str, unicode]
-a = ''
-b = b''
-
-N = NewType('N', str)
-n = N(b'')
-
-'{}'.format(a)
-'{}'.format(b)
-'{}'.format(x)
-'{}'.format(n)
-
-u'{}'.format(a)
-u'{}'.format(b)
-u'{}'.format(x)
-u'{}'.format(n)
-
-class C(Generic[B]):
-    x = None  # type: B
-    def meth(self):
-        # type: () -> None
-        '{}'.format(self.x)
-
-def func(x):
-    # type: (A) -> A
-    '{}'.format(x)
-    return x
-
-'{!r}'.format(b)
-'{!r}'.format(x)
-'{!r}'.format(n)
-[builtins_py2 fixtures/python2.pyi]
 
 [case testFormatCallFinal]
 from typing_extensions import Final

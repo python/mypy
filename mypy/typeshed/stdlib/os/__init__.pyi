@@ -1,15 +1,20 @@
 import sys
 from _typeshed import (
+    AnyStr_co,
     BytesPath,
     FileDescriptorLike,
+    GenericPath,
     OpenBinaryMode,
     OpenBinaryModeReading,
     OpenBinaryModeUpdating,
     OpenBinaryModeWriting,
     OpenTextMode,
+    ReadableBuffer,
     Self,
     StrOrBytesPath,
     StrPath,
+    SupportsLenAndGetItem,
+    WriteableBuffer,
     structseq,
 )
 from abc import abstractmethod
@@ -32,7 +37,6 @@ path = _path
 _T = TypeVar("_T")
 _T1 = TypeVar("_T1")
 _T2 = TypeVar("_T2")
-_AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
 
 # ----- os variables -----
 
@@ -212,8 +216,8 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
             decodevalue: _EnvironCodeFunc[AnyStr],
         ) -> None: ...
     else:
-        putenv: Callable[[AnyStr, AnyStr], None]
-        unsetenv: Callable[[AnyStr, AnyStr], None]
+        putenv: Callable[[AnyStr, AnyStr], object]
+        unsetenv: Callable[[AnyStr, AnyStr], object]
         def __init__(
             self,
             data: MutableMapping[AnyStr, AnyStr],
@@ -221,8 +225,8 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
             decodekey: _EnvironCodeFunc[AnyStr],
             encodevalue: _EnvironCodeFunc[AnyStr],
             decodevalue: _EnvironCodeFunc[AnyStr],
-            putenv: Callable[[AnyStr, AnyStr], None],
-            unsetenv: Callable[[AnyStr, AnyStr], None],
+            putenv: Callable[[AnyStr, AnyStr], object],
+            unsetenv: Callable[[AnyStr, AnyStr], object],
         ) -> None: ...
 
     def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore[override]
@@ -356,9 +360,9 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     # See https://github.com/python/typeshed/pull/6560#issuecomment-991253327
 
 @runtime_checkable
-class PathLike(Protocol[_AnyStr_co]):
+class PathLike(Protocol[AnyStr_co]):
     @abstractmethod
-    def __fspath__(self) -> _AnyStr_co: ...
+    def __fspath__(self) -> AnyStr_co: ...
 
 @overload
 def listdir(path: StrPath | None = ...) -> list[str]: ...
@@ -387,13 +391,8 @@ class DirEntry(Generic[AnyStr]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-if sys.version_info >= (3, 7):
-    _StatVfsTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int, int, int]
-else:
-    _StatVfsTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int, int]
-
 @final
-class statvfs_result(structseq[int], _StatVfsTuple):
+class statvfs_result(structseq[int], tuple[int, int, int, int, int, int, int, int, int, int, int]):
     if sys.version_info >= (3, 10):
         __match_args__: Final = (
             "f_bsize",
@@ -427,9 +426,8 @@ class statvfs_result(structseq[int], _StatVfsTuple):
     def f_flag(self) -> int: ...
     @property
     def f_namemax(self) -> int: ...
-    if sys.version_info >= (3, 7):
-        @property
-        def f_fsid(self) -> int: ...
+    @property
+    def f_fsid(self) -> int: ...
 
 # ----- os function stubs -----
 def fsencode(filename: StrOrBytesPath) -> bytes: ...
@@ -594,13 +592,7 @@ def close(fd: int) -> None: ...
 def closerange(__fd_low: int, __fd_high: int) -> None: ...
 def device_encoding(fd: int) -> str | None: ...
 def dup(__fd: int) -> int: ...
-
-if sys.version_info >= (3, 7):
-    def dup2(fd: int, fd2: int, inheritable: bool = ...) -> int: ...
-
-else:
-    def dup2(fd: int, fd2: int, inheritable: bool = ...) -> None: ...
-
+def dup2(fd: int, fd2: int, inheritable: bool = ...) -> int: ...
 def fstat(fd: int) -> stat_result: ...
 def ftruncate(__fd: int, __length: int) -> None: ...
 def fsync(fd: FileDescriptorLike) -> None: ...
@@ -615,7 +607,6 @@ def pipe() -> tuple[int, int]: ...
 def read(__fd: int, __length: int) -> bytes: ...
 
 if sys.platform != "win32":
-    # Unix only
     def fchmod(fd: int, mode: int) -> None: ...
     def fchown(fd: int, uid: int, gid: int) -> None: ...
     def fpathconf(__fd: int, __name: str | int) -> int: ...
@@ -627,21 +618,21 @@ if sys.platform != "win32":
     if sys.platform != "darwin":
         def fdatasync(fd: FileDescriptorLike) -> None: ...
         def pipe2(__flags: int) -> tuple[int, int]: ...  # some flavors of Unix
-        def posix_fallocate(fd: int, offset: int, length: int) -> None: ...
-        def posix_fadvise(fd: int, offset: int, length: int, advice: int) -> None: ...
+        def posix_fallocate(__fd: int, __offset: int, __length: int) -> None: ...
+        def posix_fadvise(__fd: int, __offset: int, __length: int, __advice: int) -> None: ...
 
     def pread(__fd: int, __length: int, __offset: int) -> bytes: ...
     def pwrite(__fd: int, __buffer: bytes, __offset: int) -> int: ...
+    # In CI, stubtest sometimes reports that these are available on MacOS, sometimes not
+    def preadv(__fd: int, __buffers: SupportsLenAndGetItem[WriteableBuffer], __offset: int, __flags: int = ...) -> int: ...
+    def pwritev(__fd: int, __buffers: SupportsLenAndGetItem[ReadableBuffer], __offset: int, __flags: int = ...) -> int: ...
     if sys.platform != "darwin":
         if sys.version_info >= (3, 10):
             RWF_APPEND: int  # docs say available on 3.7+, stubtest says otherwise
-        if sys.version_info >= (3, 7):
-            def preadv(__fd: int, __buffers: Iterable[bytes], __offset: int, __flags: int = ...) -> int: ...
-            def pwritev(__fd: int, __buffers: Iterable[bytes], __offset: int, __flags: int = ...) -> int: ...
-            RWF_DSYNC: int
-            RWF_SYNC: int
-            RWF_HIPRI: int
-            RWF_NOWAIT: int
+        RWF_DSYNC: int
+        RWF_SYNC: int
+        RWF_HIPRI: int
+        RWF_NOWAIT: int
     @overload
     def sendfile(out_fd: int, in_fd: int, offset: int | None, count: int) -> int: ...
     @overload
@@ -654,8 +645,8 @@ if sys.platform != "win32":
         trailers: Sequence[bytes] = ...,
         flags: int = ...,
     ) -> int: ...  # FreeBSD and Mac OS X only
-    def readv(__fd: int, __buffers: Sequence[bytearray]) -> int: ...
-    def writev(__fd: int, __buffers: Sequence[bytes]) -> int: ...
+    def readv(__fd: int, __buffers: SupportsLenAndGetItem[WriteableBuffer]) -> int: ...
+    def writev(__fd: int, __buffers: SupportsLenAndGetItem[ReadableBuffer]) -> int: ...
 
 @final
 class terminal_size(structseq[int], tuple[int, int]):
@@ -666,7 +657,7 @@ class terminal_size(structseq[int], tuple[int, int]):
     @property
     def lines(self) -> int: ...
 
-def get_terminal_size(fd: int = ...) -> terminal_size: ...
+def get_terminal_size(__fd: int = ...) -> terminal_size: ...
 def get_inheritable(__fd: int) -> bool: ...
 def set_inheritable(__fd: int, __inheritable: bool) -> None: ...
 
@@ -726,7 +717,7 @@ if sys.platform != "win32":
     def makedev(__major: int, __minor: int) -> int: ...
     def pathconf(path: _FdOrAnyPath, name: str | int) -> int: ...  # Unix only
 
-def readlink(path: AnyStr | PathLike[AnyStr], *, dir_fd: int | None = ...) -> AnyStr: ...
+def readlink(path: GenericPath[AnyStr], *, dir_fd: int | None = ...) -> AnyStr: ...
 def remove(path: StrOrBytesPath, *, dir_fd: int | None = ...) -> None: ...
 def removedirs(name: StrOrBytesPath) -> None: ...
 def rename(src: StrOrBytesPath, dst: StrOrBytesPath, *, src_dir_fd: int | None = ..., dst_dir_fd: int | None = ...) -> None: ...
@@ -741,20 +732,11 @@ class _ScandirIterator(Iterator[DirEntry[AnyStr]], AbstractContextManager[_Scand
 
 @overload
 def scandir(path: None = ...) -> _ScandirIterator[str]: ...
-
-if sys.version_info >= (3, 7):
-    @overload
-    def scandir(path: int) -> _ScandirIterator[str]: ...
-
 @overload
-def scandir(path: AnyStr | PathLike[AnyStr]) -> _ScandirIterator[AnyStr]: ...
+def scandir(path: int) -> _ScandirIterator[str]: ...
+@overload
+def scandir(path: GenericPath[AnyStr]) -> _ScandirIterator[AnyStr]: ...
 def stat(path: _FdOrAnyPath, *, dir_fd: int | None = ..., follow_symlinks: bool = ...) -> stat_result: ...
-
-if sys.version_info < (3, 7):
-    @overload
-    def stat_float_times() -> bool: ...
-    @overload
-    def stat_float_times(__newvalue: bool) -> None: ...
 
 if sys.platform != "win32":
     def statvfs(path: _FdOrAnyPath) -> statvfs_result: ...  # Unix only
@@ -775,41 +757,26 @@ def utime(
     follow_symlinks: bool = ...,
 ) -> None: ...
 
-_OnError: TypeAlias = Callable[[OSError], Any]
+_OnError: TypeAlias = Callable[[OSError], object]
 
 def walk(
-    top: AnyStr | PathLike[AnyStr], topdown: bool = ..., onerror: _OnError | None = ..., followlinks: bool = ...
+    top: GenericPath[AnyStr], topdown: bool = ..., onerror: _OnError | None = ..., followlinks: bool = ...
 ) -> Iterator[tuple[AnyStr, list[AnyStr], list[AnyStr]]]: ...
 
 if sys.platform != "win32":
-    if sys.version_info >= (3, 7):
-        @overload
-        def fwalk(
-            top: StrPath = ...,
-            topdown: bool = ...,
-            onerror: _OnError | None = ...,
-            *,
-            follow_symlinks: bool = ...,
-            dir_fd: int | None = ...,
-        ) -> Iterator[tuple[str, list[str], list[str], int]]: ...
-        @overload
-        def fwalk(
-            top: bytes,
-            topdown: bool = ...,
-            onerror: _OnError | None = ...,
-            *,
-            follow_symlinks: bool = ...,
-            dir_fd: int | None = ...,
-        ) -> Iterator[tuple[bytes, list[bytes], list[bytes], int]]: ...
-    else:
-        def fwalk(
-            top: StrPath = ...,
-            topdown: bool = ...,
-            onerror: _OnError | None = ...,
-            *,
-            follow_symlinks: bool = ...,
-            dir_fd: int | None = ...,
-        ) -> Iterator[tuple[str, list[str], list[str], int]]: ...
+    @overload
+    def fwalk(
+        top: StrPath = ...,
+        topdown: bool = ...,
+        onerror: _OnError | None = ...,
+        *,
+        follow_symlinks: bool = ...,
+        dir_fd: int | None = ...,
+    ) -> Iterator[tuple[str, list[str], list[str], int]]: ...
+    @overload
+    def fwalk(
+        top: bytes, topdown: bool = ..., onerror: _OnError | None = ..., *, follow_symlinks: bool = ..., dir_fd: int | None = ...
+    ) -> Iterator[tuple[bytes, list[bytes], list[bytes], int]]: ...
     if sys.platform == "linux":
         def getxattr(path: _FdOrAnyPath, attribute: StrOrBytesPath, *, follow_symlinks: bool = ...) -> bytes: ...
         def listxattr(path: _FdOrAnyPath | None = ..., *, follow_symlinks: bool = ...) -> list[str]: ...
@@ -859,7 +826,7 @@ if sys.platform != "win32":
     def killpg(__pgid: int, __signal: int) -> None: ...
     def nice(__increment: int) -> int: ...
     if sys.platform != "darwin":
-        def plock(op: int) -> None: ...  # ???op is int?
+        def plock(__op: int) -> None: ...  # ???op is int?
 
 class _wrap_close(_TextIOWrapper):
     def __init__(self, stream: _TextIOWrapper, proc: Popen[str]) -> None: ...
@@ -921,7 +888,7 @@ else:
             @property
             def si_code(self) -> int: ...
 
-        def waitid(idtype: int, ident: int, options: int) -> waitid_result: ...
+        def waitid(__idtype: int, __ident: int, __options: int) -> waitid_result: ...
 
     def wait3(options: int) -> tuple[int, int, Any]: ...
     def wait4(pid: int, options: int) -> tuple[int, int, Any]: ...
@@ -977,13 +944,13 @@ if sys.platform != "win32":
     def sched_get_priority_max(policy: int) -> int: ...  # some flavors of Unix
     def sched_yield() -> None: ...  # some flavors of Unix
     if sys.platform != "darwin":
-        def sched_setscheduler(pid: int, policy: int, param: sched_param) -> None: ...  # some flavors of Unix
-        def sched_getscheduler(pid: int) -> int: ...  # some flavors of Unix
-        def sched_rr_get_interval(pid: int) -> float: ...  # some flavors of Unix
-        def sched_setparam(pid: int, param: sched_param) -> None: ...  # some flavors of Unix
-        def sched_getparam(pid: int) -> sched_param: ...  # some flavors of Unix
-        def sched_setaffinity(pid: int, mask: Iterable[int]) -> None: ...  # some flavors of Unix
-        def sched_getaffinity(pid: int) -> set[int]: ...  # some flavors of Unix
+        def sched_setscheduler(__pid: int, __policy: int, __param: sched_param) -> None: ...  # some flavors of Unix
+        def sched_getscheduler(__pid: int) -> int: ...  # some flavors of Unix
+        def sched_rr_get_interval(__pid: int) -> float: ...  # some flavors of Unix
+        def sched_setparam(__pid: int, __param: sched_param) -> None: ...  # some flavors of Unix
+        def sched_getparam(__pid: int) -> sched_param: ...  # some flavors of Unix
+        def sched_setaffinity(__pid: int, __mask: Iterable[int]) -> None: ...  # some flavors of Unix
+        def sched_getaffinity(__pid: int) -> set[int]: ...  # some flavors of Unix
 
 def cpu_count() -> int | None: ...
 
@@ -998,7 +965,7 @@ if sys.platform == "linux":
 
 def urandom(__size: int) -> bytes: ...
 
-if sys.version_info >= (3, 7) and sys.platform != "win32":
+if sys.platform != "win32":
     def register_at_fork(
         *,
         before: Callable[..., Any] | None = ...,
@@ -1010,7 +977,7 @@ if sys.version_info >= (3, 8):
     if sys.platform == "win32":
         class _AddedDllDirectory:
             path: str | None
-            def __init__(self, path: str | None, cookie: _T, remove_dll_directory: Callable[[_T], Any]) -> None: ...
+            def __init__(self, path: str | None, cookie: _T, remove_dll_directory: Callable[[_T], object]) -> None: ...
             def close(self) -> None: ...
             def __enter__(self: Self) -> Self: ...
             def __exit__(self, *args: object) -> None: ...

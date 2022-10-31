@@ -22,7 +22,6 @@ Protocol = 0
 Tuple = 0
 Callable = 0
 _promote = 0
-NamedTuple = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
@@ -38,6 +37,8 @@ T_contra = TypeVar('T_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
+
+class NamedTuple(tuple[Any, ...]): ...
 
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
@@ -159,8 +160,8 @@ class SupportsAbs(Protocol[T_co]):
 def runtime_checkable(cls: T) -> T:
     return cls
 
-class ContextManager(Generic[T]):
-    def __enter__(self) -> T: pass
+class ContextManager(Generic[T_co]):
+    def __enter__(self) -> T_co: pass
     # Use Any because not all the precise types are in the fixtures.
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
 

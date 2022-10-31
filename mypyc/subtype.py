@@ -1,9 +1,25 @@
 """Subtype check for RTypes."""
 
+from __future__ import annotations
+
 from mypyc.ir.rtypes import (
-    RType, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RUnion, RStruct, RArray,
-    is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive, is_short_int_rprimitive,
-    is_object_rprimitive, is_bit_rprimitive
+    RArray,
+    RInstance,
+    RPrimitive,
+    RStruct,
+    RTuple,
+    RType,
+    RTypeVisitor,
+    RUnion,
+    RVoid,
+    is_bit_rprimitive,
+    is_bool_rprimitive,
+    is_fixed_width_rtype,
+    is_int_rprimitive,
+    is_object_rprimitive,
+    is_short_int_rprimitive,
+    is_tagged,
+    is_tuple_rprimitive,
 )
 
 
@@ -13,13 +29,11 @@ def is_subtype(left: RType, right: RType) -> bool:
     elif isinstance(right, RUnion):
         if isinstance(left, RUnion):
             for left_item in left.items:
-                if not any(is_subtype(left_item, right_item)
-                           for right_item in right.items):
+                if not any(is_subtype(left_item, right_item) for right_item in right.items):
                     return False
             return True
         else:
-            return any(is_subtype(left, item)
-                       for item in right.items)
+            return any(is_subtype(left, item) for item in right.items)
     return left.accept(SubtypeVisitor(right))
 
 
@@ -37,18 +51,20 @@ class SubtypeVisitor(RTypeVisitor[bool]):
         return isinstance(self.right, RInstance) and self.right.class_ir in left.class_ir.mro
 
     def visit_runion(self, left: RUnion) -> bool:
-        return all(is_subtype(item, self.right)
-                   for item in left.items)
+        return all(is_subtype(item, self.right) for item in left.items)
 
     def visit_rprimitive(self, left: RPrimitive) -> bool:
         right = self.right
         if is_bool_rprimitive(left):
-            if is_int_rprimitive(right):
+            if is_tagged(right) or is_fixed_width_rtype(right):
                 return True
         elif is_bit_rprimitive(left):
-            if is_bool_rprimitive(right) or is_int_rprimitive(right):
+            if is_bool_rprimitive(right) or is_tagged(right) or is_fixed_width_rtype(right):
                 return True
         elif is_short_int_rprimitive(left):
+            if is_int_rprimitive(right):
+                return True
+        elif is_fixed_width_rtype(left):
             if is_int_rprimitive(right):
                 return True
         return left is right
@@ -58,7 +74,8 @@ class SubtypeVisitor(RTypeVisitor[bool]):
             return True
         if isinstance(self.right, RTuple):
             return len(self.right.types) == len(left.types) and all(
-                is_subtype(t1, t2) for t1, t2 in zip(left.types, self.right.types))
+                is_subtype(t1, t2) for t1, t2 in zip(left.types, self.right.types)
+            )
         return False
 
     def visit_rstruct(self, left: RStruct) -> bool:

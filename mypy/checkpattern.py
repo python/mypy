@@ -1,30 +1,53 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 
+from __future__ import annotations
+
 from collections import defaultdict
-from typing import List, Optional, Tuple, Dict, NamedTuple, Set, Union
+from typing import NamedTuple
 from typing_extensions import Final
 
 import mypy.checker
+from mypy import message_registry
 from mypy.checkmember import analyze_member_access
 from mypy.expandtype import expand_type_by_instance
 from mypy.join import join_types
 from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
-from mypy import message_registry
 from mypy.messages import MessageBuilder
-from mypy.nodes import Expression, ARG_POS, TypeAlias, TypeInfo, Var, NameExpr
+from mypy.nodes import ARG_POS, Expression, NameExpr, TypeAlias, TypeInfo, Var
 from mypy.patterns import (
-    Pattern, AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
-    ClassPattern, SingletonPattern
+    AsPattern,
+    ClassPattern,
+    MappingPattern,
+    OrPattern,
+    Pattern,
+    SequencePattern,
+    SingletonPattern,
+    StarredPattern,
+    ValuePattern,
 )
 from mypy.plugin import Plugin
 from mypy.subtypes import is_subtype
-from mypy.typeops import try_getting_str_literals_from_type, make_simplified_union, \
-    coerce_to_literal
+from mypy.typeops import (
+    coerce_to_literal,
+    make_simplified_union,
+    try_getting_str_literals_from_type,
+    tuple_fallback,
+)
 from mypy.types import (
-    LiteralType, ProperType, AnyType, TypeOfAny, Instance, Type, UninhabitedType, get_proper_type,
-    TypedDictType, TupleType, NoneType, UnionType
+    AnyType,
+    Instance,
+    LiteralType,
+    NoneType,
+    ProperType,
+    TupleType,
+    Type,
+    TypedDictType,
+    TypeOfAny,
+    UninhabitedType,
+    UnionType,
+    get_proper_type,
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
@@ -43,11 +66,7 @@ self_match_type_names: Final = [
     "builtins.tuple",
 ]
 
-non_sequence_match_type_names: Final = [
-    "builtins.str",
-    "builtins.bytes",
-    "builtins.bytearray"
-]
+non_sequence_match_type_names: Final = ["builtins.str", "builtins.bytes", "builtins.bytearray"]
 
 
 # For every Pattern a PatternType can be calculated. This requires recursively calculating
@@ -56,7 +75,7 @@ non_sequence_match_type_names: Final = [
 class PatternType(NamedTuple):
     type: Type  # The type the match subject can be narrowed to
     rest_type: Type  # The remaining type if the pattern didn't match
-    captures: Dict[Expression, Type]  # The variables captured by the pattern
+    captures: dict[Expression, Type]  # The variables captured by the pattern
 
 
 class PatternChecker(PatternVisitor[PatternType]):
@@ -67,7 +86,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: 'mypy.checker.TypeChecker'
+    chk: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Currently unused
@@ -77,18 +96,15 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     subject_type: Type
     # Type of the subject to check the (sub)pattern against
-    type_context: List[Type]
+    type_context: list[Type]
     # Types that match against self instead of their __match_args__ if used as a class pattern
     # Filled in from self_match_type_names
-    self_match_types: List[Type]
+    self_match_types: list[Type]
     # Types that are sequences, but don't match sequence patterns. Filled in from
     # non_sequence_match_type_names
-    non_sequence_match_types: List[Type]
+    non_sequence_match_types: list[Type]
 
-    def __init__(self,
-                 chk: 'mypy.checker.TypeChecker',
-                 msg: MessageBuilder, plugin: Plugin
-                 ) -> None:
+    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
@@ -115,10 +131,9 @@ class PatternChecker(PatternVisitor[PatternType]):
             typ, rest_type, type_map = current_type, UninhabitedType(), {}
 
         if not is_uninhabited(typ) and o.name is not None:
-            typ, _ = self.chk.conditional_types_with_intersection(current_type,
-                                                                  [get_type_range(typ)],
-                                                                  o,
-                                                                  default=current_type)
+            typ, _ = self.chk.conditional_types_with_intersection(
+                current_type, [get_type_range(typ)], o, default=current_type
+            )
             if not is_uninhabited(typ):
                 type_map[o.name] = typ
 
@@ -147,7 +162,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # Check the capture types
         #
-        capture_types: Dict[Var, List[Tuple[Expression, Type]]] = defaultdict(list)
+        capture_types: dict[Var, list[tuple[Expression, Type]]] = defaultdict(list)
         # Collect captures from the first subpattern
         for expr, typ in pattern_types[0].captures.items():
             node = get_var(expr)
@@ -162,7 +177,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 node = get_var(expr)
                 capture_types[node].append((expr, typ))
 
-        captures: Dict[Expression, Type] = {}
+        captures: dict[Expression, Type] = {}
         for var, capture_list in capture_types.items():
             typ = UninhabitedType()
             for _, other in capture_list:
@@ -178,10 +193,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         typ = self.chk.expr_checker.accept(o.expr)
         typ = coerce_to_literal(typ)
         narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
-            current_type,
-            [get_type_range(typ)],
-            o,
-            default=current_type
+            current_type, [get_type_range(typ)], o, default=current_type
         )
         if not isinstance(get_proper_type(narrowed_type), (LiteralType, UninhabitedType)):
             return PatternType(narrowed_type, UnionType.make_union([narrowed_type, rest_type]), {})
@@ -189,7 +201,7 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
         current_type = self.type_context[-1]
-        value: Union[bool, None] = o.value
+        value: bool | None = o.value
         if isinstance(value, bool):
             typ = self.chk.expr_checker.infer_literal_expr_type(value, "builtins.bool")
         elif value is None:
@@ -198,10 +210,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             assert False
 
         narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
-            current_type,
-            [get_type_range(typ)],
-            o,
-            default=current_type
+            current_type, [get_type_range(typ)], o, default=current_type
         )
         return PatternType(narrowed_type, rest_type, {})
 
@@ -213,7 +222,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         if not self.can_match_sequence(current_type):
             return self.early_non_match()
         star_positions = [i for i, p in enumerate(o.patterns) if isinstance(p, StarredPattern)]
-        star_position: Optional[int] = None
+        star_position: int | None = None
         if len(star_positions) == 1:
             star_position = star_positions[0]
         elif len(star_positions) >= 2:
@@ -241,48 +250,42 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # match inner patterns
         #
-        contracted_new_inner_types: List[Type] = []
-        contracted_rest_inner_types: List[Type] = []
-        captures: Dict[Expression, Type] = {}
+        contracted_new_inner_types: list[Type] = []
+        contracted_rest_inner_types: list[Type] = []
+        captures: dict[Expression, Type] = {}
 
-        contracted_inner_types = self.contract_starred_pattern_types(inner_types,
-                                                                     star_position,
-                                                                     required_patterns)
-        can_match = True
+        contracted_inner_types = self.contract_starred_pattern_types(
+            inner_types, star_position, required_patterns
+        )
         for p, t in zip(o.patterns, contracted_inner_types):
             pattern_type = self.accept(p, t)
             typ, rest, type_map = pattern_type
-            if is_uninhabited(typ):
-                can_match = False
-            else:
-                contracted_new_inner_types.append(typ)
-                contracted_rest_inner_types.append(rest)
+            contracted_new_inner_types.append(typ)
+            contracted_rest_inner_types.append(rest)
             self.update_type_map(captures, type_map)
-        new_inner_types = self.expand_starred_pattern_types(contracted_new_inner_types,
-                                                            star_position,
-                                                            len(inner_types))
-        rest_inner_types = self.expand_starred_pattern_types(contracted_rest_inner_types,
-                                                             star_position,
-                                                             len(inner_types))
+
+        new_inner_types = self.expand_starred_pattern_types(
+            contracted_new_inner_types, star_position, len(inner_types)
+        )
+        rest_inner_types = self.expand_starred_pattern_types(
+            contracted_rest_inner_types, star_position, len(inner_types)
+        )
 
         #
         # Calculate new type
         #
         new_type: Type
         rest_type: Type = current_type
-        if not can_match:
-            new_type = UninhabitedType()
-        elif isinstance(current_type, TupleType):
+        if isinstance(current_type, TupleType):
             narrowed_inner_types = []
             inner_rest_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                narrowed_inner_type, inner_rest_type = \
-                    self.chk.conditional_types_with_intersection(
-                        new_inner_type,
-                        [get_type_range(inner_type)],
-                        o,
-                        default=new_inner_type
-                    )
+                (
+                    narrowed_inner_type,
+                    inner_rest_type,
+                ) = self.chk.conditional_types_with_intersection(
+                    new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                )
                 narrowed_inner_types.append(narrowed_inner_type)
                 inner_rest_types.append(inner_rest_type)
             if all(not is_uninhabited(typ) for typ in narrowed_inner_types):
@@ -300,16 +303,13 @@ class PatternChecker(PatternVisitor[PatternType]):
             new_type = self.construct_sequence_child(current_type, new_inner_type)
             if is_subtype(new_type, current_type):
                 new_type, _ = self.chk.conditional_types_with_intersection(
-                    current_type,
-                    [get_type_range(new_type)],
-                    o,
-                    default=current_type
+                    current_type, [get_type_range(new_type)], o, default=current_type
                 )
             else:
                 new_type = current_type
         return PatternType(new_type, rest_type, captures)
 
-    def get_sequence_type(self, t: Type) -> Optional[Type]:
+    def get_sequence_type(self, t: Type) -> Type | None:
         t = get_proper_type(t)
         if isinstance(t, AnyType):
             return AnyType(TypeOfAny.from_another_any, t)
@@ -321,16 +321,16 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 return None
 
-        if self.chk.type_is_iterable(t) and isinstance(t, Instance):
+        if self.chk.type_is_iterable(t) and isinstance(t, (Instance, TupleType)):
+            if isinstance(t, TupleType):
+                t = tuple_fallback(t)
             return self.chk.iterable_item_type(t)
         else:
             return None
 
-    def contract_starred_pattern_types(self,
-                                       types: List[Type],
-                                       star_pos: Optional[int],
-                                       num_patterns: int
-                                       ) -> List[Type]:
+    def contract_starred_pattern_types(
+        self, types: list[Type], star_pos: int | None, num_patterns: int
+    ) -> list[Type]:
         """
         Contracts a list of types in a sequence pattern depending on the position of a starred
         capture pattern.
@@ -344,16 +344,14 @@ class PatternChecker(PatternVisitor[PatternType]):
             return types
         new_types = types[:star_pos]
         star_length = len(types) - num_patterns
-        new_types.append(make_simplified_union(types[star_pos:star_pos+star_length]))
-        new_types += types[star_pos+star_length:]
+        new_types.append(make_simplified_union(types[star_pos : star_pos + star_length]))
+        new_types += types[star_pos + star_length :]
 
         return new_types
 
-    def expand_starred_pattern_types(self,
-                                     types: List[Type],
-                                     star_pos: Optional[int],
-                                     num_types: int
-                                     ) -> List[Type]:
+    def expand_starred_pattern_types(
+        self, types: list[Type], star_pos: int | None, num_types: int
+    ) -> list[Type]:
         """Undoes the contraction done by contract_starred_pattern_types.
 
         For example if the sequence pattern is [a, *b, c] and types [bool, int, str] are extended
@@ -364,21 +362,21 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_types = types[:star_pos]
         star_length = num_types - len(types) + 1
         new_types += [types[star_pos]] * star_length
-        new_types += types[star_pos+1:]
+        new_types += types[star_pos + 1 :]
 
         return new_types
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
-        captures: Dict[Expression, Type] = {}
+        captures: dict[Expression, Type] = {}
         if o.capture is not None:
-            list_type = self.chk.named_generic_type('builtins.list', [self.type_context[-1]])
+            list_type = self.chk.named_generic_type("builtins.list", [self.type_context[-1]])
             captures[o.capture] = list_type
         return PatternType(self.type_context[-1], UninhabitedType(), captures)
 
     def visit_mapping_pattern(self, o: MappingPattern) -> PatternType:
         current_type = get_proper_type(self.type_context[-1])
         can_match = True
-        captures: Dict[Expression, Type] = {}
+        captures: dict[Expression, Type] = {}
         for key, value in zip(o.keys, o.values):
             inner_type = self.get_mapping_item_type(o, current_type, key)
             if inner_type is None:
@@ -398,8 +396,9 @@ class PatternChecker(PatternVisitor[PatternType]):
                 rest_type = Instance(dict_typeinfo, mapping_inst.args)
             else:
                 object_type = self.chk.named_type("builtins.object")
-                rest_type = self.chk.named_generic_type("builtins.dict",
-                                                        [object_type, object_type])
+                rest_type = self.chk.named_generic_type(
+                    "builtins.dict", [object_type, object_type]
+                )
 
             captures[o.rest] = rest_type
 
@@ -410,44 +409,35 @@ class PatternChecker(PatternVisitor[PatternType]):
             new_type = UninhabitedType()
         return PatternType(new_type, current_type, captures)
 
-    def get_mapping_item_type(self,
-                              pattern: MappingPattern,
-                              mapping_type: Type,
-                              key: Expression
-                              ) -> Optional[Type]:
+    def get_mapping_item_type(
+        self, pattern: MappingPattern, mapping_type: Type, key: Expression
+    ) -> Type | None:
         mapping_type = get_proper_type(mapping_type)
         if isinstance(mapping_type, TypedDictType):
             with self.msg.filter_errors() as local_errors:
-                result: Optional[Type] = self.chk.expr_checker.visit_typeddict_index_expr(
-                    mapping_type, key)
+                result: Type | None = self.chk.expr_checker.visit_typeddict_index_expr(
+                    mapping_type, key
+                )
                 has_local_errors = local_errors.has_new_errors()
             # If we can't determine the type statically fall back to treating it as a normal
             # mapping
             if has_local_errors:
                 with self.msg.filter_errors() as local_errors:
-                    result = self.get_simple_mapping_item_type(pattern,
-                                                               mapping_type,
-                                                               key)
+                    result = self.get_simple_mapping_item_type(pattern, mapping_type, key)
 
                     if local_errors.has_new_errors():
                         result = None
         else:
             with self.msg.filter_errors():
-                result = self.get_simple_mapping_item_type(pattern,
-                                                           mapping_type,
-                                                           key)
+                result = self.get_simple_mapping_item_type(pattern, mapping_type, key)
         return result
 
-    def get_simple_mapping_item_type(self,
-                                     pattern: MappingPattern,
-                                     mapping_type: Type,
-                                     key: Expression
-                                     ) -> Type:
-        result, _ = self.chk.expr_checker.check_method_call_by_name('__getitem__',
-                                                                    mapping_type,
-                                                                    [key],
-                                                                    [ARG_POS],
-                                                                    pattern)
+    def get_simple_mapping_item_type(
+        self, pattern: MappingPattern, mapping_type: Type, key: Expression
+    ) -> Type:
+        result, _ = self.chk.expr_checker.check_method_call_by_name(
+            "__getitem__", mapping_type, [key], [ARG_POS], pattern
+        )
         return result
 
     def visit_class_pattern(self, o: ClassPattern) -> PatternType:
@@ -486,10 +476,10 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # Convert positional to keyword patterns
         #
-        keyword_pairs: List[Tuple[Optional[str], Pattern]] = []
-        match_arg_set: Set[str] = set()
+        keyword_pairs: list[tuple[str | None, Pattern]] = []
+        match_arg_set: set[str] = set()
 
-        captures: Dict[Expression, Type] = {}
+        captures: dict[Expression, Type] = {}
 
         if len(o.positionals) != 0:
             if self.should_self_match(typ):
@@ -497,17 +487,25 @@ class PatternChecker(PatternVisitor[PatternType]):
                     self.msg.fail(message_registry.CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS, o)
                 pattern_type = self.accept(o.positionals[0], narrowed_type)
                 if not is_uninhabited(pattern_type.type):
-                    return PatternType(pattern_type.type,
-                                       join_types(rest_type, pattern_type.rest_type),
-                                       pattern_type.captures)
+                    return PatternType(
+                        pattern_type.type,
+                        join_types(rest_type, pattern_type.rest_type),
+                        pattern_type.captures,
+                    )
                 captures = pattern_type.captures
             else:
                 with self.msg.filter_errors() as local_errors:
-                    match_args_type = analyze_member_access("__match_args__", typ, o,
-                                                            False, False, False,
-                                                            self.msg,
-                                                            original_type=typ,
-                                                            chk=self.chk)
+                    match_args_type = analyze_member_access(
+                        "__match_args__",
+                        typ,
+                        o,
+                        False,
+                        False,
+                        False,
+                        self.msg,
+                        original_type=typ,
+                        chk=self.chk,
+                    )
                     has_local_errors = local_errors.has_new_errors()
                 if has_local_errors:
                     self.msg.fail(message_registry.MISSING_MATCH_ARGS.format(typ), o)
@@ -537,13 +535,13 @@ class PatternChecker(PatternVisitor[PatternType]):
             keyword_pairs.append((key, value))
             if key in match_arg_set:
                 self.msg.fail(
-                    message_registry.CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL.format(key),
-                    value
+                    message_registry.CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL.format(key), value
                 )
                 has_duplicates = True
             elif key in keyword_arg_set:
-                self.msg.fail(message_registry.CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN.format(key),
-                              value)
+                self.msg.fail(
+                    message_registry.CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN.format(key), value
+                )
                 has_duplicates = True
             keyword_arg_set.add(key)
 
@@ -555,25 +553,28 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         can_match = True
         for keyword, pattern in keyword_pairs:
-            key_type: Optional[Type] = None
+            key_type: Type | None = None
             with self.msg.filter_errors() as local_errors:
                 if keyword is not None:
-                    key_type = analyze_member_access(keyword,
-                                                     narrowed_type,
-                                                     pattern,
-                                                     False,
-                                                     False,
-                                                     False,
-                                                     self.msg,
-                                                     original_type=new_type,
-                                                     chk=self.chk)
+                    key_type = analyze_member_access(
+                        keyword,
+                        narrowed_type,
+                        pattern,
+                        False,
+                        False,
+                        False,
+                        self.msg,
+                        original_type=new_type,
+                        chk=self.chk,
+                    )
                 else:
                     key_type = AnyType(TypeOfAny.from_error)
                 has_local_errors = local_errors.has_new_errors()
             if has_local_errors or key_type is None:
                 key_type = AnyType(TypeOfAny.from_error)
-                self.msg.fail(message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(typ, keyword),
-                              pattern)
+                self.msg.fail(
+                    message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(typ, keyword), pattern
+                )
 
             inner_type, inner_rest_type, inner_captures = self.accept(pattern, key_type)
             if is_uninhabited(inner_type):
@@ -608,31 +609,29 @@ class PatternChecker(PatternVisitor[PatternType]):
         # If the static type is more general than sequence the actual type could still match
         return is_subtype(typ, sequence) or is_subtype(sequence, typ)
 
-    def generate_types_from_names(self, type_names: List[str]) -> List[Type]:
-        types: List[Type] = []
+    def generate_types_from_names(self, type_names: list[str]) -> list[Type]:
+        types: list[Type] = []
         for name in type_names:
             try:
                 types.append(self.chk.named_type(name))
             except KeyError as e:
                 # Some built in types are not defined in all test cases
-                if not name.startswith('builtins.'):
+                if not name.startswith("builtins."):
                     raise e
-                pass
-
         return types
 
-    def update_type_map(self,
-                        original_type_map: Dict[Expression, Type],
-                        extra_type_map: Dict[Expression, Type]
-                        ) -> None:
+    def update_type_map(
+        self, original_type_map: dict[Expression, Type], extra_type_map: dict[Expression, Type]
+    ) -> None:
         # Calculating this would not be needed if TypeMap directly used literal hashes instead of
         # expressions, as suggested in the TODO above it's definition
         already_captured = {literal_hash(expr) for expr in original_type_map}
         for expr, typ in extra_type_map.items():
             if literal_hash(expr) in already_captured:
                 node = get_var(expr)
-                self.msg.fail(message_registry.MULTIPLE_ASSIGNMENTS_IN_PATTERN.format(node.name),
-                              expr)
+                self.msg.fail(
+                    message_registry.MULTIPLE_ASSIGNMENTS_IN_PATTERN.format(node.name), expr
+                )
             else:
                 original_type_map[expr] = typ
 
@@ -644,17 +643,23 @@ class PatternChecker(PatternVisitor[PatternType]):
 
         For example:
         construct_sequence_child(List[int], str) = List[str]
+
+        TODO: this doesn't make sense. For example if one has class S(Sequence[int], Generic[T])
+        or class T(Sequence[Tuple[T, T]]), there is no way any of those can map to Sequence[str].
         """
         proper_type = get_proper_type(outer_type)
         if isinstance(proper_type, UnionType):
             types = [
-                self.construct_sequence_child(item, inner_type) for item in proper_type.items
+                self.construct_sequence_child(item, inner_type)
+                for item in proper_type.items
                 if self.can_match_sequence(get_proper_type(item))
             ]
             return make_simplified_union(types)
         sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
         if is_subtype(outer_type, self.chk.named_type("typing.Sequence")):
             proper_type = get_proper_type(outer_type)
+            if isinstance(proper_type, TupleType):
+                proper_type = tuple_fallback(proper_type)
             assert isinstance(proper_type, Instance)
             empty_type = fill_typevars(proper_type.type)
             partial_type = expand_type_by_instance(empty_type, sequence)
@@ -666,8 +671,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(UninhabitedType(), self.type_context[-1], {})
 
 
-def get_match_arg_names(typ: TupleType) -> List[Optional[str]]:
-    args: List[Optional[str]] = []
+def get_match_arg_names(typ: TupleType) -> list[str | None]:
+    args: list[str | None] = []
     for item in typ.items:
         values = try_getting_str_literals_from_type(item)
         if values is None or len(values) != 1:
@@ -688,11 +693,13 @@ def get_var(expr: Expression) -> Var:
     return node
 
 
-def get_type_range(typ: Type) -> 'mypy.checker.TypeRange':
+def get_type_range(typ: Type) -> mypy.checker.TypeRange:
     typ = get_proper_type(typ)
-    if (isinstance(typ, Instance)
-            and typ.last_known_value
-            and isinstance(typ.last_known_value.value, bool)):
+    if (
+        isinstance(typ, Instance)
+        and typ.last_known_value
+        and isinstance(typ.last_known_value.value, bool)
+    ):
         typ = typ.last_known_value
     return mypy.checker.TypeRange(typ, is_upper_bound=False)
 

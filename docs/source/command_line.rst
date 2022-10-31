@@ -129,30 +129,12 @@ Import discovery
 The following flags customize how exactly mypy discovers and follows
 imports.
 
-.. option:: --namespace-packages
-
-    This flag enables import discovery to use namespace packages (see
-    :pep:`420`).  In particular, this allows discovery of imported
-    packages that don't have an ``__init__.py`` (or ``__init__.pyi``)
-    file.
-
-    Namespace packages are found (using the PEP 420 rules, which
-    prefers "classic" packages over namespace packages) along the
-    module search path -- this is primarily set from the source files
-    passed on the command line, the ``MYPYPATH`` environment variable,
-    and the :confval:`mypy_path` config option.
-
-    This flag affects how mypy finds modules and packages explicitly passed on
-    the command line. It also affects how mypy determines fully qualified module
-    names for files passed on the command line. See :ref:`Mapping file paths to
-    modules <mapping-paths-to-modules>` for details.
-
 .. option:: --explicit-package-bases
 
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
     :confval:`mypy_path` config option. This option is only useful in
-    conjunction with :option:`--namespace-packages`. See :ref:`Mapping file
+    in the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
 .. option:: --ignore-missing-imports
@@ -216,7 +198,7 @@ imports.
 
     The default logic used to scan through search paths to resolve imports has a
     quadratic worse-case behavior in some cases, which is for instance triggered
-    by a large number of folders sharing a top-level namespace as in:
+    by a large number of folders sharing a top-level namespace as in::
 
         foo/
             company/
@@ -230,10 +212,22 @@ imports.
             company/
                 baz/
                     c.py
-       ...
+        ...
 
     If you are in this situation, you can enable an experimental fast path by
     setting the :option:`--fast-module-lookup` option.
+
+
+.. option:: --no-namespace-packages
+
+    This flag disables import discovery of namespace packages (see :pep:`420`).
+    In particular, this prevents discovery of packages that don't have an
+    ``__init__.py`` (or ``__init__.pyi``) file.
+
+    This flag affects how mypy finds modules and packages explicitly passed on
+    the command line. It also affects how mypy determines fully qualified module
+    names for files passed on the command line. See :ref:`Mapping file paths to
+    modules <mapping-paths-to-modules>` for details.
 
 
 .. _platform-configuration:
@@ -251,22 +245,12 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 
     This flag will make mypy type check your code as if it were
     run under Python version X.Y. Without this option, mypy will default to using
-    whatever version of Python is running mypy. Note that the :option:`-2` and
-    :option:`--py2` flags are aliases for :option:`--python-version 2.7 <--python-version>`.
+    whatever version of Python is running mypy.
 
     This flag will attempt to find a Python executable of the corresponding
     version to search for :pep:`561` compliant packages. If you'd like to
     disable this, use the :option:`--no-site-packages` flag (see
     :ref:`import-discovery` for more details).
-
-.. option:: -2, --py2
-
-    Equivalent to running :option:`--python-version 2.7 <--python-version>`.
-
-    .. note::
-
-        To check Python 2 code with mypy, you'll need to install mypy with
-        ``pip install 'mypy[python2]'``.
 
 .. option:: --platform PLATFORM
 
@@ -400,29 +384,23 @@ None and Optional handling
 The following flags adjust how mypy handles values of type ``None``.
 For more details, see :ref:`no_strict_optional`.
 
-.. _no-implicit-optional:
+.. _implicit-optional:
 
-.. option:: --no-implicit-optional
+.. option:: --implicit-optional
 
-    This flag causes mypy to stop treating arguments with a ``None``
+    This flag causes mypy to treat arguments with a ``None``
     default value as having an implicit :py:data:`~typing.Optional` type.
 
-    For example, by default mypy will assume that the ``x`` parameter
-    is of type ``Optional[int]`` in the code snippet below since
-    the default parameter is ``None``:
+    For example, if this flag is set, mypy would assume that the ``x``
+    parameter is actually of type ``Optional[int]`` in the code snippet below
+    since the default parameter is ``None``:
 
     .. code-block:: python
 
         def foo(x: int = None) -> None:
             print(x)
 
-    If this flag is set, the above snippet will no longer type check:
-    we must now explicitly indicate that the type is ``Optional[int]``:
-
-    .. code-block:: python
-
-        def foo(x: Optional[int] = None) -> None:
-            print(x)
+    **Note:** This was disabled by default starting in mypy 0.980.
 
 .. option:: --no-strict-optional
 
@@ -705,9 +683,17 @@ in error messages.
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
-.. option:: --show-error-codes
+.. option:: --show-error-end
 
-    This flag will add an error code ``[<code>]`` to error messages. The error
+    This flag will make mypy show not just that start position where
+    an error was detected, but also the end position of the relevant expression.
+    This way various tools can easily highlight the whole error span. The format is
+    ``file:line:column:end_line:end_column``. This option implies
+    ``--show-column-numbers``.
+
+.. option:: --hide-error-codes
+
+    This flag will hide the error code ``[<code>]`` from error messages. By default, the error
     code is shown after each error message::
 
         prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
@@ -832,7 +818,8 @@ in developing or debugging mypy internals.
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
 
-    Note that this doesn't affect third-party library stubs.
+    Note that this doesn't affect third-party library stubs. To test third-party stubs,
+    for example try ``MYPYPATH=stubs/six mypy ...``.
 
 .. _warn-incomplete-stub:
 

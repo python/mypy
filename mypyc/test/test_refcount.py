@@ -4,25 +4,29 @@ The transform inserts needed reference count increment/decrement
 operations to IR.
 """
 
+from __future__ import annotations
+
 import os.path
 
+from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypy.errors import CompileError
-
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
+from mypyc.test.testutil import (
+    ICODE_GEN_BUILTINS,
+    MypycDataSuite,
+    assert_test_output,
+    build_ir_for_single_file,
+    infer_ir_build_options_from_test_name,
+    remove_comment_lines,
+    replace_word_size,
+    use_custom_builtins,
+)
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.uninit import insert_uninit_checks
-from mypyc.test.testutil import (
-    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
-    assert_test_output, remove_comment_lines, replace_word_size,
-    infer_ir_build_options_from_test_name
-)
 
-files = [
-    'refcount.test'
-]
+files = ["refcount.test"]
 
 
 class TestRefCountTransform(MypycDataSuite):
@@ -46,12 +50,10 @@ class TestRefCountTransform(MypycDataSuite):
             else:
                 actual = []
                 for fn in ir:
-                    if (fn.name == TOP_LEVEL_NAME
-                            and not testcase.name.endswith('_toplevel')):
+                    if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
                     insert_uninit_checks(fn)
                     insert_ref_count_opcodes(fn)
                     actual.extend(format_func(fn))
 
-            assert_test_output(testcase, actual, 'Invalid source code output',
-                               expected_output)
+            assert_test_output(testcase, actual, "Invalid source code output", expected_output)

@@ -564,6 +564,54 @@ Example:
     # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
+Safe handling of abstract type object types [type-abstract]
+-----------------------------------------------------------
+
+Mypy always allows instantiating (calling) type objects typed as ``Type[t]``,
+even if it is not known that ``t`` is non-abstract, since it is a common
+pattern to create functions that act as object factories (custom constructors).
+Therefore, to prevent issues described in the above section, when an abstract
+type object is passed where ``Type[t]`` is expected, mypy will give an error.
+Example:
+
+.. code-block:: python
+
+   from abc import ABCMeta, abstractmethod
+   from typing import List, Type, TypeVar
+
+   class Config(metaclass=ABCMeta):
+       @abstractmethod
+       def get_value(self, attr: str) -> str: ...
+
+   T = TypeVar("T")
+   def make_many(typ: Type[T], n: int) -> List[T]:
+       return [typ() for _ in range(n)]  # This will raise if typ is abstract
+
+   # Error: Only concrete class can be given where "Type[Config]" is expected [type-abstract]
+   make_many(Config, 5)
+
+Check that call to an abstract method via super is valid [safe-super]
+---------------------------------------------------------------------
+
+Abstract methods often don't have any default implementation, i.e. their
+bodies are just empty. Calling such methods in subclasses via ``super()``
+will cause runtime errors, so mypy prevents you from doing so:
+
+.. code-block:: python
+
+   from abc import abstractmethod
+   class Base:
+       @abstractmethod
+       def foo(self) -> int: ...
+   class Sub(Base):
+       def foo(self) -> int:
+           return super().foo() + 1  # error: Call to abstract method "foo" of "Base" with
+                                     # trivial body via super() is unsafe  [safe-super]
+   Sub().foo()  # This will crash at runtime.
+
+Mypy considers the following as trivial bodies: a ``pass`` statement, a literal
+ellipsis ``...``, a docstring, and a ``raise NotImplementedError`` statement.
+
 Check the target of NewType [valid-newtype]
 -------------------------------------------
 

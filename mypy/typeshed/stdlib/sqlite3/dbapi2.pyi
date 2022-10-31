@@ -4,18 +4,16 @@ from _typeshed import ReadableBuffer, Self, StrOrBytesPath, SupportsLenAndGetIte
 from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
 from datetime import date, datetime, time
 from types import TracebackType
-from typing import Any, Generic, Protocol, TypeVar, overload
+from typing import Any, Protocol, TypeVar, overload
 from typing_extensions import Literal, SupportsIndex, TypeAlias, final
 
 _T = TypeVar("_T")
-_T_co = TypeVar("_T_co", covariant=True)
 _CursorT = TypeVar("_CursorT", bound=Cursor)
 _SqliteData: TypeAlias = str | ReadableBuffer | int | float | None
 # Data that is passed through adapters can be of any type accepted by an adapter.
 _AdaptedInputData: TypeAlias = _SqliteData | Any
 # The Mapping must really be a dict, but making it invariant is too annoying.
 _Parameters: TypeAlias = SupportsLenAndGetItem[_AdaptedInputData] | Mapping[str, _AdaptedInputData]
-_SqliteOutputData: TypeAlias = str | bytes | int | float | None
 _Adapter: TypeAlias = Callable[[_T], _SqliteData]
 _Converter: TypeAlias = Callable[[bytes], Any]
 
@@ -49,13 +47,11 @@ SQLITE_CREATE_TEMP_TRIGGER: int
 SQLITE_CREATE_TEMP_VIEW: int
 SQLITE_CREATE_TRIGGER: int
 SQLITE_CREATE_VIEW: int
-if sys.version_info >= (3, 7):
-    SQLITE_CREATE_VTABLE: int
+SQLITE_CREATE_VTABLE: int
 SQLITE_DELETE: int
 SQLITE_DENY: int
 SQLITE_DETACH: int
-if sys.version_info >= (3, 7):
-    SQLITE_DONE: int
+SQLITE_DONE: int
 SQLITE_DROP_INDEX: int
 SQLITE_DROP_TABLE: int
 SQLITE_DROP_TEMP_INDEX: int
@@ -64,9 +60,8 @@ SQLITE_DROP_TEMP_TRIGGER: int
 SQLITE_DROP_TEMP_VIEW: int
 SQLITE_DROP_TRIGGER: int
 SQLITE_DROP_VIEW: int
-if sys.version_info >= (3, 7):
-    SQLITE_DROP_VTABLE: int
-    SQLITE_FUNCTION: int
+SQLITE_DROP_VTABLE: int
+SQLITE_FUNCTION: int
 SQLITE_IGNORE: int
 SQLITE_INSERT: int
 SQLITE_OK: int
@@ -86,9 +81,8 @@ if sys.version_info >= (3, 11):
 SQLITE_PRAGMA: int
 SQLITE_READ: int
 SQLITE_REINDEX: int
-if sys.version_info >= (3, 7):
-    SQLITE_RECURSIVE: int
-    SQLITE_SAVEPOINT: int
+SQLITE_RECURSIVE: int
+SQLITE_SAVEPOINT: int
 SQLITE_SELECT: int
 SQLITE_TRANSACTION: int
 SQLITE_UPDATE: int
@@ -208,14 +202,8 @@ def adapt(__obj: Any, __proto: Any) -> Any: ...
 @overload
 def adapt(__obj: Any, __proto: Any, __alt: _T) -> Any | _T: ...
 def complete_statement(statement: str) -> bool: ...
-
-if sys.version_info >= (3, 7):
-    _DatabaseArg: TypeAlias = StrOrBytesPath
-else:
-    _DatabaseArg: TypeAlias = bytes | str
-
 def connect(
-    database: _DatabaseArg,
+    database: StrOrBytesPath,
     timeout: float = ...,
     detect_types: int = ...,
     isolation_level: str | None = ...,
@@ -228,8 +216,14 @@ def enable_callback_tracebacks(__enable: bool) -> None: ...
 
 # takes a pos-or-keyword argument because there is a C wrapper
 def enable_shared_cache(enable: int) -> None: ...
-def register_adapter(__type: type[_T], __caster: _Adapter[_T]) -> None: ...
-def register_converter(__name: str, __converter: _Converter) -> None: ...
+
+if sys.version_info >= (3, 10):
+    def register_adapter(__type: type[_T], __adapter: _Adapter[_T]) -> None: ...
+    def register_converter(__typename: str, __converter: _Converter) -> None: ...
+
+else:
+    def register_adapter(__type: type[_T], __caster: _Adapter[_T]) -> None: ...
+    def register_converter(__name: str, __converter: _Converter) -> None: ...
 
 if sys.version_info < (3, 8):
     class Cache:
@@ -289,7 +283,7 @@ class Connection:
     text_factory: Any
     def __init__(
         self,
-        database: _DatabaseArg,
+        database: StrOrBytesPath,
         timeout: float = ...,
         detect_types: int = ...,
         isolation_level: str | None = ...,
@@ -324,10 +318,10 @@ class Connection:
     def create_collation(self, __name: str, __callback: Callable[[str, str], int | SupportsIndex] | None) -> None: ...
     if sys.version_info >= (3, 8):
         def create_function(
-            self, name: str, narg: int, func: Callable[..., _SqliteData], *, deterministic: bool = ...
+            self, name: str, narg: int, func: Callable[..., _SqliteData] | None, *, deterministic: bool = ...
         ) -> None: ...
     else:
-        def create_function(self, name: str, num_params: int, func: Callable[..., _SqliteData]) -> None: ...
+        def create_function(self, name: str, num_params: int, func: Callable[..., _SqliteData] | None) -> None: ...
 
     @overload
     def cursor(self, cursorClass: None = ...) -> Cursor: ...
@@ -342,22 +336,21 @@ class Connection:
     def set_authorizer(
         self, authorizer_callback: Callable[[int, str | None, str | None, str | None, str | None], int] | None
     ) -> None: ...
-    def set_progress_handler(self, progress_handler: Callable[[], bool | None] | None, n: int) -> None: ...
+    def set_progress_handler(self, progress_handler: Callable[[], int | None] | None, n: int) -> None: ...
     def set_trace_callback(self, trace_callback: Callable[[str], object] | None) -> None: ...
     # enable_load_extension and load_extension is not available on python distributions compiled
     # without sqlite3 loadable extension support. see footnotes https://docs.python.org/3/library/sqlite3.html#f1
     def enable_load_extension(self, __enabled: bool) -> None: ...
     def load_extension(self, __name: str) -> None: ...
-    if sys.version_info >= (3, 7):
-        def backup(
-            self,
-            target: Connection,
-            *,
-            pages: int = ...,
-            progress: Callable[[int, int, int], object] | None = ...,
-            name: str = ...,
-            sleep: float = ...,
-        ) -> None: ...
+    def backup(
+        self,
+        target: Connection,
+        *,
+        pages: int = ...,
+        progress: Callable[[int, int, int], object] | None = ...,
+        name: str = ...,
+        sleep: float = ...,
+    ) -> None: ...
     if sys.version_info >= (3, 11):
         def setlimit(self, __category: int, __limit: int) -> int: ...
         def getlimit(self, __category: int) -> int: ...
@@ -379,7 +372,7 @@ class Cursor(Iterator[Any]):
     def description(self) -> tuple[tuple[str, None, None, None, None, None, None], ...] | Any: ...
     @property
     def lastrowid(self) -> int | None: ...
-    row_factory: Callable[[Cursor, Row[Any]], object] | None
+    row_factory: Callable[[Cursor, Row], object] | None
     @property
     def rowcount(self) -> int: ...
     def __init__(self, __cursor: Connection) -> None: ...
@@ -420,15 +413,14 @@ class PrepareProtocol:
 
 class ProgrammingError(DatabaseError): ...
 
-class Row(Generic[_T_co]):
-    def __init__(self, __cursor: Cursor, __data: tuple[_T_co, ...]) -> None: ...
+class Row:
+    def __init__(self, __cursor: Cursor, __data: tuple[Any, ...]) -> None: ...
     def keys(self) -> list[str]: ...
     @overload
-    def __getitem__(self, __index: int | str) -> _T_co: ...
+    def __getitem__(self, __index: int | str) -> Any: ...
     @overload
-    def __getitem__(self, __index: slice) -> tuple[_T_co, ...]: ...
-    def __hash__(self) -> int: ...
-    def __iter__(self) -> Iterator[_T_co]: ...
+    def __getitem__(self, __index: slice) -> tuple[Any, ...]: ...
+    def __iter__(self) -> Iterator[Any]: ...
     def __len__(self) -> int: ...
     # These return NotImplemented for anything that is not a Row.
     def __eq__(self, __other: object) -> bool: ...
@@ -451,13 +443,14 @@ else:
 class Warning(Exception): ...
 
 if sys.version_info >= (3, 11):
+    @final
     class Blob:
         def close(self) -> None: ...
         def read(self, __length: int = ...) -> bytes: ...
         def write(self, __data: bytes) -> None: ...
         def tell(self) -> int: ...
         # whence must be one of os.SEEK_SET, os.SEEK_CUR, os.SEEK_END
-        def seek(self, __offset: int, __whence: int = ...) -> None: ...
+        def seek(self, __offset: int, __origin: int = ...) -> None: ...
         def __len__(self) -> int: ...
         def __enter__(self: Self) -> Self: ...
         def __exit__(self, __typ: object, __val: object, __tb: object) -> Literal[False]: ...
