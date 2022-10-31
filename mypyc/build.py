@@ -534,8 +534,6 @@ def mypycify(
             "-Wno-unused-command-line-argument",
             "-Wno-unknown-warning-option",
             "-Wno-unused-but-set-variable",
-            "-Wno-cpp",
-            "-Wno-ignored-optimization-argument",
         ]
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
