@@ -2303,10 +2303,20 @@ class SemanticAnalyzer(
                     )
                     continue
 
-            if node and not node.module_hidden:
+            if node:
                 self.process_imported_symbol(
                     node, module_id, id, imported_id, fullname, module_public, context=imp
                 )
+                if node.module_hidden:
+                    self.report_missing_module_attribute(
+                        module_id,
+                        id,
+                        imported_id,
+                        module_public=module_public,
+                        module_hidden=not module_public,
+                        context=imp,
+                        add_unknown_imported_symbol=False,
+                    )
             elif module and not missing_submodule:
                 # Target module exists but the imported name is missing or hidden.
                 self.report_missing_module_attribute(
@@ -2394,6 +2404,7 @@ class SemanticAnalyzer(
         module_public: bool,
         module_hidden: bool,
         context: Node,
+        add_unknown_imported_symbol: bool = True,
     ) -> None:
         # Missing attribute.
         if self.is_incomplete_namespace(import_id):
@@ -2418,13 +2429,14 @@ class SemanticAnalyzer(
                     suggestion = f"; maybe {pretty_seq(matches, 'or')}?"
                     message += f"{suggestion}"
         self.fail(message, context, code=codes.ATTR_DEFINED)
-        self.add_unknown_imported_symbol(
-            imported_id,
-            context,
-            target_name=None,
-            module_public=module_public,
-            module_hidden=not module_public,
-        )
+        if add_unknown_imported_symbol:
+            self.add_unknown_imported_symbol(
+                imported_id,
+                context,
+                target_name=None,
+                module_public=module_public,
+                module_hidden=not module_public,
+            )
 
         if import_id == "typing":
             # The user probably has a missing definition in a test fixture. Let's verify.
