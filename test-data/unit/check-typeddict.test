@@ -221,6 +221,19 @@ reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'y': builtins.in
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testCannotCreateTypedDictWithDecoratedFunction]
+# flags: --disallow-any-expr
+# https://github.com/python/mypy/issues/13066
+from typing import TypedDict
+class D(TypedDict):
+    @classmethod  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+    def m(self) -> D:
+        pass
+d = D()
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictWithClassmethodAlternativeConstructorDoesNotCrash]
 # https://github.com/python/mypy/issues/5653
 from typing import TypedDict
