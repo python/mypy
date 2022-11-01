@@ -7,7 +7,6 @@ from collections import defaultdict
 from contextlib import contextmanager, nullcontext
 from typing import (
     AbstractSet,
-    Any,
     Callable,
     Dict,
     Generic,
@@ -3453,8 +3452,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert declared_type is not None
                 clean_items.append((type, declared_type))
 
-            # TODO: fix signature of zip() in typeshed.
-            types, declared_types = cast(Any, zip)(*clean_items)
+            types, declared_types = zip(*clean_items)
             self.binder.assign_type(
                 expr,
                 make_simplified_union(list(types)),
