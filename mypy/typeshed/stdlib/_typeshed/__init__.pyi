@@ -234,6 +234,7 @@ else:
     WriteableBuffer: TypeAlias = bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData  # stable
 # Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
 ReadableBuffer: TypeAlias = ReadOnlyBuffer | WriteableBuffer  # stable
+_BufferWithLen: TypeAlias = ReadableBuffer  # not stable  # noqa: Y047
 
 ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo: TypeAlias = Union[ExcInfo, tuple[None, None, None]]

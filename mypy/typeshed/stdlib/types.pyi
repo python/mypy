@@ -591,7 +591,8 @@ if sys.version_info >= (3, 9):
             @property
             def __typing_unpacked_tuple_args__(self) -> tuple[Any, ...] | None: ...
 
-        def __getattr__(self, name: str) -> Any: ...  # incomplete
+        # GenericAlias delegates attr access to `__origin__`
+        def __getattr__(self, name: str) -> Any: ...
 
 if sys.version_info >= (3, 10):
     @final

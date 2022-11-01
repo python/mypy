@@ -1,6 +1,6 @@
 import pyexpat.errors as errors
 import pyexpat.model as model
-from _typeshed import SupportsRead
+from _typeshed import ReadableBuffer, SupportsRead
 from collections.abc import Callable
 from typing import Any
 from typing_extensions import TypeAlias, final
@@ -25,7 +25,7 @@ _Model: TypeAlias = tuple[int, int, str | None, tuple[Any, ...]]
 
 @final
 class XMLParserType:
-    def Parse(self, __data: str | bytes, __isfinal: bool = ...) -> int: ...
+    def Parse(self, __data: str | ReadableBuffer, __isfinal: bool = ...) -> int: ...
     def ParseFile(self, __file: SupportsRead[bytes]) -> int: ...
     def SetBase(self, __base: str) -> None: ...
     def GetBase(self) -> str | None: ...

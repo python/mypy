@@ -738,7 +738,7 @@ if sys.platform != "win32":
     if sys.version_info >= (3, 9):
         # flags and address appear to be unused in send_fds and recv_fds
         def send_fds(
-            sock: socket, buffers: Iterable[bytes], fds: bytes | Iterable[int], flags: int = ..., address: None = ...
+            sock: socket, buffers: Iterable[ReadableBuffer], fds: Iterable[int], flags: int = ..., address: None = ...
         ) -> int: ...
         def recv_fds(sock: socket, bufsize: int, maxfds: int, flags: int = ...) -> tuple[bytes, list[int], int, Any]: ...
 
@@ -768,16 +768,14 @@ if sys.version_info >= (3, 11):
     def create_connection(
         address: tuple[str | None, int],
         timeout: float | None = ...,  # noqa: F811
-        source_address: tuple[bytearray | bytes | str, int] | None = ...,
+        source_address: _Address | None = ...,
         *,
         all_errors: bool = ...,
     ) -> socket: ...
 
 else:
     def create_connection(
-        address: tuple[str | None, int],
-        timeout: float | None = ...,  # noqa: F811
-        source_address: tuple[bytearray | bytes | str, int] | None = ...,
+        address: tuple[str | None, int], timeout: float | None = ..., source_address: _Address | None = ...  # noqa: F811
     ) -> socket: ...
 
 if sys.version_info >= (3, 8):
@@ -788,5 +786,10 @@ if sys.version_info >= (3, 8):
 
 # the 5th tuple item is an address
 def getaddrinfo(
-    host: bytes | str | None, port: str | int | None, family: int = ..., type: int = ..., proto: int = ..., flags: int = ...
+    host: bytes | str | None,
+    port: bytes | str | int | None,
+    family: int = ...,
+    type: int = ...,
+    proto: int = ...,
+    flags: int = ...,
 ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...

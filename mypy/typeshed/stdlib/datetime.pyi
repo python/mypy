@@ -1,7 +1,8 @@
 import sys
 from _typeshed import Self
+from abc import abstractmethod
 from time import struct_time
-from typing import ClassVar, NamedTuple, NoReturn, SupportsAbs, TypeVar, overload
+from typing import ClassVar, NamedTuple, NoReturn, TypeVar, overload
 from typing_extensions import Literal, TypeAlias, final
 
 if sys.version_info >= (3, 11):
@@ -15,8 +16,11 @@ MINYEAR: Literal[1]
 MAXYEAR: Literal[9999]
 
 class tzinfo:
+    @abstractmethod
     def tzname(self, __dt: datetime | None) -> str | None: ...
+    @abstractmethod
     def utcoffset(self, __dt: datetime | None) -> timedelta | None: ...
+    @abstractmethod
     def dst(self, __dt: datetime | None) -> timedelta | None: ...
     def fromutc(self, __dt: datetime) -> datetime: ...
 
@@ -29,6 +33,9 @@ class timezone(tzinfo):
     min: ClassVar[timezone]
     max: ClassVar[timezone]
     def __init__(self, offset: timedelta, name: str = ...) -> None: ...
+    def tzname(self, __dt: datetime | None) -> str: ...
+    def utcoffset(self, __dt: datetime | None) -> timedelta: ...
+    def dst(self, __dt: datetime | None) -> None: ...
 
 if sys.version_info >= (3, 11):
     UTC: timezone
@@ -152,7 +159,7 @@ class time:
 _Date: TypeAlias = date
 _Time: TypeAlias = time
 
-class timedelta(SupportsAbs[timedelta]):
+class timedelta:
     min: ClassVar[timedelta]
     max: ClassVar[timedelta]
     resolution: ClassVar[timedelta]
