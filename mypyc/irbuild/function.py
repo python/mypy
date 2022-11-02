@@ -89,7 +89,7 @@ from mypyc.primitives.dict_ops import dict_get_method_with_none, dict_new_op, di
 from mypyc.primitives.generic_ops import py_setattr_op
 from mypyc.primitives.misc_ops import register_function
 from mypyc.primitives.registry import builtin_names
-from mypyc.sametype import is_same_method_signature
+from mypyc.sametype import is_same_method_signature, is_same_type
 
 # Top-level transform functions
 
@@ -548,7 +548,7 @@ def is_decorated(builder: IRBuilder, fdef: FuncDef) -> bool:
 
 def gen_glue(
     builder: IRBuilder,
-    sig: FuncSignature,
+    base_sig: FuncSignature,
     target: FuncIR,
     cls: ClassIR,
     base: ClassIR,
@@ -566,9 +566,9 @@ def gen_glue(
     "shadow" glue methods that work with interpreted subclasses.
     """
     if fdef.is_property:
-        return gen_glue_property(builder, sig, target, cls, base, fdef.line, do_py_ops)
+        return gen_glue_property(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
     else:
-        return gen_glue_method(builder, sig, target, cls, base, fdef.line, do_py_ops)
+        return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
 
 
 class ArgInfo(NamedTuple):
@@ -594,7 +594,7 @@ def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> Ar
 
 def gen_glue_method(
     builder: IRBuilder,
-    sig: FuncSignature,
+    base_sig: FuncSignature,
     target: FuncIR,
     cls: ClassIR,
     base: ClassIR,
@@ -626,15 +626,24 @@ def gen_glue_method(
     If do_pycall is True, then make the call using the C API
     instead of a native call.
     """
-    builder.enter()
-    builder.ret_types[-1] = sig.ret_type
+    check_native_override(builder, base_sig, target.decl.sig, line)
 
-    rt_args = list(sig.args)
+    builder.enter()
+    builder.ret_types[-1] = base_sig.ret_type
+
+    rt_args = list(base_sig.args)
     if target.decl.kind == FUNC_NORMAL:
-        rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
+        rt_args[0] = RuntimeArg(base_sig.args[0].name, RInstance(cls))
 
     arg_info = get_args(builder, rt_args, line)
     args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
+
+    bitmap_args = None
+    if base_sig.num_bitmap_args:
+        args = args[: -base_sig.num_bitmap_args]
+        arg_kinds = arg_kinds[: -base_sig.num_bitmap_args]
+        arg_names = arg_names[: -base_sig.num_bitmap_args]
+        bitmap_args = builder.builder.args[-base_sig.num_bitmap_args :]
 
     # We can do a passthrough *args/**kwargs with a native call, but if the
     # args need to get distributed out to arguments, we just let python handle it
@@ -655,11 +664,15 @@ def gen_glue_method(
             first, target.name, args[st:], line, arg_kinds[st:], arg_names[st:]
         )
     else:
-        retval = builder.builder.call(target.decl, args, arg_kinds, arg_names, line)
-    retval = builder.coerce(retval, sig.ret_type, line)
+        retval = builder.builder.call(
+            target.decl, args, arg_kinds, arg_names, line, bitmap_args=bitmap_args
+        )
+    retval = builder.coerce(retval, base_sig.ret_type, line)
     builder.add(Return(retval))
 
     arg_regs, _, blocks, ret_type, _ = builder.leave()
+    if base_sig.num_bitmap_args:
+        rt_args = rt_args[: -base_sig.num_bitmap_args]
     return FuncIR(
         FuncDecl(
             target.name + "__" + base.name + "_glue",
@@ -671,6 +684,35 @@ def gen_glue_method(
         arg_regs,
         blocks,
     )
+
+
+def check_native_override(
+    builder: IRBuilder, base_sig: FuncSignature, sub_sig: FuncSignature, line: int
+) -> None:
+    """Report an error if an override changes signature in unsupported ways.
+
+    Glue methods can work around many signature changes but not all of them.
+    """
+    for base_arg, sub_arg in zip(base_sig.real_args(), sub_sig.real_args()):
+        if base_arg.type.error_overlap:
+            if not base_arg.optional and sub_arg.optional and base_sig.num_bitmap_args:
+                # This would change the meanings of bits in the argument defaults
+                # bitmap, which we don't support. We'd need to do tricky bit
+                # manipulations to support this generally.
+                builder.error(
+                    "An argument with type "
+                    + f'"{base_arg.type}" cannot be given a default value in a method override',
+                    line,
+                )
+        if base_arg.type.error_overlap or sub_arg.type.error_overlap:
+            if not is_same_type(base_arg.type, sub_arg.type):
+                # This would change from signaling a default via an error value to
+                # signaling a default via bitmap, which we don't support.
+                builder.error(
+                    "Incompatible argument type "
+                    + f'"{sub_arg.type}" (base class has type "{base_arg.type}")',
+                    line,
+                )
 
 
 def gen_glue_property(

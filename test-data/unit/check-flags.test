@@ -1606,14 +1606,19 @@ strict_equality = false
 
 
 [case testNoImplicitReexport]
-# flags: --no-implicit-reexport
-from other_module_2 import a
+# flags: --no-implicit-reexport --show-error-codes
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"  [attr-defined]
+reveal_type(a)  # N: Revealed type is "builtins.int"
+
+import other_module_2
+# TODO: this should also reveal builtins.int, see #13965
+reveal_type(other_module_2.a)  # E: "object" does not explicitly export attribute "a"  [attr-defined] \
+                               # N: Revealed type is "Any"
+
 [file other_module_1.py]
 a = 5
 [file other_module_2.py]
 from other_module_1 import a
-[out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -2128,3 +2133,18 @@ Ts = TypeVarTuple("Ts")  # E: "TypeVarTuple" support is experimental, use --enab
 from typing_extensions import TypeVarTuple
 Ts = TypeVarTuple("Ts")  # OK
 [builtins fixtures/tuple.pyi]
+
+
+[case testDisableBytearrayPromotion]
+# flags: --disable-bytearray-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))
+[builtins fixtures/primitives.pyi]
+
+[case testDisableMemoryviewPromotion]
+# flags: --disable-memoryview-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+[builtins fixtures/primitives.pyi]

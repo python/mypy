@@ -7,7 +7,6 @@ from collections import defaultdict
 from contextlib import contextmanager, nullcontext
 from typing import (
     AbstractSet,
-    Any,
     Callable,
     Dict,
     Generic,
@@ -3453,8 +3452,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert declared_type is not None
                 clean_items.append((type, declared_type))
 
-            # TODO: fix signature of zip() in typeshed.
-            types, declared_types = cast(Any, zip)(*clean_items)
+            types, declared_types = zip(*clean_items)
             self.binder.assign_type(
                 expr,
                 make_simplified_union(list(types)),
@@ -4580,7 +4578,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # exceptions or not. We determine this using a heuristic based on the
             # return type of the __exit__ method -- see the discussion in
             # https://github.com/python/mypy/issues/7214 and the section about context managers
-            # in https://github.com/python/typeshed/blob/master/CONTRIBUTING.md#conventions
+            # in https://github.com/python/typeshed/blob/main/CONTRIBUTING.md#conventions
             # for more details.
 
             exit_ret_type = get_proper_type(exit_ret_type)
@@ -6712,6 +6710,8 @@ def builtin_item_type(tp: Type) -> Type | None:
             "builtins.dict",
             "builtins.set",
             "builtins.frozenset",
+            "_collections_abc.dict_keys",
+            "typing.KeysView",
         ]:
             if not tp.args:
                 # TODO: fix tuple in lib-stub/builtins.pyi (it should be generic).

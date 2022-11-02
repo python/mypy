@@ -1126,3 +1126,47 @@ def test_many_locals() -> None:
     assert a31 == 10
     assert a32 == 55
     assert a33 == 20
+
+[case testI64GlueMethods]
+from typing_extensions import Final
+
+MYPY = False
+if MYPY:
+    from mypy_extensions import i64
+
+MAGIC: Final = -113
+
+class Base:
+    def foo(self) -> i64:
+        return 5
+
+    def bar(self, x: i64 = 2) -> i64:
+        return x + 1
+
+    def hoho(self, x: i64) -> i64:
+        return x - 1
+
+class Derived(Base):
+    def foo(self, x: i64 = 5) -> i64:
+        return x + 10
+
+    def bar(self, x: i64 = 3, y: i64 = 20) -> i64:
+        return x + y + 2
+
+    def hoho(self, x: i64 = 7) -> i64:
+        return x - 2
+
+def test_derived_adds_bitmap() -> None:
+    b: Base = Derived()
+    assert b.foo() == 15
+
+def test_derived_adds_another_default_arg() -> None:
+    b: Base = Derived()
+    assert b.bar() == 25
+    assert b.bar(1) == 23
+    assert b.bar(MAGIC) == MAGIC + 22
+
+def test_derived_switches_arg_to_have_default() -> None:
+    b: Base = Derived()
+    assert b.hoho(5) == 3
+    assert b.hoho(MAGIC) == MAGIC - 2

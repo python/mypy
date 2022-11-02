@@ -56,9 +56,16 @@ PER_MODULE_OPTIONS: Final = {
     "warn_unused_ignores",
 }
 
-OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "plugins"}) - {
-    "debug_cache"
-}
+OPTIONS_AFFECTING_CACHE: Final = (
+    PER_MODULE_OPTIONS
+    | {
+        "platform",
+        "bazel",
+        "plugins",
+        "disable_bytearray_promotion",
+        "disable_memoryview_promotion",
+    }
+) - {"debug_cache"}
 
 # Features that are currently incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
@@ -328,6 +335,9 @@ class Options:
         self.disable_recursive_aliases = False
         # Deprecated reverse version of the above, do not use.
         self.enable_recursive_aliases = False
+
+        self.disable_bytearray_promotion = False
+        self.disable_memoryview_promotion = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
