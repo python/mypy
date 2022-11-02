@@ -134,7 +134,7 @@ def main() -> None:
     parser.add_argument(
         "--commit",
         default=None,
-        help="Typeshed commit (default to latest master if using a repository clone)",
+        help="Typeshed commit (default to latest main if using a repository clone)",
     )
     parser.add_argument(
         "--typeshed-dir",

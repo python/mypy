@@ -1794,7 +1794,7 @@ from stub import C
 c = C()
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
 it: Iterable[int]
-reveal_type(it)  # N: Revealed type is "Any"
+reveal_type(it)  # N: Revealed type is "typing.Iterable[builtins.int]"
 
 [file stub.pyi]
 from typing import Iterable
