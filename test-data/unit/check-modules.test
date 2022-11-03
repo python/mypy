@@ -651,9 +651,28 @@ try:
     from m import f, g # E: Incompatible import of "g" (imported name has type "Callable[[Any, Any], Any]", local name has type "Callable[[Any], Any]")
 except:
     pass
+
+import m as f  # E: Incompatible import of "f" (imported name has type "object", local name has type "Callable[[Any], Any]")
+
 [file m.py]
 def f(x): pass
 def g(x, y): pass
+
+[case testRedefineTypeViaImport]
+from typing import Type
+import mod
+
+X: Type[mod.A]
+Y: Type[mod.B]
+from mod import B as X
+from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "Type[A]", local name has type "Type[B]")
+
+import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "Type[A]")
+
+[file mod.py]
+class A: ...
+class B(A): ...
+
 
 [case testImportVariableAndAssignNone]
 try:
