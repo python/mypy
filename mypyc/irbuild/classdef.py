@@ -629,7 +629,7 @@ def find_attr_initializers(
                 and not isinstance(stmt.rvalue, TempNode)
             ):
                 name = stmt.lvalues[0].name
-                if name == "__slots__":
+                if name in ("__slots__", "__match_args__"):
                     continue
 
                 if name == "__deletable__":
