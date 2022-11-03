@@ -2022,12 +2022,14 @@ class D(TypedDict):
     foo: int
 
 
-d: D | list[str]
+d_or_list: D | list[str]
 
-if 'foo' in d:
-    assert_type(d, Union[D, list[str]])
+if 'foo' in d_or_list:
+    assert_type(d_or_list, Union[D, list[str]])
+elif 'bar' in d_or_list:
+    assert_type(d_or_list, list[str])
 else:
-    assert_type(d, list[str])
+    assert_type(d_or_list, list[str])
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -2046,12 +2048,6 @@ class D1(TypedDict):
 class D2(TypedDict):
     bar: int
 
-d_or_list: D1 | list[str]
-
-if 'foo' in d_or_list:
-    assert_type(d_or_list, Union[D1, list[str]])
-else:
-    assert_type(d_or_list, list[str])
 
 d: D1 | D2
 
@@ -2077,11 +2073,9 @@ TD = TypeVar('TD', D1, D2)
 def f(arg: TD) -> None:
     value: int
     if 'foo' in arg:
-        assert_type(d, Union[D1, D2])  # strangely enough it's seen as a union
-        value = arg['foo']               # but acts here as D1
+        assert_type(arg['foo'], int)
     else:
-        assert_type(d, Union[D1, D2])  # ditto here, but D2
-        value = arg['bar']
+        assert_type(arg['bar'], int)
 
 
 [builtins fixtures/dict.pyi]
