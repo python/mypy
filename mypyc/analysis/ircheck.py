@@ -129,7 +129,11 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
     for block in fn.blocks:
         valid_ops.update(block.ops)
 
-        valid_registers.update([op.dest for op in block.ops if isinstance(op, BaseAssign)])
+        for op in block.ops:
+            if isinstance(op, BaseAssign):
+                valid_registers.add(op.dest)
+            elif isinstance(op, LoadAddress) and isinstance(op.src, Register):
+                valid_registers.add(op.src)
 
     valid_registers.update(fn.arg_regs)
 
@@ -150,7 +154,7 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
                     if source not in valid_registers:
                         errors.append(
                             FnError(
-                                source=op, desc=f"Invalid op reference to register {source.name}"
+                                source=op, desc=f"Invalid op reference to register {source.name!r}"
                             )
                         )
 

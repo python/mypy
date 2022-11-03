@@ -7414,8 +7414,7 @@ class Foo:
     def meth1(self, a: str) -> str: ...  # E: Name "meth1" already defined on line 5
 
     def meth2(self, a: str) -> str: ...
-    from mod1 import meth2  # E: Unsupported class scoped import \
-                            # E: Name "meth2" already defined on line 8
+    from mod1 import meth2  # E: Incompatible import of "meth2" (imported name has type "Callable[[int], int]", local name has type "Callable[[Foo, str], str]")
 
 class Bar:
     from mod1 import foo  # E: Unsupported class scoped import
