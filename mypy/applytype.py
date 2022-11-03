@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Callable, Sequence
 
 import mypy.subtypes
-from mypy.expandtype import expand_type
-from mypy.nodes import Context
+from mypy.expandtype import expand_type, expand_unpack_with_variables
+from mypy.nodes import ARG_POS, ARG_STAR, Context
 from mypy.types import (
     AnyType,
     CallableType,
@@ -16,6 +16,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
+    UnpackType,
     get_proper_type,
 )
 
@@ -110,7 +111,33 @@ def apply_generic_arguments(
                 callable = callable.expand_param_spec(nt)
 
     # Apply arguments to argument types.
-    arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
+    var_arg = callable.var_arg()
+    if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+        expanded = expand_unpack_with_variables(var_arg.typ, id_to_type)
+        assert isinstance(expanded, list)
+        # Handle other cases later.
+        for t in expanded:
+            assert not isinstance(t, UnpackType)
+        star_index = callable.arg_kinds.index(ARG_STAR)
+        arg_kinds = (
+            callable.arg_kinds[:star_index]
+            + [ARG_POS] * len(expanded)
+            + callable.arg_kinds[star_index + 1 :]
+        )
+        arg_names = (
+            callable.arg_names[:star_index]
+            + [None] * len(expanded)
+            + callable.arg_names[star_index + 1 :]
+        )
+        arg_types = (
+            [expand_type(at, id_to_type) for at in callable.arg_types[:star_index]]
+            + expanded
+            + [expand_type(at, id_to_type) for at in callable.arg_types[star_index + 1 :]]
+        )
+    else:
+        arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
+        arg_kinds = callable.arg_kinds
+        arg_names = callable.arg_names
 
     # Apply arguments to TypeGuard if any.
     if callable.type_guard is not None:
@@ -126,4 +153,6 @@ def apply_generic_arguments(
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
+        arg_kinds=arg_kinds,
+        arg_names=arg_names,
     )

@@ -1725,3 +1725,66 @@ def my_func(pairs: Iterable[tuple[S, S]]) -> None:
                 reveal_type(pair)  # N: Revealed type is "Tuple[builtins.int, builtins.int]" \
                                    # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testPartiallyDefinedMatch]
+# flags: --enable-error-code partially-defined
+def f0(x: int | str) -> int:
+    match x:
+        case int():
+            y = 1
+    return y  # E: Name "y" may be undefined
+
+def f1(a: object) -> None:
+    match a:
+        case [y]: pass
+        case _:
+            y = 1
+            x = 2
+    z = y
+    z = x  # E: Name "x" may be undefined
+
+def f2(a: object) -> None:
+    match a:
+        case [[y] as x]: pass
+        case {"k1": 1, "k2": x, "k3": y}: pass
+        case [0, *x]:
+            y = 2
+        case _:
+            y = 1
+            x = [2]
+    z = x
+    z = y
+
+def f3(a: object) -> None:
+    y = 1
+    match a:
+        case [x]:
+            y = 2
+        # Note the missing `case _:`
+    z = x  # E: Name "x" may be undefined
+    z = y
+
+def f4(a: object) -> None:
+    y = 1
+    match a:
+        case [x]:
+            y = 2
+        case _:
+            assert False, "unsupported"
+    z = x
+    z = y
+
+def f5(a: object) -> None:
+    match a:
+        case tuple(x): pass
+        case _:
+            return
+    y = x
+
+def f6(a: object) -> None:
+    if int():
+        y = 1
+    match a:
+        case _ if y is not None:  # E: Name "y" may be undefined
+            pass
+[builtins fixtures/tuple.pyi]

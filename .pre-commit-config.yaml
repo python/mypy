@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 22.6.0  # must match test-requirements.txt
+    rev: 22.10.0  # must match test-requirements.txt
     hooks:
       - id: black
   - repo: https://github.com/pycqa/isort
@@ -12,5 +12,5 @@ repos:
     hooks:
       - id: flake8
         additional_dependencies:
-          - flake8-bugbear==22.8.23  # must match test-requirements.txt
+          - flake8-bugbear==22.9.23  # must match test-requirements.txt
           - flake8-noqa==1.2.9       # must match test-requirements.txt

@@ -1606,14 +1606,19 @@ strict_equality = false
 
 
 [case testNoImplicitReexport]
-# flags: --no-implicit-reexport
-from other_module_2 import a
+# flags: --no-implicit-reexport --show-error-codes
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"  [attr-defined]
+reveal_type(a)  # N: Revealed type is "builtins.int"
+
+import other_module_2
+# TODO: this should also reveal builtins.int, see #13965
+reveal_type(other_module_2.a)  # E: "object" does not explicitly export attribute "a"  [attr-defined] \
+                               # N: Revealed type is "Any"
+
 [file other_module_1.py]
 a = 5
 [file other_module_2.py]
 from other_module_1 import a
-[out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1627,7 +1632,7 @@ from other_module_1 import a, b
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 [case testNoImplicitReexportStarConsideredExplicit]
 # flags: --no-implicit-reexport
@@ -1643,7 +1648,7 @@ __all__ = ('b',)
 
 [case testNoImplicitReexportGetAttr]
 # flags: --no-implicit-reexport --python-version 3.7
-from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"
 [file other_module_1.py]
 from typing import Any
 def __getattr__(name: str) -> Any: ...
@@ -1661,7 +1666,7 @@ attr_2 = 6
 [file other_module_2.py]
 from other_module_1 import attr_1, attr_2
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"
 
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
@@ -1679,7 +1684,7 @@ implicit_reexport = True
 \[mypy-other_module_2]
 implicit_reexport = False
 [out]
-main:2: error: Module "other_module_2" has no attribute "a"
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 
 [case testNoImplicitReexportPyProjectTOML]
@@ -1700,7 +1705,7 @@ module = 'other_module_2'
 implicit_reexport = false
 
 [out]
-main:2: error: Module "other_module_2" has no attribute "a"
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 
 [case testImplicitAnyOKForNoArgs]
@@ -2128,3 +2133,18 @@ Ts = TypeVarTuple("Ts")  # E: "TypeVarTuple" support is experimental, use --enab
 from typing_extensions import TypeVarTuple
 Ts = TypeVarTuple("Ts")  # OK
 [builtins fixtures/tuple.pyi]
+
+
+[case testDisableBytearrayPromotion]
+# flags: --disable-bytearray-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))
+[builtins fixtures/primitives.pyi]
+
+[case testDisableMemoryviewPromotion]
+# flags: --disable-memoryview-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+[builtins fixtures/primitives.pyi]

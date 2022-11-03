@@ -1389,7 +1389,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         res: list[Type] = []
         for t in a:
             res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
-        return res
+        return self.check_unpacks_in_list(res)
 
     def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
         if nested:
@@ -1448,9 +1448,29 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         node = self.lookup_fqn_func(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
         any_type = AnyType(TypeOfAny.special_form)
+        if args is not None:
+            args = self.check_unpacks_in_list(args)
         return Instance(
             node.node, args or [any_type] * len(node.node.defn.type_vars), line=line, column=column
         )
+
+    def check_unpacks_in_list(self, items: list[Type]) -> list[Type]:
+        new_items: list[Type] = []
+        num_unpacks = 0
+        final_unpack = None
+        for item in items:
+            if isinstance(item, UnpackType):
+                if not num_unpacks:
+                    new_items.append(item)
+                num_unpacks += 1
+                final_unpack = item
+            else:
+                new_items.append(item)
+
+        if num_unpacks > 1:
+            assert final_unpack is not None
+            self.fail("More than one Unpack in a type is not allowed", final_unpack)
+        return new_items
 
     def tuple_type(self, items: list[Type]) -> TupleType:
         any_type = AnyType(TypeOfAny.special_form)

@@ -627,7 +627,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         itype=descriptor_type,
         info=descriptor_type.type,
         self_type=descriptor_type,
-        name="__set__",
+        name="__get__",
         mx=mx,
     )
 

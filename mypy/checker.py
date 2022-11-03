@@ -7,7 +7,6 @@ from collections import defaultdict
 from contextlib import contextmanager, nullcontext
 from typing import (
     AbstractSet,
-    Any,
     Callable,
     Dict,
     Generic,
@@ -202,6 +201,7 @@ from mypy.types import (
     UnboundType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -1170,7 +1170,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 ctx = typ
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
-                        if not isinstance(arg_type, ParamSpecType):
+                        if isinstance(arg_type, ParamSpecType):
+                            pass
+                        elif isinstance(arg_type, UnpackType):
+                            arg_type = TupleType(
+                                [arg_type],
+                                fallback=self.named_generic_type(
+                                    "builtins.tuple", [self.named_type("builtins.object")]
+                                ),
+                            )
+                        else:
                             # builtins.tuple[T] is typing.Tuple[T, ...]
                             arg_type = self.named_generic_type("builtins.tuple", [arg_type])
                     elif typ.arg_kinds[i] == nodes.ARG_STAR2:
@@ -3443,8 +3452,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert declared_type is not None
                 clean_items.append((type, declared_type))
 
-            # TODO: fix signature of zip() in typeshed.
-            types, declared_types = cast(Any, zip)(*clean_items)
+            types, declared_types = zip(*clean_items)
             self.binder.assign_type(
                 expr,
                 make_simplified_union(list(types)),
@@ -4570,7 +4578,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # exceptions or not. We determine this using a heuristic based on the
             # return type of the __exit__ method -- see the discussion in
             # https://github.com/python/mypy/issues/7214 and the section about context managers
-            # in https://github.com/python/typeshed/blob/master/CONTRIBUTING.md#conventions
+            # in https://github.com/python/typeshed/blob/main/CONTRIBUTING.md#conventions
             # for more details.
 
             exit_ret_type = get_proper_type(exit_ret_type)
@@ -6702,6 +6710,8 @@ def builtin_item_type(tp: Type) -> Type | None:
             "builtins.dict",
             "builtins.set",
             "builtins.frozenset",
+            "_collections_abc.dict_keys",
+            "typing.KeysView",
         ]:
             if not tp.args:
                 # TODO: fix tuple in lib-stub/builtins.pyi (it should be generic).

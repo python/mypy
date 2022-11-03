@@ -1,10 +1,10 @@
 -r mypy-requirements.txt
 -r build-requirements.txt
 attrs>=18.0
-black==22.6.0  # must match version in .pre-commit-config.yaml
+black==22.10.0  # must match version in .pre-commit-config.yaml
 filelock>=3.3.0
 flake8==5.0.4           # must match version in .pre-commit-config.yaml
-flake8-bugbear==22.8.23 # must match version in .pre-commit-config.yaml
+flake8-bugbear==22.9.23 # must match version in .pre-commit-config.yaml
 flake8-noqa==1.2.9      # must match version in .pre-commit-config.yaml
 isort[colors]==5.10.1   # must match version in .pre-commit-config.yaml
 lxml>=4.4.0; python_version<'3.11'

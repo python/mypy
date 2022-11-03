@@ -168,6 +168,8 @@ fraction of production network requests.  This clearly requires more
 care, as type collection could impact the reliability or the
 performance of your service.
 
+.. _getting-to-strict:
+
 Introduce stricter options
 --------------------------
 
@@ -181,7 +183,7 @@ An excellent goal to aim for is to have your codebase pass when run against ``my
 This basically ensures that you will never have a type related error without an explicit
 circumvention somewhere (such as a ``# type: ignore`` comment).
 
-The following config is equivalent to ``--strict``:
+The following config is equivalent to ``--strict`` (as of mypy 0.990):
 
 .. code-block:: text
 
