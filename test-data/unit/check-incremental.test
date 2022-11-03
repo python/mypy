@@ -1025,10 +1025,7 @@ import a.b
 
 [file a/b.py]
 
-[rechecked b]
-[stale]
-[out2]
-tmp/b.py:4: error: Name "a" already defined on line 3
+[stale b]
 
 [case testIncrementalSilentImportsAndImportsInClass]
 # flags: --ignore-missing-imports
