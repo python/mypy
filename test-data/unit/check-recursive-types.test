@@ -808,3 +808,21 @@ def test2() -> Tree2:
 def test3() -> Tree3:
     return 42  # E: Incompatible return value type (got "int", expected "Union[str, Tuple[Tree3, Tree3, Tree3]]")
 [builtins fixtures/tuple.pyi]
+
+[case testRecursiveDoubleUnionNoCrash]
+from typing import Tuple, Union, Callable, Sequence
+
+K = Union[int, Tuple[Union[int, K]]]
+L = Union[int, Callable[[], Union[int, L]]]
+M = Union[int, Sequence[Union[int, M]]]
+
+x: K
+x = x
+y: L
+y = y
+z: M
+z = z
+
+x = y  # E: Incompatible types in assignment (expression has type "L", variable has type "K")
+z = x  # OK
+[builtins fixtures/tuple.pyi]
