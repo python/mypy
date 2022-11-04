@@ -5017,47 +5017,44 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return None, {}
 
-    def contains_operator_right_operand_type_map(
-        self, item_type: Type, collection_type: Type
+    def conditional_types_for_iterable(
+        self, item_type: Type, iterable_type: Type
     ) -> tuple[Type | None, Type | None]:
         """
-        Deduces the type of the right operand of the `in` operator.
+        Narrows the type of `iterable_type` based on the type of `item_type`.
         For now, we only support narrowing unions of TypedDicts based on left operand being literal string(s).
         """
-        if_types, else_types = [collection_type], [collection_type]
-        item_strs = try_getting_str_literals_from_type(item_type)
-        if item_strs:
-            if_types, else_types = self._contains_string_right_operand_type_map(
-                item_strs, collection_type
-            )
+        if_types: list[Type] = []
+        else_types: list[Type] = []
+
+        iterable_type = get_proper_type(iterable_type)
+        if isinstance(iterable_type, UnionType):
+            possible_iterable_types = get_proper_types(iterable_type.relevant_items())
+        else:
+            possible_iterable_types = [iterable_type]
+
+        item_str_literals = try_getting_str_literals_from_type(item_type)
+
+        for possible_iterable_type in possible_iterable_types:
+            if item_str_literals and isinstance(possible_iterable_type, TypedDictType):
+                for key in item_str_literals:
+                    if key in possible_iterable_type.required_keys:
+                        if_types.append(possible_iterable_type)
+                    elif (
+                        key in possible_iterable_type.items or not possible_iterable_type.is_final
+                    ):
+                        if_types.append(possible_iterable_type)
+                        else_types.append(possible_iterable_type)
+                    else:
+                        else_types.append(possible_iterable_type)
+            else:
+                if_types.append(possible_iterable_type)
+                else_types.append(possible_iterable_type)
+
         return (
             UnionType.make_union(if_types) if if_types else None,
             UnionType.make_union(else_types) if else_types else None,
         )
-
-    def _contains_string_right_operand_type_map(
-        self, item_strs: Iterable[str], t: Type
-    ) -> tuple[list[Type], list[Type]]:
-        t = get_proper_type(t)
-        if_types: list[Type] = []
-        else_types: list[Type] = []
-        if isinstance(t, TypedDictType):
-            for key in item_strs:
-                if key in t.required_keys:
-                    if_types.append(t)
-                elif key in t.items or not t.is_final:
-                    if_types.append(t)
-                    else_types.append(t)
-                else:
-                    else_types.append(t)
-        elif isinstance(t, UnionType):
-            for union_item in t.items:
-                a, b = self._contains_string_right_operand_type_map(item_strs, union_item)
-                if_types.extend(a)
-                else_types.extend(b)
-        else:
-            if_types, else_types = [t], [t]
-        return if_types, else_types
 
     def _is_truthy_type(self, t: ProperType) -> bool:
         return (
@@ -5367,7 +5364,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices
                     item_type = operand_types[left_index]
-                    collection_type = operand_types[right_index]
+                    iterable_type = operand_types[right_index]
 
                     if_map, else_map = {}, {}
 
@@ -5375,7 +5372,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # We only try and narrow away 'None' for now
                         if is_optional(item_type):
                             collection_item_type = get_proper_type(
-                                builtin_item_type(collection_type)
+                                builtin_item_type(iterable_type)
                             )
                             if (
                                 collection_item_type is not None
@@ -5389,8 +5386,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 if_map[operands[left_index]] = remove_optional(item_type)
 
                     if right_index in narrowable_operand_index_to_hash:
-                        (if_type, else_type) = self.contains_operator_right_operand_type_map(
-                            item_type, collection_type
+                        if_type, else_type = self.conditional_types_for_iterable(
+                            item_type, iterable_type
                         )
                         expr = operands[right_index]
                         if if_type is None:
