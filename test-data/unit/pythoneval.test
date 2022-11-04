@@ -1660,3 +1660,19 @@ _testNarrowTypeForDictKeys.py:7: note: Revealed type is "builtins.str"
 _testNarrowTypeForDictKeys.py:9: note: Revealed type is "Union[builtins.str, None]"
 _testNarrowTypeForDictKeys.py:14: note: Revealed type is "builtins.str"
 _testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, None]"
+
+[case testTypeAliasWithNewStyleUnion]
+# flags: --python-version 3.10
+from typing import Literal
+
+Foo = Literal[1, 2]
+reveal_type(Foo)
+Bar = Foo | Literal[3]
+
+U1 = int | str
+U2 = U1 | bytes
+
+Opt1 = None | int
+Opt2 = None | float
+[out]
+_testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
