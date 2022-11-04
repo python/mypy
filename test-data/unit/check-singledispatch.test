@@ -15,7 +15,6 @@ fun(1) # E: Argument 1 to "fun" has incompatible type "int"; expected "A"
 
 # probably won't be required after singledispatch is special cased
 [builtins fixtures/args.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testMultipleUnderscoreFunctionsIsntError]
 from functools import singledispatch
@@ -31,7 +30,6 @@ def _(arg: int) -> None:
     pass
 
 [builtins fixtures/args.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testCheckNonDispatchArgumentsWithTypeAlwaysTheSame]
 from functools import singledispatch
@@ -54,7 +52,6 @@ f(B(), 'a')
 f(B(), 1) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
 
 [builtins fixtures/args.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testImplementationHasSameDispatchTypeAsFallback-xfail]
 from functools import singledispatch
@@ -74,7 +71,7 @@ def g(arg: int) -> None:
 from functools import singledispatch
 
 @singledispatch
-def f(arg) -> None:
+def f(arg) -> None: 
     pass
 
 @f.register(str)

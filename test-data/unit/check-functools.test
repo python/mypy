@@ -20,8 +20,8 @@ Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
 Ord() == 1
 Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
 Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
+[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testTotalOrderingLambda]
 from functools import total_ordering
@@ -43,8 +43,8 @@ Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
 Ord() == 1
 Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
 Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
+[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testTotalOrderingNonCallable]
 from functools import total_ordering
@@ -60,8 +60,8 @@ Ord() <= Ord()  # E: Unsupported left operand type for <= ("Ord")
 Ord() > Ord()  # E: "int" not callable
 Ord() >= Ord()  # E: Unsupported left operand type for >= ("Ord")
 
+[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testTotalOrderingReturnNotBool]
 from functools import total_ordering
@@ -80,8 +80,8 @@ reveal_type(Ord() == Ord())  # N: Revealed type is "builtins.bool"
 reveal_type(Ord() > Ord())  # N: Revealed type is "Any"
 reveal_type(Ord() >= Ord())  # N: Revealed type is "Any"
 
+[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testTotalOrderingAllowsAny]
 from functools import total_ordering
@@ -105,8 +105,8 @@ Ord() <= 1  # E: Unsupported left operand type for <= ("Ord")
 Ord() == 1
 Ord() > 1
 Ord() >= 1  # E: Unsupported left operand type for >= ("Ord")
+[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
 
 [case testCachedProperty]
 # flags: --python-version 3.8
@@ -151,5 +151,5 @@ def f(d: D[C]) -> None:
     reveal_type(d.__gt__)  # N: Revealed type is "def (other: Any) -> builtins.bool"
 
 d: D[int]  # E: Type argument "int" of "D" must be a subtype of "C"
+[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
