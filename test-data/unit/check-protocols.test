@@ -3787,3 +3787,59 @@ from typing_extensions import Final
 
 a: Final = 1
 [builtins fixtures/module.pyi]
+
+
+[case testModuleAsProtocolRedefinitionTopLevel]
+from typing import Protocol
+
+class P(Protocol):
+    def f(self) -> str: ...
+
+cond: bool
+t: P
+if cond:
+    import mod1 as t
+else:
+    import mod2 as t
+
+import badmod as t  # E: Incompatible import of "t" (imported name has type Module, local name has type "P")
+
+[file mod1.py]
+def f() -> str: ...
+
+[file mod2.py]
+def f() -> str: ...
+
+[file badmod.py]
+def nothing() -> int: ...
+[builtins fixtures/module.pyi]
+
+[case testModuleAsProtocolRedefinitionImportFrom]
+from typing import Protocol
+
+class P(Protocol):
+    def f(self) -> str: ...
+
+cond: bool
+t: P
+if cond:
+    from package import mod1 as t
+else:
+    from package import mod2 as t
+
+from package import badmod as t  # E: Incompatible import of "t" (imported name has type Module, local name has type "P")
+
+package: int = 10
+
+import package.mod1 as t
+import package.mod1  # E: Incompatible import of "package" (imported name has type Module, local name has type "int")
+
+[file package/mod1.py]
+def f() -> str: ...
+
+[file package/mod2.py]
+def f() -> str: ...
+
+[file package/badmod.py]
+def nothing() -> int: ...
+[builtins fixtures/module.pyi]

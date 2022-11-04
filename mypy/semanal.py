@@ -69,6 +69,8 @@ from mypy.mro import MroError, calculate_mro
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
     CONTRAVARIANT,
     COVARIANT,
     GDEF,
@@ -843,6 +845,7 @@ class SemanticAnalyzer(
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
+                self.check_paramspec_definition(defn)
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
@@ -1281,6 +1284,64 @@ class SemanticAnalyzer(
             sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail("Type signature has too many arguments", fdef, blocker=True)
+
+    def check_paramspec_definition(self, defn: FuncDef) -> None:
+        func = defn.type
+        assert isinstance(func, CallableType)
+
+        if not any(isinstance(var, ParamSpecType) for var in func.variables):
+            return  # Function does not have param spec variables
+
+        args = func.var_arg()
+        kwargs = func.kw_arg()
+        if args is None and kwargs is None:
+            return  # Looks like this function does not have starred args
+
+        args_defn_type = None
+        kwargs_defn_type = None
+        for arg_def, arg_kind in zip(defn.arguments, defn.arg_kinds):
+            if arg_kind == ARG_STAR:
+                args_defn_type = arg_def.type_annotation
+            elif arg_kind == ARG_STAR2:
+                kwargs_defn_type = arg_def.type_annotation
+
+        # This may happen on invalid `ParamSpec` args / kwargs definition,
+        # type analyzer sets types of arguments to `Any`, but keeps
+        # definition types as `UnboundType` for now.
+        if not (
+            (isinstance(args_defn_type, UnboundType) and args_defn_type.name.endswith(".args"))
+            or (
+                isinstance(kwargs_defn_type, UnboundType)
+                and kwargs_defn_type.name.endswith(".kwargs")
+            )
+        ):
+            # Looks like both `*args` and `**kwargs` are not `ParamSpec`
+            # It might be something else, skipping.
+            return
+
+        args_type = args.typ if args is not None else None
+        kwargs_type = kwargs.typ if kwargs is not None else None
+
+        if (
+            not isinstance(args_type, ParamSpecType)
+            or not isinstance(kwargs_type, ParamSpecType)
+            or args_type.name != kwargs_type.name
+        ):
+            if isinstance(args_defn_type, UnboundType) and args_defn_type.name.endswith(".args"):
+                param_name = args_defn_type.name.split(".")[0]
+            elif isinstance(kwargs_defn_type, UnboundType) and kwargs_defn_type.name.endswith(
+                ".kwargs"
+            ):
+                param_name = kwargs_defn_type.name.split(".")[0]
+            else:
+                # Fallback for cases that probably should not ever happen:
+                param_name = "P"
+
+            self.fail(
+                f'ParamSpec must have "*args" typed as "{param_name}.args" and "**kwargs" typed as "{param_name}.kwargs"',
+                func,
+                code=codes.VALID_TYPE,
+            )
 
     def visit_decorator(self, dec: Decorator) -> None:
         self.statement = dec
@@ -2174,13 +2235,33 @@ class SemanticAnalyzer(
                 base_id = id.split(".")[0]
                 imported_id = base_id
                 module_public = use_implicit_reexport
-            self.add_module_symbol(
-                base_id,
-                imported_id,
-                context=i,
-                module_public=module_public,
-                module_hidden=not module_public,
-            )
+
+            if base_id in self.modules:
+                node = self.modules[base_id]
+                if self.is_func_scope():
+                    kind = LDEF
+                elif self.type is not None:
+                    kind = MDEF
+                else:
+                    kind = GDEF
+                symbol = SymbolTableNode(
+                    kind, node, module_public=module_public, module_hidden=not module_public
+                )
+                self.add_imported_symbol(
+                    imported_id,
+                    symbol,
+                    context=i,
+                    module_public=module_public,
+                    module_hidden=not module_public,
+                )
+            else:
+                self.add_unknown_imported_symbol(
+                    imported_id,
+                    context=i,
+                    target_name=base_id,
+                    module_public=module_public,
+                    module_hidden=not module_public,
+                )
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         self.statement = imp
@@ -2242,10 +2323,20 @@ class SemanticAnalyzer(
                     )
                     continue
 
-            if node and not node.module_hidden:
+            if node:
                 self.process_imported_symbol(
                     node, module_id, id, imported_id, fullname, module_public, context=imp
                 )
+                if node.module_hidden:
+                    self.report_missing_module_attribute(
+                        module_id,
+                        id,
+                        imported_id,
+                        module_public=module_public,
+                        module_hidden=not module_public,
+                        context=imp,
+                        add_unknown_imported_symbol=False,
+                    )
             elif module and not missing_submodule:
                 # Target module exists but the imported name is missing or hidden.
                 self.report_missing_module_attribute(
@@ -2306,19 +2397,6 @@ class SemanticAnalyzer(
                     module_hidden=module_hidden,
                     becomes_typeinfo=True,
                 )
-        existing_symbol = self.globals.get(imported_id)
-        if (
-            existing_symbol
-            and not isinstance(existing_symbol.node, PlaceholderNode)
-            and not isinstance(node.node, PlaceholderNode)
-        ):
-            # Import can redefine a variable. They get special treatment.
-            if self.process_import_over_existing_name(imported_id, existing_symbol, node, context):
-                return
-        if existing_symbol and isinstance(node.node, PlaceholderNode):
-            # Imports are special, some redefinitions are allowed, so wait until
-            # we know what is the new symbol node.
-            return
         # NOTE: we take the original node even for final `Var`s. This is to support
         # a common pattern when constants are re-exported (same applies to import *).
         self.add_imported_symbol(
@@ -2333,6 +2411,7 @@ class SemanticAnalyzer(
         module_public: bool,
         module_hidden: bool,
         context: Node,
+        add_unknown_imported_symbol: bool = True,
     ) -> None:
         # Missing attribute.
         if self.is_incomplete_namespace(import_id):
@@ -2357,13 +2436,14 @@ class SemanticAnalyzer(
                     suggestion = f"; maybe {pretty_seq(matches, 'or')}?"
                     message += f"{suggestion}"
         self.fail(message, context, code=codes.ATTR_DEFINED)
-        self.add_unknown_imported_symbol(
-            imported_id,
-            context,
-            target_name=None,
-            module_public=module_public,
-            module_hidden=not module_public,
-        )
+        if add_unknown_imported_symbol:
+            self.add_unknown_imported_symbol(
+                imported_id,
+                context,
+                target_name=None,
+                module_public=module_public,
+                module_hidden=not module_public,
+            )
 
         if import_id == "typing":
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -2434,14 +2514,9 @@ class SemanticAnalyzer(
                     if isinstance(node.node, MypyFile):
                         # Star import of submodule from a package, add it as a dependency.
                         self.imports.add(node.node.fullname)
-                    existing_symbol = self.lookup_current_scope(name)
-                    if existing_symbol and not isinstance(node.node, PlaceholderNode):
-                        # Import can redefine a variable. They get special treatment.
-                        if self.process_import_over_existing_name(name, existing_symbol, node, i):
-                            continue
                     # `from x import *` always reexports symbols
                     self.add_imported_symbol(
-                        name, node, i, module_public=True, module_hidden=False
+                        name, node, context=i, module_public=True, module_hidden=False
                     )
 
         else:
@@ -5516,24 +5591,6 @@ class SemanticAnalyzer(
         node._fullname = name
         self.add_symbol(name, node, context)
 
-    def add_module_symbol(
-        self, id: str, as_id: str, context: Context, module_public: bool, module_hidden: bool
-    ) -> None:
-        """Add symbol that is a reference to a module object."""
-        if id in self.modules:
-            node = self.modules[id]
-            self.add_symbol(
-                as_id, node, context, module_public=module_public, module_hidden=module_hidden
-            )
-        else:
-            self.add_unknown_imported_symbol(
-                as_id,
-                context,
-                target_name=id,
-                module_public=module_public,
-                module_hidden=module_hidden,
-            )
-
     def _get_node_for_class_scoped_import(
         self, name: str, symbol_node: SymbolNode | None, context: Context
     ) -> SymbolNode | None:
@@ -5580,12 +5637,22 @@ class SemanticAnalyzer(
         self,
         name: str,
         node: SymbolTableNode,
-        context: Context,
+        context: ImportBase,
         module_public: bool,
         module_hidden: bool,
     ) -> None:
         """Add an alias to an existing symbol through import."""
         assert not module_hidden or not module_public
+
+        existing_symbol = self.lookup_current_scope(name)
+        if (
+            existing_symbol
+            and not isinstance(existing_symbol.node, PlaceholderNode)
+            and not isinstance(node.node, PlaceholderNode)
+        ):
+            # Import can redefine a variable. They get special treatment.
+            if self.process_import_over_existing_name(name, existing_symbol, node, context):
+                return
 
         symbol_node: SymbolNode | None = node.node
 

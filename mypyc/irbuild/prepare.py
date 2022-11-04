@@ -226,7 +226,11 @@ def prepare_class_def(
 
         if isinstance(node.node, Var):
             assert node.node.type, "Class member %s missing type" % name
-            if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
+            if not node.node.is_classvar and name not in (
+                "__slots__",
+                "__deletable__",
+                "__match_args__",
+            ):
                 ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)
