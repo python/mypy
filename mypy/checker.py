@@ -2527,8 +2527,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_import_all(self, node: ImportAll) -> None:
         self.check_import(node)
 
-    def visit_import(self, s: Import) -> None:
-        pass
+    def visit_import(self, node: Import) -> None:
+        self.check_import(node)
 
     def check_import(self, node: ImportBase) -> None:
         for assign in node.assignments:

@@ -2235,13 +2235,33 @@ class SemanticAnalyzer(
                 base_id = id.split(".")[0]
                 imported_id = base_id
                 module_public = use_implicit_reexport
-            self.add_module_symbol(
-                base_id,
-                imported_id,
-                context=i,
-                module_public=module_public,
-                module_hidden=not module_public,
-            )
+
+            if base_id in self.modules:
+                node = self.modules[base_id]
+                if self.is_func_scope():
+                    kind = LDEF
+                elif self.type is not None:
+                    kind = MDEF
+                else:
+                    kind = GDEF
+                symbol = SymbolTableNode(
+                    kind, node, module_public=module_public, module_hidden=not module_public
+                )
+                self.add_imported_symbol(
+                    imported_id,
+                    symbol,
+                    context=i,
+                    module_public=module_public,
+                    module_hidden=not module_public,
+                )
+            else:
+                self.add_unknown_imported_symbol(
+                    imported_id,
+                    context=i,
+                    target_name=base_id,
+                    module_public=module_public,
+                    module_hidden=not module_public,
+                )
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         self.statement = imp
@@ -2377,19 +2397,6 @@ class SemanticAnalyzer(
                     module_hidden=module_hidden,
                     becomes_typeinfo=True,
                 )
-        existing_symbol = self.globals.get(imported_id)
-        if (
-            existing_symbol
-            and not isinstance(existing_symbol.node, PlaceholderNode)
-            and not isinstance(node.node, PlaceholderNode)
-        ):
-            # Import can redefine a variable. They get special treatment.
-            if self.process_import_over_existing_name(imported_id, existing_symbol, node, context):
-                return
-        if existing_symbol and isinstance(node.node, PlaceholderNode):
-            # Imports are special, some redefinitions are allowed, so wait until
-            # we know what is the new symbol node.
-            return
         # NOTE: we take the original node even for final `Var`s. This is to support
         # a common pattern when constants are re-exported (same applies to import *).
         self.add_imported_symbol(
@@ -2507,14 +2514,9 @@ class SemanticAnalyzer(
                     if isinstance(node.node, MypyFile):
                         # Star import of submodule from a package, add it as a dependency.
                         self.imports.add(node.node.fullname)
-                    existing_symbol = self.lookup_current_scope(name)
-                    if existing_symbol and not isinstance(node.node, PlaceholderNode):
-                        # Import can redefine a variable. They get special treatment.
-                        if self.process_import_over_existing_name(name, existing_symbol, node, i):
-                            continue
                     # `from x import *` always reexports symbols
                     self.add_imported_symbol(
-                        name, node, i, module_public=True, module_hidden=False
+                        name, node, context=i, module_public=True, module_hidden=False
                     )
 
         else:
@@ -5589,24 +5591,6 @@ class SemanticAnalyzer(
         node._fullname = name
         self.add_symbol(name, node, context)
 
-    def add_module_symbol(
-        self, id: str, as_id: str, context: Context, module_public: bool, module_hidden: bool
-    ) -> None:
-        """Add symbol that is a reference to a module object."""
-        if id in self.modules:
-            node = self.modules[id]
-            self.add_symbol(
-                as_id, node, context, module_public=module_public, module_hidden=module_hidden
-            )
-        else:
-            self.add_unknown_imported_symbol(
-                as_id,
-                context,
-                target_name=id,
-                module_public=module_public,
-                module_hidden=module_hidden,
-            )
-
     def _get_node_for_class_scoped_import(
         self, name: str, symbol_node: SymbolNode | None, context: Context
     ) -> SymbolNode | None:
@@ -5653,12 +5637,22 @@ class SemanticAnalyzer(
         self,
         name: str,
         node: SymbolTableNode,
-        context: Context,
+        context: ImportBase,
         module_public: bool,
         module_hidden: bool,
     ) -> None:
         """Add an alias to an existing symbol through import."""
         assert not module_hidden or not module_public
+
+        existing_symbol = self.lookup_current_scope(name)
+        if (
+            existing_symbol
+            and not isinstance(existing_symbol.node, PlaceholderNode)
+            and not isinstance(node.node, PlaceholderNode)
+        ):
+            # Import can redefine a variable. They get special treatment.
+            if self.process_import_over_existing_name(name, existing_symbol, node, context):
+                return
 
         symbol_node: SymbolNode | None = node.node
 

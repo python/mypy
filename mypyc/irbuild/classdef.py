@@ -451,6 +451,7 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
             "typing.Collection",
             "typing.Reversible",
             "typing.Container",
+            "typing.Sized",
         ):
             # HAX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
             #      This could break if they were added explicitly, though...
@@ -482,7 +483,11 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
                 name = "_NamedTuple"
             base = builder.get_module_attr("typing", name, cdef.line)
         else:
-            base = builder.load_global_str(cls.name, cdef.line)
+            cls_module = cls.fullname.rsplit(".", 1)[0]
+            if cls_module == builder.current_module:
+                base = builder.load_global_str(cls.name, cdef.line)
+            else:
+                base = builder.load_module_attr_by_fullname(cls.fullname, cdef.line)
         bases.append(base)
         if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
             # The remaining base classes are synthesized by mypy and should be ignored.
@@ -624,7 +629,7 @@ def find_attr_initializers(
                 and not isinstance(stmt.rvalue, TempNode)
             ):
                 name = stmt.lvalues[0].name
-                if name == "__slots__":
+                if name in ("__slots__", "__match_args__"):
                     continue
 
                 if name == "__deletable__":

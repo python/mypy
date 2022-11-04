@@ -1,0 +1,6 @@
+[case testTryStarDoesNotCrash]
+try:
+    pass
+except* Exception as e:
+    reveal_type(e)  # N: Revealed type is "builtins.Exception"
+[builtins fixtures/exception.pyi]
