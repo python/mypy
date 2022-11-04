@@ -2078,8 +2078,12 @@ else:
 foo_or_invalid: Literal['foo', 'invalid']
 if foo_or_invalid in d:
     assert_type(d, D1)
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
 else:
     assert_type(d, Union[D1, D2])
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
 
 TD = TypeVar('TD', D1, D2)
 
