@@ -1682,8 +1682,19 @@ Opt4 = float | None
 
 A = Type[int] | str
 B: TypeAlias = Type[int] | str
+C = type[int] | str
+
+D = type[int] | str
+x: D
+reveal_type(x)
+E: TypeAlias = type[int] | str
+y: E
+reveal_type(y)
+F = list[type[int] | str]
 [out]
 _testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
+_testTypeAliasWithNewStyleUnion.py:24: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnion.py:27: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
 
 [case testTypeAliasWithNewStyleUnionInStub]
 # flags: --python-version 3.7
@@ -1735,3 +1746,20 @@ _testEnumNameWorkCorrectlyOn311.py:12: note: Revealed type is "Union[Literal[1]?
 _testEnumNameWorkCorrectlyOn311.py:13: note: Revealed type is "Literal['X']?"
 _testEnumNameWorkCorrectlyOn311.py:14: note: Revealed type is "builtins.int"
 _testEnumNameWorkCorrectlyOn311.py:15: note: Revealed type is "builtins.int"
+
+[case testTypeAliasNotSupportedWithNewStyleUnion]
+# flags: --python-version 3.9
+from typing_extensions import TypeAlias
+A = type[int] | str
+B = str | type[int]
+C = str | int
+D: TypeAlias = str | int
+[out]
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Invalid type alias: expression is not a valid type
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Invalid type alias: expression is not a valid type
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Invalid type alias: expression is not a valid type
+_testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Unsupported left operand type for | ("Type[str]")
+_testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Invalid type alias: expression is not a valid type
+_testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Unsupported left operand type for | ("Type[str]")
