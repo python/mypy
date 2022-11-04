@@ -132,6 +132,7 @@ SUGGESTED_TEST_FIXTURES: Final = {
     "builtins.isinstance": "isinstancelist.pyi",
     "builtins.property": "property.pyi",
     "builtins.classmethod": "classmethod.pyi",
+    "typing._SpecialForm": "typing-medium.pyi",
 }
 
 
