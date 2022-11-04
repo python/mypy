@@ -3869,7 +3869,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
-            # This type is valid in some runtime contexts (e.g. it may have __or__).
+            # The _SpecialForm type can be used in some runtime contexts (e.g. it may have __or__).
             return self.named_type("typing._SpecialForm")
 
     def apply_type_arguments_to_callable(
