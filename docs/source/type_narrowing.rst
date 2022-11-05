@@ -233,7 +233,7 @@ to the type specified as the first type parameter (``list[str]``).
    ``TypeGuard`` has been defined such that a custom type guard function is
    allowed to return ``True`` for only a subset of the values that match the
    specified type. For example, the following is a perfectly valid and correct
-   ``TypeGuard`` for ``int``
+   ``TypeGuard`` for ``int``:
 
    .. code-block:: python
 
