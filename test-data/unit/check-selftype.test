@@ -131,7 +131,7 @@ reveal_type(cast(A, C()).copy())  # N: Revealed type is "__main__.A"
 [case testSelfTypeOverrideCompatibility]
 from typing import overload, TypeVar, Generic
 
-T = TypeVar("T", str, int)
+T = TypeVar("T")
 
 class A(Generic[T]):
     @overload
@@ -169,7 +169,7 @@ class E(A[T]):
                              # N:          def f(self) -> int
 
 
-class F(A[bytes]):  # E: Value of type variable "T" of "A" cannot be "bytes"
+class F(A[bytes]):
     def f(self) -> bytes: ...  # E: Signature of "f" incompatible with supertype "A" \
                                # N:      Superclass:            \
                                # N:          @overload          \
@@ -178,6 +178,25 @@ class F(A[bytes]):  # E: Value of type variable "T" of "A" cannot be "bytes"
                                # N:          def f(self) -> str \
                                # N:      Subclass:              \
                                # N:          def f(self) -> bytes
+
+class G(A):
+    def f(self): ...
+
+class H(A[int]):
+    def f(self): ...
+
+class I(A[int]):
+    def f(*args): ...
+
+class J(A[int]):
+    def f(self, arg) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                                  # N:      Superclass:            \
+                                  # N:          @overload          \
+                                  # N:          def f(self) -> int \
+                                  # N:      Subclass:              \
+                                  # N:          def f(self, arg: Any) -> int
+
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeSuper]
 from typing import TypeVar, cast
