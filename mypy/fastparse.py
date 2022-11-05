@@ -262,11 +262,9 @@ def parse(
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
     """
-    if int():
-        1 + ''
-    ignore_errors = options.ignore_errors or (errors and fnam in errors.ignored_files)
-    if ignore_errors:
-        print(fnam, fnam in errors.ignored_files, len(errors.ignored_files))
+    ignore_errors = (options is not None and options.ignore_errors) or (errors is not None and fnam in errors.ignored_files)
+    #if ignore_errors:
+    #    print(fnam, fnam in errors.ignored_files, len(errors.ignored_files))
     raise_on_error = False
     if options is None:
         options = Options()
@@ -288,7 +286,8 @@ def parse(
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
-        tree = ASTConverter(options=options, is_stub=is_stub_file, errors=errors, ignore_errors=ignore_errors).visit(ast)
+        tree = ASTConverter(options=options, is_stub=is_stub_file, errors=errors,
+                            ignore_errors=ignore_errors).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
