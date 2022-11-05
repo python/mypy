@@ -842,9 +842,9 @@ class BuildManager:
         Raise CompileError if there is a parse error.
         """
         t0 = time.time()
-        #if ignore_errors:
-        #    print('ignore_errors', path)
-        #    self.errors.ignored_files.add(path)
+        if ignore_errors:
+            #print('ignore_errors', path)
+            self.errors.ignored_files.add(path)
         tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         self.add_stats(
