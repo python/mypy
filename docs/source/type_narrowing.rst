@@ -243,7 +243,7 @@ to the type specified as the first type parameter (``list[str]``).
          return isinstance(val, int) and val > 0
 
    A consequence of this is that mypy cannot narrow the type for the case where
-   a type guard function returns ``False``. This also means that user defined
+   a type guard function returns ``False``. This also means that user-defined
    type guards cannot be used as fully equivalent replacements for the built-in
    type narrowing logic that is done for ``isinstance`` and others.
 
