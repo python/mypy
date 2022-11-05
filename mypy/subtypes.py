@@ -840,6 +840,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             found_match = True
                             matched_overloads.add(left_item)
                             possible_invalid_overloads.discard(left_item)
+                            break
                     else:
                         # If this one overlaps with the supertype in any way, but it wasn't
                         # an exact match, then it's a potential error.
