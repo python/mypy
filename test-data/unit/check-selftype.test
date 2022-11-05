@@ -128,6 +128,57 @@ reveal_type(cast(A, C()).copy())  # N: Revealed type is "__main__.A"
 
 [builtins fixtures/bool.pyi]
 
+[case testSelfTypeOverrideCompatibility]
+from typing import overload, TypeVar, Generic
+
+T = TypeVar("T", str, int)
+
+class A(Generic[T]):
+    @overload
+    def f(self: A[int]) -> int: ...
+    @overload
+    def f(self: A[str]) -> str: ...
+    def f(self): ...
+
+class B(A[T]):
+    @overload
+    def f(self: A[int]) -> int: ...
+    @overload
+    def f(self: A[str]) -> str: ...
+    def f(self): ...
+
+class C(A[int]):
+    def f(self) -> int: ...
+
+class D(A[str]):
+    def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                             # N:      Superclass:            \
+                             # N:          @overload          \
+                             # N:          def f(self) -> str \
+                             # N:      Subclass:              \
+                             # N:          def f(self) -> int
+
+class E(A[T]):
+    def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                             # N:      Superclass:            \
+                             # N:          @overload          \
+                             # N:          def f(self) -> int \
+                             # N:          @overload          \
+                             # N:          def f(self) -> str \
+                             # N:      Subclass:              \
+                             # N:          def f(self) -> int
+
+
+class F(A[bytes]):  # E: Value of type variable "T" of "A" cannot be "bytes"
+    def f(self) -> bytes: ...  # E: Signature of "f" incompatible with supertype "A" \
+                               # N:      Superclass:            \
+                               # N:          @overload          \
+                               # N:          def f(self) -> int \
+                               # N:          @overload          \
+                               # N:          def f(self) -> str \
+                               # N:      Subclass:              \
+                               # N:          def f(self) -> bytes
+
 [case testSelfTypeSuper]
 from typing import TypeVar, cast
 
