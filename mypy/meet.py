@@ -535,9 +535,7 @@ def are_typed_dicts_overlapping(
     """Returns 'true' if left and right are overlapping TypeDictTypes."""
     # All required keys in left are present and overlapping with something in right
     for key in left.required_keys:
-        if key not in right.items:
-            return False
-        if not is_overlapping_types(
+        if key not in right.items or not is_overlapping_types(
             left.items[key],
             right.items[key],
             ignore_promotions=ignore_promotions,
@@ -547,9 +545,7 @@ def are_typed_dicts_overlapping(
 
     # Repeat check in the other direction
     for key in right.required_keys:
-        if key not in left.items:
-            return False
-        if not is_overlapping_types(
+        if key not in left.items or not is_overlapping_types(
             left.items[key], right.items[key], ignore_promotions=ignore_promotions
         ):
             return False

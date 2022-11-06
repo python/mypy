@@ -115,6 +115,4 @@ def is_borrow_friendly_expr(self: IRBuilder, expr: Expression) -> bool:
         if isinstance(expr.node, Var) and expr.kind == LDEF:
             # Local variable reference can be borrowed
             return True
-    if isinstance(expr, MemberExpr) and self.is_native_attr_ref(expr):
-        return True
-    return False
+    return isinstance(expr, MemberExpr) and self.is_native_attr_ref(expr)

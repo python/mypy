@@ -2291,9 +2291,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         ):
             return False
 
-        if self.is_stub or sym.node.has_explicit_value:
-            return True
-        return False
+        return self.is_stub or sym.node.has_explicit_value
 
     def check_enum_bases(self, defn: ClassDef) -> None:
         """
@@ -5949,10 +5947,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self._type_maps[-1][node] = typ
 
     def has_type(self, node: Expression) -> bool:
-        for m in reversed(self._type_maps):
-            if node in m:
-                return True
-        return False
+        return any(node in m for m in reversed(self._type_maps))
 
     def lookup_type_or_none(self, node: Expression) -> Type | None:
         for m in reversed(self._type_maps):
@@ -6136,13 +6131,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
 
     def is_defined_in_base_class(self, var: Var) -> bool:
-        if var.info:
-            for base in var.info.mro[1:]:
-                if base.get(var.name) is not None:
-                    return True
-            if var.info.fallback_to_any:
-                return True
-        return False
+        return (
+            var.info
+            and any(base.get(var.name) is not None for base in var.info.mro[1:])
+            and var.info.fallback_to_any
+        )
 
     def find_partial_types(self, var: Var) -> dict[Var, Context] | None:
         """Look for an active partial type scope containing variable.
@@ -6332,14 +6325,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def is_writable_attribute(self, node: Node) -> bool:
         """Check if an attribute is writable"""
         if isinstance(node, Var):
-            if node.is_property and not node.is_settable_property:
-                return False
-            return True
+            return not node.is_property or node.is_settable_property
         elif isinstance(node, OverloadedFuncDef) and node.is_property:
             first_item = cast(Decorator, node.items[0])
             return first_item.var.is_settable_property
-        else:
-            return False
+        return False
 
     def get_isinstance_type(self, expr: Expression) -> list[TypeRange] | None:
         if isinstance(expr, OpExpr) and expr.op == "|":
@@ -6990,13 +6980,14 @@ def is_valid_inferred_type(typ: Type) -> bool:
     invalid.  When doing strict Optional checking, only None and types that are
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
-    if isinstance(get_proper_type(typ), (NoneType, UninhabitedType)):
+    return (
         # With strict Optional checking, we *may* eventually infer NoneType when
         # the initializer is None, but we only do that if we can't infer a
         # specific Optional type.  This resolution happens in
         # leave_partial_types when we pop a partial types scope.
-        return False
-    return not typ.accept(NothingSeeker())
+        not isinstance(get_proper_type(typ), (NoneType, UninhabitedType))
+        and not typ.accept(NothingSeeker())
+    )
 
 
 class NothingSeeker(TypeQuery[bool]):
@@ -7297,11 +7288,13 @@ def group_comparison_operands(
 
 def is_typed_callable(c: Type | None) -> bool:
     c = get_proper_type(c)
-    if not c or not isinstance(c, CallableType):
-        return False
-    return not all(
-        isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
-        for t in get_proper_types(c.arg_types + [c.ret_type])
+    return (
+        c
+        and isinstance(c, CallableType)
+        and not all(
+            isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
+            for t in get_proper_types(c.arg_types + [c.ret_type])
+        )
     )
 
 

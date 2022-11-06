@@ -1727,11 +1727,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         self.skip_alias_target = True
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
-        if not type.args:
-            return False
-        if isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType)):
-            return True
-        return False
+        return type.args and isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType))
 
     def visit_unbound_type(self, t: UnboundType) -> TypeVarLikeList:
         name = t.name
@@ -1790,13 +1786,11 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
         if not isinstance(t, UnboundType) or t.args:
             return False
         node = self.lookup(t.name, t)
-        if (
+        return (
             node
             and isinstance(node.node, TypeVarLikeExpr)
             and self.scope.get_binding(node) is None
-        ):
-            return True
-        return False
+        )
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"

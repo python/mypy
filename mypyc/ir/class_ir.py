@@ -248,14 +248,11 @@ class ClassIR:
             # TODO: Look at the final attribute!
             return False
 
-        if self.has_method(name):
-            method_decl = self.method_decl(name)
-            for subc in subs:
-                if subc.method_decl(name) != method_decl:
-                    return False
-            return True
-        else:
+        if not self.has_method(name):
             return not any(subc.has_method(name) for subc in subs)
+
+        method_decl = self.method_decl(name)
+        return all(subc.method_decl(name) == method_decl for subc in subs)
 
     def has_attr(self, name: str) -> bool:
         try:
@@ -265,15 +262,10 @@ class ClassIR:
         return True
 
     def is_deletable(self, name: str) -> bool:
-        for ir in self.mro:
-            if name in ir.deletable:
-                return True
-        return False
+        return any(name in ir.deletable for ir in self.mro)
 
     def is_always_defined(self, name: str) -> bool:
-        if self.is_deletable(name):
-            return False
-        return name in self._always_initialized_attrs
+        return not self.is_deletable(name) and name in self._always_initialized_attrs
 
     def name_prefix(self, names: NameGenerator) -> str:
         return names.private_name(self.module_name, self.name)
