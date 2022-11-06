@@ -2265,7 +2265,7 @@ class TypedDictType(ProperType):
         return (
             frozenset(self.items.keys()) == frozenset(other.items.keys())
             and all(
-                not left_item_type == right_item_type
+                left_item_type == right_item_type
                 for (_, left_item_type, right_item_type) in self.zip(other)
             )
             and self.fallback == other.fallback
