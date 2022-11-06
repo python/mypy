@@ -6131,10 +6131,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
 
     def is_defined_in_base_class(self, var: Var) -> bool:
+        if not var.info:
+            return False
         return (
-            var.info
-            and any(base.get(var.name) is not None for base in var.info.mro[1:])
-            and var.info.fallback_to_any
+            any(base.get(var.name) is not None for base in var.info.mro[1:])
+            or var.info.fallback_to_any
         )
 
     def find_partial_types(self, var: Var) -> dict[Var, Context] | None:
