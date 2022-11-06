@@ -3886,6 +3886,14 @@ class Sub2(Super):
     def foo(self, a: A) -> A: pass
     @overload
     def foo(self, a: C) -> C: pass
+
+class Sub3(Super):
+    @overload
+    def foo(self, a: A) -> int: pass
+    @overload
+    def foo(self, a: A) -> A: pass
+    @overload
+    def foo(self, a: C) -> C: pass
 [builtins fixtures/classmethod.pyi]
 [out]
 tmp/foo.pyi:19: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
@@ -3903,6 +3911,20 @@ tmp/foo.pyi:24: note:          def foo(self, a: A) -> A
 tmp/foo.pyi:24: note:          @overload
 tmp/foo.pyi:24: note:          def foo(self, a: C) -> C
 tmp/foo.pyi:25: error: Overloaded function signatures 1 and 2 overlap with incompatible return types
+tmp/foo.pyi:32: error: Signature of "foo" incompatible with supertype "Super"
+tmp/foo.pyi:32: note:      Superclass:
+tmp/foo.pyi:32: note:          @overload
+tmp/foo.pyi:32: note:          def foo(self, a: A) -> A
+tmp/foo.pyi:32: note:          @overload
+tmp/foo.pyi:32: note:          def foo(self, a: C) -> C
+tmp/foo.pyi:32: note:      Subclass:
+tmp/foo.pyi:32: note:          @overload
+tmp/foo.pyi:32: note:          def foo(self, a: A) -> int
+tmp/foo.pyi:32: note:          @overload
+tmp/foo.pyi:32: note:          def foo(self, a: A) -> A
+tmp/foo.pyi:32: note:          @overload
+tmp/foo.pyi:32: note:          def foo(self, a: C) -> C
+tmp/foo.pyi:35: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 [case testTypeTypeOverlapsWithObjectAndType]
 from foo import *
