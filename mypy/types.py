@@ -2141,20 +2141,18 @@ class TupleType(ProperType):
         super().__init__(line, column)
 
     def can_be_true_default(self) -> bool:
-        return (
-            self.can_be_any_bool()
+        if self.can_be_any_bool():
             # Corner case: it is a `NamedTuple` with `__bool__` method defined.
             # It can be anything: both `True` and `False`.
-            or self.length() > 0
-        )
+            return True
+        return self.length() > 0
 
     def can_be_false_default(self) -> bool:
-        return (
-            self.can_be_any_bool()
+        if self.can_be_any_bool():
             # Corner case: it is a `NamedTuple` with `__bool__` method defined.
             # It can be anything: both `True` and `False`.
-            or self.length() == 0
-        )
+            return True
+        return self.length() == 0
 
     def can_be_any_bool(self) -> bool:
         return bool(
@@ -3289,9 +3287,9 @@ def invalid_recursive_alias(seen_nodes: set[mypy.nodes.TypeAlias], target: Type)
         assert target.alias, f"Unfixed type alias {target.type_ref}"
         return invalid_recursive_alias(seen_nodes | {target.alias}, get_proper_type(target))
     assert isinstance(target, ProperType)
-    return isinstance(target, UnionType) and any(
-        invalid_recursive_alias(seen_nodes, item) for item in target.items
-    )
+    if not isinstance(target, UnionType):
+        return False
+    return any(invalid_recursive_alias(seen_nodes, item) for item in target.items)
 
 
 def bad_type_type_item(item: Type) -> bool:
@@ -3302,20 +3300,23 @@ def bad_type_type_item(item: Type) -> bool:
     TypeType item is normalized (i.e. always a proper type).
     """
     item = get_proper_type(item)
-    return isinstance(item, TypeType) or (
-        isinstance(item, UnionType)
-        and any(
+    if isinstance(item, TypeType):
+        return True
+    if isinstance(item, UnionType):
+        return any(
             isinstance(get_proper_type(i), TypeType) for i in flatten_nested_unions(item.items)
         )
-    )
+    return False
 
 
 def is_union_with_any(tp: Type) -> bool:
     """Is this a union with Any or a plain Any type?"""
     tp = get_proper_type(tp)
-    return isinstance(tp, AnyType) or (
-        isinstance(tp, UnionType) and any(is_union_with_any(t) for t in get_proper_types(tp.items))
-    )
+    if isinstance(tp, AnyType):
+        return True
+    if not isinstance(tp, UnionType):
+        return False
+    return any(is_union_with_any(t) for t in get_proper_types(tp.items))
 
 
 def is_generic_instance(tp: Type) -> bool:
@@ -3356,7 +3357,9 @@ def is_self_type_like(typ: Type, *, is_classmethod: bool) -> bool:
     typ = get_proper_type(typ)
     if not is_classmethod:
         return isinstance(typ, TypeVarType)
-    return isinstance(typ, TypeType) and isinstance(typ.item, TypeVarType)
+    if not isinstance(typ, TypeType):
+        return False
+    return isinstance(typ.item, TypeVarType)
 
 
 names: Final = globals().copy()
