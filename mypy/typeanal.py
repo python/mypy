@@ -1727,7 +1727,9 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         self.skip_alias_target = True
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
-        return type.args and isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType))
+        if not type.args:
+            return False
+        return isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType))
 
     def visit_unbound_type(self, t: UnboundType) -> TypeVarLikeList:
         name = t.name
@@ -1743,7 +1745,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         if node is None:
             node = self.lookup(name, t)
         if (
-            node
+            bool(node)
             and isinstance(node.node, TypeVarLikeExpr)
             and (self.include_bound_tvars or self.scope.get_binding(node) is None)
         ):
