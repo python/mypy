@@ -1879,6 +1879,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         for item in original_type.items
                         if not item.arg_types or is_subtype(active_self_type, item.arg_types[0])
                     ]
+                    # If we don't have any filtered_items, maybe it's always a valid override
+                    # of the superclass? However if you get to that point you're in murky type
+                    # territory anyway, so we just preserve the type and have the behaviour match
+                    # that of older versions of mypy.
                     if filtered_items:
                         original_type = Overloaded(filtered_items)
                 original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
