@@ -179,6 +179,7 @@ class E(A[T]):
 
 
 class F(A[bytes]):
+    # Note there's an argument to be made that this is actually compatible with the supertype
     def f(self) -> bytes: ...  # E: Signature of "f" incompatible with supertype "A" \
                                # N:      Superclass:            \
                                # N:          @overload          \
