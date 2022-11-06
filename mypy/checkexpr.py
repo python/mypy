@@ -111,6 +111,7 @@ from mypy.typeops import (
     custom_special_method,
     erase_to_union_or_bound,
     false_only,
+    fixup_partial_type,
     function_type,
     is_literal_type_like,
     make_simplified_union,
@@ -2925,7 +2926,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(expr.node, Var):
             result = self.analyze_var_ref(expr.node, expr)
             if isinstance(result, PartialType) and result.type is not None:
-                self.chk.store_type(expr, self.chk.fixup_partial_type(result))
+                self.chk.store_type(expr, fixup_partial_type(result))
                 return result
         return None
 
