@@ -44,6 +44,9 @@ RETURN_VALUE_EXPECTED: Final = ErrorMessage("Return value expected", codes.RETUR
 NO_RETURN_EXPECTED: Final = ErrorMessage("Return statement in function which does not return")
 INVALID_EXCEPTION: Final = ErrorMessage("Exception must be derived from BaseException")
 INVALID_EXCEPTION_TYPE: Final = ErrorMessage("Exception type must be derived from BaseException")
+INVALID_EXCEPTION_GROUP: Final = ErrorMessage(
+    "Exception type in except* cannot derive from BaseExceptionGroup"
+)
 RETURN_IN_ASYNC_GENERATOR: Final = ErrorMessage(
     '"return" with value in async generator is not allowed'
 )

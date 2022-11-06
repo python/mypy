@@ -4305,7 +4305,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     with self.binder.frame_context(can_skip=True, fall_through=4):
                         typ = s.types[i]
                         if typ:
-                            t = self.check_except_handler_test(typ)
+                            t = self.check_except_handler_test(typ, s.is_star)
                             var = s.vars[i]
                             if var:
                                 # To support local variables, we make this a definition line,
@@ -4325,7 +4325,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if s.else_body:
                 self.accept(s.else_body)
 
-    def check_except_handler_test(self, n: Expression) -> Type:
+    def check_except_handler_test(self, n: Expression, is_star: bool) -> Type:
         """Type check an exception handler test clause."""
         typ = self.expr_checker.accept(n)
 
@@ -4341,21 +4341,46 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 item = ttype.items[0]
                 if not item.is_type_obj():
                     self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
-                    return AnyType(TypeOfAny.from_error)
-                exc_type = item.ret_type
+                    return self.default_exception_type(is_star)
+                exc_type = erase_typevars(item.ret_type)
             elif isinstance(ttype, TypeType):
                 exc_type = ttype.item
             else:
                 self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
-                return AnyType(TypeOfAny.from_error)
+                return self.default_exception_type(is_star)
 
             if not is_subtype(exc_type, self.named_type("builtins.BaseException")):
                 self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
-                return AnyType(TypeOfAny.from_error)
+                return self.default_exception_type(is_star)
 
             all_types.append(exc_type)
 
+        if is_star:
+            new_all_types: list[Type] = []
+            for typ in all_types:
+                if is_proper_subtype(typ, self.named_type("builtins.BaseExceptionGroup")):
+                    self.fail(message_registry.INVALID_EXCEPTION_GROUP, n)
+                    new_all_types.append(AnyType(TypeOfAny.from_error))
+                else:
+                    new_all_types.append(typ)
+            return self.wrap_exception_group(new_all_types)
         return make_simplified_union(all_types)
+
+    def default_exception_type(self, is_star: bool) -> Type:
+        """Exception type to return in case of a previous type error."""
+        any_type = AnyType(TypeOfAny.from_error)
+        if is_star:
+            return self.named_generic_type("builtins.ExceptionGroup", [any_type])
+        return any_type
+
+    def wrap_exception_group(self, types: Sequence[Type]) -> Type:
+        """Transform except* variable type into an appropriate exception group."""
+        arg = make_simplified_union(types)
+        if is_subtype(arg, self.named_type("builtins.Exception")):
+            base = "builtins.ExceptionGroup"
+        else:
+            base = "builtins.BaseExceptionGroup"
+        return self.named_generic_type(base, [arg])
 
     def get_types_from_except_handler(self, typ: Type, n: Expression) -> list[Type]:
         """Helper for check_except_handler_test to retrieve handler types."""
