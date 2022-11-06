@@ -572,6 +572,7 @@ class RTuple(RType):
         # Nominally the max c length is 31 chars, but I'm not honestly worried about this.
         self.struct_name = f"tuple_{self.unique_id}"
         self._ctype = f"{self.struct_name}"
+        self.error_overlap = all(t.error_overlap for t in self.types) and bool(self.types)
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)

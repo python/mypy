@@ -395,7 +395,7 @@ def test_for_loop() -> None:
     assert sum([x * x for x in range(i64(4 + int()))]) == 1 + 4 + 9
 
 [case testI64ErrorValuesAndUndefined]
-from typing import Any
+from typing import Any, Tuple
 import sys
 
 from mypy_extensions import mypyc_attr
@@ -429,6 +429,28 @@ def test_method_error_value() -> None:
         assert C().maybe_raise(i, False) == i
     with assertRaises(ValueError):
         C().maybe_raise(0, True)
+
+def maybe_raise_tuple(n: i64, error: bool) -> Tuple[i64, i64]:
+    if error:
+        raise ValueError()
+    return n, n+ 1
+
+def test_tuple_error_value() -> None:
+    for i in range(-1000, 1000):
+        assert maybe_raise_tuple(i, False) == (i, i + 1)
+    with assertRaises(ValueError):
+        maybe_raise_tuple(0, True)
+
+def maybe_raise_tuple2(n: i64, error: bool) -> Tuple[i64, int]:
+    if error:
+        raise ValueError()
+    return n, n+ 1
+
+def test_tuple_error_value_2() -> None:
+    for i in range(-1000, 1000):
+        assert maybe_raise_tuple2(i, False) == (i, i + 1)
+    with assertRaises(ValueError):
+        maybe_raise_tuple(0, True)
 
 def test_unbox_int() -> None:
     for i in list(range(-1000, 1000)) + [-(1 << 63), (1 << 63) - 1]:

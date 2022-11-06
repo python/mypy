@@ -30,8 +30,9 @@ from mypyc.ir.ops import (
     Return,
     SetAttr,
     Value,
+    TupleGet,
 )
-from mypyc.ir.rtypes import bool_rprimitive
+from mypyc.ir.rtypes import bool_rprimitive, RTuple
 from mypyc.primitives.exc_ops import err_occurred_op
 from mypyc.primitives.registry import CFunctionDescription
 
@@ -100,9 +101,7 @@ def split_blocks_at_errors(
                     # semantics, using a temporary bool with value false
                     target = Integer(0, bool_rprimitive)
                 elif op.error_kind == ERR_MAGIC_OVERLAPPING:
-                    errvalue = Integer(int(target.type.c_undefined), rtype=op.type)
-                    comp = ComparisonOp(target, errvalue, ComparisonOp.EQ)
-                    cur_block.ops.append(comp)
+                    comp = insert_overlapping_error_value_check(cur_block.ops, target)
                     new_block2 = BasicBlock()
                     new_blocks.append(new_block2)
                     branch = Branch(
@@ -163,3 +162,17 @@ def adjust_error_kinds(block: BasicBlock) -> None:
         if isinstance(op, SetAttr):
             if op.class_type.class_ir.is_always_defined(op.attr):
                 op.error_kind = ERR_NEVER
+
+
+def insert_overlapping_error_value_check(ops: list[Op], target: Value) -> ComparisonOp:
+    """Append to ops to check for an overlapping error value."""
+    typ = target.type
+    if isinstance(typ, RTuple):
+        item = TupleGet(target, 0)
+        ops.append(item)
+        return insert_overlapping_error_value_check(ops, item)
+    else:
+        errvalue = Integer(int(typ.c_undefined), rtype=typ)
+        op = ComparisonOp(target, errvalue, ComparisonOp.EQ)
+        ops.append(op)
+        return op

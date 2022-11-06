@@ -785,7 +785,7 @@ class TupleGet(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value, index: int, line: int) -> None:
+    def __init__(self, src: Value, index: int, line: int = -1) -> None:
         super().__init__(line)
         self.src = src
         self.index = index

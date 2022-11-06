@@ -418,13 +418,25 @@ class Emitter:
             return "{}.empty_struct_error_flag {} {}".format(
                 tuple_expr_in_c, compare, c_type_compare_val(int_rprimitive)
             )
-        item_type = rtuple.types[0]
+        if rtuple.error_overlap:
+            i = 0
+            item_type = rtuple.types[0]
+        else:
+            for i, typ in enumerate(rtuple.types):
+                if not typ.error_overlap:
+                    item_type = rtuple.types[i]
+                    break
+            else:
+                assert False, "not expecting tuple with error overlap"
         if isinstance(item_type, RTuple):
             return self.tuple_undefined_check_cond(
-                item_type, tuple_expr_in_c + ".f0", c_type_compare_val, compare
+                item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
         else:
-            return f"{tuple_expr_in_c}.f0 {compare} {c_type_compare_val(item_type)}"
+            check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
+            if rtuple.error_overlap:
+                check += " && PyErr_Occurred()"
+            return check
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
         return "tuple_undefined_" + rtuple.unique_id
@@ -993,6 +1005,7 @@ class Emitter:
         elif not isinstance(rtype, RTuple):
             self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
         else:
+            # Tuple type
             if len(rtype.types) == 0:
                 return  # empty tuples can't fail.
             else:
