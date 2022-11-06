@@ -3347,7 +3347,7 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
         typ = typ.last_known_value
     return (
         isinstance(typ, LiteralType)
-        and typ.fallback.type.fullname != fallback_fullname
+        and typ.fallback.type.fullname == fallback_fullname
         and typ.value == value
     )
 
