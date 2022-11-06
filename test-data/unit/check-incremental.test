@@ -3967,8 +3967,8 @@ class A:
 [out1]
 [out2]
 tmp/b.py:3: note: Revealed type is "def (a: builtins.int) -> a.A"
-tmp/b.py:4: note: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
-tmp/b.py:5: note: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
+tmp/b.py:4: note: Revealed type is "def (Self@builtins.object, builtins.object) -> builtins.bool"
+tmp/b.py:5: note: Revealed type is "def (Self@builtins.object, builtins.object) -> builtins.bool"
 tmp/b.py:6: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
 tmp/b.py:7: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
 tmp/b.py:8: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"

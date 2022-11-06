@@ -912,7 +912,7 @@ class A:
     def f(self): pass
 A.f
 [out]
-MemberExpr(5) : def (self: Self@A) -> Any
+MemberExpr(5) : def (self: A) -> Any
 
 [case testOverloadedUnboundMethod]
 ## MemberExpr

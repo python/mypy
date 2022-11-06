@@ -457,7 +457,7 @@ IntExpr:5: Literal[1]?<1>
 MemberExpr:5: builtins.int<1>
 NameExpr:5: Self@target.A<0>
 MemberExpr:6: builtins.int<1>
-NameExpr:6: target.A<0>
+NameExpr:6: Self@target.A<0>
 ==>
 ## target
 IntExpr:3: Literal[1]?<1>
@@ -469,7 +469,7 @@ CallExpr:5: target.A<0>
 MemberExpr:5: target.A<0>
 NameExpr:5: def () -> target.A<0>
 NameExpr:5: Self@target.A<0>
-MemberExpr:6: Self@target.A<0>
+MemberExpr:6: target.A<0>
 NameExpr:6: Self@target.A<0>
 
 [case testMethod_types]
