@@ -823,9 +823,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # Ensure each overload in the right side (the supertype) is accounted for.
             previous_match_left_index = -1
             matched_overloads = set()
-            possible_invalid_overloads = set()
 
-            for right_index, right_item in enumerate(right.items):
+            for right_item in right.items:
                 found_match = False
 
                 for left_index, left_item in enumerate(left.items):
@@ -834,43 +833,36 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # Order matters: we need to make sure that the index of
                     # this item is at least the index of the previous one.
                     if subtype_match and previous_match_left_index <= left_index:
-                        if not found_match:
-                            # Update the index of the previous match.
-                            previous_match_left_index = left_index
-                            found_match = True
-                            matched_overloads.add(left_item)
-                            possible_invalid_overloads.discard(left_item)
+                        previous_match_left_index = left_index
+                        found_match = True
+                        matched_overloads.add(left_index)
+                        break
                     else:
                         # If this one overlaps with the supertype in any way, but it wasn't
                         # an exact match, then it's a potential error.
                         strict_concat = self.options.strict_concatenate if self.options else True
-                        if is_callable_compatible(
-                            left_item,
-                            right_item,
-                            is_compat=self._is_subtype,
-                            ignore_return=True,
-                            ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                            strict_concatenate=strict_concat,
-                        ) or is_callable_compatible(
-                            right_item,
-                            left_item,
-                            is_compat=self._is_subtype,
-                            ignore_return=True,
-                            ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                            strict_concatenate=strict_concat,
+                        if left_index not in matched_overloads and (
+                            is_callable_compatible(
+                                left_item,
+                                right_item,
+                                is_compat=self._is_subtype,
+                                ignore_return=True,
+                                ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
+                                strict_concatenate=strict_concat,
+                            )
+                            or is_callable_compatible(
+                                right_item,
+                                left_item,
+                                is_compat=self._is_subtype,
+                                ignore_return=True,
+                                ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
+                                strict_concatenate=strict_concat,
+                            )
                         ):
-                            # If this is an overload that's already been matched, there's no
-                            # problem.
-                            if left_item not in matched_overloads:
-                                possible_invalid_overloads.add(left_item)
+                            return False
 
                 if not found_match:
                     return False
-
-            if possible_invalid_overloads:
-                # There were potentially invalid overloads that were never matched to the
-                # supertype.
-                return False
             return True
         elif isinstance(right, UnboundType):
             return True

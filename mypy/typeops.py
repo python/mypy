@@ -71,13 +71,13 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
     """
     if isinstance(s, TypeAliasType) and s.is_recursive:
         return (
-            isinstance(get_proper_type(t), Instance)
+            isinstance(get_proper_type(t), (Instance, UnionType))
             or isinstance(t, TypeAliasType)
             and t.is_recursive
         )
     if isinstance(t, TypeAliasType) and t.is_recursive:
         return (
-            isinstance(get_proper_type(s), Instance)
+            isinstance(get_proper_type(s), (Instance, UnionType))
             or isinstance(s, TypeAliasType)
             and s.is_recursive
         )
