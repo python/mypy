@@ -104,6 +104,10 @@ class DataclassAttribute:
 
     def expand_type(self, current_info: TypeInfo) -> Optional[Type]:
         if self.type is not None and self.info.self_type is not None:
+            # In general, it is not safe to call `expand_type()` during semantic analyzis,
+            # however this plugin is called very late, so all types should be fully ready.
+            # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
+            # we serialize attributes).
             return expand_type(self.type, {self.info.self_type.id: fill_typevars(current_info)})
         return self.type
 
@@ -187,11 +191,12 @@ class DataclassTransformer:
             and attributes
         ):
 
-            args = [
-                attr.to_argument(info)
-                for attr in attributes
-                if attr.is_in_init and not self._is_kw_only_type(attr.type)
-            ]
+            with state.strict_optional_set(ctx.api.options.strict_optional):
+                args = [
+                    attr.to_argument(info)
+                    for attr in attributes
+                    if attr.is_in_init and not self._is_kw_only_type(attr.type)
+                ]
 
             if info.fallback_to_any:
                 # Make positional args optional since we don't know their order.

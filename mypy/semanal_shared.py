@@ -33,6 +33,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypeAliasType,
     TypeVarId,
     TypeVarLikeType,
     get_proper_type,
@@ -167,6 +168,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         allow_required: bool = False,
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
+        self_type_override: Type | None = None,
     ) -> Type | None:
         raise NotImplementedError
 
@@ -329,3 +331,11 @@ class HasPlaceholders(TypeQuery[bool]):
 def has_placeholder(typ: Type) -> bool:
     """Check if a type contains any placeholder types (recursively)."""
     return typ.accept(HasPlaceholders())
+
+
+def special_self_type(info: TypeInfo | None, defn: Context) -> Type:
+    if info is not None:
+        assert info.special_alias is not None
+        return TypeAliasType(info.special_alias, list(info.defn.type_vars))
+    else:
+        return PlaceholderType(None, [], defn.line)

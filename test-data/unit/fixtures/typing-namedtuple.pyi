@@ -5,6 +5,7 @@ overload = 0
 Type = 0
 Literal = 0
 Optional = 0
+Self = 0
 
 T_co = TypeVar('T_co', covariant=True)
 KT = TypeVar('KT')

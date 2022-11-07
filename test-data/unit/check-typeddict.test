@@ -2590,3 +2590,30 @@ TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", Typ
 TD[str]({"key": 0, "value": 0})  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSelfTypeNewSyntaxGeneric]
+# flags: --strict-optional
+from typing import Self, TypedDict, Optional, Generic, TypeVar
+
+T = TypeVar("T")
+class TD(TypedDict, Generic[T]):
+    val: T
+    next: Optional[Self]
+
+reveal_type(TD)  # N: Revealed type is "def [T] (*, val: T`1, next: Union[TypedDict('__main__.TD', {'val': T`1, 'next': Union[..., None]}), None]) -> TypedDict('__main__.TD', {'val': T`1, 'next': Union[TypedDict('__main__.TD', {'val': T`1, 'next': Union[..., None]}), None]})"
+t: TD[int]
+reveal_type(t["next"])  # N: Revealed type is "Union[TypedDict('__main__.TD', {'val': builtins.int, 'next': Union[..., None]}), None]"
+
+s: TD[int] = TD(val=1, next=TD(val="no", next=None))  # E: Incompatible types (expression has type "str", TypedDict item "val" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSelfTypeNewSyntaxCall]
+# flags: --strict-optional
+from typing import Self, TypedDict, Optional
+
+TDC = TypedDict("TDC", {"val": int, "next": Optional[Self]})
+tc: TDC
+reveal_type(tc["next"])  # N: Revealed type is "Union[TypedDict('__main__.TDC', {'val': builtins.int, 'next': Union[..., None]}), None]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

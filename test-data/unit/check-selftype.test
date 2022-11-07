@@ -1280,3 +1280,36 @@ reveal_type(C.meth)  # N: Revealed type is "def [Self <: __main__.C] (self: Self
 C.attr  # E: Access to generic instance variables via class is ambiguous
 reveal_type(D().meth())  # N: Revealed type is "builtins.list[__main__.D]"
 reveal_type(D().attr)  # N: Revealed type is "builtins.list[__main__.D]"
+
+-- Test various errors
+
+-- Test all nodes: property, classmethod, overload, ..., and both incrementals
+
+-- Test Self nested in a generic alias
+
+[case testTypingSelfMixedTypeVars]
+from typing import Self, TypeVar, Generic, Tuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class C(Generic[T]):
+    def meth(self, arg: S) -> Tuple[Self, S, T]: ...
+
+class D(C[int]): ...
+
+c: C[int]
+d: D
+reveal_type(c.meth("test"))  # N: Revealed type is "Tuple[__main__.C[builtins.int], builtins.str, builtins.int]"
+reveal_type(d.meth("test"))  # N: Revealed type is "Tuple[__main__.D, builtins.str, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingSelfRecursiveInit]
+from typing import Self
+
+class C:
+    def __init__(self, other: Self) -> None: ...
+class D(C): ...
+
+reveal_type(C)  # N: Revealed type is "def (other: __main__.C) -> __main__.C"
+reveal_type(D)  # N: Revealed type is "def (other: __main__.D) -> __main__.D"

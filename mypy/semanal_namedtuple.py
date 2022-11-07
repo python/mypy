@@ -48,6 +48,7 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     has_placeholder,
     set_callable_name,
+    special_self_type,
 )
 from mypy.types import (
     TYPED_NAMEDTUPLE_NAMES,
@@ -107,16 +108,16 @@ class NamedTupleAnalyzer:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
                 if base_expr.fullname in TYPED_NAMEDTUPLE_NAMES:
-                    result = self.check_namedtuple_classdef(defn, is_stub_file)
+                    existing_info = None
+                    if isinstance(defn.analyzed, NamedTupleExpr):
+                        existing_info = defn.analyzed.info
+                    result = self.check_namedtuple_classdef(defn, is_stub_file, existing_info)
                     if result is None:
                         # This is a valid named tuple, but some types are incomplete.
                         return True, None
                     items, types, default_items = result
                     if is_func_scope and "@" not in defn.name:
                         defn.name += "@" + str(defn.line)
-                    existing_info = None
-                    if isinstance(defn.analyzed, NamedTupleExpr):
-                        existing_info = defn.analyzed.info
                     info = self.build_namedtuple_typeinfo(
                         defn.name, items, types, default_items, defn.line, existing_info
                     )
@@ -129,7 +130,7 @@ class NamedTupleAnalyzer:
         return False, None
 
     def check_namedtuple_classdef(
-        self, defn: ClassDef, is_stub_file: bool
+        self, defn: ClassDef, is_stub_file: bool, existing_info: TypeInfo | None
     ) -> tuple[list[str], list[Type], dict[str, Expression]] | None:
         """Parse and validate fields in named tuple class definition.
 
@@ -178,6 +179,7 @@ class NamedTupleAnalyzer:
                         stmt.type,
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
+                        self_type_override=special_self_type(existing_info, defn),
                     )
                     if analyzed is None:
                         # Something is incomplete. We need to defer this named tuple.
@@ -229,7 +231,10 @@ class NamedTupleAnalyzer:
             is_typed = True
         else:
             return None, None, []
-        result = self.parse_namedtuple_args(call, fullname)
+        existing_info = None
+        if isinstance(node.analyzed, NamedTupleExpr):
+            existing_info = node.analyzed.info
+        result = self.parse_namedtuple_args(call, fullname, existing_info)
         if result:
             items, types, defaults, typename, tvar_defs, ok = result
         else:
@@ -277,9 +282,6 @@ class NamedTupleAnalyzer:
         else:
             default_items = {}
 
-        existing_info = None
-        if isinstance(node.analyzed, NamedTupleExpr):
-            existing_info = node.analyzed.info
         info = self.build_namedtuple_typeinfo(
             name, items, types, default_items, node.line, existing_info
         )
@@ -317,7 +319,7 @@ class NamedTupleAnalyzer:
         call.analyzed.set_line(call)
 
     def parse_namedtuple_args(
-        self, call: CallExpr, fullname: str
+        self, call: CallExpr, fullname: str, existing_info: TypeInfo | None
     ) -> None | (tuple[list[str], list[Type], list[Expression], str, list[TypeVarLikeType], bool]):
         """Parse a namedtuple() call into data needed to construct a type.
 
@@ -394,7 +396,9 @@ class NamedTupleAnalyzer:
                 ]
                 tvar_defs = self.api.get_and_bind_all_tvars(type_exprs)
                 # The fields argument contains (name, type) tuples.
-                result = self.parse_namedtuple_fields_with_types(listexpr.items, call)
+                result = self.parse_namedtuple_fields_with_types(
+                    listexpr.items, call, existing_info
+                )
                 if result is None:
                     # One of the types is not ready, defer.
                     return None
@@ -416,7 +420,7 @@ class NamedTupleAnalyzer:
         return items, types, defaults, typename, tvar_defs, True
 
     def parse_namedtuple_fields_with_types(
-        self, nodes: list[Expression], context: Context
+        self, nodes: list[Expression], call: CallExpr, existing_info: TypeInfo | None
     ) -> tuple[list[str], list[Type], list[Expression], bool] | None:
         """Parse typed named tuple fields.
 
@@ -445,6 +449,7 @@ class NamedTupleAnalyzer:
                     type,
                     allow_placeholder=not self.options.disable_recursive_aliases
                     and not self.api.is_func_scope(),
+                    self_type_override=special_self_type(existing_info, call),
                 )
                 # Workaround #4987 and avoid introducing a bogus UnboundType
                 if isinstance(analyzed, UnboundType):

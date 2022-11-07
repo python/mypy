@@ -31,7 +31,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder
+from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder, special_self_type
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     TPDICT_NAMES,
@@ -94,7 +94,9 @@ class TypedDictAnalyzer:
             and defn.base_type_exprs[0].fullname in TPDICT_NAMES
         ):
             # Building a new TypedDict
-            fields, types, statements, required_keys = self.analyze_typeddict_classdef_fields(defn)
+            fields, types, statements, required_keys = self.analyze_typeddict_classdef_fields(
+                defn, existing_info
+            )
             if fields is None:
                 return True, None  # Defer
             info = self.build_typeddict_typeinfo(
@@ -146,7 +148,7 @@ class TypedDictAnalyzer:
             new_types,
             new_statements,
             new_required_keys,
-        ) = self.analyze_typeddict_classdef_fields(defn, keys)
+        ) = self.analyze_typeddict_classdef_fields(defn, existing_info, keys)
         if new_keys is None:
             return True, None  # Defer
         keys.extend(new_keys)
@@ -257,7 +259,7 @@ class TypedDictAnalyzer:
         return mapped_items
 
     def analyze_typeddict_classdef_fields(
-        self, defn: ClassDef, oldfields: list[str] | None = None
+        self, defn: ClassDef, existing_info: TypeInfo | None, oldfields: list[str] | None = None
     ) -> tuple[list[str] | None, list[Type], list[Statement], set[str]]:
         """Analyze fields defined in a TypedDict class definition.
 
@@ -305,6 +307,7 @@ class TypedDictAnalyzer:
                         allow_required=True,
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
+                        self_type_override=special_self_type(existing_info, defn),
                     )
                     if analyzed is None:
                         return None, [], [], set()  # Need to defer
@@ -356,7 +359,10 @@ class TypedDictAnalyzer:
         fullname = callee.fullname
         if fullname not in TPDICT_NAMES:
             return False, None, []
-        res = self.parse_typeddict_args(call)
+        existing_info = None
+        if isinstance(node.analyzed, TypedDictExpr):
+            existing_info = node.analyzed.info
+        res = self.parse_typeddict_args(call, existing_info)
         if res is None:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
@@ -386,9 +392,6 @@ class TypedDictAnalyzer:
             types = [  # unwrap Required[T] to just T
                 t.item if isinstance(t, RequiredType) else t for t in types
             ]
-            existing_info = None
-            if isinstance(node.analyzed, TypedDictExpr):
-                existing_info = node.analyzed.info
             info = self.build_typeddict_typeinfo(
                 name, items, types, required_keys, call.line, existing_info
             )
@@ -403,7 +406,7 @@ class TypedDictAnalyzer:
         return True, info, tvar_defs
 
     def parse_typeddict_args(
-        self, call: CallExpr
+        self, call: CallExpr, existing_info: TypeInfo | None
     ) -> tuple[str, list[str], list[Type], bool, list[TypeVarLikeType], bool] | None:
         """Parse typed dict call expression.
 
@@ -440,7 +443,7 @@ class TypedDictAnalyzer:
                 )
         dictexpr = args[1]
         tvar_defs = self.api.get_and_bind_all_tvars([t for k, t in dictexpr.items])
-        res = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        res = self.parse_typeddict_fields_with_types(dictexpr.items, call, existing_info)
         if res is None:
             # One of the types is not ready, defer.
             return None
@@ -458,7 +461,10 @@ class TypedDictAnalyzer:
         return args[0].value, items, types, total, tvar_defs, ok
 
     def parse_typeddict_fields_with_types(
-        self, dict_items: list[tuple[Expression | None, Expression]], context: Context
+        self,
+        dict_items: list[tuple[Expression | None, Expression]],
+        call: CallExpr,
+        existing_info: TypeInfo | None,
     ) -> tuple[list[str], list[Type], bool] | None:
         """Parse typed dict items passed as pairs (name expression, type expression).
 
@@ -500,6 +506,7 @@ class TypedDictAnalyzer:
                 allow_required=True,
                 allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
+                self_type_override=special_self_type(existing_info, call),
             )
             if analyzed is None:
                 return None

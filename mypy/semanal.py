@@ -3139,6 +3139,8 @@ class SemanticAnalyzer(
                 s.type, lambda name: self.lookup_qualified(name, s, suppress_errors=True)
             )
             if has_self_type and self.type:
+                if self.type.typeddict_type or self.type.tuple_type:
+                    return
                 self.setup_self_type()
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
@@ -6140,6 +6142,7 @@ class SemanticAnalyzer(
         allow_required: bool = False,
         allow_param_spec_literals: bool = False,
         report_invalid_types: bool = True,
+        self_type_override: Type | None = None,
     ) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -6155,6 +6158,7 @@ class SemanticAnalyzer(
             allow_placeholder=allow_placeholder,
             allow_required=allow_required,
             allow_param_spec_literals=allow_param_spec_literals,
+            self_type_override=self_type_override,
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -6174,6 +6178,7 @@ class SemanticAnalyzer(
         allow_required: bool = False,
         allow_param_spec_literals: bool = False,
         report_invalid_types: bool = True,
+        self_type_override: Type | None = None,
         third_pass: bool = False,
     ) -> Type | None:
         """Semantically analyze a type.
@@ -6204,6 +6209,7 @@ class SemanticAnalyzer(
             allow_required=allow_required,
             allow_param_spec_literals=allow_param_spec_literals,
             report_invalid_types=report_invalid_types,
+            self_type_override=self_type_override,
         )
         tag = self.track_incomplete_refs()
         typ = typ.accept(a)
