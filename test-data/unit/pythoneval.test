@@ -1683,3 +1683,30 @@ A = Type[int] | str
 B: TypeAlias = Type[int] | str
 [out]
 _testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
+
+[case testTypeAliasWithNewStyleUnionInStub]
+# flags: --python-version 3.7
+import m
+
+[file m.pyi]
+from typing import Type
+from typing_extensions import Literal, TypeAlias
+
+Foo = Literal[1, 2]
+reveal_type(Foo)
+Bar1 = Foo | Literal[3]
+Bar2 = Literal[3] | Foo
+
+U1 = int | str
+U2 = U1 | bytes
+U3 = bytes | U1
+
+Opt1 = None | int
+Opt2 = None | float
+Opt3 = int | None
+Opt4 = float | None
+
+A = Type[int] | str
+B: TypeAlias = Type[int] | str
+[out]
+m.pyi:5: note: Revealed type is "typing._SpecialForm"
