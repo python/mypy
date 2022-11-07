@@ -68,4 +68,6 @@ class ContextManager(Generic[T]):
     # Use Any because not all the precise types are in the fixtures.
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
 
+class _SpecialForm: pass
+
 TYPE_CHECKING = 1

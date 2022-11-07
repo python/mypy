@@ -821,28 +821,28 @@ c = Child()
 
 reveal_type(NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
 reveal_type(NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
-reveal_type(SpecialImplicit)  # N: Revealed type is "builtins.object"
-reveal_type(SpecialExplicit)  # N: Revealed type is "builtins.object"
+reveal_type(SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
 
 reveal_type(Parent.NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
 reveal_type(Parent.NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
-reveal_type(Parent.SpecialImplicit)  # N: Revealed type is "builtins.object"
-reveal_type(Parent.SpecialExplicit)  # N: Revealed type is "builtins.object"
+reveal_type(Parent.SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(Parent.SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
 
 reveal_type(Child.NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
 reveal_type(Child.NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
-reveal_type(Child.SpecialImplicit)  # N: Revealed type is "builtins.object"
-reveal_type(Child.SpecialExplicit)  # N: Revealed type is "builtins.object"
+reveal_type(Child.SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(Child.SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
 
 reveal_type(p.NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
 reveal_type(p.NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
-reveal_type(p.SpecialImplicit)  # N: Revealed type is "builtins.object"
-reveal_type(p.SpecialExplicit)  # N: Revealed type is "builtins.object"
+reveal_type(p.SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(p.SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
 
 reveal_type(c.NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
 reveal_type(p.NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
-reveal_type(c.SpecialImplicit)  # N: Revealed type is "builtins.object"
-reveal_type(c.SpecialExplicit)  # N: Revealed type is "builtins.object"
+reveal_type(c.SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(c.SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
 
 # Use type aliases in a type alias context in a plausible way
 
@@ -895,6 +895,7 @@ reveal_type(weird_child_2)  # N: Revealed type is "def () -> Any"
 reveal_type(weird_child_3)  # N: Revealed type is "def () -> Any"
 reveal_type(weird_child_4)  # N: Revealed type is "def () -> Any"
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testMalformedTypeAliasRuntimeReassignments]
 from typing import Union
@@ -927,8 +928,8 @@ SpecialExplicit = 4  # E: Cannot assign multiple types to name "SpecialExplicit"
 
 Parent.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
 Parent.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
-Parent.SpecialImplicit = 4
-Parent.SpecialExplicit = 4
+Parent.SpecialImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "<typing special form>")
+Parent.SpecialExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "<typing special form>")
 
 Child.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
 Child.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
@@ -945,3 +946,4 @@ c.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type
 c.SpecialImplicit = 4
 c.SpecialExplicit = 4
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]

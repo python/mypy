@@ -132,6 +132,7 @@ SUGGESTED_TEST_FIXTURES: Final = {
     "builtins.isinstance": "isinstancelist.pyi",
     "builtins.property": "property.pyi",
     "builtins.classmethod": "classmethod.pyi",
+    "typing._SpecialForm": "typing-medium.pyi",
 }
 
 
@@ -2253,6 +2254,9 @@ def format_type_inner(
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
                 return f"{base_str} {itype.extra_attrs.mod_name}"
             return base_str
+        if itype.type.fullname == "typing._SpecialForm":
+            # This is not a real type but used for some typing-related constructs.
+            return "<typing special form>"
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname
         else:

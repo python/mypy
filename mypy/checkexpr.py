@@ -3870,9 +3870,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
-            # This type is invalid in most runtime contexts, give it an 'object' type.
-            # TODO: Use typing._SpecialForm instead?
-            return self.named_type("builtins.object")
+            # The _SpecialForm type can be used in some runtime contexts (e.g. it may have __or__).
+            return self.named_type("typing._SpecialForm")
 
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context
@@ -4742,7 +4741,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             typ = typ.fallback
         if isinstance(typ, Instance):
             return typ.type.has_readable_member(member)
-        if isinstance(typ, CallableType) and typ.is_type_obj():
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
             return typ.fallback.type.has_readable_member(member)
         elif isinstance(typ, AnyType):
             return True

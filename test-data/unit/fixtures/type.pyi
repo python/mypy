@@ -13,6 +13,7 @@ class list(Generic[T]): pass
 class type(Generic[T]):
     __name__: str
     def __or__(self, other: Union[type, None]) -> type: pass
+    def __ror__(self, other: Union[type, None]) -> type: pass
     def mro(self) -> List['type']: pass
 
 class tuple(Generic[T]): pass

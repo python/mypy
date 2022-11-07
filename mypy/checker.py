@@ -6048,11 +6048,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             last = parts[-1]
             if last in n.names:
                 return n.names[last]
-            elif len(parts) == 2 and parts[0] == "builtins":
-                fullname = "builtins." + last
+            elif len(parts) == 2 and parts[0] in ("builtins", "typing"):
+                fullname = ".".join(parts)
                 if fullname in SUGGESTED_TEST_FIXTURES:
-                    suggestion = ", e.g. add '[builtins fixtures/{}]' to your test".format(
-                        SUGGESTED_TEST_FIXTURES[fullname]
+                    suggestion = ", e.g. add '[{} fixtures/{}]' to your test".format(
+                        parts[0], SUGGESTED_TEST_FIXTURES[fullname]
                     )
                 else:
                     suggestion = ""
