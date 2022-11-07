@@ -1693,8 +1693,8 @@ reveal_type(y)
 F = list[type[int] | str]
 [out]
 _testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
-_testTypeAliasWithNewStyleUnion.py:24: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnion.py:27: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
 
 [case testTypeAliasWithNewStyleUnionInStub]
 # flags: --python-version 3.7
