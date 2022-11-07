@@ -159,6 +159,7 @@ from mypy.typeops import (
     erase_to_bound,
     erase_to_union_or_bound,
     false_only,
+    fixup_partial_type,
     function_type,
     get_type_vars,
     is_literal_type_like,
@@ -2738,8 +2739,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # None initializers preserve the partial None type.
                         return
 
-                    if is_valid_inferred_type(rvalue_type):
-                        var = lvalue_type.var
+                    var = lvalue_type.var
+                    if is_valid_inferred_type(rvalue_type, is_lvalue_final=var.is_final):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
@@ -3687,7 +3688,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Infer the type of initialized variables from initializer type."""
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
-        elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
+        elif (
+            not is_valid_inferred_type(init_type, is_lvalue_final=name.is_final)
+            and not self.no_partial_types
+        ):
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
             # partial type which will be made more specific later. A partial type
@@ -6114,7 +6118,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.msg.need_annotation_for_var(var, context, self.options.python_version)
                         self.partial_reported.add(var)
                     if var.type:
-                        fixed = self.fixup_partial_type(var.type)
+                        fixed = fixup_partial_type(var.type)
                         var.invalid_partial_type = fixed != var.type
                         var.type = fixed
 
@@ -6145,20 +6149,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     # Defer the node -- we might get a better type in the outer scope
                     self.handle_cannot_determine_type(node.name, context)
-            return self.fixup_partial_type(typ)
-
-    def fixup_partial_type(self, typ: Type) -> Type:
-        """Convert a partial type that we couldn't resolve into something concrete.
-
-        This means, for None we make it Optional[Any], and for anything else we
-        fill in all of the type arguments with Any.
-        """
-        if not isinstance(typ, PartialType):
-            return typ
-        if typ.type is None:
-            return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
-        else:
-            return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
+            return fixup_partial_type(typ)
 
     def is_defined_in_base_class(self, var: Var) -> bool:
         if var.info:
@@ -7006,20 +6997,27 @@ def infer_operator_assignment_method(typ: Type, operator: str) -> tuple[bool, st
     return False, method
 
 
-def is_valid_inferred_type(typ: Type) -> bool:
-    """Is an inferred type valid?
+def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
+    """Is an inferred type valid and needs no further refinement?
 
-    Examples of invalid types include the None type or List[<uninhabited>].
+    Examples of invalid types include the None type (when we are not assigning
+    None to a final lvalue) or List[<uninhabited>].
 
     When not doing strict Optional checking, all types containing None are
     invalid.  When doing strict Optional checking, only None and types that are
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
-    if isinstance(get_proper_type(typ), (NoneType, UninhabitedType)):
-        # With strict Optional checking, we *may* eventually infer NoneType when
-        # the initializer is None, but we only do that if we can't infer a
-        # specific Optional type.  This resolution happens in
-        # leave_partial_types when we pop a partial types scope.
+    proper_type = get_proper_type(typ)
+    if isinstance(proper_type, NoneType):
+        # If the lvalue is final, we may immediately infer NoneType when the
+        # initializer is None.
+        #
+        # If not, we want to defer making this decision. The final inferred
+        # type could either be NoneType or an Optional type, depending on
+        # the context. This resolution happens in leave_partial_types when
+        # we pop a partial types scope.
+        return is_lvalue_final
+    elif isinstance(proper_type, UninhabitedType):
         return False
     return not typ.accept(NothingSeeker())
 
