@@ -1669,6 +1669,7 @@ Foo = Literal[1, 2]
 reveal_type(Foo)
 Bar1 = Foo | Literal[3]
 Bar2 = Literal[3] | Foo
+Bar3 = Foo | Foo | Literal[3] | Foo
 
 U1 = int | str
 U2 = U1 | bytes
@@ -1696,6 +1697,7 @@ Foo = Literal[1, 2]
 reveal_type(Foo)
 Bar1 = Foo | Literal[3]
 Bar2 = Literal[3] | Foo
+Bar3 = Foo | Foo | Literal[3] | Foo
 
 U1 = int | str
 U2 = U1 | bytes
