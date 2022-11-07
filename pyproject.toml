@@ -19,9 +19,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 99
-target-version = ['py37']
+target-version = ["py37", "py38", "py39", "py310", "py311"]
 skip-magic-trailing-comma = true
-extend-exclude = '''
+force-exclude = '''
 ^/mypy/typeshed|
 ^/mypyc/test-data|
 ^/test-data

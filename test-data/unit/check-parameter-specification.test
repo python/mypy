@@ -1166,3 +1166,118 @@ def func3(callback: Callable[P1, str]) -> Callable[P1, str]:
         return "foo"
     return inner
 [builtins fixtures/paramspec.pyi]
+
+
+[case testInvalidParamSpecDefinitionsWithArgsKwargs]
+from typing import Callable, ParamSpec
+
+P = ParamSpec('P')
+
+def c1(f: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> int: ...
+def c2(f: Callable[P, int]) -> int: ...
+def c3(f: Callable[P, int], *args, **kwargs) -> int: ...
+
+# It is ok to define,
+def c4(f: Callable[P, int], *args: int, **kwargs: str) -> int:
+    # but not ok to call:
+    f(*args, **kwargs)  # E: Argument 1 has incompatible type "*Tuple[int, ...]"; expected "P.args" \
+                        # E: Argument 2 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    return 1
+
+def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f2(f: Callable[P, int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f3(f: Callable[P, int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f4(f: Callable[P, int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f5(f: Callable[P, int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+
+# Error message test:
+P1 = ParamSpec('P1')
+
+def m1(f: Callable[P1, int], *a, **k: P1.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+[builtins fixtures/paramspec.pyi]
+
+
+[case testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs]
+from typing import Callable, ParamSpec
+from typing_extensions import Concatenate
+
+P = ParamSpec('P')
+
+def c1(f: Callable[Concatenate[int, P], int], *args: P.args, **kwargs: P.kwargs) -> int: ...
+def c2(f: Callable[Concatenate[int, P], int]) -> int: ...
+def c3(f: Callable[Concatenate[int, P], int], *args, **kwargs) -> int: ...
+
+# It is ok to define,
+def c4(f: Callable[Concatenate[int, P], int], *args: int, **kwargs: str) -> int:
+    # but not ok to call:
+    f(1, *args, **kwargs)  # E: Argument 2 has incompatible type "*Tuple[int, ...]"; expected "P.args" \
+                           # E: Argument 3 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    return 1
+
+def f1(f: Callable[Concatenate[int, P], int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f2(f: Callable[Concatenate[int, P], int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f3(f: Callable[Concatenate[int, P], int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f4(f: Callable[Concatenate[int, P], int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f5(f: Callable[Concatenate[int, P], int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+[builtins fixtures/paramspec.pyi]
+
+
+[case testValidParamSpecInsideGenericWithoutArgsAndKwargs]
+from typing import Callable, ParamSpec, Generic
+from typing_extensions import Concatenate
+
+P = ParamSpec('P')
+
+class Some(Generic[P]): ...
+
+def create(s: Some[P], *args: int): ...
+def update(s: Some[P], **kwargs: int): ...
+def delete(s: Some[P]): ...
+
+def from_callable1(c: Callable[P, int], *args: int, **kwargs: int) -> Some[P]: ...
+def from_callable2(c: Callable[P, int], **kwargs: int) -> Some[P]: ...
+def from_callable3(c: Callable[P, int], *args: int) -> Some[P]: ...
+
+def from_extra1(c: Callable[Concatenate[int, P], int], *args: int, **kwargs: int) -> Some[P]: ...
+def from_extra2(c: Callable[Concatenate[int, P], int], **kwargs: int) -> Some[P]: ...
+def from_extra3(c: Callable[Concatenate[int, P], int], *args: int) -> Some[P]: ...
+[builtins fixtures/paramspec.pyi]
+
+
+[case testUnboundParamSpec]
+from typing import Callable, ParamSpec
+
+P1 = ParamSpec('P1')
+P2 = ParamSpec('P2')
+
+def f0(f: Callable[P1, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+
+def f1(*args: P1.args): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f2(**kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f3(*args: P1.args, **kwargs: int): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f4(*args: int, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+
+# Error message is based on the `args` definition:
+def f5(*args: P2.args, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P2.args" and "**kwargs" typed as "P2.kwargs"
+def f6(*args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+
+# Multiple `ParamSpec` variables can be found, they should not affect error message:
+P3 = ParamSpec('P3')
+
+def f7(first: Callable[P3, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f8(first: Callable[P3, int], *args: P2.args, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P2.args" and "**kwargs" typed as "P2.kwargs"
+[builtins fixtures/paramspec.pyi]
+
+
+[case testArgsKwargsWithoutParamSpecVar]
+from typing import Generic, Callable, ParamSpec
+
+P = ParamSpec('P')
+
+# This must be allowed:
+class Some(Generic[P]):
+    def call(self, *args: P.args, **kwargs: P.kwargs): ...
+
+# TODO: this probably should be reported.
+def call(*args: P.args, **kwargs: P.kwargs): ...
+[builtins fixtures/paramspec.pyi]

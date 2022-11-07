@@ -7,7 +7,6 @@ from collections import defaultdict
 from contextlib import contextmanager, nullcontext
 from typing import (
     AbstractSet,
-    Any,
     Callable,
     Dict,
     Generic,
@@ -160,6 +159,7 @@ from mypy.typeops import (
     erase_to_bound,
     erase_to_union_or_bound,
     false_only,
+    fixup_partial_type,
     function_type,
     get_type_vars,
     is_literal_type_like,
@@ -2528,8 +2528,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_import_all(self, node: ImportAll) -> None:
         self.check_import(node)
 
-    def visit_import(self, s: Import) -> None:
-        pass
+    def visit_import(self, node: Import) -> None:
+        self.check_import(node)
 
     def check_import(self, node: ImportBase) -> None:
         for assign in node.assignments:
@@ -2739,8 +2739,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # None initializers preserve the partial None type.
                         return
 
-                    if is_valid_inferred_type(rvalue_type):
-                        var = lvalue_type.var
+                    var = lvalue_type.var
+                    if is_valid_inferred_type(rvalue_type, is_lvalue_final=var.is_final):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
@@ -3453,8 +3453,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert declared_type is not None
                 clean_items.append((type, declared_type))
 
-            # TODO: fix signature of zip() in typeshed.
-            types, declared_types = cast(Any, zip)(*clean_items)
+            types, declared_types = zip(*clean_items)
             self.binder.assign_type(
                 expr,
                 make_simplified_union(list(types)),
@@ -3689,7 +3688,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Infer the type of initialized variables from initializer type."""
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
-        elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
+        elif (
+            not is_valid_inferred_type(init_type, is_lvalue_final=name.is_final)
+            and not self.no_partial_types
+        ):
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
             # partial type which will be made more specific later. A partial type
@@ -4307,7 +4309,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     with self.binder.frame_context(can_skip=True, fall_through=4):
                         typ = s.types[i]
                         if typ:
-                            t = self.check_except_handler_test(typ)
+                            t = self.check_except_handler_test(typ, s.is_star)
                             var = s.vars[i]
                             if var:
                                 # To support local variables, we make this a definition line,
@@ -4327,7 +4329,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if s.else_body:
                 self.accept(s.else_body)
 
-    def check_except_handler_test(self, n: Expression) -> Type:
+    def check_except_handler_test(self, n: Expression, is_star: bool) -> Type:
         """Type check an exception handler test clause."""
         typ = self.expr_checker.accept(n)
 
@@ -4343,21 +4345,46 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 item = ttype.items[0]
                 if not item.is_type_obj():
                     self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
-                    return AnyType(TypeOfAny.from_error)
-                exc_type = item.ret_type
+                    return self.default_exception_type(is_star)
+                exc_type = erase_typevars(item.ret_type)
             elif isinstance(ttype, TypeType):
                 exc_type = ttype.item
             else:
                 self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
-                return AnyType(TypeOfAny.from_error)
+                return self.default_exception_type(is_star)
 
             if not is_subtype(exc_type, self.named_type("builtins.BaseException")):
                 self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
-                return AnyType(TypeOfAny.from_error)
+                return self.default_exception_type(is_star)
 
             all_types.append(exc_type)
 
+        if is_star:
+            new_all_types: list[Type] = []
+            for typ in all_types:
+                if is_proper_subtype(typ, self.named_type("builtins.BaseExceptionGroup")):
+                    self.fail(message_registry.INVALID_EXCEPTION_GROUP, n)
+                    new_all_types.append(AnyType(TypeOfAny.from_error))
+                else:
+                    new_all_types.append(typ)
+            return self.wrap_exception_group(new_all_types)
         return make_simplified_union(all_types)
+
+    def default_exception_type(self, is_star: bool) -> Type:
+        """Exception type to return in case of a previous type error."""
+        any_type = AnyType(TypeOfAny.from_error)
+        if is_star:
+            return self.named_generic_type("builtins.ExceptionGroup", [any_type])
+        return any_type
+
+    def wrap_exception_group(self, types: Sequence[Type]) -> Type:
+        """Transform except* variable type into an appropriate exception group."""
+        arg = make_simplified_union(types)
+        if is_subtype(arg, self.named_type("builtins.Exception")):
+            base = "builtins.ExceptionGroup"
+        else:
+            base = "builtins.BaseExceptionGroup"
+        return self.named_generic_type(base, [arg])
 
     def get_types_from_except_handler(self, typ: Type, n: Expression) -> list[Type]:
         """Helper for check_except_handler_test to retrieve handler types."""
@@ -4580,7 +4607,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # exceptions or not. We determine this using a heuristic based on the
             # return type of the __exit__ method -- see the discussion in
             # https://github.com/python/mypy/issues/7214 and the section about context managers
-            # in https://github.com/python/typeshed/blob/master/CONTRIBUTING.md#conventions
+            # in https://github.com/python/typeshed/blob/main/CONTRIBUTING.md#conventions
             # for more details.
 
             exit_ret_type = get_proper_type(exit_ret_type)
@@ -6021,11 +6048,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             last = parts[-1]
             if last in n.names:
                 return n.names[last]
-            elif len(parts) == 2 and parts[0] == "builtins":
-                fullname = "builtins." + last
+            elif len(parts) == 2 and parts[0] in ("builtins", "typing"):
+                fullname = ".".join(parts)
                 if fullname in SUGGESTED_TEST_FIXTURES:
-                    suggestion = ", e.g. add '[builtins fixtures/{}]' to your test".format(
-                        SUGGESTED_TEST_FIXTURES[fullname]
+                    suggestion = ", e.g. add '[{} fixtures/{}]' to your test".format(
+                        parts[0], SUGGESTED_TEST_FIXTURES[fullname]
                     )
                 else:
                     suggestion = ""
@@ -6091,7 +6118,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.msg.need_annotation_for_var(var, context, self.options.python_version)
                         self.partial_reported.add(var)
                     if var.type:
-                        fixed = self.fixup_partial_type(var.type)
+                        fixed = fixup_partial_type(var.type)
                         var.invalid_partial_type = fixed != var.type
                         var.type = fixed
 
@@ -6122,20 +6149,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     # Defer the node -- we might get a better type in the outer scope
                     self.handle_cannot_determine_type(node.name, context)
-            return self.fixup_partial_type(typ)
-
-    def fixup_partial_type(self, typ: Type) -> Type:
-        """Convert a partial type that we couldn't resolve into something concrete.
-
-        This means, for None we make it Optional[Any], and for anything else we
-        fill in all of the type arguments with Any.
-        """
-        if not isinstance(typ, PartialType):
-            return typ
-        if typ.type is None:
-            return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
-        else:
-            return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
+            return fixup_partial_type(typ)
 
     def is_defined_in_base_class(self, var: Var) -> bool:
         if var.info:
@@ -6656,6 +6670,8 @@ def builtin_item_type(tp: Type) -> Type | None:
             "builtins.dict",
             "builtins.set",
             "builtins.frozenset",
+            "_collections_abc.dict_keys",
+            "typing.KeysView",
         ]:
             if not tp.args:
                 # TODO: fix tuple in lib-stub/builtins.pyi (it should be generic).
@@ -6981,20 +6997,27 @@ def infer_operator_assignment_method(typ: Type, operator: str) -> tuple[bool, st
     return False, method
 
 
-def is_valid_inferred_type(typ: Type) -> bool:
-    """Is an inferred type valid?
+def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
+    """Is an inferred type valid and needs no further refinement?
 
-    Examples of invalid types include the None type or List[<uninhabited>].
+    Examples of invalid types include the None type (when we are not assigning
+    None to a final lvalue) or List[<uninhabited>].
 
     When not doing strict Optional checking, all types containing None are
     invalid.  When doing strict Optional checking, only None and types that are
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
-    if isinstance(get_proper_type(typ), (NoneType, UninhabitedType)):
-        # With strict Optional checking, we *may* eventually infer NoneType when
-        # the initializer is None, but we only do that if we can't infer a
-        # specific Optional type.  This resolution happens in
-        # leave_partial_types when we pop a partial types scope.
+    proper_type = get_proper_type(typ)
+    if isinstance(proper_type, NoneType):
+        # If the lvalue is final, we may immediately infer NoneType when the
+        # initializer is None.
+        #
+        # If not, we want to defer making this decision. The final inferred
+        # type could either be NoneType or an Optional type, depending on
+        # the context. This resolution happens in leave_partial_types when
+        # we pop a partial types scope.
+        return is_lvalue_final
+    elif isinstance(proper_type, UninhabitedType):
         return False
     return not typ.accept(NothingSeeker())
 
