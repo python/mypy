@@ -1788,11 +1788,13 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
         if not isinstance(t, UnboundType) or t.args:
             return False
         node = self.lookup(t.name, t)
-        return (
-            bool(node)
+        if (
+            node
             and isinstance(node.node, TypeVarLikeExpr)
             and self.scope.get_binding(node) is None
-        )
+        ):
+            return True
+        return False
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
