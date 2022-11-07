@@ -6981,14 +6981,13 @@ def is_valid_inferred_type(typ: Type) -> bool:
     invalid.  When doing strict Optional checking, only None and types that are
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
-    return (
+    if isinstance(get_proper_type(typ), (NoneType, UninhabitedType)):
         # With strict Optional checking, we *may* eventually infer NoneType when
         # the initializer is None, but we only do that if we can't infer a
         # specific Optional type.  This resolution happens in
         # leave_partial_types when we pop a partial types scope.
-        not isinstance(get_proper_type(typ), (NoneType, UninhabitedType))
-        and not typ.accept(NothingSeeker())
-    )
+        return False
+    return not typ.accept(NothingSeeker())
 
 
 class NothingSeeker(TypeQuery[bool]):
