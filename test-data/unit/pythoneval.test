@@ -1721,6 +1721,10 @@ Opt4 = float | None
 
 A = Type[int] | str
 B: TypeAlias = Type[int] | str
+C = type[int] | str
+D: TypeAlias = type[int] | str
+E = str | type[int]
+F: TypeAlias = str | type[int]
 [out]
 m.pyi:5: note: Revealed type is "typing._SpecialForm"
 
