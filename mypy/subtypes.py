@@ -8,7 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_type_by_instance
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -1194,6 +1194,8 @@ def find_node_type(
         )
     else:
         typ = node.type
+        if typ is not None and node.info.self_type is not None and not node.is_property:
+            typ = expand_type(typ, {node.info.self_type.id: subtype})
     p_typ = get_proper_type(typ)
     if typ is None:
         return AnyType(TypeOfAny.from_error)

@@ -2810,6 +2810,7 @@ class TypeInfo(SymbolNode):
         "has_type_var_tuple_type",
         "type_var_tuple_prefix",
         "type_var_tuple_suffix",
+        "self_type",
     )
 
     _fullname: Bogus[str]  # Fully qualified name
@@ -2950,6 +2951,9 @@ class TypeInfo(SymbolNode):
     # in case we are doing multiple semantic analysis passes.
     special_alias: TypeAlias | None
 
+    # Shared type variable for typing.Self in this class (if used, otherwise None).
+    self_type: mypy.types.TypeVarType | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3002,6 +3006,7 @@ class TypeInfo(SymbolNode):
         self.is_newtype = False
         self.is_intersection = False
         self.metadata = {}
+        self.self_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3219,6 +3224,7 @@ class TypeInfo(SymbolNode):
             "metadata": self.metadata,
             "slots": list(sorted(self.slots)) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
+            "self_type": self.self_type.serialize() if self.self_type is not None else None,
         }
         return data
 
@@ -3275,6 +3281,8 @@ class TypeInfo(SymbolNode):
         ti.slots = set(data["slots"]) if data["slots"] is not None else None
         ti.deletable_attributes = data["deletable_attributes"]
         set_flags(ti, data["flags"])
+        st = data["self_type"]
+        ti.self_type = mypy.types.TypeVarType.deserialize(st) if st is not None else None
         return ti
 
 

@@ -117,6 +117,8 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
     "asyncio.futures.Future",
 }
 
+SELF_TYPE_NAMES: Final = {"typing.Self", "typing_extensions.Self"}
+
 
 def analyze_type_alias(
     node: Expression,
@@ -575,6 +577,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail("Unpack[...] requires exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
+        elif fullname in SELF_TYPE_NAMES:
+            if self.api.type is None or self.api.type.self_type is None:
+                self.fail("Self type is only allowed in annotations within class definition", t)
+                return AnyType(TypeOfAny.from_error)
+            return self.api.type.self_type
         return None
 
     def get_omitted_any(self, typ: Type, fullname: str | None = None) -> AnyType:
@@ -853,7 +860,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if self.defining_alias:
                 variables = t.variables
             else:
-                variables = self.bind_function_type_variables(t, t)
+                variables, _ = self.bind_function_type_variables(t, t)
             special = self.anal_type_guard(t.ret_type)
             arg_kinds = t.arg_kinds
             if len(arg_kinds) >= 2 and arg_kinds[-2] == ARG_STAR and arg_kinds[-1] == ARG_STAR2:
@@ -1347,19 +1354,26 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def bind_function_type_variables(
         self, fun_type: CallableType, defn: Context
-    ) -> Sequence[TypeVarLikeType]:
+    ) -> tuple[Sequence[TypeVarLikeType], bool]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
+        has_self_type = False
         if fun_type.variables:
             defs = []
             for var in fun_type.variables:
                 var_node = self.lookup_qualified(var.name, defn)
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
+                if var_node.fullname in SELF_TYPE_NAMES:
+                    has_self_type = True
+                    continue
                 assert isinstance(var_expr, TypeVarLikeExpr)
                 binding = self.tvar_scope.bind_new(var.name, var_expr)
                 defs.append(binding)
-            return defs
+            return defs, has_self_type
         typevars = self.infer_type_variables(fun_type)
+        has_self_type = find_self_type(
+            fun_type, lambda name: self.api.lookup_qualified(name, defn, suppress_errors=True)
+        )
         # Do not define a new type variable if already defined in scope.
         typevars = [
             (name, tvar) for name, tvar in typevars if not self.is_defined_type_var(name, defn)
@@ -1375,7 +1389,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             binding = self.tvar_scope.bind_new(name, tvar)
             defs.append(binding)
 
-        return defs
+        return defs, has_self_type
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
         tvar_node = self.lookup_qualified(tvar, context)
@@ -1961,3 +1975,19 @@ class InstanceFixer(TypeTraverserVisitor):
                 python_version=self.python_version,
                 use_generic_error=True,
             )
+
+
+def find_self_type(typ: Type, lookup: Callable[[str], SymbolTableNode | None]) -> bool:
+    return typ.accept(HasSelfType(lookup))
+
+
+class HasSelfType(TypeQuery[bool]):
+    def __init__(self, lookup: Callable[[str], SymbolTableNode | None]) -> None:
+        self.lookup = lookup
+        super().__init__(any)
+
+    def visit_unbound_type(self, t: UnboundType) -> bool:
+        sym = self.lookup(t.name)
+        if sym and sym.fullname in SELF_TYPE_NAMES:
+            return True
+        return super().visit_unbound_type(t)

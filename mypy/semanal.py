@@ -225,6 +225,7 @@ from mypy.typeanal import (
     analyze_type_alias,
     check_for_explicit_any,
     detect_diverging_alias,
+    find_self_type,
     fix_instance_types,
     has_any_from_unimported_type,
     no_subscript_builtin_alias,
@@ -272,7 +273,7 @@ from mypy.types import (
     invalid_recursive_alias,
     is_named_instance,
 )
-from mypy.typevars import fill_typevars
+from mypy.typevars import fill_typevars, fill_typevars_with_any
 from mypy.util import (
     correct_relative_import,
     is_dunder,
@@ -812,7 +813,10 @@ class SemanticAnalyzer(
 
         if defn.type:
             assert isinstance(defn.type, CallableType)
-            self.update_function_type_variables(defn.type, defn)
+            has_self_type = self.update_function_type_variables(defn.type, defn)
+        else:
+            has_self_type = False
+
         self.function_stack.pop()
 
         if self.is_class_scope():
@@ -823,7 +827,7 @@ class SemanticAnalyzer(
                 assert isinstance(defn.type, CallableType)
                 if isinstance(get_proper_type(defn.type.ret_type), AnyType):
                     defn.type = defn.type.copy_modified(ret_type=NoneType())
-            self.prepare_method_signature(defn, self.type)
+            self.prepare_method_signature(defn, self.type, has_self_type)
 
         # Analyze function signature
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
@@ -842,6 +846,10 @@ class SemanticAnalyzer(
                 assert isinstance(result, ProperType)
                 if isinstance(result, CallableType):
                     result = self.remove_unpack_kwargs(defn, result)
+                    if has_self_type and self.type is not None:
+                        info = self.type
+                        if info.self_type is not None:
+                            result.variables = [info.self_type] + list(result.variables)
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
@@ -914,7 +922,7 @@ class SemanticAnalyzer(
         new_arg_types = typ.arg_types[:-1] + [last_type]
         return typ.copy_modified(arg_types=new_arg_types, unpack_kwargs=True)
 
-    def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
+    def prepare_method_signature(self, func: FuncDef, info: TypeInfo, has_self_type: bool) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
         functype = func.type
@@ -926,10 +934,18 @@ class SemanticAnalyzer(
             elif isinstance(functype, CallableType):
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
-                    leading_type: Type = fill_typevars(info)
+                    if has_self_type:
+                        assert self.type is not None and self.type.self_type is not None
+                        leading_type: Type = self.type.self_type
+                    else:
+                        leading_type = fill_typevars(info)
                     if func.is_class or func.name == "__new__":
                         leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
+                elif has_self_type:
+                    self.fail("Method cannot have explicit self annotation and Self type", func)
+        elif has_self_type:
+            self.fail("Static methods cannot use Self type", func)
 
     def set_original_def(self, previous: Node | None, new: FuncDef | Decorator) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
@@ -954,7 +970,7 @@ class SemanticAnalyzer(
         else:
             return False
 
-    def update_function_type_variables(self, fun_type: CallableType, defn: FuncItem) -> None:
+    def update_function_type_variables(self, fun_type: CallableType, defn: FuncItem) -> bool:
         """Make any type variables in the signature of defn explicit.
 
         Update the signature of defn to contain type variable definitions
@@ -962,7 +978,23 @@ class SemanticAnalyzer(
         """
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             a = self.type_analyzer()
-            fun_type.variables = a.bind_function_type_variables(fun_type, defn)
+            fun_type.variables, has_self_type = a.bind_function_type_variables(fun_type, defn)
+            if has_self_type and self.type is not None:
+                self.setup_self_type()
+            return has_self_type
+
+    def setup_self_type(self) -> None:
+        assert self.type is not None
+        info = self.type
+        if info.self_type is not None:
+            return
+        info.self_type = TypeVarType(
+            "Self",
+            f"{info.fullname}.Self",
+            self.tvar_scope.new_unique_func_id(),
+            [],
+            fill_typevars_with_any(info),
+        )
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         self.statement = defn
@@ -3103,6 +3135,11 @@ class SemanticAnalyzer(
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
+            has_self_type = find_self_type(
+                s.type, lambda name: self.lookup_qualified(name, s, suppress_errors=True)
+            )
+            if has_self_type and self.type:
+                self.setup_self_type()
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):

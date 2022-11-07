@@ -119,6 +119,11 @@ class SemanticAnalyzerCoreInterface:
     def is_func_scope(self) -> bool:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def type(self) -> TypeInfo | None:
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):

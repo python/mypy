@@ -1267,3 +1267,16 @@ class Test(Generic[T]):
         a: deque[List[T]]
         # previously this failed with 'Incompatible types in assignment (expression has type "deque[List[List[T]]]", variable has type "deque[List[T]]")'
         b: deque[List[T]] = a.copy()
+
+[case testTypingSelfBasic]
+from typing import Self, List
+
+class C:
+    attr: List[Self]
+    def meth(self) -> List[Self]: ...
+class D(C): ...
+
+reveal_type(C.meth)  # N: Revealed type is "def [Self <: __main__.C] (self: Self`-1) -> builtins.list[Self`-1]"
+C.attr  # E: Access to generic instance variables via class is ambiguous
+reveal_type(D().meth())  # N: Revealed type is "builtins.list[__main__.D]"
+reveal_type(D().attr)  # N: Revealed type is "builtins.list[__main__.D]"

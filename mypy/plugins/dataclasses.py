@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Optional
 from typing_extensions import Final
 
+from mypy.expandtype import expand_type
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -52,6 +54,8 @@ from mypy.types import (
 )
 
 # The set of decorators that generate dataclasses.
+from mypy.typevars import fill_typevars
+
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
 # The set of functions that generate dataclass fields.
 field_makers: Final = {"dataclasses.field"}
@@ -83,7 +87,7 @@ class DataclassAttribute:
         self.info = info
         self.kw_only = kw_only
 
-    def to_argument(self) -> Argument:
+    def to_argument(self, current_info: TypeInfo) -> Argument:
         arg_kind = ARG_POS
         if self.kw_only and self.has_default:
             arg_kind = ARG_NAMED_OPT
@@ -92,11 +96,19 @@ class DataclassAttribute:
         elif not self.kw_only and self.has_default:
             arg_kind = ARG_OPT
         return Argument(
-            variable=self.to_var(), type_annotation=self.type, initializer=None, kind=arg_kind
+            variable=self.to_var(current_info),
+            type_annotation=self.expand_type(current_info),
+            initializer=None,
+            kind=arg_kind,
         )
 
-    def to_var(self) -> Var:
-        return Var(self.name, self.type)
+    def expand_type(self, current_info: TypeInfo) -> Optional[Type]:
+        if self.type is not None and self.info.self_type is not None:
+            return expand_type(self.type, {self.info.self_type.id: fill_typevars(current_info)})
+        return self.type
+
+    def to_var(self, current_info: TypeInfo) -> Var:
+        return Var(self.name, self.expand_type(current_info))
 
     def serialize(self) -> JsonDict:
         assert self.type
@@ -176,7 +188,7 @@ class DataclassTransformer:
         ):
 
             args = [
-                attr.to_argument()
+                attr.to_argument(info)
                 for attr in attributes
                 if attr.is_in_init and not self._is_kw_only_type(attr.type)
             ]
@@ -548,7 +560,7 @@ class DataclassTransformer:
                 if isinstance(var, Var):
                     var.is_property = True
             else:
-                var = attr.to_var()
+                var = attr.to_var(info)
                 var.info = info
                 var.is_property = True
                 var._fullname = info.fullname + "." + var.name
@@ -567,7 +579,7 @@ class DataclassTransformer:
         info = self._ctx.cls.info
         for attr in attributes:
             if isinstance(get_proper_type(attr.type), CallableType):
-                var = attr.to_var()
+                var = attr.to_var(info)
                 var.info = info
                 var.is_property = True
                 var.is_settable_property = settable
