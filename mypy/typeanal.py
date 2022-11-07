@@ -1745,7 +1745,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         if node is None:
             node = self.lookup(name, t)
         if (
-            bool(node)
+            node
             and isinstance(node.node, TypeVarLikeExpr)
             and (self.include_bound_tvars or self.scope.get_binding(node) is None)
         ):
@@ -1789,7 +1789,7 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
             return False
         node = self.lookup(t.name, t)
         return (
-            node
+            bool(node)
             and isinstance(node.node, TypeVarLikeExpr)
             and self.scope.get_binding(node) is None
         )
