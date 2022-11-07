@@ -1484,16 +1484,17 @@ Alias = Literal[3]
 
 isinstance(3, Literal[3])           # E: Cannot use isinstance() with Literal type
 isinstance(3, Alias)                # E: Cannot use isinstance() with Literal type \
-                                    # E: Argument 2 to "isinstance" has incompatible type "object"; expected "Union[type, Tuple[Any, ...]]"
+                                    # E: Argument 2 to "isinstance" has incompatible type "<typing special form>"; expected "Union[type, Tuple[Any, ...]]"
 isinstance(3, Renamed[3])           # E: Cannot use isinstance() with Literal type
 isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with Literal type
 
 issubclass(int, Literal[3])           # E: Cannot use issubclass() with Literal type
 issubclass(int, Alias)                # E: Cannot use issubclass() with Literal type \
-                                      # E: Argument 2 to "issubclass" has incompatible type "object"; expected "Union[type, Tuple[Any, ...]]"
+                                      # E: Argument 2 to "issubclass" has incompatible type "<typing special form>"; expected "Union[type, Tuple[Any, ...]]"
 issubclass(int, Renamed[3])           # E: Cannot use issubclass() with Literal type
 issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with Literal type
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testLiteralErrorsWhenSubclassed]

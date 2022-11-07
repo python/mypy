@@ -616,6 +616,8 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
     # constructs that we compile separately. When we have a
     # try/except/else/finally, we treat the try/except/else as the
     # body of a try/finally block.
+    if t.is_star:
+        builder.error("Exception groups and except* cannot be compiled yet", t.line)
     if t.finally_body:
 
         def transform_try_body() -> None:
