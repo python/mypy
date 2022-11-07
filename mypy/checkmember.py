@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import expand_self_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -723,8 +723,7 @@ def analyze_var(
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
         t = get_proper_type(expand_type_by_instance(typ, itype))
-        if var.info.self_type is not None and not var.is_property:
-            t = expand_type(t, {var.info.self_type.id: mx.original_type})
+        t = get_proper_type(expand_self_type(var, t, mx.original_type))
         result: Type = t
         typ = get_proper_type(typ)
         if (

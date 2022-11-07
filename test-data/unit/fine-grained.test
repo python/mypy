@@ -10130,3 +10130,5 @@ b.py:2: error: "int" not callable
 a.py:1: error: Unsupported operand types for + ("int" and "str")
     1 + ''
         ^~
+
+[case testTypingSelfFine]

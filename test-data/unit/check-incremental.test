@@ -6286,3 +6286,5 @@ class C: ...
 [out]
 [out2]
 [out3]
+
+[case testTypingSelfCoarse]

@@ -1281,11 +1281,67 @@ C.attr  # E: Access to generic instance variables via class is ambiguous
 reveal_type(D().meth())  # N: Revealed type is "builtins.list[__main__.D]"
 reveal_type(D().attr)  # N: Revealed type is "builtins.list[__main__.D]"
 
--- Test various errors
+[case testTypingSelfInvalid]
+from typing import Self, Callable
 
--- Test all nodes: property, classmethod, overload, ..., and both incrementals
+var: Self  # E: Self type is only allowed in annotations within class definition
+reveal_type(var)  # N: Revealed type is "Any"
+def foo() -> Self: ...  # E: Self type is only allowed in annotations within class definition
+reveal_type(foo)  # N: Revealed type is "def () -> Any"
+bad: Callable[[Self], Self]  # E: Self type is only allowed in annotations within class definition
+reveal_type(bad)  # N: Revealed type is "def (Any) -> Any"
 
--- Test Self nested in a generic alias
+def func() -> None:
+    var: Self  # E: Self type is only allowed in annotations within class definition
+
+class C(Self): ...  # E: Self type is only allowed in annotations within class definition
+Alias = Callable[[Self], Self]  # E: Self type is only allowed in annotations within class definition
+a: Alias
+reveal_type(a)  # N: Revealed type is "def (Any) -> Any"
+
+[case testTypingSelfProperty]
+
+[case testTypingSelfClassMethod]
+
+[case testTypingSelfOverload]
+
+[case testTypingSelfNestedInAlias]
+from typing import Generic, Self, TypeVar, List, Tuple
+
+T = TypeVar("T")
+Pairs = List[Tuple[T, T]]
+
+class C(Generic[T]):
+    def pairs(self) -> Pairs[Self]: ...
+class D(C[T]): ...
+reveal_type(D[int]().pairs())  # N: Revealed type is "builtins.list[Tuple[__main__.D[builtins.int], __main__.D[builtins.int]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingSelfOverrideVar]
+from typing import Self
+
+class C:
+    x: Self
+
+class D(C):
+    x: D
+class Bad(C):
+    x: int  # E: Incompatible types in assignment (expression has type "int", base class "C" defined the type as "C")
+
+[case testTypingSelfOverrideVarMulti]
+from typing import Self
+
+class C:
+    x: Self
+class D:
+    x: int
+class E:
+    x: C
+
+class Bad(D, C):  # E: Definition of "x" in base class "D" is incompatible with definition in base class "C"
+    ...
+class Good(E, C):
+    ...
 
 [case testTypingSelfMixedTypeVars]
 from typing import Self, TypeVar, Generic, Tuple
