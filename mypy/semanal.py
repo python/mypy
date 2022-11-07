@@ -3440,7 +3440,9 @@ class SemanticAnalyzer(
             no_args=no_args,
             eager=eager,
         )
-        if isinstance(s.rvalue, (IndexExpr, CallExpr, OpExpr)):  # CallExpr is for `void = type(None)`
+        if isinstance(
+            s.rvalue, (IndexExpr, CallExpr, OpExpr)
+        ):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line
             # we use the column from resulting target, to get better location for errors
