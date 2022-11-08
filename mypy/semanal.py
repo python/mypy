@@ -942,8 +942,11 @@ class SemanticAnalyzer(
                     if func.is_class or func.name == "__new__":
                         leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
-                elif has_self_type:
-                    self.fail("Method cannot have explicit self annotation and Self type", func)
+                elif has_self_type and isinstance(func.unanalyzed_type, CallableType):
+                    if not isinstance(get_proper_type(func.unanalyzed_type.arg_types[0]), AnyType):
+                        self.fail(
+                            "Method cannot have explicit self annotation and Self type", func
+                        )
         elif has_self_type:
             self.fail("Static methods cannot use Self type", func)
 

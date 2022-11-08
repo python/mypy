@@ -682,12 +682,12 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     return inferred_dunder_get_type.ret_type
 
 
-def is_instance_var(var: Var, info: TypeInfo) -> bool:
+def is_instance_var(var: Var) -> bool:
     """Return if var is an instance variable according to PEP 526."""
     return (
         # check the type_info node is the var (not a decorated function, etc.)
-        var.name in info.names
-        and info.names[var.name].node is var
+        var.name in var.info.names
+        and var.info.names[var.name].node is var
         and not var.is_classvar
         # variables without annotations are treated as classvar
         and not var.is_inferred
@@ -728,7 +728,7 @@ def analyze_var(
         typ = get_proper_type(typ)
         if (
             var.is_initialized_in_class
-            and (not is_instance_var(var, info) or mx.is_operator)
+            and (not is_instance_var(var) or mx.is_operator)
             and isinstance(typ, FunctionLike)
             and not typ.is_type_obj()
         ):

@@ -590,7 +590,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if self.api.type is None or self.api.type.self_type is None:
                 self.fail("Self type is only allowed in annotations within class definition", t)
                 return AnyType(TypeOfAny.from_error)
-            return self.api.type.self_type
+            return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
         return None
 
     def get_omitted_any(self, typ: Type, fullname: str | None = None) -> AnyType:

@@ -445,15 +445,15 @@ reveal_type(B().ft())  # N: Revealed type is "Tuple[builtins.int, builtins.int, 
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeProperSupertypeAttributeMeta]
-from typing import Callable, TypeVar, Type
+from typing import Callable, TypeVar, Type, ClassVar
 T = TypeVar('T')
 class A(type):
     @property
     def g(cls: object) -> int: return 0
     @property
     def gt(cls: T) -> T: return cls
-    f: Callable[[object], int]
-    ft: Callable[[T], T]
+    f: ClassVar[Callable[[object], int]]
+    ft: ClassVar[Callable[[T], T]]
 
 class B(A):
     pass
@@ -1299,11 +1299,65 @@ Alias = Callable[[Self], Self]  # E: Self type is only allowed in annotations wi
 a: Alias
 reveal_type(a)  # N: Revealed type is "def (Any) -> Any"
 
+[case testTypingSelfConflict]
+from typing import Self, TypeVar, Tuple
+
+T = TypeVar("T")
+class C:
+    def meth(self: T) -> Tuple[Self, T]: ...  # E: Method cannot have explicit self annotation and Self type
+reveal_type(C().meth())  # N: Revealed type is "Tuple[<nothing>, __main__.C]"
+[builtins fixtures/property.pyi]
+
 [case testTypingSelfProperty]
+from typing import Self, Tuple
+class C:
+    @property
+    def attr(self) -> Tuple[Self, ...]: ...
+class D(C): ...
+
+reveal_type(D().attr)  # N: Revealed type is "builtins.tuple[__main__.D, ...]"
+[builtins fixtures/property.pyi]
+
+[case testTypingSelfCallableVar]
+from typing import Self, Callable
+
+class C:
+    x: Callable[[Self], Self]
+    def meth(self) -> Callable[[Self], Self]: ...
+class D(C): ...
+
+reveal_type(C().x)  # N: Revealed type is "def (__main__.C) -> __main__.C"
+reveal_type(D().x)  # N: Revealed type is "def (__main__.D) -> __main__.D"
+reveal_type(D().meth())  # N: Revealed type is "def (__main__.D) -> __main__.D"
 
 [case testTypingSelfClassMethod]
+from typing import Self
+
+class C:
+    @classmethod
+    def meth(cls) -> Self: ...
+    @staticmethod
+    def bad() -> Self: ...  # E: Static methods cannot use Self type \
+        # E: A function returning TypeVar should receive at least one argument containing the same TypeVar \
+        # N: Consider using the upper bound "C" instead
+
+class D(C): ...
+reveal_type(D.meth())  # N: Revealed type is "__main__.D"
+reveal_type(D.bad())  # N: Revealed type is "<nothing>"
+[builtins fixtures/classmethod.pyi]
 
 [case testTypingSelfOverload]
+from typing import Self, overload, Union
+
+class C:
+    @overload
+    def foo(self, other: Self) -> Self: ...
+    @overload
+    def foo(self, other: int) -> int: ...
+    def foo(self, other: Union[Self, int]) -> Union[Self, int]:
+        return other
+class D(C): ...
+reveal_type(D().foo)  # N: Revealed type is "Overload(def (other: __main__.D) -> __main__.D, def (other: builtins.int) -> builtins.int)"
 
 [case testTypingSelfNestedInAlias]
 from typing import Generic, Self, TypeVar, List, Tuple

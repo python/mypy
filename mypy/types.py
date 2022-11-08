@@ -524,6 +524,8 @@ class TypeVarType(TypeVarLikeType):
         values: Bogus[list[Type]] = _dummy,
         upper_bound: Bogus[Type] = _dummy,
         id: Bogus[TypeVarId | int] = _dummy,
+        line: Bogus[int] = _dummy,
+        column: Bogus[int] = _dummy,
     ) -> TypeVarType:
         return TypeVarType(
             self.name,
@@ -532,8 +534,8 @@ class TypeVarType(TypeVarLikeType):
             self.values if values is _dummy else values,
             self.upper_bound if upper_bound is _dummy else upper_bound,
             self.variance,
-            self.line,
-            self.column,
+            self.line if line is _dummy else line,
+            self.column if column is _dummy else column,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
