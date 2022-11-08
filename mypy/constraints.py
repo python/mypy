@@ -177,8 +177,9 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> list[Cons
         for (t, a) in reversed(TypeState.inferring)
     ):
         return []
-    if has_recursive_types(template):
+    if has_recursive_types(template) or isinstance(get_proper_type(template), Instance):
         # This case requires special care because it may cause infinite recursion.
+        # Note that we include Instances because the may be recursive as str(Sequence[str]).
         if not has_type_vars(template):
             # Return early on an empty branch.
             return []
