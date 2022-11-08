@@ -340,7 +340,7 @@ class SemanticAnalyzer(
     # Nested block depths of scopes
     block_depth: list[int]
     # TypeInfo of directly enclosing class (or None)
-    type: TypeInfo | None = None
+    _type: TypeInfo | None = None
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack: list[TypeInfo | None]
     # Type variables bound by the current scope, be it class or function
@@ -419,7 +419,7 @@ class SemanticAnalyzer(
             FuncItem | GeneratorExpr | DictionaryComprehension, SymbolTable
         ] = {}
         self.imports = set()
-        self.type = None
+        self._type = None
         self.type_stack = []
         # Are the namespaces of classes being processed complete?
         self.incomplete_type_stack: list[bool] = []
@@ -459,6 +459,10 @@ class SemanticAnalyzer(
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
+    @property
+    def type(self) -> TypeInfo | None:
+        return self._type
+
     @property
     def is_stub_file(self) -> bool:
         return self._is_stub_file
@@ -772,7 +776,7 @@ class SemanticAnalyzer(
             if active_type:
                 scope.leave_class()
                 self.leave_class()
-                self.type = None
+                self._type = None
                 self.incomplete_type_stack.pop()
         del self.options
 
@@ -1682,7 +1686,7 @@ class SemanticAnalyzer(
         self.locals.append(None)  # Add class scope
         self.is_comprehension_stack.append(False)
         self.block_depth.append(-1)  # The class body increments this to 0
-        self.type = info
+        self._type = info
         self.missing_names.append(set())
 
     def leave_class(self) -> None:
@@ -1690,7 +1694,7 @@ class SemanticAnalyzer(
         self.block_depth.pop()
         self.locals.pop()
         self.is_comprehension_stack.pop()
-        self.type = self.type_stack.pop()
+        self._type = self.type_stack.pop()
         self.missing_names.pop()
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
