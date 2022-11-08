@@ -3240,6 +3240,12 @@ class HasTypeVars(TypeQuery[bool]):
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        return True
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        return True
+
 
 def has_type_vars(typ: Type) -> bool:
     """Check if a type contains any type variables (recursively)."""
