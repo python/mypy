@@ -75,7 +75,7 @@ def check_sdist(dist: Path, version: str) -> None:
 
 
 def spot_check_dist(dist: Path, version: str) -> None:
-    items = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
+    items = [item for item in dist.iterdir() if is_whl_or_tar(item.name) and 'wasm' not in item.name]
     assert len(items) > 10
     assert all(version in item.name for item in items)
     assert any(item.name.endswith("py3-none-any.whl") for item in items)
@@ -93,7 +93,7 @@ def tmp_twine() -> Iterator[Path]:
 
 def upload_dist(dist: Path, dry_run: bool = True) -> None:
     with tmp_twine() as twine:
-        files = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
+        files = [item for item in dist.iterdir() if is_whl_or_tar(item.name) and 'wasm' not in item.name]
         cmd: list[Any] = [twine, "upload"]
         cmd += files
         if dry_run:
