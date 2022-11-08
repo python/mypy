@@ -89,6 +89,7 @@ from mypy.types import (
     get_proper_type,
 )
 from mypy.typetraverser import TypeTraverserVisitor
+from mypy.typevars import fill_typevars
 
 T = TypeVar("T")
 
@@ -587,10 +588,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # For various special forms that can't be inherited but use Self
                 # for convenience we eagerly replace Self.
                 return self.self_type_override
-            if self.api.type is None or self.api.type.self_type is None:
+            if self.api.type is None:
                 self.fail("Self type is only allowed in annotations within class definition", t)
                 return AnyType(TypeOfAny.from_error)
-            return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
+            if self.api.type.self_type is not None:
+                return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
+            # Attributes and methods are handled above, this is best effort support for
+            # other things: simply use the current class instead of Self. This may be
+            # useful for e.g. cast(Self, ...) etc, to avoid repeating long class name.
+            # TODO: can we have more case by case logic here?
+            return fill_typevars(self.api.type)
         return None
 
     def get_omitted_any(self, typ: Type, fullname: str | None = None) -> AnyType:
