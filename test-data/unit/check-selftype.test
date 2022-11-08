@@ -1318,15 +1318,16 @@ reveal_type(D[int]().pairs())  # N: Revealed type is "builtins.list[Tuple[__main
 [builtins fixtures/tuple.pyi]
 
 [case testTypingSelfOverrideVar]
-from typing import Self
+from typing import Self, TypeVar, Generic
 
-class C:
+T = TypeVar("T")
+class C(Generic[T]):
     x: Self
 
-class D(C):
+class D(C[int]):
     x: D
-class Bad(C):
-    x: int  # E: Incompatible types in assignment (expression has type "int", base class "C" defined the type as "C")
+class Bad(C[int]):
+    x: int  # E: Incompatible types in assignment (expression has type "int", base class "C" defined the type as "C[int]")
 
 [case testTypingSelfOverrideVarMulti]
 from typing import Self
