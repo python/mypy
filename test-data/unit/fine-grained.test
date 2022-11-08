@@ -10132,3 +10132,24 @@ a.py:1: error: Unsupported operand types for + ("int" and "str")
         ^~
 
 [case testTypingSelfFine]
+import m
+[file lib.py]
+from typing import Any
+
+class C:
+    def meth(self, other: Any) -> C: ...
+[file lib.py.2]
+from typing import Self
+
+class C:
+    def meth(self, other: Self) -> Self: ...
+
+[file m.py]
+import lib
+class D(lib.C):
+    def meth(self, other: int) -> D: ...
+[out]
+==
+m.py:3: error: Argument 1 of "meth" is incompatible with supertype "C"; supertype defines the argument type as "D"
+m.py:3: note: This violates the Liskov substitution principle
+m.py:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
