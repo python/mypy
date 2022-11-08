@@ -826,3 +826,14 @@ z = z
 x = y  # E: Incompatible types in assignment (expression has type "L", variable has type "K")
 z = x  # OK
 [builtins fixtures/tuple.pyi]
+
+[case testRecursiveInstanceInferenceNoCrash]
+from typing import Sequence, TypeVar, Union
+
+class C(Sequence[C]): ...
+
+T = TypeVar("T")
+def foo(x: T) -> C: ...
+
+Nested = Union[C, Sequence[Nested]]
+x: Nested = foo(42)
