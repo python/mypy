@@ -52,10 +52,9 @@ from mypy.types import (
     TypeVarType,
     get_proper_type,
 )
-
-# The set of decorators that generate dataclasses.
 from mypy.typevars import fill_typevars
 
+# The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
 # The set of functions that generate dataclass fields.
 field_makers: Final = {"dataclasses.field"}

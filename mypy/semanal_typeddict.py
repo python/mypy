@@ -463,7 +463,7 @@ class TypedDictAnalyzer:
     def parse_typeddict_fields_with_types(
         self,
         dict_items: list[tuple[Expression | None, Expression]],
-        call: CallExpr,
+        context: Context,
         existing_info: TypeInfo | None,
     ) -> tuple[list[str], list[Type], bool] | None:
         """Parse typed dict items passed as pairs (name expression, type expression).
@@ -506,7 +506,7 @@ class TypedDictAnalyzer:
                 allow_required=True,
                 allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
-                self_type_override=special_self_type(existing_info, call),
+                self_type_override=special_self_type(existing_info, context),
             )
             if analyzed is None:
                 return None

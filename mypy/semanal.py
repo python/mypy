@@ -987,6 +987,12 @@ class SemanticAnalyzer(
             return has_self_type
 
     def setup_self_type(self) -> None:
+        """Setup a (shared) Self type variable for current class.
+
+        We intentionally don't add it to the class symbol table,
+        so it can be accessed only by mypy and will not cause
+        clashes with user defined names.
+        """
         assert self.type is not None
         info = self.type
         if info.self_type is not None:
@@ -3142,7 +3148,8 @@ class SemanticAnalyzer(
                 s.type, lambda name: self.lookup_qualified(name, s, suppress_errors=True)
             )
             if has_self_type and self.type:
-                if self.type.typeddict_type or self.type.tuple_type:
+                if self.type.typeddict_type or self.type.is_named_tuple:
+                    # Annotations have special meaning in TypedDicts and NamedTuples.
                     return
                 self.setup_self_type()
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)

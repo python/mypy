@@ -420,7 +420,7 @@ class NamedTupleAnalyzer:
         return items, types, defaults, typename, tvar_defs, True
 
     def parse_namedtuple_fields_with_types(
-        self, nodes: list[Expression], call: CallExpr, existing_info: TypeInfo | None
+        self, nodes: list[Expression], context: Context, existing_info: TypeInfo | None
     ) -> tuple[list[str], list[Type], list[Expression], bool] | None:
         """Parse typed named tuple fields.
 
@@ -449,7 +449,7 @@ class NamedTupleAnalyzer:
                     type,
                     allow_placeholder=not self.options.disable_recursive_aliases
                     and not self.api.is_func_scope(),
-                    self_type_override=special_self_type(existing_info, call),
+                    self_type_override=special_self_type(existing_info, context),
                 )
                 # Workaround #4987 and avoid introducing a bogus UnboundType
                 if isinstance(analyzed, UnboundType):

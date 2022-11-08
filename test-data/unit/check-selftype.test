@@ -1424,3 +1424,11 @@ class D(C): ...
 
 reveal_type(C)  # N: Revealed type is "def (other: __main__.C) -> __main__.C"
 reveal_type(D)  # N: Revealed type is "def (other: __main__.D) -> __main__.D"
+
+[case testTypingSelfCorrectName]
+from typing import Self, List
+
+class C:
+    Self = List[C]
+    def meth(self) -> Self: ...
+reveal_type(C.meth)  # N: Revealed type is "def (self: __main__.C) -> builtins.list[__main__.C]"

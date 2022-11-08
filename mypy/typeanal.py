@@ -235,7 +235,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used: set[str] = set()
         # Used by special forms like TypedDicts and NamedTuples, where Self type
-        # needs a special handling (for such types the target TypeInfo not be
+        # needs a special handling (for such types the target TypeInfo may not be
         # created yet when analyzing Self type, unlike for regular classes).
         self.self_type_override = self_type_override
 
