@@ -1434,12 +1434,16 @@ class C:
 reveal_type(C.meth)  # N: Revealed type is "def (self: __main__.C) -> builtins.list[__main__.C]"
 
 [case testTypingSelfClassVar]
-from typing import Self, ClassVar
+from typing import Self, ClassVar, Generic, TypeVar
 
 class C:
     DEFAULT: ClassVar[Self]
-reveal_type(C.DEFAULT)  # E: Access to generic class variables is ambiguous \
-                        # N: Revealed type is "Any"
+reveal_type(C.DEFAULT)  # N: Revealed type is "__main__.C"
+
+T = TypeVar("T")
+class G(Generic[T]):
+    BAD: ClassVar[Self]  # E: ClassVar cannot contain type variables
+reveal_type(G.BAD)  # N: Revealed type is "__main__.G[Any]"
 
 [case testTypingSelfMetaClassDisabled]
 from typing import Self

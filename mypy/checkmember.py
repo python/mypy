@@ -951,7 +951,12 @@ def analyze_class_attribute_access(
             #         x: T
             #     C.x  # Error, ambiguous access
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
-            if isinstance(t, TypeVarType) or has_type_vars(t):
+            # Exception is Self type wrapped in ClassVar, that is safe.
+            if node.node.info.self_type is not None and node.node.is_classvar:
+                exclude = {node.node.info.self_type.id}
+            else:
+                exclude = set()
+            if isinstance(t, TypeVarType) and t.id not in exclude or has_type_vars(t, exclude):
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
@@ -964,6 +969,7 @@ def analyze_class_attribute_access(
             # In the above example this means that we infer following types:
             #     C.x -> Any
             #     C[int].x -> int
+            t = get_proper_type(expand_self_type(node.node, t, itype))
             t = erase_typevars(expand_type_by_instance(t, isuper))
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
