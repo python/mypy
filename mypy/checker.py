@@ -6342,7 +6342,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def is_writable_attribute(self, node: Node) -> bool:
         """Check if an attribute is writable"""
         if isinstance(node, Var):
-            return not node.is_property or node.is_settable_property
+            if node.is_property and not node.is_settable_property:
+                return False
+            return True
         elif isinstance(node, OverloadedFuncDef) and node.is_property:
             first_item = cast(Decorator, node.items[0])
             return first_item.var.is_settable_property
