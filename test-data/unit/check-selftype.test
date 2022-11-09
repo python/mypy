@@ -1470,3 +1470,47 @@ class C:
     x: Self
     def __init__(self, x: C) -> None:
         self.x = x  # E: Incompatible types in assignment (expression has type "C", variable has type "Self")
+
+[case testTypingSelfRedundantAllowed]
+from typing import Self, Type
+
+class C:
+    def f(self: Self) -> Self:
+        d: Defer
+        class Defer: ...
+        return self
+
+    @classmethod
+    def g(cls: Type[Self]) -> Self:
+        d: DeferAgain
+        class DeferAgain: ...
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfRedundantWarning]
+# mypy: enable-error-code="redundant-self"
+
+from typing import Self, Type
+
+class C:
+    def copy(self: Self) -> Self:  # E: Redundant Self annotation on method first argument
+        d: Defer
+        class Defer: ...
+        return self
+
+    @classmethod
+    def g(cls: Type[Self]) -> Self:  # E: Redundant Self annotation on method first argument
+        d: DeferAgain
+        class DeferAgain: ...
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+-- Handle unusual locations consistently using a flag
+
+-- Self in cast and type assert should be a Self (and probably actually everywhere)
+
+-- Always prohibit in type aliases
+
+-- Protocol test with ClassVar default
+
+-- NamedTuple with Self (class)method

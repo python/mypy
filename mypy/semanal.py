@@ -219,6 +219,7 @@ from mypy.semanal_shared import (
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typeanal import (
+    SELF_TYPE_NAMES,
     TypeAnalyser,
     TypeVarLikeList,
     TypeVarLikeQuery,
@@ -948,11 +949,41 @@ class SemanticAnalyzer(
                     func.type = replace_implicit_first_type(functype, leading_type)
                 elif has_self_type and isinstance(func.unanalyzed_type, CallableType):
                     if not isinstance(get_proper_type(func.unanalyzed_type.arg_types[0]), AnyType):
-                        self.fail(
-                            "Method cannot have explicit self annotation and Self type", func
-                        )
+                        if self.is_expected_self_type(
+                            self_type, func.is_class or func.name == "__new__"
+                        ):
+                            # This error is off by default, since it is explicitly allowed
+                            # by the PEP 673.
+                            self.fail(
+                                "Redundant Self annotation on method first argument",
+                                func,
+                                code=codes.REDUNDANT_SELF_TYPE,
+                            )
+                        else:
+                            self.fail(
+                                "Method cannot have explicit self annotation and Self type", func
+                            )
         elif has_self_type:
             self.fail("Static methods cannot use Self type", func)
+
+    def is_expected_self_type(self, typ: Type, is_classmethod: bool) -> bool:
+        """Does this (analyzed or not) type represent the expected Self type for a method?"""
+        assert self.type is not None
+        typ = get_proper_type(typ)
+        if is_classmethod:
+            if isinstance(typ, TypeType):
+                return self.is_expected_self_type(typ.item, is_classmethod=False)
+            if isinstance(typ, UnboundType):
+                sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
+                if sym is not None and sym.fullname == "typing.Type" and typ.args:
+                    return self.is_expected_self_type(typ.args[0], is_classmethod=False)
+            return False
+        if isinstance(typ, TypeVarType):
+            return typ == self.type.self_type
+        if isinstance(typ, UnboundType):
+            sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
+            return sym is not None and sym.fullname in SELF_TYPE_NAMES
+        return False
 
     def set_original_def(self, previous: Node | None, new: FuncDef | Decorator) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original

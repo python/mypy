@@ -82,6 +82,25 @@ Example:
         # Error: Redundant cast to "int"  [redundant-cast]
         return cast(int, x)
 
+Check that methods do not have redundant Self annotations [redundant-self]
+--------------------------------------------------------------------------
+
+Such annotations are allowed by :pep:`673` but are redundant, so if you want
+warnings about them, enable this error code.
+
+Example:
+
+.. code-block:: python
+
+   # mypy: enable-error-code="redundant-self"
+
+   from typing import Self
+
+   class C:
+       # Error: Redundant Self annotation on method first argument
+       def copy(self: Self) -> Self:
+           return type(self)()
+
 Check that comparisons are overlapping [comparison-overlap]
 -----------------------------------------------------------
 
