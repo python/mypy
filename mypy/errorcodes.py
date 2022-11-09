@@ -164,6 +164,7 @@ TRUTHY_ITERABLE: Final[ErrorCode] = ErrorCode(
     "truthy-iterable",
     "Warn about Iterable expressions that could always evaluate to true in boolean contexts",
     "General",
+    default_enabled=False,
 )
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
