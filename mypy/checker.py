@@ -6149,9 +6149,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def is_defined_in_base_class(self, var: Var) -> bool:
         if not var.info:
             return False
-        return (
-            var.info.fallback_to_any
-            or any(base.get(var.name) is not None for base in var.info.mro[1:])
+        return var.info.fallback_to_any or any(
+            base.get(var.name) is not None for base in var.info.mro[1:]
         )
 
     def find_partial_types(self, var: Var) -> dict[Var, Context] | None:
