@@ -90,6 +90,7 @@ class MemberContext:
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
         no_deferral: bool = False,
+        is_self: bool = False,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -101,6 +102,7 @@ class MemberContext:
         self.chk = chk
         self.module_symbol_table = module_symbol_table
         self.no_deferral = no_deferral
+        self.is_self = is_self
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -152,6 +154,7 @@ def analyze_member_access(
     self_type: Type | None = None,
     module_symbol_table: SymbolTable | None = None,
     no_deferral: bool = False,
+    is_self: bool = False,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -187,6 +190,7 @@ def analyze_member_access(
         self_type=self_type,
         module_symbol_table=module_symbol_table,
         no_deferral=no_deferral,
+        is_self=is_self,
     )
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
@@ -723,7 +727,8 @@ def analyze_var(
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
         t = get_proper_type(expand_type_by_instance(typ, itype))
-        t = get_proper_type(expand_self_type(var, t, mx.original_type))
+        if not (mx.is_self or mx.is_super):
+            t = get_proper_type(expand_self_type(var, t, mx.original_type))
         result: Type = t
         typ = get_proper_type(typ)
         if (

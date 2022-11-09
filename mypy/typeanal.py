@@ -591,6 +591,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if self.api.type is None:
                 self.fail("Self type is only allowed in annotations within class definition", t)
                 return AnyType(TypeOfAny.from_error)
+            if self.api.type.has_base("builtins.type"):
+                self.fail("Self type cannot be used in a metaclass", t)
             if self.api.type.self_type is not None:
                 return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
             # Attributes and methods are handled above, this is best effort support for

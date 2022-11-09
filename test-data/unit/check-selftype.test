@@ -1432,3 +1432,37 @@ class C:
     Self = List[C]
     def meth(self) -> Self: ...
 reveal_type(C.meth)  # N: Revealed type is "def (self: __main__.C) -> builtins.list[__main__.C]"
+
+[case testTypingSelfClassVar]
+from typing import Self, ClassVar
+
+class C:
+    DEFAULT: ClassVar[Self]
+reveal_type(C.DEFAULT)  # E: Access to generic class variables is ambiguous \
+                        # N: Revealed type is "Any"
+
+[case testTypingSelfMetaClassDisabled]
+from typing import Self
+
+class Meta(type):
+    def meth(cls) -> Self: ...  # E: Self type cannot be used in a metaclass
+
+[case testTypingSelfNonAnnotationUses]
+from typing import Self, List, cast
+
+class C:
+    A = List[Self]
+    B = cast(Self, ...)
+    def meth(self) -> A: ...
+
+class D(C): ...
+reveal_type(D().meth())  # N: Revealed type is "builtins.list[__main__.C]"
+reveal_type(D().B)  # N: Revealed type is "__main__.C"
+
+[case testTypingSelfInternalSafe]
+from typing import Self
+
+class C:
+    x: Self
+    def __init__(self, x: C) -> None:
+        self.x = x  # E: Incompatible types in assignment (expression has type "C", variable has type "Self")
