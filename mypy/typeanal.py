@@ -584,6 +584,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
         elif fullname in SELF_TYPE_NAMES:
+            if t.args:
+                self.fail("Self type cannot have type arguments", t)
             if self.self_type_override is not None:
                 # For various special forms that can't be inherited but use Self
                 # for convenience we eagerly replace Self.

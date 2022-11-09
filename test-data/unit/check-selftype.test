@@ -1281,7 +1281,7 @@ C.attr  # E: Access to generic instance variables via class is ambiguous
 reveal_type(D().meth())  # N: Revealed type is "builtins.list[__main__.D]"
 reveal_type(D().attr)  # N: Revealed type is "builtins.list[__main__.D]"
 
-[case testTypingSelfInvalid]
+[case testTypingSelfInvalidLocations]
 from typing import Self, Callable
 
 var: Self  # E: Self type is only allowed in annotations within class definition
@@ -1298,6 +1298,14 @@ class C(Self): ...  # E: Self type is only allowed in annotations within class d
 Alias = Callable[[Self], Self]  # E: Self type is only allowed in annotations within class definition
 a: Alias
 reveal_type(a)  # N: Revealed type is "def (Any) -> Any"
+
+[case testTypingSelfInvalidArgs]
+from typing import Self, List
+
+class C:
+    x: Self[int]  # E: Self type cannot have type arguments
+    def meth(self) -> List[Self[int]]:  # E: Self type cannot have type arguments
+        ...
 
 [case testTypingSelfConflict]
 from typing import Self, TypeVar, Tuple
