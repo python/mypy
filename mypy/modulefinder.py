@@ -121,7 +121,7 @@ class BuildSource:
         self.module = module or "__main__"  # Module name (e.g. 'foo.bar')
         self.text = text  # Source code, if initially supplied, else None
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
-        self.followed = followed
+        self.followed = followed  # Was this found by following imports?
 
     def __repr__(self) -> str:
         return (
