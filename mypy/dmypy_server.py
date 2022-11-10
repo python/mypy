@@ -592,7 +592,7 @@ class Server:
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
-        messages = fine_grained_manager.update(changed, [])
+        messages = fine_grained_manager.update(changed, [], followed=True)
 
         # Follow deps from changed modules (still within graph).
         worklist = changed[:]
@@ -609,13 +609,13 @@ class Server:
                 sources2, graph, seen, changed_paths
             )
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(changed, [])
+            messages = fine_grained_manager.update(changed, [], followed=True)
             worklist.extend(changed)
 
         t2 = time.time()
 
         def refresh_file(module: str, path: str) -> list[str]:
-            return fine_grained_manager.update([(module, path)], [])
+            return fine_grained_manager.update([(module, path)], [], followed=True)
 
         for module_id, state in list(graph.items()):
             new_messages = refresh_suppressed_submodules(
