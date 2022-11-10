@@ -31,7 +31,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder, special_self_type
+from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     TPDICT_NAMES,
@@ -307,7 +307,7 @@ class TypedDictAnalyzer:
                         allow_required=True,
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
-                        self_type_override=special_self_type(existing_info, defn),
+                        prohibit_self_type="TypedDict item type",
                     )
                     if analyzed is None:
                         return None, [], [], set()  # Need to defer
@@ -506,7 +506,7 @@ class TypedDictAnalyzer:
                 allow_required=True,
                 allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
-                self_type_override=special_self_type(existing_info, context),
+                prohibit_self_type="TypedDict item type",
             )
             if analyzed is None:
                 return None

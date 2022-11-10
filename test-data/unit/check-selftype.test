@@ -1291,8 +1291,10 @@ from typing import Self, Callable
 
 var: Self  # E: Self type is only allowed in annotations within class definition
 reveal_type(var)  # N: Revealed type is "Any"
+
 def foo() -> Self: ...  # E: Self type is only allowed in annotations within class definition
 reveal_type(foo)  # N: Revealed type is "def () -> Any"
+
 bad: Callable[[Self], Self]  # E: Self type is only allowed in annotations within class definition
 reveal_type(bad)  # N: Revealed type is "def (Any) -> Any"
 
@@ -1300,9 +1302,6 @@ def func() -> None:
     var: Self  # E: Self type is only allowed in annotations within class definition
 
 class C(Self): ...  # E: Self type is only allowed in annotations within class definition
-Alias = Callable[[Self], Self]  # E: Self type is only allowed in annotations within class definition
-a: Alias
-reveal_type(a)  # N: Revealed type is "def (Any) -> Any"
 
 [case testTypingSelfInvalidArgs]
 from typing import Self, List
@@ -1468,12 +1467,12 @@ class Meta(type):
 from typing import Self, List, cast
 
 class C:
-    A = List[Self]
+    A = List[Self]  # E: Self type cannot be used in type alias target
     B = cast(Self, ...)
     def meth(self) -> A: ...
 
 class D(C): ...
-reveal_type(D().meth())  # N: Revealed type is "builtins.list[__main__.C]"
+reveal_type(D().meth())  # N: Revealed type is "builtins.list[Any]"
 reveal_type(D().B)  # N: Revealed type is "__main__.C"
 
 [case testTypingSelfInternalSafe]
@@ -1521,9 +1520,3 @@ class C:
 -- Handle unusual locations consistently (w.r.t. presence of Self annotaions)
 
 -- Self in cast and type assert should be a Self (and probably actually everywhere)
-
--- Always prohibit in type aliases (PEP says so)
-
--- Protocol test with ClassVar default
-
--- NamedTuple with Self (class)method

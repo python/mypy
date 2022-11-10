@@ -48,7 +48,6 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     has_placeholder,
     set_callable_name,
-    special_self_type,
 )
 from mypy.types import (
     TYPED_NAMEDTUPLE_NAMES,
@@ -179,7 +178,7 @@ class NamedTupleAnalyzer:
                         stmt.type,
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
-                        self_type_override=special_self_type(existing_info, defn),
+                        prohibit_self_type="NamedTuple item type",
                     )
                     if analyzed is None:
                         # Something is incomplete. We need to defer this named tuple.
@@ -449,7 +448,7 @@ class NamedTupleAnalyzer:
                     type,
                     allow_placeholder=not self.options.disable_recursive_aliases
                     and not self.api.is_func_scope(),
-                    self_type_override=special_self_type(existing_info, context),
+                    prohibit_self_type="NamedTuple item type",
                 )
                 # Workaround #4987 and avoid introducing a bogus UnboundType
                 if isinstance(analyzed, UnboundType):

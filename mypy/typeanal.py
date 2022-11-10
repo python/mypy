@@ -151,6 +151,7 @@ def analyze_type_alias(
         is_typeshed_stub,
         defining_alias=True,
         allow_placeholder=allow_placeholder,
+        prohibit_self_type="type alias target",
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -199,7 +200,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_required: bool = False,
         allow_param_spec_literals: bool = False,
         report_invalid_types: bool = True,
-        self_type_override: Type | None = None,
+        prohibit_self_type: str | None = None,
     ) -> None:
         self.api = api
         self.lookup_qualified = api.lookup_qualified
@@ -235,10 +236,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.is_typeshed_stub = is_typeshed_stub
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used: set[str] = set()
-        # Used by special forms like TypedDicts and NamedTuples, where Self type
-        # needs a special handling (for such types the target TypeInfo may not be
-        # created yet when analyzing Self type, unlike for regular classes).
-        self.self_type_override = self_type_override
+        self.prohibit_self_type = prohibit_self_type
 
     def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
         typ = self.visit_unbound_type_nonoptional(t, defining_literal)
@@ -586,10 +584,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname in SELF_TYPE_NAMES:
             if t.args:
                 self.fail("Self type cannot have type arguments", t)
-            if self.self_type_override is not None:
-                # For various special forms that can't be inherited but use Self
-                # for convenience we eagerly replace Self.
-                return self.self_type_override
+            if self.prohibit_self_type is not None:
+                self.fail(f"Self type cannot be used in {self.prohibit_self_type}", t)
+                return AnyType(TypeOfAny.from_error)
             if self.api.type is None:
                 self.fail("Self type is only allowed in annotations within class definition", t)
                 return AnyType(TypeOfAny.from_error)

@@ -33,7 +33,6 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
-    TypeAliasType,
     TypeVarId,
     TypeVarLikeType,
     get_proper_type,
@@ -168,7 +167,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         allow_required: bool = False,
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
-        self_type_override: Type | None = None,
+        prohibit_self_type: str | None = None,
     ) -> Type | None:
         raise NotImplementedError
 
@@ -331,17 +330,3 @@ class HasPlaceholders(TypeQuery[bool]):
 def has_placeholder(typ: Type) -> bool:
     """Check if a type contains any placeholder types (recursively)."""
     return typ.accept(HasPlaceholders())
-
-
-def special_self_type(info: TypeInfo | None, defn: Context) -> Type:
-    """Eager expansion of Self type in special forms like NamedTuple and TypedDict.
-
-    We special case them because:
-    * They need special handling because TypeInfo may not exist yet when it is analyzed.
-    * Attribute/item types TypedDict and NamedTuple can't be overriden.
-    """
-    if info is not None:
-        assert info.special_alias is not None
-        return TypeAliasType(info.special_alias, list(info.defn.type_vars))
-    else:
-        return PlaceholderType(None, [], defn.line)

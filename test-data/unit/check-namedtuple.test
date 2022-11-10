@@ -1307,31 +1307,31 @@ class C(
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
-[case testNamedTupleSelfTypeNewSyntaxGeneric]
-# flags: --strict-optional
-from typing import Self, NamedTuple, Optional, Generic, TypeVar
+[case testNamedTupleSelfItemNotAllowed]
+from typing import Self, NamedTuple, Optional
 
-T = TypeVar("T")
-class NT(NamedTuple, Generic[T]):
-    val: T
-    next: Optional[Self]
-
-reveal_type(NT)  # N: Revealed type is "def [T] (val: T`1, next: Union[Tuple[T`1, Union[..., None], fallback=__main__.NT[T`1]], None]) -> Tuple[T`1, Union[Tuple[T`1, Union[..., None], fallback=__main__.NT[T`1]], None], fallback=__main__.NT[T`1]]"
-n: NT[int]
-reveal_type(n.next)  # N: Revealed type is "Union[Tuple[builtins.int, Union[..., None], fallback=__main__.NT[builtins.int]], None]"
-reveal_type(n[1])  # N: Revealed type is "Union[Tuple[builtins.int, Union[..., None], fallback=__main__.NT[builtins.int]], None]"
-
-m: NT[int] = NT(1, NT("no", None))  # E: Argument 1 to "NT" has incompatible type "str"; expected "int"
+class NT(NamedTuple):
+    val: int
+    next: Optional[Self]  # E: Self type cannot be used in NamedTuple item type
+NTC = NamedTuple("NTC", [("val", int), ("next", Optional[Self])])  # E: Self type cannot be used in NamedTuple item type
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
-[case testNamedTupleSelfTypeNewSyntaxCall]
-# flags: --strict-optional
-from typing import Self, NamedTuple, Optional
+[case testNamedTupleTypingSelfMethod]
+from typing import Self, NamedTuple, TypeVar, Generic
 
-NTC = NamedTuple("NTC", [("val", int), ("next", Optional[Self])])
-nc: NTC
-reveal_type(nc.next)  # N: Revealed type is "Union[Tuple[builtins.int, Union[..., None], fallback=__main__.NTC], None]"
-reveal_type(nc[1])  # N: Revealed type is "Union[Tuple[builtins.int, Union[..., None], fallback=__main__.NTC], None]"
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: str
+    val: T
+    def meth(self) -> Self:
+        nt: NT[int]
+        if bool():
+            return nt._replace()  # E: Incompatible return value type (got "NT[int]", expected "Self")
+        else:
+            return self._replace()
+
+class SNT(NT[int]): ...
+reveal_type(SNT("test", 42).meth())  # N: Revealed type is "Tuple[builtins.str, builtins.int, fallback=__main__.SNT]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
