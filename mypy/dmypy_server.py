@@ -632,10 +632,10 @@ class Server:
             new_unsuppressed = self.find_added_suppressed(graph, seen, manager.search_paths)
             if not new_unsuppressed:
                 break
-            new_files = [BuildSource(mod[1], mod[0]) for mod in new_unsuppressed]
+            new_files = [BuildSource(mod[1], mod[0], followed=True) for mod in new_unsuppressed]
             sources.extend(new_files)
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(new_unsuppressed, [])
+            messages = fine_grained_manager.update(new_unsuppressed, [], followed=True)
 
             for module_id, path in new_unsuppressed:
                 new_messages = refresh_suppressed_submodules(
@@ -717,7 +717,7 @@ class Server:
                 for dep in state.dependencies:
                     if dep not in seen:
                         seen.add(dep)
-                        worklist.append(BuildSource(graph[dep].path, graph[dep].id))
+                        worklist.append(BuildSource(graph[dep].path, graph[dep].id, followed=True))
         return changed, new_files
 
     def direct_imports(
@@ -725,7 +725,7 @@ class Server:
     ) -> list[BuildSource]:
         """Return the direct imports of module not included in seen."""
         state = graph[module[0]]
-        return [BuildSource(graph[dep].path, dep) for dep in state.dependencies]
+        return [BuildSource(graph[dep].path, dep, followed=True) for dep in state.dependencies]
 
     def find_added_suppressed(
         self, graph: mypy.build.Graph, seen: set[str], search_paths: SearchPaths

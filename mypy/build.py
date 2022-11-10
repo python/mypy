@@ -3024,7 +3024,11 @@ def load_graph(
     for bs in sources:
         try:
             st = State(
-                id=bs.module, path=bs.path, source=bs.text, manager=manager, root_source=True
+                id=bs.module,
+                path=bs.path,
+                source=bs.text,
+                manager=manager,
+                root_source=not bs.followed,
             )
         except ModuleNotFound:
             continue
