@@ -2728,11 +2728,8 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
             else:
                 parent_mod = parent_st.tree
         if parent_mod is not None:
-            if parent_mod.is_partial_stub_package:
-                return True
-            else:
-                # Bail out soon, complete subpackage found
-                return False
+            # Bail out soon, complete subpackage found
+            return parent_mod.is_partial_stub_package
         id = parent
     return False
 
@@ -3580,9 +3577,10 @@ def record_missing_stub_packages(cache_dir: str, missing_stub_packages: set[str]
 
 
 def is_silent_import_module(manager: BuildManager, path: str) -> bool:
-    if not manager.options.no_silence_site_packages:
-        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
-            if is_sub_path(path, dir):
-                # Silence errors in site-package dirs and typeshed
-                return True
-    return False
+    if manager.options.no_silence_site_packages:
+        return False
+    # Silence errors in site-package dirs and typeshed
+    return any(
+        is_sub_path(path, dir)
+        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path
+    )

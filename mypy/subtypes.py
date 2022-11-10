@@ -429,22 +429,18 @@ class SubtypeVisitor(TypeVisitor[bool]):
         # This may be encountered during type inference. The result probably doesn't
         # matter much.
         # TODO: it actually does matter, figure out more principled logic about this.
-        if self.subtype_context.keep_erased_types:
-            return False
-        return True
+        return not self.subtype_context.keep_erased_types
 
     def visit_deleted_type(self, left: DeletedType) -> bool:
         return True
 
     def visit_instance(self, left: Instance) -> bool:
         if left.type.fallback_to_any and not self.proper_subtype:
-            if isinstance(self.right, NoneType):
-                # NOTE: `None` is a *non-subclassable* singleton, therefore no class
-                # can by a subtype of it, even with an `Any` fallback.
-                # This special case is needed to treat descriptors in classes with
-                # dynamic base classes correctly, see #5456.
-                return False
-            return True
+            # NOTE: `None` is a *non-subclassable* singleton, therefore no class
+            # can by a subtype of it, even with an `Any` fallback.
+            # This special case is needed to treat descriptors in classes with
+            # dynamic base classes correctly, see #5456.
+            return not isinstance(self.right, NoneType)
         right = self.right
         if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
@@ -513,11 +509,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             isinstance(unpacked_type, Instance)
                             and unpacked_type.type.fullname == "builtins.tuple"
                         ):
-                            if not all(
-                                is_equivalent(l, unpacked_type.args[0]) for l in compare_to
-                            ):
-                                return False
-                            return True
+                            return all(is_equivalent(l, unpacked_type.args[0]) for l in compare_to)
                         if isinstance(unpacked_type, TypeVarTupleType):
                             return False
                         if isinstance(unpacked_type, AnyType):
@@ -741,9 +733,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
                 return False
-            for l, r in zip(left.items, right.items):
-                if not self._is_subtype(l, r):
-                    return False
+            if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
+                return False
             rfallback = mypy.typeops.tuple_fallback(right)
             if is_named_instance(rfallback, "builtins.tuple"):
                 # No need to verify fallback. This is useful since the calculated fallback
@@ -752,9 +743,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # join(Union[int, C], Union[str, C]) == Union[int, str, C].
                 return True
             lfallback = mypy.typeops.tuple_fallback(left)
-            if not self._is_subtype(lfallback, rfallback):
-                return False
-            return True
+            return self._is_subtype(lfallback, rfallback)
         else:
             return False
 
@@ -1368,8 +1357,7 @@ def is_callable_compatible(
         unified = unify_generic_callable(left, right, ignore_return=ignore_return)
         if unified is None:
             return False
-        else:
-            left = unified
+        left = unified
 
     # If we allow partial overlaps, we don't need to leave R generic:
     # if we can find even just a single typevar assignment which
