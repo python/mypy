@@ -1940,7 +1940,7 @@ class State:
                 raise
             if follow_imports == "silent":
                 self.ignore_all = True
-        elif path and is_silent_import_module(manager, path):
+        elif path and is_silent_import_module(manager, path) and not root_source:
             self.ignore_all = True
         self.path = path
         if path:
@@ -2629,7 +2629,7 @@ def find_module_and_diagnose(
                 else:
                     skipping_module(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
-        if is_silent_import_module(manager, result):
+        if is_silent_import_module(manager, result) and not root_source:
             follow_imports = "silent"
         return (result, follow_imports)
     else:
@@ -3024,7 +3024,11 @@ def load_graph(
     for bs in sources:
         try:
             st = State(
-                id=bs.module, path=bs.path, source=bs.text, manager=manager, root_source=True
+                id=bs.module,
+                path=bs.path,
+                source=bs.text,
+                manager=manager,
+                root_source=not bs.followed,
             )
         except ModuleNotFound:
             continue
