@@ -1869,6 +1869,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 original_class_or_static = False  # a variable can't be class or static
 
             if isinstance(original_type, FunctionLike):
+                active_self_type = self.scope.active_self_type()
+                if isinstance(original_type, Overloaded) and active_self_type:
+                    # If we have an overload, filter to overloads that match the self type.
+                    # This avoids false positives for concrete subclasses of generic classes,
+                    # see testSelfTypeOverrideCompatibility for an example.
+                    # It's possible we might want to do this as part of bind_and_map_method
+                    filtered_items = [
+                        item
+                        for item in original_type.items
+                        if not item.arg_types or is_subtype(active_self_type, item.arg_types[0])
+                    ]
+                    # If we don't have any filtered_items, maybe it's always a valid override
+                    # of the superclass? However if you get to that point you're in murky type
+                    # territory anyway, so we just preserve the type and have the behaviour match
+                    # that of older versions of mypy.
+                    if filtered_items:
+                        original_type = Overloaded(filtered_items)
                 original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
