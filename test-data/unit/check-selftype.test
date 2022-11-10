@@ -1410,6 +1410,22 @@ class Bad(D, C):  # E: Definition of "x" in base class "D" is incompatible with 
 class Good(E, C):
     ...
 
+[case testTypingSelfAlternativeGenericConstructor]
+from typing import Self, Generic, TypeVar, Tuple
+
+T = TypeVar("T")
+class C(Generic[T]):
+    def __init__(self, val: T) -> None: ...
+    @classmethod
+    def pair(cls, val: T) -> Tuple[Self, Self]:
+        return (cls(val), C(val))  # E: Incompatible return value type (got "Tuple[Self, C[Any]]", expected "Tuple[Self, Self]")
+
+class D(C[int]): pass
+reveal_type(C.pair(42))  # N: Revealed type is "Tuple[__main__.C[builtins.int], __main__.C[builtins.int]]"
+reveal_type(D.pair("no"))  # N: Revealed type is "Tuple[__main__.D, __main__.D]" \
+    # E: Argument 1 to "pair" of "C" has incompatible type "str"; expected "int"
+[builtins fixtures/classmethod.pyi]
+
 [case testTypingSelfMixedTypeVars]
 from typing import Self, TypeVar, Generic, Tuple
 
@@ -1454,7 +1470,7 @@ reveal_type(C.DEFAULT)  # N: Revealed type is "__main__.C"
 
 T = TypeVar("T")
 class G(Generic[T]):
-    BAD: ClassVar[Self]  # E: ClassVar cannot contain type variables
+    BAD: ClassVar[Self]  # E: ClassVar cannot contain Self type in generic classes
 reveal_type(G.BAD)  # N: Revealed type is "__main__.G[Any]"
 
 [case testTypingSelfMetaClassDisabled]
@@ -1473,7 +1489,7 @@ class C:
 
 class D(C): ...
 reveal_type(D().meth())  # N: Revealed type is "builtins.list[Any]"
-reveal_type(D().B)  # N: Revealed type is "__main__.C"
+reveal_type(D().B)  # N: Revealed type is "__main__.D"
 
 [case testTypingSelfInternalSafe]
 from typing import Self
@@ -1517,6 +1533,15 @@ class C:
         return cls()
 [builtins fixtures/classmethod.pyi]
 
--- Handle unusual locations consistently (w.r.t. presence of Self annotaions)
+[case testTypingSelfAssertType]
+from typing import Self, assert_type
 
--- Self in cast and type assert should be a Self (and probably actually everywhere)
+class C:
+    def foo(self) -> None:
+        assert_type(self, Self)  # E: Expression is of type "C", not "Self"
+        assert_type(C(), Self)  # E: Expression is of type "C", not "Self"
+
+    def bar(self) -> Self:
+        assert_type(self, Self)  # OK
+        assert_type(C(), Self)  # E: Expression is of type "C", not "Self"
+        return self

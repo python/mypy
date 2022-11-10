@@ -3179,11 +3179,6 @@ class SemanticAnalyzer(
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
-            has_self_type = find_self_type(
-                s.type, lambda name: self.lookup_qualified(name, s, suppress_errors=True)
-            )
-            if has_self_type and self.type:
-                self.setup_self_type()
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):
@@ -4148,6 +4143,12 @@ class SemanticAnalyzer(
                 # See https://github.com/python/mypy/issues/11538
 
                 self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
+            if (
+                analyzed is not None
+                and self.type.self_type in get_type_vars(analyzed)
+                and self.type.defn.type_vars
+            ):
+                self.fail(message_registry.CLASS_VAR_WITH_GENERIC_SELF, s)
         elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
@@ -6243,6 +6244,11 @@ class SemanticAnalyzer(
         NOTE: The caller shouldn't defer even if this returns None or a
               placeholder type.
         """
+        has_self_type = find_self_type(
+            typ, lambda name: self.lookup_qualified(name, typ, suppress_errors=True)
+        )
+        if has_self_type and self.type and prohibit_self_type is None:
+            self.setup_self_type()
         a = self.type_analyzer(
             tvar_scope=tvar_scope,
             allow_unbound_tvars=allow_unbound_tvars,
