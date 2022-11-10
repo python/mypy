@@ -341,6 +341,7 @@ Note that this feature may accept some unsafe code for the purpose of
    class Sub(Base):
        def __init__(self, x: int) -> None:
            self.x = x
+
        # This is unsafe (see below), but allowed because it is
        # a common pattern, and rarely causes issues in practice.
        def compare(self, other: Sub) -> bool:

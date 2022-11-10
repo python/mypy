@@ -594,10 +594,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail("Self type cannot be used in a metaclass", t)
             if self.api.type.self_type is not None:
                 return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
-            # Attributes and methods are handled above, this is best effort support for
-            # other things: simply use the current class instead of Self. This may be
-            # useful for e.g. cast(Self, ...) etc, to avoid repeating long class name.
-            # TODO: can we have more case by case logic here?
+            # TODO: verify this is unreachable and replace with an assert?
+            self.fail("Unexpected Self type", t)
             return fill_typevars(self.api.type)
         return None
 
