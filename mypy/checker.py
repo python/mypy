@@ -2469,9 +2469,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             if isinstance(first.node, Var):
-                first_type = expand_self_type(first.node, first_type, fill_typevars(base1))
+                first_type = expand_self_type(first.node, first_type, fill_typevars(ctx))
             if isinstance(second.node, Var):
-                second_type = expand_self_type(second.node, second_type, fill_typevars(base2))
+                second_type = expand_self_type(second.node, second_type, fill_typevars(ctx))
             ok = is_equivalent(first_type, second_type)
             if not ok:
                 second_node = base2[name].node
@@ -3053,7 +3053,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             base_node = base_var.node
             base_type = base_var.type
             if isinstance(base_node, Var) and base_type is not None:
-                base_type = expand_self_type(base_node, base_type, fill_typevars(base))
+                base_type = expand_self_type(base_node, base_type, fill_typevars(expr_node.info))
             if isinstance(base_node, Decorator):
                 base_node = base_node.func
                 base_type = base_node.type

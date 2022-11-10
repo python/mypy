@@ -326,6 +326,29 @@ or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type.
 
+Note that this feature may accept some unsafe code for the purpose of
+*practicality*. For example:
+
+.. code-block:: python
+
+   from typing import TypeVar
+
+   T = TypeVar("T")
+   class Base:
+       def compare(self: T, other: T) -> bool:
+           return False
+
+   class Sub(Base):
+       def __init__(self, x: int) -> None:
+           self.x = x
+       # This is unsafe (see below), but allowed because it is
+       # a common pattern, and rarely causes issues in practice.
+       def compare(self, other: Sub) -> bool:
+           return self.x > other.x
+
+   b: Base = Sub(42)
+   b.compare(Base())  # Runtime error here: 'Base' object has no attribute 'x'
+
 For some advanced uses of self-types see :ref:`additional examples <advanced_self>`.
 
 Automatic self types using typing.Self
@@ -362,8 +385,8 @@ you can use ``Self`` in attribute annotations, not just in methods.
 
 .. note::
 
-   This feature is available on Python 3.11 or newer. On older Python versions
-   you can import backported ``Self`` from latest ``typing_extensions``.
+   To use this feature on versions of Python before 3.11, you will need to
+   import ``Self`` from ``typing_extensions`` version 4.0 or newer.
 
 .. _variance-of-generics:
 

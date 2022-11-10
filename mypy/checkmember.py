@@ -953,10 +953,10 @@ def analyze_class_attribute_access(
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
             # Exception is Self type wrapped in ClassVar, that is safe.
             if node.node.info.self_type is not None and node.node.is_classvar:
-                exclude = {node.node.info.self_type.id}
+                exclude = node.node.info.self_type.id
             else:
-                exclude = set()
-            if isinstance(t, TypeVarType) and t.id not in exclude or has_type_vars(t, exclude):
+                exclude = None
+            if isinstance(t, TypeVarType) and t.id != exclude or has_type_vars(t, exclude):
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:

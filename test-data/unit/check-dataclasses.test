@@ -1945,6 +1945,9 @@ class LinkedList(Generic[T]):
     value: T
     next: Optional[Self] = None
 
+    def meth(self) -> None:
+        reveal_type(self.next)  # N: Revealed type is "Union[Self`-1, None]"
+
 l_int: LinkedList[int] = LinkedList(1, LinkedList("no", None))  # E: Argument 1 to "LinkedList" has incompatible type "str"; expected "int"
 
 @dataclass

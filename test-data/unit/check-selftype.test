@@ -1274,6 +1274,11 @@ from typing import Self, List
 class C:
     attr: List[Self]
     def meth(self) -> List[Self]: ...
+    def test(self) -> Self:
+        if bool():
+            return C()  # E: Incompatible return value type (got "C", expected "Self")
+        else:
+            return self
 class D(C): ...
 
 reveal_type(C.meth)  # N: Revealed type is "def [Self <: __main__.C] (self: Self`-1) -> builtins.list[Self`-1]"
@@ -1389,7 +1394,7 @@ class C(Generic[T]):
 class D(C[int]):
     x: D
 class Bad(C[int]):
-    x: int  # E: Incompatible types in assignment (expression has type "int", base class "C" defined the type as "C[int]")
+    x: C[int]  # E: Incompatible types in assignment (expression has type "C[int]", base class "C" defined the type as "Bad")
 
 [case testTypingSelfOverrideVarMulti]
 from typing import Self
@@ -1397,9 +1402,9 @@ from typing import Self
 class C:
     x: Self
 class D:
-    x: int
-class E:
     x: C
+class E:
+    x: Good
 
 class Bad(D, C):  # E: Definition of "x" in base class "D" is incompatible with definition in base class "C"
     ...
@@ -1513,11 +1518,11 @@ class C:
         return cls()
 [builtins fixtures/classmethod.pyi]
 
--- Handle unusual locations consistently using a flag
+-- Handle unusual locations consistently (w.r.t. presence of Self annotaions)
 
 -- Self in cast and type assert should be a Self (and probably actually everywhere)
 
--- Always prohibit in type aliases
+-- Always prohibit in type aliases (PEP says so)
 
 -- Protocol test with ClassVar default
 

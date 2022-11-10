@@ -334,6 +334,12 @@ def has_placeholder(typ: Type) -> bool:
 
 
 def special_self_type(info: TypeInfo | None, defn: Context) -> Type:
+    """Eager expansion of Self type in special forms like NamedTuple and TypedDict.
+
+    We special case them because:
+    * They need special handling because TypeInfo may not exist yet when it is analyzed.
+    * Attribute/item types TypedDict and NamedTuple can't be overriden.
+    """
     if info is not None:
         assert info.special_alias is not None
         return TypeAliasType(info.special_alias, list(info.defn.type_vars))
