@@ -960,7 +960,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Function definition overrides a variable initialized via assignment or a
                 # decorated function.
                 orig_type = defn.original_def.type
-                assert orig_type is not None, f"Error checking function redefinition {defn}"
+                if orig_type is None:
+                    # I'm not sure why this happens, probably a bug elsewhere
+                    # See testConditionalFunctionDefinitionWithTuple
+                    # Setting orig_type to UninhabitedType ensures an error is reported
+                    orig_type = UninhabitedType()
                 if isinstance(orig_type, PartialType):
                     if orig_type.type is None:
                         # Ah this is a partial type. Give it the type of the function.

@@ -1475,6 +1475,17 @@ else:
     @dec
     def f(): pass
 
+[case testConditionalFunctionDefinitionWithTuple]
+def bar() -> None:
+    # weirdly, needs to be an empty tuple. empty lists and various other special assignments
+    # don't trigger the bug
+    cond = ()
+    if cond:
+        foo = 1
+    else:
+        def foo(obj): ...  # E: Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type <nothing>)
+[builtins fixtures/tuple.pyi]
+
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
 def f(x: str) -> None: pass
