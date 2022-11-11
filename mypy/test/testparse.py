@@ -50,11 +50,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     try:
         n = parse(
-            bytes(source, "ascii"),
-            fnam="main",
-            module="__main__",
-            errors=None,
-            options=options,
+            bytes(source, "ascii"), fnam="main", module="__main__", errors=None, options=options
         )
         a = str(n).split("\n")
     except CompileError as e:

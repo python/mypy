@@ -262,7 +262,9 @@ def parse(
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
     """
-    ignore_errors = (options is not None and options.ignore_errors) or (errors is not None and fnam in errors.ignored_files)
+    ignore_errors = (options is not None and options.ignore_errors) or (
+        errors is not None and fnam in errors.ignored_files
+    )
     raise_on_error = False
     if options is None:
         options = Options()
@@ -284,8 +286,9 @@ def parse(
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
-        tree = ASTConverter(options=options, is_stub=is_stub_file, errors=errors,
-                            ignore_errors=ignore_errors).visit(ast)
+        tree = ASTConverter(
+            options=options, is_stub=is_stub_file, errors=errors, ignore_errors=ignore_errors
+        ).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
@@ -405,7 +408,9 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
 
 
 class ASTConverter:
-    def __init__(self, options: Options, is_stub: bool, errors: Errors, ignore_errors: bool) -> None:
+    def __init__(
+        self, options: Options, is_stub: bool, errors: Errors, ignore_errors: bool
+    ) -> None:
         # 'C' for class, 'F' for function, 'L' for lambda
         self.class_and_function_stack: list[Literal["C", "F", "L"]] = []
         self.imports: list[ImportBase] = []
@@ -481,7 +486,7 @@ class ASTConverter:
         return node.lineno
 
     def translate_stmt_list(
-            self, stmts: Sequence[ast3.stmt], *, ismodule: bool = False, can_strip: bool = False
+        self, stmts: Sequence[ast3.stmt], *, ismodule: bool = False, can_strip: bool = False
     ) -> list[Statement]:
         # A "# type: ignore" comment before the first statement of a module
         # ignores the whole module:
@@ -517,7 +522,13 @@ class ASTConverter:
             node = self.visit(stmt)
             res.append(node)
 
-        if (self.ignore_errors and can_strip and len(stack) == 2 and stack[-2:] == ["C", "F"] and not is_possible_trivial_body(res)):
+        if (
+            self.ignore_errors
+            and can_strip
+            and len(stack) == 2
+            and stack[-2:] == ["C", "F"]
+            and not is_possible_trivial_body(res)
+        ):
             v = FindAttributeAssign()
             for n in res:
                 n.accept(v)
@@ -589,9 +600,13 @@ class ASTConverter:
             b.set_line(lineno)
         return b
 
-    def as_required_block(self, stmts: list[ast3.stmt], lineno: int, *, can_strip: bool = False) -> Block:
+    def as_required_block(
+        self, stmts: list[ast3.stmt], lineno: int, *, can_strip: bool = False
+    ) -> Block:
         assert stmts  # must be non-empty
-        b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts, can_strip=can_strip)))
+        b = Block(
+            self.fix_function_overloads(self.translate_stmt_list(stmts, can_strip=can_strip))
+        )
         # TODO: in most call sites line is wrong (includes first line of enclosing statement)
         # TODO: also we need to set the column, and the end position here.
         b.set_line(lineno)
@@ -2153,5 +2168,6 @@ def is_possible_trivial_body(s: list[Statement]) -> bool:
     if l > i + 1:
         return False
     stmt = s[i]
-    return isinstance(stmt, (PassStmt, RaiseStmt)) or (isinstance(stmt, ExpressionStmt) and
-                                          isinstance(stmt.expr, EllipsisExpr))
+    return isinstance(stmt, (PassStmt, RaiseStmt)) or (
+        isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
+    )
