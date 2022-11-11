@@ -961,10 +961,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # decorated function.
                 orig_type = defn.original_def.type
                 if orig_type is None:
-                    # I'm not sure why this happens, probably a bug elsewhere
-                    # See testConditionalFunctionDefinitionWithTuple
-                    # Setting orig_type to UninhabitedType ensures an error is reported
-                    orig_type = UninhabitedType()
+                    # If other branch is unreachable, we don't type check it and so we might
+                    # not have a type for the original definition
+                    return
                 if isinstance(orig_type, PartialType):
                     if orig_type.type is None:
                         # Ah this is a partial type. Give it the type of the function.
