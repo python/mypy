@@ -240,3 +240,50 @@ class C:
     def f(self) -> None:
         l = lambda: 1
         self.x = 1
+
+[case testIgnoreErrorsWithUnsafeSuperCall_no_empty]
+# flags: --strict-optional
+
+from m import C
+
+class D(C):
+    def m(self) -> None:
+        super().m1()
+        super().m2() \
+            # E: Call to abstract method "m2" of "C" with trivial body via super() is unsafe
+        super().m3() \
+            # E: Call to abstract method "m3" of "C" with trivial body via super() is unsafe
+        super().m4() \
+            # E: Call to abstract method "m4" of "C" with trivial body via super() is unsafe
+
+    def m1(self) -> int:
+        return 0
+
+    def m2(self) -> int:
+        return 0
+
+    def m3(self) -> int:
+        return 0
+
+    def m4(self) -> int:
+        return 0
+
+[file m.py]
+# mypy: ignore-errors=True
+import abc
+
+class C:
+    @abc.abstractmethod
+    def m1(self) -> int:
+        return 0
+
+    @abc.abstractmethod
+    def m2(self) -> int:
+        """doc"""
+
+    @abc.abstractmethod
+    def m3(self) -> int:
+        pass
+
+    @abc.abstractmethod
+    def m4(self) -> int: ...
