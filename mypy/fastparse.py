@@ -2109,6 +2109,8 @@ def stringify_name(n: AST) -> str | None:
 
 
 class FindAttributeAssign(TraverserVisitor):
+    """Check if an AST contains attribute assignments (e.g. self.x = 0)."""
+
     def __init__(self) -> None:
         self.lvalue = False
         self.found = False
