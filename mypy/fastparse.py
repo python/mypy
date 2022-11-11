@@ -99,6 +99,7 @@ from mypy.patterns import (
 )
 from mypy.reachability import infer_reachability_of_if_statement, mark_block_unreachable
 from mypy.sharedparse import argument_elide_name, special_function_elide_names
+from mypy.traverser import TraverserVisitor
 from mypy.types import (
     AnyType,
     CallableArgument,
@@ -115,7 +116,6 @@ from mypy.types import (
     UnionType,
 )
 from mypy.util import bytes_to_human_readable_repr, unnamed_function
-from mypy.traverser import TraverserVisitor
 
 try:
     # pull this into a final variable to make mypyc be quiet about the
@@ -411,8 +411,8 @@ class ASTConverter:
     def __init__(
         self, options: Options, is_stub: bool, errors: Errors, ignore_errors: bool
     ) -> None:
-        # 'C' for class, 'F' for function, 'L' for lambda
-        self.class_and_function_stack: list[Literal["C", "F", "L"]] = []
+        # 'C' for class, 'D' for function signature, 'F' for function, 'L' for lambda
+        self.class_and_function_stack: list[Literal["C", "D", "F", "L"]] = []
         self.imports: list[ImportBase] = []
 
         self.options = options
@@ -894,6 +894,7 @@ class ASTConverter:
         self, n: ast3.FunctionDef | ast3.AsyncFunctionDef, is_coroutine: bool = False
     ) -> FuncDef | Decorator:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
+        self.class_and_function_stack.append("D")
         no_type_check = bool(
             n.decorator_list and any(is_no_type_check_decorator(d) for d in n.decorator_list)
         )
@@ -940,7 +941,7 @@ class ASTConverter:
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
-                in_method_scope = self.class_and_function_stack[-2:] == ["C"]
+                in_method_scope = self.class_and_function_stack[-2:] == ["C", "D"]
                 if in_method_scope and len(arg_types) < len(args):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
@@ -991,6 +992,7 @@ class ASTConverter:
         end_line = getattr(n, "end_lineno", None)
         end_column = getattr(n, "end_col_offset", None)
 
+        self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
         body = self.as_required_block(n.body, lineno, can_strip=True)
         func_def = FuncDef(n.name, args, body, func_type)
