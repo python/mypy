@@ -3665,3 +3665,129 @@ MypyFile:1(
             y)
           NameExpr(x)
           Block:7())))))
+
+[case testStripDecoratedFunctionOrMethod]
+# mypy: ignore-errors=True
+@deco
+def f():
+    x = 0
+
+class C:
+    @deco
+    def m1(self):
+        x = 0
+
+    @deco
+    def m2(self):
+        self.x = 0
+[out]
+MypyFile:1(
+  Decorator:2(
+    Var(f)
+    NameExpr(deco)
+    FuncDef:3(
+      f
+      Block:3()))
+  ClassDef:6(
+    C
+    Decorator:7(
+      Var(m1)
+      NameExpr(deco)
+      FuncDef:8(
+        m1
+        Args(
+          Var(self))
+        Block:8()))
+    Decorator:11(
+      Var(m2)
+      NameExpr(deco)
+      FuncDef:12(
+        m2
+        Args(
+          Var(self))
+        Block:12(
+          AssignmentStmt:13(
+            MemberExpr:13(
+              NameExpr(self)
+              x)
+            IntExpr(0)))))))
+
+[case testStripOverloadedMethod]
+# mypy: ignore-errors=True
+class C:
+    @overload
+    def m1(self, x: int) -> None: ...
+    @overload
+    def m1(self, x: str) -> None: ...
+    def m1(self, x):
+        x = 0
+
+    @overload
+    def m2(self, x: int) -> None: ...
+    @overload
+    def m2(self, x: str) -> None: ...
+    def m2(self, x):
+        self.x = 0
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    OverloadedFuncDef:3(
+      Decorator:3(
+        Var(m1)
+        NameExpr(overload)
+        FuncDef:4(
+          m1
+          Args(
+            Var(self)
+            Var(x))
+          def (self: Any, x: int?) -> None?
+          Block:4()))
+      Decorator:5(
+        Var(m1)
+        NameExpr(overload)
+        FuncDef:6(
+          m1
+          Args(
+            Var(self)
+            Var(x))
+          def (self: Any, x: str?) -> None?
+          Block:6()))
+      FuncDef:7(
+        m1
+        Args(
+          Var(self)
+          Var(x))
+        Block:7()))
+    OverloadedFuncDef:10(
+      Decorator:10(
+        Var(m2)
+        NameExpr(overload)
+        FuncDef:11(
+          m2
+          Args(
+            Var(self)
+            Var(x))
+          def (self: Any, x: int?) -> None?
+          Block:11()))
+      Decorator:12(
+        Var(m2)
+        NameExpr(overload)
+        FuncDef:13(
+          m2
+          Args(
+            Var(self)
+            Var(x))
+          def (self: Any, x: str?) -> None?
+          Block:13()))
+      FuncDef:14(
+        m2
+        Args(
+          Var(self)
+          Var(x))
+        Block:14(
+          AssignmentStmt:15(
+            MemberExpr:15(
+              NameExpr(self)
+              x)
+            IntExpr(0)))))))
