@@ -483,7 +483,7 @@ class ASTConverter:
         return node.lineno
 
     def translate_stmt_list(
-        self, stmts: Sequence[ast3.stmt], ismodule: bool = False
+            self, stmts: Sequence[ast3.stmt], *, ismodule: bool = False, can_strip: bool = False
     ) -> list[Statement]:
         # A "# type: ignore" comment before the first statement of a module
         # ignores the whole module:
@@ -519,7 +519,7 @@ class ASTConverter:
             node = self.visit(stmt)
             res.append(node)
 
-        if self.ignore_errors and len(stack) == 2 and stack[-2:] == ["C", "F"]:
+        if (self.ignore_errors and can_strip and len(stack) == 2 and stack[-2:] == ["C", "F"] and not is_possible_trivial_body(res)):
             v = FindAttributeAssign()
             for n in res:
                 n.accept(v)
@@ -591,9 +591,9 @@ class ASTConverter:
             b.set_line(lineno)
         return b
 
-    def as_required_block(self, stmts: list[ast3.stmt], lineno: int) -> Block:
+    def as_required_block(self, stmts: list[ast3.stmt], lineno: int, *, can_strip: bool = False) -> Block:
         assert stmts  # must be non-empty
-        b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+        b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts, can_strip=can_strip)))
         # TODO: in most call sites line is wrong (includes first line of enclosing statement)
         # TODO: also we need to set the column, and the end position here.
         b.set_line(lineno)
@@ -979,7 +979,7 @@ class ASTConverter:
         end_column = getattr(n, "end_col_offset", None)
 
         self.class_and_function_stack.append("F")
-        body = self.as_required_block(n.body, lineno)
+        body = self.as_required_block(n.body, lineno, can_strip=True)
         func_def = FuncDef(n.name, args, body, func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
@@ -2136,3 +2136,25 @@ class FindAttributeAssign(TraverserVisitor):
         print(e, self.lvalue)
         if self.lvalue:
             self.found = True
+
+
+def is_possible_trivial_body(s: list[Statement]) -> bool:
+    """Could the statements form a "trivial" function body, such as 'pass'?
+
+    This mimics mypy.semanal.is_trivial_body, but this runs before
+    semantic analysis so some checks must be conservative.
+    """
+    l = len(s)
+    if l == 0:
+        return False
+    i = 0
+    if isinstance(s[0], ExpressionStmt) and isinstance(s[0].expr, StrExpr):
+        # Skip docstring
+        i += 1
+    if i == l:
+        return True
+    if l > i + 1:
+        return False
+    stmt = s[i]
+    return isinstance(stmt, (PassStmt, RaiseStmt)) or (isinstance(stmt, ExpressionStmt) and
+                                          isinstance(stmt.expr, EllipsisExpr))

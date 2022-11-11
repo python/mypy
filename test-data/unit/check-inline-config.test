@@ -255,6 +255,8 @@ class D(C):
             # E: Call to abstract method "m3" of "C" with trivial body via super() is unsafe
         super().m4() \
             # E: Call to abstract method "m4" of "C" with trivial body via super() is unsafe
+        super().m5() \
+            # E: Call to abstract method "m5" of "C" with trivial body via super() is unsafe
 
     def m1(self) -> int:
         return 0
@@ -268,6 +270,9 @@ class D(C):
     def m4(self) -> int:
         return 0
 
+    def m5(self) -> int:
+        return 0
+
 [file m.py]
 # mypy: ignore-errors=True
 import abc
@@ -275,6 +280,7 @@ import abc
 class C:
     @abc.abstractmethod
     def m1(self) -> int:
+        """x"""
         return 0
 
     @abc.abstractmethod
@@ -287,3 +293,8 @@ class C:
 
     @abc.abstractmethod
     def m4(self) -> int: ...
+
+    @abc.abstractmethod
+    def m5(self) -> int:
+        """doc"""
+        ...

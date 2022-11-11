@@ -3581,6 +3581,8 @@ class C:
     def m3(self):
         if x:
             self.y = 0
+        else:
+            x = 4
 [out]
 MypyFile:1(
   ClassDef:2(
@@ -3626,7 +3628,11 @@ MypyFile:1(
               MemberExpr:11(
                 NameExpr(self)
                 y)
-              IntExpr(0))))))))
+              IntExpr(0)))
+          Else(
+            AssignmentStmt:13(
+              NameExpr(x)
+              IntExpr(4))))))))
 
 [case testDoNotStripMethodThatDefinesAttributeWithoutAssignment]
 # mypy: ignore-errors=True
@@ -3653,7 +3659,8 @@ MypyFile:1(
             MemberExpr:4(
               NameExpr(self)
               x))
-          Block:4())))
+          Block:4(
+            PassStmt:5()))))
     FuncDef:6(
       m2
       Args(
@@ -3664,7 +3671,8 @@ MypyFile:1(
             NameExpr(self)
             y)
           NameExpr(x)
-          Block:7())))))
+          Block:7(
+            PassStmt:8()))))))
 
 [case testStripDecoratedFunctionOrMethod]
 # mypy: ignore-errors=True
@@ -3742,7 +3750,9 @@ MypyFile:1(
             Var(self)
             Var(x))
           def (self: Any, x: int?) -> None?
-          Block:4()))
+          Block:4(
+            ExpressionStmt:4(
+              Ellipsis))))
       Decorator:5(
         Var(m1)
         NameExpr(overload)
@@ -3752,7 +3762,9 @@ MypyFile:1(
             Var(self)
             Var(x))
           def (self: Any, x: str?) -> None?
-          Block:6()))
+          Block:6(
+            ExpressionStmt:6(
+              Ellipsis))))
       FuncDef:7(
         m1
         Args(
@@ -3769,7 +3781,9 @@ MypyFile:1(
             Var(self)
             Var(x))
           def (self: Any, x: int?) -> None?
-          Block:11()))
+          Block:11(
+            ExpressionStmt:11(
+              Ellipsis))))
       Decorator:12(
         Var(m2)
         NameExpr(overload)
@@ -3779,7 +3793,9 @@ MypyFile:1(
             Var(self)
             Var(x))
           def (self: Any, x: str?) -> None?
-          Block:13()))
+          Block:13(
+            ExpressionStmt:13(
+              Ellipsis))))
       FuncDef:14(
         m2
         Args(
