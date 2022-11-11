@@ -210,3 +210,33 @@ enable_error_code = ignore-without-code, truthy-bool
 
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
+
+[case testIgnoreErrorsSimple]
+# mypy: ignore-errors=True
+
+def f() -> None:
+    while 1():
+        pass
+
+[case testIgnoreErrorsInImportedModule]
+from m import C
+c = C()
+reveal_type(c.x)  # N: Revealed type is "builtins.int"
+
+[file m.py]
+# mypy: ignore-errors=True
+
+class C:
+    def f(self) -> None:
+        self.x = 1
+
+[case testIgnoreErrorsWithLambda]
+# mypy: ignore-errors=True
+
+def f(self, x=lambda: 1) -> None:
+    pass
+
+class C:
+    def f(self) -> None:
+        l = lambda: 1
+        self.x = 1
