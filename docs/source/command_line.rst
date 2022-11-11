@@ -448,9 +448,9 @@ potentially problematic or redundant in some way.
     are when:
 
     -   The function has a ``None`` or ``Any`` return type
-    -   The function has an empty body and is marked as an abstractmethod,
+    -   The function has an empty body and is marked as an abstract method,
         is in a protocol class, or is in a stub file
-    -   For unreachable execution paths, for example, if an exception
+    -  The execution path is unreachable; for example, if an exception
         is always raised
 
     Passing in :option:`--no-warn-no-return` will disable these error
