@@ -960,7 +960,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Function definition overrides a variable initialized via assignment or a
                 # decorated function.
                 orig_type = defn.original_def.type
-                assert orig_type is not None, f"Error checking function redefinition {defn}"
+                if orig_type is None:
+                    # If other branch is unreachable, we don't type check it and so we might
+                    # not have a type for the original definition
+                    return
                 if isinstance(orig_type, PartialType):
                     if orig_type.type is None:
                         # Ah this is a partial type. Give it the type of the function.
