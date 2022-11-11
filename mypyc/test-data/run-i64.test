@@ -755,6 +755,21 @@ def test_del() -> None:
     with assertRaises(AttributeError):
         o.x
 
+class UndefinedTuple:
+    def __init__(self, x: i64, y: i64) -> None:
+        if x != 0:
+            self.t = (x, y)
+
+def test_undefined_native_int_tuple() -> None:
+    o = UndefinedTuple(MAGIC, MAGIC)
+    assert o.t[0] == MAGIC
+    assert o.t[1] == MAGIC
+    o = UndefinedTuple(0, 0)
+    with assertRaises(AttributeError):
+        o.t
+    o = UndefinedTuple(-13, 45)
+    assert o.t == (-13, 45)
+
 [case testI64DefaultArgValues]
 from typing import Any, Iterator
 from typing_extensions import Final

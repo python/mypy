@@ -960,13 +960,13 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_lines("if (!tmp)", "    return -1;")
     emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
-    if is_fixed_width_rtype(rtype) and not always_defined:
+    if rtype.error_overlap and not always_defined:
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
         emitter.emit_line("} else")
         emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
-        if is_fixed_width_rtype(rtype):
+        if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
