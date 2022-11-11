@@ -2133,7 +2133,6 @@ class FindAttributeAssign(TraverserVisitor):
         pass
 
     def visit_member_expr(self, e: MemberExpr) -> None:
-        print(e, self.lvalue)
         if self.lvalue:
             self.found = True
 
