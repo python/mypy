@@ -7,13 +7,13 @@ import sys
 from pytest import skip
 
 from mypy import defaults
+from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.parse import parse
-from mypy.util import get_mypy_comments
-from mypy.config_parser import parse_mypy_comments
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
+from mypy.util import get_mypy_comments
 
 
 class ParserSuite(DataSuite):
