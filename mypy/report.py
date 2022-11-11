@@ -663,9 +663,7 @@ class CoberturaXmlReporter(AbstractReporter):
             if branch:
                 line_element.attrib["condition-coverage"] = "50% (1/2)"
         class_element.attrib["branch-rate"] = "0"
-        class_element.attrib["line-rate"] = get_line_rate(
-            class_lines_covered, class_total_lines
-        )
+        class_element.attrib["line-rate"] = get_line_rate(class_lines_covered, class_total_lines)
         # parent_module is set to whichever module contains this file.  For most files, we want
         # to simply strip the last element off of the module.  But for __init__.py files,
         # the module == the parent module.
