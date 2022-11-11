@@ -259,6 +259,7 @@ class D(C):
             # E: Call to abstract method "m5" of "C" with trivial body via super() is unsafe
         super().m6() \
             # E: Call to abstract method "m6" of "C" with trivial body via super() is unsafe
+        super().m7()
 
     def m1(self) -> int:
         return 0
@@ -307,5 +308,10 @@ class C:
     @abc.abstractmethod
     def m6(self) -> int:
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def m7(self) -> int:
+        raise NotImplementedError()
+        pass
 
 [builtins fixtures/exception.pyi]
