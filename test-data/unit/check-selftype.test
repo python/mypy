@@ -1545,3 +1545,16 @@ class C:
         assert_type(self, Self)  # OK
         assert_type(C(), Self)  # E: Expression is of type "C", not "Self"
         return self
+
+[case testTypingSelfTypeVarClash]
+from typing import Self, TypeVar, Tuple
+
+S = TypeVar("S")
+class C:
+    def bar(self) -> Self: ...
+    def foo(self, x: S) -> Tuple[Self, S]: ...
+
+c: C
+reveal_type(C.foo)  # N: Revealed type is "def [Self <: __main__.C, S] (self: Self`-1, x: S`-2) -> Tuple[Self`-1, S`-2]"
+reveal_type(C().foo(42))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
+[builtins fixtures/tuple.pyi]

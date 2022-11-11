@@ -835,7 +835,11 @@ class SemanticAnalyzer(
             self.prepare_method_signature(defn, self.type, has_self_type)
 
         # Analyze function signature
-        with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+        if has_self_type and self.type and self.type.self_type:
+            func_id = self.type.self_type.id.raw_id
+        else:
+            func_id = 0
+        with self.tvar_scope_frame(self.tvar_scope.method_frame(func_id=func_id)):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)

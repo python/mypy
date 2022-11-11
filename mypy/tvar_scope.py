@@ -29,6 +29,7 @@ class TypeVarLikeScope:
         is_class_scope: bool = False,
         prohibited: TypeVarLikeScope | None = None,
         namespace: str = "",
+        func_id: int = 0,
     ) -> None:
         """Initializer for TypeVarLikeScope
 
@@ -37,6 +38,9 @@ class TypeVarLikeScope:
           is_class_scope: True if this represents a generic class
           prohibited: Type variables that aren't strictly in scope exactly,
                       but can't be bound because they're part of an outer class's scope.
+          func_id: override for parent func_id. This is needed if we bind some
+                   synthetic type variables. For example, Self type is transformed into
+                   a type variable, and we need to reserve its id.
         """
         self.scope: dict[str, TypeVarLikeType] = {}
         self.parent = parent
@@ -48,6 +52,9 @@ class TypeVarLikeScope:
         if parent is not None:
             self.func_id = parent.func_id
             self.class_id = parent.class_id
+        if func_id < 0:
+            assert func_id <= self.func_id
+            self.func_id = func_id
 
     def get_function_scope(self) -> TypeVarLikeScope | None:
         """Get the nearest parent that's a function scope, not a class scope"""
@@ -65,9 +72,9 @@ class TypeVarLikeScope:
             return False
         return True
 
-    def method_frame(self) -> TypeVarLikeScope:
+    def method_frame(self, func_id: int = 0) -> TypeVarLikeScope:
         """A new scope frame for binding a method"""
-        return TypeVarLikeScope(self, False, None)
+        return TypeVarLikeScope(self, False, None, func_id=func_id)
 
     def class_frame(self, namespace: str) -> TypeVarLikeScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
