@@ -2095,16 +2095,32 @@ def stringify_name(n: AST) -> str | None:
 
 class FindAttributeAssign(TraverserVisitor):
     def __init__(self) -> None:
-        self.lval = False
+        self.lvalue = False
         self.found = False
 
-    def visit_assignment_stmt(self, x: AssignmentStmt) -> None:
-        self.lval = True
-        for lv in x.lvalues:
+    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+        self.lvalue = True
+        for lv in s.lvalues:
             lv.accept(self)
-        self.lval = False
+        self.lvalue = False
 
-    def visit_expression_stmt(self, e: ExpressionStmt) -> None:
+    def visit_with_stmt(self, s: WithStmt) -> None:
+        self.lvalue = True
+        for lv in s.target:
+            if lv is not None:
+                lv.accept(self)
+        self.lvalue = False
+        s.body.accept(self)
+
+    def visit_for_stmt(self, s: ForStmt) -> None:
+        self.lvalue = True
+        s.index.accept(self)
+        self.lvalue = False
+        s.body.accept(self)
+        if s.else_body:
+            s.else_body.accept(self)
+
+    def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         # No need to look inside these
         pass
 
@@ -2112,6 +2128,11 @@ class FindAttributeAssign(TraverserVisitor):
         # No need to look inside these
         pass
 
-    def visit_member_expr(self, x: MemberExpr) -> None:
-        if self.lval:
+    def visit_index_expr(self, e: IndexExpr) -> None:
+        # No need to look inside these
+        pass
+
+    def visit_member_expr(self, e: MemberExpr) -> None:
+        print(e, self.lvalue)
+        if self.lvalue:
             self.found = True

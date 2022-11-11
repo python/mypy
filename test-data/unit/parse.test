@@ -3498,8 +3498,13 @@ MypyFile:1(
 class C:
     def f(self):
         x = self.x
-        while foo():
-            bah()
+        for x in y:
+            pass
+        with a as y:
+            pass
+        while self.foo():
+            self.bah()
+            a[self.x] = 1
 [out]
 MypyFile:1(
   ClassDef:2(
@@ -3527,7 +3532,7 @@ MypyFile:1(
       NameExpr(x)
       IntExpr(5))))
 
-[case testDoNotStripMethodThatAssignsToAnAttribute]
+[case testDoNotStripMethodThatAssignsToAttribute]
 # mypy: ignore-errors=True
 class C:
     def m1(self):
@@ -3560,3 +3565,100 @@ MypyFile:1(
               NameExpr(self)
               y))
           IntExpr(0))))))
+
+[case testDoNotStripMethodThatAssignsToAttributeWithinStatement]
+# mypy: ignore-errors=True
+class C:
+    def m1(self):
+        for x in y:
+            self.x = 0
+    def m2(self):
+        with x:
+            self.y = 0
+    def m3(self):
+        if x:
+            self.y = 0
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    FuncDef:3(
+      m1
+      Args(
+        Var(self))
+      Block:3(
+        ForStmt:4(
+          NameExpr(x)
+          NameExpr(y)
+          Block:4(
+            AssignmentStmt:5(
+              MemberExpr:5(
+                NameExpr(self)
+                x)
+              IntExpr(0))))))
+    FuncDef:6(
+      m2
+      Args(
+        Var(self))
+      Block:6(
+        WithStmt:7(
+          Expr(
+            NameExpr(x))
+          Block:7(
+            AssignmentStmt:8(
+              MemberExpr:8(
+                NameExpr(self)
+                y)
+              IntExpr(0))))))
+    FuncDef:9(
+      m3
+      Args(
+        Var(self))
+      Block:9(
+        IfStmt:10(
+          If(
+            NameExpr(x))
+          Then(
+            AssignmentStmt:11(
+              MemberExpr:11(
+                NameExpr(self)
+                y)
+              IntExpr(0))))))))
+
+[case testDoNotStripMethodThatDefinesAttributeWithoutAssignment]
+# mypy: ignore-errors=True
+class C:
+    def m1(self):
+        with y as self.x:
+            pass
+    def m2(self):
+        for self.y in x:
+            pass
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    FuncDef:3(
+      m1
+      Args(
+        Var(self))
+      Block:3(
+        WithStmt:4(
+          Expr(
+            NameExpr(y))
+          Target(
+            MemberExpr:4(
+              NameExpr(self)
+              x))
+          Block:4())))
+    FuncDef:6(
+      m2
+      Args(
+        Var(self))
+      Block:6(
+        ForStmt:7(
+          MemberExpr:7(
+            NameExpr(self)
+            y)
+          NameExpr(x)
+          Block:7())))))
