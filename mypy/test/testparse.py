@@ -10,6 +10,8 @@ from mypy import defaults
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.parse import parse
+from mypy.util import get_mypy_comments
+from mypy.config_parser import parse_mypy_comments
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
 
@@ -39,9 +41,16 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     else:
         options.python_version = defaults.PYTHON3_VERSION
 
+    source = "\n".join(testcase.input)
+
+    # Apply mypy: comments to options.
+    comments = get_mypy_comments(source)
+    changes, _ = parse_mypy_comments(comments, options)
+    options = options.apply_changes(changes)
+
     try:
         n = parse(
-            bytes("\n".join(testcase.input), "ascii"),
+            bytes(source, "ascii"),
             fnam="main",
             module="__main__",
             errors=None,

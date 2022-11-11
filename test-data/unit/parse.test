@@ -95,7 +95,6 @@ MypyFile:1(
     StrExpr(x\n\'))
   ExpressionStmt:2(
     StrExpr(x\n\")))
---" fix syntax highlight
 
 [case testBytes]
 b'foo'
@@ -128,7 +127,6 @@ MypyFile:1(
 MypyFile:1(
   ExpressionStmt:1(
     StrExpr(')))
---'
 
 [case testOctalEscapes]
 '\0\1\177\1234'
@@ -3484,3 +3482,81 @@ MypyFile:1(
                           NameExpr(y)
                           NameExpr(y))
                         StrExpr()))))))))))))
+
+[case testStripFunctionBodiesIfIgnoringErrors]
+# mypy: ignore-errors=True
+def f():
+    return 1
+[out]
+MypyFile:1(
+  FuncDef:2(
+    f
+    Block:2()))
+
+[case testStripMethodBodiesIfIgnoringErrors]
+# mypy: ignore-errors=True
+class C:
+    def f(self):
+        x = self.x
+        while foo():
+            bah()
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    FuncDef:3(
+      f
+      Args(
+        Var(self))
+      Block:3())))
+
+[case testDoNotStripModuleTopLevelOrClassBody]
+# mypy: ignore-errors=True
+f()
+class C:
+    x = 5
+[out]
+MypyFile:1(
+  ExpressionStmt:2(
+    CallExpr:2(
+      NameExpr(f)
+      Args()))
+  ClassDef:3(
+    C
+    AssignmentStmt:4(
+      NameExpr(x)
+      IntExpr(5))))
+
+[case testDoNotStripMethodThatAssignsToAnAttribute]
+# mypy: ignore-errors=True
+class C:
+    def m1(self):
+        self.x = 0
+    def m2(self):
+        a, self.y = 0
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    FuncDef:3(
+      m1
+      Args(
+        Var(self))
+      Block:3(
+        AssignmentStmt:4(
+          MemberExpr:4(
+            NameExpr(self)
+            x)
+          IntExpr(0))))
+    FuncDef:5(
+      m2
+      Args(
+        Var(self))
+      Block:5(
+        AssignmentStmt:6(
+          TupleExpr:6(
+            NameExpr(a)
+            MemberExpr:6(
+              NameExpr(self)
+              y))
+          IntExpr(0))))))
