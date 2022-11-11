@@ -263,8 +263,6 @@ def parse(
     on failure. Otherwise, use the errors object to report parse errors.
     """
     ignore_errors = (options is not None and options.ignore_errors) or (errors is not None and fnam in errors.ignored_files)
-    #if ignore_errors:
-    #    print(fnam, fnam in errors.ignored_files, len(errors.ignored_files))
     raise_on_error = False
     if options is None:
         options = Options()
