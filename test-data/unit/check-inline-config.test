@@ -257,6 +257,8 @@ class D(C):
             # E: Call to abstract method "m4" of "C" with trivial body via super() is unsafe
         super().m5() \
             # E: Call to abstract method "m5" of "C" with trivial body via super() is unsafe
+        super().m6() \
+            # E: Call to abstract method "m6" of "C" with trivial body via super() is unsafe
 
     def m1(self) -> int:
         return 0
@@ -271,6 +273,9 @@ class D(C):
         return 0
 
     def m5(self) -> int:
+        return 0
+
+    def m6(self) -> int:
         return 0
 
 [file m.py]
@@ -298,3 +303,9 @@ class C:
     def m5(self) -> int:
         """doc"""
         ...
+
+    @abc.abstractmethod
+    def m6(self) -> int:
+        raise NotImplementedError()
+
+[builtins fixtures/exception.pyi]
