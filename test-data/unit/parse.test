@@ -3485,12 +3485,15 @@ MypyFile:1(
 
 [case testStripFunctionBodiesIfIgnoringErrors]
 # mypy: ignore-errors=True
-def f():
+def f(self):
+    self.x = 1  # Cannot define an attribute
     return 1
 [out]
 MypyFile:1(
   FuncDef:2(
     f
+    Args(
+      Var(self))
     Block:2()))
 
 [case testStripMethodBodiesIfIgnoringErrors]
