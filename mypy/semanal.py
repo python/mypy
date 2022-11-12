@@ -1016,7 +1016,8 @@ class SemanticAnalyzer(
         """Make any type variables in the signature of defn explicit.
 
         Update the signature of defn to contain type variable definitions
-        if defn is generic.
+        if defn is generic. Return True, if the signature contains typing.Self
+        type, or False otherwise.
         """
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             a = self.type_analyzer()
