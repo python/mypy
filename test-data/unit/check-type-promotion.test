@@ -54,3 +54,59 @@ def f(x: Union[SupportsFloat, T]) -> Union[SupportsFloat, T]: pass
 f(0)  # should not crash
 [builtins fixtures/primitives.pyi]
 [out]
+
+[case testIntersectionUsingPromotion]
+# flags: --warn-unreachable
+x: complex = 1
+reveal_type(x)  # N: Revealed type is "builtins.complex"
+if isinstance(x, int):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.complex"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion2]
+# flags: --warn-unreachable
+x: complex = 1
+reveal_type(x)  # N: Revealed type is "builtins.complex"
+if isinstance(x, (int, float)):
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.complex"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion3]
+# flags: --warn-unreachable
+x: object
+if isinstance(x, int) and isinstance(x, complex):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+if isinstance(x, complex) and isinstance(x, int):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion4]
+# flags: --warn-unreachable
+x: object
+if isinstance(x, int):
+    if isinstance(x, complex):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+if isinstance(x, complex):
+    if isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.complex"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion5]
+# flags: --warn-unreachable
+from typing import Union
+
+x: Union[float, complex]
+if isinstance(x, int):
+    # Most likely this was an error, but we still type-check this branch
+    reveal_type(x)  # N: Revealed type is "<nothing>"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+[builtins fixtures/primitives.pyi]
