@@ -593,10 +593,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if self.api.type.has_base("builtins.type"):
                 self.fail("Self type cannot be used in a metaclass", t)
             if self.api.type.self_type is not None:
+                if self.api.type.is_final:
+                    return fill_typevars(self.api.type)
                 return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
             # TODO: verify this is unreachable and replace with an assert?
             self.fail("Unexpected Self type", t)
-            return fill_typevars(self.api.type)
+            return AnyType(TypeOfAny.from_error)
         return None
 
     def get_omitted_any(self, typ: Type, fullname: str | None = None) -> AnyType:

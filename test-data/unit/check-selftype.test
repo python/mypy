@@ -1636,3 +1636,11 @@ class Foo:
     def bar(cls) -> t.Self:
         return cls()
 [builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfAllowAliasUseInFinalClasses]
+from typing import Self, final
+
+@final
+class C:
+    def meth(self) -> Self:
+        return C()  # OK for final classes
