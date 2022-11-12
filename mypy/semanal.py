@@ -835,7 +835,7 @@ class SemanticAnalyzer(
             self.prepare_method_signature(defn, self.type, has_self_type)
 
         # Analyze function signature
-        if has_self_type and self.type and self.type.self_type:
+        if self.type and self.type.self_type:
             func_id = self.type.self_type.id.raw_id
         else:
             func_id = 0

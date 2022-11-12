@@ -1554,7 +1554,34 @@ class C:
     def bar(self) -> Self: ...
     def foo(self, x: S) -> Tuple[Self, S]: ...
 
-c: C
 reveal_type(C.foo)  # N: Revealed type is "def [Self <: __main__.C, S] (self: Self`-1, x: S`-2) -> Tuple[Self`-1, S`-2]"
 reveal_type(C().foo(42))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypingSelfTypeVarClashAttr]
+from typing import Self, TypeVar, Tuple, Callable
+
+S = TypeVar("S")
+class C:
+    def bar(self) -> Self: ...
+    foo: Callable[[S, Self], Tuple[Self, S]]
+
+reveal_type(C().foo)  # N: Revealed type is "def [S] (S`-2, __main__.C) -> Tuple[__main__.C, S`-2]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingSelfAttrOldVsNewStyle]
+from typing import Self, TypeVar
+
+T = TypeVar("T", bound=C)
+class C:
+    x: Self
+    def foo(self: T) -> T:
+        return self.x
+    def bar(self: T) -> T:
+        self.x = self
+        return self
+    def baz(self: Self) -> None:
+        self.x = self
+    def bad(self) -> None:
+        # This is unfortunate, but required by PEP 484
+        self.x = self  # E: Incompatible types in assignment (expression has type "C", variable has type "Self")

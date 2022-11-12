@@ -37,6 +37,7 @@ from mypy.typeops import (
     erase_to_bound,
     function_type,
     make_simplified_union,
+    supported_self_type,
     tuple_fallback,
     type_object_type_from_function,
 )
@@ -727,7 +728,9 @@ def analyze_var(
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
         t = get_proper_type(expand_type_by_instance(typ, itype))
-        if not (mx.is_self or mx.is_super):
+        if not (mx.is_self or mx.is_super) or supported_self_type(
+            get_proper_type(mx.original_type)
+        ):
             t = get_proper_type(expand_self_type(var, t, mx.original_type))
         result: Type = t
         typ = get_proper_type(typ)
