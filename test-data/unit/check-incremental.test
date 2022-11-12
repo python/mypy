@@ -6306,5 +6306,5 @@ reveal_type(D.meth)
 reveal_type(D().meth)
 [out]
 [out2]
-tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`-1, other: Self`-1) -> Self`-1"
+tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`0, other: Self`0) -> Self`0"
 tmp/m.py:5: note: Revealed type is "def (other: m.D) -> m.D"

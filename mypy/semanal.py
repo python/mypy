@@ -835,11 +835,7 @@ class SemanticAnalyzer(
             self.prepare_method_signature(defn, self.type, has_self_type)
 
         # Analyze function signature
-        if self.type and self.type.self_type:
-            func_id = self.type.self_type.id.raw_id
-        else:
-            func_id = 0
-        with self.tvar_scope_frame(self.tvar_scope.method_frame(func_id=func_id)):
+        with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)
@@ -1040,7 +1036,7 @@ class SemanticAnalyzer(
         info.self_type = TypeVarType(
             "Self",
             f"{info.fullname}.Self",
-            self.tvar_scope.new_unique_func_id(),
+            0,
             [],
             fill_typevars(info),
         )
