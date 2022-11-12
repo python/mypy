@@ -1418,7 +1418,7 @@ class C(Generic[T]):
     def __init__(self, val: T) -> None: ...
     @classmethod
     def pair(cls, val: T) -> Tuple[Self, Self]:
-        return (cls(val), C(val))  # E: Incompatible return value type (got "Tuple[Self, C[Any]]", expected "Tuple[Self, Self]")
+        return (cls(val), C(val))  # E: Incompatible return value type (got "Tuple[Self, C[T]]", expected "Tuple[Self, Self]")
 
 class D(C[int]): pass
 reveal_type(C.pair(42))  # N: Revealed type is "Tuple[__main__.C[builtins.int], __main__.C[builtins.int]]"
@@ -1600,3 +1600,13 @@ class C(Generic[T]):
 def test(x: C[T]) -> T:
     reveal_type(x.val)  # N: Revealed type is "T`-1"
     return x.val
+
+[case testTypingSelfGenericBound]
+from typing import Self, Generic, TypeVar
+
+T = TypeVar("T")
+class C(Generic[T]):
+    val: T
+    def foo(self) -> Self:
+        reveal_type(self.val)  # N: Revealed type is "T`1"
+        return self

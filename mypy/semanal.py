@@ -274,7 +274,7 @@ from mypy.types import (
     invalid_recursive_alias,
     is_named_instance,
 )
-from mypy.typevars import fill_typevars, fill_typevars_with_any
+from mypy.typevars import fill_typevars
 from mypy.util import (
     correct_relative_import,
     is_dunder,
@@ -1041,7 +1041,7 @@ class SemanticAnalyzer(
             f"{info.fullname}.Self",
             self.tvar_scope.new_unique_func_id(),
             [],
-            fill_typevars_with_any(info),
+            fill_typevars(info),
         )
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
