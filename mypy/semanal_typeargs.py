@@ -164,4 +164,4 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     )
 
     def fail(self, msg: str, context: Context, *, code: ErrorCode | None = None) -> None:
-        self.errors.report(context.get_line(), context.get_column(), msg, code=code)
+        self.errors.report(context.line, context.column, msg, code=code)

@@ -149,7 +149,7 @@ class StatisticsVisitor(TraverserVisitor):
                 if o in o.expanded:
                     print(
                         "{}:{}: ERROR: cycle in function expansion; skipping".format(
-                            self.filename, o.get_line()
+                            self.filename, o.line
                         )
                     )
                     return
