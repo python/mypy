@@ -1585,3 +1585,18 @@ class C:
     def bad(self) -> None:
         # This is unfortunate, but required by PEP 484
         self.x = self  # E: Incompatible types in assignment (expression has type "C", variable has type "Self")
+
+[case testTypingSelfClashUnrelated]
+from typing import Self, Generic, TypeVar
+
+class B: ...
+
+T = TypeVar("T", bound=B)
+class C(Generic[T]):
+    def __init__(self, val: T) -> None:
+        self.val = val
+    def foo(self) -> Self: ...
+
+def test(x: C[T]) -> T:
+    reveal_type(x.val)  # N: Revealed type is "T`-1"
+    return x.val

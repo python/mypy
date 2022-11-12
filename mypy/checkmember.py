@@ -727,11 +727,11 @@ def analyze_var(
             mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
-        t = get_proper_type(expand_type_by_instance(typ, itype))
         if not (mx.is_self or mx.is_super) or supported_self_type(
             get_proper_type(mx.original_type)
         ):
-            t = get_proper_type(expand_self_type(var, t, mx.original_type))
+            typ = expand_self_type(var, typ, mx.original_type)
+        t = get_proper_type(expand_type_by_instance(typ, itype))
         result: Type = t
         typ = get_proper_type(typ)
         if (
