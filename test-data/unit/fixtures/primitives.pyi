@@ -20,9 +20,9 @@ class int:
     def __rmul__(self, x: int) -> int: pass
 class float:
     def __float__(self) -> float: pass
-    def __add__(self, x: float) -> float: ...
+    def __add__(self, x: float) -> float: pass
 class complex:
-    def __add__(self, x: complex) -> complex: ...
+    def __add__(self, x: complex) -> complex: pass
 class bool(int): pass
 class str(Sequence[str]):
     def __add__(self, s: str) -> str: pass

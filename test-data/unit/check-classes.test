@@ -7209,7 +7209,7 @@ from typing import Callable
 class C:
     x: Callable[[C], int] = lambda x: x.y.g()  # E: "C" has no attribute "y"
 
-[case testOpWithInheritedFromAny]
+[case testOpWithInheritedFromAny-xfail]
 from typing import Any
 C: Any
 class D(C):
