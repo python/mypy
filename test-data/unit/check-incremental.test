@@ -6286,3 +6286,16 @@ class C: ...
 [out]
 [out2]
 [out3]
+
+[case testNoCrashOnPartialLambdaInference]
+from typing import TypeVar, Callable
+
+V = TypeVar("V")
+def apply(val: V, func: Callable[[V], None]) -> None:
+    return func(val)
+
+xs = []
+apply(0, lambda a: xs.append(a))
+[builtins fixtures/list.pyi]
+[out]
+[out2]

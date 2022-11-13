@@ -7031,6 +7031,9 @@ def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
         return is_lvalue_final
     elif isinstance(proper_type, UninhabitedType):
         return False
+    elif mypy.checkexpr.has_erased_component(typ):
+        # This can happen inside a lambda.
+        return False
     return not typ.accept(NothingSeeker())
 
 
