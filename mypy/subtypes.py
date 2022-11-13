@@ -678,13 +678,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
         elif isinstance(right, Instance):
-            if right.type.is_protocol and right.type.protocol_members == ["__call__"]:
-                # OK, a callable can implement a protocol with a single `__call__` member.
+            if right.type.is_protocol and "__call__" in right.type.protocol_members:
+                # OK, a callable can implement a protocol with a `__call__` member.
                 # TODO: we should probably explicitly exclude self-types in this case.
                 call = find_member("__call__", right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
-                    return True
+                    if len(right.type.protocol_members) == 1:
+                        return True
+                    if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
+                        return True
             if right.type.is_protocol and left.is_type_obj():
                 ret_type = get_proper_type(left.ret_type)
                 if isinstance(ret_type, TupleType):
@@ -792,12 +795,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if right.type.is_protocol and right.type.protocol_members == ["__call__"]:
+            if right.type.is_protocol and "__call__" in right.type.protocol_members:
                 # same as for CallableType
                 call = find_member("__call__", right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
-                    return True
+                    if len(right.type.protocol_members) == 1:
+                        return True
+                    if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
+                        return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, CallableType):
             for item in left.items:
@@ -938,7 +944,11 @@ def pop_on_exit(stack: list[tuple[T, T]], left: T, right: T) -> Iterator[None]:
 
 
 def is_protocol_implementation(
-    left: Instance, right: Instance, proper_subtype: bool = False, class_obj: bool = False
+    left: Instance,
+    right: Instance,
+    proper_subtype: bool = False,
+    class_obj: bool = False,
+    skip: list[str] | None = None,
 ) -> bool:
     """Check whether 'left' implements the protocol 'right'.
 
@@ -958,10 +968,13 @@ def is_protocol_implementation(
     as well.
     """
     assert right.type.is_protocol
+    if skip is None:
+        skip = []
     # We need to record this check to generate protocol fine-grained dependencies.
     TypeState.record_protocol_subtype_check(left.type, right.type)
     # nominal subtyping currently ignores '__init__' and '__new__' signatures
     members_not_to_check = {"__init__", "__new__"}
+    members_not_to_check.update(skip)
     # Trivial check that circumvents the bug described in issue 9771:
     if left.type.is_protocol:
         members_right = set(right.type.protocol_members) - members_not_to_check
