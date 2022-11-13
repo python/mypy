@@ -5883,7 +5883,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (
             isinstance(supertype, Instance)
             and supertype.type.is_protocol
-            and isinstance(subtype, (Instance, TupleType, TypedDictType))
+            and isinstance(subtype, (CallableType, Instance, TupleType, TypedDictType))
         ):
             self.msg.report_protocol_problems(subtype, supertype, context, code=msg.code)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
@@ -5891,10 +5891,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if call:
                 self.msg.note_call(subtype, call, context, code=msg.code)
         if isinstance(subtype, (CallableType, Overloaded)) and isinstance(supertype, Instance):
-            if supertype.type.is_protocol and supertype.type.protocol_members == ["__call__"]:
+            if supertype.type.is_protocol and "__call__" in supertype.type.protocol_members:
                 call = find_member("__call__", supertype, subtype, is_operator=True)
                 assert call is not None
-                self.msg.note_call(supertype, call, context, code=msg.code)
+                if not is_subtype(subtype, call, options=self.options):
+                    self.msg.note_call(supertype, call, context, code=msg.code)
         self.check_possible_missing_await(subtype, supertype, context)
         return False
 

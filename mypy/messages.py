@@ -1866,6 +1866,7 @@ class MessageBuilder:
 
         class_obj = False
         is_module = False
+        skip = []
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1880,20 +1881,22 @@ class MessageBuilder:
             class_obj = True
             subtype = subtype.item
         elif isinstance(subtype, CallableType):
-            if not subtype.is_type_obj():
-                return
-            ret_type = get_proper_type(subtype.ret_type)
-            if isinstance(ret_type, TupleType):
-                ret_type = ret_type.partial_fallback
-            if not isinstance(ret_type, Instance):
-                return
-            class_obj = True
-            subtype = ret_type
+            if subtype.is_type_obj():
+                ret_type = get_proper_type(subtype.ret_type)
+                if isinstance(ret_type, TupleType):
+                    ret_type = ret_type.partial_fallback
+                if not isinstance(ret_type, Instance):
+                    return
+                class_obj = True
+                subtype = ret_type
+            else:
+                subtype = subtype.fallback
+                skip = ["__call__"]
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
 
         # Report missing members
-        missing = get_missing_protocol_members(subtype, supertype)
+        missing = get_missing_protocol_members(subtype, supertype, skip=skip)
         if (
             missing
             and len(missing) < len(supertype.type.protocol_members)
@@ -2605,13 +2608,15 @@ def variance_string(variance: int) -> str:
         return "invariant"
 
 
-def get_missing_protocol_members(left: Instance, right: Instance) -> list[str]:
+def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str]) -> list[str]:
     """Find all protocol members of 'right' that are not implemented
     (i.e. completely missing) in 'left'.
     """
     assert right.type.is_protocol
     missing: list[str] = []
     for member in right.type.protocol_members:
+        if member in skip:
+            continue
         if not find_member(member, left, left):
             missing.append(member)
     return missing

@@ -553,7 +553,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         original_actual = actual = self.actual
         res: list[Constraint] = []
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
-            if template.type.protocol_members == ["__call__"]:
+            if "__call__" in template.type.protocol_members:
                 # Special case: a generic callback protocol
                 if not any(template == t for t in template.type.inferring):
                     template.type.inferring.append(template)
@@ -565,7 +565,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         subres = infer_constraints(call, actual, self.direction)
                         res.extend(subres)
                     template.type.inferring.pop()
-                    return res
         if isinstance(actual, CallableType) and actual.fallback is not None:
             if actual.is_type_obj() and template.type.is_protocol:
                 ret_type = get_proper_type(actual.ret_type)
@@ -815,7 +814,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # because some type may be considered a subtype of a protocol
                 # due to _promote, but still not implement the protocol.
                 not any(template == t for t in reversed(template.type.inferring))
-                and mypy.subtypes.is_protocol_implementation(instance, erased)
+                and mypy.subtypes.is_protocol_implementation(instance, erased, skip=["__call__"])
             ):
                 template.type.inferring.append(template)
                 res.extend(
@@ -831,7 +830,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 and
                 # We avoid infinite recursion for structural subtypes also here.
                 not any(instance == i for i in reversed(instance.type.inferring))
-                and mypy.subtypes.is_protocol_implementation(erased, instance)
+                and mypy.subtypes.is_protocol_implementation(erased, instance, skip=["__call__"])
             ):
                 instance.type.inferring.append(instance)
                 res.extend(
@@ -887,6 +886,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             inst = mypy.subtypes.find_member(member, instance, subtype, class_obj=class_obj)
             temp = mypy.subtypes.find_member(member, template, subtype)
             if inst is None or temp is None:
+                if member == "__call__":
+                    continue
                 return []  # See #11020
             # The above is safe since at this point we know that 'instance' is a subtype
             # of (erased) 'template', therefore it defines all protocol members
