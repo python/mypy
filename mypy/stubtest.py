@@ -551,6 +551,8 @@ class _NodeEvaluator(ExpressionVisitor[object]):
         return o.value
 
     def visit_bytes_expr(self, o: mypy.nodes.BytesExpr) -> bytes:
+        # The value of a BytesExpr is a string created from the repr()
+        # of the bytes object. Get the original bytes back.
         try:
             return ast.literal_eval(f"b'{o.value}'")
         except SyntaxError:
@@ -575,6 +577,8 @@ class _NodeEvaluator(ExpressionVisitor[object]):
             return False
         elif o.name == "None":
             return None
+        # TODO: Handle more names by figuring out a way to hook into the
+        # symbol table.
         return MISSING
 
     def visit_member_expr(self, o: mypy.nodes.MemberExpr) -> object:
@@ -756,7 +760,9 @@ def _verify_arg_default_value(
                     and stub_default is not ...
                     and (
                         stub_default != runtime_arg.default
-                        or type(stub_default) is not type(runtime_arg.default)
+                        # We want the types to match exactly, e.g. in case the stub has
+                        # True and the runtime has 1 (or vice versa).
+                        or type(stub_default) is not type(runtime_arg.default)  # noqa: E721
                     )
                 ):
                     yield (
