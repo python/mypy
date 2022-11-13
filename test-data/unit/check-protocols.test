@@ -1153,6 +1153,19 @@ x2 = y2 # E: Incompatible types in assignment (expression has type "PP", variabl
         # N: Protocol member P.attr expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 
+[case testClassVarProtocolImmutable]
+from typing import Protocol, ClassVar
+
+class P(Protocol):
+    @property
+    def x(self) -> int: ...
+
+class C:
+    x: ClassVar[int]
+
+x: P = C()
+[builtins fixtures/property.pyi]
+
 [case testSettablePropertyInProtocols]
 from typing import Protocol
 
