@@ -550,7 +550,7 @@ class _NodeEvaluator(ExpressionVisitor[object]):
     def visit_str_expr(self, o: mypy.nodes.StrExpr) -> str:
         return o.value
 
-    def visit_bytes_expr(self, o: mypy.nodes.BytesExpr) -> bytes:
+    def visit_bytes_expr(self, o: mypy.nodes.BytesExpr) -> object:
         # The value of a BytesExpr is a string created from the repr()
         # of the bytes object. Get the original bytes back.
         try:
