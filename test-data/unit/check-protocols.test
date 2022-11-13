@@ -2657,13 +2657,23 @@ class B2(Protocol):
     __name__: str
     def __call__(self) -> int: ...
 
+class B3(Protocol):
+    __name__: str
+    extra_stuff: int
+    def __call__(self) -> str: ...
+
 def f() -> str: ...
 
 reveal_type(f.__name__)  # N: Revealed type is "builtins.str"
 a: A = f  # OK
-b1: B1 = f  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "B1")
+b1: B1 = f  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "B1") \
+            # N: Following member(s) of "function" have conflicts: \
+            # N:     __name__: expected "int", got "str"
 b2: B2 = f  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "B2") \
             # N: "B2.__call__" has type "Callable[[], int]"
+b3: B3 = f  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "B3") \
+            # N: "function" is missing following "B3" protocol member: \
+            # N:     extra_stuff
 
 [case testCallbackProtocolFunctionAttributesInference]
 from typing import Protocol, TypeVar, Generic, Tuple
