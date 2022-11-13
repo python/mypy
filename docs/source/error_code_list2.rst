@@ -231,7 +231,7 @@ since unless implemented by a sub-type, the expression will always evaluate to t
     if foo:
        ...
 
-This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
+The check is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
 except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
 while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
 
@@ -246,7 +246,7 @@ Check that iterable is not implicitly true in boolean context [truthy-iterable]
     from typing import Iterable
 
     def transform(items: Iterable[int]) -> list[int]:
-        # Error :"items" has type "Iterable[int]" which can always be true in boolean context. Consider using "Collection[int]" instead.  [truthy-iterable]
+        # Error: "items" has type "Iterable[int]" which can always be true in boolean context. Consider using "Collection[int]" instead.  [truthy-iterable]
         if not items:
             return [42]
         return [x + 1 for x in items]
