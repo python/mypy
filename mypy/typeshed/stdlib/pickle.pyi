@@ -1,10 +1,97 @@
 import sys
-from typing import Any, Callable, ClassVar, Iterable, Iterator, Mapping, Optional, Protocol, Tuple, Type, Union
+from _typeshed import ReadableBuffer
+from collections.abc import Callable, Iterable, Iterator, Mapping
+from typing import Any, ClassVar, Protocol, SupportsBytes, Union
+from typing_extensions import SupportsIndex, TypeAlias, final
+
+__all__ = [
+    "PickleError",
+    "PicklingError",
+    "UnpicklingError",
+    "Pickler",
+    "Unpickler",
+    "dump",
+    "dumps",
+    "load",
+    "loads",
+    "ADDITEMS",
+    "APPEND",
+    "APPENDS",
+    "BINBYTES",
+    "BINBYTES8",
+    "BINFLOAT",
+    "BINGET",
+    "BININT",
+    "BININT1",
+    "BININT2",
+    "BINPERSID",
+    "BINPUT",
+    "BINSTRING",
+    "BINUNICODE",
+    "BINUNICODE8",
+    "BUILD",
+    "DEFAULT_PROTOCOL",
+    "DICT",
+    "DUP",
+    "EMPTY_DICT",
+    "EMPTY_LIST",
+    "EMPTY_SET",
+    "EMPTY_TUPLE",
+    "EXT1",
+    "EXT2",
+    "EXT4",
+    "FALSE",
+    "FLOAT",
+    "FRAME",
+    "FROZENSET",
+    "GET",
+    "GLOBAL",
+    "HIGHEST_PROTOCOL",
+    "INST",
+    "INT",
+    "LIST",
+    "LONG",
+    "LONG1",
+    "LONG4",
+    "LONG_BINGET",
+    "LONG_BINPUT",
+    "MARK",
+    "MEMOIZE",
+    "NEWFALSE",
+    "NEWOBJ",
+    "NEWOBJ_EX",
+    "NEWTRUE",
+    "NONE",
+    "OBJ",
+    "PERSID",
+    "POP",
+    "POP_MARK",
+    "PROTO",
+    "PUT",
+    "REDUCE",
+    "SETITEM",
+    "SETITEMS",
+    "SHORT_BINBYTES",
+    "SHORT_BINSTRING",
+    "SHORT_BINUNICODE",
+    "STACK_GLOBAL",
+    "STOP",
+    "STRING",
+    "TRUE",
+    "TUPLE",
+    "TUPLE1",
+    "TUPLE2",
+    "TUPLE3",
+    "UNICODE",
+]
+
+if sys.version_info >= (3, 8):
+    __all__ += ["BYTEARRAY8", "NEXT_BUFFER", "PickleBuffer", "READONLY_BUFFER"]
 
 HIGHEST_PROTOCOL: int
 DEFAULT_PROTOCOL: int
 
-bytes_types: Tuple[Type[Any], ...]  # undocumented
+bytes_types: tuple[type[Any], ...]  # undocumented
 
 class _ReadableFileobj(Protocol):
     def read(self, __n: int) -> bytes: ...
@@ -14,13 +101,12 @@ class _WritableFileobj(Protocol):
     def write(self, __b: bytes) -> Any: ...
 
 if sys.version_info >= (3, 8):
-    # TODO: holistic design for buffer interface (typing.Buffer?)
+    @final
     class PickleBuffer:
-        # buffer must be a buffer-providing object
-        def __init__(self, buffer: Any) -> None: ...
+        def __init__(self, buffer: ReadableBuffer) -> None: ...
         def raw(self) -> memoryview: ...
         def release(self) -> None: ...
-    _BufferCallback = Optional[Callable[[PickleBuffer], Any]]
+    _BufferCallback: TypeAlias = Callable[[PickleBuffer], Any] | None
     def dump(
         obj: Any,
         file: _WritableFileobj,
@@ -41,30 +127,35 @@ if sys.version_info >= (3, 8):
         buffers: Iterable[Any] | None = ...,
     ) -> Any: ...
     def loads(
-        __data: bytes, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ..., buffers: Iterable[Any] | None = ...
+        __data: ReadableBuffer,
+        *,
+        fix_imports: bool = ...,
+        encoding: str = ...,
+        errors: str = ...,
+        buffers: Iterable[Any] | None = ...,
     ) -> Any: ...
 
 else:
     def dump(obj: Any, file: _WritableFileobj, protocol: int | None = ..., *, fix_imports: bool = ...) -> None: ...
     def dumps(obj: Any, protocol: int | None = ..., *, fix_imports: bool = ...) -> bytes: ...
     def load(file: _ReadableFileobj, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
-    def loads(data: bytes, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
+    def loads(data: ReadableBuffer, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
 
 class PickleError(Exception): ...
 class PicklingError(PickleError): ...
 class UnpicklingError(PickleError): ...
 
-_reducedtype = Union[
+_ReducedType: TypeAlias = Union[
     str,
-    Tuple[Callable[..., Any], Tuple[Any, ...]],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any, Optional[Iterator[Any]]],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any, Optional[Iterator[Any]], Optional[Iterator[Any]]],
+    tuple[Callable[..., Any], tuple[Any, ...]],
+    tuple[Callable[..., Any], tuple[Any, ...], Any],
+    tuple[Callable[..., Any], tuple[Any, ...], Any, Iterator[Any] | None],
+    tuple[Callable[..., Any], tuple[Any, ...], Any, Iterator[Any] | None, Iterator[Any] | None],
 ]
 
 class Pickler:
     fast: bool
-    dispatch_table: Mapping[type, Callable[[Any], _reducedtype]]
+    dispatch_table: Mapping[type, Callable[[Any], _ReducedType]]
     bin: bool  # undocumented
     dispatch: ClassVar[dict[type, Callable[[Unpickler, Any], None]]]  # undocumented, _Pickler only
 
@@ -80,6 +171,7 @@ class Pickler:
         def reducer_override(self, obj: Any) -> Any: ...
     else:
         def __init__(self, file: _WritableFileobj, protocol: int | None = ..., *, fix_imports: bool = ...) -> None: ...
+
     def dump(self, __obj: Any) -> None: ...
     def clear_memo(self) -> None: ...
     def persistent_id(self, obj: Any) -> Any: ...
@@ -101,6 +193,7 @@ class Unpickler:
         def __init__(
             self, file: _ReadableFileobj, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...
         ) -> None: ...
+
     def load(self) -> Any: ...
     def find_class(self, __module_name: str, __global_name: str) -> Any: ...
     def persistent_load(self, pid: Any) -> Any: ...
@@ -187,7 +280,7 @@ if sys.version_info >= (3, 8):
     READONLY_BUFFER: bytes
 
 def encode_long(x: int) -> bytes: ...  # undocumented
-def decode_long(data: bytes) -> int: ...  # undocumented
+def decode_long(data: Iterable[SupportsIndex] | SupportsBytes | ReadableBuffer) -> int: ...  # undocumented
 
 # pure-Python implementations
 _Pickler = Pickler  # undocumented

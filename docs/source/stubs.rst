@@ -36,10 +36,15 @@ the source code. This can be useful, for example, if you use 3rd party
 open source libraries in your program (and there are no stubs in
 typeshed yet).
 
-That's it! Now you can access the module in mypy programs and type check
+That's it!
+
+Now you can access the module in mypy programs and type check
 code that uses the library. If you write a stub for a library module,
 consider making it available for other programmers that use mypy
 by contributing it back to the typeshed repo.
+
+Mypy also ships with two tools for making it easier to create and maintain
+stubs: :ref:`stubgen` and :ref:`stubtest`.
 
 The following sections explain the kinds of type annotations you can use
 in your programs and stub files.
@@ -57,7 +62,7 @@ in your programs and stub files.
 Stub file syntax
 ****************
 
-Stub files are written in normal Python 3 syntax, but generally
+Stub files are written in normal Python syntax, but generally
 leaving out runtime logic like variable initializers, function bodies,
 and default arguments.
 
@@ -85,12 +90,6 @@ stub file as three dots:
     :ref:`callable types <callable-types>` and :ref:`tuple types
     <tuple-types>`.
 
-.. note::
-
-    It is always legal to use Python 3 syntax in stub files, even when
-    writing Python 2 code. The example above is a valid stub file
-    for both Python 2 and 3.
-
 Using stub file syntax at runtime
 *********************************
 
@@ -112,27 +111,19 @@ For example:
 
 .. code-block:: python
 
-    from typing import List
     from typing_extensions import Protocol
 
     class Resource(Protocol):
-        def ok_1(self, foo: List[str] = ...) -> None: ...
+        def ok_1(self, foo: list[str] = ...) -> None: ...
 
-        def ok_2(self, foo: List[str] = ...) -> None:
+        def ok_2(self, foo: list[str] = ...) -> None:
             raise NotImplementedError()
 
-        def ok_3(self, foo: List[str] = ...) -> None:
+        def ok_3(self, foo: list[str] = ...) -> None:
             """Some docstring"""
             pass
 
         # Error: Incompatible default for argument "foo" (default has
-        # type "ellipsis", argument has type "List[str]")
-        def not_ok(self, foo: List[str] = ...) -> None:
+        # type "ellipsis", argument has type "list[str]")
+        def not_ok(self, foo: list[str] = ...) -> None:
             print(foo)
-
-.. note::
-
-    Ellipsis expressions are legal syntax in Python 3 only. This means
-    it is not possible to elide default arguments in Python 2 code.
-    You can still elide function bodies in Python 2 by using either
-    the ``pass`` statement or by throwing a :py:exc:`NotImplementedError`.

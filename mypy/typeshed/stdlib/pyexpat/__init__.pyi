@@ -1,7 +1,9 @@
 import pyexpat.errors as errors
 import pyexpat.model as model
 from _typeshed import SupportsRead
-from typing import Any, Callable, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
+from typing_extensions import TypeAlias, final
 
 EXPAT_VERSION: str  # undocumented
 version_info: tuple[int, int, int]  # undocumented
@@ -19,9 +21,10 @@ XML_PARAM_ENTITY_PARSING_NEVER: int
 XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: int
 XML_PARAM_ENTITY_PARSING_ALWAYS: int
 
-_Model = Tuple[int, int, Optional[str], Tuple[Any, ...]]
+_Model: TypeAlias = tuple[int, int, str | None, tuple[Any, ...]]
 
-class XMLParserType(object):
+@final
+class XMLParserType:
     def Parse(self, __data: str | bytes, __isfinal: bool = ...) -> int: ...
     def ParseFile(self, __file: SupportsRead[bytes]) -> int: ...
     def SetBase(self, __base: str) -> None: ...
@@ -30,6 +33,8 @@ class XMLParserType(object):
     def ExternalEntityParserCreate(self, __context: str | None, __encoding: str = ...) -> XMLParserType: ...
     def SetParamEntityParsing(self, __flag: int) -> int: ...
     def UseForeignDTD(self, __flag: bool = ...) -> None: ...
+    @property
+    def intern(self) -> dict[str, str]: ...
     buffer_size: int
     buffer_text: bool
     buffer_used: int
@@ -66,6 +71,7 @@ class XMLParserType(object):
     DefaultHandlerExpand: Callable[[str], Any] | None
     NotStandaloneHandler: Callable[[], int] | None
     ExternalEntityRefHandler: Callable[[str, str | None, str | None, str | None], int] | None
+    SkippedEntityHandler: Callable[[str, bool], Any] | None
 
 def ErrorString(__code: int) -> str: ...
 

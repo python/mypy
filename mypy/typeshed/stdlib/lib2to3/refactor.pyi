@@ -1,11 +1,12 @@
 from collections.abc import Container, Generator, Iterable, Mapping
 from logging import Logger
 from typing import Any, ClassVar, NoReturn
+from typing_extensions import TypeAlias
 
 from .pgen2.grammar import Grammar
 
-_Driver = Any  # really lib2to3.driver.Driver
-_BottomMatcher = Any  # really lib2to3.btm_matcher.BottomMatcher
+_Driver: TypeAlias = Any  # really lib2to3.driver.Driver
+_BottomMatcher: TypeAlias = Any  # really lib2to3.btm_matcher.BottomMatcher
 
 def get_all_fix_names(fixer_pkg: str, remove_prefix: bool = ...) -> list[str]: ...
 def get_fixers_from_package(pkg_name: str) -> list[str]: ...

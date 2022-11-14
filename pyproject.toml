@@ -1,6 +1,40 @@
 [build-system]
 requires = [
+    # NOTE: this needs to be kept in sync with mypy-requirements.txt
+    # and build-requirements.txt, because those are both needed for
+    # self-typechecking :/
     "setuptools >= 40.6.2",
     "wheel >= 0.30.0",
+    # the following is from mypy-requirements.txt
+    "typing_extensions>=3.10",
+    "mypy_extensions>=0.4.3",
+    "typed_ast>=1.4.0,<2; python_version<'3.8'",
+    "tomli>=1.1.0; python_version<'3.11'",
+    # the following is from build-requirements.txt
+    "types-psutil",
+    "types-setuptools",
+    "types-typed-ast>=1.5.8,<1.6.0",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 99
+target-version = ["py37", "py38", "py39", "py310", "py311"]
+skip-magic-trailing-comma = true
+force-exclude = '''
+^/mypy/typeshed|
+^/mypyc/test-data|
+^/test-data
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 99
+combine_as_imports = true
+skip_gitignore = true
+extra_standard_library = ["typing_extensions"]
+skip_glob = [
+    "mypy/typeshed/*",
+    "mypyc/test-data/*",
+    "test-data/*",
+]

@@ -73,11 +73,11 @@ compiled code. For example, you may want to do interactive testing or
 to run benchmarks. This is also handy if you want to inspect the
 generated C code (see Inspecting Generated C).
 
-Run `scripts/mypyc` to compile a module to a C extension using your
+Run `mypyc` to compile a module to a C extension using your
 development version of mypyc:
 
 ```
-$ scripts/mypyc program.py
+$ mypyc program.py
 ```
 
 This will generate a C extension for `program` in the current working
@@ -149,7 +149,7 @@ know for mypyc contributors:
   ([The C Programming Language](https://en.wikipedia.org/wiki/The_C_Programming_Language)
   is a classic book about C)
 * Basic familiarity with the Python C API (see
-  [Python C API documentation](https://docs.python.org/3/c-api/intro.html))
+  [Python C API documentation](https://docs.python.org/3/c-api/intro.html)). [Extending and Embedding the Python Interpreter](https://docs.python.org/3/extending/index.html) is a good tutorial for beginners.
 * Basics of compilers (see the
   [mypy wiki](https://github.com/python/mypy/wiki/Learning-Resources)
   for some ideas)

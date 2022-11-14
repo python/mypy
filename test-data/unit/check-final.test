@@ -250,7 +250,7 @@ class C(Generic[T]):
         self.x: Final = x
         self.y: Final = 1
 
-reveal_type(C((1, 2)).x)  # N: Revealed type is "Tuple[builtins.int*, builtins.int*]"
+reveal_type(C((1, 2)).x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
 C.x  # E: Cannot access final instance attribute "x" on class object \
      # E: Access to generic instance variables via class is ambiguous
 C.y  # E: Cannot access final instance attribute "y" on class object
@@ -1091,3 +1091,29 @@ class A:
     b: ClassVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
     c: ClassVar[Final] = 1  # E: Final can be only used as an outermost qualifier in a variable annotation
 [out]
+
+[case testFinalClassWithAbstractMethod]
+from typing import final
+from abc import ABC, abstractmethod
+
+@final
+class A(ABC): # E: Final class __main__.A has abstract attributes "B"
+    @abstractmethod
+    def B(self) -> None: ...
+
+[case testFinalDefiningFuncWithAbstractMethod]
+from typing import final
+from abc import ABC, abstractmethod
+
+class A(ABC):
+    @final # E: Method B is both abstract and final
+    @abstractmethod
+    def B(self) -> None: ...
+
+[case testFinalClassVariableRedefinitionDoesNotCrash]
+# This used to crash -- see #12950
+from typing import Final
+
+class MyClass:
+    a: None
+    a: Final[int] = 1  # E: Cannot redefine an existing name as final  # E: Name "a" already defined on line 5

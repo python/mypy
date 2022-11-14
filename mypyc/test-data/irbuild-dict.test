@@ -8,7 +8,7 @@ def f(d):
     r0, r1 :: object
     r2 :: bool
 L0:
-    r0 = box(short_int, 0)
+    r0 = object 0
     r1 = CPyDict_GetItem(d, r0)
     r2 = unbox(bool, r1)
     return r2
@@ -24,7 +24,7 @@ def f(d):
     r2 :: int32
     r3 :: bit
 L0:
-    r0 = box(short_int, 0)
+    r0 = object 0
     r1 = box(bool, 0)
     r2 = CPyDict_SetItem(d, r0, r1)
     r3 = r2 >= 0 :: signed
@@ -66,8 +66,8 @@ def f(x):
     r3, d :: dict
 L0:
     r0 = ''
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
+    r1 = object 1
+    r2 = object 2
     r3 = CPyDict_Build(2, r1, r2, r0, x)
     d = r3
     return 1
@@ -87,7 +87,7 @@ def f(d):
     r2 :: bit
     r3 :: bool
 L0:
-    r0 = box(short_int, 8)
+    r0 = object 4
     r1 = PyDict_Contains(d, r0)
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
@@ -114,7 +114,7 @@ def f(d):
     r2 :: bit
     r3, r4 :: bool
 L0:
-    r0 = box(short_int, 8)
+    r0 = object 4
     r1 = PyDict_Contains(d, r0)
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
@@ -178,7 +178,7 @@ L2:
     r8 = cast(str, r7)
     k = r8
     r9 = CPyDict_GetItem(d, k)
-    r10 = box(short_int, 2)
+    r10 = object 1
     r11 = PyNumber_InPlaceAdd(r9, r10)
     r12 = CPyDict_SetItem(d, k, r11)
     r13 = r12 >= 0 :: signed
@@ -208,11 +208,11 @@ def f(x, y):
     r7 :: bit
 L0:
     r0 = 'z'
-    r1 = box(short_int, 4)
+    r1 = object 2
     r2 = CPyDict_Build(1, x, r1)
     r3 = CPyDict_UpdateInDisplay(r2, y)
     r4 = r3 >= 0 :: signed
-    r5 = box(short_int, 6)
+    r5 = object 3
     r6 = CPyDict_SetItem(r2, r0, r5)
     r7 = r6 >= 0 :: signed
     return r2
@@ -423,7 +423,7 @@ L1:
 L2:
     r2 = 'a'
     r3 = PyList_New(1)
-    r4 = box(short_int, 2)
+    r4 = object 1
     r5 = get_element_ptr r3 ob_item :: PyListObject
     r6 = load_mem r5 :: ptr*
     set_mem r6, r4 :: builtins.object*
@@ -451,7 +451,7 @@ L1:
 L2:
     r2 = 'a'
     r3 = 'c'
-    r4 = box(short_int, 2)
+    r4 = object 1
     r5 = CPyDict_Build(1, r3, r4)
     r6 = CPyDict_SetDefault(d, r2, r5)
     return r6

@@ -188,9 +188,9 @@ if int():
     ee_var = everywhere
 
 if int():
-    ee_var = specific_1 # The difference between Callable[..., blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
+    ee_var = specific_1
 if int():
-    ee_def = specific_1 # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[VarArg(Any), KwArg(Any)], None]")
+    ee_def = specific_1
 
 [builtins fixtures/dict.pyi]
 
@@ -465,6 +465,7 @@ if int():
 
 
 [case testCallingFunctionsWithDefaultArgumentValues]
+# flags: --implicit-optional --no-strict-optional
 
 a, b = None, None # type: (A, B)
 if int():
@@ -513,34 +514,6 @@ T = TypeVar('T', bound='A')
 def f(x: T = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "T")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "T", variable has type "B")
     a = x # type: A
-
-class B: pass
-class A: pass
-
-[case testDefaultArgumentExpressionsPython2]
-# flags: --python-version 2.7
-from typing import Tuple
-def f(x = B()): # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
-    # type: (A) -> None
-    b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    a = x # type: A
-
-class B: pass
-class A: pass
-
-[case testDefaultTupleArgumentExpressionsPython2]
-# flags: --python-version 2.7
-from typing import Tuple
-def f((x, y) = (A(), B())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B]", argument has type "Tuple[B, B]")
-    # type: (Tuple[B, B]) -> None
-    b = x # type: B
-    a = x # type: A      # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-def g(a, (x, y) = (A(),)): # E: Incompatible default for tuple argument 2 (default has type "Tuple[A]", argument has type "Tuple[B, B]")
-    # type: (int, Tuple[B, B]) -> None
-    pass
-def h((x, y) = (A(), B(), A())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B, A]", argument has type "Tuple[B, B]")
-    # type: (Tuple[B, B]) -> None
-    pass
 
 class B: pass
 class A: pass
@@ -1421,7 +1394,11 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(x): pass # E: All conditional function variants must have identical signatures
+    def f(x): pass # E: All conditional function variants must have identical signatures \
+                   # N: Original: \
+                   # N:     def f(x: int) -> None \
+                   # N: Redefinition: \
+                   # N:     def f(x: Any) -> Any
 
 [case testIncompatibleConditionalFunctionDefinition2]
 from typing import Any
@@ -1429,7 +1406,11 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original: \
+                                # N:     def f(x: int) -> None \
+                                # N: Redefinition: \
+                                # N:     def f(y: int) -> None
 
 [case testIncompatibleConditionalFunctionDefinition3]
 from typing import Any
@@ -1437,7 +1418,11 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures \
+                                    # N: Original: \
+                                    # N:     def f(x: int) -> None \
+                                    # N: Redefinition: \
+                                    # N:     def f(x: int = ...) -> None
 
 [case testConditionalFunctionDefinitionUsingDecorator1]
 from typing import Callable
@@ -1490,19 +1475,41 @@ else:
     @dec
     def f(): pass
 
+[case testConditionalFunctionDefinitionUnreachable]
+def bar() -> None:
+    if False:
+        foo = 1
+    else:
+        def foo(obj): ...
+
+def baz() -> None:
+    if False:
+        foo: int = 1
+    else:
+        def foo(obj): ...  # E: Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "int")
+[builtins fixtures/tuple.pyi]
+
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
 def f(x: str) -> None: pass
 x = None # type: Any
 if x:
-    def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original: \
+                                # N:     def f(x: str) -> None \
+                                # N: Redefinition: \
+                                # N:     def f(x: int) -> None
 
-[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
+[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2]
 from typing import Any
 def f(x: int) -> None: pass # N: "f" defined here
 x = None # type: Any
 if x:
-    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original: \
+                                # N:     def f(x: int) -> None \
+                                # N: Redefinition: \
+                                # N:     def f(y: int) -> None
 f(x=1) # The first definition takes precedence.
 f(y=1) # E: Unexpected keyword argument "y" for "f"
 
@@ -1668,7 +1675,11 @@ class A:
     if x:
         def f(self, x: int) -> None: pass
     else:
-        def f(self, x): pass # E: All conditional function variants must have identical signatures
+        def f(self, x): pass # E: All conditional function variants must have identical signatures \
+                             # N: Original: \
+                             # N:     def f(self: A, x: int) -> None \
+                             # N: Redefinition: \
+                             # N:     def f(self: A, x: Any) -> Any
 [out]
 
 [case testConditionalFunctionDefinitionInTry]
@@ -1827,7 +1838,7 @@ def f2(*args, **kwargs) -> int: pass
 d(f1)
 e(f2)
 d(f2)
-e(f1)  # E: Argument 1 to "e" has incompatible type "Callable[[VarArg(Any)], int]"; expected "Callable[[VarArg(Any), KwArg(Any)], int]"
+e(f1)
 
 [builtins fixtures/dict.pyi]
 
@@ -2224,7 +2235,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Too few arguments for "g" of "A"   
+        self.g() # E: Too few arguments for "g" of "A"
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
@@ -2241,6 +2252,12 @@ h = f if bool() else g
 reveal_type(h) # N: Revealed type is "builtins.function"
 h(7) # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
+
+[case testFunctionWithNameUnderscore]
+def _(x: int) -> None: pass
+
+_(1)
+_('x')  # E: Argument 1 to "_" has incompatible type "str"; expected "int"
 
 -- Positional-only arguments
 -- -------------------------
@@ -2282,16 +2299,6 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 
 [builtins fixtures/bool.pyi]
 
-[case testTupleArguments]
-# flags: --python-version 2.7
-
-def f(a, (b, c), d): pass
-
-[case testTupleArgumentsFastparse]
-# flags: --python-version 2.7
-
-def f(a, (b, c), d): pass
-
 -- Type variable shenanagins
 -- -------------------------
 
@@ -2306,7 +2313,7 @@ def g(__x: T) -> T: pass
 f = g
 reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 i = f(3)
-reveal_type(i)  # N: Revealed type is "builtins.int*"
+reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testFunctionReturningGenericFunction]
 from typing import Callable, TypeVar
@@ -2317,7 +2324,7 @@ reveal_type(deco)  # N: Revealed type is "def () -> def [T] (T`-1) -> T`-1"
 f = deco()
 reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 i = f(3)
-reveal_type(i)  # N: Revealed type is "builtins.int*"
+reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testFunctionReturningGenericFunctionPartialBinding]
 from typing import Callable, TypeVar
@@ -2328,9 +2335,9 @@ U = TypeVar('U')
 def deco(x: U) -> Callable[[T, U], T]: pass
 reveal_type(deco)  # N: Revealed type is "def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2"
 f = deco("foo")
-reveal_type(f)  # N: Revealed type is "def [T] (T`-2, builtins.str*) -> T`-2"
+reveal_type(f)  # N: Revealed type is "def [T] (T`-2, builtins.str) -> T`-2"
 i = f(3, "eggs")
-reveal_type(i)  # N: Revealed type is "builtins.int*"
+reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testFunctionReturningGenericFunctionTwoLevelBinding]
 from typing import Callable, TypeVar
@@ -2341,9 +2348,9 @@ def deco() -> Callable[[T], Callable[[T, R], R]]: pass
 f = deco()
 reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2"
 g = f(3)
-reveal_type(g)  # N: Revealed type is "def [R] (builtins.int*, R`-2) -> R`-2"
+reveal_type(g)  # N: Revealed type is "def [R] (builtins.int, R`-2) -> R`-2"
 s = g(4, "foo")
-reveal_type(s)  # N: Revealed type is "builtins.str*"
+reveal_type(s)  # N: Revealed type is "builtins.str"
 
 [case testGenericFunctionReturnAsDecorator]
 from typing import Callable, TypeVar
@@ -2611,3 +2618,108 @@ def foo() -> None:
     pass
 
 reveal_type(foo()) # N: Revealed type is "None"
+
+[case testAnyArgument]
+def a(b: any): pass # E: Function "builtins.any" is not valid as a type \
+                    # N: Perhaps you meant "typing.Any" instead of "any"?
+[builtins fixtures/any.pyi]
+
+[case testCallableArgument]
+def a(b: callable): pass # E: Function "builtins.callable" is not valid as a type \
+                         # N: Perhaps you meant "typing.Callable" instead of "callable"?
+[builtins fixtures/callable.pyi]
+
+[case testDecoratedProperty]
+from typing import TypeVar, Callable, final
+
+T = TypeVar("T")
+
+def dec(f: Callable[[T], int]) -> Callable[[T], str]: ...
+def dec2(f: T) -> T: ...
+
+class A:
+    @property
+    @dec
+    def f(self) -> int: pass
+    @property
+    @dec2
+    def g(self) -> int: pass
+reveal_type(A().f)  # N: Revealed type is "builtins.str"
+reveal_type(A().g)  # N: Revealed type is "builtins.int"
+
+class B:
+    @final
+    @property
+    @dec
+    def f(self) -> int: pass
+reveal_type(B().f)  # N: Revealed type is "builtins.str"
+
+class C:
+    @property  # E: Only instance methods can be decorated with @property
+    @classmethod
+    def f(cls) -> int: pass
+reveal_type(C().f)  # N: Revealed type is "builtins.int"
+[builtins fixtures/property.pyi]
+[out]
+
+[case testDecoratedPropertySetter]
+from typing import TypeVar, Callable, final
+
+T = TypeVar("T")
+def dec(f: T) -> T: ...
+
+class A:
+    @property
+    @dec
+    def f(self) -> int: pass
+    @f.setter
+    @dec
+    def f(self, v: int) -> None: pass
+reveal_type(A().f)  # N: Revealed type is "builtins.int"
+
+class B:
+    @property
+    @dec
+    def f(self) -> int: pass
+    @dec # E: Only supported top decorator is @f.setter
+    @f.setter
+    def f(self, v: int) -> None: pass
+
+class C:
+    @dec  # E: Decorators on top of @property are not supported
+    @property
+    def f(self) -> int: pass
+    @f.setter
+    @dec
+    def f(self, v: int) -> None: pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testInvalidArgCountForProperty]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+def dec(f: Callable[[T], int]) -> Callable[[T, int], int]: ...
+
+class A:
+    @property  # E: Too many arguments for property
+    def f(self, x) -> int: pass
+    @property  # E: Too many arguments for property
+    @dec
+    def e(self) -> int: pass
+    @property
+    def g() -> int: pass   # E: Method must have at least one argument
+    @property
+    def h(self, *args, **kwargs) -> int: pass   # OK
+[builtins fixtures/property.pyi]
+[out]
+
+[case testSubtypingUnionGenericBounds]
+from typing import Callable, TypeVar, Union, Sequence
+
+TI = TypeVar("TI", bound=int)
+TS = TypeVar("TS", bound=str)
+
+f: Callable[[Sequence[TI]], None]
+g: Callable[[Union[Sequence[TI], Sequence[TS]]], None]
+f = g

@@ -1,24 +1,30 @@
+import sys
 from array import array
 from typing import Any
+from typing_extensions import Literal
 
-DEFLATED: int
-DEF_MEM_LEVEL: int
+DEFLATED: Literal[8]
+DEF_MEM_LEVEL: int  # can change
+DEF_BUF_SIZE: Literal[16384]
 MAX_WBITS: int
-ZLIB_VERSION: str
-Z_BEST_COMPRESSION: int
-Z_BEST_SPEED: int
-Z_DEFAULT_COMPRESSION: int
-Z_DEFAULT_STRATEGY: int
-Z_FILTERED: int
-Z_FINISH: int
-Z_FIXED: int
-Z_FULL_FLUSH: int
-Z_HUFFMAN_ONLY: int
-Z_NO_FLUSH: int
-Z_RLE: int
-Z_SYNC_FLUSH: int
-DEF_BUF_SIZE: int
-ZLIB_RUNTIME_VERSION: str
+ZLIB_VERSION: str  # can change
+ZLIB_RUNTIME_VERSION: str  # can change
+Z_NO_COMPRESSION: Literal[0]
+Z_PARTIAL_FLUSH: Literal[1]
+Z_BEST_COMPRESSION: Literal[9]
+Z_BEST_SPEED: Literal[1]
+Z_BLOCK: Literal[5]
+Z_DEFAULT_COMPRESSION: Literal[-1]
+Z_DEFAULT_STRATEGY: Literal[0]
+Z_FILTERED: Literal[1]
+Z_FINISH: Literal[4]
+Z_FIXED: Literal[4]
+Z_FULL_FLUSH: Literal[3]
+Z_HUFFMAN_ONLY: Literal[2]
+Z_NO_FLUSH: Literal[0]
+Z_RLE: Literal[3]
+Z_SYNC_FLUSH: Literal[2]
+Z_TREES: Literal[6]
 
 class error(Exception): ...
 
@@ -36,7 +42,13 @@ class _Decompress:
     def copy(self) -> _Decompress: ...
 
 def adler32(__data: bytes, __value: int = ...) -> int: ...
-def compress(__data: bytes, level: int = ...) -> bytes: ...
+
+if sys.version_info >= (3, 11):
+    def compress(__data: bytes, level: int = ..., wbits: int = ...) -> bytes: ...
+
+else:
+    def compress(__data: bytes, level: int = ...) -> bytes: ...
+
 def compressobj(
     level: int = ..., method: int = ..., wbits: int = ..., memLevel: int = ..., strategy: int = ..., zdict: bytes | None = ...
 ) -> _Compress: ...

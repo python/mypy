@@ -25,6 +25,23 @@ you can create such packages.
    :pep:`561` specifies how a package can declare that it supports
    type checking.
 
+.. note::
+
+   New versions of stub packages often use type system features not
+   supported by older, and even fairly recent mypy versions. If you
+   pin to an older version of mypy (using ``requirements.txt``, for
+   example), it is recommended that you also pin the versions of all
+   your stub package dependencies.
+
+.. note::
+
+   Starting in mypy 0.900, most third-party package stubs must be
+   installed explicitly. This decouples mypy and stub versioning,
+   allowing stubs to updated without updating mypy. This also allows
+   stubs not originally included with mypy to be installed. Earlier
+   mypy versions included a fixed set of stubs for third-party
+   packages.
+
 Using installed packages with mypy (PEP 561)
 ********************************************
 
@@ -40,10 +57,10 @@ stubs.)
 If you have installed typed packages in another Python installation or
 environment, mypy won't automatically find them. One option is to
 install another copy of those packages in the environment in which you
-use to run mypy. Alternatively, you can use the
+installed mypy. Alternatively, you can use the
 :option:`--python-executable <mypy --python-executable>` flag to point
-to the target Python executable, and mypy will find packages installed
-for that Python executable.
+to the Python executable for another environment, and mypy will find
+packages installed for that Python executable.
 
 Note that mypy does not support some more advanced import features,
 such as zip imports and custom import hooks.
@@ -173,14 +190,10 @@ The ``setup.py`` might look like this:
         packages=["package_c-stubs"]
     )
 
-If you have separate stubs for Python 2 and Python 3, you can place
-the Python 2 stubs in a directory with the suffix ``-python2-stubs``.
-We recommend that Python 2 and Python 3 stubs are bundled together for
-simplicity, instead of distributing them separately.
-
-The instructions are enough to ensure that built wheels contains the appropriate
-files. However, to ensure inclusion inside the ``sdist`` (``.tar.gz`` archive),
-you may also need to modify the inclusion rules in your ``MANIFEST.in``:
+The instructions above are enough to ensure that the built wheels
+contain the appropriate files. However, to ensure inclusion inside the
+``sdist`` (``.tar.gz`` archive), you may also need to modify the
+inclusion rules in your ``MANIFEST.in``:
 
 .. code-block:: text
 

@@ -39,7 +39,7 @@ class G(Generic[T]):
 
 v = None # type: G[A]
 w = None # type: G[B]
-x = None # type: G[str] # E: Type argument "builtins.str" of "G" must be a subtype of "__main__.A"
+x = None # type: G[str] # E: Type argument "str" of "G" must be a subtype of "A"
 y = G('a') # E: Value of type variable "T" of "G" cannot be "str"
 z = G(A())
 z = G(B())
@@ -93,9 +93,9 @@ TA = TypeVar('TA', bound=A)
 
 class C(Generic[TA]): pass
 class D0(C[TA], Generic[TA]): pass
-class D1(C[T], Generic[T]): pass # E: Type argument "T`1" of "C" must be a subtype of "__main__.A"
+class D1(C[T], Generic[T]): pass # E: Type argument "T" of "C" must be a subtype of "A"
 class D2(C[A]): pass
-class D3(C[str]): pass # E: Type argument "builtins.str" of "C" must be a subtype of "__main__.A"
+class D3(C[str]): pass # E: Type argument "str" of "C" must be a subtype of "A"
 
 
 -- Using information from upper bounds
@@ -215,3 +215,13 @@ if int():
     b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 twice(a) # E: Value of type variable "T" of "twice" cannot be "int"
 [builtins fixtures/args.pyi]
+
+
+[case testIterableBoundUnpacking]
+from typing import Tuple, TypeVar
+TupleT = TypeVar("TupleT", bound=Tuple[int, ...])
+def f(t: TupleT) -> None:
+    a, *b = t
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/tuple.pyi]

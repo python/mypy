@@ -1,5 +1,16 @@
+from collections.abc import Mapping, Sequence
 from types import ModuleType
-from typing import Any, Mapping, Sequence
+from typing import Any
+
+__all__ = [
+    "_main",
+    "freeze_support",
+    "set_executable",
+    "get_executable",
+    "get_preparation_data",
+    "get_command_line",
+    "import_main_path",
+]
 
 WINEXE: bool
 WINSERVICE: bool

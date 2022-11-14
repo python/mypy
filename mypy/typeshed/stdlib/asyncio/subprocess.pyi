@@ -2,13 +2,16 @@ import subprocess
 import sys
 from _typeshed import StrOrBytesPath
 from asyncio import events, protocols, streams, transports
-from typing import IO, Any, Callable, Union
-from typing_extensions import Literal
+from collections.abc import Callable
+from typing import IO, Any
+from typing_extensions import Literal, TypeAlias
+
+__all__ = ("create_subprocess_exec", "create_subprocess_shell")
 
 if sys.version_info >= (3, 8):
-    _ExecArg = StrOrBytesPath
+    _ExecArg: TypeAlias = StrOrBytesPath
 else:
-    _ExecArg = Union[str, bytes]
+    _ExecArg: TypeAlias = str | bytes
 
 PIPE: int
 STDOUT: int
@@ -19,10 +22,7 @@ class SubprocessStreamProtocol(streams.FlowControlMixin, protocols.SubprocessPro
     stdout: streams.StreamReader | None
     stderr: streams.StreamReader | None
     def __init__(self, limit: int, loop: events.AbstractEventLoop) -> None: ...
-    def connection_made(self, transport: transports.BaseTransport) -> None: ...
     def pipe_data_received(self, fd: int, data: bytes | str) -> None: ...
-    def pipe_connection_lost(self, fd: int, exc: Exception | None) -> None: ...
-    def process_exited(self) -> None: ...
 
 class Process:
     stdin: streams.StreamWriter | None

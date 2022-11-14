@@ -285,7 +285,7 @@ main:3: error: Cannot assign to class variable "x" via instance
 from typing import ClassVar, Generic, TypeVar
 T = TypeVar('T')
 class A(Generic[T]):
-    x: ClassVar[T]
+    x: ClassVar[T]  # E: ClassVar cannot contain type variables
     @classmethod
     def foo(cls) -> T:
         return cls.x  # OK
@@ -308,7 +308,7 @@ from typing import ClassVar, Generic, Tuple, TypeVar, Union, Type
 T = TypeVar('T')
 U = TypeVar('U')
 class A(Generic[T, U]):
-    x: ClassVar[Union[T, Tuple[U, Type[U]]]]
+    x: ClassVar[Union[T, Tuple[U, Type[U]]]]  # E: ClassVar cannot contain type variables
     @classmethod
     def foo(cls) -> Union[T, Tuple[U, Type[U]]]:
         return cls.x  # OK
@@ -325,3 +325,12 @@ class Good(A[int, str]):
     x = 42
 reveal_type(Good.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
+
+[case testSuggestClassVarOnTooFewArgumentsMethod]
+from typing import Callable
+
+class C:
+    foo: Callable[[C], int]
+c:C
+c.foo()  # E: Too few arguments \
+         # N: "foo" is considered instance variable, to make it class variable use ClassVar[...]

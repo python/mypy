@@ -222,7 +222,7 @@ yield  # type: ignore  # E: "yield" outside function
 [case testIgnoreWholeModule1]
 # flags: --warn-unused-ignores
 # type: ignore
-IGNORE # type: ignore  # E: unused "type: ignore" comment
+IGNORE # type: ignore  # E: Unused "type: ignore" comment
 
 [case testIgnoreWholeModule2]
 # type: ignore
@@ -246,11 +246,6 @@ IGNORE
 # type: ignore
 import MISSING
 
-[case testIgnoreWholeModulePy27]
-# flags: --python-version 2.7
-# type: ignore
-IGNORE
-
 [case testDontIgnoreWholeModule1]
 if True:
     # type: ignore
@@ -267,3 +262,20 @@ ERROR # E: Name "ERROR" is not defined
 
 def f(): ...
 ERROR # E: Name "ERROR" is not defined
+
+[case testIgnoreInsideFunctionDoesntAffectWhole]
+# flags: --disallow-untyped-defs
+
+def f():  # E: Function is missing a return type annotation
+    42 + 'no way'  # type: ignore
+    return 0
+
+[case testIgnoreInsideClassDoesntAffectWhole]
+import six
+class M(type): pass
+
+@six.add_metaclass(M)
+class CD(six.with_metaclass(M)):  # E: Multiple metaclass definitions
+    42 + 'no way'  # type: ignore
+
+[builtins fixtures/tuple.pyi]

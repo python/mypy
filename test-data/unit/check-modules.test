@@ -1,7 +1,7 @@
 -- Type checker test cases dealing with modules and imports.
 -- Towards the end there are tests for PEP 420 (namespace packages, i.e. __init__.py-less packages).
 
-[case testAccessImportedDefinitions]
+[case testAccessImportedDefinitions0]
 import m
 import typing
 m.f()           # E: Missing positional argument "a" in call to "f"
@@ -14,7 +14,7 @@ class A: pass
 def f(a: A) -> None: pass
 x = A()
 
-[case testAccessImportedDefinitions]
+[case testAccessImportedDefinitions1]
 import m
 import typing
 m.f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
@@ -131,9 +131,10 @@ def f() -> None: pass
 [case testImportWithinClassBody2]
 import typing
 class C:
-    from m import f
+    from m import f  # E: Unsupported class scoped import
     f()
-    f(C) # E: Too many arguments for "f"
+    # ideally, the following should error:
+    f(C)
 [file m.py]
 def f() -> None: pass
 [out]
@@ -422,20 +423,6 @@ __all__ = [1, 2, 3]
 [out]
 main:2: error: Type of __all__ must be "Sequence[str]", not "List[int]"
 
-[case testAllMustBeSequenceStr_python2]
-import typing
-__all__ = [1, 2, 3]
-[builtins_py2 fixtures/module_all_python2.pyi]
-[out]
-main:2: error: Type of __all__ must be "Sequence[unicode]", not "List[int]"
-
-[case testAllUnicodeSequenceOK_python2]
-import typing
-__all__ = [u'a', u'b', u'c']
-[builtins_py2 fixtures/module_all_python2.pyi]
-
-[out]
-
 [case testUnderscoreExportedValuesInImportAll]
 import typing
 from m import *
@@ -638,7 +625,11 @@ try:
     from m import f, g
 except:
     def f(x): pass
-    def g(x): pass # E: All conditional function variants must have identical signatures
+    def g(x): pass # E: All conditional function variants must have identical signatures \
+                   # N: Original: \
+                   # N:     def g(x: Any, y: Any) -> Any \
+                   # N: Redefinition: \
+                   # N:     def g(x: Any) -> Any
 [file m.py]
 def f(x): pass
 def g(x, y): pass
@@ -660,9 +651,28 @@ try:
     from m import f, g # E: Incompatible import of "g" (imported name has type "Callable[[Any, Any], Any]", local name has type "Callable[[Any], Any]")
 except:
     pass
+
+import m as f  # E: Incompatible import of "f" (imported name has type "object", local name has type "Callable[[Any], Any]")
+
 [file m.py]
 def f(x): pass
 def g(x, y): pass
+
+[case testRedefineTypeViaImport]
+from typing import Type
+import mod
+
+X: Type[mod.A]
+Y: Type[mod.B]
+from mod import B as X
+from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "Type[A]", local name has type "Type[B]")
+
+import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "Type[A]")
+
+[file mod.py]
+class A: ...
+class B(A): ...
+
 
 [case testImportVariableAndAssignNone]
 try:
@@ -912,10 +922,10 @@ a.b.c.value
 [file a/b/c.py]
 value = 3.2
 [out]
-tmp/a/b/__init__.py:2: error: Name "c" is not defined
-tmp/a/b/__init__.py:3: error: Name "a" is not defined
 tmp/a/__init__.py:2: error: Name "b" is not defined
 tmp/a/__init__.py:3: error: Name "a" is not defined
+tmp/a/b/__init__.py:2: error: Name "c" is not defined
+tmp/a/b/__init__.py:3: error: Name "a" is not defined
 
 [case testSubmoduleMixingLocalAndQualifiedNames]
 from a.b import MyClass
@@ -1305,27 +1315,6 @@ class Sub(x.Base):
     battr = b''
 [out]
 
-[case testImportCycleStability6_python2]
-import y
-[file x.py]
-class Base:
-    pass
-def foo():
-    # type: () -> None
-    import y
-    i = y.Sub.iattr  # type: int
-    f = y.Sub.fattr  # type: float
-    s = y.Sub.sattr  # type: str
-    u = y.Sub.uattr  # type: unicode
-[file y.py]
-import x
-class Sub(x.Base):
-    iattr = 0
-    fattr = 0.0
-    sattr = ''
-    uattr = u''
-[out]
-
 -- This case tests module-level variables.
 
 [case testImportCycleStability7]
@@ -1444,7 +1433,7 @@ def deco(f: Callable[[T], int]) -> Callable[[T], int]:
     a.x
     return f
 [out]
-tmp/a.py:6: note: Revealed type is "def (builtins.str*) -> builtins.int"
+tmp/a.py:6: note: Revealed type is "def (builtins.str) -> builtins.int"
 
 [case testDeferredClassContext]
 class A:
@@ -1548,9 +1537,9 @@ second = XT[str]()
 last = XT[G]()
 
 reveal_type(notes) # N: Revealed type is "y.G[y.G[builtins.int]]"
-reveal_type(another) # N: Revealed type is "y.G[y.G*[builtins.int]]"
-reveal_type(second) # N: Revealed type is "y.G[builtins.str*]"
-reveal_type(last) # N: Revealed type is "y.G[y.G*[Any]]"
+reveal_type(another) # N: Revealed type is "y.G[y.G[builtins.int]]"
+reveal_type(second) # N: Revealed type is "y.G[builtins.str]"
+reveal_type(last) # N: Revealed type is "y.G[y.G[Any]]"
 
 [file y.py]
 from typing import Generic, TypeVar
@@ -1676,10 +1665,10 @@ reveal_type(n2.b)  # N: Revealed type is "builtins.str"
 reveal_type(m3.a)  # N: Revealed type is "builtins.str"
 reveal_type(n3.b)  # N: Revealed type is "builtins.str"
 
-x, y = m  # E: "types.ModuleType" object is not iterable
+x, y = m  # E: Module object is not iterable
 x, y, z = m, n  # E: Need more than 2 values to unpack (3 expected)
 x, y = m, m, m  # E: Too many values to unpack (2 expected, 3 provided)
-x, (y, z) = m, n  # E: "types.ModuleType" object is not iterable
+x, (y, z) = m, n  # E: Module object is not iterable
 x, (y, z) = m, (n, n, n)  # E: Too many values to unpack (2 expected, 3 provided)
 
 [file m.py]
@@ -1702,11 +1691,11 @@ mod_any: Any = m
 mod_int: int = m  # E: Incompatible types in assignment (expression has type Module, variable has type "int")
 
 reveal_type(mod_mod)  # N: Revealed type is "types.ModuleType"
-mod_mod.a  # E: Module has no attribute "a"
+reveal_type(mod_mod.a)  # N: Revealed type is "Any"
 reveal_type(mod_mod2)  # N: Revealed type is "types.ModuleType"
-mod_mod2.a  # E: Module has no attribute "a"
+reveal_type(mod_mod2.a)  # N: Revealed type is "Any"
 reveal_type(mod_mod3)  # N: Revealed type is "types.ModuleType"
-mod_mod3.a  # E: Module has no attribute "a"
+reveal_type(mod_mod3.a)  # N: Revealed type is "Any"
 reveal_type(mod_any)  # N: Revealed type is "Any"
 
 [file m.py]
@@ -1766,7 +1755,7 @@ if bool():
 else:
     x = n
 
-x.a  # E: Module has no attribute "a"
+reveal_type(x.nope)  # N: Revealed type is "Any"
 reveal_type(x.__file__)  # N: Revealed type is "builtins.str"
 
 [file m.py]
@@ -1817,14 +1806,14 @@ m = n  # E: Cannot assign multiple modules to name "m" without explicit "types.M
 [builtins fixtures/module.pyi]
 
 [case testNoReExportFromStubs]
-from stub import Iterable  # E: Module "stub" has no attribute "Iterable"
-from stub import D  # E: Module "stub" has no attribute "D"
+from stub import Iterable  # E: Module "stub" does not explicitly export attribute "Iterable"
+from stub import D  # E: Module "stub" does not explicitly export attribute "D"
 from stub import C
 
 c = C()
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
 it: Iterable[int]
-reveal_type(it)  # N: Revealed type is "Any"
+reveal_type(it)  # N: Revealed type is "typing.Iterable[builtins.int]"
 
 [file stub.pyi]
 from typing import Iterable
@@ -1863,7 +1852,7 @@ class C:
 import stub
 
 reveal_type(stub.y)  # N: Revealed type is "builtins.int"
-reveal_type(stub.z)  # E: Module has no attribute "z" \
+reveal_type(stub.z)  # E: "Module stub" does not explicitly export attribute "z" \
                      # N: Revealed type is "Any"
 
 [file stub.pyi]
@@ -1910,12 +1899,52 @@ class C:
 
 [builtins fixtures/module.pyi]
 
+[case testReExportChildStubs3]
+from util import mod
+reveal_type(mod)  # N: Revealed type is "def () -> package.mod.mod"
+
+from util import internal_detail  # E: Module "util" does not explicitly export attribute "internal_detail"
+
+[file package/__init__.pyi]
+from .mod import mod as mod
+
+[file package/mod.pyi]
+class mod: ...
+
+[file util.pyi]
+from package import mod as mod
+# stubs require explicit re-export
+from package import mod as internal_detail
+[builtins fixtures/module.pyi]
+
+[case testNoReExportUnrelatedModule]
+from mod2 import unrelated  # E: Module "mod2" does not explicitly export attribute "unrelated"
+
+[file mod1/__init__.pyi]
+[file mod1/unrelated.pyi]
+x: int
+
+[file mod2.pyi]
+from mod1 import unrelated
+[builtins fixtures/module.pyi]
+
+[case testNoReExportUnrelatedSiblingPrefix]
+from pkg.unrel import unrelated  # E: Module "pkg.unrel" does not explicitly export attribute "unrelated"
+
+[file pkg/__init__.pyi]
+[file pkg/unrelated.pyi]
+x: int
+
+[file pkg/unrel.pyi]
+from pkg import unrelated
+[builtins fixtures/module.pyi]
+
 [case testNoReExportChildStubs]
 import mod
-from mod import C, D  # E: Module "mod" has no attribute "C"
+from mod import C, D  # E: Module "mod" does not explicitly export attribute "C"
 
 reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
-mod.C  # E: Module has no attribute "C"
+mod.C  # E: "Module mod" does not explicitly export attribute "C"
 y = mod.D()
 reveal_type(y.a)  # N: Revealed type is "builtins.str"
 
@@ -1930,7 +1959,7 @@ class D:
 [builtins fixtures/module.pyi]
 
 [case testNoReExportNestedStub]
-from stub import substub  # E: Module "stub" has no attribute "substub"
+from stub import substub  # E: Module "stub" does not explicitly export attribute "substub"
 
 [file stub.pyi]
 import substub
@@ -1943,7 +1972,7 @@ x = 42
 [case testModuleAliasToQualifiedImport]
 import package.module
 alias = package.module
-reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str"
 [file package/__init__.py]
 
 [file package/module.py]
@@ -1956,7 +1985,7 @@ def whatever(x: T) -> T: pass
 import mod
 import othermod
 alias = mod.submod
-reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str"
 if int():
     alias = othermod  # E: Cannot assign multiple modules to name "alias" without explicit "types.ModuleType" annotation
 [file mod.py]
@@ -2000,7 +2029,7 @@ reveal_type(has_getattr.any_attribute)
 def __getattr__(x: int, y: str) -> str: ...
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str" for "__getattr__"
+tmp/has_getattr.pyi:1: error: Invalid signature "Callable[[int, str], str]" for "__getattr__"
 main:3: note: Revealed type is "builtins.str"
 
 [builtins fixtures/module.pyi]
@@ -2014,7 +2043,7 @@ reveal_type(has_getattr.any_attribute)
 __getattr__ = 3
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "builtins.int" for "__getattr__"
+tmp/has_getattr.pyi:1: error: Invalid signature "int" for "__getattr__"
 main:3: note: Revealed type is "Any"
 
 [builtins fixtures/module.pyi]
@@ -2141,7 +2170,7 @@ def make_getattr_bad() -> Callable[[], int]: ...
 __getattr__ = make_getattr_bad()
 
 [out]
-tmp/non_stub.py:4: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+tmp/non_stub.py:4: error: Invalid signature "Callable[[], int]" for "__getattr__"
 main:3: note: Revealed type is "builtins.int"
 
 [case testModuleLevelGetattrImportedGood]
@@ -2167,7 +2196,7 @@ from has_getattr import __getattr__
 def __getattr__() -> int: ...
 
 [out]
-tmp/has_getattr.py:1: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+tmp/has_getattr.py:1: error: Invalid signature "Callable[[], int]" for "__getattr__"
 main:3: note: Revealed type is "builtins.int"
 
 [builtins fixtures/module.pyi]
@@ -2655,12 +2684,13 @@ from foo.bar import x
 x = 0
 
 [case testClassicNotPackage]
+# flags: --no-namespace-packages
 from foo.bar import x
 [file foo/bar.py]
 x = 0
 [out]
-main:1: error: Cannot find implementation or library stub for module named "foo.bar"
-main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "foo.bar"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNamespacePackage]
 # flags: --namespace-packages
@@ -2876,10 +2906,10 @@ CustomDict = TypedDict(
 [builtins fixtures/tuple.pyi]
 
 [case testNoReExportFromMissingStubs]
-from stub import a  # E: Module "stub" has no attribute "a"
+from stub import a  # E: Module "stub" does not explicitly export attribute "a"
 from stub import b
 from stub import c  # E: Module "stub" has no attribute "c"
-from stub import d  # E: Module "stub" has no attribute "d"
+from stub import d  # E: Module "stub" does not explicitly export attribute "d"
 
 [file stub.pyi]
 from mystery import a, b as b, c as d
@@ -2898,6 +2928,20 @@ from . import m as m
 [file p/m.py]
 [builtins fixtures/list.pyi]
 
+[case testSpecialModulesNameImplicitAttr]
+import typing
+import builtins
+import abc
+
+reveal_type(abc.__name__)       # N: Revealed type is "builtins.str"
+reveal_type(builtins.__name__)  # N: Revealed type is "builtins.str"
+reveal_type(typing.__name__)    # N: Revealed type is "builtins.str"
+
+[case testSpecialAttrsAreAvaliableInClasses]
+class Some:
+    name = __name__
+reveal_type(Some.name)  # N: Revealed type is "builtins.str"
+
 [case testReExportAllInStub]
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
@@ -2915,28 +2959,6 @@ __all__ = ['C']
 [file m4.pyi]
 class C: pass
 [builtins fixtures/list.pyi]
-
-[case testMypyPathAndPython2Dir_python2]
-# flags: --config-file tmp/mypy.ini
-from m import f
-from mm import g
-f(1)
-f('x')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-g()
-g(1)  # E: Too many arguments for "g"
-
-[file xx/@python2/m.pyi]
-def f(x: int) -> None: ...
-
-[file xx/m.pyi]
-def f(x: str) -> None: ...
-
-[file xx/mm.pyi]
-def g() -> None: ...
-
-[file mypy.ini]
-\[mypy]
-mypy_path = tmp/xx
 
 [case testMypyPathAndPython2Dir]
 # flags: --config-file tmp/mypy.ini
@@ -3113,10 +3135,15 @@ from google.cloud import x
 [case testErrorFromGoogleCloud]
 import google.cloud
 from google.cloud import x
+import google.non_existent
+from google.non_existent import x
 [out]
-main:1: error: Cannot find implementation or library stub for module named "google.cloud"
+main:1: error: Library stubs not installed for "google.cloud"
+main:1: note: Hint: "python3 -m pip install types-google-cloud-ndb"
+main:1: note: (or run "mypy --install-types" to install all missing stub packages)
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:1: error: Cannot find implementation or library stub for module named "google"
+main:3: error: Cannot find implementation or library stub for module named "google.non_existent"
 
 [case testMissingSubmoduleOfInstalledStubPackage]
 import bleach.xyz
@@ -3132,3 +3159,74 @@ main:2: error: Cannot find implementation or library stub for module named "blea
 import bleach.xyz
 from bleach.abc import fgh
 [file bleach/__init__.pyi]
+
+[case testCyclicUndefinedImportWithName]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar1]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import *
+[out]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar2]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from c import *
+[file c.py]
+from a import *
+[out]
+tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar3]
+import test1
+[file test1.py]
+from dir1 import *
+[file dir1/__init__.py]
+from .test2 import *
+[file dir1/test2.py]
+from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"
+
+[case testIncompatibleOverrideFromCachedModuleIncremental]
+import b
+[file a.py]
+class Foo:
+    def frobnicate(self, x, *args, **kwargs): pass
+[file b.py]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self) -> None: pass
+[file b.py.2]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self, *args) -> None: pass
+[file b.py.3]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self, *args) -> None: pass # type: ignore[override] # I know
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[out1]
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: note:      Superclass:
+tmp/b.py:3: note:          def frobnicate(self, x: Any, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:      Subclass:
+tmp/b.py:3: note:          def frobnicate(self) -> None
+[out2]
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: note:      Superclass:
+tmp/b.py:3: note:          def frobnicate(self, x: Any, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:      Subclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any) -> None

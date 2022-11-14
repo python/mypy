@@ -1,18 +1,21 @@
-from typing import Any, Callable, Hashable, Optional, SupportsInt, Tuple, TypeVar, Union
+from collections.abc import Callable, Hashable
+from typing import Any, SupportsInt, TypeVar, Union
+from typing_extensions import TypeAlias
 
-_TypeT = TypeVar("_TypeT", bound=type)
-_Reduce = Union[Tuple[Callable[..., _TypeT], Tuple[Any, ...]], Tuple[Callable[..., _TypeT], Tuple[Any, ...], Optional[Any]]]
+_T = TypeVar("_T")
+_Reduce: TypeAlias = Union[tuple[Callable[..., _T], tuple[Any, ...]], tuple[Callable[..., _T], tuple[Any, ...], Any | None]]
 
-__all__: list[str]
+__all__ = ["pickle", "constructor", "add_extension", "remove_extension", "clear_extension_cache"]
 
 def pickle(
-    ob_type: _TypeT,
-    pickle_function: Callable[[_TypeT], str | _Reduce[_TypeT]],
-    constructor_ob: Callable[[_Reduce[_TypeT]], _TypeT] | None = ...,
+    ob_type: type[_T],
+    pickle_function: Callable[[_T], str | _Reduce[_T]],
+    constructor_ob: Callable[[_Reduce[_T]], _T] | None = ...,
 ) -> None: ...
-def constructor(object: Callable[[_Reduce[_TypeT]], _TypeT]) -> None: ...
+def constructor(object: Callable[[_Reduce[_T]], _T]) -> None: ...
 def add_extension(module: Hashable, name: Hashable, code: SupportsInt) -> None: ...
 def remove_extension(module: Hashable, name: Hashable, code: int) -> None: ...
 def clear_extension_cache() -> None: ...
 
-dispatch_table: dict[type, Callable[[type], str | _Reduce[type]]]  # undocumented
+_DispatchTableType: TypeAlias = dict[type, Callable[[Any], str | _Reduce[Any]]]  # imported by multiprocessing.reduction
+dispatch_table: _DispatchTableType  # undocumented

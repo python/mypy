@@ -1,5 +1,6 @@
 import unittest.result
-from typing import Callable, TypeVar, overload
+from collections.abc import Callable
+from typing import TypeVar, overload
 from typing_extensions import ParamSpec
 
 _P = ParamSpec("_P")
@@ -11,4 +12,4 @@ def removeResult(result: unittest.result.TestResult) -> bool: ...
 @overload
 def removeHandler(method: None = ...) -> None: ...
 @overload
-def removeHandler(method: Callable[_P, _T]) -> Callable[_P, _T]: ...  # type: ignore
+def removeHandler(method: Callable[_P, _T]) -> Callable[_P, _T]: ...

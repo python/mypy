@@ -1470,3 +1470,30 @@ x: Union[Callable[[Arg(int, 'y')], None],
 [builtins fixtures/tuple.pyi]
 [out]
 __main__.x
+
+[case testChangeParamSpec]
+from typing import ParamSpec, TypeVar
+A = ParamSpec('A')
+B = ParamSpec('B')
+C = TypeVar('C')
+[file next.py]
+from typing import ParamSpec, TypeVar
+A = ParamSpec('A')
+B = TypeVar('B')
+C = ParamSpec('C')
+[out]
+__main__.B
+__main__.C
+
+[case testEmptyBodySuper]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def meth(self) -> int: ...
+[file next.py]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def meth(self) -> int: return 0
+[out]
+__main__.C.meth

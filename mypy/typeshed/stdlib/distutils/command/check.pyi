@@ -1,11 +1,12 @@
 from typing import Any
+from typing_extensions import TypeAlias
 
 from ..cmd import Command
 
-_Reporter = Any  # really docutils.utils.Reporter
+_Reporter: TypeAlias = Any  # really docutils.utils.Reporter
 
 # Only defined if docutils is installed.
-class SilentReporter(_Reporter):  # type: ignore
+class SilentReporter(_Reporter):
     messages: Any
     def __init__(
         self,

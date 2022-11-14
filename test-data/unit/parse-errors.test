@@ -295,7 +295,7 @@ file:1: error: invalid syntax
 [out]
 file:1: error: invalid syntax
 
-[case testInvalidConditionInConditionalExpression2]
+[case testInvalidConditionInConditionalExpression3]
 1 if x else for y in z
 [out]
 file:1: error: invalid syntax

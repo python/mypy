@@ -236,31 +236,15 @@ from typing import Any
 def f() -> Any:
   yield
 
-[case testModule__name__]
+[case testModuleImplicitAttributes]
 import typing
-x = __name__ # type: str
-a = __name__ # type: A  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 class A: pass
+reveal_type(__name__)         # N: Revealed type is "builtins.str"
+reveal_type(__doc__)          # N: Revealed type is "builtins.str"
+reveal_type(__file__)         # N: Revealed type is "builtins.str"
+reveal_type(__package__)      # N: Revealed type is "builtins.str"
+reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 [builtins fixtures/primitives.pyi]
-
-[case testModule__doc__]
-import typing
-x = __doc__ # type: str
-a = __doc__ # type: A  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
-class A: pass
-[builtins fixtures/primitives.pyi]
-
-[case testModule__file__]
-import typing
-x = __file__ # type: str
-a = __file__ # type: A  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
-class A: pass
-[builtins fixtures/primitives.pyi]
-
-[case test__package__]
-import typing
-x = __package__ # type: str
-a = __file__ # type: int  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
 -- Scoping and shadowing
@@ -316,12 +300,15 @@ main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "i
 main:5: error: Incompatible return value type (got "int", expected "str")
 main:6: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
-[case testTrailingCommaParsing-skip]
+[case testTrailingCommaParsing]
 x = 1
-x in 1,
-if x in 1, :
-    pass
+x in 1,  # E: Unsupported right operand type for in ("int")
+[builtins fixtures/tuple.pyi]
+
+[case testTrailingCommaInIfParsing]
+if x in 1, : pass
 [out]
+main:1: error: invalid syntax
 
 [case testInitReturnTypeError]
 class C:
@@ -363,7 +350,8 @@ from typing import Union
 class A: ...
 class B: ...
 
-x: Union[mock, A]  # E: Module "mock" is not valid as a type
+x: Union[mock, A]  # E: Module "mock" is not valid as a type \
+                   # N: Perhaps you meant to use a protocol matching the module structure?
 
 if isinstance(x, B):
     pass
@@ -379,7 +367,8 @@ from typing import overload, Any, Union
 @overload
 def f(x: int) -> int: ...
 @overload
-def f(x: str) -> Union[mock, str]: ...  # E: Module "mock" is not valid as a type
+def f(x: str) -> Union[mock, str]: ...  # E: Module "mock" is not valid as a type \
+                                        # N: Perhaps you meant to use a protocol matching the module structure?
 def f(x):
     pass
 
@@ -403,15 +392,6 @@ none = None
 b = none.__bool__()
 reveal_type(b)  # N: Revealed type is "Literal[False]"
 [builtins fixtures/bool.pyi]
-
-[case testNoneHasBoolShowNoneErrorsFalse]
-none = None
-b = none.__bool__()
-reveal_type(b)  # N: Revealed type is "Literal[False]"
-[builtins fixtures/bool.pyi]
-[file mypy.ini]
-\[mypy]
-show_none_errors = False
 
 [case testAssignmentInvariantNoteForList]
 from typing import List

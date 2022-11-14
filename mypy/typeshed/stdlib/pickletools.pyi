@@ -1,7 +1,11 @@
-from typing import IO, Any, Callable, Iterator, MutableMapping, Tuple, Type
+from collections.abc import Callable, Iterator, MutableMapping
+from typing import IO, Any
+from typing_extensions import TypeAlias
 
-_Reader = Callable[[IO[bytes]], Any]
-bytes_types: Tuple[Type[Any], ...]
+__all__ = ["dis", "genops", "optimize"]
+
+_Reader: TypeAlias = Callable[[IO[bytes]], Any]
+bytes_types: tuple[type[Any], ...]
 
 UP_TO_NEWLINE: int
 TAKEN_FROM_ARGUMENT1: int
@@ -9,7 +13,7 @@ TAKEN_FROM_ARGUMENT4: int
 TAKEN_FROM_ARGUMENT4U: int
 TAKEN_FROM_ARGUMENT8U: int
 
-class ArgumentDescriptor(object):
+class ArgumentDescriptor:
     name: str
     n: int
     reader: _Reader
@@ -106,11 +110,11 @@ def read_long4(f: IO[bytes]) -> int: ...
 
 long4: ArgumentDescriptor
 
-class StackObject(object):
+class StackObject:
     name: str
-    obtype: Type[Any] | Tuple[Type[Any], ...]
+    obtype: type[Any] | tuple[type[Any], ...]
     doc: str
-    def __init__(self, name: str, obtype: Type[Any] | Tuple[Type[Any], ...], doc: str) -> None: ...
+    def __init__(self, name: str, obtype: type[Any] | tuple[type[Any], ...], doc: str) -> None: ...
 
 pyint: StackObject
 pylong: StackObject
@@ -131,7 +135,7 @@ anyobject: StackObject
 markobject: StackObject
 stackslice: StackObject
 
-class OpcodeInfo(object):
+class OpcodeInfo:
     name: str
     code: str
     arg: ArgumentDescriptor | None

@@ -129,30 +129,12 @@ Import discovery
 The following flags customize how exactly mypy discovers and follows
 imports.
 
-.. option:: --namespace-packages
-
-    This flag enables import discovery to use namespace packages (see
-    :pep:`420`).  In particular, this allows discovery of imported
-    packages that don't have an ``__init__.py`` (or ``__init__.pyi``)
-    file.
-
-    Namespace packages are found (using the PEP 420 rules, which
-    prefers "classic" packages over namespace packages) along the
-    module search path -- this is primarily set from the source files
-    passed on the command line, the ``MYPYPATH`` environment variable,
-    and the :confval:`mypy_path` config option.
-
-    This flag affects how mypy finds modules and packages explicitly passed on
-    the command line. It also affects how mypy determines fully qualified module
-    names for files passed on the command line. See :ref:`Mapping file paths to
-    modules <mapping-paths-to-modules>` for details.
-
 .. option:: --explicit-package-bases
 
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
     :confval:`mypy_path` config option. This option is only useful in
-    conjunction with :option:`--namespace-packages`. See :ref:`Mapping file
+    in the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
 .. option:: --ignore-missing-imports
@@ -212,6 +194,41 @@ imports.
     By default, mypy will suppress any error messages generated within :pep:`561`
     compliant packages. Adding this flag will disable this behavior.
 
+.. option:: --fast-module-lookup
+
+    The default logic used to scan through search paths to resolve imports has a
+    quadratic worse-case behavior in some cases, which is for instance triggered
+    by a large number of folders sharing a top-level namespace as in::
+
+        foo/
+            company/
+                foo/
+                    a.py
+        bar/
+            company/
+                bar/
+                    b.py
+        baz/
+            company/
+                baz/
+                    c.py
+        ...
+
+    If you are in this situation, you can enable an experimental fast path by
+    setting the :option:`--fast-module-lookup` option.
+
+
+.. option:: --no-namespace-packages
+
+    This flag disables import discovery of namespace packages (see :pep:`420`).
+    In particular, this prevents discovery of packages that don't have an
+    ``__init__.py`` (or ``__init__.pyi``) file.
+
+    This flag affects how mypy finds modules and packages explicitly passed on
+    the command line. It also affects how mypy determines fully qualified module
+    names for files passed on the command line. See :ref:`Mapping file paths to
+    modules <mapping-paths-to-modules>` for details.
+
 
 .. _platform-configuration:
 
@@ -228,22 +245,12 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 
     This flag will make mypy type check your code as if it were
     run under Python version X.Y. Without this option, mypy will default to using
-    whatever version of Python is running mypy. Note that the :option:`-2` and
-    :option:`--py2` flags are aliases for :option:`--python-version 2.7 <--python-version>`.
+    whatever version of Python is running mypy.
 
     This flag will attempt to find a Python executable of the corresponding
     version to search for :pep:`561` compliant packages. If you'd like to
     disable this, use the :option:`--no-site-packages` flag (see
     :ref:`import-discovery` for more details).
-
-.. option:: -2, --py2
-
-    Equivalent to running :option:`--python-version 2.7 <--python-version>`.
-
-    .. note::
-
-        To check Python 2 code with mypy, you'll need to install mypy with
-        ``pip install 'mypy[python2]'``.
 
 .. option:: --platform PLATFORM
 
@@ -274,7 +281,7 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 Disallow dynamic typing
 ***********************
 
-The ``Any`` type is used represent a value that has a :ref:`dynamic type <dynamic-typing>`.
+The ``Any`` type is used to represent a value that has a :ref:`dynamic type <dynamic-typing>`.
 The ``--disallow-any`` family of flags will disallow various uses of the ``Any`` type in
 a module -- this lets us strategically disallow the use of dynamic typing in a controlled way.
 
@@ -312,9 +319,8 @@ The following options are available:
 .. option:: --disallow-any-generics
 
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. Moreover, built-in collections (such as :py:class:`list` and
-    :py:class:`dict`) become disallowed as you should use their aliases from the :py:mod:`typing`
-    module (such as :py:class:`List[int] <typing.List>` and :py:class:`Dict[str, str] <typing.Dict>`).
+    type parameters. For example, you can't use a bare ``x: list``. Instead, you
+    must always write something like ``x: list[int]``.
 
 .. option:: --disallow-subclassing-any
 
@@ -378,29 +384,23 @@ None and Optional handling
 The following flags adjust how mypy handles values of type ``None``.
 For more details, see :ref:`no_strict_optional`.
 
-.. _no-implicit-optional:
+.. _implicit-optional:
 
-.. option:: --no-implicit-optional
+.. option:: --implicit-optional
 
-    This flag causes mypy to stop treating arguments with a ``None``
+    This flag causes mypy to treat arguments with a ``None``
     default value as having an implicit :py:data:`~typing.Optional` type.
 
-    For example, by default mypy will assume that the ``x`` parameter
-    is of type ``Optional[int]`` in the code snippet below since
-    the default parameter is ``None``:
+    For example, if this flag is set, mypy would assume that the ``x``
+    parameter is actually of type ``Optional[int]`` in the code snippet below
+    since the default parameter is ``None``:
 
     .. code-block:: python
 
         def foo(x: int = None) -> None:
             print(x)
 
-    If this flag is set, the above snippet will no longer type check:
-    we must now explicitly indicate that the type is ``Optional[int]``:
-
-    .. code-block:: python
-
-        def foo(x: Optional[int] = None) -> None:
-            print(x)
+    **Note:** This was disabled by default starting in mypy 0.980.
 
 .. option:: --no-strict-optional
 
@@ -419,7 +419,7 @@ For more details, see :ref:`no_strict_optional`.
 Configuring warnings
 ********************
 
-The follow flags enable warnings for code that is sound but is
+The following flags enable warnings for code that is sound but is
 potentially problematic or redundant in some way.
 
 .. option:: --warn-redundant-casts
@@ -448,9 +448,10 @@ potentially problematic or redundant in some way.
     are when:
 
     -   The function has a ``None`` or ``Any`` return type
-    -   The function has an empty body or a body that is just
-        ellipsis (``...``). Empty functions are often used for
-        abstract methods.
+    -   The function has an empty body and is marked as an abstract method,
+        is in a protocol class, or is in a stub file
+    -  The execution path can never return; for example, if an exception
+        is always raised
 
     Passing in :option:`--no-warn-no-return` will disable these error
     messages in all cases.
@@ -521,11 +522,20 @@ of the above sections.
 
     .. code-block:: python
 
-       def process(items: List[str]) -> None:
-           # 'items' has type List[str]
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
            items = [item.split() for item in items]
-           # 'items' now has type List[List[str]]
-           ...
+           # 'items' now has type list[list[str]]
+
+    The variable must be used before it can be redefined:
+
+    .. code-block:: python
+
+        def process(items: list[str]) -> None:
+           items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
+           print(items)
+           items = "100"  # valid, items now has type str
+           items = int(items)  # valid, items now has type int
 
 .. option:: --local-partial-types
 
@@ -540,11 +550,11 @@ of the above sections.
         from typing import Optional
 
         a = None  # Need type annotation here if using --local-partial-types
-        b = None  # type: Optional[int]
+        b: Optional[int] = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz = None  # type: Optional[int]
+            baz: Optional[int] = None
 
             def __init__(self) -> None:
                 self.bar = 1
@@ -585,9 +595,9 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import List, Text
+       from typing import Text
 
-       items: List[int]
+       items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 
@@ -608,6 +618,7 @@ of the above sections.
 .. option:: --disable-error-code
 
     This flag allows disabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
     .. code-block:: python
 
@@ -615,20 +626,21 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 
 .. option:: --enable-error-code
 
     This flag allows enabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
-    Note: This flag will override disabled error codes from the --disable-error-code
-    flag
+    Note: This flag will override disabled error codes from the
+    :option:`--disable-error-code <mypy --disable-error-code>` flag.
 
     .. code-block:: python
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 
@@ -672,9 +684,17 @@ in error messages.
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
-.. option:: --show-error-codes
+.. option:: --show-error-end
 
-    This flag will add an error code ``[<code>]`` to error messages. The error
+    This flag will make mypy show not just that start position where
+    an error was detected, but also the end position of the relevant expression.
+    This way various tools can easily highlight the whole error span. The format is
+    ``file:line:column:end_line:end_column``. This option implies
+    ``--show-column-numbers``.
+
+.. option:: --hide-error-codes
+
+    This flag will hide the error code ``[<code>]`` from error messages. By default, the error
     code is shown after each error message::
 
         prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
@@ -799,7 +819,8 @@ in developing or debugging mypy internals.
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
 
-    Note that this doesn't affect third-party library stubs.
+    Note that this doesn't affect third-party library stubs. To test third-party stubs,
+    for example try ``MYPYPATH=stubs/six mypy ...``.
 
 .. _warn-incomplete-stub:
 
@@ -854,13 +875,17 @@ format into the specified directory.
 
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --html-report / --xslt-html-report DIR
 
     Causes mypy to generate an HTML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --linecount-report DIR
 
@@ -882,13 +907,17 @@ format into the specified directory.
 
     Causes mypy to generate a text file type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --xml-report DIR
 
     Causes mypy to generate an XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 Miscellaneous
 *************

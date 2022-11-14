@@ -1,9 +1,10 @@
 import sys
-from _typeshed import StrOrBytesPath, StrPath
-from collections.abc import Callable
+from _typeshed import StrOrBytesPath
+from collections.abc import Callable, Sequence
 from configparser import RawConfigParser
+from re import Pattern
 from threading import Thread
-from typing import IO, Any, Pattern, Sequence
+from typing import IO, Any
 
 from . import _Level
 
@@ -11,11 +12,6 @@ if sys.version_info >= (3, 8):
     from typing import Literal, TypedDict
 else:
     from typing_extensions import Literal, TypedDict
-
-if sys.version_info >= (3, 7):
-    _Path = StrOrBytesPath
-else:
-    _Path = StrPath
 
 DEFAULT_LOGGING_CONFIG_PORT: int
 RESET_ERROR: int  # undocumented
@@ -43,11 +39,16 @@ class _OptionalDictConfigArgs(TypedDict, total=False):
 class _DictConfigArgs(_OptionalDictConfigArgs, TypedDict):
     version: Literal[1]
 
-def dictConfig(config: _DictConfigArgs) -> None: ...
+# Accept dict[str, Any] to avoid false positives if called with a dict
+# type, since dict types are not compatible with TypedDicts.
+#
+# Also accept a TypedDict type, to allow callers to use TypedDict
+# types, and for somewhat stricter type checking of dict literals.
+def dictConfig(config: _DictConfigArgs | dict[str, Any]) -> None: ...
 
 if sys.version_info >= (3, 10):
     def fileConfig(
-        fname: _Path | IO[str] | RawConfigParser,
+        fname: StrOrBytesPath | IO[str] | RawConfigParser,
         defaults: dict[str, str] | None = ...,
         disable_existing_loggers: bool = ...,
         encoding: str | None = ...,
@@ -55,7 +56,9 @@ if sys.version_info >= (3, 10):
 
 else:
     def fileConfig(
-        fname: _Path | IO[str] | RawConfigParser, defaults: dict[str, str] | None = ..., disable_existing_loggers: bool = ...
+        fname: StrOrBytesPath | IO[str] | RawConfigParser,
+        defaults: dict[str, str] | None = ...,
+        disable_existing_loggers: bool = ...,
     ) -> None: ...
 
 def valid_ident(s: str) -> Literal[True]: ...  # undocumented

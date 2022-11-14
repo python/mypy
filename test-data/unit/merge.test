@@ -646,7 +646,7 @@ TypeInfo<2>(
     f<3>))
 
 [case testNamedTuple_typeinfo]
-
+# flags: --python-version 3.10
 import target
 [file target.py]
 from typing import NamedTuple
@@ -665,7 +665,68 @@ TypeInfo<0>(
   Names())
 TypeInfo<2>(
   Name(target.N)
-  Bases(builtins.tuple[target.A<0>]<3>)
+  Bases(builtins.tuple[target.A<0>, ...]<3>)
+  Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
+  Names(
+    _NT<6>
+    __annotations__<7> (builtins.object<1>)
+    __doc__<8> (builtins.str<9>)
+    __match_args__<10> (Tuple[Literal['x']])
+    __new__<11>
+    _asdict<12>
+    _field_defaults<13> (builtins.object<1>)
+    _field_types<14> (builtins.object<1>)
+    _fields<15> (Tuple[builtins.str<9>])
+    _make<16>
+    _replace<17>
+    _source<18> (builtins.str<9>)
+    x<19> (target.A<0>)))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.N)
+  Bases(builtins.tuple[target.A<0>, ...]<3>)
+  Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
+  Names(
+    _NT<6>
+    __annotations__<7> (builtins.object<1>)
+    __doc__<8> (builtins.str<9>)
+    __match_args__<10> (Tuple[Literal['x'], Literal['y']])
+    __new__<11>
+    _asdict<12>
+    _field_defaults<13> (builtins.object<1>)
+    _field_types<14> (builtins.object<1>)
+    _fields<15> (Tuple[builtins.str<9>, builtins.str<9>])
+    _make<16>
+    _replace<17>
+    _source<18> (builtins.str<9>)
+    x<19> (target.A<0>)
+    y<20> (target.A<0>)))
+
+[case testNamedTupleOldVersion_typeinfo]
+import target
+[file target.py]
+from typing import NamedTuple
+class A: pass
+N = NamedTuple('N', [('x', A)])
+[file target.py.next]
+from typing import NamedTuple
+class A: pass
+N = NamedTuple('N', [('x', A), ('y', A)])
+[builtins fixtures/tuple.pyi]
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.N)
+  Bases(builtins.tuple[target.A<0>, ...]<3>)
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
@@ -688,7 +749,7 @@ TypeInfo<0>(
   Names())
 TypeInfo<2>(
   Name(target.N)
-  Bases(builtins.tuple[target.A<0>]<3>)
+  Bases(builtins.tuple[target.A<0>, ...]<3>)
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
@@ -1435,7 +1496,7 @@ TypeInfo<0>(
   Bases(enum.Enum<1>)
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
-    X<3> (builtins.int<4>))
+    X<3> (Literal[0]?<4>))
   MetaclassType(enum.EnumMeta<5>))
 ==>
 TypeInfo<0>(
@@ -1443,8 +1504,8 @@ TypeInfo<0>(
   Bases(enum.Enum<1>)
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
-    X<3> (builtins.int<4>)
-    Y<6> (builtins.int<4>))
+    X<3> (Literal[0]?<4>)
+    Y<6> (Literal[1]?<4>))
   MetaclassType(enum.EnumMeta<5>))
 
 [case testLiteralMerge]
