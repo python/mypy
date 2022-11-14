@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import expand_self_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -37,6 +37,7 @@ from mypy.typeops import (
     erase_to_bound,
     function_type,
     make_simplified_union,
+    supported_self_type,
     tuple_fallback,
     type_object_type_from_function,
 )
@@ -90,6 +91,7 @@ class MemberContext:
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
         no_deferral: bool = False,
+        is_self: bool = False,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -101,6 +103,7 @@ class MemberContext:
         self.chk = chk
         self.module_symbol_table = module_symbol_table
         self.no_deferral = no_deferral
+        self.is_self = is_self
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -152,6 +155,7 @@ def analyze_member_access(
     self_type: Type | None = None,
     module_symbol_table: SymbolTable | None = None,
     no_deferral: bool = False,
+    is_self: bool = False,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -187,6 +191,7 @@ def analyze_member_access(
         self_type=self_type,
         module_symbol_table=module_symbol_table,
         no_deferral=no_deferral,
+        is_self=is_self,
     )
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
@@ -682,12 +687,12 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     return inferred_dunder_get_type.ret_type
 
 
-def is_instance_var(var: Var, info: TypeInfo) -> bool:
+def is_instance_var(var: Var) -> bool:
     """Return if var is an instance variable according to PEP 526."""
     return (
         # check the type_info node is the var (not a decorated function, etc.)
-        var.name in info.names
-        and info.names[var.name].node is var
+        var.name in var.info.names
+        and var.info.names[var.name].node is var
         and not var.is_classvar
         # variables without annotations are treated as classvar
         and not var.is_inferred
@@ -722,12 +727,16 @@ def analyze_var(
             mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
+        if not (mx.is_self or mx.is_super) or supported_self_type(
+            get_proper_type(mx.original_type)
+        ):
+            typ = expand_self_type(var, typ, mx.original_type)
         t = get_proper_type(expand_type_by_instance(typ, itype))
         result: Type = t
         typ = get_proper_type(typ)
         if (
             var.is_initialized_in_class
-            and (not is_instance_var(var, info) or mx.is_operator)
+            and (not is_instance_var(var) or mx.is_operator)
             and isinstance(typ, FunctionLike)
             and not typ.is_type_obj()
         ):
@@ -945,7 +954,12 @@ def analyze_class_attribute_access(
             #         x: T
             #     C.x  # Error, ambiguous access
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
-            if isinstance(t, TypeVarType) or has_type_vars(t):
+            # Exception is Self type wrapped in ClassVar, that is safe.
+            if node.node.info.self_type is not None and node.node.is_classvar:
+                exclude = node.node.info.self_type.id
+            else:
+                exclude = None
+            if isinstance(t, TypeVarType) and t.id != exclude or has_type_vars(t, exclude):
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
@@ -958,6 +972,7 @@ def analyze_class_attribute_access(
             # In the above example this means that we infer following types:
             #     C.x -> Any
             #     C[int].x -> int
+            t = get_proper_type(expand_self_type(node.node, t, itype))
             t = erase_typevars(expand_type_by_instance(t, isuper))
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (

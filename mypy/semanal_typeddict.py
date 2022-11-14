@@ -305,6 +305,7 @@ class TypedDictAnalyzer:
                         allow_required=True,
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
+                        prohibit_self_type="TypedDict item type",
                     )
                     if analyzed is None:
                         return None, [], [], set()  # Need to defer
@@ -500,6 +501,7 @@ class TypedDictAnalyzer:
                 allow_required=True,
                 allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
+                prohibit_self_type="TypedDict item type",
             )
             if analyzed is None:
                 return None
