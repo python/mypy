@@ -1544,7 +1544,7 @@ class C(Generic[T]):
 reveal_type(C.F(17).foo())      # N: Revealed type is "builtins.int"
 reveal_type(C("").F(17).foo())  # N: Revealed type is "builtins.int"
 reveal_type(C.F)                # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
-reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`100) -> __main__.C.F[K`100]"
+reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`6) -> __main__.C.F[K`6]"
 
 
 -- Callable subtyping with generic functions
