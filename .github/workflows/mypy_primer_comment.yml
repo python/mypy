@@ -54,13 +54,15 @@ jobs:
             const fs = require('fs')
             let data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
 
-            function truncateIfNeeded(s, maxLength) {
-              let truncated = s.substring(0, maxLength)
-              if (s.length === truncated.length) {
-                return s
+            function truncateIfNeeded(original, maxLength) {
+              let truncated = original.substring(0, maxLength)
+              if (original.length === truncated.length) {
+                return original
               }
-              let lines_truncated = s.split('\n').length - truncated.split('\n').length
-              return `${truncated}\n\n... (truncated ${lines_truncated} lines) ...\n`
+              // further, remove last line that might be truncated
+              truncated = truncated.substring(0, truncated.lastIndexOf('\n'))
+              let lines_truncated = original.split('\n').length - truncated.split('\n').length
+              return `${truncated}\n\n... (truncated ${lines_truncated} lines) ...`
             }
 
             const projects = data.split('\n\n')
