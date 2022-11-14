@@ -720,6 +720,9 @@ class _NodeEvaluator(ExpressionVisitor[object]):
         return MISSING
 
 
+_evaluator: typing_extensions.Final = _NodeEvaluator()
+
+
 def _verify_arg_default_value(
     stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
 ) -> Iterator[str]:
@@ -753,8 +756,8 @@ def _verify_arg_default_value(
                     f"has a default value of type {runtime_type}, "
                     f"which is incompatible with stub argument type {stub_type}"
                 )
-            if runtime_arg.default is not ... and stub_arg.initializer is not None:
-                stub_default = stub_arg.initializer.accept(_NodeEvaluator())
+            if stub_arg.initializer is not None:
+                stub_default = stub_arg.initializer.accept(_evaluator)
                 if (
                     stub_default is not MISSING
                     and stub_default is not ...
