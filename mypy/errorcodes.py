@@ -261,6 +261,11 @@ MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
     "General",
     default_enabled=False,
 )
+METACLASS: Final[ErrorCode] = ErrorCode(
+    "metaclass",
+    "Ensure that metaclass is valid",
+    "General",
+)
 
 # Syntax errors are often blocking.
 SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")

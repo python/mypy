@@ -2851,6 +2851,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             "(non-strict) subclass of the metaclasses of all its bases - "
             f"{conflict_info}",
             typ,
+            code=codes.METACLASS,
         )
 
     def visit_import_from(self, node: ImportFrom) -> None:
