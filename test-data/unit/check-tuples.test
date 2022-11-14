@@ -976,6 +976,13 @@ a = (0, *b, '')
 *foo  # E: Can use starred expression only as assignment target
 [builtins fixtures/tuple.pyi]
 
+[case testUnpackBases]
+class A: ...
+class B: ...
+bases = (A, B)
+class C(*bases): ...  # E: Invalid base class
+[builtins fixtures/tuple.pyi]
+
 [case testTupleMeetTupleAny]
 from typing import Union, Tuple
 class A: pass
