@@ -534,6 +534,10 @@ def mypycify(
             "-Wno-unused-command-line-argument",
             "-Wno-unknown-warning-option",
             "-Wno-unused-but-set-variable",
+            "-Wno-ignored-optimization-argument",
+            # Disables C Preprocessor (cpp) warnings
+            # See https://github.com/mypyc/mypyc/issues/956
+            "-Wno-cpp",
         ]
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable

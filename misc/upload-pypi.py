@@ -29,6 +29,21 @@ def is_whl_or_tar(name: str) -> bool:
     return name.endswith(".tar.gz") or name.endswith(".whl")
 
 
+def item_ok_for_pypi(name: str) -> bool:
+    if not is_whl_or_tar(name):
+        return False
+
+    if name.endswith(".tar.gz"):
+        name = name[:-7]
+    if name.endswith(".whl"):
+        name = name[:-4]
+
+    if name.endswith("wasm32"):
+        return False
+
+    return True
+
+
 def get_release_for_tag(tag: str) -> dict[str, Any]:
     with urlopen(f"{BASE}/{REPO}/releases/tags/{tag}") as f:
         data = json.load(f)
@@ -75,7 +90,7 @@ def check_sdist(dist: Path, version: str) -> None:
 
 
 def spot_check_dist(dist: Path, version: str) -> None:
-    items = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
+    items = [item for item in dist.iterdir() if item_ok_for_pypi(item.name)]
     assert len(items) > 10
     assert all(version in item.name for item in items)
     assert any(item.name.endswith("py3-none-any.whl") for item in items)
@@ -93,7 +108,7 @@ def tmp_twine() -> Iterator[Path]:
 
 def upload_dist(dist: Path, dry_run: bool = True) -> None:
     with tmp_twine() as twine:
-        files = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
+        files = [item for item in dist.iterdir() if item_ok_for_pypi(item.name)]
         cmd: list[Any] = [twine, "upload"]
         cmd += files
         if dry_run:

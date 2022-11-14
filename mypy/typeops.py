@@ -41,6 +41,7 @@ from mypy.types import (
     Overloaded,
     Parameters,
     ParamSpecType,
+    PartialType,
     ProperType,
     TupleType,
     Type,
@@ -71,13 +72,13 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
     """
     if isinstance(s, TypeAliasType) and s.is_recursive:
         return (
-            isinstance(get_proper_type(t), Instance)
+            isinstance(get_proper_type(t), (Instance, UnionType))
             or isinstance(t, TypeAliasType)
             and t.is_recursive
         )
     if isinstance(t, TypeAliasType) and t.is_recursive:
         return (
-            isinstance(get_proper_type(s), Instance)
+            isinstance(get_proper_type(s), (Instance, UnionType))
             or isinstance(s, TypeAliasType)
             and s.is_recursive
         )
@@ -1016,3 +1017,17 @@ def try_getting_instance_fallback(typ: Type) -> Instance | None:
     elif isinstance(typ, TypeVarType):
         return try_getting_instance_fallback(typ.upper_bound)
     return None
+
+
+def fixup_partial_type(typ: Type) -> Type:
+    """Convert a partial type that we couldn't resolve into something concrete.
+
+    This means, for None we make it Optional[Any], and for anything else we
+    fill in all of the type arguments with Any.
+    """
+    if not isinstance(typ, PartialType):
+        return typ
+    if typ.type is None:
+        return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
+    else:
+        return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))

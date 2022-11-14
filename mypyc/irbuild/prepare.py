@@ -178,15 +178,20 @@ def prepare_method_def(
 
 def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
     # Checks to ensure supported property decorator semantics
-    if len(prop.items) == 2:
-        getter = prop.items[0]
-        setter = prop.items[1]
-        if isinstance(getter, Decorator) and isinstance(setter, Decorator):
-            if getter.func.is_property and len(setter.decorators) == 1:
-                if isinstance(setter.decorators[0], MemberExpr):
-                    if setter.decorators[0].name == "setter":
-                        return True
-    return False
+    if len(prop.items) != 2:
+        return False
+
+    getter = prop.items[0]
+    setter = prop.items[1]
+
+    return (
+        isinstance(getter, Decorator)
+        and isinstance(setter, Decorator)
+        and getter.func.is_property
+        and len(setter.decorators) == 1
+        and isinstance(setter.decorators[0], MemberExpr)
+        and setter.decorators[0].name == "setter"
+    )
 
 
 def can_subclass_builtin(builtin_base: str) -> bool:
@@ -226,7 +231,11 @@ def prepare_class_def(
 
         if isinstance(node.node, Var):
             assert node.node.type, "Class member %s missing type" % name
-            if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
+            if not node.node.is_classvar and name not in (
+                "__slots__",
+                "__deletable__",
+                "__match_args__",
+            ):
                 ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)

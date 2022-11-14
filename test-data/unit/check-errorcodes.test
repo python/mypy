@@ -857,6 +857,13 @@ if not f:  # E: Function "Callable[[], Any]" could always be true in boolean con
     pass
 conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
 
+[case testTruthyIterable]
+# flags: --strict-optional --enable-error-code truthy-iterable
+from typing import Iterable
+def func(var: Iterable[str]) -> None:
+    if var:  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
+        ...
+
 [case testNoOverloadImplementation]
 from typing import overload
 

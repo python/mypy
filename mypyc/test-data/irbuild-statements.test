@@ -1006,9 +1006,9 @@ L5:
     return 1
 
 [case testForZip]
-from typing import List, Iterable
+from typing import List, Iterable, Sequence
 
-def f(a: List[int], b: Iterable[bool]) -> None:
+def f(a: List[int], b: Sequence[bool]) -> None:
     for x, y in zip(a, b):
         if b:
             x = 1

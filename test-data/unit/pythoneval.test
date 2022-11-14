@@ -1636,3 +1636,79 @@ foo("")
 foo(list(""))
 foo(list((list(""), "")))
 [out]
+
+[case testNarrowTypeForDictKeys]
+# flags: --strict-optional
+from typing import Dict, KeysView, Optional
+
+d: Dict[str, int]
+key: Optional[str]
+if key in d.keys():
+    reveal_type(key)
+else:
+    reveal_type(key)
+
+kv: KeysView[str]
+k: Optional[str]
+if k in kv:
+    reveal_type(k)
+else:
+    reveal_type(k)
+
+[out]
+_testNarrowTypeForDictKeys.py:7: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:9: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:14: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, None]"
+
+[case testTypeAliasWithNewStyleUnion]
+# flags: --python-version 3.10
+from typing import Literal, Type, TypeAlias
+
+Foo = Literal[1, 2]
+reveal_type(Foo)
+Bar1 = Foo | Literal[3]
+Bar2 = Literal[3] | Foo
+Bar3 = Foo | Foo | Literal[3] | Foo
+
+U1 = int | str
+U2 = U1 | bytes
+U3 = bytes | U1
+
+Opt1 = None | int
+Opt2 = None | float
+Opt3 = int | None
+Opt4 = float | None
+
+A = Type[int] | str
+B: TypeAlias = Type[int] | str
+[out]
+_testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
+
+[case testTypeAliasWithNewStyleUnionInStub]
+# flags: --python-version 3.7
+import m
+
+[file m.pyi]
+from typing import Type
+from typing_extensions import Literal, TypeAlias
+
+Foo = Literal[1, 2]
+reveal_type(Foo)
+Bar1 = Foo | Literal[3]
+Bar2 = Literal[3] | Foo
+Bar3 = Foo | Foo | Literal[3] | Foo
+
+U1 = int | str
+U2 = U1 | bytes
+U3 = bytes | U1
+
+Opt1 = None | int
+Opt2 = None | float
+Opt3 = int | None
+Opt4 = float | None
+
+A = Type[int] | str
+B: TypeAlias = Type[int] | str
+[out]
+m.pyi:5: note: Revealed type is "typing._SpecialForm"

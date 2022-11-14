@@ -212,6 +212,10 @@ try:
         MatchAs = Any
         MatchOr = Any
         AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
+    if sys.version_info >= (3, 11):
+        TryStar = ast3.TryStar
+    else:
+        TryStar = Any
 except ImportError:
     try:
         from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
@@ -1247,6 +1251,24 @@ class ASTConverter:
             self.as_block(n.orelse, n.lineno),
             self.as_block(n.finalbody, n.lineno),
         )
+        return self.set_line(node, n)
+
+    def visit_TryStar(self, n: TryStar) -> TryStmt:
+        vs = [
+            self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
+        ]
+        types = [self.visit(h.type) for h in n.handlers]
+        handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
+
+        node = TryStmt(
+            self.as_required_block(n.body, n.lineno),
+            vs,
+            types,
+            handlers,
+            self.as_block(n.orelse, n.lineno),
+            self.as_block(n.finalbody, n.lineno),
+        )
+        node.is_star = True
         return self.set_line(node, n)
 
     # Assert(expr test, expr? msg)
