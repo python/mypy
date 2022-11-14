@@ -2809,7 +2809,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.base_class_definitions_incompatible(name, base1, base2, ctx)
 
     def check_metaclass_compatibility(self, typ: TypeInfo) -> None:
-        """Ensures that metaclasses of all parent types are compatible."""
+        """Ensure that metaclasses of all parent types are compatible."""
         if (
             typ.is_metaclass()
             or typ.is_protocol
@@ -2831,9 +2831,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             is_subtype(typ.metaclass_type, meta) for meta in metaclasses
         ):
             return
+        if typ.declared_metaclass is None:
+            metaclass_names = {  # using a dict as ordered set
+                str(meta): None for meta in metaclasses
+            }.keys()
+            conflict_info = f"found metaclasses of bases: {', '.join(metaclass_names)}"
+        else:
+            uncovered_metaclass_names = {  # using a dict as ordered set
+                str(meta): None
+                for meta in metaclasses
+                if not is_subtype(typ.declared_metaclass, meta)
+            }.keys()
+            conflict_info = (
+                f"own metaclass {typ.declared_metaclass} is not a subclass of "
+                f"{', '.join(uncovered_metaclass_names)}"
+            )
         self.fail(
-            "Metaclass conflict: the metaclass of a derived class must be "
-            "a (non-strict) subclass of the metaclasses of all its bases",
+            "Metaclass conflict: the metaclass of a derived class must be a "
+            "(non-strict) subclass of the metaclasses of all its bases - "
+            f"{conflict_info}",
             typ,
         )
 
