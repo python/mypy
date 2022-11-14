@@ -438,14 +438,12 @@ class TypeVarId:
         return self.raw_id.__repr__()
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, TypeVarId):
-            return (
-                self.raw_id == other.raw_id
-                and self.meta_level == other.meta_level
-                and self.namespace == other.namespace
-            )
-        else:
-            return False
+        return (
+            isinstance(other, TypeVarId)
+            and self.raw_id == other.raw_id
+            and self.meta_level == other.meta_level
+            and self.namespace == other.namespace
+        )
 
     def __ne__(self, other: object) -> bool:
         return not (self == other)
@@ -913,9 +911,7 @@ class TypeList(ProperType):
         return hash(tuple(self.items))
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, TypeList):
-            return False
-        return self.items == other.items
+        return isinstance(other, TypeList) and self.items == other.items
 
 
 class UnpackType(ProperType):
@@ -2266,15 +2262,18 @@ class TypedDictType(ProperType):
         return hash((frozenset(self.items.items()), self.fallback, frozenset(self.required_keys)))
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, TypedDictType):
-            if frozenset(self.items.keys()) != frozenset(other.items.keys()):
-                return False
-            for (_, left_item_type, right_item_type) in self.zip(other):
-                if not left_item_type == right_item_type:
-                    return False
-            return self.fallback == other.fallback and self.required_keys == other.required_keys
-        else:
+        if not isinstance(other, TypedDictType):
             return NotImplemented
+
+        return (
+            frozenset(self.items.keys()) == frozenset(other.items.keys())
+            and all(
+                left_item_type == right_item_type
+                for (_, left_item_type, right_item_type) in self.zip(other)
+            )
+            and self.fallback == other.fallback
+            and self.required_keys == other.required_keys
+        )
 
     def serialize(self) -> JsonDict:
         return {
@@ -3244,6 +3243,12 @@ class HasTypeVars(TypeQuery[bool]):
     def visit_type_var(self, t: TypeVarType) -> bool:
         return t.id != self.exclude
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        return True
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        return True
+
 
 def has_type_vars(typ: Type, exclude: TypeVarId | None = None) -> bool:
     """Check if a type contains any type variables (recursively)."""
@@ -3350,11 +3355,11 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
     """Check if this type is a LiteralType with the given fallback type and value."""
     if isinstance(typ, Instance) and typ.last_known_value:
         typ = typ.last_known_value
-    if not isinstance(typ, LiteralType):
-        return False
-    if typ.fallback.type.fullname != fallback_fullname:
-        return False
-    return typ.value == value
+    return (
+        isinstance(typ, LiteralType)
+        and typ.fallback.type.fullname == fallback_fullname
+        and typ.value == value
+    )
 
 
 def is_self_type_like(typ: Type, *, is_classmethod: bool) -> bool:

@@ -429,22 +429,18 @@ class SubtypeVisitor(TypeVisitor[bool]):
         # This may be encountered during type inference. The result probably doesn't
         # matter much.
         # TODO: it actually does matter, figure out more principled logic about this.
-        if self.subtype_context.keep_erased_types:
-            return False
-        return True
+        return not self.subtype_context.keep_erased_types
 
     def visit_deleted_type(self, left: DeletedType) -> bool:
         return True
 
     def visit_instance(self, left: Instance) -> bool:
         if left.type.fallback_to_any and not self.proper_subtype:
-            if isinstance(self.right, NoneType):
-                # NOTE: `None` is a *non-subclassable* singleton, therefore no class
-                # can by a subtype of it, even with an `Any` fallback.
-                # This special case is needed to treat descriptors in classes with
-                # dynamic base classes correctly, see #5456.
-                return False
-            return True
+            # NOTE: `None` is a *non-subclassable* singleton, therefore no class
+            # can by a subtype of it, even with an `Any` fallback.
+            # This special case is needed to treat descriptors in classes with
+            # dynamic base classes correctly, see #5456.
+            return not isinstance(self.right, NoneType)
         right = self.right
         if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
@@ -513,11 +509,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             isinstance(unpacked_type, Instance)
                             and unpacked_type.type.fullname == "builtins.tuple"
                         ):
-                            if not all(
-                                is_equivalent(l, unpacked_type.args[0]) for l in compare_to
-                            ):
-                                return False
-                            return True
+                            return all(is_equivalent(l, unpacked_type.args[0]) for l in compare_to)
                         if isinstance(unpacked_type, TypeVarTupleType):
                             return False
                         if isinstance(unpacked_type, AnyType):
@@ -686,13 +678,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
         elif isinstance(right, Instance):
-            if right.type.is_protocol and right.type.protocol_members == ["__call__"]:
-                # OK, a callable can implement a protocol with a single `__call__` member.
+            if right.type.is_protocol and "__call__" in right.type.protocol_members:
+                # OK, a callable can implement a protocol with a `__call__` member.
                 # TODO: we should probably explicitly exclude self-types in this case.
                 call = find_member("__call__", right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
-                    return True
+                    if len(right.type.protocol_members) == 1:
+                        return True
+                    if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
+                        return True
             if right.type.is_protocol and left.is_type_obj():
                 ret_type = get_proper_type(left.ret_type)
                 if isinstance(ret_type, TupleType):
@@ -741,9 +736,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
                 return False
-            for l, r in zip(left.items, right.items):
-                if not self._is_subtype(l, r):
-                    return False
+            if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
+                return False
             rfallback = mypy.typeops.tuple_fallback(right)
             if is_named_instance(rfallback, "builtins.tuple"):
                 # No need to verify fallback. This is useful since the calculated fallback
@@ -752,9 +746,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # join(Union[int, C], Union[str, C]) == Union[int, str, C].
                 return True
             lfallback = mypy.typeops.tuple_fallback(left)
-            if not self._is_subtype(lfallback, rfallback):
-                return False
-            return True
+            return self._is_subtype(lfallback, rfallback)
         else:
             return False
 
@@ -803,12 +795,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if right.type.is_protocol and right.type.protocol_members == ["__call__"]:
+            if right.type.is_protocol and "__call__" in right.type.protocol_members:
                 # same as for CallableType
                 call = find_member("__call__", right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
-                    return True
+                    if len(right.type.protocol_members) == 1:
+                        return True
+                    if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
+                        return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, CallableType):
             for item in left.items:
@@ -949,7 +944,11 @@ def pop_on_exit(stack: list[tuple[T, T]], left: T, right: T) -> Iterator[None]:
 
 
 def is_protocol_implementation(
-    left: Instance, right: Instance, proper_subtype: bool = False, class_obj: bool = False
+    left: Instance,
+    right: Instance,
+    proper_subtype: bool = False,
+    class_obj: bool = False,
+    skip: list[str] | None = None,
 ) -> bool:
     """Check whether 'left' implements the protocol 'right'.
 
@@ -969,10 +968,13 @@ def is_protocol_implementation(
     as well.
     """
     assert right.type.is_protocol
+    if skip is None:
+        skip = []
     # We need to record this check to generate protocol fine-grained dependencies.
     TypeState.record_protocol_subtype_check(left.type, right.type)
     # nominal subtyping currently ignores '__init__' and '__new__' signatures
     members_not_to_check = {"__init__", "__new__"}
+    members_not_to_check.update(skip)
     # Trivial check that circumvents the bug described in issue 9771:
     if left.type.is_protocol:
         members_right = set(right.type.protocol_members) - members_not_to_check
@@ -1370,8 +1372,7 @@ def is_callable_compatible(
         unified = unify_generic_callable(left, right, ignore_return=ignore_return)
         if unified is None:
             return False
-        else:
-            left = unified
+        left = unified
 
     # If we allow partial overlaps, we don't need to leave R generic:
     # if we can find even just a single typevar assignment which

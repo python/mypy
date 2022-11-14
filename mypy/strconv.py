@@ -276,6 +276,8 @@ class StrConv(NodeVisitor[str]):
 
     def visit_try_stmt(self, o: mypy.nodes.TryStmt) -> str:
         a: list[Any] = [o.body]
+        if o.is_star:
+            a.append("*")
 
         for i in range(len(o.vars)):
             a.append(o.types[i])

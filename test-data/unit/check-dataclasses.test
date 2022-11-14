@@ -633,8 +633,9 @@ class Two:
 
 c = Two()
 x = c.S
-reveal_type(x)  # N: Revealed type is "builtins.object"
+reveal_type(x)  # N: Revealed type is "typing._SpecialForm"
 [builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testDataclassOrdering]
 # flags: --python-version 3.7

@@ -833,7 +833,7 @@ else {
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments
-        actual_lines = [line.strip(" ") for line in frags]
+        actual_lines = [line.strip(" \t") for line in frags]
         assert all(line.endswith("\n") for line in actual_lines)
         actual_lines = [line.rstrip("\n") for line in actual_lines]
         if not expected.strip():
@@ -900,7 +900,7 @@ class TestGenerateFunction(unittest.TestCase):
                 "    return cpy_r_arg;\n",
                 "}\n",
             ],
-            result,
+            [line.replace("\t", 4 * " ") for line in result],
             msg="Generated code invalid",
         )
 
@@ -927,6 +927,6 @@ class TestGenerateFunction(unittest.TestCase):
                 "    CPy_Unreachable();\n",
                 "}\n",
             ],
-            result,
+            [line.replace("\t", 4 * " ") for line in result],
             msg="Generated code invalid",
         )

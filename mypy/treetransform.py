@@ -373,7 +373,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return RaiseStmt(self.optional_expr(node.expr), self.optional_expr(node.from_expr))
 
     def visit_try_stmt(self, node: TryStmt) -> TryStmt:
-        return TryStmt(
+        new = TryStmt(
             self.block(node.body),
             self.optional_names(node.vars),
             self.optional_expressions(node.types),
@@ -381,6 +381,8 @@ class TransformVisitor(NodeVisitor[Node]):
             self.optional_block(node.else_body),
             self.optional_block(node.finally_body),
         )
+        new.is_star = node.is_star
+        return new
 
     def visit_with_stmt(self, node: WithStmt) -> WithStmt:
         new = WithStmt(

@@ -1049,20 +1049,20 @@ CA = Callable[[T], int]
 TA = Tuple[T, int]
 UA = Union[T, int]
 
-cs = CA + 1 # E: Unsupported left operand type for + ("object")
+cs = CA + 1 # E: Unsupported left operand type for + ("<typing special form>")
 reveal_type(cs) # N: Revealed type is "Any"
 
-ts = TA() # E: "object" not callable
+ts = TA() # E: "<typing special form>" not callable
 reveal_type(ts) # N: Revealed type is "Any"
 
-us = UA.x # E: "object" has no attribute "x"
+us = UA.x # E: "<typing special form>" has no attribute "x"
 reveal_type(us) # N: Revealed type is "Any"
 
 xx = CA[str] + 1  # E: Type application is only supported for generic classes
 yy = TA[str]()  # E: Type application is only supported for generic classes
 zz = UA[str].x  # E: Type application is only supported for generic classes
 [builtins fixtures/tuple.pyi]
-
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testGenericTypeAliasesTypeVarBinding]

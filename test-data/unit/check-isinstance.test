@@ -2392,7 +2392,7 @@ class B:
             x1: Literal[1] = self.f()
 
     def t2(self) -> None:
-        if isinstance(self, (A0, A1)):  # E: Subclass of "B" and "A0" cannot exist: would have incompatible method signatures
+        if isinstance(self, (A0, A1)):
             reveal_type(self)           # N: Revealed type is "__main__.<subclass of "A1" and "B">1"
             x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[0]")
             x1: Literal[1] = self.f()

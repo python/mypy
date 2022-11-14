@@ -1529,9 +1529,9 @@ class RaiseStmt(Statement):
 
 
 class TryStmt(Statement):
-    __slots__ = ("body", "types", "vars", "handlers", "else_body", "finally_body")
+    __slots__ = ("body", "types", "vars", "handlers", "else_body", "finally_body", "is_star")
 
-    __match_args__ = ("body", "types", "vars", "handlers", "else_body", "finally_body")
+    __match_args__ = ("body", "types", "vars", "handlers", "else_body", "finally_body", "is_star")
 
     body: Block  # Try body
     # Plain 'except:' also possible
@@ -1540,6 +1540,8 @@ class TryStmt(Statement):
     handlers: list[Block]  # Except bodies
     else_body: Block | None
     finally_body: Block | None
+    # Whether this is try ... except* (added in Python 3.11)
+    is_star: bool
 
     def __init__(
         self,
@@ -1557,6 +1559,7 @@ class TryStmt(Statement):
         self.handlers = handlers
         self.else_body = else_body
         self.finally_body = finally_body
+        self.is_star = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)

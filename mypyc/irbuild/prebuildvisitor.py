@@ -162,12 +162,10 @@ class PreBuildVisitor(TraverserVisitor):
     def is_parent(self, fitem: FuncItem, child: FuncItem) -> bool:
         # Check if child is nested within fdef (possibly indirectly
         # within multiple nested functions).
-        if child in self.nested_funcs:
-            parent = self.nested_funcs[child]
-            if parent == fitem:
-                return True
-            return self.is_parent(fitem, parent)
-        return False
+        if child not in self.nested_funcs:
+            return False
+        parent = self.nested_funcs[child]
+        return parent == fitem or self.is_parent(fitem, parent)
 
     def add_free_variable(self, symbol: SymbolNode) -> None:
         # Find the function where the symbol was (likely) first declared,

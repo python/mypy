@@ -156,6 +156,92 @@ class B2(A[T]):
     def f(self: A[bytes]) -> bytes: ...
     def f(self): ...
 
+class C(A[int]):
+    def f(self) -> int: ...
+
+class D(A[str]):
+    def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                             # N:      Superclass:            \
+                             # N:          @overload          \
+                             # N:          def f(self) -> str \
+                             # N:      Subclass:              \
+                             # N:          def f(self) -> int
+
+class E(A[T]):
+    def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                             # N:      Superclass:            \
+                             # N:          @overload          \
+                             # N:          def f(self) -> int \
+                             # N:          @overload          \
+                             # N:          def f(self) -> str \
+                             # N:      Subclass:              \
+                             # N:          def f(self) -> int
+
+
+class F(A[bytes]):
+    # Note there's an argument to be made that this is actually compatible with the supertype
+    def f(self) -> bytes: ...  # E: Signature of "f" incompatible with supertype "A" \
+                               # N:      Superclass:            \
+                               # N:          @overload          \
+                               # N:          def f(self) -> int \
+                               # N:          @overload          \
+                               # N:          def f(self) -> str \
+                               # N:      Subclass:              \
+                               # N:          def f(self) -> bytes
+
+class G(A):
+    def f(self): ...
+
+class H(A[int]):
+    def f(self): ...
+
+class I(A[int]):
+    def f(*args): ...
+
+class J(A[int]):
+    def f(self, arg) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                                  # N:      Superclass:            \
+                                  # N:          @overload          \
+                                  # N:          def f(self) -> int \
+                                  # N:      Subclass:              \
+                                  # N:          def f(self, arg: Any) -> int
+
+[builtins fixtures/tuple.pyi]
+
+[case testSelfTypeOverrideCompatibilityTypeVar-xfail]
+from typing import overload, TypeVar, Union
+
+AT = TypeVar("AT", bound="A")
+
+class A:
+    @overload
+    def f(self: AT, x: int) -> AT: ...
+    @overload
+    def f(self, x: str) -> None: ...
+    @overload
+    def f(self: AT) -> bytes: ...
+    def f(*a, **kw): ...
+
+class B(A):
+    @overload  # E: Signature of "f" incompatible with supertype "A" \
+               # N:      Superclass:                                 \
+               # N:          @overload                               \
+               # N:          def f(self, x: int) -> B                \
+               # N:          @overload                               \
+               # N:          def f(self, x: str) -> None             \
+               # N:          @overload                               \
+               # N:          def f(self) -> bytes                    \
+               # N:      Subclass:                                   \
+               # N:          @overload                               \
+               # N:          def f(self, x: int) -> B                \
+               # N:          @overload                               \
+               # N:          def f(self, x: str) -> None
+    def f(self, x: int) -> B: ...
+    @overload
+    def f(self, x: str) -> None: ...
+    def f(*a, **kw): ...
+[builtins fixtures/dict.pyi]
+
 [case testSelfTypeSuper]
 from typing import TypeVar, cast
 
