@@ -186,6 +186,12 @@ UNUSED_AWAITABLE: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+REDUNDANT_SELF_TYPE = ErrorCode(
+    "redundant-self",
+    "Warn about redundant Self type annotations on method first argument",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.

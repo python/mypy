@@ -2590,3 +2590,14 @@ TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", Typ
 TD[str]({"key": 0, "value": 0})  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSelfItemNotAllowed]
+from typing import Self, TypedDict, Optional
+
+class TD(TypedDict):
+    val: int
+    next: Optional[Self]  # E: Self type cannot be used in TypedDict item type
+TDC = TypedDict("TDC", {"val": int, "next": Optional[Self]})  # E: Self type cannot be used in TypedDict item type
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

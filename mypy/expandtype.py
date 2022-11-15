@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
 
-from mypy.nodes import ARG_STAR
+from mypy.nodes import ARG_STAR, Var
 from mypy.types import (
     AnyType,
     CallableType,
@@ -383,3 +383,20 @@ def expand_unpack_with_variables(
             raise NotImplementedError(f"Invalid type replacement to expand: {repl}")
     else:
         raise NotImplementedError(f"Invalid type to expand: {t.type}")
+
+
+@overload
+def expand_self_type(var: Var, typ: ProperType, replacement: ProperType) -> ProperType:
+    ...
+
+
+@overload
+def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:
+    ...
+
+
+def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:
+    """Expand appearances of Self type in a variable type."""
+    if var.info.self_type is not None and not var.is_property:
+        return expand_type(typ, {var.info.self_type.id: replacement})
+    return typ

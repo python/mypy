@@ -2667,6 +2667,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
                 module_symbol_table = base.node.names
+            if isinstance(base, RefExpr) and isinstance(base.node, Var):
+                is_self = base.node.is_self
+            else:
+                is_self = False
 
             member_type = analyze_member_access(
                 e.name,
@@ -2680,6 +2684,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 chk=self.chk,
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table,
+                is_self=is_self,
             )
 
             return member_type
