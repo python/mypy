@@ -214,7 +214,7 @@ mypy-daemon: error: Missing target module, package, files, or command.
 $ dmypy stop
 Daemon stopped
 
-[case testDaemonWarningSuccessExitCode]
+[case testDaemonWarningSuccessExitCode-posix]
 $ dmypy run -- foo.py --follow-imports=error
 Daemon started
 foo.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
