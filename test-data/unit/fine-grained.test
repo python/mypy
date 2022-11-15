@@ -10130,3 +10130,28 @@ b.py:2: error: "int" not callable
 a.py:1: error: Unsupported operand types for + ("int" and "str")
     1 + ''
         ^~
+
+[case testTypingSelfFine]
+import m
+[file lib.py]
+from typing import Any
+
+class C:
+    def meth(self, other: Any) -> C: ...
+[file lib.py.2]
+from typing import Self
+
+class C:
+    def meth(self, other: Self) -> Self: ...
+
+[file n.py]
+import lib
+class D(lib.C): ...
+[file m.py]
+from n import D
+d = D()
+def test() -> None:
+    d.meth(42)
+[out]
+==
+m.py:4: error: Argument 1 to "meth" of "C" has incompatible type "int"; expected "D"

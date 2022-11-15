@@ -238,6 +238,7 @@ CANNOT_OVERRIDE_CLASS_VAR: Final = ErrorMessage(
     "variable"
 )
 CLASS_VAR_WITH_TYPEVARS: Final = "ClassVar cannot contain type variables"
+CLASS_VAR_WITH_GENERIC_SELF: Final = "ClassVar cannot contain Self type in generic classes"
 CLASS_VAR_OUTSIDE_OF_CLASS: Final = "ClassVar can only be used for assignments in class body"
 
 # Protocol

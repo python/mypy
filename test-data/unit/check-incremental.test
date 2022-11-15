@@ -6312,3 +6312,25 @@ reveal_type(xs)
 [out]
 [out2]
 tmp/m.py:9: note: Revealed type is "builtins.list[builtins.int]"
+
+[case testTypingSelfCoarse]
+import m
+[file lib.py]
+from typing import Self
+
+class C:
+    def meth(self, other: Self) -> Self: ...
+
+[file m.py]
+import lib
+class D: ...
+[file m.py.2]
+import lib
+class D(lib.C): ...
+
+reveal_type(D.meth)
+reveal_type(D().meth)
+[out]
+[out2]
+tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`0, other: Self`0) -> Self`0"
+tmp/m.py:5: note: Revealed type is "def (other: m.D) -> m.D"
