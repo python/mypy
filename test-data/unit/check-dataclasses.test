@@ -1933,3 +1933,28 @@ B = List[C]
 class C(CC): ...
 class CC: ...
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassSelfType]
+# flags: --strict-optional
+from dataclasses import dataclass
+from typing import Self, TypeVar, Generic, Optional
+
+T = TypeVar("T")
+
+@dataclass
+class LinkedList(Generic[T]):
+    value: T
+    next: Optional[Self] = None
+
+    def meth(self) -> None:
+        reveal_type(self.next)  # N: Revealed type is "Union[Self`0, None]"
+
+l_int: LinkedList[int] = LinkedList(1, LinkedList("no", None))  # E: Argument 1 to "LinkedList" has incompatible type "str"; expected "int"
+
+@dataclass
+class SubLinkedList(LinkedList[int]): ...
+
+lst = SubLinkedList(1, LinkedList(2))  # E: Argument 2 to "SubLinkedList" has incompatible type "LinkedList[int]"; expected "Optional[SubLinkedList]"
+reveal_type(lst.next)  # N: Revealed type is "Union[__main__.SubLinkedList, None]"
+reveal_type(SubLinkedList)  # N: Revealed type is "def (value: builtins.int, next: Union[__main__.SubLinkedList, None] =) -> __main__.SubLinkedList"
+[builtins fixtures/dataclasses.pyi]
