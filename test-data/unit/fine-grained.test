@@ -10155,3 +10155,53 @@ def test() -> None:
 [out]
 ==
 m.py:4: error: Argument 1 to "meth" of "C" has incompatible type "int"; expected "D"
+
+[case testNoNestedDefinitionCrash]
+import m
+[file m.py]
+from typing import Any, TYPE_CHECKING
+
+class C:
+    if TYPE_CHECKING:
+        def __init__(self, **kw: Any): ...
+
+C
+[file m.py.2]
+from typing import Any, TYPE_CHECKING
+
+class C:
+    if TYPE_CHECKING:
+        def __init__(self, **kw: Any): ...
+
+C
+# change
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testNoNestedDefinitionCrash2]
+import m
+[file m.py]
+from typing import Any
+
+class C:
+    try:
+        def __init__(self, **kw: Any): ...
+    except:
+        pass
+
+C
+[file m.py.2]
+from typing import Any
+
+class C:
+    try:
+        def __init__(self, **kw: Any): ...
+    except:
+        pass
+
+C
+# change
+[builtins fixtures/dict.pyi]
+[out]
+==
