@@ -1683,6 +1683,8 @@ class SemanticAnalyzer(
         declared_tvars: TypeVarLikeList = []
         is_protocol = False
         for i, base_expr in enumerate(base_type_exprs):
+            if isinstance(base_expr, StarExpr):
+                base_expr.valid = True
             self.analyze_type_expr(base_expr)
 
             try:
@@ -4539,8 +4541,7 @@ class SemanticAnalyzer(
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
-            # XXX TODO Change this error message
-            self.fail("Can use starred expression only as assignment target", expr)
+            self.fail("Can use starred expression only as assignment target", expr, blocker=True)
         else:
             expr.expr.accept(self)
 
