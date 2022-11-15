@@ -2100,3 +2100,30 @@ class Some:
 class A(Some, Enum):
     __labels__ = {1: "1"}
 [builtins fixtures/dict.pyi]
+
+[case testEnumWithPartialTypes]
+from enum import Enum
+
+class Mixed(Enum):
+    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
+    b = None
+
+    def check(self) -> None:
+        reveal_type(Mixed.a.value)  # N: Revealed type is "builtins.list[Any]"
+        reveal_type(Mixed.b.value)  # N: Revealed type is "None"
+
+        # Inferring Any here instead of a union seems to be a deliberate
+        # choice; see the testEnumValueInhomogenous case above.
+        reveal_type(self.value)  # N: Revealed type is "Any"
+
+        for field in Mixed:
+            reveal_type(field.value)  # N: Revealed type is "Any"
+            if field.value is None:
+                pass
+
+class AllPartialList(Enum):
+    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
+    b = []  # E: Need type annotation for "b" (hint: "b: List[<type>] = ...")
+
+    def check(self) -> None:
+        reveal_type(self.value)  # N: Revealed type is "builtins.list[Any]"

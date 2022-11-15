@@ -1788,3 +1788,19 @@ def f6(a: object) -> None:
         case _ if y is not None:  # E: Name "y" may be undefined
             pass
 [builtins fixtures/tuple.pyi]
+
+[case testTypeAliasWithNewUnionSyntaxAndNoneLeftOperand]
+from typing import overload
+class C:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: int) -> None: pass
+    def __init__(self, x=0):
+        pass
+
+class D: pass
+
+X = None | C
+Y = None | D
+[builtins fixtures/type.pyi]

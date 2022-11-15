@@ -23,7 +23,8 @@ class tuple(Sequence[Tco], Generic[Tco]):
     def __rmul__(self, n: int) -> Tuple[Tco, ...]: pass
     def __add__(self, x: Tuple[Tco, ...]) -> Tuple[Tco, ...]: pass
     def count(self, obj: object) -> int: pass
-class function: pass
+class function:
+    __name__: str
 class ellipsis: pass
 class classmethod: pass
 

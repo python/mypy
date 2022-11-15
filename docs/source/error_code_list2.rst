@@ -231,31 +231,29 @@ since unless implemented by a sub-type, the expression will always evaluate to t
     if foo:
        ...
 
+The check is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
+except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
+while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
 
-This check might falsely imply an error. For example, ``Iterable`` does not implement
-``__len__`` and so this code will be flagged:
+
+Check that iterable is not implicitly true in boolean context [truthy-iterable]
+-------------------------------------------------------------------------------
+
+``Iterable`` does not implement ``__len__`` and so this code will be flagged:
 
 .. code-block:: python
 
-    # Use "mypy -enable-error-code truthy-bool ..."
-
     from typing import Iterable
 
-    def transform(items: Iterable[int]) -> Iterable[int]:
-        # Error: "items" has type "Iterable[int]" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    def transform(items: Iterable[int]) -> list[int]:
+        # Error: "items" has type "Iterable[int]" which can always be true in boolean context. Consider using "Collection[int]" instead.  [truthy-iterable]
         if not items:
             return [42]
         return [x + 1 for x in items]
 
-
-
-If called as ``transform((int(s) for s in []))``, this function would not return ``[42]`` unlike what the author
-might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects, and so there is
-no error in practice. In such case, it might be prudent to annotate ``items: Sequence[int]``.
-
-This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
-except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
-while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
+If called with a ``Generator`` like ``int(x) for x in []``, this function would not return ``[42]`` unlike
+what the author might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects,
+and so there is no error in practice. In such case, it is recommended to annotate ``items: Collection[int]``.
 
 
 Check that function isn't used in boolean context [truthy-function]

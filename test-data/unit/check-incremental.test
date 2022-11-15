@@ -6286,3 +6286,29 @@ class C: ...
 [out]
 [out2]
 [out3]
+
+[case testNoCrashOnPartialLambdaInference]
+import m
+[file m.py]
+from typing import TypeVar, Callable
+
+V = TypeVar("V")
+def apply(val: V, func: Callable[[V], None]) -> None:
+    return func(val)
+
+xs = []
+apply(0, lambda a: xs.append(a))
+[file m.py.2]
+from typing import TypeVar, Callable
+
+V = TypeVar("V")
+def apply(val: V, func: Callable[[V], None]) -> None:
+    return func(val)
+
+xs = []
+apply(0, lambda a: xs.append(a))
+reveal_type(xs)
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+tmp/m.py:9: note: Revealed type is "builtins.list[builtins.int]"

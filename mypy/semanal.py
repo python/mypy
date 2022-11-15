@@ -51,7 +51,7 @@ Some important properties:
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterable, Iterator, List, TypeVar, cast
+from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes, message_registry
@@ -1683,6 +1683,8 @@ class SemanticAnalyzer(
         declared_tvars: TypeVarLikeList = []
         is_protocol = False
         for i, base_expr in enumerate(base_type_exprs):
+            if isinstance(base_expr, StarExpr):
+                base_expr.valid = True
             self.analyze_type_expr(base_expr)
 
             try:
@@ -4539,8 +4541,7 @@ class SemanticAnalyzer(
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
-            # XXX TODO Change this error message
-            self.fail("Can use starred expression only as assignment target", expr)
+            self.fail("Can use starred expression only as assignment target", expr, blocker=True)
         else:
             expr.expr.accept(self)
 
@@ -6202,7 +6203,9 @@ class SemanticAnalyzer(
             target = self.scope.current_target()
         self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
 
-    def add_type_alias_deps(self, aliases_used: Iterable[str], target: str | None = None) -> None:
+    def add_type_alias_deps(
+        self, aliases_used: Collection[str], target: str | None = None
+    ) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.

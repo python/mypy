@@ -1254,7 +1254,6 @@ class ASTConverter:
         return self.set_line(node, n)
 
     def visit_TryStar(self, n: TryStar) -> TryStmt:
-        # TODO: we treat TryStar exactly like Try, which makes mypy not crash. See #12840
         vs = [
             self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
         ]
@@ -1269,6 +1268,7 @@ class ASTConverter:
             self.as_block(n.orelse, n.lineno),
             self.as_block(n.finalbody, n.lineno),
         )
+        node.is_star = True
         return self.set_line(node, n)
 
     # Assert(expr test, expr? msg)

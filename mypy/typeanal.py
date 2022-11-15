@@ -1729,9 +1729,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
             return False
-        if isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType)):
-            return True
-        return False
+        return isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType))
 
     def visit_unbound_type(self, t: UnboundType) -> TypeVarLikeList:
         name = t.name
