@@ -10157,7 +10157,7 @@ C
 [case testNoNestedDefinitionCrash2]
 import m
 [file m.py]
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 class C:
     try:
@@ -10167,7 +10167,7 @@ class C:
 
 C
 [file m.py.2]
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 class C:
     try:
