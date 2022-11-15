@@ -543,14 +543,14 @@ def _verify_arg_name(
     )
 
 
-class _NodeEvaluator(ExpressionVisitor[object]):
-    def visit_int_expr(self, o: mypy.nodes.IntExpr) -> int:
+class _NodeEvaluator(ExpressionVisitor[T]):
+    def visit_int_expr(self, o: mypy.nodes.IntExpr) -> Any:
         return o.value
 
-    def visit_str_expr(self, o: mypy.nodes.StrExpr) -> str:
+    def visit_str_expr(self, o: mypy.nodes.StrExpr) -> Any:
         return o.value
 
-    def visit_bytes_expr(self, o: mypy.nodes.BytesExpr) -> object:
+    def visit_bytes_expr(self, o: mypy.nodes.BytesExpr) -> Any:
         # The value of a BytesExpr is a string created from the repr()
         # of the bytes object. Get the original bytes back.
         try:
@@ -558,19 +558,19 @@ class _NodeEvaluator(ExpressionVisitor[object]):
         except SyntaxError:
             return ast.literal_eval(f'b"{o.value}"')
 
-    def visit_float_expr(self, o: mypy.nodes.FloatExpr) -> float:
+    def visit_float_expr(self, o: mypy.nodes.FloatExpr) -> Any:
         return o.value
 
-    def visit_complex_expr(self, o: mypy.nodes.ComplexExpr) -> object:
+    def visit_complex_expr(self, o: mypy.nodes.ComplexExpr) -> Any:
         return o.value
 
-    def visit_ellipsis(self, o: mypy.nodes.EllipsisExpr) -> object:
+    def visit_ellipsis(self, o: mypy.nodes.EllipsisExpr) -> Any:
         return Ellipsis
 
-    def visit_star_expr(self, o: mypy.nodes.StarExpr) -> object:
+    def visit_star_expr(self, o: mypy.nodes.StarExpr) -> Any:
         return MISSING
 
-    def visit_name_expr(self, o: mypy.nodes.NameExpr) -> object:
+    def visit_name_expr(self, o: mypy.nodes.NameExpr) -> Any:
         if o.name == "True":
             return True
         elif o.name == "False":
@@ -581,37 +581,37 @@ class _NodeEvaluator(ExpressionVisitor[object]):
         # symbol table.
         return MISSING
 
-    def visit_member_expr(self, o: mypy.nodes.MemberExpr) -> object:
+    def visit_member_expr(self, o: mypy.nodes.MemberExpr) -> Any:
         return MISSING
 
-    def visit_yield_from_expr(self, o: mypy.nodes.YieldFromExpr) -> object:
+    def visit_yield_from_expr(self, o: mypy.nodes.YieldFromExpr) -> Any:
         return MISSING
 
-    def visit_yield_expr(self, o: mypy.nodes.YieldExpr) -> object:
+    def visit_yield_expr(self, o: mypy.nodes.YieldExpr) -> Any:
         return MISSING
 
-    def visit_call_expr(self, o: mypy.nodes.CallExpr) -> object:
+    def visit_call_expr(self, o: mypy.nodes.CallExpr) -> Any:
         return MISSING
 
-    def visit_op_expr(self, o: mypy.nodes.OpExpr) -> object:
+    def visit_op_expr(self, o: mypy.nodes.OpExpr) -> Any:
         return MISSING
 
-    def visit_comparison_expr(self, o: mypy.nodes.ComparisonExpr) -> object:
+    def visit_comparison_expr(self, o: mypy.nodes.ComparisonExpr) -> Any:
         return MISSING
 
-    def visit_cast_expr(self, o: mypy.nodes.CastExpr) -> object:
+    def visit_cast_expr(self, o: mypy.nodes.CastExpr) -> Any:
         return o.expr.accept(self)
 
-    def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr) -> object:
+    def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr) -> Any:
         return o.expr.accept(self)
 
-    def visit_reveal_expr(self, o: mypy.nodes.RevealExpr) -> object:
+    def visit_reveal_expr(self, o: mypy.nodes.RevealExpr) -> Any:
         return MISSING
 
-    def visit_super_expr(self, o: mypy.nodes.SuperExpr) -> object:
+    def visit_super_expr(self, o: mypy.nodes.SuperExpr) -> Any:
         return MISSING
 
-    def visit_unary_expr(self, o: mypy.nodes.UnaryExpr) -> object:
+    def visit_unary_expr(self, o: mypy.nodes.UnaryExpr) -> Any:
         operand = o.expr.accept(self)
         if operand is MISSING:
             return MISSING
@@ -629,16 +629,16 @@ class _NodeEvaluator(ExpressionVisitor[object]):
                 return not operand
         return MISSING
 
-    def visit_assignment_expr(self, o: mypy.nodes.AssignmentExpr) -> object:
+    def visit_assignment_expr(self, o: mypy.nodes.AssignmentExpr) -> Any:
         return o.value.accept(self)
 
-    def visit_list_expr(self, o: mypy.nodes.ListExpr) -> object:
+    def visit_list_expr(self, o: mypy.nodes.ListExpr) -> Any:
         items = [item.accept(self) for item in o.items]
         if all(item is not MISSING for item in items):
             return items
         return MISSING
 
-    def visit_dict_expr(self, o: mypy.nodes.DictExpr) -> object:
+    def visit_dict_expr(self, o: mypy.nodes.DictExpr) -> Any:
         items = [
             (MISSING if key is None else key.accept(self), value.accept(self))
             for key, value in o.items
@@ -647,80 +647,80 @@ class _NodeEvaluator(ExpressionVisitor[object]):
             return dict(items)
         return MISSING
 
-    def visit_tuple_expr(self, o: mypy.nodes.TupleExpr) -> object:
+    def visit_tuple_expr(self, o: mypy.nodes.TupleExpr) -> Any:
         items = [item.accept(self) for item in o.items]
         if all(item is not MISSING for item in items):
             return tuple(items)
         return MISSING
 
-    def visit_set_expr(self, o: mypy.nodes.SetExpr) -> object:
+    def visit_set_expr(self, o: mypy.nodes.SetExpr) -> Any:
         items = [item.accept(self) for item in o.items]
         if all(item is not MISSING for item in items):
             return set(items)
         return MISSING
 
-    def visit_index_expr(self, o: mypy.nodes.IndexExpr) -> object:
+    def visit_index_expr(self, o: mypy.nodes.IndexExpr) -> Any:
         return MISSING
 
-    def visit_type_application(self, o: mypy.nodes.TypeApplication) -> object:
+    def visit_type_application(self, o: mypy.nodes.TypeApplication) -> Any:
         return MISSING
 
-    def visit_lambda_expr(self, o: mypy.nodes.LambdaExpr) -> object:
+    def visit_lambda_expr(self, o: mypy.nodes.LambdaExpr) -> Any:
         return MISSING
 
-    def visit_list_comprehension(self, o: mypy.nodes.ListComprehension) -> object:
+    def visit_list_comprehension(self, o: mypy.nodes.ListComprehension) -> Any:
         return MISSING
 
-    def visit_set_comprehension(self, o: mypy.nodes.SetComprehension) -> object:
+    def visit_set_comprehension(self, o: mypy.nodes.SetComprehension) -> Any:
         return MISSING
 
-    def visit_dictionary_comprehension(self, o: mypy.nodes.DictionaryComprehension) -> object:
+    def visit_dictionary_comprehension(self, o: mypy.nodes.DictionaryComprehension) -> Any:
         return MISSING
 
-    def visit_generator_expr(self, o: mypy.nodes.GeneratorExpr) -> object:
+    def visit_generator_expr(self, o: mypy.nodes.GeneratorExpr) -> Any:
         return MISSING
 
-    def visit_slice_expr(self, o: mypy.nodes.SliceExpr) -> object:
+    def visit_slice_expr(self, o: mypy.nodes.SliceExpr) -> Any:
         return MISSING
 
-    def visit_conditional_expr(self, o: mypy.nodes.ConditionalExpr) -> object:
+    def visit_conditional_expr(self, o: mypy.nodes.ConditionalExpr) -> Any:
         return MISSING
 
-    def visit_type_var_expr(self, o: mypy.nodes.TypeVarExpr) -> object:
+    def visit_type_var_expr(self, o: mypy.nodes.TypeVarExpr) -> Any:
         return MISSING
 
-    def visit_paramspec_expr(self, o: mypy.nodes.ParamSpecExpr) -> object:
+    def visit_paramspec_expr(self, o: mypy.nodes.ParamSpecExpr) -> Any:
         return MISSING
 
-    def visit_type_var_tuple_expr(self, o: mypy.nodes.TypeVarTupleExpr) -> object:
+    def visit_type_var_tuple_expr(self, o: mypy.nodes.TypeVarTupleExpr) -> Any:
         return MISSING
 
-    def visit_type_alias_expr(self, o: mypy.nodes.TypeAliasExpr) -> object:
+    def visit_type_alias_expr(self, o: mypy.nodes.TypeAliasExpr) -> Any:
         return MISSING
 
-    def visit_namedtuple_expr(self, o: mypy.nodes.NamedTupleExpr) -> object:
+    def visit_namedtuple_expr(self, o: mypy.nodes.NamedTupleExpr) -> Any:
         return MISSING
 
-    def visit_enum_call_expr(self, o: mypy.nodes.EnumCallExpr) -> object:
+    def visit_enum_call_expr(self, o: mypy.nodes.EnumCallExpr) -> Any:
         return MISSING
 
-    def visit_typeddict_expr(self, o: mypy.nodes.TypedDictExpr) -> object:
+    def visit_typeddict_expr(self, o: mypy.nodes.TypedDictExpr) -> Any:
         return MISSING
 
-    def visit_newtype_expr(self, o: mypy.nodes.NewTypeExpr) -> object:
+    def visit_newtype_expr(self, o: mypy.nodes.NewTypeExpr) -> Any:
         return MISSING
 
-    def visit__promote_expr(self, o: mypy.nodes.PromoteExpr) -> object:
+    def visit__promote_expr(self, o: mypy.nodes.PromoteExpr) -> Any:
         return MISSING
 
-    def visit_await_expr(self, o: mypy.nodes.AwaitExpr) -> object:
+    def visit_await_expr(self, o: mypy.nodes.AwaitExpr) -> Any:
         return MISSING
 
-    def visit_temp_node(self, o: mypy.nodes.TempNode) -> object:
+    def visit_temp_node(self, o: mypy.nodes.TempNode) -> Any:
         return MISSING
 
 
-_evaluator: typing_extensions.Final = _NodeEvaluator()
+_evaluator: typing_extensions.Final[_NodeEvaluator[object]] = _NodeEvaluator()
 
 
 def _verify_arg_default_value(
