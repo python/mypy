@@ -3890,3 +3890,54 @@ def f() -> str: ...
 [file package/badmod.py]
 def nothing() -> int: ...
 [builtins fixtures/module.pyi]
+
+[case testProtocolSelfTypeNewSyntax]
+from typing import Protocol, Self
+
+class P(Protocol):
+    @property
+    def next(self) -> Self: ...
+
+class C:
+    next: C
+class S:
+    next: Self
+
+x: P = C()
+y: P = S()
+
+z: P
+reveal_type(S().next)  # N: Revealed type is "__main__.S"
+reveal_type(z.next)  # N: Revealed type is "__main__.P"
+[builtins fixtures/property.pyi]
+
+[case testProtocolSelfTypeNewSyntaxSubProtocol]
+from typing import Protocol, Self
+
+class P(Protocol):
+    @property
+    def next(self) -> Self: ...
+class PS(P, Protocol):
+    @property
+    def other(self) -> Self: ...
+
+class C:
+    next: C
+    other: C
+class S:
+    next: Self
+    other: Self
+
+x: PS = C()
+y: PS = S()
+[builtins fixtures/property.pyi]
+
+[case testProtocolClassVarSelfType]
+from typing import ClassVar, Self, Protocol
+
+class P(Protocol):
+    DEFAULT: ClassVar[Self]
+class C:
+    DEFAULT: ClassVar[C]
+
+x: P = C()
