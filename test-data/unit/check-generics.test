@@ -2602,3 +2602,16 @@ class C(Generic[R]):
 
 def func(x: C[R]) -> R:
     return x.x()(42)  # OK
+
+[case testTypeVariableClashVarSelf]
+from typing import Self, TypeVar, Generic, Callable
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class C(Generic[T]):
+    x: Callable[[S], Self]
+    y: T
+
+def foo(x: C[T]) -> T:
+    return x.x(42).y  # OK
