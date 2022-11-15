@@ -37,7 +37,6 @@ __all__ = [
 # Strictly this should not have to include Callable, but mypy doesn't use FunctionType
 # for functions (python/mypy#3171)
 _HaveCodeType: TypeAlias = types.MethodType | types.FunctionType | types.CodeType | type | Callable[..., Any]
-_HaveCodeOrStringType: TypeAlias = _HaveCodeType | str | bytes
 
 if sys.version_info >= (3, 11):
     class Positions(NamedTuple):
@@ -75,7 +74,7 @@ class Bytecode:
     if sys.version_info >= (3, 11):
         def __init__(
             self,
-            x: _HaveCodeOrStringType,
+            x: _HaveCodeType | str,
             *,
             first_line: int | None = ...,
             current_offset: int | None = ...,
@@ -87,9 +86,7 @@ class Bytecode:
             cls: type[Self], tb: types.TracebackType, *, show_caches: bool = ..., adaptive: bool = ...
         ) -> Self: ...
     else:
-        def __init__(
-            self, x: _HaveCodeOrStringType, *, first_line: int | None = ..., current_offset: int | None = ...
-        ) -> None: ...
+        def __init__(self, x: _HaveCodeType | str, *, first_line: int | None = ..., current_offset: int | None = ...) -> None: ...
         @classmethod
         def from_traceback(cls: type[Self], tb: types.TracebackType) -> Self: ...
 
@@ -102,11 +99,11 @@ COMPILER_FLAG_NAMES: dict[int, str]
 def findlabels(code: _HaveCodeType) -> list[int]: ...
 def findlinestarts(code: _HaveCodeType) -> Iterator[tuple[int, int]]: ...
 def pretty_flags(flags: int) -> str: ...
-def code_info(x: _HaveCodeOrStringType) -> str: ...
+def code_info(x: _HaveCodeType | str) -> str: ...
 
 if sys.version_info >= (3, 11):
     def dis(
-        x: _HaveCodeOrStringType | None = ...,
+        x: _HaveCodeType | str | bytes | bytearray | None = ...,
         *,
         file: IO[str] | None = ...,
         depth: int | None = ...,
@@ -115,7 +112,9 @@ if sys.version_info >= (3, 11):
     ) -> None: ...
 
 else:
-    def dis(x: _HaveCodeOrStringType | None = ..., *, file: IO[str] | None = ..., depth: int | None = ...) -> None: ...
+    def dis(
+        x: _HaveCodeType | str | bytes | bytearray | None = ..., *, file: IO[str] | None = ..., depth: int | None = ...
+    ) -> None: ...
 
 if sys.version_info >= (3, 11):
     def disassemble(

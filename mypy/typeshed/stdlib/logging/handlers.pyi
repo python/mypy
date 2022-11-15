@@ -2,7 +2,7 @@ import datetime
 import http.client
 import ssl
 import sys
-from _typeshed import StrPath
+from _typeshed import ReadableBuffer, StrPath
 from collections.abc import Callable
 from logging import FileHandler, Handler, LogRecord
 from queue import Queue, SimpleQueue
@@ -125,7 +125,7 @@ class SocketHandler(Handler):
     def __init__(self, host: str, port: int | None) -> None: ...
     def makeSocket(self, timeout: float = ...) -> socket: ...  # timeout is undocumented
     def makePickle(self, record: LogRecord) -> bytes: ...
-    def send(self, s: bytes) -> None: ...
+    def send(self, s: ReadableBuffer) -> None: ...
     def createSocket(self) -> None: ...
 
 class DatagramHandler(SocketHandler):
