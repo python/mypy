@@ -132,6 +132,7 @@ SUGGESTED_TEST_FIXTURES: Final = {
     "builtins.isinstance": "isinstancelist.pyi",
     "builtins.property": "property.pyi",
     "builtins.classmethod": "classmethod.pyi",
+    "typing._SpecialForm": "typing-medium.pyi",
 }
 
 
@@ -230,8 +231,8 @@ class MessageBuilder:
         else:
             origin_span = None
         self.errors.report(
-            context.get_line() if context else -1,
-            context.get_column() if context else -1,
+            context.line if context else -1,
+            context.column if context else -1,
             msg,
             severity=severity,
             file=file,
@@ -1865,6 +1866,7 @@ class MessageBuilder:
 
         class_obj = False
         is_module = False
+        skip = []
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1879,20 +1881,22 @@ class MessageBuilder:
             class_obj = True
             subtype = subtype.item
         elif isinstance(subtype, CallableType):
-            if not subtype.is_type_obj():
-                return
-            ret_type = get_proper_type(subtype.ret_type)
-            if isinstance(ret_type, TupleType):
-                ret_type = ret_type.partial_fallback
-            if not isinstance(ret_type, Instance):
-                return
-            class_obj = True
-            subtype = ret_type
+            if subtype.is_type_obj():
+                ret_type = get_proper_type(subtype.ret_type)
+                if isinstance(ret_type, TupleType):
+                    ret_type = ret_type.partial_fallback
+                if not isinstance(ret_type, Instance):
+                    return
+                class_obj = True
+                subtype = ret_type
+            else:
+                subtype = subtype.fallback
+                skip = ["__call__"]
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
 
         # Report missing members
-        missing = get_missing_protocol_members(subtype, supertype)
+        missing = get_missing_protocol_members(subtype, supertype, skip=skip)
         if (
             missing
             and len(missing) < len(supertype.type.protocol_members)
@@ -2253,6 +2257,9 @@ def format_type_inner(
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
                 return f"{base_str} {itype.extra_attrs.mod_name}"
             return base_str
+        if itype.type.fullname == "typing._SpecialForm":
+            # This is not a real type but used for some typing-related constructs.
+            return "<typing special form>"
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname
         else:
@@ -2601,13 +2608,15 @@ def variance_string(variance: int) -> str:
         return "invariant"
 
 
-def get_missing_protocol_members(left: Instance, right: Instance) -> list[str]:
+def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str]) -> list[str]:
     """Find all protocol members of 'right' that are not implemented
     (i.e. completely missing) in 'left'.
     """
     assert right.type.is_protocol
     missing: list[str] = []
     for member in right.type.protocol_members:
+        if member in skip:
+            continue
         if not find_member(member, left, left):
             missing.append(member)
     return missing
@@ -2654,6 +2663,7 @@ def get_bad_protocol_flags(
         if (
             IS_CLASSVAR in subflags
             and IS_CLASSVAR not in superflags
+            and IS_SETTABLE in superflags
             or IS_CLASSVAR in superflags
             and IS_CLASSVAR not in subflags
             or IS_SETTABLE in superflags

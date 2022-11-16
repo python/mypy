@@ -115,15 +115,19 @@ class BuildSource:
         module: str | None,
         text: str | None = None,
         base_dir: str | None = None,
+        followed: bool = False,
     ) -> None:
         self.path = path  # File where it's found (e.g. 'xxx/yyy/foo/bar.py')
         self.module = module or "__main__"  # Module name (e.g. 'foo.bar')
         self.text = text  # Source code, if initially supplied, else None
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
+        self.followed = followed  # Was this found by following imports?
 
     def __repr__(self) -> str:
-        return "BuildSource(path={!r}, module={!r}, has_text={}, base_dir={!r})".format(
-            self.path, self.module, self.text is not None, self.base_dir
+        return (
+            "BuildSource(path={!r}, module={!r}, has_text={}, base_dir={!r}, followed={})".format(
+                self.path, self.module, self.text is not None, self.base_dir, self.followed
+            )
         )
 
 
@@ -144,14 +148,11 @@ class BuildSourceSet:
                 self.source_modules[source.module] = source.path or ""
 
     def is_source(self, file: MypyFile) -> bool:
-        if file.path and file.path in self.source_paths:
-            return True
-        elif file._fullname in self.source_modules:
-            return True
-        elif self.source_text_present:
-            return True
-        else:
-            return False
+        return (
+            (file.path and file.path in self.source_paths)
+            or file._fullname in self.source_modules
+            or self.source_text_present
+        )
 
 
 class FindModuleCache:
@@ -569,11 +570,11 @@ class FindModuleCache:
         whether the stubs are compatible with Python 2 and 3.
         """
         metadata_fnam = os.path.join(stub_dir, "METADATA.toml")
-        if os.path.isfile(metadata_fnam):
-            with open(metadata_fnam, "rb") as f:
-                metadata = tomllib.load(f)
-            return bool(metadata.get("python3", True))
-        return True
+        if not os.path.isfile(metadata_fnam):
+            return True
+        with open(metadata_fnam, "rb") as f:
+            metadata = tomllib.load(f)
+        return bool(metadata.get("python3", True))
 
     def find_modules_recursive(self, module: str) -> list[BuildSource]:
         module_path = self.find_module(module)

@@ -1475,6 +1475,20 @@ else:
     @dec
     def f(): pass
 
+[case testConditionalFunctionDefinitionUnreachable]
+def bar() -> None:
+    if False:
+        foo = 1
+    else:
+        def foo(obj): ...
+
+def baz() -> None:
+    if False:
+        foo: int = 1
+    else:
+        def foo(obj): ...  # E: Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "int")
+[builtins fixtures/tuple.pyi]
+
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
 def f(x: str) -> None: pass

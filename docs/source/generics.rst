@@ -264,15 +264,8 @@ Generic methods and generic self
 You can also define generic methods — just use a type variable in the
 method signature that is different from class type variables. In particular,
 ``self`` may also be generic, allowing a method to return the most precise
-type known at the point of access.
-
-.. note::
-
-   This feature is experimental. Checking code with type annotations for self
-   arguments is still not fully implemented. Mypy may disallow valid code or
-   allow unsafe code.
-
-In this way, for example, you can typecheck chaining of setter methods:
+type known at the point of access. In this way, for example, you can typecheck
+chaining of setter methods:
 
 .. code-block:: python
 
@@ -333,7 +326,68 @@ or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type.
 
+Note that this feature may accept some unsafe code for the purpose of
+*practicality*. For example:
+
+.. code-block:: python
+
+   from typing import TypeVar
+
+   T = TypeVar("T")
+   class Base:
+       def compare(self: T, other: T) -> bool:
+           return False
+
+   class Sub(Base):
+       def __init__(self, x: int) -> None:
+           self.x = x
+
+       # This is unsafe (see below), but allowed because it is
+       # a common pattern, and rarely causes issues in practice.
+       def compare(self, other: Sub) -> bool:
+           return self.x > other.x
+
+   b: Base = Sub(42)
+   b.compare(Base())  # Runtime error here: 'Base' object has no attribute 'x'
+
 For some advanced uses of self-types see :ref:`additional examples <advanced_self>`.
+
+Automatic self types using typing.Self
+**************************************
+
+The patterns described above are quite common, so there is a syntactic sugar
+for them introduced in :pep:`673`. Instead of defining a type variable and
+using an explicit ``self`` annotation, you can import a magic type ``typing.Self``
+that is automatically transformed into a type variable with an upper bound of
+current class, and you don't need an annotation for ``self`` (or ``cls`` for
+class methods). The above example can thus be rewritten as:
+
+.. code-block:: python
+
+   from typing import Self
+
+   class Friend:
+       other: Self | None = None
+
+       @classmethod
+       def make_pair(cls) -> tuple[Self, Self]:
+           a, b = cls(), cls()
+           a.other = b
+           b.other = a
+           return a, b
+
+   class SuperFriend(Friend):
+       pass
+
+   a, b = SuperFriend.make_pair()
+
+This is more compact than using explicit type variables, plus additionally
+you can use ``Self`` in attribute annotations, not just in methods.
+
+.. note::
+
+   To use this feature on versions of Python before 3.11, you will need to
+   import ``Self`` from ``typing_extensions`` version 4.0 or newer.
 
 .. _variance-of-generics:
 
@@ -548,7 +602,7 @@ Note that class decorators are handled differently than function decorators in
 mypy: decorating a class does not erase its type, even if the decorator has
 incomplete type annotations.
 
-Suppose we have the following decorator, not type annotated yet, 
+Suppose we have the following decorator, not type annotated yet,
 that preserves the original function's signature and merely prints the decorated function's name:
 
 .. code-block:: python

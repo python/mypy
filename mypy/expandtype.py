@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
 
-from mypy.nodes import ARG_STAR
+from mypy.nodes import ARG_STAR, Var
+from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     AnyType,
     CallableType,
@@ -39,20 +40,26 @@ from mypy.typevartuples import split_with_instance, split_with_prefix_and_suffix
 
 
 @overload
-def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType:
+def expand_type(
+    typ: ProperType, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
+) -> ProperType:
     ...
 
 
 @overload
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
+def expand_type(
+    typ: Type, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
+) -> Type:
     ...
 
 
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
+def expand_type(
+    typ: Type, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = False
+) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
     """
-    return typ.accept(ExpandTypeVisitor(env))
+    return typ.accept(ExpandTypeVisitor(env, allow_erased_callables))
 
 
 @overload
@@ -124,13 +131,36 @@ def freshen_function_type_vars(callee: F) -> F:
         return cast(F, fresh_overload)
 
 
+T = TypeVar("T", bound=Type)
+
+
+def freshen_all_functions_type_vars(t: T) -> T:
+    result = t.accept(FreshenCallableVisitor())
+    assert isinstance(result, type(t))
+    return result
+
+
+class FreshenCallableVisitor(TypeTranslator):
+    def visit_callable_type(self, t: CallableType) -> Type:
+        result = super().visit_callable_type(t)
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
+        return freshen_function_type_vars(result)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # Same as for ExpandTypeVisitor
+        return t.copy_modified(args=[arg.accept(self) for arg in t.args])
+
+
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
-    def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
+    def __init__(
+        self, variables: Mapping[TypeVarId, Type], allow_erased_callables: bool = False
+    ) -> None:
         self.variables = variables
+        self.allow_erased_callables = allow_erased_callables
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -148,8 +178,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
-        # Should not get here.
-        raise RuntimeError()
+        if not self.allow_erased_callables:
+            raise RuntimeError()
+        # This may happen during type inference if some function argument
+        # type is a generic callable, and its erased form will appear in inferred
+        # constraints, then solver may check subtyping between them, which will trigger
+        # unify_generic_callables(), this is why we can get here. In all other cases it
+        # is a sign of a bug, since <Erased> should never appear in any stored types.
+        return t
 
     def visit_instance(self, t: Instance) -> Type:
         args = self.expand_types_with_unpack(list(t.args))
@@ -383,3 +419,20 @@ def expand_unpack_with_variables(
             raise NotImplementedError(f"Invalid type replacement to expand: {repl}")
     else:
         raise NotImplementedError(f"Invalid type to expand: {t.type}")
+
+
+@overload
+def expand_self_type(var: Var, typ: ProperType, replacement: ProperType) -> ProperType:
+    ...
+
+
+@overload
+def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:
+    ...
+
+
+def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:
+    """Expand appearances of Self type in a variable type."""
+    if var.info.self_type is not None and not var.is_property:
+        return expand_type(typ, {var.info.self_type.id: replacement})
+    return typ

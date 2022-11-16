@@ -265,10 +265,7 @@ class ClassIR:
         return True
 
     def is_deletable(self, name: str) -> bool:
-        for ir in self.mro:
-            if name in ir.deletable:
-                return True
-        return False
+        return any(name in ir.deletable for ir in self.mro)
 
     def is_always_defined(self, name: str) -> bool:
         if self.is_deletable(name):

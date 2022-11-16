@@ -214,6 +214,20 @@ mypy-daemon: error: Missing target module, package, files, or command.
 $ dmypy stop
 Daemon stopped
 
+[case testDaemonWarningSuccessExitCode-posix]
+$ dmypy run -- foo.py --follow-imports=error
+Daemon started
+foo.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+Success: no issues found in 1 source file
+$ echo $?
+0
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def foo():
+    a: int = 1
+    print(a + "2")
+
 -- this is carefully constructed to be able to break if the quickstart system lets
 -- something through incorrectly. in particular, the files need to have the same size
 [case testDaemonQuickstart]

@@ -71,14 +71,6 @@ class Context:
         if end_column is not None:
             self.end_column = end_column
 
-    def get_line(self) -> int:
-        """Don't use. Use x.line."""
-        return self.line
-
-    def get_column(self) -> int:
-        """Don't use. Use x.column."""
-        return self.column
-
 
 if TYPE_CHECKING:
     # break import cycle only needed for mypy
@@ -298,6 +290,8 @@ class MypyFile(SymbolNode):
         "future_import_flags",
     )
 
+    __match_args__ = ("name", "path", "defs")
+
     # Fully qualified module name
     _fullname: Bogus[str]
     # Path to the file (empty string if not known)
@@ -433,6 +427,8 @@ class Import(ImportBase):
 
     __slots__ = ("ids",)
 
+    __match_args__ = ("ids",)
+
     ids: list[tuple[str, str | None]]  # (module id, as id)
 
     def __init__(self, ids: list[tuple[str, str | None]]) -> None:
@@ -447,6 +443,8 @@ class ImportFrom(ImportBase):
     """from m import x [as y], ..."""
 
     __slots__ = ("id", "names", "relative")
+
+    __match_args__ = ("id", "names", "relative")
 
     id: str
     relative: int
@@ -467,6 +465,8 @@ class ImportAll(ImportBase):
 
     __slots__ = ("id", "relative", "imported_names")
 
+    __match_args__ = ("id", "relative")
+
     id: str
     relative: int
     # NOTE: Only filled and used by old semantic analyzer.
@@ -480,43 +480,6 @@ class ImportAll(ImportBase):
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
-
-
-class ImportedName(SymbolNode):
-    """Indirect reference to a fullname stored in symbol table.
-
-    This node is not present in the original program as such. This is
-    just a temporary artifact in binding imported names. After semantic
-    analysis pass 2, these references should be replaced with direct
-    reference to a real AST node.
-
-    Note that this is neither a Statement nor an Expression so this
-    can't be visited.
-    """
-
-    __slots__ = ("target_fullname",)
-
-    def __init__(self, target_fullname: str) -> None:
-        super().__init__()
-        self.target_fullname = target_fullname
-
-    @property
-    def name(self) -> str:
-        return self.target_fullname.split(".")[-1]
-
-    @property
-    def fullname(self) -> str:
-        return self.target_fullname
-
-    def serialize(self) -> JsonDict:
-        assert False, "ImportedName leaked from semantic analysis"
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> ImportedName:
-        assert False, "ImportedName should never be serialized"
-
-    def __str__(self) -> str:
-        return f"ImportedName({self.target_fullname})"
 
 
 FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
@@ -651,6 +614,8 @@ class Argument(Node):
     """A single argument in a FuncItem."""
 
     __slots__ = ("variable", "type_annotation", "initializer", "kind", "pos_only")
+
+    __match_args__ = ("variable", "type_annotation", "initializer", "kind", "pos_only")
 
     def __init__(
         self,
@@ -790,6 +755,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "is_mypy_only",
     )
 
+    __match_args__ = ("name", "arguments", "type", "body")
+
     # Note that all __init__ args must have default values
     def __init__(
         self,
@@ -879,6 +846,8 @@ class Decorator(SymbolNode, Statement):
     """
 
     __slots__ = ("func", "decorators", "original_decorators", "var", "is_overload")
+
+    __match_args__ = ("decorators", "var", "func")
 
     func: FuncDef  # Decorated function
     decorators: list[Expression]  # Decorators (may be empty)
@@ -991,6 +960,8 @@ class Var(SymbolNode):
         "invalid_partial_type",
     )
 
+    __match_args__ = ("name", "type", "final_value")
+
     def __init__(self, name: str, type: mypy.types.Type | None = None) -> None:
         super().__init__()
         self._name = name  # Name without module prefix
@@ -1099,6 +1070,8 @@ class ClassDef(Statement):
         "deco_line",
     )
 
+    __match_args__ = ("name", "defs")
+
     name: str  # Name of the class without module prefix
     fullname: Bogus[str]  # Fully qualified name of the class
     defs: Block
@@ -1176,6 +1149,8 @@ class GlobalDecl(Statement):
 
     __slots__ = ("names",)
 
+    __match_args__ = ("names",)
+
     names: list[str]
 
     def __init__(self, names: list[str]) -> None:
@@ -1191,6 +1166,8 @@ class NonlocalDecl(Statement):
 
     __slots__ = ("names",)
 
+    __match_args__ = ("names",)
+
     names: list[str]
 
     def __init__(self, names: list[str]) -> None:
@@ -1203,6 +1180,8 @@ class NonlocalDecl(Statement):
 
 class Block(Statement):
     __slots__ = ("body", "is_unreachable")
+
+    __match_args__ = ("body", "is_unreachable")
 
     def __init__(self, body: list[Statement]) -> None:
         super().__init__()
@@ -1225,6 +1204,8 @@ class ExpressionStmt(Statement):
     """An expression as a statement, such as print(s)."""
 
     __slots__ = ("expr",)
+
+    __match_args__ = ("expr",)
 
     expr: Expression
 
@@ -1257,6 +1238,8 @@ class AssignmentStmt(Statement):
         "is_final_def",
         "invalid_recursive_alias",
     )
+
+    __match_args__ = ("lvalues", "rvalues", "type")
 
     lvalues: list[Lvalue]
     # This is a TempNode if and only if no rvalue (x: t).
@@ -1306,6 +1289,8 @@ class OperatorAssignmentStmt(Statement):
 
     __slots__ = ("op", "lvalue", "rvalue")
 
+    __match_args__ = ("lvalue", "op", "rvalue")
+
     op: str  # TODO: Enum?
     lvalue: Lvalue
     rvalue: Expression
@@ -1322,6 +1307,8 @@ class OperatorAssignmentStmt(Statement):
 
 class WhileStmt(Statement):
     __slots__ = ("expr", "body", "else_body")
+
+    __match_args__ = ("expr", "body", "else_body")
 
     expr: Expression
     body: Block
@@ -1349,6 +1336,8 @@ class ForStmt(Statement):
         "else_body",
         "is_async",
     )
+
+    __match_args__ = ("index", "index_type", "expr", "body", "else_body")
 
     # Index variables
     index: Lvalue
@@ -1392,6 +1381,8 @@ class ForStmt(Statement):
 class ReturnStmt(Statement):
     __slots__ = ("expr",)
 
+    __match_args__ = ("expr",)
+
     expr: Expression | None
 
     def __init__(self, expr: Expression | None) -> None:
@@ -1404,6 +1395,8 @@ class ReturnStmt(Statement):
 
 class AssertStmt(Statement):
     __slots__ = ("expr", "msg")
+
+    __match_args__ = ("expr", "msg")
 
     expr: Expression
     msg: Expression | None
@@ -1419,6 +1412,8 @@ class AssertStmt(Statement):
 
 class DelStmt(Statement):
     __slots__ = ("expr",)
+
+    __match_args__ = ("expr",)
 
     expr: Lvalue
 
@@ -1454,6 +1449,8 @@ class PassStmt(Statement):
 class IfStmt(Statement):
     __slots__ = ("expr", "body", "else_body")
 
+    __match_args__ = ("expr", "body", "else_body")
+
     expr: list[Expression]
     body: list[Block]
     else_body: Block | None
@@ -1471,6 +1468,8 @@ class IfStmt(Statement):
 class RaiseStmt(Statement):
     __slots__ = ("expr", "from_expr")
 
+    __match_args__ = ("expr", "from_expr")
+
     # Plain 'raise' is a valid statement.
     expr: Expression | None
     from_expr: Expression | None
@@ -1485,7 +1484,9 @@ class RaiseStmt(Statement):
 
 
 class TryStmt(Statement):
-    __slots__ = ("body", "types", "vars", "handlers", "else_body", "finally_body")
+    __slots__ = ("body", "types", "vars", "handlers", "else_body", "finally_body", "is_star")
+
+    __match_args__ = ("body", "types", "vars", "handlers", "else_body", "finally_body", "is_star")
 
     body: Block  # Try body
     # Plain 'except:' also possible
@@ -1494,6 +1495,8 @@ class TryStmt(Statement):
     handlers: list[Block]  # Except bodies
     else_body: Block | None
     finally_body: Block | None
+    # Whether this is try ... except* (added in Python 3.11)
+    is_star: bool
 
     def __init__(
         self,
@@ -1511,6 +1514,7 @@ class TryStmt(Statement):
         self.handlers = handlers
         self.else_body = else_body
         self.finally_body = finally_body
+        self.is_star = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)
@@ -1518,6 +1522,8 @@ class TryStmt(Statement):
 
 class WithStmt(Statement):
     __slots__ = ("expr", "target", "unanalyzed_type", "analyzed_types", "body", "is_async")
+
+    __match_args__ = ("expr", "target", "body")
 
     expr: list[Expression]
     target: list[Lvalue | None]
@@ -1548,6 +1554,10 @@ class WithStmt(Statement):
 
 
 class MatchStmt(Statement):
+    __slots__ = ("subject", "patterns", "guards", "bodies")
+
+    __match_args__ = ("subject", "patterns", "guards", "bodies")
+
     subject: Expression
     patterns: list[Pattern]
     guards: list[Expression | None]
@@ -1579,6 +1589,8 @@ class IntExpr(Expression):
 
     __slots__ = ("value",)
 
+    __match_args__ = ("value",)
+
     value: int  # 0 by default
 
     def __init__(self, value: int) -> None:
@@ -1600,6 +1612,8 @@ class StrExpr(Expression):
 
     __slots__ = ("value",)
 
+    __match_args__ = ("value",)
+
     value: str  # '' by default
 
     def __init__(self, value: str) -> None:
@@ -1614,6 +1628,8 @@ class BytesExpr(Expression):
     """Bytes literal"""
 
     __slots__ = ("value",)
+
+    __match_args__ = ("value",)
 
     # Note: we deliberately do NOT use bytes here because it ends up
     # unnecessarily complicating a lot of the result logic. For example,
@@ -1639,6 +1655,8 @@ class FloatExpr(Expression):
 
     __slots__ = ("value",)
 
+    __match_args__ = ("value",)
+
     value: float  # 0.0 by default
 
     def __init__(self, value: float) -> None:
@@ -1653,6 +1671,8 @@ class ComplexExpr(Expression):
     """Complex literal"""
 
     __slots__ = ("value",)
+
+    __match_args__ = ("value",)
 
     value: complex
 
@@ -1677,6 +1697,8 @@ class StarExpr(Expression):
     """Star expression"""
 
     __slots__ = ("expr", "valid")
+
+    __match_args__ = ("expr", "valid")
 
     expr: Expression
     valid: bool
@@ -1734,6 +1756,8 @@ class NameExpr(RefExpr):
 
     __slots__ = ("name", "is_special_form")
 
+    __match_args__ = ("name", "node")
+
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name  # Name referred to (may be qualified)
@@ -1751,6 +1775,8 @@ class MemberExpr(RefExpr):
     """Member access expression x.y"""
 
     __slots__ = ("expr", "name", "def_var")
+
+    __match_args__ = ("expr", "name", "node")
 
     def __init__(self, expr: Expression, name: str) -> None:
         super().__init__()
@@ -1813,6 +1839,8 @@ class CallExpr(Expression):
 
     __slots__ = ("callee", "args", "arg_kinds", "arg_names", "analyzed")
 
+    __match_args__ = ("callee", "args", "arg_kinds", "arg_names")
+
     def __init__(
         self,
         callee: Expression,
@@ -1841,6 +1869,8 @@ class CallExpr(Expression):
 class YieldFromExpr(Expression):
     __slots__ = ("expr",)
 
+    __match_args__ = ("expr",)
+
     expr: Expression
 
     def __init__(self, expr: Expression) -> None:
@@ -1853,6 +1883,8 @@ class YieldFromExpr(Expression):
 
 class YieldExpr(Expression):
     __slots__ = ("expr",)
+
+    __match_args__ = ("expr",)
 
     expr: Expression | None
 
@@ -1871,6 +1903,8 @@ class IndexExpr(Expression):
     """
 
     __slots__ = ("base", "index", "method_type", "analyzed")
+
+    __match_args__ = ("base", "index")
 
     base: Expression
     index: Expression
@@ -1896,6 +1930,8 @@ class UnaryExpr(Expression):
 
     __slots__ = ("op", "expr", "method_type")
 
+    __match_args__ = ("op", "expr")
+
     op: str  # TODO: Enum?
     expr: Expression
     # Inferred operator method type
@@ -1916,6 +1952,8 @@ class AssignmentExpr(Expression):
 
     __slots__ = ("target", "value")
 
+    __match_args__ = ("target", "value")
+
     def __init__(self, target: Expression, value: Expression) -> None:
         super().__init__()
         self.target = target
@@ -1930,6 +1968,8 @@ class OpExpr(Expression):
     which have specific nodes)."""
 
     __slots__ = ("op", "left", "right", "method_type", "right_always", "right_unreachable")
+
+    __match_args__ = ("left", "op", "right")
 
     op: str  # TODO: Enum?
     left: Expression
@@ -1958,6 +1998,8 @@ class ComparisonExpr(Expression):
     """Comparison expression (e.g. a < b > c < d)."""
 
     __slots__ = ("operators", "operands", "method_types")
+
+    __match_args__ = ("operands", "operators")
 
     operators: list[str]
     operands: list[Expression]
@@ -1989,6 +2031,8 @@ class SliceExpr(Expression):
 
     __slots__ = ("begin_index", "end_index", "stride")
 
+    __match_args__ = ("begin_index", "end_index", "stride")
+
     begin_index: Expression | None
     end_index: Expression | None
     stride: Expression | None
@@ -2013,6 +2057,8 @@ class CastExpr(Expression):
 
     __slots__ = ("expr", "type")
 
+    __match_args__ = ("expr", "type")
+
     expr: Expression
     type: mypy.types.Type
 
@@ -2030,6 +2076,8 @@ class AssertTypeExpr(Expression):
 
     __slots__ = ("expr", "type")
 
+    __match_args__ = ("expr", "type")
+
     expr: Expression
     type: mypy.types.Type
 
@@ -2046,6 +2094,8 @@ class RevealExpr(Expression):
     """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 
     __slots__ = ("expr", "kind", "local_nodes")
+
+    __match_args__ = ("expr", "kind", "local_nodes")
 
     expr: Expression | None
     kind: int
@@ -2068,6 +2118,8 @@ class SuperExpr(Expression):
 
     __slots__ = ("name", "info", "call")
 
+    __match_args__ = ("name", "call", "info")
+
     name: str
     info: TypeInfo | None  # Type that contains this super expression
     call: CallExpr  # The expression super(...)
@@ -2084,6 +2136,8 @@ class SuperExpr(Expression):
 
 class LambdaExpr(FuncItem, Expression):
     """Lambda expression"""
+
+    __match_args__ = ("arguments", "arg_names", "arg_kinds", "body")
 
     @property
     def name(self) -> str:
@@ -2108,6 +2162,8 @@ class ListExpr(Expression):
 
     __slots__ = ("items",)
 
+    __match_args__ = ("items",)
+
     items: list[Expression]
 
     def __init__(self, items: list[Expression]) -> None:
@@ -2122,6 +2178,8 @@ class DictExpr(Expression):
     """Dictionary literal expression {key: value, ...}."""
 
     __slots__ = ("items",)
+
+    __match_args__ = ("items",)
 
     items: list[tuple[Expression | None, Expression]]
 
@@ -2140,6 +2198,8 @@ class TupleExpr(Expression):
 
     __slots__ = ("items",)
 
+    __match_args__ = ("items",)
+
     items: list[Expression]
 
     def __init__(self, items: list[Expression]) -> None:
@@ -2155,6 +2215,8 @@ class SetExpr(Expression):
 
     __slots__ = ("items",)
 
+    __match_args__ = ("items",)
+
     items: list[Expression]
 
     def __init__(self, items: list[Expression]) -> None:
@@ -2169,6 +2231,8 @@ class GeneratorExpr(Expression):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
 
     __slots__ = ("left_expr", "sequences", "condlists", "is_async", "indices")
+
+    __match_args__ = ("left_expr", "indices", "sequences", "condlists")
 
     left_expr: Expression
     sequences: list[Expression]
@@ -2200,6 +2264,8 @@ class ListComprehension(Expression):
 
     __slots__ = ("generator",)
 
+    __match_args__ = ("generator",)
+
     generator: GeneratorExpr
 
     def __init__(self, generator: GeneratorExpr) -> None:
@@ -2215,6 +2281,8 @@ class SetComprehension(Expression):
 
     __slots__ = ("generator",)
 
+    __match_args__ = ("generator",)
+
     generator: GeneratorExpr
 
     def __init__(self, generator: GeneratorExpr) -> None:
@@ -2229,6 +2297,8 @@ class DictionaryComprehension(Expression):
     """Dictionary comprehension (e.g. {k: v for k, v in a}"""
 
     __slots__ = ("key", "value", "sequences", "condlists", "is_async", "indices")
+
+    __match_args__ = ("key", "value", "indices", "sequences", "condlists")
 
     key: Expression
     value: Expression
@@ -2263,6 +2333,8 @@ class ConditionalExpr(Expression):
 
     __slots__ = ("cond", "if_expr", "else_expr")
 
+    __match_args__ = ("if_expr", "cond", "else_expr")
+
     cond: Expression
     if_expr: Expression
     else_expr: Expression
@@ -2281,6 +2353,8 @@ class TypeApplication(Expression):
     """Type application expr[type, ...]"""
 
     __slots__ = ("expr", "types")
+
+    __match_args__ = ("expr", "types")
 
     expr: Expression
     types: list[mypy.types.Type]
@@ -2359,6 +2433,8 @@ class TypeVarExpr(TypeVarLikeExpr):
 
     __slots__ = ("values",)
 
+    __match_args__ = ("name", "values", "upper_bound")
+
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
     values: list[mypy.types.Type]
@@ -2402,6 +2478,8 @@ class TypeVarExpr(TypeVarLikeExpr):
 class ParamSpecExpr(TypeVarLikeExpr):
     __slots__ = ()
 
+    __match_args__ = ("name", "upper_bound")
+
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_paramspec_expr(self)
 
@@ -2429,6 +2507,8 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
     """Type variable tuple expression TypeVarTuple(...)."""
 
     __slots__ = ()
+
+    __match_args__ = ("name", "upper_bound")
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_tuple_expr(self)
@@ -2458,6 +2538,8 @@ class TypeAliasExpr(Expression):
 
     __slots__ = ("type", "tvars", "no_args", "node")
 
+    __match_args__ = ("type", "tvars", "no_args", "node")
+
     # The target type.
     type: mypy.types.Type
     # Names of unbound type variables used to define the alias
@@ -2486,6 +2568,8 @@ class NamedTupleExpr(Expression):
 
     __slots__ = ("info", "is_typed")
 
+    __match_args__ = ("info",)
+
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
     info: TypeInfo
@@ -2505,6 +2589,8 @@ class TypedDictExpr(Expression):
 
     __slots__ = ("info",)
 
+    __match_args__ = ("info",)
+
     # The class representation of this typed dict
     info: TypeInfo
 
@@ -2520,6 +2606,8 @@ class EnumCallExpr(Expression):
     """Named tuple expression Enum('name', 'val1 val2 ...')."""
 
     __slots__ = ("info", "items", "values")
+
+    __match_args__ = ("info", "items", "values")
 
     # The class representation of this enumerated type
     info: TypeInfo
@@ -2557,6 +2645,8 @@ class NewTypeExpr(Expression):
 
     __slots__ = ("name", "old_type", "info")
 
+    __match_args__ = ("name", "old_type", "info")
+
     name: str
     # The base type (the second argument to NewType)
     old_type: mypy.types.Type | None
@@ -2579,6 +2669,8 @@ class AwaitExpr(Expression):
     """Await expression (await ...)."""
 
     __slots__ = ("expr",)
+
+    __match_args__ = ("expr",)
 
     expr: Expression
 
@@ -2676,6 +2768,7 @@ class TypeInfo(SymbolNode):
         "has_type_var_tuple_type",
         "type_var_tuple_prefix",
         "type_var_tuple_suffix",
+        "self_type",
     )
 
     _fullname: Bogus[str]  # Fully qualified name
@@ -2816,6 +2909,9 @@ class TypeInfo(SymbolNode):
     # in case we are doing multiple semantic analysis passes.
     special_alias: TypeAlias | None
 
+    # Shared type variable for typing.Self in this class (if used, otherwise None).
+    self_type: mypy.types.TypeVarType | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -2868,6 +2964,7 @@ class TypeInfo(SymbolNode):
         self.is_newtype = False
         self.is_intersection = False
         self.metadata = {}
+        self.self_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3085,6 +3182,7 @@ class TypeInfo(SymbolNode):
             "metadata": self.metadata,
             "slots": list(sorted(self.slots)) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
+            "self_type": self.self_type.serialize() if self.self_type is not None else None,
         }
         return data
 
@@ -3141,6 +3239,8 @@ class TypeInfo(SymbolNode):
         ti.slots = set(data["slots"]) if data["slots"] is not None else None
         ti.deletable_attributes = data["deletable_attributes"]
         set_flags(ti, data["flags"])
+        st = data["self_type"]
+        ti.self_type = mypy.types.TypeVarType.deserialize(st) if st is not None else None
         return ti
 
 
@@ -3282,6 +3382,8 @@ class TypeAlias(SymbolNode):
         "_is_recursive",
         "eager",
     )
+
+    __match_args__ = ("name", "target", "alias_tvars", "no_args")
 
     def __init__(
         self,

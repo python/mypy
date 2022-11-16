@@ -50,7 +50,7 @@ class StrConv(NodeVisitor[str]):
         number. See mypy.util.dump_tagged for a description of the nodes
         argument.
         """
-        tag = short_type(obj) + ":" + str(obj.get_line())
+        tag = short_type(obj) + ":" + str(obj.line)
         if self.show_ids:
             assert self.id_mapper is not None
             tag += f"<{self.get_id(obj)}>"
@@ -276,6 +276,8 @@ class StrConv(NodeVisitor[str]):
 
     def visit_try_stmt(self, o: mypy.nodes.TryStmt) -> str:
         a: list[Any] = [o.body]
+        if o.is_star:
+            a.append("*")
 
         for i in range(len(o.vars)):
             a.append(o.types[i])

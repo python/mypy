@@ -28,4 +28,4 @@ class TestEmitter(unittest.TestCase):
         emitter.emit_line("a {")
         emitter.emit_line("f();")
         emitter.emit_line("}")
-        assert emitter.fragments == ["line;\n", "a {\n", "    f();\n", "}\n"]
+        assert emitter.fragments == ["line;\n", "a {\n", "\tf();\n", "}\n"]

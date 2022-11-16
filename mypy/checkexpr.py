@@ -111,6 +111,7 @@ from mypy.typeops import (
     custom_special_method,
     erase_to_union_or_bound,
     false_only,
+    fixup_partial_type,
     function_type,
     is_literal_type_like,
     make_simplified_union,
@@ -2666,6 +2667,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
                 module_symbol_table = base.node.names
+            if isinstance(base, RefExpr) and isinstance(base.node, Var):
+                is_self = base.node.is_self
+            else:
+                is_self = False
 
             member_type = analyze_member_access(
                 e.name,
@@ -2679,6 +2684,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 chk=self.chk,
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table,
+                is_self=is_self,
             )
 
             return member_type
@@ -2925,7 +2931,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(expr.node, Var):
             result = self.analyze_var_ref(expr.node, expr)
             if isinstance(result, PartialType) and result.type is not None:
-                self.chk.store_type(expr, self.chk.fixup_partial_type(result))
+                self.chk.store_type(expr, fixup_partial_type(result))
                 return result
         return None
 
@@ -3869,9 +3875,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
-            # This type is invalid in most runtime contexts, give it an 'object' type.
-            # TODO: Use typing._SpecialForm instead?
-            return self.named_type("builtins.object")
+            # The _SpecialForm type can be used in some runtime contexts (e.g. it may have __or__).
+            return self.named_type("typing._SpecialForm")
 
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context
@@ -4316,8 +4321,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     mro = e.info.mro
                     index = mro.index(type_info)
         if index is None:
-            self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
-            return AnyType(TypeOfAny.from_error)
+            if (
+                instance_info.is_protocol
+                and instance_info != type_info
+                and not type_info.is_protocol
+            ):
+                # A special case for mixins, in this case super() should point
+                # directly to the host protocol, this is not safe, since the real MRO
+                # is not known yet for mixin, but this feature is more like an escape hatch.
+                index = -1
+            else:
+                self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
+                return AnyType(TypeOfAny.from_error)
 
         if len(mro) == index + 1:
             self.chk.fail(message_registry.TARGET_CLASS_HAS_NO_BASE_CLASS, e)
@@ -4741,7 +4756,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             typ = typ.fallback
         if isinstance(typ, Instance):
             return typ.type.has_readable_member(member)
-        if isinstance(typ, CallableType) and typ.is_type_obj():
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
             return typ.fallback.type.has_readable_member(member)
         elif isinstance(typ, AnyType):
             return True

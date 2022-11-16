@@ -26,6 +26,7 @@ class list(Sequence[T], Generic[T]): pass
 
 class int:
     def __eq__(self, o: object) -> bool: pass
+class float: pass
 class str: pass
 class bytes: pass
 class bool: pass

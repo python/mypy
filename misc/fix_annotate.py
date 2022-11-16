@@ -213,8 +213,7 @@ class FixAnnotate(BaseFix):
         results = {}
         if self.return_expr.match(node, results):
             return True
-        for child in node.children:
-            if child.type not in (syms.funcdef, syms.classdef):
-                if self.has_return_exprs(child):
-                    return True
-        return False
+        return any(
+            child.type not in (syms.funcdef, syms.classdef) and self.has_return_exprs(child)
+            for child in node.children
+        )

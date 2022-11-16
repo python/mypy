@@ -221,6 +221,19 @@ reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'y': builtins.in
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testCannotCreateTypedDictWithDecoratedFunction]
+# flags: --disallow-any-expr
+# https://github.com/python/mypy/issues/13066
+from typing import TypedDict
+class D(TypedDict):
+    @classmethod  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+    def m(self) -> D:
+        pass
+d = D()
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictWithClassmethodAlternativeConstructorDoesNotCrash]
 # https://github.com/python/mypy/issues/5653
 from typing import TypedDict
@@ -2575,5 +2588,16 @@ tdi = TD(key=0, value=0)
 reveal_type(tdi)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.int})"
 TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
 TD[str]({"key": 0, "value": 0})  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSelfItemNotAllowed]
+from typing import Self, TypedDict, Optional
+
+class TD(TypedDict):
+    val: int
+    next: Optional[Self]  # E: Self type cannot be used in TypedDict item type
+TDC = TypedDict("TDC", {"val": int, "next": Optional[Self]})  # E: Self type cannot be used in TypedDict item type
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

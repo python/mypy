@@ -124,7 +124,15 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             [
                 narrow_declared_type(x, narrowed)
                 for x in declared.relevant_items()
-                if is_overlapping_types(x, narrowed, ignore_promotions=True)
+                # This (ugly) special-casing is needed to support checking
+                # branches like this:
+                # x: Union[float, complex]
+                # if isinstance(x, int):
+                #     ...
+                if (
+                    is_overlapping_types(x, narrowed, ignore_promotions=True)
+                    or is_subtype(narrowed, x, ignore_promotions=False)
+                )
             ]
         )
     if is_enum_overlapping_union(declared, narrowed):
