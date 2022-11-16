@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_self_type, expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import (
+    expand_self_type,
+    expand_type_by_instance,
+    freshen_all_functions_type_vars,
+)
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -66,6 +70,7 @@ from mypy.types import (
     get_proper_type,
     has_type_vars,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 
 if TYPE_CHECKING:  # import for forward declaration only
     import mypy.checker
@@ -311,7 +316,7 @@ def analyze_instance_member_access(
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type("builtins.function"))
-        signature = freshen_function_type_vars(signature)
+        signature = freshen_all_functions_type_vars(signature)
         if name == "__new__" or method.is_static:
             # __new__ is special and behaves like a static method -- don't strip
             # the first argument.
@@ -329,7 +334,7 @@ def analyze_instance_member_access(
         # Since generic static methods should not be allowed.
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
-        freeze_type_vars(member_type)
+        freeze_all_type_vars(member_type)
         return member_type
     else:
         # Not a method.
@@ -727,11 +732,13 @@ def analyze_var(
             mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
+        t = freshen_all_functions_type_vars(typ)
         if not (mx.is_self or mx.is_super) or supported_self_type(
             get_proper_type(mx.original_type)
         ):
-            typ = expand_self_type(var, typ, mx.original_type)
-        t = get_proper_type(expand_type_by_instance(typ, itype))
+            t = expand_self_type(var, t, mx.original_type)
+        t = get_proper_type(expand_type_by_instance(t, itype))
+        freeze_all_type_vars(t)
         result: Type = t
         typ = get_proper_type(typ)
         if (
@@ -759,13 +766,13 @@ def analyze_var(
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
                 # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
-                signature = freshen_function_type_vars(functype)
+                signature = freshen_all_functions_type_vars(functype)
                 signature = check_self_arg(
                     signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
                 )
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
                 expanded_signature = expand_type_by_instance(signature, itype)
-                freeze_type_vars(expanded_signature)
+                freeze_all_type_vars(expanded_signature)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
@@ -788,16 +795,14 @@ def analyze_var(
     return result
 
 
-def freeze_type_vars(member_type: Type) -> None:
-    if not isinstance(member_type, ProperType):
-        return
-    if isinstance(member_type, CallableType):
-        for v in member_type.variables:
+def freeze_all_type_vars(member_type: Type) -> None:
+    member_type.accept(FreezeTypeVarsVisitor())
+
+
+class FreezeTypeVarsVisitor(TypeTraverserVisitor):
+    def visit_callable_type(self, t: CallableType) -> None:
+        for v in t.variables:
             v.id.meta_level = 0
-    if isinstance(member_type, Overloaded):
-        for it in member_type.items:
-            for v in it.variables:
-                v.id.meta_level = 0
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) -> SymbolNode | None:
@@ -1131,11 +1136,11 @@ def add_class_tvars(
     if isinstance(t, CallableType):
         tvars = original_vars if original_vars is not None else []
         if is_classmethod:
-            t = freshen_function_type_vars(t)
+            t = freshen_all_functions_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
             t = cast(CallableType, expand_type_by_instance(t, isuper))
-            freeze_type_vars(t)
+            freeze_all_type_vars(t)
         return t.copy_modified(variables=list(tvars) + list(t.variables))
     elif isinstance(t, Overloaded):
         return Overloaded(

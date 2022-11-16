@@ -1674,7 +1674,7 @@ class C:
     def bar(self) -> Self: ...
     foo: Callable[[S, Self], Tuple[Self, S]]
 
-reveal_type(C().foo)  # N: Revealed type is "def [S] (S`-1, __main__.C) -> Tuple[__main__.C, S`-1]"
+reveal_type(C().foo)  # N: Revealed type is "def [S] (S`1, __main__.C) -> Tuple[__main__.C, S`1]"
 reveal_type(C().foo(42, C()))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
 class This: ...
 [builtins fixtures/tuple.pyi]

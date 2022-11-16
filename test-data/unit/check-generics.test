@@ -1544,7 +1544,7 @@ class C(Generic[T]):
 reveal_type(C.F(17).foo())      # N: Revealed type is "builtins.int"
 reveal_type(C("").F(17).foo())  # N: Revealed type is "builtins.int"
 reveal_type(C.F)                # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
-reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
+reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`6) -> __main__.C.F[K`6]"
 
 
 -- Callable subtyping with generic functions
@@ -2580,3 +2580,68 @@ class Bar(Foo[AnyStr]):
 [out]
 main:10: error: Argument 1 to "method1" of "Foo" has incompatible type "str"; expected "AnyStr"
 main:10: error: Argument 2 to "method1" of "Foo" has incompatible type "bytes"; expected "AnyStr"
+
+[case testTypeVariableClashVar]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    x: Callable[[T], R]
+
+def func(x: C[R]) -> R:
+    return x.x(42)  # OK
+
+[case testTypeVariableClashVarTuple]
+from typing import Generic, TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    x: Callable[[T], Tuple[R, T]]
+
+def func(x: C[R]) -> R:
+    if bool():
+        return x.x(42)[0]  # OK
+    else:
+        return x.x(42)[1]  # E: Incompatible return value type (got "int", expected "R")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVariableClashMethod]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    def x(self) -> Callable[[T], R]: ...
+
+def func(x: C[R]) -> R:
+    return x.x()(42)  # OK
+
+[case testTypeVariableClashMethodTuple]
+from typing import Generic, TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    def x(self) -> Callable[[T], Tuple[R, T]]: ...
+
+def func(x: C[R]) -> R:
+    if bool():
+        return x.x()(42)[0]  # OK
+    else:
+        return x.x()(42)[1]  # E: Incompatible return value type (got "int", expected "R")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVariableClashVarSelf]
+from typing import Self, TypeVar, Generic, Callable
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class C(Generic[T]):
+    x: Callable[[S], Self]
+    y: T
+
+def foo(x: C[T]) -> T:
+    return x.x(42).y  # OK

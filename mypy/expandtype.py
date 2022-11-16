@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
 
 from mypy.nodes import ARG_STAR, Var
+from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     AnyType,
     CallableType,
@@ -128,6 +129,26 @@ def freshen_function_type_vars(callee: F) -> F:
         assert isinstance(callee, Overloaded)
         fresh_overload = Overloaded([freshen_function_type_vars(item) for item in callee.items])
         return cast(F, fresh_overload)
+
+
+T = TypeVar("T", bound=Type)
+
+
+def freshen_all_functions_type_vars(t: T) -> T:
+    result = t.accept(FreshenCallableVisitor())
+    assert isinstance(result, type(t))
+    return result
+
+
+class FreshenCallableVisitor(TypeTranslator):
+    def visit_callable_type(self, t: CallableType) -> Type:
+        result = super().visit_callable_type(t)
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
+        return freshen_function_type_vars(result)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # Same as for ExpandTypeVisitor
+        return t.copy_modified(args=[arg.accept(self) for arg in t.args])
 
 
 class ExpandTypeVisitor(TypeVisitor[Type]):
