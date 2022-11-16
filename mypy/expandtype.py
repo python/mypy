@@ -292,65 +292,76 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                 expanded_tuple = get_proper_type(var_arg.typ.type.accept(self))
                 # TODO: handle the case that expanded_tuple is a variable length tuple.
                 assert isinstance(expanded_tuple, TupleType)
-                expanded_unpack_index = find_unpack_in_list(expanded_tuple.items)
-                # This is the case where we just have Unpack[Tuple[X1, X2, X3]]
-                # (for example if either the tuple had no unpacks, or the unpack in the
-                # tuple got fully expanded to something with fixed length)
-                if expanded_unpack_index is None:
-                    arg_names = (
-                        t.arg_names[:star_index]
-                        + [None] * len(expanded_tuple.items)
-                        + t.arg_names[star_index + 1 :]
-                    )
-                    arg_kinds = (
-                        t.arg_kinds[:star_index]
-                        + [ARG_POS] * len(expanded_tuple.items)
-                        + t.arg_kinds[star_index + 1 :]
-                    )
-                    arg_types = (
-                        self.expand_types(t.arg_types[:star_index])
-                        + expanded_tuple.items
-                        + self.expand_types(t.arg_types[star_index + 1 :])
-                    )
-                else:
-                    # If Unpack[Ts] simplest form still has an unpack or is a
-                    # homogenous tuple, then only the prefix can be represented as
-                    # positional arguments, and we pass Tuple[Unpack[Ts-1], Y1, Y2]
-                    # as the star arg, for example.
-                    prefix_len = expanded_unpack_index
-                    arg_names = (
-                        t.arg_names[:star_index] + [None] * prefix_len + t.arg_names[star_index:]
-                    )
-                    arg_kinds = (
-                        t.arg_kinds[:star_index]
-                        + [ARG_POS] * prefix_len
-                        + t.arg_kinds[star_index:]
-                    )
-                    arg_types = (
-                        self.expand_types(t.arg_types[:star_index])
-                        + expanded_tuple.items[:prefix_len]
-                        # Constructing the Unpack containing the tuple without the prefix.
-                        + [
-                            UnpackType(
-                                expanded_tuple.copy_modified(
-                                    items=expanded_tuple.items[prefix_len:]
-                                )
-                            )
-                        ]
-                        + self.expand_types(t.arg_types[star_index + 1 :])
-                    )
+                expanded_items = expanded_tuple.items
             else:
-                expanded = self.expand_unpack(var_arg.typ)
-                # Handle other cases later.
-                assert isinstance(expanded, list)
-                assert len(expanded) == 1 and isinstance(expanded[0], UnpackType)
+                expanded_items_res = self.expand_unpack(var_arg.typ)
+                # TODO: can it be anything except a list?
+                assert isinstance(expanded_items_res, list)
+                expanded_items = expanded_items_res
 
+            """
                 # In this case we keep the arg as ARG_STAR.
                 arg_names = t.arg_names
                 arg_kinds = t.arg_kinds
                 arg_types = (
                     self.expand_types(t.arg_types[:star_index])
                     + expanded
+                    + self.expand_types(t.arg_types[star_index + 1 :])
+                )
+            """
+
+            expanded_unpack_index = find_unpack_in_list(expanded_items)
+            # This is the case where we just have Unpack[Tuple[X1, X2, X3]]
+            # (for example if either the tuple had no unpacks, or the unpack in the
+            # tuple got fully expanded to something with fixed length)
+            if expanded_unpack_index is None:
+                arg_names = (
+                    t.arg_names[:star_index]
+                    + [None] * len(expanded_items)
+                    + t.arg_names[star_index + 1 :]
+                )
+                arg_kinds = (
+                    t.arg_kinds[:star_index]
+                    + [ARG_POS] * len(expanded_items)
+                    + t.arg_kinds[star_index + 1 :]
+                )
+                arg_types = (
+                    self.expand_types(t.arg_types[:star_index])
+                    + expanded_items
+                    + self.expand_types(t.arg_types[star_index + 1 :])
+                )
+            else:
+                # If Unpack[Ts] simplest form still has an unpack or is a
+                # homogenous tuple, then only the prefix can be represented as
+                # positional arguments, and we pass Tuple[Unpack[Ts-1], Y1, Y2]
+                # as the star arg, for example.
+                expanded_unpack = get_proper_type(expanded_items[expanded_unpack_index])
+                assert isinstance(expanded_unpack, UnpackType)
+
+                # Extract the typevartuple so we can get a tuple fallback from it.
+                expanded_unpacked_tvt = get_proper_type(expanded_unpack.type)
+                assert isinstance(expanded_unpacked_tvt, TypeVarTupleType)
+
+                prefix_len = expanded_unpack_index
+                arg_names = (
+                    t.arg_names[:star_index] + [None] * prefix_len + t.arg_names[star_index:]
+                )
+                arg_kinds = (
+                    t.arg_kinds[:star_index] + [ARG_POS] * prefix_len + t.arg_kinds[star_index:]
+                )
+                arg_types = (
+                    self.expand_types(t.arg_types[:star_index])
+                    + expanded_items[:prefix_len]
+                    # Constructing the Unpack containing the tuple without the prefix.
+                    + [
+                        UnpackType(
+                            TupleType(
+                                expanded_items[prefix_len:], expanded_unpacked_tvt.tuple_fallback
+                            )
+                        )
+                        if len(expanded_items) - prefix_len > 1
+                        else expanded_items[0]
+                    ]
                     + self.expand_types(t.arg_types[star_index + 1 :])
                 )
         else:

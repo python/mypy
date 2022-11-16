@@ -1274,6 +1274,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         args: list[Type] = []
         kinds: list[ArgKind] = []
         names: list[str | None] = []
+        found_unpack = False
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
@@ -1294,6 +1295,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     if arg.name is not None and kind.is_star():
                         self.fail(f"{arg.constructor} arguments should not have names", arg)
                         return None
+            elif isinstance(arg, UnboundType):
+                kind = ARG_POS
+                # Potentially a unpack.
+                sym = self.lookup_qualified(arg.name, arg)
+                if sym is not None:
+                    if sym.fullname == "typing_extensions.Unpack":
+                        if found_unpack:
+                            self.fail("Callables can only have a single unpack", arg)
+                        found_unpack = True
+                        kind = ARG_STAR
+                args.append(arg)
+                kinds.append(kind)
+                names.append(None)
             else:
                 args.append(arg)
                 kinds.append(ARG_POS)

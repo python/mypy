@@ -164,6 +164,7 @@ from mypy.types import (
 )
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
+from mypy.typevartuples import find_unpack_in_list
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
 
@@ -2064,12 +2065,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 actual_kinds = [arg_kinds[a] for a in actuals]
                 if isinstance(orig_callee_arg_type, UnpackType):
                     unpacked_type = get_proper_type(orig_callee_arg_type.type)
-                    # Only case we know of thus far.
-                    assert isinstance(unpacked_type, TupleType)
-                    actual_types = [arg_types[a] for a in actuals]
-                    actual_kinds = [arg_kinds[a] for a in actuals]
-                    callee_arg_types = unpacked_type.items
-                    callee_arg_kinds = [ARG_POS] * len(actuals)
+                    if isinstance(unpacked_type, TupleType):
+                        inner_unpack_index = find_unpack_in_list(unpacked_type.items)
+                        if inner_unpack_index is None:
+                            callee_arg_types = unpacked_type.items
+                            callee_arg_kinds = [ARG_POS] * len(actuals)
+                        else:
+                            inner_unpack = get_proper_type(unpacked_type.items[inner_unpack_index])
+                            assert isinstance(inner_unpack, UnpackType)
+                            inner_unpacked_type = get_proper_type(inner_unpack.type)
+                            # We assume heterogenous tuples are desugared earlier
+                            assert isinstance(inner_unpacked_type, Instance)
+                            assert inner_unpacked_type.type.fullname == "builtins.tuple"
+                            callee_arg_types = (
+                                unpacked_type.items[:inner_unpack_index]
+                                + [inner_unpacked_type.args[0]]
+                                * (len(actuals) - len(unpacked_type.items) + 1)
+                                + unpacked_type.items[inner_unpack_index + 1 :]
+                            )
+                            callee_arg_kinds = [ARG_POS] * len(actuals)
+                    else:
+                        assert isinstance(unpacked_type, Instance)
+                        assert unpacked_type.type.fullname == "builtins.tuple"
+                        callee_arg_types = [unpacked_type.args[0]] * len(actuals)
+                        callee_arg_kinds = [ARG_POS] * len(actuals)
                 else:
                     callee_arg_types = [orig_callee_arg_type] * len(actuals)
                     callee_arg_kinds = [callee.arg_kinds[i]] * len(actuals)
