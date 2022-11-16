@@ -6109,12 +6109,12 @@ class SemanticAnalyzer(
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
+        self.errors.report(ctx.line, ctx.column, msg, blocker=blocker, code=code)
 
     def note(self, msg: str, ctx: Context, code: ErrorCode | None = None) -> None:
         if not self.in_checked_function():
             return
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity="note", code=code)
+        self.errors.report(ctx.line, ctx.column, msg, severity="note", code=code)
 
     def incomplete_feature_enabled(self, feature: str, ctx: Context) -> bool:
         if feature not in self.options.enable_incomplete_feature:

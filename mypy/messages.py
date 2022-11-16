@@ -231,8 +231,8 @@ class MessageBuilder:
         else:
             origin_span = None
         self.errors.report(
-            context.get_line() if context else -1,
-            context.get_column() if context else -1,
+            context.line if context else -1,
+            context.column if context else -1,
             msg,
             severity=severity,
             file=file,

@@ -50,7 +50,7 @@ class StrConv(NodeVisitor[str]):
         number. See mypy.util.dump_tagged for a description of the nodes
         argument.
         """
-        tag = short_type(obj) + ":" + str(obj.get_line())
+        tag = short_type(obj) + ":" + str(obj.line)
         if self.show_ids:
             assert self.id_mapper is not None
             tag += f"<{self.get_id(obj)}>"

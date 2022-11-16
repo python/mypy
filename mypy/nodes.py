@@ -71,14 +71,6 @@ class Context:
         if end_column is not None:
             self.end_column = end_column
 
-    def get_line(self) -> int:
-        """Don't use. Use x.line."""
-        return self.line
-
-    def get_column(self) -> int:
-        """Don't use. Use x.column."""
-        return self.column
-
 
 if TYPE_CHECKING:
     # break import cycle only needed for mypy
