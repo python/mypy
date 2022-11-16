@@ -1040,7 +1040,10 @@ def is_protocol_implementation(
                 if not is_subtype(supertype, subtype):
                     return False
             if not class_obj:
-                if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
+                if IS_SETTABLE not in superflags:
+                    if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
+                        return False
+                elif (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
                     return False
             else:
                 if IS_VAR in superflags and IS_CLASSVAR not in subflags:

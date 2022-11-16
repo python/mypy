@@ -2663,6 +2663,7 @@ def get_bad_protocol_flags(
         if (
             IS_CLASSVAR in subflags
             and IS_CLASSVAR not in superflags
+            and IS_SETTABLE in superflags
             or IS_CLASSVAR in superflags
             and IS_CLASSVAR not in subflags
             or IS_SETTABLE in superflags
