@@ -2592,6 +2592,21 @@ class C(Generic[R]):
 def func(x: C[R]) -> R:
     return x.x(42)  # OK
 
+[case testTypeVariableClashVarTuple]
+from typing import Generic, TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    x: Callable[[T], Tuple[R, T]]
+
+def func(x: C[R]) -> R:
+    if bool():
+        return x.x(42)[0]  # OK
+    else:
+        return x.x(42)[1]  # E: Incompatible return value type (got "int", expected "R")
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVariableClashMethod]
 from typing import Generic, TypeVar, Callable
 
@@ -2602,6 +2617,21 @@ class C(Generic[R]):
 
 def func(x: C[R]) -> R:
     return x.x()(42)  # OK
+
+[case testTypeVariableClashMethodTuple]
+from typing import Generic, TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    def x(self) -> Callable[[T], Tuple[R, T]]: ...
+
+def func(x: C[R]) -> R:
+    if bool():
+        return x.x()(42)[0]  # OK
+    else:
+        return x.x()(42)[1]  # E: Incompatible return value type (got "int", expected "R")
+[builtins fixtures/tuple.pyi]
 
 [case testTypeVariableClashVarSelf]
 from typing import Self, TypeVar, Generic, Callable
