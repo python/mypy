@@ -4321,8 +4321,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     mro = e.info.mro
                     index = mro.index(type_info)
         if index is None:
-            self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
-            return AnyType(TypeOfAny.from_error)
+            if (
+                instance_info.is_protocol
+                and instance_info != type_info
+                and not type_info.is_protocol
+            ):
+                # A special case for mixins, in this case super() should point
+                # directly to the host protocol, this is not safe, since the real MRO
+                # is not known yet for mixin, but this feature is more like an escape hatch.
+                index = -1
+            else:
+                self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
+                return AnyType(TypeOfAny.from_error)
 
         if len(mro) == index + 1:
             self.chk.fail(message_registry.TARGET_CLASS_HAS_NO_BASE_CLASS, e)
