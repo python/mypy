@@ -1958,3 +1958,26 @@ lst = SubLinkedList(1, LinkedList(2))  # E: Argument 2 to "SubLinkedList" has in
 reveal_type(lst.next)  # N: Revealed type is "Union[__main__.SubLinkedList, None]"
 reveal_type(SubLinkedList)  # N: Revealed type is "def (value: builtins.int, next: Union[__main__.SubLinkedList, None] =) -> __main__.SubLinkedList"
 [builtins fixtures/dataclasses.pyi]
+
+[case testNoCrashOnNestedGenericCallable]
+from dataclasses import dataclass
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar('T')
+R = TypeVar('R')
+X = TypeVar('X')
+
+@dataclass
+class Box(Generic[T]):
+    inner: T
+
+@dataclass
+class Cont(Generic[R]):
+    run: Box[Callable[[X], R]]
+
+def const_two(x: T) -> str:
+    return "two"
+
+c = Cont(Box(const_two))
+reveal_type(c)  # N: Revealed type is "__main__.Cont[builtins.str]"
+[builtins fixtures/dataclasses.pyi]

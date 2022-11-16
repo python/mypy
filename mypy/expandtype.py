@@ -39,20 +39,26 @@ from mypy.typevartuples import split_with_instance, split_with_prefix_and_suffix
 
 
 @overload
-def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType:
+def expand_type(
+    typ: ProperType, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
+) -> ProperType:
     ...
 
 
 @overload
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
+def expand_type(
+    typ: Type, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
+) -> Type:
     ...
 
 
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
+def expand_type(
+    typ: Type, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = False
+) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
     """
-    return typ.accept(ExpandTypeVisitor(env))
+    return typ.accept(ExpandTypeVisitor(env, allow_erased_callables))
 
 
 @overload
@@ -129,8 +135,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
-    def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
+    def __init__(
+        self, variables: Mapping[TypeVarId, Type], allow_erased_callables: bool = False
+    ) -> None:
         self.variables = variables
+        self.allow_erased_callables = allow_erased_callables
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -148,8 +157,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
-        # Should not get here.
-        raise RuntimeError()
+        if not self.allow_erased_callables:
+            raise RuntimeError()
+        # This may happen during type inference if some function argument
+        # type is a generic callable, and its erased form will appear in inferred
+        # constraints, then solver may check subtyping between them, which will trigger
+        # unify_generic_callables(), this is why we can get here. In all other cases it
+        # is a sign of a bug, since <Erased> should never appear in any stored types.
+        return t
 
     def visit_instance(self, t: Instance) -> Type:
         args = self.expand_types_with_unpack(list(t.args))

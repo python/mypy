@@ -1667,8 +1667,12 @@ def unify_generic_callable(
         nonlocal had_errors
         had_errors = True
 
+    # This function may be called by the solver, so we need to allow erased types here.
+    # We anyway allow checking subtyping between other types containing <Erased>
+    # (probably also because solver needs subtyping). See also comment in
+    # ExpandTypeVisitor.visit_erased_type().
     applied = mypy.applytype.apply_generic_arguments(
-        type, non_none_inferred_vars, report, context=target
+        type, non_none_inferred_vars, report, context=target, allow_erased_callables=True
     )
     if had_errors:
         return None

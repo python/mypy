@@ -73,6 +73,7 @@ def apply_generic_arguments(
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool = False,
+    allow_erased_callables: bool = False,
 ) -> CallableType:
     """Apply generic type arguments to a callable type.
 
@@ -130,18 +131,26 @@ def apply_generic_arguments(
             + callable.arg_names[star_index + 1 :]
         )
         arg_types = (
-            [expand_type(at, id_to_type) for at in callable.arg_types[:star_index]]
+            [
+                expand_type(at, id_to_type, allow_erased_callables)
+                for at in callable.arg_types[:star_index]
+            ]
             + expanded
-            + [expand_type(at, id_to_type) for at in callable.arg_types[star_index + 1 :]]
+            + [
+                expand_type(at, id_to_type, allow_erased_callables)
+                for at in callable.arg_types[star_index + 1 :]
+            ]
         )
     else:
-        arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
+        arg_types = [
+            expand_type(at, id_to_type, allow_erased_callables) for at in callable.arg_types
+        ]
         arg_kinds = callable.arg_kinds
         arg_names = callable.arg_names
 
     # Apply arguments to TypeGuard if any.
     if callable.type_guard is not None:
-        type_guard = expand_type(callable.type_guard, id_to_type)
+        type_guard = expand_type(callable.type_guard, id_to_type, allow_erased_callables)
     else:
         type_guard = None
 
@@ -150,7 +159,7 @@ def apply_generic_arguments(
 
     return callable.copy_modified(
         arg_types=arg_types,
-        ret_type=expand_type(callable.ret_type, id_to_type),
+        ret_type=expand_type(callable.ret_type, id_to_type, allow_erased_callables),
         variables=remaining_tvars,
         type_guard=type_guard,
         arg_kinds=arg_kinds,
