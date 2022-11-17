@@ -135,7 +135,7 @@ class NamedTupleAnalyzer:
     ) -> tuple[list[str], list[Type], dict[str, Expression], list[Statement]] | None:
         """Parse and validate fields in named tuple class definition.
 
-        Return a three tuple:
+        Return a four tuple:
           * field names
           * field types
           * field default values
