@@ -1005,6 +1005,10 @@ def is_protocol_implementation(
                 subtype: ProperType | None = mypy.checkmember.type_object_type(
                     left.type, named_type
                 )
+            elif member == "__call__" and left.type.is_metaclass():
+                # Special case: we want to avoid falling back to metaclass __call__
+                # if constructor signature didn't match, this can cause many false negatives.
+                subtype = None
             else:
                 subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
             # Useful for debugging:
