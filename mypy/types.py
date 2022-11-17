@@ -3236,12 +3236,11 @@ def replace_alias_tvars(
 
 
 class HasTypeVars(TypeQuery[bool]):
-    def __init__(self, exclude: TypeVarId | None = None) -> None:
+    def __init__(self) -> None:
         super().__init__(any)
-        self.exclude = exclude
 
     def visit_type_var(self, t: TypeVarType) -> bool:
-        return t.id != self.exclude
+        return True
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
         return True
@@ -3250,9 +3249,9 @@ class HasTypeVars(TypeQuery[bool]):
         return True
 
 
-def has_type_vars(typ: Type, exclude: TypeVarId | None = None) -> bool:
+def has_type_vars(typ: Type) -> bool:
     """Check if a type contains any type variables (recursively)."""
-    return typ.accept(HasTypeVars(exclude))
+    return typ.accept(HasTypeVars())
 
 
 class HasRecursiveType(TypeQuery[bool]):

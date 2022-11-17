@@ -40,6 +40,7 @@ from mypy.typeops import (
     class_callable,
     erase_to_bound,
     function_type,
+    get_type_vars,
     make_simplified_union,
     supported_self_type,
     tuple_fallback,
@@ -68,7 +69,6 @@ from mypy.types import (
     TypeVarType,
     UnionType,
     get_proper_type,
-    has_type_vars,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 
@@ -767,6 +767,9 @@ def analyze_var(
                 # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
                 signature = freshen_all_functions_type_vars(functype)
+                bound = get_proper_type(expand_self_type(var, signature, mx.original_type))
+                assert isinstance(bound, FunctionLike)
+                signature = bound
                 signature = check_self_arg(
                     signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
                 )
@@ -960,11 +963,11 @@ def analyze_class_attribute_access(
             #     C.x  # Error, ambiguous access
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
             # Exception is Self type wrapped in ClassVar, that is safe.
-            if node.node.info.self_type is not None and node.node.is_classvar:
-                exclude = node.node.info.self_type.id
-            else:
-                exclude = None
-            if isinstance(t, TypeVarType) and t.id != exclude or has_type_vars(t, exclude):
+            def_vars = set(node.node.info.defn.type_vars)
+            if not node.node.is_classvar and node.node.info.self_type:
+                def_vars.add(node.node.info.self_type)
+            typ_vars = set(get_type_vars(t))
+            if def_vars & typ_vars:
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
@@ -978,7 +981,7 @@ def analyze_class_attribute_access(
             #     C.x -> Any
             #     C[int].x -> int
             t = get_proper_type(expand_self_type(node.node, t, itype))
-            t = erase_typevars(expand_type_by_instance(t, isuper))
+            t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
             isinstance(node.node, FuncBase) and node.node.is_class
