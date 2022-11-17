@@ -4,7 +4,7 @@ from typing import Callable, Sequence
 
 import mypy.subtypes
 from mypy.expandtype import expand_type, expand_unpack_with_variables
-from mypy.nodes import ARG_POS, ARG_STAR, Context
+from mypy.nodes import ARG_STAR, Context
 from mypy.types import (
     AnyType,
     CallableType,
@@ -149,7 +149,6 @@ def apply_generic_arguments(
                         )
                     )
                 else:
-                    expanded = expanded_tuple.items
                     callable = replace_starargs(callable, expanded_tuple.items)
             else:
                 # TODO: handle the case for if we get a variable length tuple.

@@ -318,7 +318,6 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                     # homogenous tuple, then only the prefix can be represented as
                     # positional arguments, and we pass Tuple[Unpack[Ts-1], Y1, Y2]
                     # as the star arg, for example.
-                    expanded_unpack = expanded_tuple.items[expanded_unpack_index]
                     prefix_len = expanded_unpack_index
                     arg_names = (
                         t.arg_names[:star_index] + [None] * prefix_len + t.arg_names[star_index:]
