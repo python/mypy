@@ -3526,6 +3526,23 @@ test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
          # N: "C" has constructor incompatible with "__call__" of "P"
 
+[case testProtocolClassObjectPureCallback]
+from typing import Any, ClassVar, Protocol
+
+class P(Protocol):
+    def __call__(self, x: int, y: int) -> Any: ...
+
+class B:
+    def __init__(self, x: int, y: int) -> None: ...
+class C:
+    def __init__(self, x: int, y: str) -> None: ...
+
+def test(arg: P) -> None: ...
+test(B)  # OK
+test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+         # N: "C" has constructor incompatible with "__call__" of "P"
+[builtins fixtures/type.pyi]
+
 [case testProtocolTypeTypeAttribute]
 from typing import ClassVar, Protocol, Type
 

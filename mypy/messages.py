@@ -1899,7 +1899,7 @@ class MessageBuilder:
         missing = get_missing_protocol_members(subtype, supertype, skip=skip)
         if (
             missing
-            and len(missing) < len(supertype.type.protocol_members)
+            and (len(missing) < len(supertype.type.protocol_members) or missing == ["__call__"])
             and len(missing) <= MAX_ITEMS
         ):
             if missing == ["__call__"] and class_obj:
