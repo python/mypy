@@ -1281,3 +1281,18 @@ class Some(Generic[P]):
 # TODO: this probably should be reported.
 def call(*args: P.args, **kwargs: P.kwargs): ...
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecInferenceCrash]
+from typing import Callable, Generic, ParamSpec, TypeVar
+
+def foo(x: int) -> int: ...
+T = TypeVar("T")
+def bar(x: T) -> T: ...
+
+P = ParamSpec("P")
+
+class C(Generic[P]):
+    def __init__(self, fn: Callable[P, int], *args: P.args, **kwargs: P.kwargs): ...
+
+reveal_type(bar(C(fn=foo, x=1)))  # N: Revealed type is "__main__.C[[x: builtins.int]]"
+[builtins fixtures/paramspec.pyi]

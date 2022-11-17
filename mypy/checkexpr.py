@@ -1404,6 +1404,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
+            if need_refresh:
+                # Argument kinds etc. may have changed due to
+                # ParamSpec variables being replaced with an arbitrary
+                # number of arguments; recalculate actual-to-formal map
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds,
+                    arg_names,
+                    callee.arg_kinds,
+                    callee.arg_names,
+                    lambda i: self.accept(args[i]),
+                )
+
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context
             )
