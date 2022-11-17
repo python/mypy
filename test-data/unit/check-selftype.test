@@ -1750,3 +1750,25 @@ from typing import Self, final
 class C:
     def meth(self) -> Self:
         return C()  # OK for final classes
+
+[case testTypingSelfCallableClassVar]
+from typing import Self, ClassVar, Callable, TypeVar
+
+class C:
+    f: ClassVar[Callable[[Self], Self]]
+class D(C): ...
+
+reveal_type(D.f)  # N: Revealed type is "def (__main__.D) -> __main__.D"
+reveal_type(D().f)  # N: Revealed type is "def () -> __main__.D"
+
+[case testSelfTypeCallableClassVarOldStyle]
+from typing import ClassVar, Callable, TypeVar
+
+T = TypeVar("T")
+class C:
+    f: ClassVar[Callable[[T], T]]
+
+class D(C): ...
+
+reveal_type(D.f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
+reveal_type(D().f)  # N: Revealed type is "def () -> __main__.D"
