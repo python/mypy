@@ -1448,7 +1448,13 @@ class SemanticAnalyzer(
                 dec.var.is_classmethod = True
                 self.check_decorated_function_is_method("classmethod", dec)
             elif refers_to_fullname(
-                d, ("builtins.property", "abc.abstractproperty", "functools.cached_property")
+                d,
+                (
+                    "builtins.property",
+                    "abc.abstractproperty",
+                    "functools.cached_property",
+                    "enum.property",
+                ),
             ):
                 removed.append(i)
                 dec.func.is_property = True
