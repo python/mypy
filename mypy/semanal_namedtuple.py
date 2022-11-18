@@ -32,6 +32,7 @@ from mypy.nodes import (
     NameExpr,
     PassStmt,
     RefExpr,
+    Statement,
     StrExpr,
     SymbolTable,
     SymbolTableNode,
@@ -111,7 +112,7 @@ class NamedTupleAnalyzer:
                     if result is None:
                         # This is a valid named tuple, but some types are incomplete.
                         return True, None
-                    items, types, default_items = result
+                    items, types, default_items, statements = result
                     if is_func_scope and "@" not in defn.name:
                         defn.name += "@" + str(defn.line)
                     existing_info = None
@@ -123,6 +124,7 @@ class NamedTupleAnalyzer:
                     defn.analyzed = NamedTupleExpr(info, is_typed=True)
                     defn.analyzed.line = defn.line
                     defn.analyzed.column = defn.column
+                    defn.defs.body = statements
                     # All done: this is a valid named tuple with all types known.
                     return True, info
         # This can't be a valid named tuple.
@@ -130,24 +132,27 @@ class NamedTupleAnalyzer:
 
     def check_namedtuple_classdef(
         self, defn: ClassDef, is_stub_file: bool
-    ) -> tuple[list[str], list[Type], dict[str, Expression]] | None:
+    ) -> tuple[list[str], list[Type], dict[str, Expression], list[Statement]] | None:
         """Parse and validate fields in named tuple class definition.
 
-        Return a three tuple:
+        Return a four tuple:
           * field names
           * field types
           * field default values
+          * valid statements
         or None, if any of the types are not ready.
         """
         if self.options.python_version < (3, 6) and not is_stub_file:
             self.fail("NamedTuple class syntax is only supported in Python 3.6", defn)
-            return [], [], {}
+            return [], [], {}, []
         if len(defn.base_type_exprs) > 1:
             self.fail("NamedTuple should be a single base", defn)
         items: list[str] = []
         types: list[Type] = []
         default_items: dict[str, Expression] = {}
+        statements: list[Statement] = []
         for stmt in defn.defs.body:
+            statements.append(stmt)
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
                 if isinstance(stmt, PassStmt) or (
@@ -160,9 +165,13 @@ class NamedTupleAnalyzer:
                 # And docstrings.
                 if isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
                     continue
+                statements.pop()
+                defn.removed_statements.append(stmt)
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
+                statements.pop()
+                defn.removed_statements.append(stmt)
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             else:
                 # Append name and type in this case...
@@ -199,7 +208,7 @@ class NamedTupleAnalyzer:
                         )
                 else:
                     default_items[name] = stmt.rvalue
-        return items, types, default_items
+        return items, types, default_items, statements
 
     def check_namedtuple(
         self, node: Expression, var_name: str | None, is_func_scope: bool

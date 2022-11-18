@@ -1068,6 +1068,7 @@ class ClassDef(Statement):
         "analyzed",
         "has_incompatible_baseclass",
         "deco_line",
+        "removed_statements",
     )
 
     __match_args__ = ("name", "defs")
@@ -1086,6 +1087,8 @@ class ClassDef(Statement):
     keywords: dict[str, Expression]
     analyzed: Expression | None
     has_incompatible_baseclass: bool
+    # Used by special forms like NamedTuple and TypedDict to store invalid statements
+    removed_statements: list[Statement]
 
     def __init__(
         self,
@@ -1111,6 +1114,7 @@ class ClassDef(Statement):
         self.has_incompatible_baseclass = False
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: int | None = None
+        self.removed_statements = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
