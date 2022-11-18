@@ -166,10 +166,12 @@ class NamedTupleAnalyzer:
                 if isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
                     continue
                 statements.pop()
+                defn.removed_statements.append(stmt)
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
                 statements.pop()
+                defn.removed_statements.append(stmt)
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             else:
                 # Append name and type in this case...
