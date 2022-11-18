@@ -404,6 +404,12 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        # Avoid infinite recursion for recursive type aliases.
+        # TODO: Ideally we should fire subvisitors here (or use caching) if we care
+        #       about duplicates.
+        if t in self.seen_aliases:
+            return self.strategy([])
+        self.seen_aliases.add(t)
         if self.skip_alias_target:
             return self.query_types(t.args)
         return get_proper_type(t).accept(self)
@@ -416,12 +422,5 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         """
         res: list[T] = []
         for t in types:
-            if isinstance(t, TypeAliasType):
-                # Avoid infinite recursion for recursive type aliases.
-                # TODO: Ideally we should fire subvisitors here (or use caching) if we care
-                #       about duplicates.
-                if t in self.seen_aliases:
-                    continue
-                self.seen_aliases.add(t)
             res.append(t.accept(self))
         return self.strategy(res)
