@@ -276,4 +276,5 @@ StrOrLiteralStr = TypeVar("StrOrLiteralStr", LiteralString, str)  # noqa: Y001
 ProfileFunction: TypeAlias = Callable[[FrameType, str, Any], object]
 
 # Objects suitable to be passed to sys.settrace, threading.settrace, and similar
-TraceFunction: TypeAlias = Callable[[FrameType, str, Any], TraceFunction | None]
+# TODO: Ideally this would be a recursive type alias
+TraceFunction: TypeAlias = Callable[[FrameType, str, Any], Callable[[FrameType, str, Any], Any] | None]
