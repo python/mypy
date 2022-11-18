@@ -7668,6 +7668,9 @@ class C(B):
 [case testAllowArgumentAsBaseClass]
 from typing import Any, Type
 
+def e(b) -> None:
+    class D(b): ...
+
 def f(b: Any) -> None:
     class D(b): ...
 
