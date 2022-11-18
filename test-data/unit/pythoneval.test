@@ -1712,3 +1712,20 @@ A = Type[int] | str
 B: TypeAlias = Type[int] | str
 [out]
 m.pyi:5: note: Revealed type is "typing._SpecialForm"
+
+[case testEnumNameWorkCorrectlyOn311]
+# flags: --python-version 3.11
+from enum import Enum
+
+class E(Enum):
+    X = 1
+    Y = 2
+
+e: E
+reveal_type(e.name)
+reveal_type(e.value)
+reveal_type(E.X.name)
+[out]
+_testEnumNameWorkCorrectlyOn311.py:9: note: Revealed type is "builtins.str"
+_testEnumNameWorkCorrectlyOn311.py:10: note: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+_testEnumNameWorkCorrectlyOn311.py:11: note: Revealed type is "Literal['X']?"
