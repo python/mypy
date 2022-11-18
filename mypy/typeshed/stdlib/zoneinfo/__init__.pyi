@@ -1,6 +1,6 @@
 from _typeshed import Self, StrPath
 from collections.abc import Iterable, Sequence
-from datetime import tzinfo
+from datetime import datetime, timedelta, tzinfo
 from typing import Any, Protocol
 
 __all__ = ["ZoneInfo", "reset_tzpath", "available_timezones", "TZPATH", "ZoneInfoNotFoundError", "InvalidTZPathWarning"]
@@ -19,6 +19,9 @@ class ZoneInfo(tzinfo):
     def from_file(cls: type[Self], __fobj: _IOBytes, key: str | None = ...) -> Self: ...
     @classmethod
     def clear_cache(cls, *, only_keys: Iterable[str] | None = ...) -> None: ...
+    def tzname(self, __dt: datetime | None) -> str | None: ...
+    def utcoffset(self, __dt: datetime | None) -> timedelta | None: ...
+    def dst(self, __dt: datetime | None) -> timedelta | None: ...
 
 # Note: Both here and in clear_cache, the types allow the use of `str` where
 # a sequence of strings is required. This should be remedied if a solution

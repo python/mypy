@@ -127,12 +127,12 @@ class HtmlDiff:
 def restore(delta: Iterable[str], which: int) -> Iterator[str]: ...
 def diff_bytes(
     dfunc: Callable[[Sequence[str], Sequence[str], str, str, str, str, int, str], Iterator[str]],
-    a: Sequence[bytes],
-    b: Sequence[bytes],
-    fromfile: bytes = ...,
-    tofile: bytes = ...,
-    fromfiledate: bytes = ...,
-    tofiledate: bytes = ...,
+    a: Iterable[bytes | bytearray],
+    b: Iterable[bytes | bytearray],
+    fromfile: bytes | bytearray = ...,
+    tofile: bytes | bytearray = ...,
+    fromfiledate: bytes | bytearray = ...,
+    tofiledate: bytes | bytearray = ...,
     n: int = ...,
-    lineterm: bytes = ...,
+    lineterm: bytes | bytearray = ...,
 ) -> Iterator[bytes]: ...

@@ -2,10 +2,10 @@ import email.message
 import io
 import ssl
 import types
-from _typeshed import Self, WriteableBuffer
+from _typeshed import ReadableBuffer, Self, SupportsRead, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket
-from typing import IO, Any, BinaryIO, TypeVar, overload
+from typing import Any, BinaryIO, TypeVar, overload
 from typing_extensions import TypeAlias
 
 __all__ = [
@@ -30,7 +30,7 @@ __all__ = [
     "HTTPSConnection",
 ]
 
-_DataType: TypeAlias = bytes | IO[Any] | Iterable[bytes] | str
+_DataType: TypeAlias = SupportsRead[bytes] | Iterable[ReadableBuffer] | ReadableBuffer
 _T = TypeVar("_T")
 
 HTTP_PORT: int
@@ -164,7 +164,7 @@ class HTTPConnection:
     def putrequest(self, method: str, url: str, skip_host: bool = ..., skip_accept_encoding: bool = ...) -> None: ...
     def putheader(self, header: str, *argument: str) -> None: ...
     def endheaders(self, message_body: _DataType | None = ..., *, encode_chunked: bool = ...) -> None: ...
-    def send(self, data: _DataType) -> None: ...
+    def send(self, data: _DataType | str) -> None: ...
 
 class HTTPSConnection(HTTPConnection):
     # Can be `None` if `.connect()` was not called:

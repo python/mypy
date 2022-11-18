@@ -283,9 +283,11 @@ class TypedDictAnalyzer:
                 ):
                     statements.append(stmt)
                 else:
+                    defn.removed_statements.append(stmt)
                     self.fail(TPDICT_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
+                defn.removed_statements.append(stmt)
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
                 name = stmt.lvalues[0].name

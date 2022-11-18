@@ -140,6 +140,8 @@ class NodeStripVisitor(TraverserVisitor):
         ]
         with self.enter_class(node.info):
             super().visit_class_def(node)
+        node.defs.body.extend(node.removed_statements)
+        node.removed_statements = []
         TypeState.reset_subtype_caches_for(node.info)
         # Kill the TypeInfo, since there is none before semantic analysis.
         node.info = CLASSDEF_NO_INFO
