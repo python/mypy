@@ -913,7 +913,7 @@ def analyze_class_attribute_access(
 
     # Refuse class attribute access if slot defined
     if info.slots and name in info.slots:
-        mx.msg.fail(message_registry.CANNOT_ACCESS_CLASS_ATTR_IN_SLOTS.format(name), mx.context)
+        mx.msg.fail(message_registry.CLASS_VAR_CONFLICTS_SLOTS.format(name), mx.context)
 
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.

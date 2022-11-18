@@ -527,4 +527,4 @@ x = X()
 x.a = X.a
 [builtins fixtures/tuple.pyi]
 [out]
-main:6: error: Cannot access class attribute "a" when defined in "__slots__"
+main:6: error: "a" in __slots__ conflicts with class variable access
