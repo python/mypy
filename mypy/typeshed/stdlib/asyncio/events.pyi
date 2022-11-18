@@ -1,6 +1,6 @@
 import ssl
 import sys
-from _typeshed import FileDescriptorLike, Self, StrPath, WriteableBuffer
+from _typeshed import FileDescriptorLike, ReadableBuffer, Self, StrPath, WriteableBuffer
 from abc import ABCMeta, abstractmethod
 from collections.abc import Awaitable, Callable, Coroutine, Generator, Sequence
 from contextvars import Context
@@ -194,7 +194,7 @@ class AbstractEventLoop:
     async def getaddrinfo(
         self,
         host: bytes | str | None,
-        port: str | int | None,
+        port: bytes | str | int | None,
         *,
         family: int = ...,
         type: int = ...,
@@ -562,7 +562,7 @@ class AbstractEventLoop:
     @abstractmethod
     async def sock_recv_into(self, sock: socket, buf: WriteableBuffer) -> int: ...
     @abstractmethod
-    async def sock_sendall(self, sock: socket, data: bytes) -> None: ...
+    async def sock_sendall(self, sock: socket, data: ReadableBuffer) -> None: ...
     @abstractmethod
     async def sock_connect(self, sock: socket, address: _Address) -> None: ...
     @abstractmethod
@@ -573,7 +573,7 @@ class AbstractEventLoop:
         @abstractmethod
         async def sock_recvfrom_into(self, sock: socket, buf: WriteableBuffer, nbytes: int = ...) -> int: ...
         @abstractmethod
-        async def sock_sendto(self, sock: socket, data: bytes, address: _Address) -> None: ...
+        async def sock_sendto(self, sock: socket, data: ReadableBuffer, address: _Address) -> None: ...
     # Signal handling.
     @abstractmethod
     def add_signal_handler(self, sig: int, callback: Callable[..., object], *args: Any) -> None: ...

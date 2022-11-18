@@ -1,5 +1,5 @@
 import sys
-from _typeshed import Self
+from _typeshed import ReadableBuffer, Self
 from collections.abc import Mapping, MutableMapping
 from datetime import datetime
 from enum import Enum
@@ -48,7 +48,9 @@ FMT_BINARY = PlistFormat.FMT_BINARY
 
 if sys.version_info >= (3, 9):
     def load(fp: IO[bytes], *, fmt: PlistFormat | None = ..., dict_type: type[MutableMapping[str, Any]] = ...) -> Any: ...
-    def loads(value: bytes, *, fmt: PlistFormat | None = ..., dict_type: type[MutableMapping[str, Any]] = ...) -> Any: ...
+    def loads(
+        value: ReadableBuffer, *, fmt: PlistFormat | None = ..., dict_type: type[MutableMapping[str, Any]] = ...
+    ) -> Any: ...
 
 else:
     def load(
@@ -59,7 +61,7 @@ else:
         dict_type: type[MutableMapping[str, Any]] = ...,
     ) -> Any: ...
     def loads(
-        value: bytes,
+        value: ReadableBuffer,
         *,
         fmt: PlistFormat | None = ...,
         use_builtin_types: bool = ...,
@@ -67,7 +69,7 @@ else:
     ) -> Any: ...
 
 def dump(
-    value: Mapping[str, Any] | list[Any] | tuple[Any, ...] | str | bool | float | bytes | datetime,
+    value: Mapping[str, Any] | list[Any] | tuple[Any, ...] | str | bool | float | bytes | bytearray | datetime,
     fp: IO[bytes],
     *,
     fmt: PlistFormat = ...,
@@ -75,7 +77,7 @@ def dump(
     skipkeys: bool = ...,
 ) -> None: ...
 def dumps(
-    value: Mapping[str, Any] | list[Any] | tuple[Any, ...] | str | bool | float | bytes | datetime,
+    value: Mapping[str, Any] | list[Any] | tuple[Any, ...] | str | bool | float | bytes | bytearray | datetime,
     *,
     fmt: PlistFormat = ...,
     skipkeys: bool = ...,
@@ -85,7 +87,7 @@ def dumps(
 if sys.version_info < (3, 9):
     def readPlist(pathOrFile: str | IO[bytes]) -> Any: ...
     def writePlist(value: Mapping[str, Any], pathOrFile: str | IO[bytes]) -> None: ...
-    def readPlistFromBytes(data: bytes) -> Any: ...
+    def readPlistFromBytes(data: ReadableBuffer) -> Any: ...
     def writePlistToBytes(value: Mapping[str, Any]) -> bytes: ...
 
 if sys.version_info < (3, 9):

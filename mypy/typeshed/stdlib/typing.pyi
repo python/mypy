@@ -325,7 +325,7 @@ class SupportsRound(Protocol[_T_co]):
     def __round__(self, __ndigits: int) -> _T_co: ...
 
 @runtime_checkable
-class Sized(Protocol, metaclass=ABCMeta):
+class Sized(Protocol):
     @abstractmethod
     def __len__(self) -> int: ...
 
@@ -452,10 +452,7 @@ class Container(Protocol[_T_co]):
     def __contains__(self, __x: object) -> bool: ...
 
 @runtime_checkable
-class Collection(Iterable[_T_co], Container[_T_co], Protocol[_T_co]):
-    # Implement Sized (but don't have it as a base class).
-    @abstractmethod
-    def __len__(self) -> int: ...
+class Collection(Sized, Iterable[_T_co], Container[_T_co], Protocol[_T_co]): ...
 
 class Sequence(Collection[_T_co], Reversible[_T_co], Generic[_T_co]):
     @overload
@@ -566,7 +563,7 @@ class KeysView(MappingView, AbstractSet[_KT_co], Generic[_KT_co]):
     def __xor__(self, other: Iterable[_T]) -> set[_KT_co | _T]: ...
     def __rxor__(self, other: Iterable[_T]) -> set[_KT_co | _T]: ...
 
-class ValuesView(MappingView, Iterable[_VT_co], Generic[_VT_co]):
+class ValuesView(MappingView, Collection[_VT_co], Generic[_VT_co]):
     def __init__(self, mapping: Mapping[Any, _VT_co]) -> None: ...  # undocumented
     def __contains__(self, value: object) -> bool: ...
     def __iter__(self) -> Iterator[_VT_co]: ...
@@ -621,6 +618,8 @@ class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
     # -- os._Environ.__ior__
     # -- collections.UserDict.__ior__
     # -- collections.ChainMap.__ior__
+    # -- peewee.attrdict.__add__
+    # -- peewee.attrdict.__iadd__
     # -- weakref.WeakValueDictionary.__ior__
     # -- weakref.WeakKeyDictionary.__ior__
     @overload
@@ -638,7 +637,9 @@ TYPE_CHECKING: bool
 # This differs from runtime, but better reflects the fact that in reality
 # classes deriving from IO use different names for the arguments.
 class IO(Iterator[AnyStr], Generic[AnyStr]):
-    # TODO use abstract properties
+    # At runtime these are all abstract properties,
+    # but making them abstract in the stub is hugely disruptive, for not much gain.
+    # See #8726
     @property
     def mode(self) -> str: ...
     @property
@@ -691,7 +692,7 @@ class BinaryIO(IO[bytes]):
     def __enter__(self) -> BinaryIO: ...
 
 class TextIO(IO[str]):
-    # TODO use abstractproperty
+    # See comment regarding the @properties in the `IO` class
     @property
     def buffer(self) -> BinaryIO: ...
     @property

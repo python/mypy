@@ -1,4 +1,5 @@
 import sys
+from _typeshed import StrOrBytesPath
 from collections.abc import Callable
 from xml.etree.ElementTree import Element
 
@@ -11,7 +12,7 @@ if sys.version_info >= (3, 9):
 
 class FatalIncludeError(SyntaxError): ...
 
-def default_loader(href: str | bytes | int, parse: str, encoding: str | None = ...) -> str | Element: ...
+def default_loader(href: StrOrBytesPath | int, parse: str, encoding: str | None = ...) -> str | Element: ...
 
 # TODO: loader is of type default_loader ie it takes a callable that has the
 # same signature as default_loader. But default_loader has a keyword argument

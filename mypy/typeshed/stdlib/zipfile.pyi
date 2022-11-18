@@ -1,6 +1,6 @@
 import io
 import sys
-from _typeshed import Self, StrOrBytesPath, StrPath
+from _typeshed import Self, StrOrBytesPath, StrPath, _BufferWithLen
 from collections.abc import Callable, Iterable, Iterator
 from os import PathLike
 from types import TracebackType
@@ -103,7 +103,7 @@ class ZipFile:
     compression: int  # undocumented
     compresslevel: int | None  # undocumented
     mode: _ZipFileMode  # undocumented
-    pwd: str | None  # undocumented
+    pwd: bytes | None  # undocumented
     if sys.version_info >= (3, 11):
         @overload
         def __init__(
@@ -173,7 +173,11 @@ class ZipFile:
         self, filename: StrPath, arcname: StrPath | None = ..., compress_type: int | None = ..., compresslevel: int | None = ...
     ) -> None: ...
     def writestr(
-        self, zinfo_or_arcname: str | ZipInfo, data: bytes | str, compress_type: int | None = ..., compresslevel: int | None = ...
+        self,
+        zinfo_or_arcname: str | ZipInfo,
+        data: _BufferWithLen | str,
+        compress_type: int | None = ...,
+        compresslevel: int | None = ...,
     ) -> None: ...
     if sys.version_info >= (3, 11):
         def mkdir(self, zinfo_or_directory_name: str | ZipInfo, mode: int = ...) -> None: ...
