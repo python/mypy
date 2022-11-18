@@ -635,7 +635,7 @@ Before parameter specifications, here's how one might have annotated the decorat
 
 .. code-block:: python
 
-   from typing import Callable, TypeVar
+   from typing import Any, Callable, TypeVar, cast
 
    F = TypeVar('F', bound=Callable[..., Any])
 
@@ -650,8 +650,8 @@ and that would enable the following type checks:
 
 .. code-block:: python
 
-   reveal_type(a)  # str
-   add_forty_two('x')    # Type check error: incompatible type "str"; expected "int"
+   reveal_type(a)  # Revealed type is "builtins.int"
+   add_forty_two('x')  # Argument 1 to "add_forty_two" has incompatible type "str"; expected "int"
 
 
 Note that the ``wrapper()`` function is not type-checked. Wrapper
