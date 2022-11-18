@@ -354,7 +354,7 @@ def _verify_final(
 ) -> Iterator[Error]:
     try:
 
-        class SubClass(runtime):  # type: ignore[misc,valid-type]
+        class SubClass(runtime):
             pass
 
     except TypeError:
