@@ -187,6 +187,7 @@ def main() -> None:
     commits_to_cherry_pick = [
         "780534b13722b7b0422178c049a1cbbf4ea4255b",  # LiteralString reverts
         "5319fa34a8004c1568bb6f032a07b8b14cc95bed",  # sum reverts
+        "0062994228fb62975c6cef4d2c80d00c7aa1c545",  # ctypes reverts
     ]
     for commit in commits_to_cherry_pick:
         subprocess.run(["git", "cherry-pick", commit], check=True)
