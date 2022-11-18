@@ -55,10 +55,10 @@ jobs:
             let data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
 
             function truncateIfNeeded(original, maxLength) {
-              let truncated = original.substring(0, maxLength)
-              if (original.length === truncated.length) {
+              if (original.length <= maxLength) {
                 return original
               }
+              let truncated = original.substring(0, maxLength)
               // further, remove last line that might be truncated
               truncated = truncated.substring(0, truncated.lastIndexOf('\n'))
               let lines_truncated = original.split('\n').length - truncated.split('\n').length
