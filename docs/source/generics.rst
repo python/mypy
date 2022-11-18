@@ -635,7 +635,7 @@ Before parameter specifications, here's how one might have annotated the decorat
 
 .. code-block:: python
 
-   from typing import Callable, TypeVar
+   from typing import Callable, TypeVar, cast
 
    F = TypeVar('F', bound=Callable[..., Any])
 
@@ -650,7 +650,7 @@ and that would enable the following type checks:
 
 .. code-block:: python
 
-   reveal_type(a)  # str
+   reveal_type(a)  # int
    add_forty_two('x')    # Type check error: incompatible type "str"; expected "int"
 
 
