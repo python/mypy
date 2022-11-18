@@ -517,3 +517,14 @@ class A:
         self.b = 2
         self.missing = 3
 [builtins fixtures/tuple.pyi]
+
+[case testSlotsWithClassVar]
+from typing import ClassVar
+class X:
+    __slots__ = ('a',)
+    a: int
+x = X()
+x.a = X.a
+[builtins fixtures/tuple.pyi]
+[out]
+main:6: error: Cannot access class attribute "a" when defined in "__slots__"
