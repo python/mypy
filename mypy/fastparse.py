@@ -265,6 +265,7 @@ def parse(
     ignore_errors = (options is not None and options.ignore_errors) or (
         errors is not None and fnam in errors.ignored_files
     )
+    strip_function_bodies = ignore_errors and (options is None or not options.preserve_asts)
     raise_on_error = False
     if options is None:
         options = Options()
@@ -287,7 +288,11 @@ def parse(
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
         tree = ASTConverter(
-            options=options, is_stub=is_stub_file, errors=errors, ignore_errors=ignore_errors
+            options=options,
+            is_stub=is_stub_file,
+            errors=errors,
+            ignore_errors=ignore_errors,
+            strip_function_bodies=strip_function_bodies,
         ).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
@@ -409,7 +414,13 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
 
 class ASTConverter:
     def __init__(
-        self, options: Options, is_stub: bool, errors: Errors, ignore_errors: bool
+        self,
+        options: Options,
+        is_stub: bool,
+        errors: Errors,
+        *,
+        ignore_errors: bool,
+        strip_function_bodies: bool,
     ) -> None:
         # 'C' for class, 'D' for function signature, 'F' for function, 'L' for lambda
         self.class_and_function_stack: list[Literal["C", "D", "F", "L"]] = []
@@ -419,6 +430,7 @@ class ASTConverter:
         self.is_stub = is_stub
         self.errors = errors
         self.ignore_errors = ignore_errors
+        self.strip_function_bodies = strip_function_bodies
 
         self.type_ignores: dict[int, list[str]] = {}
 
@@ -514,7 +526,7 @@ class ASTConverter:
             return [block]
 
         stack = self.class_and_function_stack
-        if self.ignore_errors and len(stack) == 1 and stack[0] == "F":
+        if self.strip_function_bodies and len(stack) == 1 and stack[0] == "F":
             return []
 
         res: list[Statement] = []
@@ -523,7 +535,7 @@ class ASTConverter:
             res.append(node)
 
         if (
-            self.ignore_errors
+            self.strip_function_bodies
             and can_strip
             and len(stack) == 2
             and stack[-2:] == ["C", "F"]
