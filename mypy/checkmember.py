@@ -798,8 +798,15 @@ def analyze_var(
     return result
 
 
+from time import time
+t = 0.0
+
+
 def freeze_all_type_vars(member_type: Type) -> None:
+    #global t
+    #t0 = time()
     member_type.accept(FreezeTypeVarsVisitor())
+    #t += time() - t0
 
 
 class FreezeTypeVarsVisitor(TypeTraverserVisitor):

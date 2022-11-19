@@ -131,6 +131,11 @@ def main(
             print("note: Run mypy again for up-to-date results with installed types")
             code = 2
 
+    import mypy.checkmember
+    import mypy.expandtype
+    print(f"t={mypy.checkmember.t}")
+    print(f"tt={mypy.expandtype.tt}")
+
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
         #

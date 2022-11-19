@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
 
 from mypy.nodes import ARG_POS, ARG_STAR, Var
-from mypy.type_visitor import TypeTranslator
+from mypy.type_visitor import TypeTranslator, TypeQuery2
 from mypy.types import (
     AnyType,
     CallableType,
@@ -36,6 +36,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     remove_trivial,
+    TypeQuery,
 )
 from mypy.typevartuples import (
     find_unpack_in_list,
@@ -140,11 +141,29 @@ def freshen_function_type_vars(callee: F) -> F:
 
 T = TypeVar("T", bound=Type)
 
+from time import time
+tt = 0.0
 
 def freshen_all_functions_type_vars(t: T) -> T:
-    result = t.accept(FreshenCallableVisitor())
-    assert isinstance(result, type(t))
+    #global tt
+    #t0 = time()
+    result: Type
+    if not t.accept(HasGenericCallable()):
+        result = t
+    else:
+        result = t.accept(FreshenCallableVisitor())
+        assert isinstance(result, type(t))
+    #tt += time() - t0
+    #print('freshen', t, '->', result)
     return result
+
+
+class HasGenericCallable(TypeQuery2):
+    def __init__(self) -> None:
+        super().__init__(0)
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        return super().visit_callable_type(t) or t.is_generic()
 
 
 class FreshenCallableVisitor(TypeTranslator):
