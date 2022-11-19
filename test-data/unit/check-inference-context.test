@@ -1467,3 +1467,12 @@ class C(Generic[T]): ...
 x: Optional[C[int]] = None
 y = x = C()
 reveal_type(y)  # N: Revealed type is "__main__.C[builtins.int]"
+
+[case testOptionalTypeNarrowedByGenericCall5]
+from typing import Any, Tuple, Union
+
+i: Union[Tuple[Any, ...], int]
+b: Any
+i = i if isinstance(i, int) else b
+reveal_type(i)  # N: Revealed type is "Union[Any, builtins.int]"
+[builtins fixtures/isinstance.pyi]

@@ -3884,6 +3884,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     not local_errors.has_new_errors()
                     # Skip literal types, as they have special logic (for better errors).
                     and not isinstance(get_proper_type(rvalue_type), LiteralType)
+                    # Skip Any type, since it is special cased in binder.
+                    and not isinstance(get_proper_type(alt_rvalue_type), AnyType)
                     and is_valid_inferred_type(alt_rvalue_type)
                     and is_proper_subtype(alt_rvalue_type, rvalue_type)
                 ):
