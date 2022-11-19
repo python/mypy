@@ -3259,7 +3259,7 @@ class HasRecursiveType(TypeQuery[bool]):
         super().__init__(any)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> bool:
-        return t.is_recursive
+        return t.is_recursive or self.query_types(t.args)
 
 
 def has_recursive_types(typ: Type) -> bool:
