@@ -176,10 +176,10 @@ class Emitter:
     # Low-level operations
 
     def indent(self) -> None:
-        self._indent += 1
+        self._indent += 4
 
     def dedent(self) -> None:
-        self._indent -= 1
+        self._indent -= 4
         assert self._indent >= 0
 
     def label(self, label: BasicBlock) -> str:
@@ -194,7 +194,7 @@ class Emitter:
     def emit_line(self, line: str = "") -> None:
         if line.startswith("}"):
             self.dedent()
-        self.fragments.append(self._indent * "\t" + line + "\n")
+        self.fragments.append(self._indent * " " + line + "\n")
         if line.endswith("{"):
             self.indent()
 
