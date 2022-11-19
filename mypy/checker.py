@@ -3876,7 +3876,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # may cause some perf impact, plus we want to partially preserve
                 # the old behavior. This helps with various practical examples, see
                 # e.g. testOptionalTypeNarrowedByGenericCall.
-                with self.msg.filter_errors() as local_errors:
+                with self.msg.filter_errors() as local_errors, self.local_type_map() as type_map:
                     alt_rvalue_type = self.expr_checker.accept(
                         rvalue, None, always_allow_any=always_allow_any
                     )
@@ -3884,9 +3884,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     not local_errors.has_new_errors()
                     # Skip literal types, as they have special logic (for better errors).
                     and not isinstance(get_proper_type(rvalue_type), LiteralType)
+                    and is_valid_inferred_type(alt_rvalue_type)
                     and is_proper_subtype(alt_rvalue_type, rvalue_type)
                 ):
                     rvalue_type = alt_rvalue_type
+                    self.store_types(type_map)
             if isinstance(rvalue_type, DeletedType):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):

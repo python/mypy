@@ -1456,3 +1456,14 @@ def foo(arg: Union[str, int]) -> None:
         arg = bar("default")
     reveal_type(arg)  # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
+
+[case testOptionalTypeNarrowedByGenericCall4]
+# flags: --strict-optional
+from typing import Optional, List, Generic, TypeVar
+
+T = TypeVar("T", covariant=True)
+class C(Generic[T]): ...
+
+x: Optional[C[int]] = None
+y = x = C()
+reveal_type(y)  # N: Revealed type is "__main__.C[builtins.int]"
