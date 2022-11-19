@@ -265,6 +265,7 @@ def parse(
     ignore_errors = (options is not None and options.ignore_errors) or (
         errors is not None and fnam in errors.ignored_files
     )
+    # If errors are ignored, we can drop many function bodies to speed up type checking.
     strip_function_bodies = ignore_errors and (options is None or not options.preserve_asts)
     raise_on_error = False
     if options is None:
@@ -537,14 +538,15 @@ class ASTConverter:
         if (
             self.strip_function_bodies
             and can_strip
-            and len(stack) == 2
             and stack[-2:] == ["C", "F"]
             and not is_possible_trivial_body(res)
         ):
-            v = FindAttributeAssign()
-            for n in res:
-                n.accept(v)
-                if v.found:
+            # We only strip method bodies if they don't assign to an attribute, as
+            # this may define an attribute which has an externally visible effect.
+            visitor = FindAttributeAssign()
+            for s in res:
+                s.accept(visitor)
+                if visitor.found:
                     break
             else:
                 return []

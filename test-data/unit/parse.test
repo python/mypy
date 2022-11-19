@@ -3807,3 +3807,33 @@ MypyFile:1(
               NameExpr(self)
               x)
             IntExpr(0)))))))
+
+[case testStripMethodInNestedClass]
+# mypy: ignore-errors=True
+class C:
+    class D:
+        def m1(self):
+             self.x = 1
+        def m2(self):
+             return self.x
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    ClassDef:3(
+      D
+      FuncDef:4(
+        m1
+        Args(
+          Var(self))
+        Block:4(
+          AssignmentStmt:5(
+            MemberExpr:5(
+              NameExpr(self)
+              x)
+            IntExpr(1))))
+      FuncDef:6(
+        m2
+        Args(
+          Var(self))
+        Block:6()))))
