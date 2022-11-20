@@ -180,6 +180,8 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_type_alias(self, a: TypeAlias) -> None:
         a.target.accept(self.type_fixer)
+        for v in a.alias_tvars:
+            v.accept(self.type_fixer)
 
 
 class TypeFixer(TypeVisitor[None]):

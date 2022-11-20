@@ -3188,24 +3188,20 @@ def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[In
 
 
 class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
-    def __init__(self, vars: list[str], subs: list[Type]) -> None:
-        self.replacements = {v: s for (v, s) in zip(vars, subs)}
+    def __init__(self, vars: list[TypeVarLikeType], subs: list[Type]) -> None:
+        self.replacements = {v.id: s for (v, s) in zip(vars, subs)}
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> Type:
         return typ.copy_modified(args=[t.accept(self) for t in typ.args])
 
-    def visit_unbound_type(self, typ: UnboundType) -> Type:
-        # TODO: stop using unbound type variables for type aliases.
-        # Now that type aliases are very similar to TypeInfos we should
-        # make type variable tracking similar as well. Maybe we can even support
-        # upper bounds etc. for generic type aliases.
-        if typ.name in self.replacements:
-            return self.replacements[typ.name]
+    def visit_type_var(self, typ: TypeVarType) -> Type:
+        if typ.id in self.replacements:
+            return self.replacements[typ.id]
         return typ
 
-    def visit_type_var(self, typ: TypeVarType) -> Type:
-        if typ.name in self.replacements:
-            return self.replacements[typ.name]
+    def visit_param_spec(self, typ: ParamSpecType) -> Type:
+        if typ.id in self.replacements:
+            return self.replacements[typ.id]
         return typ
 
 
@@ -3222,7 +3218,7 @@ class LocationSetter(TypeTraverserVisitor):
 
 
 def replace_alias_tvars(
-    tp: Type, vars: list[str], subs: list[Type], newline: int, newcolumn: int
+    tp: Type, vars: list[TypeVarLikeType], subs: list[Type], newline: int, newcolumn: int
 ) -> Type:
     """Replace type variables in a generic type alias tp with substitutions subs
     resetting context. Length of subs should be already checked.
@@ -3238,6 +3234,7 @@ def replace_alias_tvars(
 class HasTypeVars(TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(any)
+        self.skip_alias_target = True
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True

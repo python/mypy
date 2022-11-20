@@ -446,8 +446,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return TypeType.make_normalized(item)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        # Target of the type alias cannot contain type variables,
-        # so we just expand the arguments.
+        # Target of the type alias cannot contain type variables (not bound by the type
+        # alias itself), so we just expand the arguments.
         return t.copy_modified(args=self.expand_types(t.args))
 
     def expand_types(self, types: Iterable[Type]) -> list[Type]:

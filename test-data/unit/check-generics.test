@@ -655,7 +655,7 @@ a: other.Array[float]
 reveal_type(a) # N: Revealed type is "other.array[Any, other.dtype[builtins.float]]"
 
 [out]
-main:3: error: Type argument "float" of "dtype" must be a subtype of "generic"  [type-var]
+main:3: error: Type argument "float" of "Array" must be a subtype of "generic"  [type-var]
     a: other.Array[float]
        ^
 [file other.py]
@@ -1101,13 +1101,12 @@ BadA = A[str, T]  # One error here
 SameA = A[T, T]
 
 x = None # type: SameA[int]
-y = None # type: SameA[str] # Two errors here, for both args of A
+y = None # type: SameA[str] # Another error here
 
 [builtins fixtures/list.pyi]
 [out]
 main:9:8: error: Value of type variable "T" of "A" cannot be "str"
-main:13:1: error: Value of type variable "T" of "A" cannot be "str"
-main:13:1: error: Value of type variable "S" of "A" cannot be "str"
+main:13:1: error: Value of type variable "T" of "SameA" cannot be "str"
 
 [case testGenericTypeAliasesIgnoredPotentialAlias]
 class A: ...

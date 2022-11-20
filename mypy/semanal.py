@@ -1595,7 +1595,7 @@ class SemanticAnalyzer(
 
     def setup_alias_type_vars(self, defn: ClassDef) -> None:
         assert defn.info.special_alias is not None
-        defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
+        defn.info.special_alias.alias_tvars = list(defn.type_vars)
         target = defn.info.special_alias.target
         assert isinstance(target, ProperType)
         if isinstance(target, TypedDictType):
@@ -3266,42 +3266,56 @@ class SemanticAnalyzer(
         return None
 
     def analyze_alias(
-        self, rvalue: Expression, allow_placeholder: bool = False
-    ) -> tuple[Type | None, list[str], set[str], list[str]]:
+        self, name: str, rvalue: Expression, allow_placeholder: bool = False
+    ) -> tuple[Type | None, list[TypeVarLikeType], set[str], list[str]]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
         If yes, return the corresponding type, a list of
         qualified type variable names for generic aliases, a set of names the alias depends on,
         and a list of type variables if the alias is generic.
-        An schematic example for the dependencies:
+        A schematic example for the dependencies:
             A = int
             B = str
             analyze_alias(Dict[A, B])[2] == {'__main__.A', '__main__.B'}
         """
         dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         global_scope = not self.type and not self.function_stack
-        res = analyze_type_alias(
-            rvalue,
-            self,
-            self.tvar_scope,
-            self.plugin,
-            self.options,
-            self.is_typeshed_stub_file,
-            allow_placeholder=allow_placeholder,
-            in_dynamic_func=dynamic,
-            global_scope=global_scope,
-        )
-        typ: Type | None = None
+        try:
+            typ = expr_to_unanalyzed_type(rvalue, self.options, self.is_stub_file)
+        except TypeTranslationError:
+            self.fail(
+                "Invalid type alias: expression is not a valid type", rvalue, code=codes.VALID_TYPE
+            )
+            return None, [], set(), []
+
+        found_type_vars = typ.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
+        tvar_defs: list[TypeVarLikeType] = []
+        namespace = self.qualified_name(name)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
+            for name, tvar_expr in found_type_vars:
+                tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+                tvar_defs.append(tvar_def)
+
+            res = analyze_type_alias(
+                typ,
+                self,
+                self.tvar_scope,
+                self.plugin,
+                self.options,
+                self.is_typeshed_stub_file,
+                allow_placeholder=allow_placeholder,
+                in_dynamic_func=dynamic,
+                global_scope=global_scope,
+                allowed_alias_tvars=tvar_defs,
+            )
+        analyzed: Type | None = None
         if res:
-            typ, depends_on = res
-            found_type_vars = typ.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
-            alias_tvars = [name for (name, node) in found_type_vars]
+            analyzed, depends_on = res
             qualified_tvars = [node.fullname for (name, node) in found_type_vars]
         else:
-            alias_tvars = []
             depends_on = set()
             qualified_tvars = []
-        return typ, alias_tvars, depends_on, qualified_tvars
+        return analyzed, tvar_defs, depends_on, qualified_tvars
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
@@ -3381,13 +3395,13 @@ class SemanticAnalyzer(
         res: Type | None = None
         if self.is_none_alias(rvalue):
             res = NoneType()
-            alias_tvars: list[str] = []
+            alias_tvars: list[TypeVarLikeType] = []
             depends_on: set[str] = set()
             qualified_tvars: list[str] = []
         else:
             tag = self.track_incomplete_refs()
             res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(
-                rvalue, allow_placeholder=True
+                lvalue.name, rvalue, allow_placeholder=True
             )
             if not res:
                 return False
@@ -4972,11 +4986,11 @@ class SemanticAnalyzer(
             except TypeTranslationError:
                 self.fail("Type expected within [...]", expr)
                 return None
-            # We always allow unbound type variables in IndexExpr, since we
-            # may be analysing a type alias definition rvalue. The error will be
-            # reported elsewhere if it is not the case.
             analyzed = self.anal_type(
                 typearg,
+                # The type application may appear in base class expression,
+                # where type variables are not bound yet. Or when accepting
+                # r.h.s. of type alias before we figured out it is a type alias.
                 allow_unbound_tvars=True,
                 allow_placeholder=True,
                 allow_param_spec_literals=has_param_spec,
