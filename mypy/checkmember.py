@@ -806,6 +806,7 @@ class FreezeTypeVarsVisitor(TypeTraverserVisitor):
     def visit_callable_type(self, t: CallableType) -> None:
         for v in t.variables:
             v.id.meta_level = 0
+        super().visit_callable_type(t)
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) -> SymbolNode | None:

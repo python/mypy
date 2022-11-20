@@ -339,9 +339,13 @@ class TypeFixture:
         A.alias = AN
         return A, target
 
-    def non_rec_alias(self, target: Type) -> TypeAliasType:
-        AN = TypeAlias(target, "__main__.A", -1, -1)
-        return TypeAliasType(AN, [])
+    def non_rec_alias(
+        self, target: Type, alias_tvars: list[str] | None = None, args: list[Type] | None = None
+    ) -> TypeAliasType:
+        AN = TypeAlias(target, "__main__.A", -1, -1, alias_tvars=alias_tvars)
+        if args is None:
+            args = []
+        return TypeAliasType(AN, args)
 
 
 class InterfaceTypeFixture(TypeFixture):

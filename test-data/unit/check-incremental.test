@@ -6334,3 +6334,17 @@ reveal_type(D().meth)
 [out2]
 tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`0, other: Self`0) -> Self`0"
 tmp/m.py:5: note: Revealed type is "def (other: m.D) -> m.D"
+
+[case testIncrementalNestedGenericCallableCrash]
+from typing import TypeVar, Callable
+
+T = TypeVar("T")
+
+class B:
+    def foo(self) -> Callable[[T], T]: ...
+
+class C(B):
+    def __init__(self) -> None:
+        self.x = self.foo()
+[out]
+[out2]
