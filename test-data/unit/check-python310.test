@@ -1787,7 +1787,6 @@ def f6(a: object) -> None:
     match a:
         case _ if y is not None:  # E: Name "y" may be undefined
             pass
-
 [builtins fixtures/tuple.pyi]
 
 [case testPartiallyDefinedMatchUnreachable]
