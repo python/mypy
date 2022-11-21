@@ -1777,8 +1777,7 @@ class SemanticAnalyzer(
         for i, base_expr in enumerate(base_type_exprs):
             if isinstance(base_expr, StarExpr):
                 base_expr.valid = True
-            with self.allow_unbound_tvars_set():
-                self.analyze_type_expr(base_expr)
+            self.analyze_type_expr(base_expr)
 
             try:
                 base = self.expr_to_unanalyzed_type(base_expr)
@@ -6217,7 +6216,7 @@ class SemanticAnalyzer(
         # them semantically analyzed, however, if they need to treat it as an expression
         # and not a type. (Which is to say, mypyc needs to do this.) Do the analysis
         # in a fresh tvar scope in order to suppress any errors about using type variables.
-        with self.tvar_scope_frame(TypeVarLikeScope()):
+        with self.tvar_scope_frame(TypeVarLikeScope()), self.allow_unbound_tvars_set():
             expr.accept(self)
 
     def type_analyzer(

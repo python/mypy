@@ -2645,3 +2645,21 @@ class C(Generic[T]):
 
 def foo(x: C[T]) -> T:
     return x.x(42).y  # OK
+
+[case testNestedGenericFunctionTypeApplication]
+from typing import TypeVar, Generic, List
+
+A = TypeVar("A")
+B = TypeVar("B")
+
+class C(Generic[A]):
+    x: A
+
+def foo(x: A) -> A:
+    def bar() -> List[A]:
+        y = C[List[A]]()
+        z = C[List[B]]()  # E: Type variable "__main__.B" is unbound \
+                # N: (Hint: Use "Generic[B]" or "Protocol[B]" base class to bind "B" inside a class) \
+                # N: (Hint: Use "B" in function signature to bind "B" inside a function)
+        return y.x
+    return bar()[0]
