@@ -260,7 +260,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.api.defer()
                     else:
                         self.api.record_incomplete_ref()
-                    return PlaceholderType(node.fullname, self.anal_array(t.args), t.line)
+                    # Always allow ParamSpec for placeholders, if they are actually not valid,
+                    # they will be reported later, after we resolve placeholders.
+                    with self.set_allow_param_spec_literals(True):
+                        return PlaceholderType(
+                            node.fullname, self.anal_array(t.args, allow_param_spec=True), t.line
+                        )
                 else:
                     if self.api.final_iteration:
                         self.cannot_resolve_type(t)
@@ -287,6 +292,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             tvar_def = self.tvar_scope.get_binding(sym)
             if isinstance(sym.node, ParamSpecExpr):
                 if tvar_def is None:
+                    if self.allow_unbound_tvars:
+                        return t
                     self.fail(f'ParamSpec "{t.name}" is unbound', t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, ParamSpecType)
@@ -367,7 +374,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return special
             if isinstance(node, TypeAlias):
                 self.aliases_used.add(fullname)
-                an_args = self.anal_array(t.args)
+                with self.set_allow_param_spec_literals(node.has_param_spec_type):
+                    an_args = self.anal_array(t.args, allow_param_spec=True)
+                    if node.has_param_spec_type and len(node.alias_tvars) == 1:
+                        an_args = self.pack_paramspec_args(an_args)
+
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
                 res = expand_type_alias(
                     node,
@@ -409,6 +420,27 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
             return AnyType(TypeOfAny.special_form)
+
+    def pack_paramspec_args(self, an_args: Sequence[Type]) -> list[Type]:
+        # "Aesthetic" paramspec literals
+        # these do not support mypy_extensions VarArgs, etc. as they were already analyzed
+        #   TODO: should these be re-analyzed to get rid of this inconsistency?
+        # another inconsistency is with empty type args (Z[] is more possibly an error imo)
+        count = len(an_args)
+        if count > 0:
+            first_arg = get_proper_type(an_args[0])
+
+            # TODO: can I use tuple syntax to isinstance multiple in 3.6?
+            if not (
+                count == 1
+                and (
+                    isinstance(first_arg, Parameters)
+                    or isinstance(first_arg, ParamSpecType)
+                    or isinstance(first_arg, AnyType)
+                )
+            ):
+                return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
+        return list(an_args)
 
     def cannot_resolve_type(self, t: UnboundType) -> None:
         # TODO: Move error message generation to messages.py. We'd first
@@ -637,25 +669,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             instance = Instance(
                 info, self.anal_array(args, allow_param_spec=True), ctx.line, ctx.column
             )
-
-        # "aesthetic" paramspec literals
-        # these do not support mypy_extensions VarArgs, etc. as they were already analyzed
-        #   TODO: should these be re-analyzed to get rid of this inconsistency?
-        # another inconsistency is with empty type args (Z[] is more possibly an error imo)
-        if len(info.type_vars) == 1 and info.has_param_spec_type and len(instance.args) > 0:
-            first_arg = get_proper_type(instance.args[0])
-
-            # TODO: can I use tuple syntax to isinstance multiple in 3.6?
-            if not (
-                len(instance.args) == 1
-                and (
-                    isinstance(first_arg, Parameters)
-                    or isinstance(first_arg, ParamSpecType)
-                    or isinstance(first_arg, AnyType)
-                )
-            ):
-                args = instance.args
-                instance.args = (Parameters(args, [ARG_POS] * len(args), [None] * len(args)),)
+        if len(info.type_vars) == 1 and info.has_param_spec_type:
+            instance.args = tuple(self.pack_paramspec_args(instance.args))
 
         if info.has_type_var_tuple_type:
             # - 1 to allow for the empty type var tuple case.
@@ -680,6 +695,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 return expand_type_alias(
                     info.special_alias,
+                    # TODO: should we allow NamedTuples generic in ParamSpec?
                     self.anal_array(args),
                     self.fail,
                     False,
@@ -694,6 +710,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 return expand_type_alias(
                     info.special_alias,
+                    # TODO: should we allow TypedDicts generic in ParamSpec?
                     self.anal_array(args),
                     self.fail,
                     False,

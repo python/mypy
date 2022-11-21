@@ -3445,6 +3445,10 @@ class TypeAlias(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    @property
+    def has_param_spec_type(self) -> bool:
+        return any(isinstance(v, mypy.types.ParamSpecType) for v in self.alias_tvars)
+
     def serialize(self) -> JsonDict:
         data: JsonDict = {
             ".class": "TypeAlias",

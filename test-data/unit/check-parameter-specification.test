@@ -1296,3 +1296,47 @@ class C(Generic[P]):
 
 reveal_type(bar(C(fn=foo, x=1)))  # N: Revealed type is "__main__.C[[x: builtins.int]]"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecInTypeAliasBasic]
+from typing import ParamSpec, Callable
+
+P = ParamSpec("P")
+C = Callable[P, int]
+def f(n: C[P]) -> C[P]: ...
+
+@f
+def bar(x: int) -> int: ...
+@f    # E: Argument 1 to "f" has incompatible type "Callable[[int], str]"; expected "Callable[[int], int]"
+def foo(x: int) -> str: ...
+
+x: C[[int, str]]
+reveal_type(x)  # N: Revealed type is "def (builtins.int, builtins.str) -> builtins.int"
+y: C[int, str]
+reveal_type(y)  # N: Revealed type is "def (builtins.int, builtins.str) -> builtins.int"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecInTypeAliasRecursive]
+from typing import ParamSpec, Callable, Union
+
+P = ParamSpec("P")
+C = Callable[P, Union[int, C[P]]]
+def f(n: C[P]) -> C[P]: ...
+
+@f
+def bar(x: int) -> int: ...
+
+# TODO: mismatch because of arg name is hard to debug, give a note on this.
+@f
+def bar2(__x: int) -> Callable[[int], int]: ...
+
+@f  # E: Argument 1 to "f" has incompatible type "Callable[[int], str]"; expected "C[[int]]"
+def foo(x: int) -> str: ...
+
+@f  # E: Argument 1 to "f" has incompatible type "Callable[[int], Callable[[int], str]]"; expected "C[[int]]"
+def foo2(__x: int) -> Callable[[int], str]: ...
+
+x: C[[int, str]]
+reveal_type(x)  # N: Revealed type is "def (builtins.int, builtins.str) -> Union[builtins.int, ...]"
+y: C[int, str]
+reveal_type(y)  # N: Revealed type is "def (builtins.int, builtins.str) -> Union[builtins.int, ...]"
+[builtins fixtures/paramspec.pyi]

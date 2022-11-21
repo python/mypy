@@ -107,6 +107,11 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     # TODO: Better message
                     is_error = True
                     self.fail(f'Invalid location for ParamSpec "{arg.name}"', ctx)
+                    self.note(
+                        "You can use ParamSpec as the first argument to Callable, e.g., "
+                        "'Callable[{}, int]'".format(arg.name),
+                        ctx,
+                    )
                     continue
                 if tvar.values:
                     if isinstance(arg, TypeVarType):
@@ -189,3 +194,6 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def fail(self, msg: str, context: Context, *, code: ErrorCode | None = None) -> None:
         self.errors.report(context.line, context.column, msg, code=code)
+
+    def note(self, msg: str, context: Context, *, code: ErrorCode | None = None) -> None:
+        self.errors.report(context.line, context.column, msg, severity="note", code=code)
