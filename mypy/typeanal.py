@@ -201,6 +201,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_param_spec_literals: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        allow_type_any: bool = False,
     ) -> None:
         self.api = api
         self.lookup_qualified = api.lookup_qualified
@@ -237,6 +238,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used: set[str] = set()
         self.prohibit_self_type = prohibit_self_type
+        # Allow variables typed as Type[Any] and type (useful for base classes).
+        self.allow_type_any = allow_type_any
 
     def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
         typ = self.visit_unbound_type_nonoptional(t, defining_literal)
@@ -730,6 +733,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(
                     TypeOfAny.from_unimported_type, missing_import_name=typ.missing_import_name
                 )
+            elif self.allow_type_any:
+                if isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
+                    return AnyType(TypeOfAny.special_form)
+                if isinstance(typ, TypeType) and isinstance(typ.item, AnyType):
+                    return AnyType(TypeOfAny.from_another_any, source_any=typ.item)
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.

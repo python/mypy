@@ -273,6 +273,7 @@ from mypy.types import (
     get_proper_types,
     invalid_recursive_alias,
     is_named_instance,
+    store_argument_type,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import (
@@ -1315,7 +1316,10 @@ class SemanticAnalyzer(
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
-                a.bind_function_type_variables(cast(CallableType, defn.type), defn)
+                typ = cast(CallableType, defn.type)
+                a.bind_function_type_variables(typ, defn)
+                for i in range(len(typ.arg_types)):
+                    store_argument_type(defn, i, typ, self.named_type)
             self.function_stack.append(defn)
             with self.enter(defn):
                 for arg in defn.arguments:
@@ -2018,7 +2022,9 @@ class SemanticAnalyzer(
                 continue
 
             try:
-                base = self.expr_to_analyzed_type(base_expr, allow_placeholder=True)
+                base = self.expr_to_analyzed_type(
+                    base_expr, allow_placeholder=True, allow_type_any=True
+                )
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
                 if isinstance(base_expr, CallExpr):
@@ -6139,7 +6145,11 @@ class SemanticAnalyzer(
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
     def expr_to_analyzed_type(
-        self, expr: Expression, report_invalid_types: bool = True, allow_placeholder: bool = False
+        self,
+        expr: Expression,
+        report_invalid_types: bool = True,
+        allow_placeholder: bool = False,
+        allow_type_any: bool = False,
     ) -> Type | None:
         if isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -6164,7 +6174,10 @@ class SemanticAnalyzer(
             return TupleType(info.tuple_type.items, fallback=fallback)
         typ = self.expr_to_unanalyzed_type(expr)
         return self.anal_type(
-            typ, report_invalid_types=report_invalid_types, allow_placeholder=allow_placeholder
+            typ,
+            report_invalid_types=report_invalid_types,
+            allow_placeholder=allow_placeholder,
+            allow_type_any=allow_type_any,
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
@@ -6188,6 +6201,7 @@ class SemanticAnalyzer(
         allow_param_spec_literals: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        allow_type_any: bool = False,
     ) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -6204,6 +6218,7 @@ class SemanticAnalyzer(
             allow_required=allow_required,
             allow_param_spec_literals=allow_param_spec_literals,
             prohibit_self_type=prohibit_self_type,
+            allow_type_any=allow_type_any,
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -6224,6 +6239,7 @@ class SemanticAnalyzer(
         allow_param_spec_literals: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        allow_type_any: bool = False,
         third_pass: bool = False,
     ) -> Type | None:
         """Semantically analyze a type.
@@ -6260,6 +6276,7 @@ class SemanticAnalyzer(
             allow_param_spec_literals=allow_param_spec_literals,
             report_invalid_types=report_invalid_types,
             prohibit_self_type=prohibit_self_type,
+            allow_type_any=allow_type_any,
         )
         tag = self.track_incomplete_refs()
         typ = typ.accept(a)

@@ -7664,3 +7664,18 @@ class C(B):
     def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B"
         ...
 [builtins fixtures/property.pyi]
+
+[case testAllowArgumentAsBaseClass]
+from typing import Any, Type
+
+def e(b) -> None:
+    class D(b): ...
+
+def f(b: Any) -> None:
+    class D(b): ...
+
+def g(b: Type[Any]) -> None:
+    class D(b): ...
+
+def h(b: type) -> None:
+    class D(b): ...
