@@ -724,7 +724,7 @@ achieved by combining with :py:func:`@overload <typing.overload>`:
 
 .. code-block:: python
 
-    from typing import Any, Callable, TypeVar, overload
+    from typing import Any, Callable, Optional, TypeVar, overload
 
     F = TypeVar('F', bound=Callable[..., Any])
 
@@ -736,7 +736,7 @@ achieved by combining with :py:func:`@overload <typing.overload>`:
     def atomic(*, savepoint: bool = True) -> Callable[[F], F]: ...
 
     # Implementation
-    def atomic(__func: Callable[..., Any] = None, *, savepoint: bool = True):
+    def atomic(__func: Optional[Callable[..., Any]] = None, *, savepoint: bool = True):
         def decorator(func: Callable[..., Any]):
             ...  # Code goes here
         if __func is not None:
