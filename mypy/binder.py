@@ -81,7 +81,7 @@ class ConditionalTypeBinder:
     type_assignments: Assigns | None = None
 
     def __init__(self) -> None:
-        self.next_id = 1
+        self._next_id = None
 
         # The stack of frames currently used.  These map
         # literal_hash(expr) -- literals like 'foo.bar' --
@@ -89,7 +89,7 @@ class ConditionalTypeBinder:
         # top-most, current frame. Each earlier element
         # records the state as of when that frame was last
         # on top of the stack.
-        self.frames = [Frame(self._get_id())]
+        self.frames = [Frame(self.next_id)]
 
         # For frames higher in the stack, we record the set of
         # Frames that can escape there, either by falling off
@@ -112,9 +112,13 @@ class ConditionalTypeBinder:
         self.break_frames: list[int] = []
         self.continue_frames: list[int] = []
 
-    def _get_id(self) -> int:
-        self.next_id += 1
-        return self.next_id
+    @property
+    def next_id(self) -> int:
+        if self._next_id is None:
+            self._next_id = 1
+        else:
+            self._next_id += 1
+        return self._next_id
 
     def _add_dependencies(self, key: Key, value: Key | None = None) -> None:
         if value is None:
@@ -126,7 +130,7 @@ class ConditionalTypeBinder:
 
     def push_frame(self, conditional_frame: bool = False) -> Frame:
         """Push a new frame into the binder."""
-        f = Frame(self._get_id(), conditional_frame)
+        f = Frame(self.next_id, conditional_frame)
         self.frames.append(f)
         self.options_on_return.append([])
         return f
@@ -365,7 +369,7 @@ class ConditionalTypeBinder:
         # so make sure the index is positive
         if index < 0:
             index += len(self.options_on_return)
-        frame = Frame(self._get_id())
+        frame = Frame(self.next_id)
         for f in self.frames[index + 1 :]:
             frame.types.update(f.types)
             if f.unreachable:
