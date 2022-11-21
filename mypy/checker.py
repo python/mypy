@@ -3870,7 +3870,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.expr_checker.accept(
                 rvalue, lvalue_type, always_allow_any=always_allow_any
             )
-            if isinstance(get_proper_type(lvalue_type), UnionType):
+            if (
+                isinstance(get_proper_type(lvalue_type), UnionType)
+                # Skip literal types, as they have special logic (for better errors).
+                and not isinstance(get_proper_type(rvalue_type), LiteralType)
+            ):
                 # Try re-inferring r.h.s. in empty context, and use that if it
                 # results in a narrower type. We don't do this always because this
                 # may cause some perf impact, plus we want to partially preserve
@@ -3882,8 +3886,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
                 if (
                     not local_errors.has_new_errors()
-                    # Skip literal types, as they have special logic (for better errors).
-                    and not isinstance(get_proper_type(rvalue_type), LiteralType)
                     # Skip Any type, since it is special cased in binder.
                     and not isinstance(get_proper_type(alt_rvalue_type), AnyType)
                     and is_valid_inferred_type(alt_rvalue_type)
