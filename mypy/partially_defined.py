@@ -203,9 +203,13 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             e.accept(self)
         self.tracker.start_branch_statement()
         for b in o.body:
+            if b.is_unreachable:
+                continue
             b.accept(self)
             self.tracker.next_branch()
         if o.else_body:
+            if o.else_body.is_unreachable:
+                self.tracker.skip_branch()
             o.else_body.accept(self)
         self.tracker.end_branch_statement()
 
