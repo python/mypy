@@ -217,16 +217,15 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.start_branch_statement()
         o.subject.accept(self)
         for i in range(len(o.patterns)):
-            if o.bodies[i].is_unreachable:
-                self.tracker.skip_branch()
-                self.tracker.next_branch()
-                continue
             pattern = o.patterns[i]
             pattern.accept(self)
             guard = o.guards[i]
             if guard is not None:
                 guard.accept(self)
-            o.bodies[i].accept(self)
+            if not o.bodies[i].is_unreachable:
+                o.bodies[i].accept(self)
+            else:
+                self.tracker.skip_branch()
             is_catchall = infer_pattern_value(pattern) == ALWAYS_TRUE
             if not is_catchall:
                 self.tracker.next_branch()
