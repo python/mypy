@@ -168,7 +168,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         is_error = False
         for actual in get_proper_types(actuals):
             # We skip UnboundType here, since they may appear in defn.bases,
-            # the error will be caught when visiting info.bases, tht have bound type
+            # the error will be caught when visiting info.bases, that have bound type
             # variables.
             if not isinstance(actual, (AnyType, UnboundType)) and not any(
                 is_same_type(actual, value) for value in valids

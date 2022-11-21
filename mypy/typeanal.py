@@ -216,7 +216,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.always_allow_new_syntax = self.api.is_stub_file or self.api.is_future_flag_set(
             "annotations"
         )
-        # Should we accept unbound type variables? This is currently only used for class bases.
+        # Should we accept unbound type variables? This is currently used for class bases,
+        # and alias right hand sides (before they are analyzed as type aliases).
         self.allow_unbound_tvars = allow_unbound_tvars
         if allowed_alias_tvars is None:
             allowed_alias_tvars = []
@@ -425,23 +426,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return AnyType(TypeOfAny.special_form)
 
     def pack_paramspec_args(self, an_args: Sequence[Type]) -> list[Type]:
-        # "Aesthetic" paramspec literals
-        # these do not support mypy_extensions VarArgs, etc. as they were already analyzed
-        #   TODO: should these be re-analyzed to get rid of this inconsistency?
-        # another inconsistency is with empty type args (Z[] is more possibly an error imo)
+        # "Aesthetic" ParamSpec literals for single ParamSpec: C[int, str] -> C[[int, str]].
+        # TODO: support arbitrary ParamSpec/TypeVar combinations.
+        # These do not support mypy_extensions VarArgs, etc. as they were already analyzed
+        # TODO: should these be re-analyzed to get rid of this inconsistency?
         count = len(an_args)
         if count > 0:
             first_arg = get_proper_type(an_args[0])
-
-            # TODO: can I use tuple syntax to isinstance multiple in 3.6?
-            if not (
-                count == 1
-                and (
-                    isinstance(first_arg, Parameters)
-                    or isinstance(first_arg, ParamSpecType)
-                    or isinstance(first_arg, AnyType)
-                )
-            ):
+            if not (count == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))):
                 return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
         return list(an_args)
 
@@ -1709,7 +1701,7 @@ def expand_type_alias(
         fail(msg, ctx, code=codes.TYPE_ARG)
         return set_any_tvars(node, ctx.line, ctx.column, from_error=True)
     # TODO: we need to check args validity w.r.t alias.alias_tvars.
-    # Otherwise invalid instantiations will be allowed in runtime contex
+    # Otherwise invalid instantiations will be allowed in runtime context.
     # Note: in type context, these will be still caught by semanal_typeargs.
     typ = TypeAliasType(node, args, ctx.line, ctx.column)
     assert typ.alias is not None

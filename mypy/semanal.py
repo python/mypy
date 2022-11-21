@@ -459,6 +459,9 @@ class SemanticAnalyzer(
         # rvalues while temporarily setting this to True.
         self.basic_type_applications = False
 
+        # Used to temporarily enable unbound type variables in some contexts. Namely,
+        # in base class expressions, and in right hand sides of type aliases. Do not add
+        # new uses of this, as this may cause leaking `UnboundType`s to type checking.
         self.allow_unbound_tvars = False
 
     # mypyc doesn't properly handle implementing an abstractproperty
