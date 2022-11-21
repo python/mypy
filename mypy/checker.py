@@ -184,7 +184,6 @@ from mypy.types import (
     LiteralType,
     NoneType,
     Overloaded,
-    ParamSpecType,
     PartialType,
     ProperType,
     StarType,
@@ -203,7 +202,6 @@ from mypy.types import (
     UnboundType,
     UninhabitedType,
     UnionType,
-    UnpackType,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -211,6 +209,7 @@ from mypy.types import (
     is_named_instance,
     is_optional,
     remove_optional,
+    store_argument_type,
     strip_type,
 )
 from mypy.typetraverser import TypeTraverserVisitor
@@ -1174,30 +1173,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if ctx.line < 0:
                                 ctx = typ
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
-                    if typ.arg_kinds[i] == nodes.ARG_STAR:
-                        if isinstance(arg_type, ParamSpecType):
-                            pass
-                        elif isinstance(arg_type, UnpackType):
-                            if isinstance(get_proper_type(arg_type.type), TupleType):
-                                # Instead of using Tuple[Unpack[Tuple[...]]], just use
-                                # Tuple[...]
-                                arg_type = arg_type.type
-                            else:
-                                arg_type = TupleType(
-                                    [arg_type],
-                                    fallback=self.named_generic_type(
-                                        "builtins.tuple", [self.named_type("builtins.object")]
-                                    ),
-                                )
-                        else:
-                            # builtins.tuple[T] is typing.Tuple[T, ...]
-                            arg_type = self.named_generic_type("builtins.tuple", [arg_type])
-                    elif typ.arg_kinds[i] == nodes.ARG_STAR2:
-                        if not isinstance(arg_type, ParamSpecType) and not typ.unpack_kwargs:
-                            arg_type = self.named_generic_type(
-                                "builtins.dict", [self.str_type(), arg_type]
-                            )
-                    item.arguments[i].variable.type = arg_type
+                    # Need to store arguments again for the expanded item.
+                    store_argument_type(item, i, typ, self.named_generic_type)
 
                 # Type check initialization expressions.
                 body_is_trivial = is_trivial_body(defn.body)
