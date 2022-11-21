@@ -1794,7 +1794,7 @@ def f6(a: object) -> None:
 # flags: --enable-error-code partially-defined
 import typing
 
-def f7(x: int) -> int:
+def f0(x: int) -> int:
     match x:
         case 1 if not typing.TYPE_CHECKING:
             pass
@@ -1804,7 +1804,7 @@ def f7(x: int) -> int:
             y = 3
     return y # No error.
 
-def f8(x: int) -> int:
+def f1(x: int) -> int:
     match x:
         case 1 if not typing.TYPE_CHECKING:
             pass
