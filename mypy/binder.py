@@ -81,7 +81,7 @@ class ConditionalTypeBinder:
     type_assignments: Assigns | None = None
 
     def __init__(self) -> None:
-        self._next_id = None
+        self._next_id = 1
 
         # The stack of frames currently used.  These map
         # literal_hash(expr) -- literals like 'foo.bar' --
@@ -114,10 +114,7 @@ class ConditionalTypeBinder:
 
     @property
     def next_id(self) -> int:
-        if self._next_id is None:
-            self._next_id = 1
-        else:
-            self._next_id += 1
+        self._next_id += 1
         return self._next_id
 
     def _add_dependencies(self, key: Key, value: Key | None = None) -> None:
