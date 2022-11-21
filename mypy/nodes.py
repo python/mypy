@@ -12,6 +12,7 @@ from typing import (
     Callable,
     Dict,
     Iterator,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -3481,7 +3482,7 @@ class TypeAlias(SymbolNode):
             fullname,
             line,
             column,
-            alias_tvars=cast(list[mypy.types.TypeVarLikeType], alias_tvars),
+            alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
         )
