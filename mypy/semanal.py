@@ -50,7 +50,7 @@ Some important properties:
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -458,6 +458,8 @@ class SemanticAnalyzer(
         # rvalues while temporarily setting this to True.
         self.basic_type_applications = False
 
+        self.allow_unbound_tvars = False
+
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
     @property
@@ -475,6 +477,15 @@ class SemanticAnalyzer(
     @property
     def final_iteration(self) -> bool:
         return self._final_iteration
+
+    @contextmanager
+    def allow_unbound_tvars_set(self) -> Iterator[None]:
+        old = self.allow_unbound_tvars
+        self.allow_unbound_tvars = True
+        try:
+            yield
+        finally:
+            self.allow_unbound_tvars = old
 
     #
     # Preparing module (performed before semantic analysis)
@@ -1762,7 +1773,8 @@ class SemanticAnalyzer(
         for i, base_expr in enumerate(base_type_exprs):
             if isinstance(base_expr, StarExpr):
                 base_expr.valid = True
-            self.analyze_type_expr(base_expr)
+            with self.allow_unbound_tvars_set():
+                self.analyze_type_expr(base_expr)
 
             try:
                 base = self.expr_to_unanalyzed_type(base_expr)
@@ -2625,7 +2637,10 @@ class SemanticAnalyzer(
         # when analysing any type applications there) thus preventing the further analysis.
         # To break the tie, we first analyse rvalue partially, if it can be a type alias.
         with self.basic_type_applications_set(s):
-            s.rvalue.accept(self)
+            with self.allow_unbound_tvars_set() if self.can_possibly_be_index_alias(
+                s
+            ) else nullcontext():
+                s.rvalue.accept(self)
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
@@ -2636,7 +2651,8 @@ class SemanticAnalyzer(
         if self.can_possibly_be_index_alias(s):
             # Now re-visit those rvalues that were we skipped type applications above.
             # This should be safe as generally semantic analyzer is idempotent.
-            s.rvalue.accept(self)
+            with self.allow_unbound_tvars_set():
+                s.rvalue.accept(self)
 
         # The r.h.s. is now ready to be classified, first check if it is a special form:
         special_form = False
@@ -4991,7 +5007,7 @@ class SemanticAnalyzer(
                 # The type application may appear in base class expression,
                 # where type variables are not bound yet. Or when accepting
                 # r.h.s. of type alias before we figured out it is a type alias.
-                allow_unbound_tvars=True,
+                allow_unbound_tvars=self.allow_unbound_tvars,
                 allow_placeholder=True,
                 allow_param_spec_literals=has_param_spec,
             )
