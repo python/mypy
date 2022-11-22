@@ -368,6 +368,25 @@ def f() -> None:
     d = b
 [builtins fixtures/tuple.pyi]
 
+[case testUnreachable]
+# flags: --enable-error-code partially-defined
+import typing
+
+if typing.TYPE_CHECKING:
+    x = 1
+elif int():
+    y = 1
+else:
+    y = 2
+a = x
+
+if not typing.TYPE_CHECKING:
+    pass
+else:
+    z = 1
+a = z
+[typing fixtures/typing-medium.pyi]
+
 [case testUseBeforeDef]
 # flags: --enable-error-code use-before-def
 
