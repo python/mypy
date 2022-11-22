@@ -399,6 +399,7 @@ def f1() -> None:
         x = 0
     else:
         y = x  # E: Name "x" is used before definition
+        z = x  # E: Name "x" is used before definition
 
 def f2() -> None:
     x = 1
@@ -429,5 +430,5 @@ def f5() -> None:
         pass
     else:
         y = z  # E: Name "z" is used before definition
-        x = z  # No error here -- we shouldn't report the error twice.
+        x = z  # E: Name "z" is used before definition
     z: int = 2

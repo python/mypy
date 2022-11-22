@@ -134,14 +134,15 @@ class BranchStatement:
 class Scope:
     def __init__(self, stmts: list[BranchStatement]) -> None:
         self.branch_stmts: list[BranchStatement] = stmts
-        self.undefined_refs: dict[str, NameExpr] = {}
+        self.undefined_refs: dict[str, set[NameExpr]] = {}
 
     def record_undefined_ref(self, o: NameExpr) -> None:
         if o.name not in self.undefined_refs:
-            self.undefined_refs[o.name] = o
+            self.undefined_refs[o.name] = set()
+        self.undefined_refs[o.name].add(o)
 
-    def pop_undefined_ref(self, name: str) -> NameExpr | None:
-        return self.undefined_refs.pop(name, None)
+    def pop_undefined_ref(self, name: str) -> set[NameExpr]:
+        return self.undefined_refs.pop(name, set())
 
 
 class DefinedVariableTracker:
@@ -192,7 +193,7 @@ class DefinedVariableTracker:
         assert len(self.scopes) > 0
         self._scope().record_undefined_ref(o)
 
-    def pop_undefined_ref(self, name: str) -> NameExpr | None:
+    def pop_undefined_ref(self, name: str) -> set[NameExpr]:
         """If name has previously been reported as undefined, the NameExpr that was called will be returned."""
         assert len(self.scopes) > 0
         return self._scope().pop_undefined_ref(name)
@@ -238,8 +239,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def process_lvalue(self, lvalue: Lvalue | None) -> None:
         if isinstance(lvalue, NameExpr):
             # Was this name previously used? If yes, it's a use-before-definition error.
-            ref = self.tracker.pop_undefined_ref(lvalue.name)
-            if ref:
+            refs = self.tracker.pop_undefined_ref(lvalue.name)
+            for ref in refs:
                 self.msg.var_used_before_def(lvalue.name, ref)
             self.tracker.record_definition(lvalue.name)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
