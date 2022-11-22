@@ -505,8 +505,7 @@ def f2(x: X[int, Concatenate[int, P_2]]) -> str: ...  # Accepted
 def f3(x: X[int, [int, bool]]) -> str: ...            # Accepted
 # ellipsis only show up here, but I can assume it works like Callable[..., R]
 def f4(x: X[int, ...]) -> str: ...                    # Accepted
-# TODO: this is not rejected:
-# def f5(x: X[int, int]) -> str: ...                    # Rejected
+def f5(x: X[int, int]) -> str: ...  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
 
 # CASE 3
 def bar(x: int, *args: bool) -> int: ...
@@ -1395,7 +1394,6 @@ def g(x: A[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
 
 C = Callable[P, T]
 x: C[int]  # E: Bad number of arguments for type alias, expected: 2, given: 1
-# TODO: this should be rejected
-y: C[int, str]
+y: C[int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
 z: C[int, str, bytes]  # E: Bad number of arguments for type alias, expected: 2, given: 3
 [builtins fixtures/paramspec.pyi]

@@ -21,6 +21,7 @@ from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
     Instance,
+    Parameters,
     ParamSpecType,
     TupleType,
     Type,
@@ -144,6 +145,13 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         ),
                         ctx,
                         code=codes.TYPE_VAR,
+                    )
+            elif isinstance(tvar, ParamSpecType):
+                if not isinstance(arg, (ParamSpecType, Parameters, AnyType, UnboundType)):
+                    self.fail(
+                        "Can only replace ParamSpec with a parameter types list or"
+                        f" another ParamSpec, got {format_type(arg)}",
+                        ctx,
                     )
         return is_error
 
