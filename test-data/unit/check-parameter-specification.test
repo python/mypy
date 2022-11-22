@@ -429,7 +429,6 @@ class Z(Generic[P]): ...
 # literals can be applied
 n: Z[[int]]
 
-# TODO: type aliases too
 nt1 = Z[[int]]
 nt2: TypeAlias = Z[[int]]
 
@@ -844,9 +843,7 @@ class A:
         ...
 
 reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`-2, *_P.args, **_P.kwargs) -> _R`-2"
-
-# TODO: _R`<n> keeps flip-flopping between 5 (?), 13, 14, 15. Spooky.
-# reveal_type(A().func)  $ N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`13, *_P.args, **_P.kwargs) -> _R`13"
+reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`5, *_P.args, **_P.kwargs) -> _R`5"
 
 def f(x: int) -> int:
     ...
@@ -879,8 +876,7 @@ class A:
         ...
 
 reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`-1, None]) -> __main__.Job[_P`-1, None]"
-# TODO: flakey, _P`4 alternates around.
-# reveal_type(A().func)  $ N: Revealed type is "def [_P] (action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
+reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`3, None]) -> __main__.Job[_P`3, None]"
 reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
 
 def f(x: int, y: int) -> None: ...
@@ -1370,4 +1366,36 @@ x: C[[int, str]]
 reveal_type(x)  # N: Revealed type is "def (builtins.int, builtins.str) -> Union[builtins.int, ...]"
 y: C[int, str]
 reveal_type(y)  # N: Revealed type is "def (builtins.int, builtins.str) -> Union[builtins.int, ...]"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecAliasInRuntimeContext]
+from typing import ParamSpec, Generic
+
+P = ParamSpec("P")
+class C(Generic[P]): ...
+
+c = C[int, str]()
+reveal_type(c)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str]]"
+
+A = C[P]
+a = A[int, str]()
+reveal_type(a)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str]]"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecAliasInvalidLocations]
+from typing import ParamSpec, Generic, List, TypeVar, Callable
+
+P = ParamSpec("P")
+T = TypeVar("T")
+A = List[T]
+def f(x: A[[int, str]]) -> None: ...  # E: Bracketed expression "[...]" is not valid as a type \
+                                      # N: Did you mean "List[...]"?
+def g(x: A[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
+                             # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+
+C = Callable[P, T]
+x: C[int]  # E: Bad number of arguments for type alias, expected: 2, given: 1
+# TODO: this should be rejected
+y: C[int, str]
+z: C[int, str, bytes]  # E: Bad number of arguments for type alias, expected: 2, given: 3
 [builtins fixtures/paramspec.pyi]
