@@ -386,3 +386,49 @@ else:
     z = 1
 a = z
 [typing fixtures/typing-medium.pyi]
+
+[case testUseBeforeDef]
+# flags: --enable-error-code use-before-def
+
+def f0() -> None:
+    x = y  # E: Name "y" is used before definition
+    y: int = 1
+
+def f1() -> None:
+    if int():
+        x = 0
+    else:
+        y = x  # E: Name "x" is used before definition
+        z = x  # E: Name "x" is used before definition
+
+def f2() -> None:
+    x = 1
+    if int():
+        x = 0
+    else:
+        y = x  # No error.
+
+def f3() -> None:
+    if int():
+        pass
+    else:
+        # No use-before-def error.
+        y = z  # E: Name "z" is not defined
+
+    def inner2() -> None:
+        z = 0
+
+def f4() -> None:
+    if int():
+        pass
+    else:
+        y = z  # E: Name "z" is used before definition
+    z: int = 2
+
+def f5() -> None:
+    if int():
+        pass
+    else:
+        y = z  # E: Name "z" is used before definition
+        x = z  # E: Name "z" is used before definition
+    z: int = 2
