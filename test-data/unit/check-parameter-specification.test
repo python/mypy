@@ -1397,3 +1397,19 @@ x: C[int]  # E: Bad number of arguments for type alias, expected: 2, given: 1
 y: C[int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
 z: C[int, str, bytes]  # E: Bad number of arguments for type alias, expected: 2, given: 3
 [builtins fixtures/paramspec.pyi]
+
+[case testTrivialParametersHandledCorrectly]
+from typing import ParamSpec, Generic, TypeVar, Callable, Any
+from typing_extensions import Concatenate
+
+P = ParamSpec("P")
+T = TypeVar("T")
+S = TypeVar("S")
+
+class C(Generic[S, P, T]): ...
+
+def foo(f: Callable[P, int]) -> None:
+    x: C[Any, ..., Any]
+    x1: C[int, Concatenate[int, str, P], str]
+    x = x1  # OK
+[builtins fixtures/paramspec.pyi]

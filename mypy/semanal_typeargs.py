@@ -147,7 +147,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         code=codes.TYPE_VAR,
                     )
             elif isinstance(tvar, ParamSpecType):
-                if not isinstance(arg, (ParamSpecType, Parameters, AnyType, UnboundType)):
+                if not isinstance(
+                    get_proper_type(arg), (ParamSpecType, Parameters, AnyType, UnboundType)
+                ):
                     self.fail(
                         "Can only replace ParamSpec with a parameter types list or"
                         f" another ParamSpec, got {format_type(arg)}",
