@@ -23,6 +23,7 @@ from mypy.nodes import (
     MatchStmt,
     NameExpr,
     RaiseStmt,
+    RefExpr,
     ReturnStmt,
     TupleExpr,
     WhileStmt,
@@ -215,6 +216,10 @@ class DefinedVariableTracker:
         return self._scope().branch_stmts[-1].is_undefined(name)
 
 
+def refers_to_builtin(o: RefExpr) -> bool:
+    return o.fullname is not None and o.fullname.startswith("builtins.")
+
+
 class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     """Detects the following cases:
     - A variable that's defined only part of the time.
@@ -375,6 +380,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_starred_pattern(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
+        if refers_to_builtin(o):
+            return
         if self.tracker.is_partially_defined(o.name):
             # A variable is only defined in some branches.
             if self.msg.errors.is_error_code_enabled(errorcodes.PARTIALLY_DEFINED):

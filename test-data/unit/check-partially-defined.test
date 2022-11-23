@@ -488,3 +488,11 @@ def f0() -> None:
 
     inner()  # No error.
     inner = lambda: None
+
+[case testBuiltins]
+# flags: --enable-error-code use-before-def
+
+def f0() -> None:
+    s = type(123)
+    type = "abc"
+    a = type
