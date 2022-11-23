@@ -452,6 +452,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # last argument has to be ParamSpec
         ps = self.anal_type(t.args[-1], allow_param_spec=True)
         if not isinstance(ps, ParamSpecType):
+            if isinstance(ps, UnboundType) and self.allow_unbound_tvars:
+                sym = self.lookup_qualified(ps.name, t)
+                if sym is not None and isinstance(sym.node, ParamSpecExpr):
+                    return ps
             self.api.fail(
                 "The last parameter to Concatenate needs to be a ParamSpec",
                 t,
@@ -1119,6 +1123,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return None
         tvar_def = self.tvar_scope.get_binding(sym)
         if not isinstance(tvar_def, ParamSpecType):
+            if (
+                tvar_def is None
+                and self.allow_unbound_tvars
+                and isinstance(sym.node, ParamSpecExpr)
+            ):
+                # We are analyzing this type in runtime context (e.g. as type application).
+                # If it is not valid as a type in this position an error will be given later.
+                return callable_with_ellipsis(
+                    AnyType(TypeOfAny.explicit), ret_type=ret_type, fallback=fallback
+                )
             return None
 
         return CallableType(
@@ -1154,6 +1168,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         tvar_def = self.anal_type(callable_args, allow_param_spec=True)
         if not isinstance(tvar_def, ParamSpecType):
+            if self.allow_unbound_tvars and isinstance(tvar_def, UnboundType):
+                sym = self.lookup_qualified(tvar_def.name, callable_args)
+                if sym is not None and isinstance(sym.node, ParamSpecExpr):
+                    # We are analyzing this type in runtime context (e.g. as type application).
+                    # If it is not valid as a type in this position an error will be given later.
+                    return callable_with_ellipsis(
+                        AnyType(TypeOfAny.explicit), ret_type=ret_type, fallback=fallback
+                    )
             return None
 
         # ick, CallableType should take ParamSpecType
