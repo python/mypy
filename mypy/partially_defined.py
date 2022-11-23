@@ -30,6 +30,7 @@ from mypy.nodes import (
     TupleExpr,
     WhileStmt,
     WithStmt,
+    implicit_module_attrs,
 )
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
@@ -244,6 +245,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.msg = msg
         self.type_map = type_map
         self.tracker = DefinedVariableTracker()
+        for name in implicit_module_attrs:
+            self.tracker.record_definition(name)
 
     def process_lvalue(self, lvalue: Lvalue | None) -> None:
         if isinstance(lvalue, NameExpr):

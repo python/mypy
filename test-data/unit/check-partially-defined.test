@@ -513,3 +513,8 @@ def f0() -> None:
     s = type(123)
     type = "abc"
     a = type
+
+[case testUseBeforeDefImplicitModuleAttrs]
+# flags: --enable-error-code use-before-def
+a = __name__  # No error.
+__name__ = "abc"
