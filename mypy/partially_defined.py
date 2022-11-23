@@ -16,6 +16,8 @@ from mypy.nodes import (
     FuncItem,
     GeneratorExpr,
     IfStmt,
+    Import,
+    ImportFrom,
     ListExpr,
     Lvalue,
     MatchStmt,
@@ -396,3 +398,19 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             expr.accept(self)
             self.process_lvalue(idx)
         o.body.accept(self)
+
+    def visit_import(self, o: Import) -> None:
+        for mod, alias in o.ids:
+            name = alias
+            if name is None:
+                name = mod
+            self.tracker.record_definition(name)
+        super().visit_import(o)
+
+    def visit_import_from(self, o: ImportFrom) -> None:
+        for mod, alias in o.names:
+            name = alias
+            if name is None:
+                name = mod
+            self.tracker.record_definition(name)
+        super().visit_import_from(o)
