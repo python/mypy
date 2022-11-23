@@ -89,6 +89,7 @@ from mypy.types import (
     get_proper_type,
 )
 from mypy.typetraverser import TypeTraverserVisitor
+from mypy.typevars import fill_typevars
 
 T = TypeVar("T")
 
@@ -116,6 +117,8 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
     "builtins._PathLike",
     "asyncio.futures.Future",
 }
+
+SELF_TYPE_NAMES: Final = {"typing.Self", "typing_extensions.Self"}
 
 
 def analyze_type_alias(
@@ -148,6 +151,7 @@ def analyze_type_alias(
         is_typeshed_stub,
         defining_alias=True,
         allow_placeholder=allow_placeholder,
+        prohibit_self_type="type alias target",
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -196,6 +200,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_required: bool = False,
         allow_param_spec_literals: bool = False,
         report_invalid_types: bool = True,
+        prohibit_self_type: str | None = None,
+        allow_type_any: bool = False,
     ) -> None:
         self.api = api
         self.lookup_qualified = api.lookup_qualified
@@ -231,6 +237,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.is_typeshed_stub = is_typeshed_stub
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used: set[str] = set()
+        self.prohibit_self_type = prohibit_self_type
+        # Allow variables typed as Type[Any] and type (useful for base classes).
+        self.allow_type_any = allow_type_any
 
     def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
         typ = self.visit_unbound_type_nonoptional(t, defining_literal)
@@ -444,7 +453,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if fullname == "builtins.None":
             return NoneType()
         elif fullname == "typing.Any" or fullname == "builtins.Any":
-            return AnyType(TypeOfAny.explicit)
+            return AnyType(TypeOfAny.explicit, line=t.line, column=t.column)
         elif fullname in FINAL_TYPE_NAMES:
             self.fail(
                 "Final can be only used as an outermost qualifier in a variable annotation",
@@ -575,6 +584,24 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail("Unpack[...] requires exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
             return UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
+        elif fullname in SELF_TYPE_NAMES:
+            if t.args:
+                self.fail("Self type cannot have type arguments", t)
+            if self.prohibit_self_type is not None:
+                self.fail(f"Self type cannot be used in {self.prohibit_self_type}", t)
+                return AnyType(TypeOfAny.from_error)
+            if self.api.type is None:
+                self.fail("Self type is only allowed in annotations within class definition", t)
+                return AnyType(TypeOfAny.from_error)
+            if self.api.type.has_base("builtins.type"):
+                self.fail("Self type cannot be used in a metaclass", t)
+            if self.api.type.self_type is not None:
+                if self.api.type.is_final:
+                    return fill_typevars(self.api.type)
+                return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
+            # TODO: verify this is unreachable and replace with an assert?
+            self.fail("Unexpected Self type", t)
+            return AnyType(TypeOfAny.from_error)
         return None
 
     def get_omitted_any(self, typ: Type, fullname: str | None = None) -> AnyType:
@@ -706,6 +733,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(
                     TypeOfAny.from_unimported_type, missing_import_name=typ.missing_import_name
                 )
+            elif self.allow_type_any:
+                if isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
+                    return AnyType(TypeOfAny.special_form)
+                if isinstance(typ, TypeType) and isinstance(typ.item, AnyType):
+                    return AnyType(TypeOfAny.from_another_any, source_any=typ.item)
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.
@@ -853,7 +885,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if self.defining_alias:
                 variables = t.variables
             else:
-                variables = self.bind_function_type_variables(t, t)
+                variables, _ = self.bind_function_type_variables(t, t)
             special = self.anal_type_guard(t.ret_type)
             arg_kinds = t.arg_kinds
             if len(arg_kinds) >= 2 and arg_kinds[-2] == ARG_STAR and arg_kinds[-1] == ARG_STAR2:
@@ -1347,19 +1379,26 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def bind_function_type_variables(
         self, fun_type: CallableType, defn: Context
-    ) -> Sequence[TypeVarLikeType]:
+    ) -> tuple[Sequence[TypeVarLikeType], bool]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
+        has_self_type = False
         if fun_type.variables:
             defs = []
             for var in fun_type.variables:
+                if self.api.type and self.api.type.self_type and var == self.api.type.self_type:
+                    has_self_type = True
+                    continue
                 var_node = self.lookup_qualified(var.name, defn)
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarLikeExpr)
                 binding = self.tvar_scope.bind_new(var.name, var_expr)
                 defs.append(binding)
-            return defs
+            return defs, has_self_type
         typevars = self.infer_type_variables(fun_type)
+        has_self_type = find_self_type(
+            fun_type, lambda name: self.api.lookup_qualified(name, defn, suppress_errors=True)
+        )
         # Do not define a new type variable if already defined in scope.
         typevars = [
             (name, tvar) for name, tvar in typevars if not self.is_defined_type_var(name, defn)
@@ -1375,7 +1414,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             binding = self.tvar_scope.bind_new(name, tvar)
             defs.append(binding)
 
-        return defs
+        return defs, has_self_type
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
         tvar_node = self.lookup_qualified(tvar, context)
@@ -1389,7 +1428,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         res: list[Type] = []
         for t in a:
             res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
-        return res
+        return self.check_unpacks_in_list(res)
 
     def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
         if nested:
@@ -1448,9 +1487,29 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         node = self.lookup_fqn_func(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
         any_type = AnyType(TypeOfAny.special_form)
+        if args is not None:
+            args = self.check_unpacks_in_list(args)
         return Instance(
             node.node, args or [any_type] * len(node.node.defn.type_vars), line=line, column=column
         )
+
+    def check_unpacks_in_list(self, items: list[Type]) -> list[Type]:
+        new_items: list[Type] = []
+        num_unpacks = 0
+        final_unpack = None
+        for item in items:
+            if isinstance(item, UnpackType):
+                if not num_unpacks:
+                    new_items.append(item)
+                num_unpacks += 1
+                final_unpack = item
+            else:
+                new_items.append(item)
+
+        if num_unpacks > 1:
+            assert final_unpack is not None
+            self.fail("More than one Unpack in a type is not allowed", final_unpack)
+        return new_items
 
     def tuple_type(self, items: list[Type]) -> TupleType:
         any_type = AnyType(TypeOfAny.special_form)
@@ -1709,9 +1768,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
             return False
-        if isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType)):
-            return True
-        return False
+        return isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType))
 
     def visit_unbound_type(self, t: UnboundType) -> TypeVarLikeList:
         name = t.name
@@ -1941,3 +1998,19 @@ class InstanceFixer(TypeTraverserVisitor):
                 python_version=self.python_version,
                 use_generic_error=True,
             )
+
+
+def find_self_type(typ: Type, lookup: Callable[[str], SymbolTableNode | None]) -> bool:
+    return typ.accept(HasSelfType(lookup))
+
+
+class HasSelfType(TypeQuery[bool]):
+    def __init__(self, lookup: Callable[[str], SymbolTableNode | None]) -> None:
+        self.lookup = lookup
+        super().__init__(any)
+
+    def visit_unbound_type(self, t: UnboundType) -> bool:
+        sym = self.lookup(t.name)
+        if sym and sym.fullname in SELF_TYPE_NAMES:
+            return True
+        return super().visit_unbound_type(t)

@@ -1940,7 +1940,7 @@ class State:
                 raise
             if follow_imports == "silent":
                 self.ignore_all = True
-        elif path and is_silent_import_module(manager, path):
+        elif path and is_silent_import_module(manager, path) and not root_source:
             self.ignore_all = True
         self.path = path
         if path:
@@ -2341,7 +2341,9 @@ class State:
     def detect_partially_defined_vars(self, type_map: dict[Expression, Type]) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
-        if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED):
+        if manager.errors.is_error_code_enabled(
+            codes.PARTIALLY_DEFINED
+        ) or manager.errors.is_error_code_enabled(codes.USE_BEFORE_DEF):
             manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
             self.tree.accept(
                 PartiallyDefinedVariableVisitor(
@@ -2629,7 +2631,7 @@ def find_module_and_diagnose(
                 else:
                     skipping_module(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
-        if is_silent_import_module(manager, result):
+        if is_silent_import_module(manager, result) and not root_source:
             follow_imports = "silent"
         return (result, follow_imports)
     else:
@@ -2728,11 +2730,8 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
             else:
                 parent_mod = parent_st.tree
         if parent_mod is not None:
-            if parent_mod.is_partial_stub_package:
-                return True
-            else:
-                # Bail out soon, complete subpackage found
-                return False
+            # Bail out soon, complete subpackage found
+            return parent_mod.is_partial_stub_package
         id = parent
     return False
 
@@ -3024,7 +3023,11 @@ def load_graph(
     for bs in sources:
         try:
             st = State(
-                id=bs.module, path=bs.path, source=bs.text, manager=manager, root_source=True
+                id=bs.module,
+                path=bs.path,
+                source=bs.text,
+                manager=manager,
+                root_source=not bs.followed,
             )
         except ModuleNotFound:
             continue
@@ -3576,9 +3579,10 @@ def record_missing_stub_packages(cache_dir: str, missing_stub_packages: set[str]
 
 
 def is_silent_import_module(manager: BuildManager, path: str) -> bool:
-    if not manager.options.no_silence_site_packages:
-        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
-            if is_sub_path(path, dir):
-                # Silence errors in site-package dirs and typeshed
-                return True
-    return False
+    if manager.options.no_silence_site_packages:
+        return False
+    # Silence errors in site-package dirs and typeshed
+    return any(
+        is_sub_path(path, dir)
+        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path
+    )

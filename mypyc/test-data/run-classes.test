@@ -263,6 +263,16 @@ class TestEnum(Enum):
 
 assert TestEnum.test() == 3
 
+import enum
+
+class Pokemon(enum.Enum):
+    magikarp = 1
+    squirtle = 2
+    slowbro = 3
+
+assert Pokemon.magikarp.value == 1
+assert Pokemon.squirtle.name == 'squirtle'
+
 [file other.py]
 # Force a multi-module test to make sure we can compile multi-file with
 # non-extension classes

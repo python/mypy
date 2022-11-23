@@ -17,7 +17,8 @@ class float: pass
 class str: pass
 class bytes: pass
 
-class function: pass
+class function:
+    __name__: str
 class ellipsis: pass
 
 from typing import Generic, Sequence, TypeVar

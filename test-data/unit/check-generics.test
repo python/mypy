@@ -1049,20 +1049,20 @@ CA = Callable[[T], int]
 TA = Tuple[T, int]
 UA = Union[T, int]
 
-cs = CA + 1 # E: Unsupported left operand type for + ("object")
+cs = CA + 1 # E: Unsupported left operand type for + ("<typing special form>")
 reveal_type(cs) # N: Revealed type is "Any"
 
-ts = TA() # E: "object" not callable
+ts = TA() # E: "<typing special form>" not callable
 reveal_type(ts) # N: Revealed type is "Any"
 
-us = UA.x # E: "object" has no attribute "x"
+us = UA.x # E: "<typing special form>" has no attribute "x"
 reveal_type(us) # N: Revealed type is "Any"
 
 xx = CA[str] + 1  # E: Type application is only supported for generic classes
 yy = TA[str]()  # E: Type application is only supported for generic classes
 zz = UA[str].x  # E: Type application is only supported for generic classes
 [builtins fixtures/tuple.pyi]
-
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testGenericTypeAliasesTypeVarBinding]
@@ -1544,7 +1544,7 @@ class C(Generic[T]):
 reveal_type(C.F(17).foo())      # N: Revealed type is "builtins.int"
 reveal_type(C("").F(17).foo())  # N: Revealed type is "builtins.int"
 reveal_type(C.F)                # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
-reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
+reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`6) -> __main__.C.F[K`6]"
 
 
 -- Callable subtyping with generic functions
@@ -2580,3 +2580,68 @@ class Bar(Foo[AnyStr]):
 [out]
 main:10: error: Argument 1 to "method1" of "Foo" has incompatible type "str"; expected "AnyStr"
 main:10: error: Argument 2 to "method1" of "Foo" has incompatible type "bytes"; expected "AnyStr"
+
+[case testTypeVariableClashVar]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    x: Callable[[T], R]
+
+def func(x: C[R]) -> R:
+    return x.x(42)  # OK
+
+[case testTypeVariableClashVarTuple]
+from typing import Generic, TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    x: Callable[[T], Tuple[R, T]]
+
+def func(x: C[R]) -> R:
+    if bool():
+        return x.x(42)[0]  # OK
+    else:
+        return x.x(42)[1]  # E: Incompatible return value type (got "int", expected "R")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVariableClashMethod]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    def x(self) -> Callable[[T], R]: ...
+
+def func(x: C[R]) -> R:
+    return x.x()(42)  # OK
+
+[case testTypeVariableClashMethodTuple]
+from typing import Generic, TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    def x(self) -> Callable[[T], Tuple[R, T]]: ...
+
+def func(x: C[R]) -> R:
+    if bool():
+        return x.x()(42)[0]  # OK
+    else:
+        return x.x()(42)[1]  # E: Incompatible return value type (got "int", expected "R")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVariableClashVarSelf]
+from typing import Self, TypeVar, Generic, Callable
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class C(Generic[T]):
+    x: Callable[[S], Self]
+    y: T
+
+def foo(x: C[T]) -> T:
+    return x.x(42).y  # OK

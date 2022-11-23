@@ -393,8 +393,6 @@ class X(typing.NamedTuple):
 [out]
 main:6: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 main:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
-main:7: error: Type cannot be declared in assignment to non-self attribute
-main:7: error: "int" has no attribute "x"
 main:9: error: Non-default NamedTuple fields cannot follow default fields
 
 [builtins fixtures/list.pyi]

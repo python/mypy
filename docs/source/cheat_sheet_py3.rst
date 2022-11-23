@@ -34,8 +34,6 @@ Useful built-in types
 
 .. code-block:: python
 
-   from typing import List, Set, Dict, Tuple, Optional
-
    # For most types, just use the name of the type
    x: int = 1
    x: float = 1.0
@@ -43,30 +41,38 @@ Useful built-in types
    x: str = "test"
    x: bytes = b"test"
 
-   # For collections, the type of the collection item is in brackets
-   # (Python 3.9+)
+   # For collections on Python 3.9+, the type of the collection item is in brackets
    x: list[int] = [1]
    x: set[int] = {6, 7}
 
-   # In Python 3.8 and earlier, the name of the collection type is
-   # capitalized, and the type is imported from the 'typing' module
-   x: List[int] = [1]
-   x: Set[int] = {6, 7}
-
    # For mappings, we need the types of both keys and values
    x: dict[str, float] = {"field": 2.0}  # Python 3.9+
-   x: Dict[str, float] = {"field": 2.0}
 
    # For tuples of fixed size, we specify the types of all the elements
    x: tuple[int, str, float] = (3, "yes", 7.5)  # Python 3.9+
-   x: Tuple[int, str, float] = (3, "yes", 7.5)
 
    # For tuples of variable size, we use one type and ellipsis
    x: tuple[int, ...] = (1, 2, 3)  # Python 3.9+
+
+   # On Python 3.8 and earlier, the name of the collection type is
+   # capitalized, and the type is imported from the 'typing' module
+   from typing import List, Set, Dict, Tuple
+   x: List[int] = [1]
+   x: Set[int] = {6, 7}
+   x: Dict[str, float] = {"field": 2.0}
+   x: Tuple[int, str, float] = (3, "yes", 7.5)
    x: Tuple[int, ...] = (1, 2, 3)
 
-   # Use Optional[] for values that could be None
-   x: Optional[str] = some_function()
+   from typing import Union, Optional
+
+   # On Python 3.10+, use the | operator when something could be one of a few types
+   x: list[int | str] = [3, 5, "test", "fun"]  # Python 3.10+
+   # On earlier versions, use Union
+   x: list[Union[int, str]] = [3, 5, "test", "fun"]
+
+   # Use Optional[X] for a value that could be None
+   # Optional[X] is the same as X | None or Union[X, None]
+   x: Optional[str] = "something" if some_condition() else None
    # Mypy understands a value can't be None in an if-statement
    if x is not None:
        print(x.upper())
@@ -89,9 +95,10 @@ Functions
    def plus(num1: int, num2: int) -> int:
        return num1 + num2
 
-   # Add default value for an argument after the type annotation
-   def f(num1: int, my_float: float = 3.5) -> float:
-       return num1 + my_float
+   # If a function does not return a value, use None as the return type
+   # Default value for an argument goes after the type annotation
+   def show(value: str, excitement: int = 10) -> None:
+       print(value + "!" * excitement)
 
    # This is how you annotate a callable (function) value
    x: Callable[[int, float], float] = f
@@ -124,12 +131,60 @@ Functions
    quux(3, 5)  # error: Too many positional arguments for "quux"
    quux(x=3, y=5)  # error: Unexpected keyword argument "x" for "quux"
 
-   # This makes each positional arg and each keyword arg a "str"
+   # This says each positional arg and each keyword arg is a "str"
    def call(self, *args: str, **kwargs: str) -> str:
        reveal_type(args)  # Revealed type is "tuple[str, ...]"
        reveal_type(kwargs)  # Revealed type is "dict[str, str]"
        request = make_request(*args, **kwargs)
        return self.do_api_query(request)
+
+Classes
+*******
+
+.. code-block:: python
+
+   class MyClass:
+       # You can optionally declare instance variables in the class body
+       attr: int
+       # This is an instance variable with a default value
+       charge_percent: int = 100
+
+       # The "__init__" method doesn't return anything, so it gets return
+       # type "None" just like any other method that doesn't return anything
+       def __init__(self) -> None:
+           ...
+
+       # For instance methods, omit type for "self"
+       def my_method(self, num: int, str1: str) -> str:
+           return num * str1
+
+   # User-defined classes are valid as types in annotations
+   x: MyClass = MyClass()
+
+   # You can also declare the type of an attribute in "__init__"
+   class Box:
+       def __init__(self) -> None:
+           self.items: list[str] = []
+
+   # You can use the ClassVar annotation to declare a class variable
+   class Car:
+       seats: ClassVar[int] = 4
+       passengers: ClassVar[list[str]]
+
+   # If you want dynamic attributes on your class, have it
+   # override "__setattr__" or "__getattr__":
+   # - "__getattr__" allows for dynamic access to names
+   # - "__setattr__" allows for dynamic assignment to names
+   class A:
+       # This will allow assignment to any A.x, if x is the same type as "value"
+       # (use "value: Any" to allow arbitrary types)
+       def __setattr__(self, name: str, value: int) -> None: ...
+
+       # This will allow access to any A.x, if x is compatible with the return type
+       def __getattr__(self, name: str) -> int: ...
+
+   a.foo = 42  # Works
+   a.bar = 'Ex-parrot'  # Fails type checking
 
 When you're puzzled or when things are complicated
 **************************************************
@@ -143,9 +198,6 @@ When you're puzzled or when things are complicated
    # message with the type; remove it again before running the code.
    reveal_type(1)  # Revealed type is "builtins.int"
 
-   # Use Union when something could be one of a few types
-   x: list[Union[int, str]] = [3, 5, "test", "fun"]
-
    # If you initialize a variable with an empty container or "None"
    # you may have to help mypy a bit by providing an explicit type annotation
    x: list[str] = []
@@ -154,6 +206,8 @@ When you're puzzled or when things are complicated
    # Use Any if you don't know the type of something or it's too
    # dynamic to write a type for
    x: Any = mystery_function()
+   # Mypy will let you do anything with x!
+   x.whatever() * x["you"] + x("want") - any(x) and all(x) is super  # no errors
 
    # Use a "type: ignore" comment to suppress errors on a given line,
    # when your code confuses mypy or runs into an outright bug in mypy.
@@ -216,56 +270,6 @@ that are common in idiomatic Python are standardized.
 
 You can even make your own duck types using :ref:`protocol-types`.
 
-Classes
-*******
-
-.. code-block:: python
-
-   class MyClass:
-       # You can optionally declare instance variables in the class body
-       attr: int
-       # This is an instance variable with a default value
-       charge_percent: int = 100
-
-       # The "__init__" method doesn't return anything, so it gets return
-       # type "None" just like any other method that doesn't return anything
-       def __init__(self) -> None:
-           ...
-
-       # For instance methods, omit type for "self"
-       def my_method(self, num: int, str1: str) -> str:
-           return num * str1
-
-   # User-defined classes are valid as types in annotations
-   x: MyClass = MyClass()
-
-   # You can use the ClassVar annotation to declare a class variable
-   class Car:
-       seats: ClassVar[int] = 4
-       passengers: ClassVar[list[str]]
-
-   # You can also declare the type of an attribute in "__init__"
-   class Box:
-       def __init__(self) -> None:
-           self.items: list[str] = []
-
-   # If you want dynamic attributes on your class, have it override "__setattr__"
-   # or "__getattr__" in a stub or in your source code.
-   #
-   # "__setattr__" allows for dynamic assignment to names
-   # "__getattr__" allows for dynamic access to names
-   class A:
-       # This will allow assignment to any A.x, if x is the same type as "value"
-       # (use "value: Any" to allow arbitrary types)
-       def __setattr__(self, name: str, value: int) -> None: ...
-
-       # This will allow access to any A.x, if x is compatible with the return type
-       def __getattr__(self, name: str) -> int: ...
-
-   a.foo = 42  # Works
-   a.bar = 'Ex-parrot'  # Fails type checking
-
-
 Coroutines and asyncio
 **********************
 
@@ -290,11 +294,7 @@ Miscellaneous
 .. code-block:: python
 
    import sys
-   import re
-   from typing import Match, IO
-
-   # "typing.Match" describes regex matches from the re module
-   x: Match[str] = re.match(r'[0-9]+', "15")
+   from typing import IO
 
    # Use IO[] for functions that should accept or return any
    # object that comes from an open() call (IO[] does not
@@ -309,7 +309,7 @@ Miscellaneous
 
    # Forward references are useful if you want to reference a class before
    # it is defined
-   def f(foo: A) -> int:  # This will fail
+   def f(foo: A) -> int:  # This will fail at runtime with 'A' is not defined
        ...
 
    class A:

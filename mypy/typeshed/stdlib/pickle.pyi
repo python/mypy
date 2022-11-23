@@ -1,5 +1,5 @@
 import sys
-from _typeshed import ReadableBuffer
+from _typeshed import ReadableBuffer, SupportsWrite
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from typing import Any, ClassVar, Protocol, SupportsBytes, Union
 from typing_extensions import SupportsIndex, TypeAlias, final
@@ -97,9 +97,6 @@ class _ReadableFileobj(Protocol):
     def read(self, __n: int) -> bytes: ...
     def readline(self) -> bytes: ...
 
-class _WritableFileobj(Protocol):
-    def write(self, __b: bytes) -> Any: ...
-
 if sys.version_info >= (3, 8):
     @final
     class PickleBuffer:
@@ -109,7 +106,7 @@ if sys.version_info >= (3, 8):
     _BufferCallback: TypeAlias = Callable[[PickleBuffer], Any] | None
     def dump(
         obj: Any,
-        file: _WritableFileobj,
+        file: SupportsWrite[bytes],
         protocol: int | None = ...,
         *,
         fix_imports: bool = ...,
@@ -136,7 +133,7 @@ if sys.version_info >= (3, 8):
     ) -> Any: ...
 
 else:
-    def dump(obj: Any, file: _WritableFileobj, protocol: int | None = ..., *, fix_imports: bool = ...) -> None: ...
+    def dump(obj: Any, file: SupportsWrite[bytes], protocol: int | None = ..., *, fix_imports: bool = ...) -> None: ...
     def dumps(obj: Any, protocol: int | None = ..., *, fix_imports: bool = ...) -> bytes: ...
     def load(file: _ReadableFileobj, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
     def loads(data: ReadableBuffer, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
@@ -162,7 +159,7 @@ class Pickler:
     if sys.version_info >= (3, 8):
         def __init__(
             self,
-            file: _WritableFileobj,
+            file: SupportsWrite[bytes],
             protocol: int | None = ...,
             *,
             fix_imports: bool = ...,
@@ -170,7 +167,7 @@ class Pickler:
         ) -> None: ...
         def reducer_override(self, obj: Any) -> Any: ...
     else:
-        def __init__(self, file: _WritableFileobj, protocol: int | None = ..., *, fix_imports: bool = ...) -> None: ...
+        def __init__(self, file: SupportsWrite[bytes], protocol: int | None = ..., *, fix_imports: bool = ...) -> None: ...
 
     def dump(self, __obj: Any) -> None: ...
     def clear_memo(self) -> None: ...

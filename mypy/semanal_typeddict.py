@@ -23,6 +23,7 @@ from mypy.nodes import (
     NameExpr,
     PassStmt,
     RefExpr,
+    Statement,
     StrExpr,
     TempNode,
     TupleExpr,
@@ -93,7 +94,7 @@ class TypedDictAnalyzer:
             and defn.base_type_exprs[0].fullname in TPDICT_NAMES
         ):
             # Building a new TypedDict
-            fields, types, required_keys = self.analyze_typeddict_classdef_fields(defn)
+            fields, types, statements, required_keys = self.analyze_typeddict_classdef_fields(defn)
             if fields is None:
                 return True, None  # Defer
             info = self.build_typeddict_typeinfo(
@@ -102,6 +103,7 @@ class TypedDictAnalyzer:
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
             defn.analyzed.column = defn.column
+            defn.defs.body = statements
             return True, info
 
         # Extending/merging existing TypedDicts
@@ -139,7 +141,12 @@ class TypedDictAnalyzer:
         # Iterate over bases in reverse order so that leftmost base class' keys take precedence
         for base in reversed(typeddict_bases):
             self.add_keys_and_types_from_base(base, keys, types, required_keys, defn)
-        new_keys, new_types, new_required_keys = self.analyze_typeddict_classdef_fields(defn, keys)
+        (
+            new_keys,
+            new_types,
+            new_statements,
+            new_required_keys,
+        ) = self.analyze_typeddict_classdef_fields(defn, keys)
         if new_keys is None:
             return True, None  # Defer
         keys.extend(new_keys)
@@ -151,6 +158,7 @@ class TypedDictAnalyzer:
         defn.analyzed = TypedDictExpr(info)
         defn.analyzed.line = defn.line
         defn.analyzed.column = defn.column
+        defn.defs.body = new_statements
         return True, info
 
     def add_keys_and_types_from_base(
@@ -250,7 +258,7 @@ class TypedDictAnalyzer:
 
     def analyze_typeddict_classdef_fields(
         self, defn: ClassDef, oldfields: list[str] | None = None
-    ) -> tuple[list[str] | None, list[Type], set[str]]:
+    ) -> tuple[list[str] | None, list[Type], list[Statement], set[str]]:
         """Analyze fields defined in a TypedDict class definition.
 
         This doesn't consider inherited fields (if any). Also consider totality,
@@ -259,20 +267,27 @@ class TypedDictAnalyzer:
         Return tuple with these items:
          * List of keys (or None if found an incomplete reference --> deferral)
          * List of types for each key
+         * List of statements from defn.defs.body that are legally allowed to be a
+           part of a TypedDict definition
          * Set of required keys
         """
         fields: list[str] = []
         types: list[Type] = []
+        statements: list[Statement] = []
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
-                # Still allow pass or ... (for empty TypedDict's).
-                if not isinstance(stmt, PassStmt) and not (
+                # Still allow pass or ... (for empty TypedDict's) and docstrings
+                if isinstance(stmt, PassStmt) or (
                     isinstance(stmt, ExpressionStmt)
                     and isinstance(stmt.expr, (EllipsisExpr, StrExpr))
                 ):
+                    statements.append(stmt)
+                else:
+                    defn.removed_statements.append(stmt)
                     self.fail(TPDICT_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
+                defn.removed_statements.append(stmt)
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
                 name = stmt.lvalues[0].name
@@ -281,8 +296,9 @@ class TypedDictAnalyzer:
                 if name in fields:
                     self.fail(f'Duplicate TypedDict key "{name}"', stmt)
                     continue
-                # Append name and type in this case...
+                # Append stmt, name, and type in this case...
                 fields.append(name)
+                statements.append(stmt)
                 if stmt.type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
@@ -291,11 +307,12 @@ class TypedDictAnalyzer:
                         allow_required=True,
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
+                        prohibit_self_type="TypedDict item type",
                     )
                     if analyzed is None:
-                        return None, [], set()  # Need to defer
+                        return None, [], [], set()  # Need to defer
                     types.append(analyzed)
-                # ...despite possible minor failures that allow further analyzis.
+                # ...despite possible minor failures that allow further analysis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
                 elif not isinstance(stmt.rvalue, TempNode):
@@ -317,7 +334,7 @@ class TypedDictAnalyzer:
             t.item if isinstance(t, RequiredType) else t for t in types
         ]
 
-        return fields, types, required_keys
+        return fields, types, statements, required_keys
 
     def check_typeddict(
         self, node: Expression, var_name: str | None, is_func_scope: bool
@@ -486,6 +503,7 @@ class TypedDictAnalyzer:
                 allow_required=True,
                 allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
+                prohibit_self_type="TypedDict item type",
             )
             if analyzed is None:
                 return None

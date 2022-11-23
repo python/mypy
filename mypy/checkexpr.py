@@ -111,6 +111,7 @@ from mypy.typeops import (
     custom_special_method,
     erase_to_union_or_bound,
     false_only,
+    fixup_partial_type,
     function_type,
     is_literal_type_like,
     make_simplified_union,
@@ -145,9 +146,11 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarTupleType,
     TypeVarType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -1397,16 +1400,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
 
         if callee.is_generic():
-            need_refresh = any(isinstance(v, ParamSpecType) for v in callee.variables)
+            need_refresh = any(
+                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
+            )
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
+            if need_refresh:
+                # Argument kinds etc. may have changed due to
+                # ParamSpec or TypeVarTuple variables being replaced with an arbitrary
+                # number of arguments; recalculate actual-to-formal map
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds,
+                    arg_names,
+                    callee.arg_kinds,
+                    callee.arg_names,
+                    lambda i: self.accept(args[i]),
+                )
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context
             )
             if need_refresh:
-                # Argument kinds etc. may have changed due to
-                # ParamSpec variables being replaced with an arbitrary
-                # number of arguments; recalculate actual-to-formal map
                 formal_to_actual = map_actuals_to_formals(
                     arg_kinds,
                     arg_names,
@@ -1995,11 +2008,66 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Keep track of consumed tuple *arg items.
         mapper = ArgTypeExpander(self.argument_infer_context())
         for i, actuals in enumerate(formal_to_actual):
-            for actual in actuals:
-                actual_type = arg_types[actual]
+            orig_callee_arg_type = get_proper_type(callee.arg_types[i])
+
+            # Checking the case that we have more than one item but the first argument
+            # is an unpack, so this would be something like:
+            # [Tuple[Unpack[Ts]], int]
+            #
+            # In this case we have to check everything together, we do this by re-unifying
+            # the suffices to the tuple, e.g. a single actual like
+            # Tuple[Unpack[Ts], int]
+            expanded_tuple = False
+            if len(actuals) > 1:
+                first_actual_arg_type = get_proper_type(arg_types[actuals[0]])
+                if (
+                    isinstance(first_actual_arg_type, TupleType)
+                    and len(first_actual_arg_type.items) == 1
+                    and isinstance(get_proper_type(first_actual_arg_type.items[0]), UnpackType)
+                ):
+                    # TODO: use walrus operator
+                    actual_types = [first_actual_arg_type.items[0]] + [
+                        arg_types[a] for a in actuals[1:]
+                    ]
+                    actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
+
+                    assert isinstance(orig_callee_arg_type, TupleType)
+                    assert orig_callee_arg_type.items
+                    callee_arg_types = orig_callee_arg_type.items
+                    callee_arg_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (
+                        len(orig_callee_arg_type.items) - 1
+                    )
+                    expanded_tuple = True
+
+            if not expanded_tuple:
+                actual_types = [arg_types[a] for a in actuals]
+                actual_kinds = [arg_kinds[a] for a in actuals]
+                if isinstance(orig_callee_arg_type, UnpackType):
+                    unpacked_type = get_proper_type(orig_callee_arg_type.type)
+                    # Only case we know of thus far.
+                    assert isinstance(unpacked_type, TupleType)
+                    actual_types = [arg_types[a] for a in actuals]
+                    actual_kinds = [arg_kinds[a] for a in actuals]
+                    callee_arg_types = unpacked_type.items
+                    callee_arg_kinds = [ARG_POS] * len(actuals)
+                else:
+                    callee_arg_types = [orig_callee_arg_type] * len(actuals)
+                    callee_arg_kinds = [callee.arg_kinds[i]] * len(actuals)
+
+            assert len(actual_types) == len(actuals) == len(actual_kinds)
+
+            if len(callee_arg_types) != len(actual_types):
+                # TODO: Improve error message
+                self.chk.fail("Invalid number of arguments", context)
+                continue
+
+            assert len(callee_arg_types) == len(actual_types)
+            assert len(callee_arg_types) == len(callee_arg_kinds)
+            for actual, actual_type, actual_kind, callee_arg_type, callee_arg_kind in zip(
+                actuals, actual_types, actual_kinds, callee_arg_types, callee_arg_kinds
+            ):
                 if actual_type is None:
                     continue  # Some kind of error was already reported.
-                actual_kind = arg_kinds[actual]
                 # Check that a *arg is valid as varargs.
                 if actual_kind == nodes.ARG_STAR and not self.is_valid_var_arg(actual_type):
                     self.msg.invalid_var_arg(actual_type, context)
@@ -2009,13 +2077,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     is_mapping = is_subtype(actual_type, self.chk.named_type("typing.Mapping"))
                     self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
-                    actual_type, actual_kind, callee.arg_names[i], callee.arg_kinds[i]
+                    actual_type, actual_kind, callee.arg_names[i], callee_arg_kind
                 )
                 check_arg(
                     expanded_actual,
                     actual_type,
-                    arg_kinds[actual],
-                    callee.arg_types[i],
+                    actual_kind,
+                    callee_arg_type,
                     actual + 1,
                     i + 1,
                     callee,
@@ -2663,6 +2731,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
                 module_symbol_table = base.node.names
+            if isinstance(base, RefExpr) and isinstance(base.node, Var):
+                is_self = base.node.is_self
+            else:
+                is_self = False
 
             member_type = analyze_member_access(
                 e.name,
@@ -2676,6 +2748,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 chk=self.chk,
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table,
+                is_self=is_self,
             )
 
             return member_type
@@ -2922,7 +2995,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(expr.node, Var):
             result = self.analyze_var_ref(expr.node, expr)
             if isinstance(result, PartialType) and result.type is not None:
-                self.chk.store_type(expr, self.chk.fixup_partial_type(result))
+                self.chk.store_type(expr, fixup_partial_type(result))
                 return result
         return None
 
@@ -3866,9 +3939,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
-            # This type is invalid in most runtime contexts, give it an 'object' type.
-            # TODO: Use typing._SpecialForm instead?
-            return self.named_type("builtins.object")
+            # The _SpecialForm type can be used in some runtime contexts (e.g. it may have __or__).
+            return self.named_type("typing._SpecialForm")
 
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context
@@ -4313,8 +4385,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     mro = e.info.mro
                     index = mro.index(type_info)
         if index is None:
-            self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
-            return AnyType(TypeOfAny.from_error)
+            if (
+                instance_info.is_protocol
+                and instance_info != type_info
+                and not type_info.is_protocol
+            ):
+                # A special case for mixins, in this case super() should point
+                # directly to the host protocol, this is not safe, since the real MRO
+                # is not known yet for mixin, but this feature is more like an escape hatch.
+                index = -1
+            else:
+                self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
+                return AnyType(TypeOfAny.from_error)
 
         if len(mro) == index + 1:
             self.chk.fail(message_registry.TARGET_CLASS_HAS_NO_BASE_CLASS, e)
@@ -4701,6 +4783,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             or isinstance(typ, AnyType)
             or isinstance(typ, ParamSpecType)
+            or isinstance(typ, UnpackType)
         )
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
@@ -4738,7 +4821,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             typ = typ.fallback
         if isinstance(typ, Instance):
             return typ.type.has_readable_member(member)
-        if isinstance(typ, CallableType) and typ.is_type_obj():
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
             return typ.fallback.type.has_readable_member(member)
         elif isinstance(typ, AnyType):
             return True

@@ -1,6 +1,7 @@
 import email.message
 import io
 import socketserver
+import sys
 from _typeshed import StrPath, SupportsRead, SupportsWrite
 from collections.abc import Mapping, Sequence
 from typing import Any, AnyStr, BinaryIO, ClassVar
@@ -31,7 +32,6 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     default_request_version: str  # undocumented
     weekdayname: ClassVar[Sequence[str]]  # undocumented
     monthname: ClassVar[Sequence[str | None]]  # undocumented
-    def __init__(self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer) -> None: ...
     def handle_one_request(self) -> None: ...
     def handle_expect_100(self) -> bool: ...
     def send_error(self, code: int, message: str | None = ..., explain: str | None = ...) -> None: ...
@@ -51,9 +51,26 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     extensions_map: dict[str, str]
-    def __init__(
-        self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer, directory: str | None = ...
-    ) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            request: socketserver._RequestType,
+            client_address: socketserver._AddressType,
+            server: socketserver.BaseServer,
+            *,
+            directory: str | None = ...,
+            index_pages: Sequence[str] | None = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            request: socketserver._RequestType,
+            client_address: socketserver._AddressType,
+            server: socketserver.BaseServer,
+            *,
+            directory: str | None = ...,
+        ) -> None: ...
+
     def do_GET(self) -> None: ...
     def do_HEAD(self) -> None: ...
     def send_head(self) -> io.BytesIO | BinaryIO | None: ...  # undocumented

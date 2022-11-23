@@ -844,6 +844,37 @@ def test_class_method_default_args() -> None:
     assert dd.c(MAGIC) == MAGIC + 3
     assert dd.c(b=5) == 7
 
+class Init:
+    def __init__(self, x: i64 = 2, y: i64 = 5) -> None:
+        self.x = x
+        self.y = y
+
+def test_init_default_args() -> None:
+    o = Init()
+    assert o.x == 2
+    assert o.y == 5
+    o = Init(7, 8)
+    assert o.x == 7
+    assert o.y == 8
+    o = Init(4)
+    assert o.x == 4
+    assert o.y == 5
+    o = Init(MAGIC, MAGIC)
+    assert o.x == MAGIC
+    assert o.y == MAGIC
+    o = Init(3, MAGIC)
+    assert o.x == 3
+    assert o.y == MAGIC
+    o = Init(MAGIC, 11)
+    assert o.x == MAGIC
+    assert o.y == 11
+    o = Init(MAGIC)
+    assert o.x == MAGIC
+    assert o.y == 5
+    o = Init(y=MAGIC)
+    assert o.x == 2
+    assert o.y == MAGIC
+
 def kw_only(*, a: i64 = 1, b: int = 2, c: i64 = 3) -> i64:
     return a + b + c * 2
 
@@ -1095,3 +1126,47 @@ def test_many_locals() -> None:
     assert a31 == 10
     assert a32 == 55
     assert a33 == 20
+
+[case testI64GlueMethods]
+from typing_extensions import Final
+
+MYPY = False
+if MYPY:
+    from mypy_extensions import i64
+
+MAGIC: Final = -113
+
+class Base:
+    def foo(self) -> i64:
+        return 5
+
+    def bar(self, x: i64 = 2) -> i64:
+        return x + 1
+
+    def hoho(self, x: i64) -> i64:
+        return x - 1
+
+class Derived(Base):
+    def foo(self, x: i64 = 5) -> i64:
+        return x + 10
+
+    def bar(self, x: i64 = 3, y: i64 = 20) -> i64:
+        return x + y + 2
+
+    def hoho(self, x: i64 = 7) -> i64:
+        return x - 2
+
+def test_derived_adds_bitmap() -> None:
+    b: Base = Derived()
+    assert b.foo() == 15
+
+def test_derived_adds_another_default_arg() -> None:
+    b: Base = Derived()
+    assert b.bar() == 25
+    assert b.bar(1) == 23
+    assert b.bar(MAGIC) == MAGIC + 22
+
+def test_derived_switches_arg_to_have_default() -> None:
+    b: Base = Derived()
+    assert b.hoho(5) == 3
+    assert b.hoho(MAGIC) == MAGIC - 2

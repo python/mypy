@@ -935,10 +935,19 @@ class LowLevelIRBuilder:
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None],
         line: int,
+        *,
+        bitmap_args: list[Register] | None = None,
     ) -> Value:
-        """Call a native function."""
+        """Call a native function.
+
+        If bitmap_args is given, they override the values of (some) of the bitmap
+        arguments used to track the presence of values for certain arguments. By
+        default, the values of the bitmap arguments are inferred from args.
+        """
         # Normalize args to positionals.
-        args = self.native_args_to_positional(args, arg_kinds, arg_names, decl.sig, line)
+        args = self.native_args_to_positional(
+            args, arg_kinds, arg_names, decl.sig, line, bitmap_args=bitmap_args
+        )
         return self.add(Call(decl, args, line))
 
     def native_args_to_positional(
@@ -948,6 +957,8 @@ class LowLevelIRBuilder:
         arg_names: Sequence[str | None],
         sig: FuncSignature,
         line: int,
+        *,
+        bitmap_args: list[Register] | None = None,
     ) -> list[Value]:
         """Prepare arguments for a native call.
 
@@ -1015,6 +1026,11 @@ class LowLevelIRBuilder:
             output_args.append(output_arg)
 
         for i in reversed(range(n)):
+            if bitmap_args and i < len(bitmap_args):
+                # Use override provided by caller
+                output_args.append(bitmap_args[i])
+                continue
+            # Infer values of bitmap args
             bitmap = 0
             c = 0
             for lst, arg in zip(formal_to_actual, sig_args):

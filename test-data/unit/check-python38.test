@@ -310,7 +310,7 @@ def f(x: int = (c := 4)) -> int:
         z2: NT  # E: Variable "NT" is not valid as a type \
                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
-    if Alias := int:
+    if Alias := int:  # E: Function "Type[int]" could always be true in boolean context
         z3: Alias  # E: Variable "Alias" is not valid as a type \
                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -718,3 +718,19 @@ def f1() -> None:
         y = x
     z = x
 [builtins fixtures/dict.pyi]
+
+[case testNarrowOnSelfInGeneric]
+# flags: --strict-optional
+from typing import Generic, TypeVar, Optional
+
+T = TypeVar("T", int, str)
+
+class C(Generic[T]):
+    x: Optional[T]
+    def meth(self) -> Optional[T]:
+        if (y := self.x) is not None:
+            reveal_type(y)
+        return None
+[out]
+main:10: note: Revealed type is "builtins.int"
+main:10: note: Revealed type is "builtins.str"

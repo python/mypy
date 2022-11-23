@@ -80,10 +80,12 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarTupleType,
     TypeVarType,
     UnboundType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     get_proper_type,
     get_proper_types,
 )
@@ -130,6 +132,7 @@ SUGGESTED_TEST_FIXTURES: Final = {
     "builtins.isinstance": "isinstancelist.pyi",
     "builtins.property": "property.pyi",
     "builtins.classmethod": "classmethod.pyi",
+    "typing._SpecialForm": "typing-medium.pyi",
 }
 
 
@@ -228,8 +231,8 @@ class MessageBuilder:
         else:
             origin_span = None
         self.errors.report(
-            context.get_line() if context else -1,
-            context.get_column() if context else -1,
+            context.line if context else -1,
+            context.column if context else -1,
             msg,
             severity=severity,
             file=file,
@@ -407,32 +410,43 @@ class MessageBuilder:
             if not self.are_type_names_disabled():
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
-                    alternatives = set(original_type.type.names.keys())
-
-                    if module_symbol_table is not None:
-                        alternatives |= {key for key in module_symbol_table.keys()}
-
-                    # in some situations, the member is in the alternatives set
-                    # but since we're in this function, we shouldn't suggest it
-                    if member in alternatives:
-                        alternatives.remove(member)
-
-                    matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
-                    matches.extend(best_matches(member, alternatives)[:3])
-                    if member == "__aiter__" and matches == ["__iter__"]:
-                        matches = []  # Avoid misleading suggestion
-                    if matches:
+                    if (
+                        module_symbol_table is not None
+                        and member in module_symbol_table
+                        and not module_symbol_table[member].module_public
+                    ):
                         self.fail(
-                            '{} has no attribute "{}"; maybe {}?{}'.format(
-                                format_type(original_type),
-                                member,
-                                pretty_seq(matches, "or"),
-                                extra,
-                            ),
+                            f"{format_type(original_type, module_names=True)} does not "
+                            f'explicitly export attribute "{member}"',
                             context,
                             code=codes.ATTR_DEFINED,
                         )
                         failed = True
+                    else:
+                        alternatives = set(original_type.type.names.keys())
+                        if module_symbol_table is not None:
+                            alternatives |= {
+                                k for k, v in module_symbol_table.items() if v.module_public
+                            }
+                        # Rare but possible, see e.g. testNewAnalyzerCyclicDefinitionCrossModule
+                        alternatives.discard(member)
+
+                        matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
+                        matches.extend(best_matches(member, alternatives)[:3])
+                        if member == "__aiter__" and matches == ["__iter__"]:
+                            matches = []  # Avoid misleading suggestion
+                        if matches:
+                            self.fail(
+                                '{} has no attribute "{}"; maybe {}?{}'.format(
+                                    format_type(original_type),
+                                    member,
+                                    pretty_seq(matches, "or"),
+                                    extra,
+                                ),
+                                context,
+                                code=codes.ATTR_DEFINED,
+                            )
+                            failed = True
                 if not failed:
                     self.fail(
                         '{} has no attribute "{}"{}'.format(
@@ -1228,6 +1242,9 @@ class MessageBuilder:
     def variable_may_be_undefined(self, name: str, context: Context) -> None:
         self.fail(f'Name "{name}" may be undefined', context, code=codes.PARTIALLY_DEFINED)
 
+    def var_used_before_def(self, name: str, context: Context) -> None:
+        self.fail(f'Name "{name}" is used before definition', context, code=codes.USE_BEFORE_DEF)
+
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
         actual = get_proper_type(actual)
         if isinstance(actual, Instance):
@@ -1863,6 +1880,7 @@ class MessageBuilder:
 
         class_obj = False
         is_module = False
+        skip = []
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1877,23 +1895,25 @@ class MessageBuilder:
             class_obj = True
             subtype = subtype.item
         elif isinstance(subtype, CallableType):
-            if not subtype.is_type_obj():
-                return
-            ret_type = get_proper_type(subtype.ret_type)
-            if isinstance(ret_type, TupleType):
-                ret_type = ret_type.partial_fallback
-            if not isinstance(ret_type, Instance):
-                return
-            class_obj = True
-            subtype = ret_type
+            if subtype.is_type_obj():
+                ret_type = get_proper_type(subtype.ret_type)
+                if isinstance(ret_type, TupleType):
+                    ret_type = ret_type.partial_fallback
+                if not isinstance(ret_type, Instance):
+                    return
+                class_obj = True
+                subtype = ret_type
+            else:
+                subtype = subtype.fallback
+                skip = ["__call__"]
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
 
         # Report missing members
-        missing = get_missing_protocol_members(subtype, supertype)
+        missing = get_missing_protocol_members(subtype, supertype, skip=skip)
         if (
             missing
-            and len(missing) < len(supertype.type.protocol_members)
+            and (len(missing) < len(supertype.type.protocol_members) or missing == ["__call__"])
             and len(missing) <= MAX_ITEMS
         ):
             if missing == ["__call__"] and class_obj:
@@ -2251,6 +2271,9 @@ def format_type_inner(
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
                 return f"{base_str} {itype.extra_attrs.mod_name}"
             return base_str
+        if itype.type.fullname == "typing._SpecialForm":
+            # This is not a real type but used for some typing-related constructs.
+            return "<typing special form>"
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname
         else:
@@ -2268,7 +2291,12 @@ def format_type_inner(
         else:
             # There are type arguments. Convert the arguments to strings.
             return f"{base_str}[{format_list(itype.args)}]"
+    elif isinstance(typ, UnpackType):
+        return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
+        # This is similar to non-generic instance types.
+        return typ.name
+    elif isinstance(typ, TypeVarTupleType):
         # This is similar to non-generic instance types.
         return typ.name
     elif isinstance(typ, ParamSpecType):
@@ -2594,13 +2622,15 @@ def variance_string(variance: int) -> str:
         return "invariant"
 
 
-def get_missing_protocol_members(left: Instance, right: Instance) -> list[str]:
+def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str]) -> list[str]:
     """Find all protocol members of 'right' that are not implemented
     (i.e. completely missing) in 'left'.
     """
     assert right.type.is_protocol
     missing: list[str] = []
     for member in right.type.protocol_members:
+        if member in skip:
+            continue
         if not find_member(member, left, left):
             missing.append(member)
     return missing
@@ -2647,6 +2677,7 @@ def get_bad_protocol_flags(
         if (
             IS_CLASSVAR in subflags
             and IS_CLASSVAR not in superflags
+            and IS_SETTABLE in superflags
             or IS_CLASSVAR in superflags
             and IS_CLASSVAR not in subflags
             or IS_SETTABLE in superflags

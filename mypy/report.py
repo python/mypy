@@ -353,7 +353,7 @@ class LineCoverageVisitor(TraverserVisitor):
         return None
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        start_line = defn.get_line() - 1
+        start_line = defn.line - 1
         start_indent = None
         # When a function is decorated, sometimes the start line will point to
         # whitespace or comments between the decorator and the function, so
@@ -637,51 +637,48 @@ class CoberturaXmlReporter(AbstractReporter):
         etree.SubElement(class_element, "methods")
         lines_element = etree.SubElement(class_element, "lines")
 
-        with tokenize.open(path) as input_file:
-            class_lines_covered = 0
-            class_total_lines = 0
-            for lineno, _ in enumerate(input_file, 1):
-                status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
-                hits = 0
-                branch = False
-                if status == stats.TYPE_EMPTY:
-                    continue
-                class_total_lines += 1
-                if status != stats.TYPE_ANY:
-                    class_lines_covered += 1
-                    hits = 1
-                if status == stats.TYPE_IMPRECISE:
-                    branch = True
-                file_info.counts[status] += 1
-                line_element = etree.SubElement(
-                    lines_element,
-                    "line",
-                    branch=str(branch).lower(),
-                    hits=str(hits),
-                    number=str(lineno),
-                    precision=stats.precision_names[status],
-                )
-                if branch:
-                    line_element.attrib["condition-coverage"] = "50% (1/2)"
-            class_element.attrib["branch-rate"] = "0"
-            class_element.attrib["line-rate"] = get_line_rate(
-                class_lines_covered, class_total_lines
+        class_lines_covered = 0
+        class_total_lines = 0
+        for lineno, _ in iterate_python_lines(path):
+            status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
+            hits = 0
+            branch = False
+            if status == stats.TYPE_EMPTY:
+                continue
+            class_total_lines += 1
+            if status != stats.TYPE_ANY:
+                class_lines_covered += 1
+                hits = 1
+            if status == stats.TYPE_IMPRECISE:
+                branch = True
+            file_info.counts[status] += 1
+            line_element = etree.SubElement(
+                lines_element,
+                "line",
+                branch=str(branch).lower(),
+                hits=str(hits),
+                number=str(lineno),
+                precision=stats.precision_names[status],
             )
-            # parent_module is set to whichever module contains this file.  For most files, we want
-            # to simply strip the last element off of the module.  But for __init__.py files,
-            # the module == the parent module.
-            parent_module = file_info.module.rsplit(".", 1)[0]
-            if file_info.name.endswith("__init__.py"):
-                parent_module = file_info.module
+            if branch:
+                line_element.attrib["condition-coverage"] = "50% (1/2)"
+        class_element.attrib["branch-rate"] = "0"
+        class_element.attrib["line-rate"] = get_line_rate(class_lines_covered, class_total_lines)
+        # parent_module is set to whichever module contains this file.  For most files, we want
+        # to simply strip the last element off of the module.  But for __init__.py files,
+        # the module == the parent module.
+        parent_module = file_info.module.rsplit(".", 1)[0]
+        if file_info.name.endswith("__init__.py"):
+            parent_module = file_info.module
 
-            if parent_module not in self.root_package.packages:
-                self.root_package.packages[parent_module] = CoberturaPackage(parent_module)
-            current_package = self.root_package.packages[parent_module]
-            packages_to_update = [self.root_package, current_package]
-            for package in packages_to_update:
-                package.total_lines += class_total_lines
-                package.covered_lines += class_lines_covered
-            current_package.classes[class_name] = class_element
+        if parent_module not in self.root_package.packages:
+            self.root_package.packages[parent_module] = CoberturaPackage(parent_module)
+        current_package = self.root_package.packages[parent_module]
+        packages_to_update = [self.root_package, current_package]
+        for package in packages_to_update:
+            package.total_lines += class_total_lines
+            package.covered_lines += class_lines_covered
+        current_package.classes[class_name] = class_element
 
     def on_finish(self) -> None:
         self.root.attrib["line-rate"] = get_line_rate(

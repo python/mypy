@@ -1153,6 +1153,25 @@ x2 = y2 # E: Incompatible types in assignment (expression has type "PP", variabl
         # N: Protocol member P.attr expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 
+[case testClassVarProtocolImmutable]
+from typing import Protocol, ClassVar
+
+class P(Protocol):
+    @property
+    def x(self) -> int: ...
+
+class C:
+    x: ClassVar[int]
+
+class Bad:
+    x: ClassVar[str]
+
+x: P = C()
+y: P = Bad()  # E: Incompatible types in assignment (expression has type "Bad", variable has type "P") \
+              # N: Following member(s) of "Bad" have conflicts: \
+              # N:     x: expected "int", got "str"
+[builtins fixtures/property.pyi]
+
 [case testSettablePropertyInProtocols]
 from typing import Protocol
 
@@ -2642,6 +2661,53 @@ reveal_type([b, a])  # N: Revealed type is "builtins.list[def (x: def (__main__.
 [builtins fixtures/list.pyi]
 [out]
 
+[case testCallbackProtocolFunctionAttributesSubtyping]
+from typing import Protocol
+
+class A(Protocol):
+    __name__: str
+    def __call__(self) -> str: ...
+
+class B1(Protocol):
+    __name__: int
+    def __call__(self) -> str: ...
+
+class B2(Protocol):
+    __name__: str
+    def __call__(self) -> int: ...
+
+class B3(Protocol):
+    __name__: str
+    extra_stuff: int
+    def __call__(self) -> str: ...
+
+def f() -> str: ...
+
+reveal_type(f.__name__)  # N: Revealed type is "builtins.str"
+a: A = f  # OK
+b1: B1 = f  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "B1") \
+            # N: Following member(s) of "function" have conflicts: \
+            # N:     __name__: expected "int", got "str"
+b2: B2 = f  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "B2") \
+            # N: "B2.__call__" has type "Callable[[], int]"
+b3: B3 = f  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "B3") \
+            # N: "function" is missing following "B3" protocol member: \
+            # N:     extra_stuff
+
+[case testCallbackProtocolFunctionAttributesInference]
+from typing import Protocol, TypeVar, Generic, Tuple
+
+T = TypeVar("T")
+S = TypeVar("S", covariant=True)
+class A(Protocol[T, S]):
+    __name__: T
+    def __call__(self) -> S: ...
+
+def f() -> int: ...
+def test(func: A[T, S]) -> Tuple[T, S]: ...
+reveal_type(test(f))  # N: Revealed type is "Tuple[builtins.str, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
 [case testProtocolsAlwaysABCs]
 from typing import Protocol
 
@@ -3460,6 +3526,23 @@ test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
          # N: "C" has constructor incompatible with "__call__" of "P"
 
+[case testProtocolClassObjectPureCallback]
+from typing import Any, ClassVar, Protocol
+
+class P(Protocol):
+    def __call__(self, x: int, y: int) -> Any: ...
+
+class B:
+    def __init__(self, x: int, y: int) -> None: ...
+class C:
+    def __init__(self, x: int, y: str) -> None: ...
+
+def test(arg: P) -> None: ...
+test(B)  # OK
+test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+         # N: "C" has constructor incompatible with "__call__" of "P"
+[builtins fixtures/type.pyi]
+
 [case testProtocolTypeTypeAttribute]
 from typing import ClassVar, Protocol, Type
 
@@ -3787,3 +3870,110 @@ from typing_extensions import Final
 
 a: Final = 1
 [builtins fixtures/module.pyi]
+
+
+[case testModuleAsProtocolRedefinitionTopLevel]
+from typing import Protocol
+
+class P(Protocol):
+    def f(self) -> str: ...
+
+cond: bool
+t: P
+if cond:
+    import mod1 as t
+else:
+    import mod2 as t
+
+import badmod as t  # E: Incompatible import of "t" (imported name has type Module, local name has type "P")
+
+[file mod1.py]
+def f() -> str: ...
+
+[file mod2.py]
+def f() -> str: ...
+
+[file badmod.py]
+def nothing() -> int: ...
+[builtins fixtures/module.pyi]
+
+[case testModuleAsProtocolRedefinitionImportFrom]
+from typing import Protocol
+
+class P(Protocol):
+    def f(self) -> str: ...
+
+cond: bool
+t: P
+if cond:
+    from package import mod1 as t
+else:
+    from package import mod2 as t
+
+from package import badmod as t  # E: Incompatible import of "t" (imported name has type Module, local name has type "P")
+
+package: int = 10
+
+import package.mod1 as t
+import package.mod1  # E: Incompatible import of "package" (imported name has type Module, local name has type "int")
+
+[file package/mod1.py]
+def f() -> str: ...
+
+[file package/mod2.py]
+def f() -> str: ...
+
+[file package/badmod.py]
+def nothing() -> int: ...
+[builtins fixtures/module.pyi]
+
+[case testProtocolSelfTypeNewSyntax]
+from typing import Protocol, Self
+
+class P(Protocol):
+    @property
+    def next(self) -> Self: ...
+
+class C:
+    next: C
+class S:
+    next: Self
+
+x: P = C()
+y: P = S()
+
+z: P
+reveal_type(S().next)  # N: Revealed type is "__main__.S"
+reveal_type(z.next)  # N: Revealed type is "__main__.P"
+[builtins fixtures/property.pyi]
+
+[case testProtocolSelfTypeNewSyntaxSubProtocol]
+from typing import Protocol, Self
+
+class P(Protocol):
+    @property
+    def next(self) -> Self: ...
+class PS(P, Protocol):
+    @property
+    def other(self) -> Self: ...
+
+class C:
+    next: C
+    other: C
+class S:
+    next: Self
+    other: Self
+
+x: PS = C()
+y: PS = S()
+[builtins fixtures/property.pyi]
+
+[case testProtocolClassVarSelfType]
+from typing import ClassVar, Self, Protocol
+
+class P(Protocol):
+    DEFAULT: ClassVar[Self]
+class C:
+    DEFAULT: ClassVar[C]
+
+x: P = C()

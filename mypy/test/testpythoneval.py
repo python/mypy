@@ -81,7 +81,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
             # Normalize paths so that the output is the same on Windows and Linux/macOS.
             line = line.replace(test_temp_dir + os.sep, test_temp_dir + "/")
             output.append(line.rstrip("\r\n"))
-    if returncode == 0:
+    if returncode == 0 and not output:
         # Execute the program.
         proc = subprocess.run(
             [interpreter, "-Wignore", program], cwd=test_temp_dir, capture_output=True
