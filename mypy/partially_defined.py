@@ -18,6 +18,7 @@ from mypy.nodes import (
     IfStmt,
     Import,
     ImportFrom,
+    LambdaExpr,
     ListExpr,
     Lvalue,
     MatchStmt,
@@ -25,9 +26,10 @@ from mypy.nodes import (
     RaiseStmt,
     RefExpr,
     ReturnStmt,
+    StarExpr,
     TupleExpr,
     WhileStmt,
-    WithStmt, StarExpr,
+    WithStmt,
 )
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
@@ -338,6 +340,11 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_return_stmt(self, o: ReturnStmt) -> None:
         super().visit_return_stmt(o)
         self.tracker.skip_branch()
+
+    def visit_lambda_expr(self, o: LambdaExpr) -> None:
+        self.tracker.enter_scope()
+        super().visit_lambda_expr(o)
+        self.tracker.exit_scope()
 
     def visit_assert_stmt(self, o: AssertStmt) -> None:
         super().visit_assert_stmt(o)

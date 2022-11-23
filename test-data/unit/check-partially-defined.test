@@ -133,6 +133,13 @@ def f1() -> None:
 
     some_func()  # No error.
 
+[case testLambda]
+# flags: --enable-error-code partially-defined
+def f0(b: bool) -> None:
+    if b:
+        fn = lambda: 2
+    y = fn   # E: Name "fn" may be undefined
+
 [case testGenerator]
 # flags: --enable-error-code partially-defined
 if int():
