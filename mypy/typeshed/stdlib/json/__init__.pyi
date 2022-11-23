@@ -37,7 +37,7 @@ def dump(
     **kwds: Any,
 ) -> None: ...
 def loads(
-    s: str | bytes,
+    s: str | bytes | bytearray,
     *,
     cls: type[JSONDecoder] | None = ...,
     object_hook: Callable[[dict[Any, Any]], Any] | None = ...,
@@ -58,4 +58,4 @@ def load(
     object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = ...,
     **kwds: Any,
 ) -> Any: ...
-def detect_encoding(b: bytes) -> str: ...  # undocumented
+def detect_encoding(b: bytes | bytearray) -> str: ...  # undocumented

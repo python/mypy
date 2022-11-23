@@ -7,6 +7,7 @@ from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     ClassVar,
     Dict,
     Iterable,
@@ -29,6 +30,7 @@ from mypy.nodes import (
     ArgKind,
     FakeInfo,
     FuncDef,
+    FuncItem,
     SymbolNode,
 )
 from mypy.state import state
@@ -278,30 +280,42 @@ class TypeAliasType(Type):
             self.alias.target, self.alias.alias_tvars, self.args, self.line, self.column
         )
 
-    def _partial_expansion(self) -> tuple[ProperType, bool]:
+    def _partial_expansion(self, nothing_args: bool = False) -> tuple[ProperType, bool]:
         # Private method mostly for debugging and testing.
         unroller = UnrollAliasVisitor(set())
-        unrolled = self.accept(unroller)
+        if nothing_args:
+            alias = self.copy_modified(args=[UninhabitedType()] * len(self.args))
+        else:
+            alias = self
+        unrolled = alias.accept(unroller)
         assert isinstance(unrolled, ProperType)
         return unrolled, unroller.recursed
 
-    def expand_all_if_possible(self) -> ProperType | None:
+    def expand_all_if_possible(self, nothing_args: bool = False) -> ProperType | None:
         """Attempt a full expansion of the type alias (including nested aliases).
 
         If the expansion is not possible, i.e. the alias is (mutually-)recursive,
-        return None.
+        return None. If nothing_args is True, replace all type arguments with an
+        UninhabitedType() (used to detect recursively defined aliases).
         """
-        unrolled, recursed = self._partial_expansion()
+        unrolled, recursed = self._partial_expansion(nothing_args=nothing_args)
         if recursed:
             return None
         return unrolled
 
     @property
     def is_recursive(self) -> bool:
+        """Whether this type alias is recursive.
+
+        Note this doesn't check generic alias arguments, but only if this alias
+        *definition* is recursive. The property value thus can be cached on the
+        underlying TypeAlias node. If you want to include all nested types, use
+        has_recursive_types() function.
+        """
         assert self.alias is not None, "Unfixed type alias"
         is_recursive = self.alias._is_recursive
         if is_recursive is None:
-            is_recursive = self.expand_all_if_possible() is None
+            is_recursive = self.expand_all_if_possible(nothing_args=True) is None
             # We cache the value on the underlying TypeAlias node as an optimization,
             # since the value is the same for all instances of the same alias.
             self.alias._is_recursive = is_recursive
@@ -3236,12 +3250,11 @@ def replace_alias_tvars(
 
 
 class HasTypeVars(TypeQuery[bool]):
-    def __init__(self, exclude: TypeVarId | None = None) -> None:
+    def __init__(self) -> None:
         super().__init__(any)
-        self.exclude = exclude
 
     def visit_type_var(self, t: TypeVarType) -> bool:
-        return t.id != self.exclude
+        return True
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
         return True
@@ -3250,9 +3263,9 @@ class HasTypeVars(TypeQuery[bool]):
         return True
 
 
-def has_type_vars(typ: Type, exclude: TypeVarId | None = None) -> bool:
+def has_type_vars(typ: Type) -> bool:
     """Check if a type contains any type variables (recursively)."""
-    return typ.accept(HasTypeVars(exclude))
+    return typ.accept(HasTypeVars())
 
 
 class HasRecursiveType(TypeQuery[bool]):
@@ -3260,7 +3273,7 @@ class HasRecursiveType(TypeQuery[bool]):
         super().__init__(any)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> bool:
-        return t.is_recursive
+        return t.is_recursive or self.query_types(t.args)
 
 
 def has_recursive_types(typ: Type) -> bool:
@@ -3391,3 +3404,29 @@ def callable_with_ellipsis(any_type: AnyType, ret_type: Type, fallback: Instance
         fallback=fallback,
         is_ellipsis_args=True,
     )
+
+
+def store_argument_type(
+    defn: FuncItem, i: int, typ: CallableType, named_type: Callable[[str, list[Type]], Instance]
+) -> None:
+    arg_type = typ.arg_types[i]
+    if typ.arg_kinds[i] == ARG_STAR:
+        if isinstance(arg_type, ParamSpecType):
+            pass
+        elif isinstance(arg_type, UnpackType):
+            if isinstance(get_proper_type(arg_type.type), TupleType):
+                # Instead of using Tuple[Unpack[Tuple[...]]], just use
+                # Tuple[...]
+                arg_type = arg_type.type
+            else:
+                arg_type = TupleType(
+                    [arg_type],
+                    fallback=named_type("builtins.tuple", [named_type("builtins.object", [])]),
+                )
+        else:
+            # builtins.tuple[T] is typing.Tuple[T, ...]
+            arg_type = named_type("builtins.tuple", [arg_type])
+    elif typ.arg_kinds[i] == ARG_STAR2:
+        if not isinstance(arg_type, ParamSpecType) and not typ.unpack_kwargs:
+            arg_type = named_type("builtins.dict", [named_type("builtins.str", []), arg_type])
+    defn.arguments[i].variable.type = arg_type

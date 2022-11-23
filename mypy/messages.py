@@ -1231,6 +1231,9 @@ class MessageBuilder:
     def variable_may_be_undefined(self, name: str, context: Context) -> None:
         self.fail(f'Name "{name}" may be undefined', context, code=codes.PARTIALLY_DEFINED)
 
+    def var_used_before_def(self, name: str, context: Context) -> None:
+        self.fail(f'Name "{name}" is used before definition', context, code=codes.USE_BEFORE_DEF)
+
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
         actual = get_proper_type(actual)
         if isinstance(actual, Instance):
@@ -1899,7 +1902,7 @@ class MessageBuilder:
         missing = get_missing_protocol_members(subtype, supertype, skip=skip)
         if (
             missing
-            and len(missing) < len(supertype.type.protocol_members)
+            and (len(missing) < len(supertype.type.protocol_members) or missing == ["__call__"])
             and len(missing) <= MAX_ITEMS
         ):
             if missing == ["__call__"] and class_obj:

@@ -133,8 +133,26 @@ def infer_constraints_for_callable(
                     )
                 )
 
-            assert isinstance(unpack_type.type, TypeVarTupleType)
-            constraints.append(Constraint(unpack_type.type, SUPERTYPE_OF, TypeList(actual_types)))
+            unpacked_type = get_proper_type(unpack_type.type)
+            if isinstance(unpacked_type, TypeVarTupleType):
+                constraints.append(Constraint(unpacked_type, SUPERTYPE_OF, TypeList(actual_types)))
+            elif isinstance(unpacked_type, TupleType):
+                # Prefixes get converted to positional args, so technically the only case we
+                # should have here is like Tuple[Unpack[Ts], Y1, Y2, Y3]. If this turns out
+                # not to hold we can always handle the prefixes too.
+                inner_unpack = unpacked_type.items[0]
+                assert isinstance(inner_unpack, UnpackType)
+                inner_unpacked_type = get_proper_type(inner_unpack.type)
+                assert isinstance(inner_unpacked_type, TypeVarTupleType)
+                suffix_len = len(unpacked_type.items) - 1
+                constraints.append(
+                    Constraint(
+                        inner_unpacked_type, SUPERTYPE_OF, TypeList(actual_types[:-suffix_len])
+                    )
+                )
+            else:
+                assert False, "mypy bug: unhandled constraint inference case"
+
         else:
             for actual in actuals:
                 actual_arg_type = arg_types[actual]

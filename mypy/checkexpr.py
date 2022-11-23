@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import time
 from contextlib import contextmanager
 from typing import Callable, ClassVar, Iterator, List, Optional, Sequence, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias, overload
@@ -150,6 +151,7 @@ from mypy.types import (
     TypeVarType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -262,11 +264,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
 
-    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
+    def __init__(
+        self,
+        chk: mypy.checker.TypeChecker,
+        msg: MessageBuilder,
+        plugin: Plugin,
+        per_line_checking_time_ns: dict[int, int],
+    ) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
+        self.per_line_checking_time_ns = per_line_checking_time_ns
+        self.collect_line_checking_stats = self.chk.options.line_checking_stats is not None
+        # Are we already visiting some expression? This is used to avoid double counting
+        # time for nested expressions.
+        self.in_expression = False
         self.type_context = [None]
 
         # Temporary overrides for expression types. This is currently
@@ -1404,13 +1417,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
+            if need_refresh:
+                # Argument kinds etc. may have changed due to
+                # ParamSpec or TypeVarTuple variables being replaced with an arbitrary
+                # number of arguments; recalculate actual-to-formal map
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds,
+                    arg_names,
+                    callee.arg_kinds,
+                    callee.arg_names,
+                    lambda i: self.accept(args[i]),
+                )
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context
             )
             if need_refresh:
-                # Argument kinds etc. may have changed due to
-                # ParamSpec variables being replaced with an arbitrary
-                # number of arguments; recalculate actual-to-formal map
                 formal_to_actual = map_actuals_to_formals(
                     arg_kinds,
                     arg_names,
@@ -1999,11 +2020,66 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Keep track of consumed tuple *arg items.
         mapper = ArgTypeExpander(self.argument_infer_context())
         for i, actuals in enumerate(formal_to_actual):
-            for actual in actuals:
-                actual_type = arg_types[actual]
+            orig_callee_arg_type = get_proper_type(callee.arg_types[i])
+
+            # Checking the case that we have more than one item but the first argument
+            # is an unpack, so this would be something like:
+            # [Tuple[Unpack[Ts]], int]
+            #
+            # In this case we have to check everything together, we do this by re-unifying
+            # the suffices to the tuple, e.g. a single actual like
+            # Tuple[Unpack[Ts], int]
+            expanded_tuple = False
+            if len(actuals) > 1:
+                first_actual_arg_type = get_proper_type(arg_types[actuals[0]])
+                if (
+                    isinstance(first_actual_arg_type, TupleType)
+                    and len(first_actual_arg_type.items) == 1
+                    and isinstance(get_proper_type(first_actual_arg_type.items[0]), UnpackType)
+                ):
+                    # TODO: use walrus operator
+                    actual_types = [first_actual_arg_type.items[0]] + [
+                        arg_types[a] for a in actuals[1:]
+                    ]
+                    actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
+
+                    assert isinstance(orig_callee_arg_type, TupleType)
+                    assert orig_callee_arg_type.items
+                    callee_arg_types = orig_callee_arg_type.items
+                    callee_arg_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (
+                        len(orig_callee_arg_type.items) - 1
+                    )
+                    expanded_tuple = True
+
+            if not expanded_tuple:
+                actual_types = [arg_types[a] for a in actuals]
+                actual_kinds = [arg_kinds[a] for a in actuals]
+                if isinstance(orig_callee_arg_type, UnpackType):
+                    unpacked_type = get_proper_type(orig_callee_arg_type.type)
+                    # Only case we know of thus far.
+                    assert isinstance(unpacked_type, TupleType)
+                    actual_types = [arg_types[a] for a in actuals]
+                    actual_kinds = [arg_kinds[a] for a in actuals]
+                    callee_arg_types = unpacked_type.items
+                    callee_arg_kinds = [ARG_POS] * len(actuals)
+                else:
+                    callee_arg_types = [orig_callee_arg_type] * len(actuals)
+                    callee_arg_kinds = [callee.arg_kinds[i]] * len(actuals)
+
+            assert len(actual_types) == len(actuals) == len(actual_kinds)
+
+            if len(callee_arg_types) != len(actual_types):
+                # TODO: Improve error message
+                self.chk.fail("Invalid number of arguments", context)
+                continue
+
+            assert len(callee_arg_types) == len(actual_types)
+            assert len(callee_arg_types) == len(callee_arg_kinds)
+            for actual, actual_type, actual_kind, callee_arg_type, callee_arg_kind in zip(
+                actuals, actual_types, actual_kinds, callee_arg_types, callee_arg_kinds
+            ):
                 if actual_type is None:
                     continue  # Some kind of error was already reported.
-                actual_kind = arg_kinds[actual]
                 # Check that a *arg is valid as varargs.
                 if actual_kind == nodes.ARG_STAR and not self.is_valid_var_arg(actual_type):
                     self.msg.invalid_var_arg(actual_type, context)
@@ -2013,13 +2089,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     is_mapping = is_subtype(actual_type, self.chk.named_type("typing.Mapping"))
                     self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
-                    actual_type, actual_kind, callee.arg_names[i], callee.arg_kinds[i]
+                    actual_type, actual_kind, callee.arg_names[i], callee_arg_kind
                 )
                 check_arg(
                     expanded_actual,
                     actual_type,
-                    arg_kinds[actual],
-                    callee.arg_types[i],
+                    actual_kind,
+                    callee_arg_type,
                     actual + 1,
                     i + 1,
                     callee,
@@ -4663,7 +4739,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         applies only to this expression and not any subexpressions.
         """
         if node in self.type_overrides:
+            # This branch is very fast, there is no point timing it.
             return self.type_overrides[node]
+        # We don't use context manager here to get most precise data (and avoid overhead).
+        record_time = False
+        if self.collect_line_checking_stats and not self.in_expression:
+            t0 = time.perf_counter_ns()
+            self.in_expression = True
+            record_time = True
         self.type_context.append(type_context)
         old_is_callee = self.is_callee
         self.is_callee = is_callee
@@ -4698,9 +4781,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function() or self.chk.current_node_deferred:
-            return AnyType(TypeOfAny.unannotated)
+            result: Type = AnyType(TypeOfAny.unannotated)
         else:
-            return typ
+            result = typ
+        if record_time:
+            self.per_line_checking_time_ns[node.line] += time.perf_counter_ns() - t0
+            self.in_expression = False
+        return result
 
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no type
@@ -4719,6 +4806,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             or isinstance(typ, AnyType)
             or isinstance(typ, ParamSpecType)
+            or isinstance(typ, UnpackType)
         )
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:

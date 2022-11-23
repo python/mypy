@@ -381,4 +381,37 @@ def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
 
 reveal_type(args_to_tuple(1, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Literal['a']?]"
 
+def with_prefix_suffix(*args: Unpack[Tuple[bool, str, Unpack[Ts], int]]) -> Tuple[bool, str, Unpack[Ts], int]:
+    reveal_type(args)  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int]"
+    return args
+
+reveal_type(with_prefix_suffix(True, "bar", "foo", 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Literal['foo']?, builtins.int]"
+reveal_type(with_prefix_suffix(True, "bar", 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, builtins.int]"
+
+with_prefix_suffix(True, "bar", "foo", 1.0)  # E: Argument 4 to "with_prefix_suffix" has incompatible type "float"; expected "int"
+with_prefix_suffix(True, "bar")  # E: Too few arguments for "with_prefix_suffix"
+
+t = (True, "bar", "foo", 5)
+reveal_type(with_prefix_suffix(*t))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, builtins.str, builtins.int]"
+reveal_type(with_prefix_suffix(True, *("bar", "foo"), 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Literal['foo']?, builtins.int]"
+
+# TODO: handle list case
+#reveal_type(with_prefix_suffix(True, "bar", *["foo1", "foo2"], 5))
+
+bad_t = (True, "bar")
+with_prefix_suffix(*bad_t)  # E: Too few arguments for "with_prefix_suffix"
+
+def foo(*args: Unpack[Ts]) -> None:
+    reveal_type(with_prefix_suffix(True, "bar", *args, 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int]"
+
+def concrete(*args: Unpack[Tuple[int, str]]) -> None:
+    reveal_type(args)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+
+concrete(0, "foo")
+concrete(0, 1)  # E: Argument 2 to "concrete" has incompatible type "int"; expected "Unpack[Tuple[int, str]]"
+concrete("foo", "bar")  # E: Argument 1 to "concrete" has incompatible type "str"; expected "Unpack[Tuple[int, str]]"
+concrete(0, "foo", 1)  # E: Invalid number of arguments
+concrete(0)  # E: Invalid number of arguments
+concrete()  # E: Invalid number of arguments
+
 [builtins fixtures/tuple.pyi]

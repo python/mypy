@@ -10205,3 +10205,75 @@ C
 [builtins fixtures/dict.pyi]
 [out]
 ==
+
+[case testNamedTupleNestedCrash]
+import m
+[file m.py]
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: int
+
+[file m.py.2]
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: int
+# change
+[builtins fixtures/tuple.pyi]
+[out]
+m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+==
+m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+
+[case testNamedTupleNestedClassRecheck]
+import n
+[file n.py]
+import m
+x: m.NT
+[file m.py]
+from typing import NamedTuple
+from f import A
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: A
+
+[file f.py]
+A = int
+[file f.py.2]
+A = str
+[builtins fixtures/tuple.pyi]
+[out]
+m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+==
+m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+
+[case testTypedDictNestedClassRecheck]
+import n
+[file n.py]
+import m
+x: m.TD
+[file m.py]
+from typing_extensions import TypedDict
+from f import A
+
+class TD(TypedDict):
+    class C: ...
+    x: int
+    y: A
+
+[file f.py]
+A = int
+[file f.py.2]
+A = str
+[builtins fixtures/dict.pyi]
+[out]
+m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
+==
+m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
