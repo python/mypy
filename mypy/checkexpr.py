@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import time
 from contextlib import contextmanager
 from typing import Callable, ClassVar, Iterator, List, Optional, Sequence, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias, overload
@@ -263,11 +264,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
 
-    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
+    def __init__(
+        self,
+        chk: mypy.checker.TypeChecker,
+        msg: MessageBuilder,
+        plugin: Plugin,
+        per_line_checking_time_ns: dict[int, int],
+    ) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
+        self.per_line_checking_time_ns = per_line_checking_time_ns
+        self.collect_line_checking_stats = self.chk.options.line_checking_stats is not None
+        # Are we already visiting some expression? This is used to avoid double counting
+        # time for nested expressions.
+        self.in_expression = False
         self.type_context = [None]
 
         # Temporary overrides for expression types. This is currently
@@ -4727,7 +4739,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         applies only to this expression and not any subexpressions.
         """
         if node in self.type_overrides:
+            # This branch is very fast, there is no point timing it.
             return self.type_overrides[node]
+        # We don't use context manager here to get most precise data (and avoid overhead).
+        record_time = False
+        if self.collect_line_checking_stats and not self.in_expression:
+            t0 = time.perf_counter_ns()
+            self.in_expression = True
+            record_time = True
         self.type_context.append(type_context)
         old_is_callee = self.is_callee
         self.is_callee = is_callee
@@ -4762,9 +4781,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function() or self.chk.current_node_deferred:
-            return AnyType(TypeOfAny.unannotated)
+            result: Type = AnyType(TypeOfAny.unannotated)
         else:
-            return typ
+            result = typ
+        if record_time:
+            self.per_line_checking_time_ns[node.line] += time.perf_counter_ns() - t0
+            self.in_expression = False
+        return result
 
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no type
