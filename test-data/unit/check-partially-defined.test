@@ -104,6 +104,25 @@ else:
 
 x = y + 2
 
+[case testFunction]
+# flags: --enable-error-code partially-defined
+def f0() -> None:
+    if int():
+        def some_func() -> None:
+            pass
+
+    some_func()  # E: Name "some_func" may be undefined
+
+def f1() -> None:
+    if int():
+        def some_func() -> None:
+            pass
+    else:
+        def some_func() -> None:
+            pass
+
+    some_func()  # No error.
+
 [case testGenerator]
 # flags: --enable-error-code partially-defined
 if int():
@@ -459,3 +478,13 @@ def f3() -> None:
 def f4() -> None:
     a = abc  # E: Name "abc" is used before definition
     abc: int = 1
+
+[case testFunctionDeclarations]
+# flags: --enable-error-code use-before-def
+
+def f0() -> None:
+    def inner() -> None:
+        pass
+
+    inner()  # No error.
+    inner = lambda: None
