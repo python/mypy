@@ -283,6 +283,7 @@ class Options:
         self.enable_incomplete_features = False  # deprecated
         self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
+        self.line_checking_stats: str | None = None
 
         # -- test options --
         # Stop after the semantic analysis phase

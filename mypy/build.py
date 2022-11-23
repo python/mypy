@@ -12,6 +12,7 @@ The function build() is the main interface to this module.
 
 from __future__ import annotations
 
+import collections
 import contextlib
 import errno
 import gc
@@ -278,6 +279,8 @@ def _build(
             TypeState.reset_all_subtype_caches()
         if options.timing_stats is not None:
             dump_timing_stats(options.timing_stats, graph)
+        if options.line_checking_stats is not None:
+            dump_line_checking_stats(options.line_checking_stats, graph)
         return BuildResult(manager, graph)
     finally:
         t0 = time.time()
@@ -1889,6 +1892,10 @@ class State:
     # Cumulative time spent on this file, in microseconds (for profiling stats)
     time_spent_us: int = 0
 
+    # Per-line type-checking time (cumulative time spent type-checking expressions
+    # on a given source code line).
+    per_line_checking_time_ns: dict[int, int]
+
     def __init__(
         self,
         id: str | None,
@@ -1956,6 +1963,7 @@ class State:
             source = ""
         self.source = source
         self.add_ancestors()
+        self.per_line_checking_time_ns = collections.defaultdict(int)
         t0 = time.time()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
         self.manager.add_stats(validate_meta_time=time.time() - t0)
@@ -2320,6 +2328,7 @@ class State:
                 self.tree,
                 self.xpath,
                 manager.plugin,
+                self.per_line_checking_time_ns,
             )
         return self._type_checker
 
@@ -2945,13 +2954,22 @@ class NodeInfo:
 
 
 def dump_timing_stats(path: str, graph: Graph) -> None:
-    """
-    Dump timing stats for each file in the given graph
-    """
+    """Dump timing stats for each file in the given graph."""
     with open(path, "w") as f:
-        for k in sorted(graph.keys()):
-            v = graph[k]
-            f.write(f"{v.id} {v.time_spent_us}\n")
+        for id in sorted(graph):
+            f.write(f"{id} {graph[id].time_spent_us}\n")
+
+
+def dump_line_checking_stats(path: str, graph: Graph) -> None:
+    """Dump per-line expression type checking stats."""
+    with open(path, "w") as f:
+        for id in sorted(graph):
+            if not graph[id].per_line_checking_time_ns:
+                continue
+            f.write(f"{id}:\n")
+            for line in sorted(graph[id].per_line_checking_time_ns):
+                line_time = graph[id].per_line_checking_time_ns[line]
+                f.write(f"{line:>5} {line_time/1000:8.1f}\n")
 
 
 def dump_graph(graph: Graph, stdout: TextIO | None = None) -> None:
