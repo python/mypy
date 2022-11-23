@@ -90,6 +90,16 @@ else:
 a = y + x  # E: Name "x" may be undefined
 a = y + z  # E: Name "z" may be undefined
 
+[case testIndexExpr]
+# flags: --enable-error-code partially-defined
+
+if int():
+    *x, y = (1, 2)
+else:
+    x = [1, 2]
+a = x  # No error.
+b = y  # E: Name "y" may be undefined
+
 [case testRedefined]
 # flags: --enable-error-code partially-defined
 y = 3
@@ -479,7 +489,7 @@ def f4() -> None:
     a = abc  # E: Name "abc" is used before definition
     abc: int = 1
 
-[case testFunctionDeclarations]
+[case testUseBeforeDefFunctionDeclarations]
 # flags: --enable-error-code use-before-def
 
 def f0() -> None:
@@ -489,7 +499,7 @@ def f0() -> None:
     inner()  # No error.
     inner = lambda: None
 
-[case testBuiltins]
+[case testUseBeforeDefBuiltins]
 # flags: --enable-error-code use-before-def
 
 def f0() -> None:

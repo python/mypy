@@ -27,7 +27,7 @@ from mypy.nodes import (
     ReturnStmt,
     TupleExpr,
     WhileStmt,
-    WithStmt,
+    WithStmt, StarExpr,
 )
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
@@ -250,6 +250,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             for ref in refs:
                 self.msg.var_used_before_def(lvalue.name, ref)
             self.tracker.record_definition(lvalue.name)
+        elif isinstance(lvalue, StarExpr):
+            self.process_lvalue(lvalue.expr)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
             for item in lvalue.items:
                 self.process_lvalue(item)
