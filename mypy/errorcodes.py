@@ -196,7 +196,6 @@ USE_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
     "use-before-def",
     "Warn about variables that are used before they are defined",
     "General",
-    default_enabled=False,
 )
 
 
