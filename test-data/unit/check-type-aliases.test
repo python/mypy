@@ -947,3 +947,38 @@ c.SpecialImplicit = 4
 c.SpecialExplicit = 4
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testValidTypeAliasValues]
+from typing import TypeVar, Generic, List
+
+T = TypeVar("T", int, str)
+S = TypeVar("S", int, bytes)
+
+class C(Generic[T]): ...
+class D(C[S]): ...  # E: Invalid type argument value for "C"
+
+U = TypeVar("U")
+A = List[C[U]]
+x: A[bytes]  # E: Value of type variable "T" of "C" cannot be "bytes"
+
+V = TypeVar("V", bound=int)
+class E(Generic[V]): ...
+B = List[E[U]]
+y: B[str]  # E: Type argument "str" of "E" must be a subtype of "int"
+
+[case testValidTypeAliasValuesMoreRestrictive]
+from typing import TypeVar, Generic, List
+
+T = TypeVar("T")
+S = TypeVar("S", int, str)
+U = TypeVar("U", bound=int)
+
+class C(Generic[T]): ...
+
+A = List[C[S]]
+x: A[int]
+x_bad: A[bytes]  # E: Value of type variable "S" of "A" cannot be "bytes"
+
+B = List[C[U]]
+y: B[int]
+y_bad: B[str]  # E: Type argument "str" of "B" must be a subtype of "int"

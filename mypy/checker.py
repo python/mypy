@@ -7115,7 +7115,7 @@ class SetNothingToAny(TypeTranslator):
         return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        # Target of the alias cannot by an ambiguous <nothing>, so we just
+        # Target of the alias cannot be an ambiguous <nothing>, so we just
         # replace the arguments.
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 

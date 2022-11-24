@@ -15,7 +15,6 @@ from mypy.types import (
     NoneType,
     Overloaded,
     Parameters,
-    ParamSpecFlavor,
     ParamSpecType,
     PartialType,
     ProperType,
@@ -34,6 +33,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    expand_param_spec,
     get_proper_type,
 )
 from mypy.typevartuples import (
@@ -212,32 +212,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.
             return repl
-        elif isinstance(repl, ParamSpecType):
-            return repl.copy_modified(
-                flavor=t.flavor,
-                prefix=t.prefix.copy_modified(
-                    arg_types=t.prefix.arg_types + repl.prefix.arg_types,
-                    arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
-                    arg_names=t.prefix.arg_names + repl.prefix.arg_names,
-                ),
-            )
-        elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
-            # if the paramspec is *P.args or **P.kwargs:
-            if t.flavor != ParamSpecFlavor.BARE:
-                assert isinstance(repl, CallableType), "Should not be able to get here."
-                # Is this always the right thing to do?
-                param_spec = repl.param_spec()
-                if param_spec:
-                    return param_spec.with_flavor(t.flavor)
-                else:
-                    return repl
-            else:
-                return Parameters(
-                    t.prefix.arg_types + repl.arg_types,
-                    t.prefix.arg_kinds + repl.arg_kinds,
-                    t.prefix.arg_names + repl.arg_names,
-                    variables=[*t.prefix.variables, *repl.variables],
-                )
+        elif isinstance(repl, (ParamSpecType, Parameters, CallableType)):
+            return expand_param_spec(t, repl)
         else:
             # TODO: should this branch be removed? better not to fail silently
             return repl
@@ -446,8 +422,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return TypeType.make_normalized(item)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        # Target of the type alias cannot contain type variables,
-        # so we just expand the arguments.
+        # Target of the type alias cannot contain type variables (not bound by the type
+        # alias itself), so we just expand the arguments.
         return t.copy_modified(args=self.expand_types(t.args))
 
     def expand_types(self, types: Iterable[Type]) -> list[Type]:

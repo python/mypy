@@ -12,6 +12,7 @@ from typing import (
     Callable,
     Dict,
     Iterator,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -2546,7 +2547,7 @@ class TypeAliasExpr(Expression):
 
     # The target type.
     type: mypy.types.Type
-    # Names of unbound type variables used to define the alias
+    # Names of type variables used to define the alias
     tvars: list[str]
     # Whether this alias was defined in bare form. Used to distinguish
     # between
@@ -2559,7 +2560,7 @@ class TypeAliasExpr(Expression):
     def __init__(self, node: TypeAlias) -> None:
         super().__init__()
         self.type = node.target
-        self.tvars = node.alias_tvars
+        self.tvars = [v.name for v in node.alias_tvars]
         self.no_args = node.no_args
         self.node = node
 
@@ -3309,10 +3310,9 @@ class TypeAlias(SymbolNode):
     class-valued attributes. See SemanticAnalyzerPass2.check_and_set_up_type_alias
     for details.
 
-    Aliases can be generic. Currently, mypy uses unbound type variables for
-    generic aliases and identifies them by name. Essentially, type aliases
-    work as macros that expand textually. The definition and expansion rules are
-    following:
+    Aliases can be generic. We use bound type variables for generic aliases, similar
+    to classes. Essentially, type aliases work as macros that expand textually.
+    The definition and expansion rules are following:
 
         1. An alias targeting a generic class without explicit variables act as
         the given class (this doesn't apply to TypedDict, Tuple and Callable, which
@@ -3363,11 +3363,11 @@ class TypeAlias(SymbolNode):
 
     Meaning of other fields:
 
-    target: The target type. For generic aliases contains unbound type variables
-        as nested types.
+    target: The target type. For generic aliases contains bound type variables
+        as nested types (currently TypeVar and ParamSpec are supported).
     _fullname: Qualified name of this type alias. This is used in particular
         to track fine grained dependencies from aliases.
-    alias_tvars: Names of unbound type variables used to define this alias.
+    alias_tvars: Type variables used to define this alias.
     normalized: Used to distinguish between `A = List`, and `A = list`. Both
         are internally stored using `builtins.list` (because `typing.List` is
         itself an alias), while the second cannot be subscripted because of
@@ -3396,7 +3396,7 @@ class TypeAlias(SymbolNode):
         line: int,
         column: int,
         *,
-        alias_tvars: list[str] | None = None,
+        alias_tvars: list[mypy.types.TypeVarLikeType] | None = None,
         no_args: bool = False,
         normalized: bool = False,
         eager: bool = False,
@@ -3446,12 +3446,16 @@ class TypeAlias(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    @property
+    def has_param_spec_type(self) -> bool:
+        return any(isinstance(v, mypy.types.ParamSpecType) for v in self.alias_tvars)
+
     def serialize(self) -> JsonDict:
         data: JsonDict = {
             ".class": "TypeAlias",
             "fullname": self._fullname,
             "target": self.target.serialize(),
-            "alias_tvars": self.alias_tvars,
+            "alias_tvars": [v.serialize() for v in self.alias_tvars],
             "no_args": self.no_args,
             "normalized": self.normalized,
             "line": self.line,
@@ -3466,7 +3470,8 @@ class TypeAlias(SymbolNode):
     def deserialize(cls, data: JsonDict) -> TypeAlias:
         assert data[".class"] == "TypeAlias"
         fullname = data["fullname"]
-        alias_tvars = data["alias_tvars"]
+        alias_tvars = [mypy.types.deserialize_type(v) for v in data["alias_tvars"]]
+        assert all(isinstance(t, mypy.types.TypeVarLikeType) for t in alias_tvars)
         target = mypy.types.deserialize_type(data["target"])
         no_args = data["no_args"]
         normalized = data["normalized"]
@@ -3477,7 +3482,7 @@ class TypeAlias(SymbolNode):
             fullname,
             line,
             column,
-            alias_tvars=alias_tvars,
+            alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
         )

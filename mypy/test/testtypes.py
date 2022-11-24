@@ -160,7 +160,8 @@ class TypesSuite(Suite):
 
     def test_recursive_nested_in_non_recursive(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)
-        NA = self.fx.non_rec_alias(Instance(self.fx.gi, [UnboundType("T")]), ["T"], [A])
+        T = TypeVarType("T", "T", -1, [], self.fx.o)
+        NA = self.fx.non_rec_alias(Instance(self.fx.gi, [T]), [T], [A])
         assert not NA.is_recursive
         assert has_recursive_types(NA)
 
