@@ -222,6 +222,10 @@ class NodeStripVisitor(TraverserVisitor):
         node.analyzed = None  # May have been an alias or type application.
         super().visit_index_expr(node)
 
+    def visit_op_expr(self, node: OpExpr) -> None:
+        node.analyzed = None  # May have been an alias
+        super().visit_op_expr(node)
+
     def strip_ref_expr(self, node: RefExpr) -> None:
         node.kind = None
         node.node = None
