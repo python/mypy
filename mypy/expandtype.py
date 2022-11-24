@@ -34,7 +34,9 @@ from mypy.types import (
     UnionType,
     UnpackType,
     expand_param_spec,
+    flatten_nested_unions,
     get_proper_type,
+    remove_trivial,
 )
 from mypy.typevartuples import (
     find_unpack_in_list,
@@ -405,11 +407,13 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_union_type(self, t: UnionType) -> Type:
-        # After substituting for type variables in t.items,
-        # some of the resulting types might be subtypes of others.
-        from mypy.typeops import make_simplified_union  # asdf
-
-        return make_simplified_union(self.expand_types(t.items), t.line, t.column)
+        expanded = self.expand_types(t.items)
+        # After substituting for type variables in t.items, some resulting types
+        # might be subtypes of others, however calling  make_simplified_union()
+        # can cause recursion, so we just remove strict duplicates.
+        return UnionType.make_union(
+            remove_trivial(flatten_nested_unions(expanded)), t.line, t.column
+        )
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t

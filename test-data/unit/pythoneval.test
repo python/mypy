@@ -1735,3 +1735,19 @@ _testEnumNameWorkCorrectlyOn311.py:12: note: Revealed type is "Union[Literal[1]?
 _testEnumNameWorkCorrectlyOn311.py:13: note: Revealed type is "Literal['X']?"
 _testEnumNameWorkCorrectlyOn311.py:14: note: Revealed type is "builtins.int"
 _testEnumNameWorkCorrectlyOn311.py:15: note: Revealed type is "builtins.int"
+
+[case testTypedDictUnionGetFull]
+from typing import Dict
+from typing_extensions import TypedDict
+
+class TD(TypedDict, total=False):
+    x: int
+    y: int
+
+A = Dict[str, TD]
+x: A
+def foo(k: str) -> TD:
+    reveal_type(x.get(k, {}))
+    return x.get(k, {})
+[out]
+_testTypedDictUnionGetFull.py:11: note: Revealed type is "TypedDict('_testTypedDictUnionGetFull.TD', {'x'?: builtins.int, 'y'?: builtins.int})"
