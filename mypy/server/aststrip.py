@@ -54,6 +54,7 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     Node,
+    OpExpr,
     OverloadedFuncDef,
     RefExpr,
     StarExpr,
