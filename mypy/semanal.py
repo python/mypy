@@ -230,6 +230,7 @@ from mypy.typeanal import (
     fix_instance_types,
     has_any_from_unimported_type,
     no_subscript_builtin_alias,
+    remove_dups,
     type_constructors,
 )
 from mypy.typeops import function_type, get_type_vars
@@ -280,7 +281,6 @@ from mypy.util import (
     is_dunder,
     is_typeshed_file,
     module_prefix,
-    remove_dups,
     unmangle,
     unnamed_function,
 )

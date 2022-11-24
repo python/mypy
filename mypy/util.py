@@ -820,14 +820,3 @@ def plural_s(s: int | Sized) -> str:
         return "s"
     else:
         return ""
-
-
-def remove_dups(items: Iterable[T]) -> list[T]:
-    # Get unique elements in order of appearance
-    all_items: set[T] = set()
-    new_items: list[T] = []
-    for item in items:
-        if item not in all_items:
-            new_items.append(item)
-            all_items.add(item)
-    return new_items

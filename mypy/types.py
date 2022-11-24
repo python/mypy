@@ -34,7 +34,7 @@ from mypy.nodes import (
     SymbolNode,
 )
 from mypy.state import state
-from mypy.util import IdMapper, remove_dups
+from mypy.util import IdMapper
 
 T = TypeVar("T")
 
@@ -3441,7 +3441,8 @@ def remove_trivial(types: Iterable[Type]) -> list[Type]:
         * Remove strict duplicate types
     """
     removed_none = False
-    new_types: list[Type] = []
+    new_types = []
+    all_types = set()
     for t in types:
         p_t = get_proper_type(t)
         if isinstance(p_t, UninhabitedType):
@@ -3451,9 +3452,11 @@ def remove_trivial(types: Iterable[Type]) -> list[Type]:
             continue
         if isinstance(p_t, Instance) and p_t.type.fullname == "builtins.object":
             return [p_t]
-        new_types.append(t)
+        if p_t not in all_types:
+            new_types.append(t)
+            all_types.add(p_t)
     if new_types:
-        return remove_dups(new_types)
+        return new_types
     if removed_none:
         return [NoneType()]
     return [UninhabitedType()]
