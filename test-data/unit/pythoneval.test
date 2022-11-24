@@ -1699,6 +1699,18 @@ _testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "Union[Type[builti
 [case testTypeAliasWithNewStyleUnionInStub]
 # flags: --python-version 3.7
 import m
+a: m.A
+reveal_type(a)
+b: m.B
+reveal_type(b)
+c: m.C
+reveal_type(c)
+d: m.D
+reveal_type(d)
+e: m.E
+reveal_type(e)
+f: m.F
+reveal_type(f)
 
 [file m.pyi]
 from typing import Type
@@ -1729,6 +1741,12 @@ F: TypeAlias = str | type[int]
 [out]
 m.pyi:5: note: Revealed type is "typing._SpecialForm"
 m.pyi:22: note: Revealed type is "typing._SpecialForm"
+_testTypeAliasWithNewStyleUnionInStub.py:4: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:6: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:8: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:10: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:12: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
+_testTypeAliasWithNewStyleUnionInStub.py:14: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
 
 [case testEnumNameWorkCorrectlyOn311]
 # flags: --python-version 3.11
