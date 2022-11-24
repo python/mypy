@@ -90,6 +90,7 @@ from mypy.types import (
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
+from mypy.util import remove_dups
 
 T = TypeVar("T")
 
@@ -1727,17 +1728,6 @@ def set_any_tvars(
         )
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
     return TypeAliasType(node, [any_type] * len(node.alias_tvars), newline, newcolumn)
-
-
-def remove_dups(tvars: Iterable[T]) -> list[T]:
-    # Get unique elements in order of appearance
-    all_tvars: set[T] = set()
-    new_tvars: list[T] = []
-    for t in tvars:
-        if t not in all_tvars:
-            new_tvars.append(t)
-            all_tvars.add(t)
-    return new_tvars
 
 
 def flatten_tvars(ll: Iterable[list[T]]) -> list[T]:
