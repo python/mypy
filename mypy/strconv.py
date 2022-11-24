@@ -413,6 +413,8 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a + extra, o)
 
     def visit_op_expr(self, o: mypy.nodes.OpExpr) -> str:
+        if o.analyzed:
+            return o.analyzed.accept(self)
         return self.dump([o.op, o.left, o.right], o)
 
     def visit_comparison_expr(self, o: mypy.nodes.ComparisonExpr) -> str:
