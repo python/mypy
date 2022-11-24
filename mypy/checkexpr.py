@@ -3854,10 +3854,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         There are two different options here, depending on whether expr refers
         to a type alias or directly to a generic class. In the first case we need
-        to use a dedicated function typeanal.expand_type_aliases. This
-        is due to the fact that currently type aliases machinery uses
-        unbound type variables, while normal generics use bound ones;
-        see TypeAlias docstring for more details.
+        to use a dedicated function typeanal.expand_type_alias(). This
+        is due to some differences in how type arguments are applied and checked.
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.

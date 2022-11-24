@@ -3202,24 +3202,45 @@ def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[In
 
 
 class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
-    def __init__(self, vars: list[str], subs: list[Type]) -> None:
-        self.replacements = {v: s for (v, s) in zip(vars, subs)}
+    def __init__(self, vars: list[TypeVarLikeType], subs: list[Type]) -> None:
+        self.replacements = {v.id: s for (v, s) in zip(vars, subs)}
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> Type:
         return typ.copy_modified(args=[t.accept(self) for t in typ.args])
 
-    def visit_unbound_type(self, typ: UnboundType) -> Type:
-        # TODO: stop using unbound type variables for type aliases.
-        # Now that type aliases are very similar to TypeInfos we should
-        # make type variable tracking similar as well. Maybe we can even support
-        # upper bounds etc. for generic type aliases.
-        if typ.name in self.replacements:
-            return self.replacements[typ.name]
+    def visit_type_var(self, typ: TypeVarType) -> Type:
+        if typ.id in self.replacements:
+            return self.replacements[typ.id]
         return typ
 
-    def visit_type_var(self, typ: TypeVarType) -> Type:
-        if typ.name in self.replacements:
-            return self.replacements[typ.name]
+    def visit_callable_type(self, t: CallableType) -> Type:
+        param_spec = t.param_spec()
+        if param_spec is not None:
+            # TODO: this branch duplicates the one in expand_type(), find a way to reuse it
+            # without import cycle types <-> typeanal <-> expandtype.
+            repl = get_proper_type(self.replacements.get(param_spec.id))
+            if isinstance(repl, CallableType) or isinstance(repl, Parameters):
+                prefix = param_spec.prefix
+                t = t.expand_param_spec(repl, no_prefix=True)
+                return t.copy_modified(
+                    arg_types=[t.accept(self) for t in prefix.arg_types] + t.arg_types,
+                    arg_kinds=prefix.arg_kinds + t.arg_kinds,
+                    arg_names=prefix.arg_names + t.arg_names,
+                    ret_type=t.ret_type.accept(self),
+                    type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+                )
+        return super().visit_callable_type(t)
+
+    def visit_param_spec(self, typ: ParamSpecType) -> Type:
+        if typ.id in self.replacements:
+            repl = get_proper_type(self.replacements[typ.id])
+            # TODO: all the TODOs from same logic in expand_type() apply here.
+            if isinstance(repl, Instance):
+                return repl
+            elif isinstance(repl, (ParamSpecType, Parameters, CallableType)):
+                return expand_param_spec(typ, repl)
+            else:
+                return repl
         return typ
 
 
@@ -3236,7 +3257,7 @@ class LocationSetter(TypeTraverserVisitor):
 
 
 def replace_alias_tvars(
-    tp: Type, vars: list[str], subs: list[Type], newline: int, newcolumn: int
+    tp: Type, vars: list[TypeVarLikeType], subs: list[Type], newline: int, newcolumn: int
 ) -> Type:
     """Replace type variables in a generic type alias tp with substitutions subs
     resetting context. Length of subs should be already checked.
@@ -3252,6 +3273,7 @@ def replace_alias_tvars(
 class HasTypeVars(TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(any)
+        self.skip_alias_target = True
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
@@ -3404,6 +3426,41 @@ def callable_with_ellipsis(any_type: AnyType, ret_type: Type, fallback: Instance
         fallback=fallback,
         is_ellipsis_args=True,
     )
+
+
+def expand_param_spec(
+    t: ParamSpecType, repl: ParamSpecType | Parameters | CallableType
+) -> ProperType:
+    """This is shared part of the logic w.r.t. ParamSpec instantiation.
+
+    It is shared between type aliases and proper types, that currently use somewhat different
+    logic for instantiation."""
+    if isinstance(repl, ParamSpecType):
+        return repl.copy_modified(
+            flavor=t.flavor,
+            prefix=t.prefix.copy_modified(
+                arg_types=t.prefix.arg_types + repl.prefix.arg_types,
+                arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
+                arg_names=t.prefix.arg_names + repl.prefix.arg_names,
+            ),
+        )
+    else:
+        # if the paramspec is *P.args or **P.kwargs:
+        if t.flavor != ParamSpecFlavor.BARE:
+            assert isinstance(repl, CallableType), "Should not be able to get here."
+            # Is this always the right thing to do?
+            param_spec = repl.param_spec()
+            if param_spec:
+                return param_spec.with_flavor(t.flavor)
+            else:
+                return repl
+        else:
+            return Parameters(
+                t.prefix.arg_types + repl.arg_types,
+                t.prefix.arg_kinds + repl.arg_kinds,
+                t.prefix.arg_names + repl.arg_names,
+                variables=[*t.prefix.variables, *repl.variables],
+            )
 
 
 def store_argument_type(

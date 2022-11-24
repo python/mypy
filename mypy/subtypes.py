@@ -631,6 +631,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             and right.flavor == left.flavor
         ):
             return True
+        if isinstance(right, Parameters) and are_trivial_parameters(right):
+            return True
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
@@ -1415,6 +1417,18 @@ def is_callable_compatible(
     )
 
 
+def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
+    param_star = param.var_arg()
+    param_star2 = param.kw_arg()
+    return (
+        param.arg_kinds == [ARG_STAR, ARG_STAR2]
+        and param_star is not None
+        and isinstance(get_proper_type(param_star.typ), AnyType)
+        and param_star2 is not None
+        and isinstance(get_proper_type(param_star2.typ), AnyType)
+    )
+
+
 def are_parameters_compatible(
     left: Parameters | NormalizedCallableType,
     right: Parameters | NormalizedCallableType,
@@ -1435,13 +1449,7 @@ def are_parameters_compatible(
     right_star2 = right.kw_arg()
 
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
-    if (
-        right.arg_kinds == [ARG_STAR, ARG_STAR2]
-        and right_star
-        and isinstance(get_proper_type(right_star.typ), AnyType)
-        and right_star2
-        and isinstance(get_proper_type(right_star2.typ), AnyType)
-    ):
+    if are_trivial_parameters(right):
         return True
 
     # Match up corresponding arguments and check them for compatibility. In
