@@ -1738,6 +1738,8 @@ reveal_type(C)
 D: TypeAlias = type[int] | str
 E = str | type[int]
 F: TypeAlias = str | type[int]
+G = list[type[int] | str]
+H = list[str | type[int]]
 
 CU1 = int | Callable[[], str | bool]
 CU2: TypeAlias = int | Callable[[], str | bool]

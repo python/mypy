@@ -3444,7 +3444,7 @@ class SemanticAnalyzer(
             not isinstance(rvalue, OpExpr)
             or (self.options.python_version >= (3, 10) or self.is_stub_file)
         ):
-            # Note: CallExpr is for `void = type(None)` and OpExpr is for X | Y union syntax.
+            # Note: CallExpr is for "void = type(None)" and OpExpr is for "X | Y" union syntax.
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line
             # we use the column from resulting target, to get better location for errors

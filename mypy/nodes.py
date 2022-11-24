@@ -1994,7 +1994,7 @@ class OpExpr(Expression):
     right_always: bool
     # Per static analysis only: Is the right side unreachable?
     right_unreachable: bool
-    # Used for expressions that represent type X | Y in some contexts
+    # Used for expressions that represent a type "X | Y" in some contexts
     analyzed: TypeAliasExpr | None
 
     def __init__(self, op: str, left: Expression, right: Expression) -> None:
