@@ -1997,7 +1997,9 @@ class OpExpr(Expression):
     # Used for expressions that represent a type "X | Y" in some contexts
     analyzed: TypeAliasExpr | None
 
-    def __init__(self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None) -> None:
+    def __init__(
+        self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
+    ) -> None:
         super().__init__()
         self.op = op
         self.left = left
