@@ -1663,7 +1663,7 @@ _testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, No
 
 [case testTypeAliasWithNewStyleUnion]
 # flags: --python-version 3.10
-from typing import Literal, Type, TypeAlias
+from typing import Literal, Type, TypeAlias, TypeVar
 
 Foo = Literal[1, 2]
 reveal_type(Foo)
@@ -1691,6 +1691,12 @@ E: TypeAlias = type[int] | str
 y: E
 reveal_type(y)
 F = list[type[int] | str]
+
+T = TypeVar("T", int, str)
+def foo(x: T) -> T:
+    A = type[int] | str
+    a: A
+    return x
 [out]
 _testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
 _testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "Union[Type[builtins.int], builtins.str]"

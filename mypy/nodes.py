@@ -1997,7 +1997,7 @@ class OpExpr(Expression):
     # Used for expressions that represent a type "X | Y" in some contexts
     analyzed: TypeAliasExpr | None
 
-    def __init__(self, op: str, left: Expression, right: Expression) -> None:
+    def __init__(self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None) -> None:
         super().__init__()
         self.op = op
         self.left = left
@@ -2005,7 +2005,7 @@ class OpExpr(Expression):
         self.method_type = None
         self.right_always = False
         self.right_unreachable = False
-        self.analyzed = None
+        self.analyzed = analyzed
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
