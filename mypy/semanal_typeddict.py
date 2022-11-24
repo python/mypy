@@ -189,7 +189,7 @@ class TypedDictAnalyzer:
         valid_items = base_items.copy()
 
         # Always fix invalid bases to avoid crashes.
-        tvars = info.type_vars
+        tvars = info.defn.type_vars
         if len(base_args) != len(tvars):
             any_kind = TypeOfAny.from_omitted_generics
             if base_args:
@@ -235,7 +235,7 @@ class TypedDictAnalyzer:
         return base_args
 
     def map_items_to_base(
-        self, valid_items: dict[str, Type], tvars: list[str], base_args: list[Type]
+        self, valid_items: dict[str, Type], tvars: list[TypeVarLikeType], base_args: list[Type]
     ) -> dict[str, Type]:
         """Map item types to how they would look in their base with type arguments applied.
 
