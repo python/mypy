@@ -1840,14 +1840,17 @@ RHSAlias1: type = tuple[int, int]
 RHSAlias2: type = tuple[int]
 RHSAlias3: type = tuple[int, ...]
 
-# Wrong:
-WrongTypeElement = str | tuple[float, 1]
-WrongEllipsis = tuple[float, float, ...] | str
+WrongTypeElement = str | tuple[float, 1]  # Error
+WrongEllipsis = tuple[float, float, ...] | str  # Error
+
+# TODO: This should produce a fixed-length tuple
+reveal_type(tuple[int, str]((1, "x")))
 [out]
 _testTupleWithDifferentArgsPy310.py:13: note: Revealed type is "Union[builtins.str, Tuple[builtins.float, builtins.float, builtins.str]]"
 _testTupleWithDifferentArgsPy310.py:14: note: Revealed type is "Union[Tuple[builtins.float], builtins.str]"
 _testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "Union[builtins.tuple[builtins.float, ...], builtins.str]"
 _testTupleWithDifferentArgsPy310.py:16: note: Revealed type is "Tuple[builtins.float, builtins.str]"
 _testTupleWithDifferentArgsPy310.py:17: note: Revealed type is "builtins.tuple[builtins.float, ...]"
-_testTupleWithDifferentArgsPy310.py:24: error: Invalid type: try using Literal[1] instead?
-_testTupleWithDifferentArgsPy310.py:25: error: Unexpected "..."
+_testTupleWithDifferentArgsPy310.py:23: error: Invalid type: try using Literal[1] instead?
+_testTupleWithDifferentArgsPy310.py:24: error: Unexpected "..."
+_testTupleWithDifferentArgsPy310.py:27: note: Revealed type is "builtins.tuple[builtins.object, ...]"
