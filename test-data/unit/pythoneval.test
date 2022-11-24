@@ -1722,11 +1722,13 @@ Opt4 = float | None
 A = Type[int] | str
 B: TypeAlias = Type[int] | str
 C = type[int] | str
+reveal_type(C)
 D: TypeAlias = type[int] | str
 E = str | type[int]
 F: TypeAlias = str | type[int]
 [out]
 m.pyi:5: note: Revealed type is "typing._SpecialForm"
+m.pyi:22: note: Revealed type is "typing._SpecialForm"
 
 [case testEnumNameWorkCorrectlyOn311]
 # flags: --python-version 3.11
