@@ -1663,7 +1663,7 @@ _testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, No
 
 [case testTypeAliasWithNewStyleUnion]
 # flags: --python-version 3.10
-from typing import Literal, Type, TypeAlias
+from typing import Literal, Type, TypeAlias, TypeVar
 
 Foo = Literal[1, 2]
 reveal_type(Foo)
@@ -1682,15 +1682,44 @@ Opt4 = float | None
 
 A = Type[int] | str
 B: TypeAlias = Type[int] | str
+C = type[int] | str
+
+D = type[int] | str
+x: D
+reveal_type(x)
+E: TypeAlias = type[int] | str
+y: E
+reveal_type(y)
+F = list[type[int] | str]
+
+T = TypeVar("T", int, str)
+def foo(x: T) -> T:
+    A = type[int] | str
+    a: A
+    return x
 [out]
 _testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
+_testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
 
 [case testTypeAliasWithNewStyleUnionInStub]
 # flags: --python-version 3.7
 import m
+a: m.A
+reveal_type(a)
+b: m.B
+reveal_type(b)
+c: m.C
+reveal_type(c)
+d: m.D
+reveal_type(d)
+e: m.E
+reveal_type(e)
+f: m.F
+reveal_type(f)
 
 [file m.pyi]
-from typing import Type
+from typing import Type, Callable
 from typing_extensions import Literal, TypeAlias
 
 Foo = Literal[1, 2]
@@ -1710,8 +1739,27 @@ Opt4 = float | None
 
 A = Type[int] | str
 B: TypeAlias = Type[int] | str
+C = type[int] | str
+reveal_type(C)
+D: TypeAlias = type[int] | str
+E = str | type[int]
+F: TypeAlias = str | type[int]
+G = list[type[int] | str]
+H = list[str | type[int]]
+
+CU1 = int | Callable[[], str | bool]
+CU2: TypeAlias = int | Callable[[], str | bool]
+CU3 = int | Callable[[str | bool], str]
+CU4: TypeAlias = int | Callable[[str | bool], str]
 [out]
 m.pyi:5: note: Revealed type is "typing._SpecialForm"
+m.pyi:22: note: Revealed type is "typing._SpecialForm"
+_testTypeAliasWithNewStyleUnionInStub.py:4: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:6: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:8: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:10: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:12: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
+_testTypeAliasWithNewStyleUnionInStub.py:14: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
 
 [case testEnumNameWorkCorrectlyOn311]
 # flags: --python-version 3.11
@@ -1735,6 +1783,23 @@ _testEnumNameWorkCorrectlyOn311.py:12: note: Revealed type is "Union[Literal[1]?
 _testEnumNameWorkCorrectlyOn311.py:13: note: Revealed type is "Literal['X']?"
 _testEnumNameWorkCorrectlyOn311.py:14: note: Revealed type is "builtins.int"
 _testEnumNameWorkCorrectlyOn311.py:15: note: Revealed type is "builtins.int"
+
+[case testTypeAliasNotSupportedWithNewStyleUnion]
+# flags: --python-version 3.9
+from typing_extensions import TypeAlias
+A = type[int] | str
+B = str | type[int]
+C = str | int
+D: TypeAlias = str | int
+[out]
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Invalid type alias: expression is not a valid type
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Invalid type alias: expression is not a valid type
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Invalid type alias: expression is not a valid type
+_testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Unsupported left operand type for | ("Type[str]")
+_testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Invalid type alias: expression is not a valid type
+_testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Unsupported left operand type for | ("Type[str]")
 
 [case testTypedDictUnionGetFull]
 from typing import Dict

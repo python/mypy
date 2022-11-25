@@ -3472,7 +3472,11 @@ class SemanticAnalyzer(
             no_args=no_args,
             eager=eager,
         )
-        if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
+        if isinstance(s.rvalue, (IndexExpr, CallExpr, OpExpr)) and (
+            not isinstance(rvalue, OpExpr)
+            or (self.options.python_version >= (3, 10) or self.is_stub_file)
+        ):
+            # Note: CallExpr is for "void = type(None)" and OpExpr is for "X | Y" union syntax.
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line
             # we use the column from resulting target, to get better location for errors

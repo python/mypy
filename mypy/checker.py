@@ -2668,26 +2668,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.annotation_in_unchecked_function(context=s)
 
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
-        if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == "|"):
-            # We do this mostly for compatibility with old semantic analyzer.
-            # TODO: should we get rid of this?
-            alias_type = self.expr_checker.accept(s.rvalue)
-        else:
-            # Avoid type checking 'X | Y' in stubs, since there can be errors
-            # on older Python targets.
-            alias_type = AnyType(TypeOfAny.special_form)
-
-            def accept_items(e: Expression) -> None:
-                if isinstance(e, OpExpr) and e.op == "|":
-                    accept_items(e.left)
-                    accept_items(e.right)
-                else:
-                    # Nested union types have been converted to type context
-                    # in semantic analysis (such as in 'list[int | str]'),
-                    # so we don't need to deal with them here.
-                    self.expr_checker.accept(e)
-
-            accept_items(s.rvalue)
+        alias_type = self.expr_checker.accept(s.rvalue)
         self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(

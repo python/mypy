@@ -2847,6 +2847,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
+        if e.analyzed:
+            # It's actually a type expression X | Y.
+            return self.accept(e.analyzed)
         if e.op == "and" or e.op == "or":
             return self.check_boolean_op(e, e)
         if e.op == "*" and isinstance(e.left, ListExpr):

@@ -948,6 +948,17 @@ c.SpecialExplicit = 4
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
 
+[case testNewStyleUnionInTypeAliasWithMalformedInstance]
+# flags: --python-version 3.10
+from typing import List
+
+A = List[int, str] | int  # E: "list" expects 1 type argument, but 2 given
+B = int | list[int, str]  # E: "list" expects 1 type argument, but 2 given
+a: A
+b: B
+reveal_type(a)  # N: Revealed type is "Union[builtins.list[Any], builtins.int]"
+reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.list[Any]]"
+
 [case testValidTypeAliasValues]
 from typing import TypeVar, Generic, List
 
