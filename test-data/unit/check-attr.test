@@ -1830,4 +1830,7 @@ class Sub(Base):
 
     @property
     def name(self) -> int: ...  # E: Signature of "name" incompatible with supertype "Base"
+
+# This matches runtime semantics
+reveal_type(Sub)  # N: Revealed type is "def (*, name: builtins.str, first_name: builtins.str, last_name: builtins.str) -> __main__.Sub"
 [builtins fixtures/property.pyi]
