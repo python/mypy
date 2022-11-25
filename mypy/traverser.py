@@ -262,6 +262,8 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_op_expr(self, o: OpExpr) -> None:
         o.left.accept(self)
         o.right.accept(self)
+        if o.analyzed is not None:
+            o.analyzed.accept(self)
 
     def visit_comparison_expr(self, o: ComparisonExpr) -> None:
         for operand in o.operands:
