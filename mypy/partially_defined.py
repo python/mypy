@@ -224,7 +224,7 @@ def refers_to_builtin(o: RefExpr) -> bool:
 
 
 class Loop:
-    def __init__(self):
+    def __init__(self) -> None:
         self.has_break = False
 
 
