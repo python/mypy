@@ -469,32 +469,54 @@ def f5() -> None:
         x = z  # E: Name "z" is used before definition
     z: int = 2
 
-[case testUseBeforeDefImports]
+[case testUseBeforeDefImportsBasic]
 # flags: --enable-error-code use-before-def
-from foo import x  # type: ignore
-from foo import abc as y  # type: ignore
-import z  # type: ignore
-import foo as f  # type: ignore
+import foo  # type: ignore
+import x.y  # type: ignore
 
 def f0() -> None:
-    a = x  # No error.
-    x = 1
+    a = foo  # No error.
+    foo: int = 1
 
 def f1() -> None:
     a = y  # No error.
-    y = 1
+    y: int = 1
 
 def f2() -> None:
-    a = z  # No error.
-    z = 1
+    a = x  # No error.
+    x: int = 1
 
-def f3() -> None:
-    a = f  # No error.
-    z = 1
+[case testUseBeforeDefImportBasicRename]
+# flags: --enable-error-code use-before-def
+import foo as bar  # type: ignore
 
-def f4() -> None:
-    a = abc  # E: Name "abc" is used before definition
-    abc: int = 1
+def f0() -> None:
+    a = bar  # No error.
+    bar: int = 1
+
+def f1() -> None:
+    a = foo  # E: Name "foo" is used before definition
+    foo: int = 1
+
+[case testUseBeforeDefImportFrom]
+# flags: --enable-error-code use-before-def
+from foo import x  # type: ignore
+
+def f0() -> None:
+    a = x  # No error.
+    x: int = 1
+
+[case testUseBeforeDefImportFromRename]
+# flags: --enable-error-code use-before-def
+from foo import x as y  # type: ignore
+
+def f0() -> None:
+    a = y  # No error.
+    y: int = 1
+
+def f1() -> None:
+    a = x  # E: Name "x" is used before definition
+    x: int = 1
 
 [case testUseBeforeDefFunctionDeclarations]
 # flags: --enable-error-code use-before-def

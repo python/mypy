@@ -421,10 +421,11 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_import(self, o: Import) -> None:
         for mod, alias in o.ids:
-            name = alias
-            if name is None:
-                name = mod
-            self.tracker.record_definition(name)
+            names = mod.split(".")
+            if alias is not None:
+                names[-1] = alias
+            for name in names:
+                self.tracker.record_definition(name)
         super().visit_import(o)
 
     def visit_import_from(self, o: ImportFrom) -> None:
