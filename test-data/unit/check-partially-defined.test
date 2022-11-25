@@ -269,10 +269,14 @@ def f0() -> None:
         if first_iter:
             first_iter = False
             x = 0
-        else:
+        elif int():
             # This is technically a false positive but mypy isn't smart enough for this yet.
             y = x  # E: Name "x" may be undefined
+        else:
+            y = x  # E: Name "x" may be undefined
             z = x  # E: Name "x" may be undefined
+            x = 1
+            w = x
 
 
 def f1() -> None:
