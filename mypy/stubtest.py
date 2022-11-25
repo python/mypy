@@ -35,7 +35,7 @@ import mypy.types
 import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
-from mypy.evalexpr import evaluate_expression, UNKNOWN
+from mypy.evalexpr import UNKNOWN, evaluate_expression
 from mypy.options import Options
 from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
