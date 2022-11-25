@@ -1800,3 +1800,19 @@ _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Invalid type alias: exp
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Unsupported left operand type for | ("Type[str]")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Invalid type alias: expression is not a valid type
 _testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Unsupported left operand type for | ("Type[str]")
+
+[case testTypedDictUnionGetFull]
+from typing import Dict
+from typing_extensions import TypedDict
+
+class TD(TypedDict, total=False):
+    x: int
+    y: int
+
+A = Dict[str, TD]
+x: A
+def foo(k: str) -> TD:
+    reveal_type(x.get(k, {}))
+    return x.get(k, {})
+[out]
+_testTypedDictUnionGetFull.py:11: note: Revealed type is "TypedDict('_testTypedDictUnionGetFull.TD', {'x'?: builtins.int, 'y'?: builtins.int})"

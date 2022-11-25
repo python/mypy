@@ -837,3 +837,37 @@ def foo(x: T) -> C: ...
 
 Nested = Union[C, Sequence[Nested]]
 x: Nested = foo(42)
+
+[case testNoRecursiveExpandInstanceUnionCrash]
+from typing import List, Union
+
+class Tag(List[Union[Tag, List[Tag]]]): ...
+Tag()
+
+[case testNoRecursiveExpandInstanceUnionCrashGeneric]
+from typing import Generic, Iterable, TypeVar, Union
+
+ValueT = TypeVar("ValueT")
+class Recursive(Iterable[Union[ValueT, Recursive[ValueT]]]):
+    pass
+
+class Base(Generic[ValueT]):
+    def __init__(self, element: ValueT):
+        pass
+class Sub(Base[Union[ValueT, Recursive[ValueT]]]):
+    pass
+
+x: Iterable[str]
+reveal_type(Sub)  # N: Revealed type is "def [ValueT] (element: Union[ValueT`1, __main__.Recursive[ValueT`1]]) -> __main__.Sub[ValueT`1]"
+reveal_type(Sub(x))  # N: Revealed type is "__main__.Sub[typing.Iterable[builtins.str]]"
+
+[case testNoRecursiveExpandInstanceUnionCrashInference]
+from typing import TypeVar, Union, Generic, List
+
+T = TypeVar("T")
+InList = Union[T, InListRecurse[T]]
+class InListRecurse(Generic[T], List[InList[T]]): ...
+
+def list_thing(transforming: InList[T]) -> T:
+    ...
+reveal_type(list_thing([5]))  # N: Revealed type is "builtins.list[builtins.int]"
