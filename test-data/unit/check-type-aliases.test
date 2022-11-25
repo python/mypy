@@ -993,3 +993,35 @@ x_bad: A[bytes]  # E: Value of type variable "S" of "A" cannot be "bytes"
 B = List[C[U]]
 y: B[int]
 y_bad: B[str]  # E: Type argument "str" of "B" must be a subtype of "int"
+
+[case testTupleWithDifferentArgsPy38]
+# flags: --python-version 3.8
+NotYet1 = tuple[float]  # E: "tuple" is not subscriptable
+NotYet2 = tuple[float, float]  # E: "tuple" is not subscriptable
+NotYet3 = tuple[float, ...]  # E: Unexpected "..." \
+                             # E: "tuple" is not subscriptable
+NotYet4 = tuple[float, float, ...]  # E: Unexpected "..." \
+                                    # E: "tuple" is not subscriptable
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithDifferentArgsStub]
+# https://github.com/python/mypy/issues/11098
+import tup
+
+[file tup.pyi]
+Correct1 = str | tuple[float, float, str]
+Correct2 = tuple[float] | str
+Correct3 = tuple[float, ...] | str
+Correct4 = tuple[float, str] | str
+Correct5 = tuple[int, str]
+Correct6 = tuple[int, ...]
+
+RHSAlias1: type = tuple[int, int]
+RHSAlias2: type = tuple[int]
+RHSAlias3: type = tuple[int, ...]
+
+# Wrong:
+
+WrongTypeElement = str | tuple[float, 1]  # E: Invalid type: try using Literal[1] instead?
+WrongEllipsis = str | tuple[float, float, ...]  # E: Unexpected "..."
+[builtins fixtures/tuple.pyi]

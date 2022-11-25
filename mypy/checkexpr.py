@@ -3969,6 +3969,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if isinstance(tp, CallableType):
             if len(tp.variables) != len(args):
+                if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
+                    # TODO: Specialize the callable for the type arguments
+                    return tp
                 self.msg.incompatible_type_application(len(tp.variables), len(args), ctx)
                 return AnyType(TypeOfAny.from_error)
             return self.apply_generic_arguments(tp, args, ctx)

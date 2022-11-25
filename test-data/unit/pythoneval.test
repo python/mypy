@@ -1816,3 +1816,45 @@ def foo(k: str) -> TD:
     return x.get(k, {})
 [out]
 _testTypedDictUnionGetFull.py:11: note: Revealed type is "TypedDict('_testTypedDictUnionGetFull.TD', {'x'?: builtins.int, 'y'?: builtins.int})"
+
+[case testTupleWithDifferentArgsPy310]
+# https://github.com/python/mypy/issues/11098
+# flags: --python-version 3.10
+Correct1 = str | tuple[float, float, str]
+Correct2 = tuple[float] | str
+Correct3 = tuple[float, ...] | str
+Correct4 = tuple[float, str]
+Correct5 = tuple[float, ...]
+Correct6 = list[tuple[int, str]]
+c1: Correct1
+c2: Correct2
+c3: Correct3
+c4: Correct4
+c5: Correct5
+c6: Correct6
+reveal_type(c1)
+reveal_type(c2)
+reveal_type(c3)
+reveal_type(c4)
+reveal_type(c5)
+reveal_type(c6)
+
+RHSAlias1: type = tuple[int, int]
+RHSAlias2: type = tuple[int]
+RHSAlias3: type = tuple[int, ...]
+
+WrongTypeElement = str | tuple[float, 1]  # Error
+WrongEllipsis = tuple[float, float, ...] | str  # Error
+
+# TODO: This should produce a fixed-length tuple
+reveal_type(tuple[int, str]((1, "x")))
+[out]
+_testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "Union[builtins.str, Tuple[builtins.float, builtins.float, builtins.str]]"
+_testTupleWithDifferentArgsPy310.py:16: note: Revealed type is "Union[Tuple[builtins.float], builtins.str]"
+_testTupleWithDifferentArgsPy310.py:17: note: Revealed type is "Union[builtins.tuple[builtins.float, ...], builtins.str]"
+_testTupleWithDifferentArgsPy310.py:18: note: Revealed type is "Tuple[builtins.float, builtins.str]"
+_testTupleWithDifferentArgsPy310.py:19: note: Revealed type is "builtins.tuple[builtins.float, ...]"
+_testTupleWithDifferentArgsPy310.py:20: note: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str]]"
+_testTupleWithDifferentArgsPy310.py:26: error: Invalid type: try using Literal[1] instead?
+_testTupleWithDifferentArgsPy310.py:27: error: Unexpected "..."
+_testTupleWithDifferentArgsPy310.py:30: note: Revealed type is "builtins.tuple[builtins.object, ...]"
