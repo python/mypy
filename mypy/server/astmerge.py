@@ -331,6 +331,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_type_alias(self, node: TypeAlias) -> None:
         self.fixup_type(node.target)
+        for v in node.alias_tvars:
+            self.fixup_type(v)
         super().visit_type_alias(node)
 
     # Helpers

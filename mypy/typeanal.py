@@ -10,7 +10,6 @@ from typing_extensions import Final, Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
-from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder, format_type_bare, quote_type_string, wrong_type_arg_count
 from mypy.nodes import (
     ARG_NAMED,
@@ -23,7 +22,6 @@ from mypy.nodes import (
     ArgKind,
     Context,
     Decorator,
-    Expression,
     MypyFile,
     ParamSpecExpr,
     PlaceholderNode,
@@ -87,6 +85,7 @@ from mypy.types import (
     callable_with_ellipsis,
     flatten_nested_unions,
     get_proper_type,
+    has_type_vars,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
@@ -122,7 +121,7 @@ SELF_TYPE_NAMES: Final = {"typing.Self", "typing_extensions.Self"}
 
 
 def analyze_type_alias(
-    node: Expression,
+    type: Type,
     api: SemanticAnalyzerCoreInterface,
     tvar_scope: TypeVarLikeScope,
     plugin: Plugin,
@@ -131,6 +130,7 @@ def analyze_type_alias(
     allow_placeholder: bool = False,
     in_dynamic_func: bool = False,
     global_scope: bool = True,
+    allowed_alias_tvars: list[TypeVarLikeType] | None = None,
 ) -> tuple[Type, set[str]] | None:
     """Analyze r.h.s. of a (potential) type alias definition.
 
@@ -138,11 +138,6 @@ def analyze_type_alias(
     full names of type aliases it depends on (directly or indirectly).
     Return None otherwise. 'node' must have been semantically analyzed.
     """
-    try:
-        type = expr_to_unanalyzed_type(node, options, api.is_stub_file)
-    except TypeTranslationError:
-        api.fail("Invalid type alias: expression is not a valid type", node, code=codes.VALID_TYPE)
-        return None
     analyzer = TypeAnalyser(
         api,
         tvar_scope,
@@ -152,6 +147,7 @@ def analyze_type_alias(
         defining_alias=True,
         allow_placeholder=allow_placeholder,
         prohibit_self_type="type alias target",
+        allowed_alias_tvars=allowed_alias_tvars,
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -201,6 +197,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_param_spec_literals: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        allowed_alias_tvars: list[TypeVarLikeType] | None = None,
         allow_type_any: bool = False,
     ) -> None:
         self.api = api
@@ -219,8 +216,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.always_allow_new_syntax = self.api.is_stub_file or self.api.is_future_flag_set(
             "annotations"
         )
-        # Should we accept unbound type variables (always OK in aliases)?
-        self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
+        # Should we accept unbound type variables? This is currently used for class bases,
+        # and alias right hand sides (before they are analyzed as type aliases).
+        self.allow_unbound_tvars = allow_unbound_tvars
+        if allowed_alias_tvars is None:
+            allowed_alias_tvars = []
+        self.allowed_alias_tvars = allowed_alias_tvars
         # If false, record incomplete ref if we generate PlaceholderType.
         self.allow_placeholder = allow_placeholder
         # Are we in a context where Required[] is allowed?
@@ -263,7 +264,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.api.defer()
                     else:
                         self.api.record_incomplete_ref()
-                    return PlaceholderType(node.fullname, self.anal_array(t.args), t.line)
+                    # Always allow ParamSpec for placeholders, if they are actually not valid,
+                    # they will be reported later, after we resolve placeholders.
+                    with self.set_allow_param_spec_literals(True):
+                        return PlaceholderType(
+                            node.fullname, self.anal_array(t.args, allow_param_spec=True), t.line
+                        )
                 else:
                     if self.api.final_iteration:
                         self.cannot_resolve_type(t)
@@ -290,6 +296,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             tvar_def = self.tvar_scope.get_binding(sym)
             if isinstance(sym.node, ParamSpecExpr):
                 if tvar_def is None:
+                    if self.allow_unbound_tvars:
+                        return t
                     self.fail(f'ParamSpec "{t.name}" is unbound', t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, ParamSpecType)
@@ -307,7 +315,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     line=t.line,
                     column=t.column,
                 )
-            if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
+            if (
+                isinstance(sym.node, TypeVarExpr)
+                and self.defining_alias
+                and not defining_literal
+                and (tvar_def is None or tvar_def not in self.allowed_alias_tvars)
+            ):
                 self.fail(
                     f'Can\'t use bound type variable "{t.name}" to define generic alias',
                     t,
@@ -332,7 +345,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     column=t.column,
                 )
             if isinstance(sym.node, TypeVarTupleExpr) and (
-                tvar_def is not None and self.defining_alias
+                tvar_def is not None
+                and self.defining_alias
+                and tvar_def not in self.allowed_alias_tvars
             ):
                 self.fail(
                     f'Can\'t use bound type variable "{t.name}" to define generic alias',
@@ -363,7 +378,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return special
             if isinstance(node, TypeAlias):
                 self.aliases_used.add(fullname)
-                an_args = self.anal_array(t.args)
+                with self.set_allow_param_spec_literals(node.has_param_spec_type):
+                    an_args = self.anal_array(t.args, allow_param_spec=True)
+                    if node.has_param_spec_type and len(node.alias_tvars) == 1:
+                        an_args = self.pack_paramspec_args(an_args)
+
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
                 res = expand_type_alias(
                     node,
@@ -406,6 +425,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         else:  # sym is None
             return AnyType(TypeOfAny.special_form)
 
+    def pack_paramspec_args(self, an_args: Sequence[Type]) -> list[Type]:
+        # "Aesthetic" ParamSpec literals for single ParamSpec: C[int, str] -> C[[int, str]].
+        # These do not support mypy_extensions VarArgs, etc. as they were already analyzed
+        # TODO: should these be re-analyzed to get rid of this inconsistency?
+        count = len(an_args)
+        if count > 0:
+            first_arg = get_proper_type(an_args[0])
+            if not (count == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))):
+                return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
+        return list(an_args)
+
     def cannot_resolve_type(self, t: UnboundType) -> None:
         # TODO: Move error message generation to messages.py. We'd first
         #       need access to MessageBuilder here. Also move the similar
@@ -422,6 +452,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # last argument has to be ParamSpec
         ps = self.anal_type(t.args[-1], allow_param_spec=True)
         if not isinstance(ps, ParamSpecType):
+            if isinstance(ps, UnboundType) and self.allow_unbound_tvars:
+                sym = self.lookup_qualified(ps.name, t)
+                if sym is not None and isinstance(sym.node, ParamSpecExpr):
+                    return ps
             self.api.fail(
                 "The last parameter to Concatenate needs to be a ParamSpec",
                 t,
@@ -633,25 +667,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             instance = Instance(
                 info, self.anal_array(args, allow_param_spec=True), ctx.line, ctx.column
             )
-
-        # "aesthetic" paramspec literals
-        # these do not support mypy_extensions VarArgs, etc. as they were already analyzed
-        #   TODO: should these be re-analyzed to get rid of this inconsistency?
-        # another inconsistency is with empty type args (Z[] is more possibly an error imo)
-        if len(info.type_vars) == 1 and info.has_param_spec_type and len(instance.args) > 0:
-            first_arg = get_proper_type(instance.args[0])
-
-            # TODO: can I use tuple syntax to isinstance multiple in 3.6?
-            if not (
-                len(instance.args) == 1
-                and (
-                    isinstance(first_arg, Parameters)
-                    or isinstance(first_arg, ParamSpecType)
-                    or isinstance(first_arg, AnyType)
-                )
-            ):
-                args = instance.args
-                instance.args = (Parameters(args, [ARG_POS] * len(args), [None] * len(args)),)
+        if len(info.type_vars) == 1 and info.has_param_spec_type:
+            instance.args = tuple(self.pack_paramspec_args(instance.args))
 
         if info.has_type_var_tuple_type:
             # - 1 to allow for the empty type var tuple case.
@@ -676,6 +693,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 return expand_type_alias(
                     info.special_alias,
+                    # TODO: should we allow NamedTuples generic in ParamSpec?
                     self.anal_array(args),
                     self.fail,
                     False,
@@ -690,6 +708,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 return expand_type_alias(
                     info.special_alias,
+                    # TODO: should we allow TypedDicts generic in ParamSpec?
                     self.anal_array(args),
                     self.fail,
                     False,
@@ -810,9 +829,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             )
         else:
             message = 'Cannot interpret reference "{}" as a type'
-        self.fail(message.format(name), t, code=codes.VALID_TYPE)
-        for note in notes:
-            self.note(note, t, code=codes.VALID_TYPE)
+        if not defining_literal:
+            # Literal check already gives a custom error. Avoid duplicating errors.
+            self.fail(message.format(name), t, code=codes.VALID_TYPE)
+            for note in notes:
+                self.note(note, t, code=codes.VALID_TYPE)
 
         # TODO: Would it be better to always return Any instead of UnboundType
         # in case of an error? On one hand, UnboundType has a name so error messages
@@ -1102,6 +1123,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return None
         tvar_def = self.tvar_scope.get_binding(sym)
         if not isinstance(tvar_def, ParamSpecType):
+            if (
+                tvar_def is None
+                and self.allow_unbound_tvars
+                and isinstance(sym.node, ParamSpecExpr)
+            ):
+                # We are analyzing this type in runtime context (e.g. as type application).
+                # If it is not valid as a type in this position an error will be given later.
+                return callable_with_ellipsis(
+                    AnyType(TypeOfAny.explicit), ret_type=ret_type, fallback=fallback
+                )
             return None
 
         return CallableType(
@@ -1137,6 +1168,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         tvar_def = self.anal_type(callable_args, allow_param_spec=True)
         if not isinstance(tvar_def, ParamSpecType):
+            if self.allow_unbound_tvars and isinstance(tvar_def, UnboundType):
+                sym = self.lookup_qualified(tvar_def.name, callable_args)
+                if sym is not None and isinstance(sym.node, ParamSpecExpr):
+                    # We are analyzing this type in runtime context (e.g. as type application).
+                    # If it is not valid as a type in this position an error will be given later.
+                    return callable_with_ellipsis(
+                        AnyType(TypeOfAny.explicit), ret_type=ret_type, fallback=fallback
+                    )
             return None
 
         # ick, CallableType should take ParamSpecType
@@ -1637,12 +1676,12 @@ def expand_type_alias(
     """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
 
     Here:
-        target: original target type (contains unbound type variables)
-        alias_tvars: type variable names
+        target: original target type
         args: types to be substituted in place of type variables
         fail: error reporter callback
         no_args: whether original definition used a bare generic `A = List`
         ctx: context where expansion happens
+        unexpanded_type, disallow_any, use_standard_error: used to customize error messages
     """
     exp_len = len(node.alias_tvars)
     act_len = len(args)
@@ -1682,6 +1721,9 @@ def expand_type_alias(
             msg = f"Bad number of arguments for type alias, expected: {exp_len}, given: {act_len}"
         fail(msg, ctx, code=codes.TYPE_ARG)
         return set_any_tvars(node, ctx.line, ctx.column, from_error=True)
+    # TODO: we need to check args validity w.r.t alias.alias_tvars.
+    # Otherwise invalid instantiations will be allowed in runtime context.
+    # Note: in type context, these will be still caught by semanal_typeargs.
     typ = TypeAliasType(node, args, ctx.line, ctx.column)
     assert typ.alias is not None
     # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
@@ -1822,26 +1864,11 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
         self.scope = scope
         self.diverging = False
 
-    def is_alias_tvar(self, t: Type) -> bool:
-        # Generic type aliases use unbound type variables.
-        if not isinstance(t, UnboundType) or t.args:
-            return False
-        node = self.lookup(t.name, t)
-        if (
-            node
-            and isinstance(node.node, TypeVarLikeExpr)
-            and self.scope.get_binding(node) is None
-        ):
-            return True
-        return False
-
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
         if t.alias in self.seen_nodes:
             for arg in t.args:
-                if not self.is_alias_tvar(arg) and bool(
-                    arg.accept(TypeVarLikeQuery(self.lookup, self.scope))
-                ):
+                if not isinstance(arg, TypeVarLikeType) and has_type_vars(arg):
                     self.diverging = True
                     return t
             # All clear for this expansion chain.

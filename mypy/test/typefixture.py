@@ -340,7 +340,10 @@ class TypeFixture:
         return A, target
 
     def non_rec_alias(
-        self, target: Type, alias_tvars: list[str] | None = None, args: list[Type] | None = None
+        self,
+        target: Type,
+        alias_tvars: list[TypeVarLikeType] | None = None,
+        args: list[Type] | None = None,
     ) -> TypeAliasType:
         AN = TypeAlias(target, "__main__.A", -1, -1, alias_tvars=alias_tvars)
         if args is None:

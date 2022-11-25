@@ -1082,8 +1082,14 @@ def process_options(
         "--inferstats", action="store_true", dest="dump_inference_stats", help=argparse.SUPPRESS
     )
     parser.add_argument("--dump-build-stats", action="store_true", help=argparse.SUPPRESS)
-    # dump timing  stats for each processed file into the given output file
+    # Dump timing stats for each processed file into the given output file
     parser.add_argument("--timing-stats", dest="timing_stats", help=argparse.SUPPRESS)
+    # Dump per line type checking timing stats for each processed file into the given
+    # output file. Only total time spent in each top level expression will be shown.
+    # Times are show in microseconds.
+    parser.add_argument(
+        "--line-checking-stats", dest="line_checking_stats", help=argparse.SUPPRESS
+    )
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
