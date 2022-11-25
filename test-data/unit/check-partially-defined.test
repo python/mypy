@@ -206,6 +206,48 @@ def f5() -> int:
         return 3
     return 1
 
+[case testDefinedDifferentBranchUseBeforeDef]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+
+def f0() -> None:
+    if int():
+        x = 0
+    else:
+        y = x  # E: Name "x" is used before definition
+        z = x  # E: Name "x" is used before definition
+
+def f1() -> None:
+    x = 1
+    if int():
+        x = 0
+    else:
+        y = x  # No error.
+
+
+[case testDefinedDifferentBranchPartiallyDefined]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+
+def f0() -> None:
+    first_iter = True
+    for i in [0, 1]:
+        if first_iter:
+            first_iter = False
+            x = 0
+        else:
+            # This is technically a false positive but mypy isn't smart enough for this yet.
+            y = x  # E: Name "x" may be undefined
+            z = x  # E: Name "x" may be undefined
+
+
+def f1() -> None:
+    while True:
+        if int():
+            x = 0
+        else:
+            y = x  # E: Name "x" may be undefined
+            z = x  # E: Name "x" may be undefined
+
+
 [case testAssert]
 # flags: --enable-error-code partially-defined
 def f1() -> int:
@@ -394,21 +436,7 @@ def f0() -> None:
     x = y  # E: Name "y" is used before definition
     y: int = 1
 
-def f1() -> None:
-    if int():
-        x = 0
-    else:
-        y = x  # E: Name "x" is used before definition
-        z = x  # E: Name "x" is used before definition
-
 def f2() -> None:
-    x = 1
-    if int():
-        x = 0
-    else:
-        y = x  # No error.
-
-def f3() -> None:
     if int():
         pass
     else:
@@ -418,14 +446,14 @@ def f3() -> None:
     def inner2() -> None:
         z = 0
 
-def f4() -> None:
+def f3() -> None:
     if int():
         pass
     else:
         y = z  # E: Name "z" is used before definition
     z: int = 2
 
-def f5() -> None:
+def f4() -> None:
     if int():
         pass
     else:

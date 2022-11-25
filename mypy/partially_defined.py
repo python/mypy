@@ -234,6 +234,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def __init__(self, msg: MessageBuilder, type_map: dict[Expression, Type]) -> None:
         self.msg = msg
         self.type_map = type_map
+        self.loop_depth = 0
         self.tracker = DefinedVariableTracker()
 
     def process_lvalue(self, lvalue: Lvalue | None) -> None:
@@ -319,10 +320,12 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.process_lvalue(o.index)
         o.index.accept(self)
         self.tracker.start_branch_statement()
+        self.loop_depth += 1
         o.body.accept(self)
         self.tracker.next_branch()
         if o.else_body:
             o.else_body.accept(self)
+        self.loop_depth -= 1
         self.tracker.end_branch_statement()
 
     def visit_return_stmt(self, o: ReturnStmt) -> None:
@@ -354,7 +357,9 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_while_stmt(self, o: WhileStmt) -> None:
         o.expr.accept(self)
         self.tracker.start_branch_statement()
+        self.loop_depth += 1
         o.body.accept(self)
+        self.loop_depth -= 1
         if not checker.is_true_literal(o.expr):
             self.tracker.next_branch()
             if o.else_body:
@@ -380,7 +385,10 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             self.tracker.record_definition(o.name)
         elif self.tracker.is_defined_in_different_branch(o.name):
             # A variable is defined in one branch but used in a different branch.
-            self.msg.var_used_before_def(o.name, o)
+            if self.loop_depth > 0:
+                self.msg.variable_may_be_undefined(o.name, o)
+            else:
+                self.msg.var_used_before_def(o.name, o)
         elif self.tracker.is_undefined(o.name):
             # A variable is undefined. It could be due to two things:
             # 1. A variable is just totally undefined
