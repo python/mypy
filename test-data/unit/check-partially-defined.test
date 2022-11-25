@@ -206,15 +206,15 @@ def f5() -> int:
         return 3
     return 1
 
-[case testDefinedDifferentBranch]
+[case testDefinedDifferentBranchUseBeforeDef]
 # flags: --enable-error-code partially-defined --enable-error-code use-before-def
 
 def f0() -> None:
     if int():
         x = 0
     else:
-        y = x  # E: Name "x" may be undefined
-        z = x  # E: Name "x" may be undefined
+        y = x  # E: Name "x" is used before definition
+        z = x  # E: Name "x" is used before definition
 
 def f1() -> None:
     x = 1
@@ -222,6 +222,30 @@ def f1() -> None:
         x = 0
     else:
         y = x  # No error.
+
+
+[case testDefinedDifferentBranchPartiallyDefined]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+
+def f0() -> None:
+    first_iter = True
+    for i in [0, 1]:
+        if first_iter:
+            first_iter = False
+            x = 0
+        else:
+            # This is technically a false positive but mypy isn't smart enough for this yet.
+            y = x  # E: Name "x" may be undefined
+            z = x  # E: Name "x" may be undefined
+
+
+def f1() -> None:
+    while True:
+        if int():
+            x = 0
+        else:
+            y = x  # E: Name "x" may be undefined
+            z = x  # E: Name "x" may be undefined
 
 
 [case testAssert]
