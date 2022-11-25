@@ -283,6 +283,17 @@ def f1() -> None:
             y = x  # E: Name "x" may be undefined
             z = x  # E: Name "x" may be undefined
 
+def f2() -> None:
+    for i in [0, 1]:
+        x = i
+    else:
+        y = x  # E: Name "x" may be undefined
+
+def f3() -> None:
+    while int():
+        x = 1
+    else:
+        y = x  # E: Name "x" may be undefined
 
 [case testAssert]
 # flags: --enable-error-code partially-defined

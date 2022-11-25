@@ -379,11 +379,11 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.start_branch_statement()
         self.loop_depth += 1
         o.body.accept(self)
-        self.loop_depth -= 1
         if not checker.is_true_literal(o.expr):
             self.tracker.next_branch()
             if o.else_body:
                 o.else_body.accept(self)
+        self.loop_depth -= 1
         self.tracker.end_branch_statement()
 
     def visit_as_pattern(self, o: AsPattern) -> None:
