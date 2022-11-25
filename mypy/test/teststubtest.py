@@ -302,7 +302,7 @@ class StubtestUnit(unittest.TestCase):
             )
 
     @collect_cases
-    def test_default_value(self) -> Iterator[Case]:
+    def test_default_presence(self) -> Iterator[Case]:
         yield Case(
             stub="def f1(text: str = ...) -> None: ...",
             runtime="def f1(text = 'asdf'): pass",
@@ -334,6 +334,59 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="def f6(text = None): pass",
             error="f6",
+        )
+
+    @collect_cases
+    def test_default_value(self) -> Iterator[Case]:
+        yield Case(
+            stub="def f1(text: str = 'x') -> None: ...",
+            runtime="def f1(text = 'y'): pass",
+            error="f1",
+        )
+        yield Case(
+            stub='def f2(text: bytes = b"x\'") -> None: ...',
+            runtime='def f2(text = b"x\'"): pass',
+            error=None,
+        )
+        yield Case(
+            stub='def f3(text: bytes = b"y\'") -> None: ...',
+            runtime='def f3(text = b"x\'"): pass',
+            error="f3",
+        )
+        yield Case(
+            stub="def f4(text: object = 1) -> None: ...",
+            runtime="def f4(text = 1.0): pass",
+            error="f4",
+        )
+        yield Case(
+            stub="def f5(text: object = True) -> None: ...",
+            runtime="def f5(text = 1): pass",
+            error="f5",
+        )
+        yield Case(
+            stub="def f6(text: object = True) -> None: ...",
+            runtime="def f6(text = True): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f7(text: object = not True) -> None: ...",
+            runtime="def f7(text = False): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f8(text: object = not True) -> None: ...",
+            runtime="def f8(text = True): pass",
+            error="f8",
+        )
+        yield Case(
+            stub="def f9(text: object = {1: 2}) -> None: ...",
+            runtime="def f9(text = {1: 3}): pass",
+            error="f9",
+        )
+        yield Case(
+            stub="def f10(text: object = [1, 2]) -> None: ...",
+            runtime="def f10(text = [1, 2]): pass",
+            error=None,
         )
 
     @collect_cases
