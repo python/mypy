@@ -429,11 +429,15 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_import(self, o: Import) -> None:
         for mod, alias in o.ids:
-            names = mod.split(".")
             if alias is not None:
-                names[-1] = alias
-            for name in names:
-                self.tracker.record_definition(name)
+                self.tracker.record_definition(alias)
+            else:
+                # When you do `import x.y`, only `x` becomes defined.
+                names = mod.split(".")
+                if len(names) > 0:
+                    # `names` should always be nonempty, but we don't want mypy
+                    # to crash on invalid code.
+                    self.tracker.record_definition(names[0])
         super().visit_import(o)
 
     def visit_import_from(self, o: ImportFrom) -> None:

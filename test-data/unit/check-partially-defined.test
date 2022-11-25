@@ -507,24 +507,37 @@ def f0() -> None:
     foo: int = 1
 
 def f1() -> None:
-    a = y  # No error.
+    a = y  # E: Name "y" is used before definition
     y: int = 1
 
 def f2() -> None:
     a = x  # No error.
     x: int = 1
 
+def f3() -> None:
+    a = x.y  # No error.
+    x: int = 1
+
 [case testUseBeforeDefImportBasicRename]
 # flags: --enable-error-code use-before-def
-import foo as bar  # type: ignore
+import x.y as z  # type: ignore
+from typing import Any
 
 def f0() -> None:
-    a = bar  # No error.
-    bar: int = 1
+    a = z  # No error.
+    z: int = 1
 
 def f1() -> None:
-    a = foo  # E: Name "foo" is used before definition
-    foo: int = 1
+    a = x  # E: Name "x" is used before definition
+    x: int = 1
+
+def f2() -> None:
+    a = x.y  # E: Name "x" is used before definition
+    x: Any = 1
+
+def f3() -> None:
+    a = y  # E: Name "y" is used before definition
+    y: int = 1
 
 [case testUseBeforeDefImportFrom]
 # flags: --enable-error-code use-before-def
