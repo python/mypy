@@ -2349,6 +2349,9 @@ class State:
 
     def detect_partially_defined_vars(self, type_map: dict[Expression, Type]) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
+        if self.tree.is_stub:
+            # We skip stub files because they aren't actually executed.
+            return
         manager = self.manager
         if manager.errors.is_error_code_enabled(
             codes.PARTIALLY_DEFINED
