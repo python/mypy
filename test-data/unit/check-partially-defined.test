@@ -285,6 +285,19 @@ def f1() -> None:
     else:
         y = x  # No error.
 
+def f2():
+    if int():
+        x = 0
+    elif int():
+        y = x  # E: Name "x" is used before definition
+    else:
+        y = x  # E: Name "x" is used before definition
+        if int():
+            z = x  # E: Name "x" is used before definition
+            x = 1
+        else:
+            x = 2
+        w = x  # No error.
 
 [case testDefinedDifferentBranchPartiallyDefined]
 # flags: --enable-error-code partially-defined --enable-error-code use-before-def
@@ -300,10 +313,12 @@ def f0() -> None:
             y = x  # E: Name "x" may be undefined
         else:
             y = x  # E: Name "x" may be undefined
-            z = x  # E: Name "x" may be undefined
-            x = 1
-            w = x
-
+            if int():
+                z = x  # E: Name "x" may be undefined
+                x = 1
+            else:
+                x = 2
+            w = x  # No error.
 
 def f1() -> None:
     while True:
