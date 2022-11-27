@@ -285,7 +285,7 @@ def f1() -> None:
     else:
         y = x  # No error.
 
-def f2():
+def f2() -> None:
     if int():
         x = 0
     elif int():
