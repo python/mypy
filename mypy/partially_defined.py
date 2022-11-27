@@ -109,11 +109,9 @@ class BranchStatement:
         branch = self.branches[-1]
         return name not in branch.may_be_defined and name not in branch.must_be_defined
 
-    def is_defined_in_different_branch(self, name: str) -> bool:
+    def is_defined_in_a_branch(self, name: str) -> bool:
         assert len(self.branches) > 0
-        if not self.is_undefined(name):
-            return False
-        for b in self.branches[: len(self.branches) - 1]:
+        for b in self.branches:
             if name in b.must_be_defined or name in b.may_be_defined:
                 return True
         return False
@@ -213,7 +211,13 @@ class DefinedVariableTracker:
     def is_defined_in_different_branch(self, name: str) -> bool:
         """This will return true if a variable is defined in a branch that's not the current branch."""
         assert len(self._scope().branch_stmts) > 0
-        return self._scope().branch_stmts[-1].is_defined_in_different_branch(name)
+        stmt = self._scope().branch_stmts[-1]
+        if not stmt.is_undefined(name):
+            return False
+        for stmt in self._scope().branch_stmts:
+            if stmt.is_defined_in_a_branch(name):
+                return True
+        return False
 
     def is_undefined(self, name: str) -> bool:
         assert len(self._scope().branch_stmts) > 0
