@@ -130,6 +130,7 @@ non_bundled_packages = {
     "jsonschema": "types-jsonschema",
     "keyboard": "types-keyboard",
     "ldap3": "types-ldap3",
+    "lxml": "lxml-stubs",
     "nmap": "types-python-nmap",
     "oauthlib": "types-oauthlib",
     "openpyxl": "types-openpyxl",
