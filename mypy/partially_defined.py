@@ -446,7 +446,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             self.tracker.record_definition(o.name)
         elif self.tracker.is_defined_in_different_branch(o.name):
             # A variable is defined in one branch but used in a different branch.
-            if len(self.loops) > 0:
+            if self.loops:
                 self.variable_may_be_undefined(o.name, o)
             else:
                 self.var_used_before_def(o.name, o)
