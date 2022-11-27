@@ -29,11 +29,13 @@ from typing_extensions import get_origin
 
 import mypy.build
 import mypy.modulefinder
+import mypy.nodes
 import mypy.state
 import mypy.types
 import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
+from mypy.evalexpr import UNKNOWN, evaluate_expression
 from mypy.options import Options
 from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
@@ -573,6 +575,23 @@ def _verify_arg_default_value(
                     f"has a default value of type {runtime_type}, "
                     f"which is incompatible with stub argument type {stub_type}"
                 )
+            if stub_arg.initializer is not None:
+                stub_default = evaluate_expression(stub_arg.initializer)
+                if (
+                    stub_default is not UNKNOWN
+                    and stub_default is not ...
+                    and (
+                        stub_default != runtime_arg.default
+                        # We want the types to match exactly, e.g. in case the stub has
+                        # True and the runtime has 1 (or vice versa).
+                        or type(stub_default) is not type(runtime_arg.default)  # noqa: E721
+                    )
+                ):
+                    yield (
+                        f'runtime argument "{runtime_arg.name}" '
+                        f"has a default value of {runtime_arg.default!r}, "
+                        f"which is different from stub argument default {stub_default!r}"
+                    )
     else:
         if stub_arg.kind.is_optional():
             yield (
