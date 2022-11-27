@@ -909,7 +909,7 @@ class GroupGenerator:
         emitter.emit_lines(
             f"{module_static} = PyModule_Create(&{module_prefix}module);",
             f"if (unlikely({module_static} == NULL))",
-            "    goto fail;",
+            "\tgoto fail;",
         )
         emitter.emit_line(
             f'modname = PyObject_GetAttrString((PyObject *){module_static}, "__name__");'
@@ -919,7 +919,7 @@ class GroupGenerator:
         emitter.emit_lines(
             f"{module_globals} = PyModule_GetDict({module_static});",
             f"if (unlikely({module_globals} == NULL))",
-            "    goto fail;",
+            "\tgoto fail;",
         )
 
         # HACK: Manually instantiate generated classes here
@@ -932,9 +932,9 @@ class GroupGenerator:
                     "{t} = (PyTypeObject *)CPyType_FromTemplate("
                     "(PyObject *){t}_template, NULL, modname);".format(t=type_struct)
                 )
-                emitter.emit_lines(f"if (unlikely(!{type_struct}))", "    goto fail;")
+                emitter.emit_lines(f"if (unlikely(!{type_struct}))", "\tgoto fail;")
 
-        emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
+        emitter.emit_lines("if (CPyGlobalsInit() < 0)", "\tgoto fail;")
 
         self.generate_top_level_call(module, emitter)
 
@@ -962,7 +962,7 @@ class GroupGenerator:
                 emitter.emit_lines(
                     f"char result = {emitter.native_function_name(fn.decl)}();",
                     "if (result == 2)",
-                    "    goto fail;",
+                    "\tgoto fail;",
                 )
                 break
 
@@ -1151,13 +1151,13 @@ def c_array_initializer(components: list[str]) -> str:
         return "{%s}" % ", ".join(current)
     # Multi-line result
     res.append(", ".join(current))
-    return "{\n    " + ",\n    ".join(res) + "\n}"
+    return "{\n\t" + ",\n\t".join(res) + "\n}"
 
 
 def c_string_array_initializer(components: list[bytes]) -> str:
     result = []
     result.append("{\n")
     for s in components:
-        result.append("    " + c_string_initializer(s) + ",\n")
+        result.append("\t" + c_string_initializer(s) + ",\n")
     result.append("}")
     return "".join(result)

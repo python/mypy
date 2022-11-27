@@ -561,7 +561,7 @@ class Emitter:
                 if likely:
                     check = f"(likely{check})"
                 self.emit_arg_check(src, dest, typ, check.format(src), optional)
-                self.emit_lines(f"    {dest} = {src};", "else {")
+                self.emit_lines(f"\t{dest} = {src};", "else {")
                 self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
                 self.emit_line("}")
                 return
@@ -604,7 +604,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check.format(prefix, src), optional)
-            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_lines(f"\t{dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif is_bytes_rprimitive(typ):
@@ -614,7 +614,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
-            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_lines(f"\t{dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif is_tuple_rprimitive(typ):
@@ -624,7 +624,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check.format(src), optional)
-            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_lines(f"\t{dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif isinstance(typ, RInstance):
@@ -651,7 +651,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check, optional)
-            self.emit_lines(f"    {dest} = {src};".format(dest, src), "else {")
+            self.emit_lines(f"\t{dest} = {src};".format(dest, src), "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif is_none_rprimitive(typ):
@@ -661,7 +661,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check.format(src), optional)
-            self.emit_lines(f"    {dest} = {src};", "else {")
+            self.emit_lines(f"\t{dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif is_object_rprimitive(typ):
@@ -841,9 +841,9 @@ class Emitter:
                 self.emit_line(f"CPyTagged {dest};")
             self.emit_arg_check(src, dest, typ, f"(likely(PyLong_Check({src})))", optional)
             if borrow:
-                self.emit_line(f"    {dest} = CPyTagged_BorrowFromObject({src});")
+                self.emit_line(f"\t{dest} = CPyTagged_BorrowFromObject({src});")
             else:
-                self.emit_line(f"    {dest} = CPyTagged_FromObject({src});")
+                self.emit_line(f"\t{dest} = CPyTagged_FromObject({src});")
             self.emit_line("else {")
             self.emit_line(failure)
             self.emit_line("}")
@@ -855,7 +855,7 @@ class Emitter:
             self.emit_line(failure)
             self.emit_line("} else")
             conversion = f"{src} == Py_True"
-            self.emit_line(f"    {dest} = {conversion};")
+            self.emit_line(f"\t{dest} = {conversion};")
         elif is_none_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
@@ -863,7 +863,7 @@ class Emitter:
             self.emit_arg_check(src, dest, typ, f"(unlikely({src} != Py_None)) {{", optional)
             self.emit_line(failure)
             self.emit_line("} else")
-            self.emit_line(f"    {dest} = 1;")
+            self.emit_line(f"\t{dest} = 1;")
         elif is_int64_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
@@ -970,7 +970,7 @@ class Emitter:
             self.declare_tuple_struct(typ)
             self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
             self.emit_line(f"if (unlikely({dest} == NULL))")
-            self.emit_line("    CPyError_OutOfMemory();")
+            self.emit_line("\tCPyError_OutOfMemory();")
             # TODO: Fail if dest is None
             for i in range(0, len(typ.types)):
                 if not typ.is_unboxed:

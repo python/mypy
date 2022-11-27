@@ -222,7 +222,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             self.emit_line(f"if ({cond}) {{")
             self.emit_traceback(op)
             self.emit_lines(
-                "goto %s;" % self.label(true), "} else", "    goto %s;" % self.label(false)
+                "goto %s;" % self.label(true), "} else", "\tgoto %s;" % self.label(false)
             )
 
     def visit_return(self, op: Return) -> None:

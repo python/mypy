@@ -550,7 +550,7 @@ def generate_setup_for_class(
     emitter.emit_line(f"{cl.struct_name(emitter.names)} *self;")
     emitter.emit_line(f"self = ({cl.struct_name(emitter.names)} *)type->tp_alloc(type, 0);")
     emitter.emit_line("if (self == NULL)")
-    emitter.emit_line("    return NULL;")
+    emitter.emit_line("\treturn NULL;")
 
     if shadow_vtable_name:
         emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
@@ -600,7 +600,7 @@ def generate_constructor_for_class(
     emitter.emit_line("{")
     emitter.emit_line(f"PyObject *self = {setup_name}({emitter.type_struct_name(cl)});")
     emitter.emit_line("if (self == NULL)")
-    emitter.emit_line("    return NULL;")
+    emitter.emit_line("\treturn NULL;")
     args = ", ".join(["self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
     if init_fn is not None:
         emitter.emit_line(
@@ -682,11 +682,11 @@ def generate_new_for_class(
         # can enforce that instances are always properly initialized. This
         # is needed to support always defined attributes.
         emitter.emit_line(f"PyObject *self = {setup_name}(type);")
-        emitter.emit_lines("if (self == NULL)", "    return NULL;")
+        emitter.emit_lines("if (self == NULL)", "\treturn NULL;")
         emitter.emit_line(
             f"PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);"
         )
-        emitter.emit_lines("if (ret == NULL)", "    return NULL;")
+        emitter.emit_lines("if (ret == NULL)", "\treturn NULL;")
         emitter.emit_line("return self;")
     emitter.emit_line("}")
 
@@ -906,7 +906,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if not always_defined:
         emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
+        emitter.emit_line(f'\t"attribute {repr(attr)} of {repr(cl.name)} undefined");')
         emitter.emit_line("return NULL;")
         emitter.emit_line("}")
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
@@ -929,9 +929,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if not deletable:
         emitter.emit_line("if (value == NULL) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(
-            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");'
-        )
+        emitter.emit_line(f'\t"{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");')
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
@@ -957,7 +955,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("PyObject *tmp = value;")
     else:
         emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
-        emitter.emit_lines("if (!tmp)", "    return -1;")
+        emitter.emit_lines("if (!tmp)", "\treturn -1;")
     emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
     if is_fixed_width_rtype(rtype) and not always_defined:
@@ -965,7 +963,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
 
     if deletable:
         emitter.emit_line("} else")
-        emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
+        emitter.emit_line(f"\tself->{attr_field} = {emitter.c_undefined_value(rtype)};")
         if is_fixed_width_rtype(rtype):
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
     emitter.emit_line("return 0;")
