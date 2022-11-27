@@ -391,7 +391,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_break_stmt(self, o: BreakStmt) -> None:
         super().visit_break_stmt(o)
-        if len(self.loops) > 0:
+        if self.loops:
             self.loops[-1].has_break = True
         self.tracker.skip_branch()
 
