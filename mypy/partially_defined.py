@@ -7,6 +7,7 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     BreakStmt,
+    Context,
     ContinueStmt,
     DictionaryComprehension,
     Expression,
@@ -249,12 +250,20 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         for name in implicit_module_attrs:
             self.tracker.record_definition(name)
 
+    def var_used_before_def(self, name: str, context: Context) -> None:
+        if self.msg.errors.is_error_code_enabled(errorcodes.USE_BEFORE_DEF):
+            self.msg.var_used_before_def(name, context)
+
+    def variable_may_be_undefined(self, name: str, context: Context) -> None:
+        if self.msg.errors.is_error_code_enabled(errorcodes.PARTIALLY_DEFINED):
+            self.msg.variable_may_be_undefined(name, context)
+
     def process_lvalue(self, lvalue: Lvalue | None) -> None:
         if isinstance(lvalue, NameExpr):
             # Was this name previously used? If yes, it's a use-before-definition error.
             refs = self.tracker.pop_undefined_ref(lvalue.name)
             for ref in refs:
-                self.msg.var_used_before_def(lvalue.name, ref)
+                self.var_used_before_def(lvalue.name, ref)
             self.tracker.record_definition(lvalue.name)
         elif isinstance(lvalue, StarExpr):
             self.process_lvalue(lvalue.expr)
@@ -401,16 +410,15 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             return
         if self.tracker.is_partially_defined(o.name):
             # A variable is only defined in some branches.
-            if self.msg.errors.is_error_code_enabled(errorcodes.PARTIALLY_DEFINED):
-                self.msg.variable_may_be_undefined(o.name, o)
+            self.variable_may_be_undefined(o.name, o)
             # We don't want to report the error on the same variable multiple times.
             self.tracker.record_definition(o.name)
         elif self.tracker.is_defined_in_different_branch(o.name):
             # A variable is defined in one branch but used in a different branch.
             if self.loop_depth > 0:
-                self.msg.variable_may_be_undefined(o.name, o)
+                self.variable_may_be_undefined(o.name, o)
             else:
-                self.msg.var_used_before_def(o.name, o)
+                self.var_used_before_def(o.name, o)
         elif self.tracker.is_undefined(o.name):
             # A variable is undefined. It could be due to two things:
             # 1. A variable is just totally undefined
