@@ -7,6 +7,7 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     BreakStmt,
+    ClassDef,
     Context,
     ContinueStmt,
     DictionaryComprehension,
@@ -258,13 +259,16 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         if self.msg.errors.is_error_code_enabled(errorcodes.PARTIALLY_DEFINED):
             self.msg.variable_may_be_undefined(name, context)
 
+    def process_definition(self, name: str) -> None:
+        # Was this name previously used? If yes, it's a use-before-definition error.
+        refs = self.tracker.pop_undefined_ref(name)
+        for ref in refs:
+            self.var_used_before_def(name, ref)
+        self.tracker.record_definition(name)
+
     def process_lvalue(self, lvalue: Lvalue | None) -> None:
         if isinstance(lvalue, NameExpr):
-            # Was this name previously used? If yes, it's a use-before-definition error.
-            refs = self.tracker.pop_undefined_ref(lvalue.name)
-            for ref in refs:
-                self.var_used_before_def(lvalue.name, ref)
-            self.tracker.record_definition(lvalue.name)
+            self.process_definition(lvalue.name)
         elif isinstance(lvalue, StarExpr):
             self.process_lvalue(lvalue.expr)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
@@ -434,6 +438,10 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             expr.accept(self)
             self.process_lvalue(idx)
         o.body.accept(self)
+
+    def visit_class_def(self, o: ClassDef) -> None:
+        self.process_definition(o.name)
+        super().visit_class_def(o)
 
     def visit_import(self, o: Import) -> None:
         for mod, alias in o.ids:
