@@ -318,7 +318,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.end_branch_statement()
 
     def visit_func_def(self, o: FuncDef) -> None:
-        self.tracker.record_definition(o.name)
+        self.process_definition(o.name)
         self.tracker.enter_scope()
         super().visit_func_def(o)
         self.tracker.exit_scope()
