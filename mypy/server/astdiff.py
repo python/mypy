@@ -187,7 +187,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sna
         elif isinstance(node, TypeAlias):
             result[name] = (
                 "TypeAlias",
-                node.alias_tvars,
+                snapshot_types(node.alias_tvars),
                 node.normalized,
                 node.no_args,
                 snapshot_optional_type(node.target),

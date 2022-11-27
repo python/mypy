@@ -15,7 +15,6 @@ from mypy.types import (
     NoneType,
     Overloaded,
     Parameters,
-    ParamSpecFlavor,
     ParamSpecType,
     PartialType,
     ProperType,
@@ -34,7 +33,10 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    expand_param_spec,
+    flatten_nested_unions,
     get_proper_type,
+    remove_trivial,
 )
 from mypy.typevartuples import (
     find_unpack_in_list,
@@ -212,32 +214,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.
             return repl
-        elif isinstance(repl, ParamSpecType):
-            return repl.copy_modified(
-                flavor=t.flavor,
-                prefix=t.prefix.copy_modified(
-                    arg_types=t.prefix.arg_types + repl.prefix.arg_types,
-                    arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
-                    arg_names=t.prefix.arg_names + repl.prefix.arg_names,
-                ),
-            )
-        elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
-            # if the paramspec is *P.args or **P.kwargs:
-            if t.flavor != ParamSpecFlavor.BARE:
-                assert isinstance(repl, CallableType), "Should not be able to get here."
-                # Is this always the right thing to do?
-                param_spec = repl.param_spec()
-                if param_spec:
-                    return param_spec.with_flavor(t.flavor)
-                else:
-                    return repl
-            else:
-                return Parameters(
-                    t.prefix.arg_types + repl.arg_types,
-                    t.prefix.arg_kinds + repl.arg_kinds,
-                    t.prefix.arg_names + repl.arg_names,
-                    variables=[*t.prefix.variables, *repl.variables],
-                )
+        elif isinstance(repl, (ParamSpecType, Parameters, CallableType)):
+            return expand_param_spec(t, repl)
         else:
             # TODO: should this branch be removed? better not to fail silently
             return repl
@@ -429,11 +407,13 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_union_type(self, t: UnionType) -> Type:
-        # After substituting for type variables in t.items,
-        # some of the resulting types might be subtypes of others.
-        from mypy.typeops import make_simplified_union  # asdf
-
-        return make_simplified_union(self.expand_types(t.items), t.line, t.column)
+        expanded = self.expand_types(t.items)
+        # After substituting for type variables in t.items, some resulting types
+        # might be subtypes of others, however calling  make_simplified_union()
+        # can cause recursion, so we just remove strict duplicates.
+        return UnionType.make_union(
+            remove_trivial(flatten_nested_unions(expanded)), t.line, t.column
+        )
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
@@ -446,8 +426,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return TypeType.make_normalized(item)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        # Target of the type alias cannot contain type variables,
-        # so we just expand the arguments.
+        # Target of the type alias cannot contain type variables (not bound by the type
+        # alias itself), so we just expand the arguments.
         return t.copy_modified(args=self.expand_types(t.args))
 
     def expand_types(self, types: Iterable[Type]) -> list[Type]:

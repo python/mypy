@@ -90,6 +90,16 @@ else:
 a = y + x  # E: Name "x" may be undefined
 a = y + z  # E: Name "z" may be undefined
 
+[case testIndexExpr]
+# flags: --enable-error-code partially-defined
+
+if int():
+    *x, y = (1, 2)
+else:
+    x = [1, 2]
+a = x  # No error.
+b = y  # E: Name "y" may be undefined
+
 [case testRedefined]
 # flags: --enable-error-code partially-defined
 y = 3
@@ -103,6 +113,32 @@ else:
     x = y + 2
 
 x = y + 2
+
+[case testFunction]
+# flags: --enable-error-code partially-defined
+def f0() -> None:
+    if int():
+        def some_func() -> None:
+            pass
+
+    some_func()  # E: Name "some_func" may be undefined
+
+def f1() -> None:
+    if int():
+        def some_func() -> None:
+            pass
+    else:
+        def some_func() -> None:
+            pass
+
+    some_func()  # No error.
+
+[case testLambda]
+# flags: --enable-error-code partially-defined
+def f0(b: bool) -> None:
+    if b:
+        fn = lambda: 2
+    y = fn   # E: Name "fn" may be undefined
 
 [case testGenerator]
 # flags: --enable-error-code partially-defined
@@ -131,22 +167,49 @@ def foo(a: int) -> None:
 [case testWhile]
 # flags: --enable-error-code partially-defined
 while int():
-    x = 1
+    a = 1
 
-y = x  # E: Name "x" may be undefined
+x = a  # E: Name "a" may be undefined
 
 while int():
-    z = 1
+    b = 1
 else:
-    z = 2
+    b = 2
 
-y = z  # No error.
+y = b  # No error.
 
 while True:
-    k = 1
+    c = 1
     if int():
         break
-y = k # No error.
+y = c  # No error.
+
+# This while loop doesn't have a `break` inside, so we know that the else must always get executed.
+while int():
+    pass
+else:
+    d = 1
+y = d  # No error.
+
+while int():
+    if int():
+        break
+else:
+    e = 1
+# If a while loop has a `break`, it's possible that the else didn't get executed.
+y = e  # E: Name "e" may be undefined
+
+while int():
+    while int():
+        if int():
+            break
+    else:
+        f = 1
+else:
+    g = 2
+
+y = f  # E: Name "f" may be undefined
+y = g
 
 [case testForLoop]
 # flags: --enable-error-code partially-defined
@@ -154,7 +217,6 @@ for x in [1, 2, 3]:
     if x:
         x = 1
     y = x
-    z = 1
 else:
     z = 2
 
@@ -205,6 +267,78 @@ def f5() -> int:
     else:
         return 3
     return 1
+
+[case testDefinedDifferentBranchUseBeforeDef]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+
+def f0() -> None:
+    if int():
+        x = 0
+    else:
+        y = x  # E: Name "x" is used before definition
+        z = x  # E: Name "x" is used before definition
+
+def f1() -> None:
+    x = 1
+    if int():
+        x = 0
+    else:
+        y = x  # No error.
+
+def f2() -> None:
+    if int():
+        x = 0
+    elif int():
+        y = x  # E: Name "x" is used before definition
+    else:
+        y = x  # E: Name "x" is used before definition
+        if int():
+            z = x  # E: Name "x" is used before definition
+            x = 1
+        else:
+            x = 2
+        w = x  # No error.
+
+[case testDefinedDifferentBranchPartiallyDefined]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+
+def f0() -> None:
+    first_iter = True
+    for i in [0, 1]:
+        if first_iter:
+            first_iter = False
+            x = 0
+        elif int():
+            # This is technically a false positive but mypy isn't smart enough for this yet.
+            y = x  # E: Name "x" may be undefined
+        else:
+            y = x  # E: Name "x" may be undefined
+            if int():
+                z = x  # E: Name "x" may be undefined
+                x = 1
+            else:
+                x = 2
+            w = x  # No error.
+
+def f1() -> None:
+    while True:
+        if int():
+            x = 0
+        else:
+            y = x  # E: Name "x" may be undefined
+            z = x  # E: Name "x" may be undefined
+
+def f2() -> None:
+    for i in [0, 1]:
+        x = i
+    else:
+        y = x  # E: Name "x" may be undefined
+
+def f3() -> None:
+    while int():
+        x = 1
+    else:
+        y = x  # E: Name "x" may be undefined
 
 [case testAssert]
 # flags: --enable-error-code partially-defined
@@ -260,16 +394,12 @@ def f2() -> int:
     while int():
         if int():
             x = 1
-            z = 1
         elif int():
             pass
         else:
             continue
         y = x  # E: Name "x" may be undefined
-    else:
-        x = 2
-        z = 2
-    return z  # E: Name "z" may be undefined
+    return x  # E: Name "x" may be undefined
 
 def f3() -> None:
     while True:
@@ -557,21 +687,7 @@ def f0() -> None:
     x = y  # E: Name "y" is used before definition
     y: int = 1
 
-def f1() -> None:
-    if int():
-        x = 0
-    else:
-        y = x  # E: Name "x" is used before definition
-        z = x  # E: Name "x" is used before definition
-
 def f2() -> None:
-    x = 1
-    if int():
-        x = 0
-    else:
-        y = x  # No error.
-
-def f3() -> None:
     if int():
         pass
     else:
@@ -581,17 +697,120 @@ def f3() -> None:
     def inner2() -> None:
         z = 0
 
-def f4() -> None:
+def f3() -> None:
     if int():
         pass
     else:
         y = z  # E: Name "z" is used before definition
     z: int = 2
 
-def f5() -> None:
+def f4() -> None:
     if int():
         pass
     else:
         y = z  # E: Name "z" is used before definition
         x = z  # E: Name "z" is used before definition
     z: int = 2
+
+[case testUseBeforeDefImportsBasic]
+# flags: --enable-error-code use-before-def
+import foo  # type: ignore
+import x.y  # type: ignore
+
+def f0() -> None:
+    a = foo  # No error.
+    foo: int = 1
+
+def f1() -> None:
+    a = y  # E: Name "y" is used before definition
+    y: int = 1
+
+def f2() -> None:
+    a = x  # No error.
+    x: int = 1
+
+def f3() -> None:
+    a = x.y  # No error.
+    x: int = 1
+
+[case testUseBeforeDefImportBasicRename]
+# flags: --enable-error-code use-before-def
+import x.y as z  # type: ignore
+from typing import Any
+
+def f0() -> None:
+    a = z  # No error.
+    z: int = 1
+
+def f1() -> None:
+    a = x  # E: Name "x" is used before definition
+    x: int = 1
+
+def f2() -> None:
+    a = x.y  # E: Name "x" is used before definition
+    x: Any = 1
+
+def f3() -> None:
+    a = y  # E: Name "y" is used before definition
+    y: int = 1
+
+[case testUseBeforeDefImportFrom]
+# flags: --enable-error-code use-before-def
+from foo import x  # type: ignore
+
+def f0() -> None:
+    a = x  # No error.
+    x: int = 1
+
+[case testUseBeforeDefImportFromRename]
+# flags: --enable-error-code use-before-def
+from foo import x as y  # type: ignore
+
+def f0() -> None:
+    a = y  # No error.
+    y: int = 1
+
+def f1() -> None:
+    a = x  # E: Name "x" is used before definition
+    x: int = 1
+
+[case testUseBeforeDefFunctionDeclarations]
+# flags: --enable-error-code use-before-def
+
+def f0() -> None:
+    def inner() -> None:
+        pass
+
+    inner()  # No error.
+    inner = lambda: None
+
+[case testUseBeforeDefBuiltins]
+# flags: --enable-error-code use-before-def
+
+def f0() -> None:
+    s = type(123)
+    type = "abc"
+    a = type
+
+[case testUseBeforeDefImplicitModuleAttrs]
+# flags: --enable-error-code use-before-def
+a = __name__  # No error.
+__name__ = "abc"
+
+[case testUntypedDef]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+
+def f():
+    if int():
+        x = 0
+    z = y  # No use-before-def error because def is untyped.
+    y = x  # No partially-defined error because def is untyped.
+
+[case testUntypedDefCheckUntypedDefs]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def --check-untyped-defs
+
+def f():
+    if int():
+        x = 0
+    z = y  # E: Name "y" is used before definition
+    y: int = x  # E: Name "x" may be undefined
