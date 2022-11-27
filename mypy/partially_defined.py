@@ -224,6 +224,11 @@ def refers_to_builtin(o: RefExpr) -> bool:
     return o.fullname is not None and o.fullname.startswith("builtins.")
 
 
+class Loop:
+    def __init__(self) -> None:
+        self.has_break = False
+
+
 class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     """Detects the following cases:
     - A variable that's defined only part of the time.
@@ -245,7 +250,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def __init__(self, msg: MessageBuilder, type_map: dict[Expression, Type]) -> None:
         self.msg = msg
         self.type_map = type_map
-        self.loop_depth = 0
+        self.loops: list[Loop] = []
         self.tracker = DefinedVariableTracker()
         for name in implicit_module_attrs:
             self.tracker.record_definition(name)
@@ -344,13 +349,23 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.process_lvalue(o.index)
         o.index.accept(self)
         self.tracker.start_branch_statement()
-        self.loop_depth += 1
+        loop = Loop()
+        self.loops.append(loop)
         o.body.accept(self)
         self.tracker.next_branch()
-        if o.else_body:
-            o.else_body.accept(self)
-        self.loop_depth -= 1
         self.tracker.end_branch_statement()
+        if o.else_body is not None:
+            # If the loop has a `break` inside, `else` is executed conditionally.
+            # If the loop doesn't have a `break` either the function will return or
+            # execute the `else`.
+            has_break = loop.has_break
+            if has_break:
+                self.tracker.start_branch_statement()
+                self.tracker.next_branch()
+            o.else_body.accept(self)
+            if has_break:
+                self.tracker.end_branch_statement()
+        self.loops.pop()
 
     def visit_return_stmt(self, o: ReturnStmt) -> None:
         super().visit_return_stmt(o)
@@ -376,6 +391,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_break_stmt(self, o: BreakStmt) -> None:
         super().visit_break_stmt(o)
+        if self.loops:
+            self.loops[-1].has_break = True
         self.tracker.skip_branch()
 
     def visit_expression_stmt(self, o: ExpressionStmt) -> None:
@@ -386,14 +403,28 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_while_stmt(self, o: WhileStmt) -> None:
         o.expr.accept(self)
         self.tracker.start_branch_statement()
-        self.loop_depth += 1
+        loop = Loop()
+        self.loops.append(loop)
         o.body.accept(self)
-        self.loop_depth -= 1
+        has_break = loop.has_break
         if not checker.is_true_literal(o.expr):
+            # If this is a loop like `while True`, we can consider the body to be
+            # a single branch statement (we're guaranteed that the body is executed at least once).
+            # If not, call next_branch() to make all variables defined there conditional.
             self.tracker.next_branch()
+        self.tracker.end_branch_statement()
+        if o.else_body is not None:
+            # If the loop has a `break` inside, `else` is executed conditionally.
+            # If the loop doesn't have a `break` either the function will return or
+            # execute the `else`.
+            if has_break:
+                self.tracker.start_branch_statement()
+                self.tracker.next_branch()
             if o.else_body:
                 o.else_body.accept(self)
-        self.tracker.end_branch_statement()
+            if has_break:
+                self.tracker.end_branch_statement()
+        self.loops.pop()
 
     def visit_as_pattern(self, o: AsPattern) -> None:
         if o.name is not None:
@@ -415,7 +446,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             self.tracker.record_definition(o.name)
         elif self.tracker.is_defined_in_different_branch(o.name):
             # A variable is defined in one branch but used in a different branch.
-            if self.loop_depth > 0:
+            if self.loops:
                 self.variable_may_be_undefined(o.name, o)
             else:
                 self.var_used_before_def(o.name, o)

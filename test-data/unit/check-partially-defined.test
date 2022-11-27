@@ -167,22 +167,49 @@ def foo(a: int) -> None:
 [case testWhile]
 # flags: --enable-error-code partially-defined
 while int():
-    x = 1
+    a = 1
 
-y = x  # E: Name "x" may be undefined
+x = a  # E: Name "a" may be undefined
 
 while int():
-    z = 1
+    b = 1
 else:
-    z = 2
+    b = 2
 
-y = z  # No error.
+y = b  # No error.
 
 while True:
-    k = 1
+    c = 1
     if int():
         break
-y = k # No error.
+y = c  # No error.
+
+# This while loop doesn't have a `break` inside, so we know that the else must always get executed.
+while int():
+    pass
+else:
+    d = 1
+y = d  # No error.
+
+while int():
+    if int():
+        break
+else:
+    e = 1
+# If a while loop has a `break`, it's possible that the else didn't get executed.
+y = e  # E: Name "e" may be undefined
+
+while int():
+    while int():
+        if int():
+            break
+    else:
+        f = 1
+else:
+    g = 2
+
+y = f  # E: Name "f" may be undefined
+y = g
 
 [case testForLoop]
 # flags: --enable-error-code partially-defined
@@ -190,7 +217,6 @@ for x in [1, 2, 3]:
     if x:
         x = 1
     y = x
-    z = 1
 else:
     z = 2
 
@@ -283,6 +309,17 @@ def f1() -> None:
             y = x  # E: Name "x" may be undefined
             z = x  # E: Name "x" may be undefined
 
+def f2() -> None:
+    for i in [0, 1]:
+        x = i
+    else:
+        y = x  # E: Name "x" may be undefined
+
+def f3() -> None:
+    while int():
+        x = 1
+    else:
+        y = x  # E: Name "x" may be undefined
 
 [case testAssert]
 # flags: --enable-error-code partially-defined
@@ -338,16 +375,12 @@ def f2() -> int:
     while int():
         if int():
             x = 1
-            z = 1
         elif int():
             pass
         else:
             continue
         y = x  # E: Name "x" may be undefined
-    else:
-        x = 2
-        z = 2
-    return z  # E: Name "z" may be undefined
+    return x  # E: Name "x" may be undefined
 
 def f3() -> None:
     while True:
