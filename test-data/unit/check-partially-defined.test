@@ -633,3 +633,21 @@ def f0() -> None:
 # flags: --enable-error-code use-before-def
 a = __name__  # No error.
 __name__ = "abc"
+
+[case testUntypedDef]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+
+def f():
+    if int():
+        x = 0
+    z = y  # No use-before-def error because def is untyped.
+    y = x  # No partially-defined error because def is untyped.
+
+[case testUntypedDefCheckUntypedDefs]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def --check-untyped-defs
+
+def f():
+    if int():
+        x = 0
+    z = y  # E: Name "y" is used before definition
+    y: int = x  # E: Name "x" may be undefined

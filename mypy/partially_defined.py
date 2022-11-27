@@ -33,6 +33,7 @@ from mypy.nodes import (
     WithStmt,
     implicit_module_attrs,
 )
+from mypy.options import Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
 from mypy.traverser import ExtendedTraverserVisitor
@@ -251,9 +252,12 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     handled by the semantic analyzer.
     """
 
-    def __init__(self, msg: MessageBuilder, type_map: dict[Expression, Type]) -> None:
+    def __init__(
+        self, msg: MessageBuilder, type_map: dict[Expression, Type], options: Options
+    ) -> None:
         self.msg = msg
         self.type_map = type_map
+        self.options = options
         self.loops: list[Loop] = []
         self.tracker = DefinedVariableTracker()
         for name in implicit_module_attrs:
@@ -329,6 +333,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.exit_scope()
 
     def visit_func(self, o: FuncItem) -> None:
+        if o.is_dynamic() and not self.options.check_untyped_defs:
+            return
         if o.arguments is not None:
             for arg in o.arguments:
                 self.tracker.record_definition(arg.variable.name)
