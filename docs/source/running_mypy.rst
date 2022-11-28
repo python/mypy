@@ -250,7 +250,7 @@ If you are getting this error, try:
 1.  Upgrading the version of the library you're using, in case a newer version
     has started to include type hints.
 
-2.  Searching to see if there is a :ref:`PEP 561 compliant stub package <installed-packages>`.
+2.  Searching to see if there is a :ref:`PEP 561 compliant stub package <installed-packages>`
     corresponding to your third party library. Stub packages let you install
     type hints independently from the library itself.
 
