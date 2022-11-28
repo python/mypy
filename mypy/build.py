@@ -2359,7 +2359,7 @@ class State:
             manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
             self.tree.accept(
                 PartiallyDefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules), type_map
+                    MessageBuilder(manager.errors, manager.modules), type_map, manager.options
                 )
             )
 

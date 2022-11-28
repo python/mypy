@@ -1292,6 +1292,30 @@ class C(Generic[P]):
 reveal_type(bar(C(fn=foo, x=1)))  # N: Revealed type is "__main__.C[[x: builtins.int]]"
 [builtins fixtures/paramspec.pyi]
 
+[case testParamSpecClassConstructor]
+# flags: --strict-optional
+from typing import ParamSpec, Callable
+
+P = ParamSpec("P")
+
+class SomeClass:
+    def __init__(self, a: str) -> None:
+        pass
+
+def func(t: Callable[P, SomeClass], val: Callable[P, SomeClass]) -> None:
+    pass
+
+def constructor(a: str) -> SomeClass:
+    return SomeClass(a)
+
+def wrong_constructor(a: bool) -> SomeClass:
+    return SomeClass("a")
+
+func(SomeClass, constructor)
+func(SomeClass, wrong_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[VarArg(<nothing>), KwArg(<nothing>)], SomeClass]" \
+				    # E: Argument 2 to "func" has incompatible type "Callable[[bool], SomeClass]"; expected "Callable[[VarArg(<nothing>), KwArg(<nothing>)], SomeClass]"
+[builtins fixtures/paramspec.pyi]
+
 [case testParamSpecInTypeAliasBasic]
 from typing import ParamSpec, Callable
 
