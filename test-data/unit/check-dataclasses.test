@@ -1981,3 +1981,23 @@ def const_two(x: T) -> str:
 c = Cont(Box(const_two))
 reveal_type(c)  # N: Revealed type is "__main__.Cont[builtins.str]"
 [builtins fixtures/dataclasses.pyi]
+
+[case testNoCrashOnSelfWithForwardRefGenericDataclass]
+from typing import Generic, Sequence, TypeVar, Self
+from dataclasses import dataclass
+
+_T = TypeVar('_T', bound="Foo")
+
+@dataclass
+class Foo:
+    foo: int
+
+@dataclass
+class Element(Generic[_T]):
+    elements: Sequence[Self]
+
+@dataclass
+class Bar(Foo): ...
+e: Element[Bar]
+reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
+[builtins fixtures/dataclasses.pyi]
