@@ -147,6 +147,18 @@ def f(x: A):  # No error here.
 y = A()  # E: Name "A" is used before definition
 class A: pass
 
+[case testClassScope]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+class C:
+    def f0(self) -> None: pass
+
+    def f2(self) -> None:
+        f0()  # No error.
+        self.f0()  # No error.
+
+f0()  # E: Name "f0" is used before definition
+def f0() -> None: pass
+
 [case testUseBeforeDefFunc]
 # flags: --enable-error-code partially-defined --enable-error-code use-before-def
 foo() # E: Name "foo" is used before definition

@@ -482,7 +482,9 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_class_def(self, o: ClassDef) -> None:
         self.process_definition(o.name)
+        self.tracker.enter_scope()
         super().visit_class_def(o)
+        self.tracker.exit_scope()
 
     def visit_import(self, o: Import) -> None:
         for mod, alias in o.ids:
