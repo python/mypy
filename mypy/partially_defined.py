@@ -495,10 +495,12 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             assert len(o.handlers) == len(o.vars) == len(o.types)
             for i in range(len(o.handlers)):
                 self.tracker.next_branch()
-                if o.types[i] is not None:
-                    o.types[i].accept(self)
-                if o.vars[i] is not None:
-                    o.vars[i].accept(self)
+                exc_type = o.types[i]
+                if exc_type is not None:
+                    exc_type.accept(self)
+                var = o.vars[i]
+                if var is not None:
+                    var.accept(self)
                 o.handlers[i].accept(self)
         self.tracker.end_branch_statement()
         if o.finally_body is not None:
