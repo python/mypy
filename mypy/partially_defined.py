@@ -101,6 +101,11 @@ class BranchStatement:
         self.branches[-1].must_be_defined.add(name)
         self.branches[-1].may_be_defined.discard(name)
 
+    def delete_var(self, name: str) -> None:
+        assert len(self.branches) > 0
+        self.branches[-1].must_be_defined.discard(name)
+        self.branches[-1].may_be_defined.discard(name)
+
     def record_nested_branch(self, state: BranchState) -> None:
         assert len(self.branches) > 0
         current_branch = self.branches[-1]
@@ -227,6 +232,11 @@ class DefinedVariableTracker:
         assert len(self.scopes) > 0
         assert len(self.scopes[-1].branch_stmts) > 0
         self._scope().branch_stmts[-1].record_definition(name)
+
+    def delete_var(self, name: str) -> None:
+        assert len(self.scopes) > 0
+        assert len(self.scopes[-1].branch_stmts) > 0
+        self._scope().branch_stmts[-1].delete_var(name)
 
     def record_undefined_ref(self, o: NameExpr) -> None:
         """Records an undefined reference. These can later be retrieved via `pop_undefined_ref`."""
@@ -504,9 +514,13 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
                     exc_type.accept(self)
                 var = o.vars[i]
                 if var is not None:
+                    self.process_definition(var.name)
                     var.accept(self)
                 o.handlers[i].accept(self)
+                if var is not None:
+                    self.tracker.delete_var(var.name)
         self.tracker.end_branch_statement()
+
         if o.finally_body is not None:
             o.finally_body.accept(self)
 
