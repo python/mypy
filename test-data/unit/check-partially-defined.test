@@ -150,6 +150,7 @@ class A: pass
 [case testClassScope]
 # flags: --enable-error-code partially-defined --enable-error-code use-before-def
 class C:
+    x = 0
     def f0(self) -> None: pass
 
     def f2(self) -> None:
@@ -158,6 +159,16 @@ class C:
 
 f0()  # E: Name "f0" is used before definition
 def f0() -> None: pass
+y = x  # E: Name "x" is used before definition
+x = 1
+
+[case testClassInsideFunction]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+def f() -> None:
+    class C: pass
+
+c = C()  # E: Name "C" is used before definition
+class C: pass
 
 [case testUseBeforeDefFunc]
 # flags: --enable-error-code partially-defined --enable-error-code use-before-def
