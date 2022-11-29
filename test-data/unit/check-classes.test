@@ -7679,3 +7679,18 @@ def g(b: Type[Any]) -> None:
 
 def h(b: type) -> None:
     class D(b): ...
+
+[case testNoCrashOnSelfWithForwardRefGenericClass]
+from typing import Generic, Sequence, TypeVar, Self
+
+_T = TypeVar('_T', bound="Foo")
+
+class Foo:
+    foo: int
+
+class Element(Generic[_T]):
+    elements: Sequence[Self]
+
+class Bar(Foo): ...
+e: Element[Bar]
+reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
