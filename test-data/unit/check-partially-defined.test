@@ -565,10 +565,11 @@ def f5() -> int:
 def f6() -> None:
     try:
         pass
-    except BaseException as e:
-        pass
+    except BaseException as exc:
+        x = exc  # No error.
+        exc = BaseException()
     # This case is covered by the other check, not by partially defined check.
-    y = e # E: Trying to read deleted variable "e"
+    y = exc # E: Trying to read deleted variable "exc"
 
 def f7() -> int:
     try:
