@@ -1243,6 +1243,8 @@ IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
         "__annotations__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
+        # Created by `warnings.warn`, does not make much sense to have in stubs:
+        "__warningregistry__",
         # TODO: remove the following from this list
         "__author__",
         "__version__",
