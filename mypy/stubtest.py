@@ -1247,6 +1247,8 @@ IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
         "__author__",
         "__version__",
         "__copyright__",
+        # Created by `warnings.warn`, does not make much sense to have in stubs:
+        "__warningregistry__",
     }
 )
 
