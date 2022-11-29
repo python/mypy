@@ -17,6 +17,7 @@ from mypy.nodes import (
     FuncDef,
     FuncItem,
     GeneratorExpr,
+    GlobalDecl,
     IfStmt,
     Import,
     ImportFrom,
@@ -25,6 +26,7 @@ from mypy.nodes import (
     Lvalue,
     MatchStmt,
     NameExpr,
+    NonlocalDecl,
     RaiseStmt,
     RefExpr,
     ReturnStmt,
@@ -278,6 +280,16 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         for ref in refs:
             self.var_used_before_def(name, ref)
         self.tracker.record_definition(name)
+
+    def visit_global_decl(self, o: GlobalDecl) -> None:
+        for name in o.names:
+            self.process_definition(name)
+        super().visit_global_decl(o)
+
+    def visit_nonlocal_decl(self, o: NonlocalDecl) -> None:
+        for name in o.names:
+            self.process_definition(name)
+        super().visit_nonlocal_decl(o)
 
     def process_lvalue(self, lvalue: Lvalue | None) -> None:
         if isinstance(lvalue, NameExpr):
