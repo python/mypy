@@ -261,7 +261,7 @@ def _verify_exported_names(
     if not (names_in_runtime_not_stub or names_in_stub_not_runtime):
         return
     yield Error(
-        object_path,
+        object_path + ["__all__"],
         (
             "names exported from the stub do not correspond to the names exported at runtime. "
             "This is probably due to an inaccurate `__all__` in the stub or things being missing from the stub."
