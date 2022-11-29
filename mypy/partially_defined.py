@@ -31,6 +31,7 @@ from mypy.nodes import (
     RefExpr,
     ReturnStmt,
     StarExpr,
+    TryStmt,
     TupleExpr,
     WhileStmt,
     WithStmt,
@@ -66,6 +67,13 @@ class BranchState:
         self.must_be_defined = set(must_be_defined)
         self.skipped = skipped
 
+    def copy(self) -> BranchState:
+        return BranchState(
+            must_be_defined=set(self.must_be_defined),
+            may_be_defined=set(self.may_be_defined),
+            skipped=self.skipped,
+        )
+
 
 class BranchStatement:
     def __init__(self, initial_state: BranchState) -> None:
@@ -76,6 +84,11 @@ class BranchStatement:
                 may_be_defined=self.initial_state.may_be_defined,
             )
         ]
+
+    def copy(self) -> BranchStatement:
+        result = BranchStatement(self.initial_state)
+        result.branches = [b.copy() for b in self.branches]
+        return result
 
     def next_branch(self) -> None:
         self.branches.append(
@@ -121,29 +134,40 @@ class BranchStatement:
         return False
 
     def done(self) -> BranchState:
-        branches = [b for b in self.branches if not b.skipped]
-        if len(branches) == 0:
-            return BranchState(skipped=True)
-        if len(branches) == 1:
-            return branches[0]
-
-        # must_be_defined is a union of must_be_defined of all branches.
-        must_be_defined = set(branches[0].must_be_defined)
-        for b in branches[1:]:
-            must_be_defined.intersection_update(b.must_be_defined)
-        # may_be_defined are all variables that are not must be defined.
+        # First, compute all vars, including skipped branches. We include skipped branches
+        # because our goal is to capture all variables that semantic analyzer would
+        # consider defined.
         all_vars = set()
-        for b in branches:
+        for b in self.branches:
             all_vars.update(b.may_be_defined)
             all_vars.update(b.must_be_defined)
+        # For the rest of the things, we only care about branches that weren't skipped.
+        non_skipped_branches = [b for b in self.branches if not b.skipped]
+        if len(non_skipped_branches) > 0:
+            must_be_defined = non_skipped_branches[0].must_be_defined
+            for b in non_skipped_branches[1:]:
+                must_be_defined.intersection_update(b.must_be_defined)
+        else:
+            must_be_defined = set()
+        # Everything that wasn't defined in all branches but was defined
+        # in at least one branch should be in `may_be_defined`!
         may_be_defined = all_vars.difference(must_be_defined)
-        return BranchState(may_be_defined=may_be_defined, must_be_defined=must_be_defined)
+        return BranchState(
+            must_be_defined=must_be_defined,
+            may_be_defined=may_be_defined,
+            skipped=len(non_skipped_branches) == 0,
+        )
 
 
 class Scope:
     def __init__(self, stmts: list[BranchStatement]) -> None:
         self.branch_stmts: list[BranchStatement] = stmts
         self.undefined_refs: dict[str, set[NameExpr]] = {}
+
+    def copy(self) -> Scope:
+        result = Scope([s.copy() for s in self.branch_stmts])
+        result.undefined_refs = self.undefined_refs.copy()
+        return result
 
     def record_undefined_ref(self, o: NameExpr) -> None:
         if o.name not in self.undefined_refs:
@@ -160,6 +184,15 @@ class DefinedVariableTracker:
     def __init__(self) -> None:
         # There's always at least one scope. Within each scope, there's at least one "global" BranchingStatement.
         self.scopes: list[Scope] = [Scope([BranchStatement(BranchState())])]
+        # disable_branch_skip is used to disable skipping a branch due to a return/raise/etc. This is useful
+        # in things like try/except/finally statements.
+        self.disable_branch_skip = False
+
+    def copy(self) -> DefinedVariableTracker:
+        result = DefinedVariableTracker()
+        result.scopes = [s.copy() for s in self.scopes]
+        result.disable_branch_skip = self.disable_branch_skip
+        return result
 
     def _scope(self) -> Scope:
         assert len(self.scopes) > 0
@@ -189,7 +222,7 @@ class DefinedVariableTracker:
 
     def skip_branch(self) -> None:
         # Only skip branch if we're outside of "root" branch statement.
-        if len(self._scope().branch_stmts) > 1:
+        if len(self._scope().branch_stmts) > 1 and not self.disable_branch_skip:
             self._scope().branch_stmts[-1].skip_branch()
 
     def record_definition(self, name: str) -> None:
@@ -425,6 +458,69 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         if isinstance(self.type_map.get(o.expr, None), UninhabitedType):
             self.tracker.skip_branch()
         super().visit_expression_stmt(o)
+
+    def visit_try_stmt(self, o: TryStmt) -> None:
+        """
+        Note that finding partially defined vars in `finally` requires different handling from
+        the rest of the code. In particular, we want to disallow skipping branches due to jump
+        statements in except/else clauses for finally but not for other cases. Imagine a case like:
+        def f() -> int:
+            try:
+                x = 1
+            except:
+                # This jump statement needs to be handled differently depending on whether or
+                # not we're trying to process `finally` or not.
+                return 0
+            finally:
+                # `x` may be undefined here.
+                pass
+            # `x` is always defined here.
+            return x
+        """
+        if o.finally_body is not None:
+            # In order to find partially defined vars in `finally`, we need to
+            # process try/except with branch skipping disabled. However, for the rest of the code
+            # after finally, we need to process try/except with branch skipping enabled.
+            # Therefore, we need to process try/finally twice.
+            # Because processing is not idempotent, we should make a copy of the tracker.
+            old_tracker = self.tracker.copy()
+            self.tracker.disable_branch_skip = True
+            self.process_try_stmt(o)
+            self.tracker = old_tracker
+        self.process_try_stmt(o)
+
+    def process_try_stmt(self, o: TryStmt) -> None:
+        """
+        Processes try statement decomposing it into the following:
+        if ...:
+            body
+            else_body
+        elif ...:
+            except 1
+        elif ...:
+            except 2
+        else:
+            except n
+        finally
+        """
+        self.tracker.start_branch_statement()
+        o.body.accept(self)
+        if o.else_body is not None:
+            o.else_body.accept(self)
+        if len(o.handlers) > 0:
+            assert len(o.handlers) == len(o.vars) == len(o.types)
+            for i in range(len(o.handlers)):
+                self.tracker.next_branch()
+                exc_type = o.types[i]
+                if exc_type is not None:
+                    exc_type.accept(self)
+                var = o.vars[i]
+                if var is not None:
+                    var.accept(self)
+                o.handlers[i].accept(self)
+        self.tracker.end_branch_statement()
+        if o.finally_body is not None:
+            o.finally_body.accept(self)
 
     def visit_while_stmt(self, o: WhileStmt) -> None:
         o.expr.accept(self)
