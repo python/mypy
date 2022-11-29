@@ -1047,7 +1047,11 @@ class SemanticAnalyzer(
         assert self.type is not None
         info = self.type
         if info.self_type is not None:
-            return
+            if has_placeholder(info.self_type.upper_bound):
+                # Similar to regular (user defined) type variables.
+                self.defer(force_progress=True)
+            else:
+                return
         info.self_type = TypeVarType("Self", f"{info.fullname}.Self", 0, [], fill_typevars(info))
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
