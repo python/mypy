@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from typing import Iterator
+
 from mypy import checker, errorcodes
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -288,6 +291,22 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             for item in lvalue.items:
                 self.process_lvalue(item)
 
+    @contextmanager
+    def branch_statement(self) -> Iterator[None]:
+        self.tracker.start_branch_statement()
+        try:
+            yield
+        finally:
+            self.tracker.end_branch_statement()
+
+    @contextmanager
+    def scope(self) -> Iterator[None]:
+        self.tracker.enter_scope()
+        try:
+            yield
+        finally:
+            self.tracker.exit_scope()
+
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         for lvalue in o.lvalues:
             self.process_lvalue(lvalue)
@@ -300,41 +319,38 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_if_stmt(self, o: IfStmt) -> None:
         for e in o.expr:
             e.accept(self)
-        self.tracker.start_branch_statement()
-        for b in o.body:
-            if b.is_unreachable:
-                continue
-            b.accept(self)
-            self.tracker.next_branch()
-        if o.else_body:
-            if o.else_body.is_unreachable:
-                self.tracker.skip_branch()
-            o.else_body.accept(self)
-        self.tracker.end_branch_statement()
+        with self.branch_statement():
+            for b in o.body:
+                if b.is_unreachable:
+                    continue
+                b.accept(self)
+                self.tracker.next_branch()
+            if o.else_body:
+                if o.else_body.is_unreachable:
+                    self.tracker.skip_branch()
+                o.else_body.accept(self)
 
     def visit_match_stmt(self, o: MatchStmt) -> None:
-        self.tracker.start_branch_statement()
-        o.subject.accept(self)
-        for i in range(len(o.patterns)):
-            pattern = o.patterns[i]
-            pattern.accept(self)
-            guard = o.guards[i]
-            if guard is not None:
-                guard.accept(self)
-            if not o.bodies[i].is_unreachable:
-                o.bodies[i].accept(self)
-            else:
-                self.tracker.skip_branch()
-            is_catchall = infer_pattern_value(pattern) == ALWAYS_TRUE
-            if not is_catchall:
-                self.tracker.next_branch()
-        self.tracker.end_branch_statement()
+        with self.branch_statement():
+            o.subject.accept(self)
+            for i in range(len(o.patterns)):
+                pattern = o.patterns[i]
+                pattern.accept(self)
+                guard = o.guards[i]
+                if guard is not None:
+                    guard.accept(self)
+                if not o.bodies[i].is_unreachable:
+                    o.bodies[i].accept(self)
+                else:
+                    self.tracker.skip_branch()
+                is_catchall = infer_pattern_value(pattern) == ALWAYS_TRUE
+                if not is_catchall:
+                    self.tracker.next_branch()
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.process_definition(o.name)
-        self.tracker.enter_scope()
-        super().visit_func_def(o)
-        self.tracker.exit_scope()
+        with self.scope():
+            super().visit_func_def(o)
 
     def visit_func(self, o: FuncItem) -> None:
         if o.is_dynamic() and not self.options.check_untyped_defs:
@@ -345,40 +361,36 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_func(o)
 
     def visit_generator_expr(self, o: GeneratorExpr) -> None:
-        self.tracker.enter_scope()
-        for idx in o.indices:
-            self.process_lvalue(idx)
-        super().visit_generator_expr(o)
-        self.tracker.exit_scope()
+        with self.scope():
+            for idx in o.indices:
+                self.process_lvalue(idx)
+            super().visit_generator_expr(o)
 
     def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
-        self.tracker.enter_scope()
-        for idx in o.indices:
-            self.process_lvalue(idx)
-        super().visit_dictionary_comprehension(o)
-        self.tracker.exit_scope()
+        with self.scope():
+            for idx in o.indices:
+                self.process_lvalue(idx)
+            super().visit_dictionary_comprehension(o)
 
     def visit_for_stmt(self, o: ForStmt) -> None:
         o.expr.accept(self)
         self.process_lvalue(o.index)
         o.index.accept(self)
-        self.tracker.start_branch_statement()
-        loop = Loop()
-        self.loops.append(loop)
-        o.body.accept(self)
-        self.tracker.next_branch()
-        self.tracker.end_branch_statement()
+        with self.branch_statement():
+            loop = Loop()
+            self.loops.append(loop)
+            o.body.accept(self)
+            self.tracker.next_branch()
         if o.else_body is not None:
             # If the loop has a `break` inside, `else` is executed conditionally.
             # If the loop doesn't have a `break` either the function will return or
             # execute the `else`.
-            has_break = loop.has_break
-            if has_break:
-                self.tracker.start_branch_statement()
-                self.tracker.next_branch()
-            o.else_body.accept(self)
-            if has_break:
-                self.tracker.end_branch_statement()
+            if loop.has_break:
+                with self.branch_statement():
+                    self.tracker.next_branch()
+                    o.else_body.accept(self)
+            else:
+                o.else_body.accept(self)
         self.loops.pop()
 
     def visit_return_stmt(self, o: ReturnStmt) -> None:
@@ -386,9 +398,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.skip_branch()
 
     def visit_lambda_expr(self, o: LambdaExpr) -> None:
-        self.tracker.enter_scope()
-        super().visit_lambda_expr(o)
-        self.tracker.exit_scope()
+        with self.scope():
+            super().visit_lambda_expr(o)
 
     def visit_assert_stmt(self, o: AssertStmt) -> None:
         super().visit_assert_stmt(o)
@@ -416,28 +427,26 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_while_stmt(self, o: WhileStmt) -> None:
         o.expr.accept(self)
-        self.tracker.start_branch_statement()
-        loop = Loop()
-        self.loops.append(loop)
-        o.body.accept(self)
-        has_break = loop.has_break
-        if not checker.is_true_literal(o.expr):
-            # If this is a loop like `while True`, we can consider the body to be
-            # a single branch statement (we're guaranteed that the body is executed at least once).
-            # If not, call next_branch() to make all variables defined there conditional.
-            self.tracker.next_branch()
-        self.tracker.end_branch_statement()
+        with self.branch_statement():
+            loop = Loop()
+            self.loops.append(loop)
+            o.body.accept(self)
+            has_break = loop.has_break
+            if not checker.is_true_literal(o.expr):
+                # If this is a loop like `while True`, we can consider the body to be
+                # a single branch statement (we're guaranteed that the body is executed at least once).
+                # If not, call next_branch() to make all variables defined there conditional.
+                self.tracker.next_branch()
         if o.else_body is not None:
             # If the loop has a `break` inside, `else` is executed conditionally.
             # If the loop doesn't have a `break` either the function will return or
             # execute the `else`.
             if has_break:
-                self.tracker.start_branch_statement()
-                self.tracker.next_branch()
-            if o.else_body:
+                with self.branch_statement():
+                    self.tracker.next_branch()
+                    o.else_body.accept(self)
+            else:
                 o.else_body.accept(self)
-            if has_break:
-                self.tracker.end_branch_statement()
         self.loops.pop()
 
     def visit_as_pattern(self, o: AsPattern) -> None:
@@ -482,9 +491,8 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_class_def(self, o: ClassDef) -> None:
         self.process_definition(o.name)
-        self.tracker.enter_scope()
-        super().visit_class_def(o)
-        self.tracker.exit_scope()
+        with self.scope():
+            super().visit_class_def(o)
 
     def visit_import(self, o: Import) -> None:
         for mod, alias in o.ids:
