@@ -64,6 +64,13 @@ class BranchState:
         self.must_be_defined = set(must_be_defined)
         self.skipped = skipped
 
+    def copy(self) -> BranchState:
+        return BranchState(
+            must_be_defined=set(self.must_be_defined),
+            may_be_defined=set(self.may_be_defined),
+            skipped=self.skipped,
+        )
+
 
 class BranchStatement:
     def __init__(self, initial_state: BranchState) -> None:
@@ -74,6 +81,11 @@ class BranchStatement:
                 may_be_defined=self.initial_state.may_be_defined,
             )
         ]
+
+    def copy(self) -> BranchStatement:
+        result = BranchStatement(self.initial_state)
+        result.branches = [b.copy() for b in self.branches]
+        return result
 
     def next_branch(self) -> None:
         self.branches.append(
@@ -149,6 +161,11 @@ class Scope:
         self.branch_stmts: list[BranchStatement] = stmts
         self.undefined_refs: dict[str, set[NameExpr]] = {}
 
+    def copy(self) -> Scope:
+        result = Scope([s.copy() for s in self.branch_stmts])
+        result.undefined_refs = self.undefined_refs.copy()
+        return result
+
     def record_undefined_ref(self, o: NameExpr) -> None:
         if o.name not in self.undefined_refs:
             self.undefined_refs[o.name] = set()
@@ -165,8 +182,14 @@ class DefinedVariableTracker:
         # There's always at least one scope. Within each scope, there's at least one "global" BranchingStatement.
         self.scopes: list[Scope] = [Scope([BranchStatement(BranchState())])]
         # disable_branch_skip is used to disable skipping a branch due to a return/raise/etc. This is useful
-        # in things like try/except statements.
+        # in things like try/except/finally statements.
         self.disable_branch_skip = False
+
+    def copy(self) -> DefinedVariableTracker:
+        result = DefinedVariableTracker()
+        result.scopes = [s.copy() for s in self.scopes]
+        result.disable_branch_skip = self.disable_branch_skip
+        return result
 
     def _scope(self) -> Scope:
         assert len(self.scopes) > 0
@@ -421,24 +444,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_expression_stmt(o)
 
     def visit_try_stmt(self, o: TryStmt) -> None:
-        # We're processing the try statement twice. Include only the one where we allow jumps in the scope
-        # for code that exists after the try statement.
-        self.tracker.enter_scope()
-        self.process_try_stmt(o, allow_all_jumps=False)
-        self.tracker.exit_scope()
-        self.process_try_stmt(o, allow_all_jumps=True)
-
-    def process_try_stmt(self, o: TryStmt, allow_all_jumps: bool) -> None:
         """
-        Processes try statement decomposing it into the following branches:
-        - try body + else
-        - try body + except clauses (every except clause is a separate branch).
-            - Every except clause is decomposed into something like:
-                if ...:
-                    `try` body
-                `except` body
-            - This is necessary so that all the variables inside `try` body are conditionally defined.
-
         Note that finding partially defined vars in `finally` requires different handling from
         the rest of the code. In particular, we want to disallow skipping branches due to jump
         statements in except/else clauses for finally but not for other cases. Imagine a case like:
@@ -455,31 +461,45 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             # `x` is always defined here.
             return x
         """
+        if o.finally_body is not None:
+            # In order to find partially defined vars in `finally`, we need to
+            # process try/except with branch skipping disabled. However, for the rest of the code
+            # after finally, we need to process try/except with branch skipping enabled.
+            # Therefore, we need to process try/finally twice.
+            # Because processing is not idempotent, we should make a copy of the tracker.
+            old_tracker = self.tracker.copy()
+            self.tracker.disable_branch_skip = True
+            self.process_try_stmt(o)
+            self.tracker = old_tracker
+        self.process_try_stmt(o)
+
+    def process_try_stmt(self, o: TryStmt) -> None:
+        """
+        Processes try statement decomposing it into the following:
+        if ...:
+            body
+            else_body
+        elif ...:
+            except 1
+        elif ...:
+            except 2
+        else:
+            except n
+        finally
+        """
         self.tracker.start_branch_statement()
-        # The body branch should never be skipped because it will go `finally` unconditionally
-        # (or it could go to an except clause).
-        self.tracker.disable_branch_skip = True
         o.body.accept(self)
-        if allow_all_jumps:
-            self.tracker.disable_branch_skip = False
         if o.else_body is not None:
             o.else_body.accept(self)
-        for i in range(len(o.types)):
-            self.tracker.next_branch()
-            tp = o.types[i]
-            if tp is not None:
-                tp.accept(self)
-            # Create a `fake` branch statement, so that all variables from the `body` are conditionally
-            # defined.
-            self.tracker.start_branch_statement()
-            o.body.accept(self)
-            self.tracker.next_branch()
-            self.tracker.end_branch_statement()
-            o.handlers[i].accept(self)
-        for v in o.vars:
-            if v is not None:
-                v.accept(self)
-        self.tracker.disable_branch_skip = False
+        if len(o.handlers) > 0:
+            assert len(o.handlers) == len(o.vars) == len(o.types)
+            for i in range(len(o.handlers)):
+                self.tracker.next_branch()
+                if o.types[i] is not None:
+                    o.types[i].accept(self)
+                if o.vars[i] is not None:
+                    o.vars[i].accept(self)
+                o.handlers[i].accept(self)
         self.tracker.end_branch_statement()
         if o.finally_body is not None:
             o.finally_body.accept(self)

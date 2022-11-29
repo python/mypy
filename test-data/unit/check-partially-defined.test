@@ -449,7 +449,7 @@ def f3() -> None:
     z = x  # E: Name "x" may be undefined
 
 [case testTryBasic]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
 def f1() -> int:
     try:
         x = 1
@@ -468,8 +468,8 @@ def f3() -> int:
     try:
         x = 1
     except:
-        y = x  # E: Name "x" may be undefined
-    return x
+        y = x  # E: Name "x" is used before definition
+    return x  # E: Name "x" may be undefined
 
 def f4() -> int:
     try:
@@ -525,7 +525,7 @@ def f2() -> int:
 [builtins fixtures/exception.pyi]
 
 [case testTryFinally]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
 def f1() -> int:
     try:
         x = 1
@@ -559,6 +559,26 @@ def f4() -> int:
     finally:
         y = x  # E: Name "x" may be undefined
     return y
+
+def f5() -> int:
+    try:
+        if int():
+            x = 1
+        else:
+            return 0
+    finally:
+        pass
+    return x  # No error.
+
+def f6() -> int:
+    try:
+        if int():
+            x = 1
+        else:
+            return 0
+    finally:
+        a = x  # E: Name "x" may be undefined
+    return a
 [builtins fixtures/exception.pyi]
 
 [case testTryElse]
