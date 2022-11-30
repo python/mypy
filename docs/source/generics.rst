@@ -724,7 +724,7 @@ achieved by combining with :py:func:`@overload <typing.overload>`:
 
 .. code-block:: python
 
-    from typing import Any, Callable, TypeVar, overload
+    from typing import Any, Callable, Optional, TypeVar, overload
 
     F = TypeVar('F', bound=Callable[..., Any])
 
@@ -736,7 +736,7 @@ achieved by combining with :py:func:`@overload <typing.overload>`:
     def atomic(*, savepoint: bool = True) -> Callable[[F], F]: ...
 
     # Implementation
-    def atomic(__func: Callable[..., Any] = None, *, savepoint: bool = True):
+    def atomic(__func: Optional[Callable[..., Any]] = None, *, savepoint: bool = True):
         def decorator(func: Callable[..., Any]):
             ...  # Code goes here
         if __func is not None:
@@ -916,9 +916,5 @@ defeating the purpose of using aliases.  Example:
 
     OIntVec = Optional[Vec[int]]
 
-.. note::
-
-    A type alias does not define a new type. For generic type aliases
-    this means that variance of type variables used for alias definition does not
-    apply to aliases. A parameterized generic alias is treated simply as an original
-    type with the corresponding type variables substituted.
+Using type variable bounds or values in generic aliases, has the same effect
+as in generic classes/functions.

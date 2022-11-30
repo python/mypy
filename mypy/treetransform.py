@@ -519,7 +519,12 @@ class TransformVisitor(NodeVisitor[Node]):
         )
 
     def visit_op_expr(self, node: OpExpr) -> OpExpr:
-        new = OpExpr(node.op, self.expr(node.left), self.expr(node.right))
+        new = OpExpr(
+            node.op,
+            self.expr(node.left),
+            self.expr(node.right),
+            cast(Optional[TypeAliasExpr], self.optional_expr(node.analyzed)),
+        )
         new.method_type = self.optional_type(node.method_type)
         return new
 
@@ -550,7 +555,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
-        return AssignmentExpr(node.target, node.value)
+        return AssignmentExpr(self.expr(node.target), self.expr(node.value))
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))

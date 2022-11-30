@@ -1772,3 +1772,16 @@ class D(C): ...
 
 reveal_type(D.f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 reveal_type(D().f)  # N: Revealed type is "def () -> __main__.D"
+
+[case testTypingSelfOnSuperTypeVarValues]
+from typing import Self, Generic, TypeVar
+
+T = TypeVar("T", int, str)
+
+class B:
+    def copy(self) -> Self: ...
+class C(B, Generic[T]):
+    def copy(self) -> Self:
+        inst = super().copy()
+        reveal_type(inst)  # N: Revealed type is "Self`0"
+        return inst
