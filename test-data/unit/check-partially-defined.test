@@ -502,7 +502,7 @@ def f3() -> int:
     try:
         x = 1
     except:
-        y = x  # E: Name "x" is used before definition
+        y = x  # E: Name "x" may be undefined
     return x  # E: Name "x" may be undefined
 
 def f4() -> int:
