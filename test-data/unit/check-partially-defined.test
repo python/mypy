@@ -345,6 +345,12 @@ def f5() -> int:
         return 3
     return 1
 
+def f6() -> int:
+    if int():
+        x = 0
+        return x
+    return x  # E: Name "x" may be undefined
+
 [case testDefinedDifferentBranchUseBeforeDef]
 # flags: --enable-error-code partially-defined --enable-error-code use-before-def
 
