@@ -305,6 +305,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         self.type_map = type_map
         self.options = options
         self.loops: list[Loop] = []
+        self.try_depth = 0
         self.tracker = DefinedVariableTracker()
         for name in implicit_module_attrs:
             self.tracker.record_definition(name)
@@ -487,6 +488,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             # `x` is always defined here.
             return x
         """
+        self.try_depth += 1
         if o.finally_body is not None:
             # In order to find partially defined vars in `finally`, we need to
             # process try/except with branch skipping disabled. However, for the rest of the code
@@ -498,6 +500,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             self.process_try_stmt(o)
             self.tracker = old_tracker
         self.process_try_stmt(o)
+        self.try_depth -= 1
 
     def process_try_stmt(self, o: TryStmt) -> None:
         """
@@ -582,7 +585,9 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             self.tracker.record_definition(o.name)
         elif self.tracker.is_defined_in_different_branch(o.name):
             # A variable is defined in one branch but used in a different branch.
-            if self.loops:
+            if self.loops or self.try_depth > 0:
+                # If we're in a loop or in a try, we can't be sure that this variable
+                # is undefined. Report it as "may be undefined".
                 self.variable_may_be_undefined(o.name, o)
             else:
                 self.var_used_before_def(o.name, o)
