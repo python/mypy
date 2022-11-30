@@ -1612,30 +1612,25 @@ class MessageBuilder:
         expected_set = set(expected_keys)
         if not typ.is_anonymous():
             # Generate simpler messages for some common special cases.
-            if actual_set < expected_set:
-                # Use list comprehension instead of set operations to preserve order.
-                missing = [key for key in expected_keys if key not in actual_set]
+            # Use list comprehension instead of set operations to preserve order.
+            missing = [key for key in expected_keys if key not in actual_set]
+            self.fail(
+                "Missing {} for TypedDict {}".format(
+                    format_key_list(missing, short=True), format_type(typ)
+                ),
+                context,
+                code=codes.TYPEDDICT_ITEM,
+            )
+            extra = [key for key in actual_keys if key not in expected_set]
+            if extra:
                 self.fail(
-                    "Missing {} for TypedDict {}".format(
-                        format_key_list(missing, short=True), format_type(typ)
+                    "Extra {} for TypedDict {}".format(
+                        format_key_list(extra, short=True), format_type(typ)
                     ),
                     context,
-                    code=codes.TYPEDDICT_ITEM,
+                    code=codes.TYPPEDICT_UNKNOWN_KEY,
                 )
                 return
-            else:
-                extra = [key for key in actual_keys if key not in expected_set]
-                if extra:
-                    # If there are both extra and missing keys, only report extra ones for
-                    # simplicity.
-                    self.fail(
-                        "Extra {} for TypedDict {}".format(
-                            format_key_list(extra, short=True), format_type(typ)
-                        ),
-                        context,
-                        code=codes.TYPPEDICT_UNKNOWN_KEY,
-                    )
-                    return
         found = format_key_list(actual_keys, short=True)
         if not expected_keys:
             self.fail(f"Unexpected TypedDict {found}", context)
