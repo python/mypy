@@ -191,6 +191,49 @@ if int():
     y = 3
 x = y  # E: Name "y" may be undefined
 
+[case testVarDefinedInOuterScopeUpdated]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+def f0() -> None:
+    global x
+    y = x
+    x = 1  # No error.
+
+x = 2
+
+[case testNonlocalVar]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+def f0() -> None:
+    x = 2
+
+    def inner() -> None:
+        nonlocal x
+        y = x
+        x = 1  # No error.
+
+
+[case testGlobalDeclarationAfterUsage]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+def f0() -> None:
+    y = x  # E: Name "x" is used before definition
+    global x
+    x = 1  # No error.
+
+x = 2
+[case testVarDefinedInOuterScope]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+def f0() -> None:
+  global x
+  y = x  # We do not detect such errors right now.
+
+f0()
+x = 1
+[case testDefinedInOuterScopeNoError]
+# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+def foo() -> None:
+    bar()
+
+def bar() -> None:
+    foo()
 [case testFuncParams]
 # flags: --enable-error-code partially-defined
 def foo(a: int) -> None:
