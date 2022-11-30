@@ -1633,7 +1633,7 @@ class MessageBuilder:
                             format_key_list(extra, short=True), format_type(typ)
                         ),
                         context,
-                        code=codes.TYPEDDICT_ITEM,
+                        code=codes.TYPPEDICT_UNKNOWN_KEY,
                     )
                     return
         found = format_key_list(actual_keys, short=True)
