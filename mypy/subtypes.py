@@ -8,7 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_type_by_instance
+from mypy.expandtype import expand_self_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -631,6 +631,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             and right.flavor == left.flavor
         ):
             return True
+        if isinstance(right, Parameters) and are_trivial_parameters(right):
+            return True
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
@@ -1005,6 +1007,10 @@ def is_protocol_implementation(
                 subtype: ProperType | None = mypy.checkmember.type_object_type(
                     left.type, named_type
                 )
+            elif member == "__call__" and left.type.is_metaclass():
+                # Special case: we want to avoid falling back to metaclass __call__
+                # if constructor signature didn't match, this can cause many false negatives.
+                subtype = None
             else:
                 subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
             # Useful for debugging:
@@ -1040,7 +1046,10 @@ def is_protocol_implementation(
                 if not is_subtype(supertype, subtype):
                     return False
             if not class_obj:
-                if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
+                if IS_SETTABLE not in superflags:
+                    if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
+                        return False
+                elif (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
                     return False
             else:
                 if IS_VAR in superflags and IS_CLASSVAR not in subflags:
@@ -1196,6 +1205,8 @@ def find_node_type(
         )
     else:
         typ = node.type
+        if typ is not None:
+            typ = expand_self_type(node, typ, subtype)
     p_typ = get_proper_type(typ)
     if typ is None:
         return AnyType(TypeOfAny.from_error)
@@ -1352,7 +1363,7 @@ def is_callable_compatible(
         ignore_pos_arg_names = True
 
     # Non-type cannot be a subtype of type.
-    if right.is_type_obj() and not left.is_type_obj():
+    if right.is_type_obj() and not left.is_type_obj() and not allow_partial_overlap:
         return False
 
     # A callable L is a subtype of a generic callable R if L is a
@@ -1406,6 +1417,18 @@ def is_callable_compatible(
     )
 
 
+def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
+    param_star = param.var_arg()
+    param_star2 = param.kw_arg()
+    return (
+        param.arg_kinds == [ARG_STAR, ARG_STAR2]
+        and param_star is not None
+        and isinstance(get_proper_type(param_star.typ), AnyType)
+        and param_star2 is not None
+        and isinstance(get_proper_type(param_star2.typ), AnyType)
+    )
+
+
 def are_parameters_compatible(
     left: Parameters | NormalizedCallableType,
     right: Parameters | NormalizedCallableType,
@@ -1426,13 +1449,7 @@ def are_parameters_compatible(
     right_star2 = right.kw_arg()
 
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
-    if (
-        right.arg_kinds == [ARG_STAR, ARG_STAR2]
-        and right_star
-        and isinstance(get_proper_type(right_star.typ), AnyType)
-        and right_star2
-        and isinstance(get_proper_type(right_star2.typ), AnyType)
-    ):
+    if are_trivial_parameters(right):
         return True
 
     # Match up corresponding arguments and check them for compatibility. In
@@ -1665,8 +1682,12 @@ def unify_generic_callable(
         nonlocal had_errors
         had_errors = True
 
+    # This function may be called by the solver, so we need to allow erased types here.
+    # We anyway allow checking subtyping between other types containing <Erased>
+    # (probably also because solver needs subtyping). See also comment in
+    # ExpandTypeVisitor.visit_erased_type().
     applied = mypy.applytype.apply_generic_arguments(
-        type, non_none_inferred_vars, report, context=target
+        type, non_none_inferred_vars, report, context=target, allow_erased_callables=True
     )
     if had_errors:
         return None

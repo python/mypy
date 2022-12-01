@@ -790,6 +790,7 @@ def f(x: int) -> None: pass
 def f(*args) -> None: pass
 
 x = f
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [overload])
@@ -1032,6 +1033,7 @@ MypyFile:1(
 
 [case testVarArgsAndKeywordArgs]
 def g(*x: int, y: str = ''): pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -1558,3 +1560,4 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(TV* [__main__.TV])
     TypeVarTupleExpr:2()))
+[builtins fixtures/tuple.pyi]

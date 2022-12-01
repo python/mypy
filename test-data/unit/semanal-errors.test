@@ -1474,3 +1474,4 @@ y: Unpack[TVariadic]  # E: TypeVarTuple "TVariadic" is unbound
 
 class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only use one type var tuple in a class def
     pass
+[builtins fixtures/tuple.pyi]

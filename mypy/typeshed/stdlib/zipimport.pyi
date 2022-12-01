@@ -1,9 +1,8 @@
-import os
 import sys
+from _typeshed import StrOrBytesPath
 from importlib.abc import ResourceReader
 from importlib.machinery import ModuleSpec
 from types import CodeType, ModuleType
-from typing import Any
 
 if sys.version_info >= (3, 8):
     __all__ = ["ZipImportError", "zipimporter"]
@@ -13,7 +12,11 @@ class ZipImportError(ImportError): ...
 class zipimporter:
     archive: str
     prefix: str
-    def __init__(self, path: str | bytes | os.PathLike[Any]) -> None: ...
+    if sys.version_info >= (3, 11):
+        def __init__(self, path: str) -> None: ...
+    else:
+        def __init__(self, path: StrOrBytesPath) -> None: ...
+
     def find_loader(self, fullname: str, path: str | None = ...) -> tuple[zipimporter | None, list[str]]: ...  # undocumented
     def find_module(self, fullname: str, path: str | None = ...) -> zipimporter | None: ...
     def get_code(self, fullname: str) -> CodeType: ...

@@ -1,6 +1,6 @@
 import ssl
 import sys
-from _typeshed import FileDescriptorLike, Self, StrPath, WriteableBuffer
+from _typeshed import FileDescriptorLike, ReadableBuffer, Self, StrPath, WriteableBuffer
 from abc import ABCMeta, abstractmethod
 from collections.abc import Awaitable, Callable, Coroutine, Generator, Sequence
 from contextvars import Context
@@ -12,7 +12,7 @@ from .base_events import Server
 from .futures import Future
 from .protocols import BaseProtocol
 from .tasks import Task
-from .transports import BaseTransport, ReadTransport, SubprocessTransport, WriteTransport
+from .transports import BaseTransport, DatagramTransport, ReadTransport, SubprocessTransport, Transport, WriteTransport
 from .unix_events import AbstractChildWatcher
 
 if sys.version_info >= (3, 8):
@@ -194,7 +194,7 @@ class AbstractEventLoop:
     async def getaddrinfo(
         self,
         host: bytes | str | None,
-        port: str | int | None,
+        port: bytes | str | int | None,
         *,
         family: int = ...,
         type: int = ...,
@@ -223,7 +223,7 @@ class AbstractEventLoop:
             ssl_shutdown_timeout: float | None = ...,
             happy_eyeballs_delay: float | None = ...,
             interleave: int | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
         @overload
         @abstractmethod
         async def create_connection(
@@ -243,7 +243,7 @@ class AbstractEventLoop:
             ssl_shutdown_timeout: float | None = ...,
             happy_eyeballs_delay: float | None = ...,
             interleave: int | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
     elif sys.version_info >= (3, 8):
         @overload
         @abstractmethod
@@ -263,7 +263,7 @@ class AbstractEventLoop:
             ssl_handshake_timeout: float | None = ...,
             happy_eyeballs_delay: float | None = ...,
             interleave: int | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
         @overload
         @abstractmethod
         async def create_connection(
@@ -282,7 +282,7 @@ class AbstractEventLoop:
             ssl_handshake_timeout: float | None = ...,
             happy_eyeballs_delay: float | None = ...,
             interleave: int | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
     else:
         @overload
         @abstractmethod
@@ -300,7 +300,7 @@ class AbstractEventLoop:
             local_addr: tuple[str, int] | None = ...,
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
         @overload
         @abstractmethod
         async def create_connection(
@@ -317,7 +317,7 @@ class AbstractEventLoop:
             local_addr: None = ...,
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
     if sys.version_info >= (3, 11):
         @overload
         @abstractmethod
@@ -360,7 +360,7 @@ class AbstractEventLoop:
         @abstractmethod
         async def start_tls(
             self,
-            transport: BaseTransport,
+            transport: WriteTransport,
             protocol: BaseProtocol,
             sslcontext: ssl.SSLContext,
             *,
@@ -368,7 +368,7 @@ class AbstractEventLoop:
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
             ssl_shutdown_timeout: float | None = ...,
-        ) -> BaseTransport: ...
+        ) -> Transport: ...
         async def create_unix_server(
             self,
             protocol_factory: _ProtocolFactory,
@@ -428,7 +428,7 @@ class AbstractEventLoop:
             server_side: bool = ...,
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
-        ) -> BaseTransport: ...
+        ) -> Transport: ...
         async def create_unix_server(
             self,
             protocol_factory: _ProtocolFactory,
@@ -449,7 +449,7 @@ class AbstractEventLoop:
             ssl: _SSLContext = ...,
             ssl_handshake_timeout: float | None = ...,
             ssl_shutdown_timeout: float | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
     elif sys.version_info >= (3, 10):
         async def connect_accepted_socket(
             self,
@@ -458,7 +458,7 @@ class AbstractEventLoop:
             *,
             ssl: _SSLContext = ...,
             ssl_handshake_timeout: float | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
     if sys.version_info >= (3, 11):
         async def create_unix_connection(
             self,
@@ -470,7 +470,7 @@ class AbstractEventLoop:
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
             ssl_shutdown_timeout: float | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
     else:
         async def create_unix_connection(
             self,
@@ -481,7 +481,7 @@ class AbstractEventLoop:
             sock: socket | None = ...,
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
-        ) -> tuple[BaseTransport, _ProtocolT]: ...
+        ) -> tuple[Transport, _ProtocolT]: ...
 
     @abstractmethod
     async def sock_sendfile(
@@ -489,7 +489,7 @@ class AbstractEventLoop:
     ) -> int: ...
     @abstractmethod
     async def sendfile(
-        self, transport: BaseTransport, file: IO[bytes], offset: int = ..., count: int | None = ..., *, fallback: bool = ...
+        self, transport: WriteTransport, file: IO[bytes], offset: int = ..., count: int | None = ..., *, fallback: bool = ...
     ) -> int: ...
     @abstractmethod
     async def create_datagram_endpoint(
@@ -505,7 +505,7 @@ class AbstractEventLoop:
         reuse_port: bool | None = ...,
         allow_broadcast: bool | None = ...,
         sock: socket | None = ...,
-    ) -> tuple[BaseTransport, _ProtocolT]: ...
+    ) -> tuple[DatagramTransport, _ProtocolT]: ...
     # Pipes and subprocesses.
     @abstractmethod
     async def connect_read_pipe(
@@ -562,7 +562,7 @@ class AbstractEventLoop:
     @abstractmethod
     async def sock_recv_into(self, sock: socket, buf: WriteableBuffer) -> int: ...
     @abstractmethod
-    async def sock_sendall(self, sock: socket, data: bytes) -> None: ...
+    async def sock_sendall(self, sock: socket, data: ReadableBuffer) -> None: ...
     @abstractmethod
     async def sock_connect(self, sock: socket, address: _Address) -> None: ...
     @abstractmethod
@@ -573,7 +573,7 @@ class AbstractEventLoop:
         @abstractmethod
         async def sock_recvfrom_into(self, sock: socket, buf: WriteableBuffer, nbytes: int = ...) -> int: ...
         @abstractmethod
-        async def sock_sendto(self, sock: socket, data: bytes, address: _Address) -> None: ...
+        async def sock_sendto(self, sock: socket, data: ReadableBuffer, address: _Address) -> None: ...
     # Signal handling.
     @abstractmethod
     def add_signal_handler(self, sig: int, callback: Callable[..., object], *args: Any) -> None: ...

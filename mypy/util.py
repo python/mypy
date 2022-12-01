@@ -520,7 +520,11 @@ def parse_gray_color(cup: bytes) -> str:
 
 
 def should_force_color() -> bool:
-    return bool(int(os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0"))))
+    env_var = os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0"))
+    try:
+        return bool(int(env_var))
+    except ValueError:
+        return bool(env_var)
 
 
 class FancyFormatter:
@@ -803,13 +807,11 @@ def unnamed_function(name: str | None) -> bool:
     return name is not None and name == "_"
 
 
-# TODO: replace with uses of perf_counter_ns when support for py3.6 is dropped
-# (or when mypy properly handles alternate definitions based on python version check
-time_ref = time.perf_counter
+time_ref = time.perf_counter_ns
 
 
-def time_spent_us(t0: float) -> int:
-    return int((time.perf_counter() - t0) * 1e6)
+def time_spent_us(t0: int) -> int:
+    return int((time.perf_counter_ns() - t0) / 1000)
 
 
 def plural_s(s: int | Sized) -> str:

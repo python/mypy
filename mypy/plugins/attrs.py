@@ -736,7 +736,11 @@ def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) 
         if attribute.name in ctx.cls.info.names:
             # This variable belongs to this class so we can modify it.
             node = ctx.cls.info.names[attribute.name].node
-            assert isinstance(node, Var)
+            if not isinstance(node, Var):
+                # The superclass attribute was overridden with a non-variable.
+                # No need to do anything here, override will be verified during
+                # type checking.
+                continue
             node.is_property = True
         else:
             # This variable belongs to a super class so create new Var so we

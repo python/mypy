@@ -353,7 +353,7 @@ class LineCoverageVisitor(TraverserVisitor):
         return None
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        start_line = defn.get_line() - 1
+        start_line = defn.line - 1
         start_indent = None
         # When a function is decorated, sometimes the start line will point to
         # whitespace or comments between the decorator and the function, so

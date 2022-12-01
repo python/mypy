@@ -12,7 +12,7 @@ __all__ = ["Message", "EmailMessage"]
 
 _T = TypeVar("_T")
 
-_PayloadType: TypeAlias = list[Message] | str | bytes
+_PayloadType: TypeAlias = list[Message] | str | bytes | bytearray
 _CharsetType: TypeAlias = Charset | str | None
 _HeaderType: TypeAlias = Any
 
