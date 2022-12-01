@@ -13,7 +13,7 @@ class Person:
         return f"Person(name={self.name!r}, age={self.age})"
 
 
-def f(x):
+def f(x: object) -> None:
     match x:
         case 123:
             print("test 1")
@@ -231,7 +231,7 @@ test 21 (' as well')
 test sequence final
 test final
 [case testCustomMappingAndSequenceObjects_python3_10]
-def f(x):
+def f(x: object) -> None:
     match x:
         case {"key": "value", **rest}:
             print(rest, type(rest))

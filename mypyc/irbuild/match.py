@@ -30,7 +30,7 @@ from mypyc.primitives.list_ops import (
     sequence_get_slice,
     supports_sequence_protocol,
 )
-from mypyc.primitives.misc_ops import slow_isinstance_op
+from mypyc.primitives.misc_ops import fast_isinstance_op, slow_isinstance_op
 
 # From: https://peps.python.org/pep-0634/#class-patterns
 MATCHABLE_BUILTINS = {
@@ -123,10 +123,16 @@ class MatchVisitor(TraverserVisitor):
         self.builder.goto(self.next_block)
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:
+        # TODO: use faster instance check for native classes (while still
+        # making sure to account for inheritence)
+        isinstance_op = (
+            fast_isinstance_op
+            if self.builder.is_builtin_ref_expr(pattern.class_ref)
+            else slow_isinstance_op
+        )
+
         cond = self.builder.call_c(
-            slow_isinstance_op,
-            [self.subject, self.builder.accept(pattern.class_ref)],
-            pattern.line,
+            isinstance_op, [self.subject, self.builder.accept(pattern.class_ref)], pattern.line
         )
 
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
@@ -166,6 +172,8 @@ class MatchVisitor(TraverserVisitor):
                 self.builder.activate_block(self.code_block)
                 self.code_block = BasicBlock()
 
+                # TODO: use faster "get_attr" method instead when calling on native or
+                # builtin objects
                 positional = self.builder.py_get_attr(self.subject, match_args[i], expr.line)
 
                 with self.enter_subpattern(positional):
@@ -175,6 +183,7 @@ class MatchVisitor(TraverserVisitor):
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
+            # TODO: same as above "get_attr" comment
             attr = self.builder.py_get_attr(self.subject, key, value.line)
 
             with self.enter_subpattern(attr):
