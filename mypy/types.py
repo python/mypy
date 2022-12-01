@@ -720,6 +720,20 @@ class TypeVarTupleType(TypeVarLikeType):
     See PEP646 for more information.
     """
 
+    def __init__(
+        self,
+        name: str,
+        fullname: str,
+        id: TypeVarId | int,
+        upper_bound: Type,
+        tuple_fallback: Instance,
+        *,
+        line: int = -1,
+        column: int = -1,
+    ) -> None:
+        super().__init__(name, fullname, id, upper_bound, line=line, column=column)
+        self.tuple_fallback = tuple_fallback
+
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
         return {
@@ -728,13 +742,18 @@ class TypeVarTupleType(TypeVarLikeType):
             "fullname": self.fullname,
             "id": self.id.raw_id,
             "upper_bound": self.upper_bound.serialize(),
+            "tuple_fallback": self.tuple_fallback.serialize(),
         }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> TypeVarTupleType:
         assert data[".class"] == "TypeVarTupleType"
         return TypeVarTupleType(
-            data["name"], data["fullname"], data["id"], deserialize_type(data["upper_bound"])
+            data["name"],
+            data["fullname"],
+            data["id"],
+            deserialize_type(data["upper_bound"]),
+            Instance.deserialize(data["tuple_fallback"]),
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -759,6 +778,7 @@ class TypeVarTupleType(TypeVarLikeType):
             self.fullname,
             self.id if id is _dummy else id,
             self.upper_bound,
+            self.tuple_fallback,
             line=self.line,
             column=self.column,
         )
