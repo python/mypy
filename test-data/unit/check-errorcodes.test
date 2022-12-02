@@ -455,7 +455,8 @@ class E(TypedDict):
     y: int
 
 a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
-b: D = {'y': ''}  # E: Missing key "x" for TypedDict "D"  [typeddict-item] # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key]
+b: D = {'y': ''}  # E: Missing key "x" for TypedDict "D"  [typeddict-item] \
+                  # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key]
 c = D(x=0) if int() else E(x=0, y=0)
 c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
 
