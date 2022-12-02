@@ -108,7 +108,7 @@ def build_ir_for_single_file2(
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
-    options.python_version = (3, 6)
+    options.python_version = compiler_options.python_version or (3, 6)
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
@@ -277,6 +277,7 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
     m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
     if m:
         options.capi_version = (int(m.group(1)), int(m.group(2)))
+        options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
     return options
