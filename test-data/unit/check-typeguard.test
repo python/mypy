@@ -607,7 +607,21 @@ class Z:
 
 def bad_typeguard(*, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
     ...
+
+# make sure not to break other things
+
+class Y:
+    @staticmethod
+    def typeguard(h: object) -> TypeGuard[int]:
+        ...
+
+x: object
+if Y().typeguard(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+if Y.typeguard(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]
 
 [case testTypeGuardWithKeywordArg]
 from typing_extensions import TypeGuard

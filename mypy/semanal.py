@@ -869,6 +869,7 @@ class SemanticAnalyzer(
                     if (
                         result.type_guard
                         and ARG_POS not in result.arg_kinds[self.is_class_scope() :]
+                        and not defn.is_static
                     ):
                         self.fail(
                             "TypeGuard functions must have a positional argument",
