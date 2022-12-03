@@ -371,6 +371,7 @@ CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+int CPySequence_Check(PyObject *obj);
 
 
 // Dict operations
@@ -402,6 +403,7 @@ PyObject *CPyDict_GetValuesIter(PyObject *dict);
 tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset);
 tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset);
 tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
+int CPyMapping_Check(PyObject *obj);
 
 // Check that dictionary didn't change size during iteration.
 static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {

@@ -1788,3 +1788,49 @@ class C:
 c = C(x=[C.D()])
 reveal_type(c.x)  # N: Revealed type is "builtins.list[__main__.C.D]"
 [builtins fixtures/list.pyi]
+
+[case testRedefinitionInFrozenClassNoCrash]
+import attr
+
+@attr.s
+class MyData:
+    is_foo: bool = attr.ib()
+
+    @staticmethod  # E: Name "is_foo" already defined on line 5
+    def is_foo(string: str) -> bool: ...
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideWithPropertyInFrozenClassNoCrash]
+from attrs import frozen
+
+@frozen(kw_only=True)
+class Base:
+    name: str
+
+@frozen(kw_only=True)
+class Sub(Base):
+    first_name: str
+    last_name: str
+
+    @property
+    def name(self) -> str: ...
+[builtins fixtures/property.pyi]
+
+[case testOverrideWithPropertyInFrozenClassChecked]
+from attrs import frozen
+
+@frozen(kw_only=True)
+class Base:
+    name: str
+
+@frozen(kw_only=True)
+class Sub(Base):
+    first_name: str
+    last_name: str
+
+    @property
+    def name(self) -> int: ...  # E: Signature of "name" incompatible with supertype "Base"
+
+# This matches runtime semantics
+reveal_type(Sub)  # N: Revealed type is "def (*, name: builtins.str, first_name: builtins.str, last_name: builtins.str) -> __main__.Sub"
+[builtins fixtures/property.pyi]

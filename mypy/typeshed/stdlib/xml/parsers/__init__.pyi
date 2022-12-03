@@ -1,1 +1,1 @@
-import xml.parsers.expat as expat
+from xml.parsers import expat as expat

@@ -2206,3 +2206,12 @@ def foo():
     x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
     y = "no"  # type: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
     z: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case testGeneratorUnion]
+from typing import Generator, Union
+
+class A: pass
+class B: pass
+
+def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
+    yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")

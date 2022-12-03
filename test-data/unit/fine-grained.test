@@ -10130,3 +10130,181 @@ b.py:2: error: "int" not callable
 a.py:1: error: Unsupported operand types for + ("int" and "str")
     1 + ''
         ^~
+
+[case testTypingSelfFine]
+import m
+[file lib.py]
+from typing import Any
+
+class C:
+    def meth(self, other: Any) -> C: ...
+[file lib.py.2]
+from typing import Self
+
+class C:
+    def meth(self, other: Self) -> Self: ...
+
+[file n.py]
+import lib
+class D(lib.C): ...
+[file m.py]
+from n import D
+d = D()
+def test() -> None:
+    d.meth(42)
+[out]
+==
+m.py:4: error: Argument 1 to "meth" of "C" has incompatible type "int"; expected "D"
+
+[case testNoNestedDefinitionCrash]
+import m
+[file m.py]
+from typing import Any, TYPE_CHECKING
+
+class C:
+    if TYPE_CHECKING:
+        def __init__(self, **kw: Any): ...
+
+C
+[file m.py.2]
+from typing import Any, TYPE_CHECKING
+
+class C:
+    if TYPE_CHECKING:
+        def __init__(self, **kw: Any): ...
+
+C
+# change
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testNoNestedDefinitionCrash2]
+import m
+[file m.py]
+from typing import Any
+
+class C:
+    try:
+        def __init__(self, **kw: Any): ...
+    except:
+        pass
+
+C
+[file m.py.2]
+from typing import Any
+
+class C:
+    try:
+        def __init__(self, **kw: Any): ...
+    except:
+        pass
+
+C
+# change
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testNamedTupleNestedCrash]
+import m
+[file m.py]
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: int
+
+[file m.py.2]
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: int
+# change
+[builtins fixtures/tuple.pyi]
+[out]
+m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+==
+m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+
+[case testNamedTupleNestedClassRecheck]
+import n
+[file n.py]
+import m
+x: m.NT
+[file m.py]
+from typing import NamedTuple
+from f import A
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: A
+
+[file f.py]
+A = int
+[file f.py.2]
+A = str
+[builtins fixtures/tuple.pyi]
+[out]
+m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+==
+m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+
+[case testTypedDictNestedClassRecheck]
+import n
+[file n.py]
+import m
+x: m.TD
+[file m.py]
+from typing_extensions import TypedDict
+from f import A
+
+class TD(TypedDict):
+    class C: ...
+    x: int
+    y: A
+
+[file f.py]
+A = int
+[file f.py.2]
+A = str
+[builtins fixtures/dict.pyi]
+[out]
+m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
+==
+m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
+
+[case testTypeAliasWithNewStyleUnionChangedToVariable]
+# flags: --python-version 3.10
+import a
+
+[file a.py]
+from b import C, D
+A = C | D
+a: A
+reveal_type(a)
+
+[file b.py]
+C = int
+D = str
+
+[file b.py.2]
+C = "x"
+D = "y"
+
+[file b.py.3]
+C = str
+D = int
+[out]
+a.py:4: note: Revealed type is "Union[builtins.int, builtins.str]"
+==
+a.py:2: error: Unsupported left operand type for | ("str")
+a.py:3: error: Variable "a.A" is not valid as a type
+a.py:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a.py:4: note: Revealed type is "A?"
+==
+a.py:4: note: Revealed type is "Union[builtins.str, builtins.int]"

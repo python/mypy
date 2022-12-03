@@ -1789,6 +1789,30 @@ def f6(a: object) -> None:
             pass
 [builtins fixtures/tuple.pyi]
 
+[case testPartiallyDefinedMatchUnreachable]
+# flags: --enable-error-code partially-defined
+import typing
+
+def f0(x: int) -> int:
+    match x:
+        case 1 if not typing.TYPE_CHECKING:
+            pass
+        case 2:
+            y = 2
+        case _:
+            y = 3
+    return y # No error.
+
+def f1(x: int) -> int:
+    match x:
+        case 1 if not typing.TYPE_CHECKING:
+            pass
+        case 2:
+            y = 2
+    return y  # E: Name "y" may be undefined
+
+[typing fixtures/typing-medium.pyi]
+
 [case testTypeAliasWithNewUnionSyntaxAndNoneLeftOperand]
 from typing import overload
 class C:

@@ -1306,3 +1306,32 @@ class C(
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleSelfItemNotAllowed]
+from typing import Self, NamedTuple, Optional
+
+class NT(NamedTuple):
+    val: int
+    next: Optional[Self]  # E: Self type cannot be used in NamedTuple item type
+NTC = NamedTuple("NTC", [("val", int), ("next", Optional[Self])])  # E: Self type cannot be used in NamedTuple item type
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleTypingSelfMethod]
+from typing import Self, NamedTuple, TypeVar, Generic
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: str
+    val: T
+    def meth(self) -> Self:
+        nt: NT[int]
+        if bool():
+            return nt._replace()  # E: Incompatible return value type (got "NT[int]", expected "Self")
+        else:
+            return self._replace()
+
+class SNT(NT[int]): ...
+reveal_type(SNT("test", 42).meth())  # N: Revealed type is "Tuple[builtins.str, builtins.int, fallback=__main__.SNT]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

@@ -585,7 +585,7 @@ _Object: TypeAlias = object
 
 class Attribute(NamedTuple):
     name: str
-    kind: str
+    kind: Literal["class method", "static method", "property", "method", "data"]
     defining_class: type
     object: _Object
 

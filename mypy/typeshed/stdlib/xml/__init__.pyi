@@ -1,1 +1,1 @@
-import xml.parsers as parsers
+from xml import parsers as parsers

@@ -54,6 +54,7 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     Node,
+    OpExpr,
     OverloadedFuncDef,
     RefExpr,
     StarExpr,
@@ -140,6 +141,8 @@ class NodeStripVisitor(TraverserVisitor):
         ]
         with self.enter_class(node.info):
             super().visit_class_def(node)
+        node.defs.body.extend(node.removed_statements)
+        node.removed_statements = []
         TypeState.reset_subtype_caches_for(node.info)
         # Kill the TypeInfo, since there is none before semantic analysis.
         node.info = CLASSDEF_NO_INFO
@@ -219,6 +222,10 @@ class NodeStripVisitor(TraverserVisitor):
     def visit_index_expr(self, node: IndexExpr) -> None:
         node.analyzed = None  # May have been an alias or type application.
         super().visit_index_expr(node)
+
+    def visit_op_expr(self, node: OpExpr) -> None:
+        node.analyzed = None  # May have been an alias
+        super().visit_op_expr(node)
 
     def strip_ref_expr(self, node: RefExpr) -> None:
         node.kind = None
