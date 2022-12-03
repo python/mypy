@@ -227,13 +227,13 @@ def main(a: object) -> None:
 from typing_extensions import TypeGuard
 def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
 def main1(a: object) -> None:
+    if is_float(a=a, b=1):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+
+    if is_float(b=1, a=a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+
     # This is debatable -- should we support these cases?
-
-    if is_float(a=a, b=1):  # E: Type guard requires positional argument
-        reveal_type(a)  # N: Revealed type is "builtins.object"
-
-    if is_float(b=1, a=a):  # E: Type guard requires positional argument
-        reveal_type(a)  # N: Revealed type is "builtins.object"
 
     ta = (a,)
     if is_float(*ta):  # E: Type guard requires positional argument
@@ -609,7 +609,7 @@ def bad_typeguard(*, x: object) -> TypeGuard[int]:  # E: TypeGuard functions mus
     ...
 [builtins fixtures/tuple.pyi]
 
-[case testTypeGuardWithKeywordArg-xfail]
+[case testTypeGuardWithKeywordArg]
 from typing_extensions import TypeGuard
 
 class Z:
