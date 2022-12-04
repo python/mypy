@@ -771,7 +771,7 @@ def test_undefined_native_int_tuple() -> None:
     assert o.t == (-13, 45)
 
 [case testI64DefaultArgValues]
-from typing import Any, Iterator
+from typing import Any, Iterator, Tuple
 from typing_extensions import Final
 
 MAGIC: Final = -113
@@ -929,6 +929,18 @@ def test_kw_only_default_args() -> None:
     assert kw_only2(c=11) == 25
     assert kw_only2(a=2, c=4) == 12
     assert kw_only2(c=4, a=2) == 12
+
+def tuples(t: Tuple[i64, i64] = (MAGIC, MAGIC)) -> i64:
+    return t[0] + t[1]
+
+def test_tuple_arg_defaults() -> None:
+    assert tuples() == 2 * MAGIC
+    assert tuples((1, 2)) == 3
+    assert tuples((MAGIC, MAGIC)) == 2 * MAGIC
+    tuples2: Any = tuples
+    assert tuples2() == 2 * MAGIC
+    assert tuples2((1, 2)) == 3
+    assert tuples2((MAGIC, MAGIC)) == 2 * MAGIC
 
 def many_args(
     a1: i64 = 0,
