@@ -60,7 +60,6 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
-    is_fixed_width_rtype,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
