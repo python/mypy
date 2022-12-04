@@ -958,6 +958,19 @@ def test_tuple_arg_defaults() -> None:
     assert tuples2((1, 2)) == 3
     assert tuples2((MAGIC, MAGIC)) == 2 * MAGIC
 
+class TupleInit:
+    def __init__(self, t: Tuple[i64, i64] = (MAGIC, MAGIC)) -> None:
+        self.t = t[0] + t[1]
+
+def test_tuple_init_arg_defaults() -> None:
+    assert TupleInit().t == 2 * MAGIC
+    assert TupleInit((1, 2)).t == 3
+    assert TupleInit((MAGIC, MAGIC)).t == 2 * MAGIC
+    o: Any = TupleInit
+    assert o().t == 2 * MAGIC
+    assert o((1, 2)).t == 3
+    assert o((MAGIC, MAGIC)).t == 2 * MAGIC
+
 def many_args(
     a1: i64 = 0,
     a2: i64 = 1,
