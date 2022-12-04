@@ -90,7 +90,6 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
-    is_fixed_width_rtype,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
