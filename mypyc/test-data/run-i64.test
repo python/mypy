@@ -770,6 +770,17 @@ def test_undefined_native_int_tuple() -> None:
     o = UndefinedTuple(-13, 45)
     assert o.t == (-13, 45)
 
+def test_undefined_native_int_tuple_via_any() -> None:
+    cls: Any = UndefinedTuple
+    o: Any = cls(MAGIC, MAGIC)
+    assert o.t[0] == MAGIC
+    assert o.t[1] == MAGIC
+    o = cls(0, 0)
+    with assertRaises(AttributeError):
+        o.t
+    o = UndefinedTuple(-13, 45)
+    assert o.t == (-13, 45)
+
 [case testI64DefaultArgValues]
 from typing import Any, Iterator, Tuple
 from typing_extensions import Final
