@@ -1097,6 +1097,24 @@ def test_assign_error_value_conditionally() -> None:
     assert y == MAGIC
     assert z == MAGIC
 
+def tuple_case(x: i64, y: i64) -> None:
+    if not int():
+        t = (x, y)
+    assert t == (x, y)
+    if int():
+        t2 = (x, y)
+    try:
+        print(t2)
+    except NameError as e:
+        assert str(e) == 'local variable "t2" referenced before assignment'
+    else:
+        assert False
+
+def test_conditionally_undefined_tuple() -> None:
+    tuple_case(2, 3)
+    tuple_case(-2, -3)
+    tuple_case(MAGIC, MAGIC)
+
 def test_many_locals() -> None:
     x = int()
     if x:
