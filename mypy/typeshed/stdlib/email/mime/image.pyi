@@ -8,7 +8,7 @@ __all__ = ["MIMEImage"]
 class MIMEImage(MIMENonMultipart):
     def __init__(
         self,
-        _imagedata: str | bytes,
+        _imagedata: str | bytes | bytearray,
         _subtype: str | None = ...,
         _encoder: Callable[[MIMEImage], object] = ...,
         *,

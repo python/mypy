@@ -31,6 +31,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
+    has_recursive_types,
 )
 
 
@@ -156,6 +157,13 @@ class TypesSuite(Suite):
         assert C.expand_all_if_possible() == TupleType(
             [self.fx.a, self.fx.a], Instance(self.fx.std_tuplei, [self.fx.a])
         )
+
+    def test_recursive_nested_in_non_recursive(self) -> None:
+        A, _ = self.fx.def_alias_1(self.fx.a)
+        T = TypeVarType("T", "T", -1, [], self.fx.o)
+        NA = self.fx.non_rec_alias(Instance(self.fx.gi, [T]), [T], [A])
+        assert not NA.is_recursive
+        assert has_recursive_types(NA)
 
     def test_indirection_no_infinite_recursion(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)

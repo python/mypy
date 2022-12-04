@@ -893,7 +893,7 @@ B = TypedDict('B', {'@type': Literal['b-type'], 'b': int})
 
 c: Union[A, B] = {'@type': 'a-type', 'a': 'Test'}
 reveal_type(c) # N: Revealed type is "Union[TypedDict('__main__.A', {'@type': Literal['a-type'], 'a': builtins.str}), TypedDict('__main__.B', {'@type': Literal['b-type'], 'b': builtins.int})]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testTypedDictUnionAmbiguousCase]
 from typing import Union, Mapping, Any, cast
@@ -2588,5 +2588,16 @@ tdi = TD(key=0, value=0)
 reveal_type(tdi)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.int})"
 TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
 TD[str]({"key": 0, "value": 0})  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSelfItemNotAllowed]
+from typing import Self, TypedDict, Optional
+
+class TD(TypedDict):
+    val: int
+    next: Optional[Self]  # E: Self type cannot be used in TypedDict item type
+TDC = TypedDict("TDC", {"val": int, "next": Optional[Self]})  # E: Self type cannot be used in TypedDict item type
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

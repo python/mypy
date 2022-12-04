@@ -103,6 +103,28 @@ class A(object):
 </body>
 </html>
 
+[case testNoCrashRecursiveAliasInReport]
+# cmd: mypy --any-exprs-report report n.py
+
+[file n.py]
+from typing import Union, List, Any, TypeVar
+
+Nested = List[Union[Any, Nested]]
+T = TypeVar("T")
+NestedGen = List[Union[T, NestedGen[T]]]
+
+x: Nested
+y: NestedGen[int]
+z: NestedGen[Any]
+
+[file report/any-exprs.txt]
+[outfile report/types-of-anys.txt]
+ Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
+-----------------------------------------------------------------------------------------------------------------
+    n             0          4            0                  8       0              0                         0
+-----------------------------------------------------------------------------------------------------------------
+Total             0          4            0                  8       0              0                         0
+
 [case testTypeVarTreatedAsEmptyLine]
 # cmd: mypy --html-report report n.py
 
@@ -480,7 +502,7 @@ namespace_packages = True
 <link rel="stylesheet" type="text/css" href="../../../mypy-html.css">
 </head>
 <body>
-<h2>folder.subfolder.something</h2>           
+<h2>folder.subfolder.something</h2>
 <table>
 <caption>folder/subfolder/something.py</caption>
 <tbody><tr>

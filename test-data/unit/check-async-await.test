@@ -925,3 +925,21 @@ async def f() -> AsyncGenerator[int, None]:
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testAwaitUnion]
+from typing import overload, Union
+
+class A: ...
+class B: ...
+
+@overload
+async def foo(x: A) -> B: ...
+@overload
+async def foo(x: B) -> A: ...
+async def foo(x): ...
+
+async def bar(x: Union[A, B]) -> None:
+    reveal_type(await foo(x))  # N: Revealed type is "Union[__main__.B, __main__.A]"
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]

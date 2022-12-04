@@ -1,9 +1,4 @@
 import types
-from _typeshed import StrPath
-from os import PathLike
-from types import TracebackType
-from typing import IO, Any, Protocol
-
 from _imp import (
     acquire_lock as acquire_lock,
     create_dynamic as create_dynamic,
@@ -15,6 +10,10 @@ from _imp import (
     lock_held as lock_held,
     release_lock as release_lock,
 )
+from _typeshed import StrPath
+from os import PathLike
+from types import TracebackType
+from typing import IO, Any, Protocol
 
 SEARCH_ERROR: int
 PY_SOURCE: int

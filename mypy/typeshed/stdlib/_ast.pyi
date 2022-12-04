@@ -329,7 +329,7 @@ class JoinedStr(expr):
 
 if sys.version_info < (3, 8):
     class Num(expr):  # Deprecated in 3.8; use Constant
-        n: complex
+        n: int | float | complex
 
     class Str(expr):  # Deprecated in 3.8; use Constant
         s: str
@@ -349,7 +349,7 @@ class Constant(expr):
     kind: str | None
     # Aliases for value, for backwards compatibility
     s: Any
-    n: complex
+    n: int | float | complex
 
 if sys.version_info >= (3, 8):
     class NamedExpr(expr):

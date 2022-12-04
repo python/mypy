@@ -409,3 +409,10 @@ class B(A):
         reveal_type(super().foo())  # N: Revealed type is "T`-1"
         return super().foo()
 [builtins fixtures/classmethod.pyi]
+
+[case testWrongSuperOutsideMethodNoCrash]
+class B:
+    x: int
+class C1(B): ...
+class C2(B): ...
+super(C1, C2).x  # E: Argument 2 for "super" not an instance of argument 1

@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifndef Py_TPFLAGS_SEQUENCE
+#define Py_TPFLAGS_SEQUENCE (1 << 5)
+#endif
+
 PyObject *CPyList_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
 
@@ -324,4 +328,8 @@ PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         return PyList_GetSlice(obj, startn, endn);
     }
     return CPyObject_GetSlice(obj, start, end);
+}
+
+int CPySequence_Check(PyObject *obj) {
+    return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_SEQUENCE;
 }

@@ -231,8 +231,8 @@ class MessageBuilder:
         else:
             origin_span = None
         self.errors.report(
-            context.get_line() if context else -1,
-            context.get_column() if context else -1,
+            context.line if context else -1,
+            context.column if context else -1,
             msg,
             severity=severity,
             file=file,
@@ -1231,6 +1231,9 @@ class MessageBuilder:
     def variable_may_be_undefined(self, name: str, context: Context) -> None:
         self.fail(f'Name "{name}" may be undefined', context, code=codes.PARTIALLY_DEFINED)
 
+    def var_used_before_def(self, name: str, context: Context) -> None:
+        self.fail(f'Name "{name}" is used before definition', context, code=codes.USE_BEFORE_DEF)
+
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
         actual = get_proper_type(actual)
         if isinstance(actual, Instance):
@@ -1866,6 +1869,7 @@ class MessageBuilder:
 
         class_obj = False
         is_module = False
+        skip = []
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.partial_fallback, Instance):
                 return
@@ -1880,23 +1884,25 @@ class MessageBuilder:
             class_obj = True
             subtype = subtype.item
         elif isinstance(subtype, CallableType):
-            if not subtype.is_type_obj():
-                return
-            ret_type = get_proper_type(subtype.ret_type)
-            if isinstance(ret_type, TupleType):
-                ret_type = ret_type.partial_fallback
-            if not isinstance(ret_type, Instance):
-                return
-            class_obj = True
-            subtype = ret_type
+            if subtype.is_type_obj():
+                ret_type = get_proper_type(subtype.ret_type)
+                if isinstance(ret_type, TupleType):
+                    ret_type = ret_type.partial_fallback
+                if not isinstance(ret_type, Instance):
+                    return
+                class_obj = True
+                subtype = ret_type
+            else:
+                subtype = subtype.fallback
+                skip = ["__call__"]
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
 
         # Report missing members
-        missing = get_missing_protocol_members(subtype, supertype)
+        missing = get_missing_protocol_members(subtype, supertype, skip=skip)
         if (
             missing
-            and len(missing) < len(supertype.type.protocol_members)
+            and (len(missing) < len(supertype.type.protocol_members) or missing == ["__call__"])
             and len(missing) <= MAX_ITEMS
         ):
             if missing == ["__call__"] and class_obj:
@@ -2605,13 +2611,15 @@ def variance_string(variance: int) -> str:
         return "invariant"
 
 
-def get_missing_protocol_members(left: Instance, right: Instance) -> list[str]:
+def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str]) -> list[str]:
     """Find all protocol members of 'right' that are not implemented
     (i.e. completely missing) in 'left'.
     """
     assert right.type.is_protocol
     missing: list[str] = []
     for member in right.type.protocol_members:
+        if member in skip:
+            continue
         if not find_member(member, left, left):
             missing.append(member)
     return missing
@@ -2658,6 +2666,7 @@ def get_bad_protocol_flags(
         if (
             IS_CLASSVAR in subflags
             and IS_CLASSVAR not in superflags
+            and IS_SETTABLE in superflags
             or IS_CLASSVAR in superflags
             and IS_CLASSVAR not in subflags
             or IS_SETTABLE in superflags

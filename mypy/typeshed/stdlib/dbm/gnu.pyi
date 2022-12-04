@@ -1,13 +1,13 @@
 import sys
-from _typeshed import Self
+from _typeshed import ReadOnlyBuffer, Self
 from types import TracebackType
 from typing import TypeVar, overload
 from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
     _T = TypeVar("_T")
-    _KeyType: TypeAlias = str | bytes
-    _ValueType: TypeAlias = str | bytes
+    _KeyType: TypeAlias = str | ReadOnlyBuffer
+    _ValueType: TypeAlias = str | ReadOnlyBuffer
 
     open_flags: str
 
@@ -31,7 +31,7 @@ if sys.platform != "win32":
         @overload
         def get(self, k: _KeyType) -> bytes | None: ...
         @overload
-        def get(self, k: _KeyType, default: bytes | _T) -> bytes | _T: ...
+        def get(self, k: _KeyType, default: _T) -> bytes | _T: ...
         def keys(self) -> list[bytes]: ...
         def setdefault(self, k: _KeyType, default: _ValueType = ...) -> bytes: ...
         # Don't exist at runtime
