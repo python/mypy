@@ -426,4 +426,3 @@ def detect_undefined_bitmap(cl: ClassIR, seen: Set[ClassIR]) -> None:
     for n, t in cl.attributes.items():
         if t.error_overlap and not cl.is_always_defined(n):
             cl.bitmap_attrs.append(n)
-            print('!', n)
