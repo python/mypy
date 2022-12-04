@@ -42,7 +42,7 @@ understand, debug, and maintain.
    Although mypy is production ready, there will be occasional changes
    that break backward compatibility. The mypy development team tries to
    minimize the impact of changes to user code. In case of a major breaking
-   change, mypy major version will be bumped.
+   change, mypy's major version will be bumped.
 
 Contents
 --------
