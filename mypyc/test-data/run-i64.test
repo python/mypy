@@ -440,6 +440,11 @@ def test_tuple_error_value() -> None:
         assert maybe_raise_tuple(i, False) == (i, i + 1)
     with assertRaises(ValueError):
         maybe_raise_tuple(0, True)
+    f: Any = maybe_raise_tuple
+    for i in range(-1000, 1000):
+        assert f(i, False) == (i, i + 1)
+    with assertRaises(ValueError):
+        f(0, True)
 
 def maybe_raise_tuple2(n: i64, error: bool) -> Tuple[i64, int]:
     if error:
