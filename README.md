@@ -160,14 +160,7 @@ To get started with developing mypy, see [CONTRIBUTING.md](CONTRIBUTING.md).
 If you need help getting started, don't hesitate to ask on [gitter](https://gitter.im/python/typing).
 
 
-Development status
-------------------
-
-Mypy is beta software, but it has already been used in production
-for several years at Dropbox and in many other organizations, and
-it has an extensive test suite.
-
-mypyc and compiled version of mypy
+Mypyc and compiled version of mypy
 ----------------------------------
 
 [Mypyc](https://github.com/mypyc/mypyc) uses Python type hints to compile Python
