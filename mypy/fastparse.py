@@ -557,10 +557,10 @@ class ASTConverter:
                 if is_coroutine:
                     # Yields inside an async function affect the return type and should not
                     # be stripped.
-                    visitor = FindYield()
+                    yield_visitor = FindYield()
                     for s in res:
-                        s.accept(visitor)
-                        if visitor.found:
+                        s.accept(yield_visitor)
+                        if yield_visitor.found:
                             break
                     else:
                         return []
