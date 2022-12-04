@@ -499,7 +499,12 @@ class ASTConverter:
         return node.lineno
 
     def translate_stmt_list(
-        self, stmts: Sequence[ast3.stmt], *, ismodule: bool = False, can_strip: bool = False
+        self,
+        stmts: Sequence[ast3.stmt],
+        *,
+        ismodule: bool = False,
+        can_strip: bool = False,
+        is_coroutine: bool = False,
     ) -> list[Statement]:
         # A "# type: ignore" comment before the first statement of a module
         # ignores the whole module:
@@ -549,7 +554,18 @@ class ASTConverter:
                 if visitor.found:
                     break
             else:
-                return []
+                if is_coroutine:
+                    # Yields inside an async function affect the return type and should not
+                    # be stripped.
+                    visitor = FindYield()
+                    for s in res:
+                        s.accept(visitor)
+                        if visitor.found:
+                            break
+                    else:
+                        return []
+                else:
+                    return []
         return res
 
     def translate_type_comment(
@@ -615,11 +631,18 @@ class ASTConverter:
         return b
 
     def as_required_block(
-        self, stmts: list[ast3.stmt], lineno: int, *, can_strip: bool = False
+        self,
+        stmts: list[ast3.stmt],
+        lineno: int,
+        *,
+        can_strip: bool = False,
+        is_coroutine: bool = False,
     ) -> Block:
         assert stmts  # must be non-empty
         b = Block(
-            self.fix_function_overloads(self.translate_stmt_list(stmts, can_strip=can_strip))
+            self.fix_function_overloads(
+                self.translate_stmt_list(stmts, can_strip=can_strip, is_coroutine=is_coroutine)
+            )
         )
         # TODO: in most call sites line is wrong (includes first line of enclosing statement)
         # TODO: also we need to set the column, and the end position here.
@@ -1008,7 +1031,7 @@ class ASTConverter:
 
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
-        body = self.as_required_block(n.body, lineno, can_strip=True)
+        body = self.as_required_block(n.body, lineno, can_strip=True, is_coroutine=is_coroutine)
         func_def = FuncDef(n.name, args, body, func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
@@ -2166,6 +2189,19 @@ class FindAttributeAssign(TraverserVisitor):
     def visit_member_expr(self, e: MemberExpr) -> None:
         if self.lvalue:
             self.found = True
+
+
+class FindYield(TraverserVisitor):
+    """Check if an AST contains yields or yield froms."""
+
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_yield_expr(self, e: YieldExpr) -> None:
+        self.found = True
+
+    def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
+        self.found = True
 
 
 def is_possible_trivial_body(s: list[Statement]) -> bool:
