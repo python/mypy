@@ -403,7 +403,9 @@ class Emitter:
 
     def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
         if isinstance(rtype, RTuple):
-            return self.tuple_undefined_check_cond(rtype, value, self.c_error_value, compare, check_exception=False)
+            return self.tuple_undefined_check_cond(
+                rtype, value, self.c_error_value, compare, check_exception=False
+            )
         else:
             return f"{value} {compare} {self.c_error_value(rtype)}"
 

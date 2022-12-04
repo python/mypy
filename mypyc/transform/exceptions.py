@@ -26,14 +26,14 @@ from mypyc.ir.ops import (
     GetAttr,
     Integer,
     LoadErrorValue,
+    Op,
     RegisterOp,
     Return,
     SetAttr,
-    Value,
     TupleGet,
-    Op,
+    Value,
 )
-from mypyc.ir.rtypes import bool_rprimitive, RTuple
+from mypyc.ir.rtypes import RTuple, bool_rprimitive
 from mypyc.primitives.exc_ops import err_occurred_op
 from mypyc.primitives.registry import CFunctionDescription
 
