@@ -31,6 +31,7 @@ from mypyc.ir.ops import (
     SetAttr,
     Value,
     TupleGet,
+    Op,
 )
 from mypyc.ir.rtypes import bool_rprimitive, RTuple
 from mypyc.primitives.exc_ops import err_occurred_op
