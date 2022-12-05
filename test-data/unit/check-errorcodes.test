@@ -476,7 +476,10 @@ class A(TypedDict):
     two_commonparts: int
 
 a: A = {'one_commonpart': 1, 'two_commonparts': 2}
-a['other_commonpart'] = 3  # type: ignore[typeddict-unknown-key,typeddict-item]
+a['other_commonpart'] = 3  # type: ignore[typeddict-unknown-key] \
+                           # N: Did you mean "one_commonpart" or "two_commonparts"? \
+                           # N: Error code "typeddict-item" not covered by "type: ignore" comment
+not_exist = a['not_exist'] # type: ignore[typeddict-item]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
