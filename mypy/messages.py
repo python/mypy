@@ -1666,7 +1666,7 @@ class MessageBuilder:
             self.fail(
                 f'TypedDict {format_type(typ)} has no key "{item_name}"',
                 context,
-                code=codes.TYPEDDICT_ITEM,
+                code=codes.TYPPEDICT_UNKNOWN_KEY,
             )
             matches = best_matches(item_name, typ.items.keys())
             if matches:

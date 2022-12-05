@@ -463,9 +463,9 @@ d: D = {'x': '', 'y': 1}  # E: Extra key "y" for TypedDict "D"  [typeddict-unkno
                           # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
 
 
-a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-item]
+a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-unknown-key]
 a['x'] = 'x'  # E: Value of "x" has incompatible type "str"; expected "int"  [typeddict-item]
-a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
+a['y']  # E: TypedDict "D" has no key "y"  [typeddict-unknown-key]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -476,7 +476,7 @@ class A(TypedDict):
     two_commonparts: int
 
 a: A = {'one_commonpart': 1, 'two_commonparts': 2}
-a['other_commonpart'] = 3  # type: ignore[typeddict-item]
+a['other_commonpart'] = 3  # type: ignore[typeddict-unknown-key,typeddict-item]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
