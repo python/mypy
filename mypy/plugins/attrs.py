@@ -763,6 +763,7 @@ def _add_init(
     # the argument list
     pos_args = []
     kw_only_args = []
+    sym_table = ctx.cls.info.names
     for attribute in attributes:
         if not attribute.init:
             continue
@@ -773,13 +774,10 @@ def _add_init(
 
         # If the attribute is Final, present in `__init__` and has
         # no default, make sure it doesn't error later.
-        if not attribute.has_default:
-            for ti in ctx.cls.info.mro:
-                if attribute.name in ti.names:
-                    sym_node = ti.names[attribute.name].node
-                    if isinstance(sym_node, Var) and sym_node.is_final:
-                        sym_node.final_set_in_init = True
-                        break
+        if not attribute.has_default and attribute.name in sym_table:
+            sym_node = sym_table[attribute.name].node
+            if isinstance(sym_node, Var) and sym_node.is_final:
+                sym_node.final_set_in_init = True
     args = pos_args + kw_only_args
     if all(
         # We use getattr rather than instance checks because the variable.type
