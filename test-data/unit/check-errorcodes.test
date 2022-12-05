@@ -465,7 +465,7 @@ d: D = {'x': '', 'y': 1}  # E: Extra key "y" for TypedDict "D"  [typeddict-unkno
 
 a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-unknown-key]
 a['x'] = 'x'  # E: Value of "x" has incompatible type "str"; expected "int"  [typeddict-item]
-a['y']  # E: TypedDict "D" has no key "y"  [typeddict-unknown-key]
+a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

@@ -1653,8 +1653,16 @@ class MessageBuilder:
         )
 
     def typeddict_key_not_found(
-        self, typ: TypedDictType, item_name: str, context: Context
+        self, typ: TypedDictType, item_name: str, context: Context, setitem: bool = False
     ) -> None:
+        """
+            Handles error messages.
+
+            Note, that we differentiate in between reading a value and setting
+            a value.
+            Setting a value on a TypedDict is an 'unknown-key' error,
+            whereas reading it is the more serious/general 'item' error.
+        """
         if typ.is_anonymous():
             self.fail(
                 '"{}" is not a valid TypedDict key; expected one of {}'.format(
@@ -1666,7 +1674,7 @@ class MessageBuilder:
             self.fail(
                 f'TypedDict {format_type(typ)} has no key "{item_name}"',
                 context,
-                code=codes.TYPPEDICT_UNKNOWN_KEY,
+                code=codes.TYPPEDICT_UNKNOWN_KEY if setitem else codes.TYPEDDICT_ITEM,
             )
             matches = best_matches(item_name, typ.items.keys())
             if matches:

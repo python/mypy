@@ -3740,7 +3740,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.chk.named_generic_type("builtins.tuple", [union])
         return union
 
-    def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
+    def visit_typeddict_index_expr(
+        self, td_type: TypedDictType, index: Expression, setitem: bool = False
+    ) -> Type:
         if isinstance(index, StrExpr):
             key_names = [index.value]
         else:
@@ -3769,7 +3771,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for key_name in key_names:
             value_type = td_type.items.get(key_name)
             if value_type is None:
-                self.msg.typeddict_key_not_found(td_type, key_name, index)
+                self.msg.typeddict_key_not_found(td_type, key_name, index, setitem)
                 return AnyType(TypeOfAny.from_error)
             else:
                 value_types.append(value_type)
