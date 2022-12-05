@@ -607,21 +607,7 @@ class Z:
 
 def bad_typeguard(*, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
     ...
-
-# make sure not to break other things
-
-class Y:
-    @staticmethod
-    def typeguard(h: object) -> TypeGuard[int]:
-        ...
-
-x: object
-if Y().typeguard(x):
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-if Y.typeguard(x):
-    reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/classmethod.pyi]
 
 [case testTypeGuardWithKeywordArg]
 from typing_extensions import TypeGuard
@@ -639,4 +625,71 @@ if typeguard(x=n):
 
 if Z().typeguard(x=n):
     reveal_type(n)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithPositionalOnlyArg]
+from typing_extensions import TypeGuard
+
+def typeguard(x: object, /) -> TypeGuard[int]:
+    ...
+
+n: object
+if typeguard(n):
+    reveal_type(n)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardKeywordFollowingWalrus]
+from typing import cast
+from typing_extensions import TypeGuard
+
+def typeguard(x: object) -> TypeGuard[int]:
+    ...
+
+if typeguard(x=(n := cast(object, "hi"))):
+    reveal_type(n)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testStaticMethodTypeGuard]
+from typing_extensions import TypeGuard
+
+class Y:
+    @staticmethod
+    def typeguard(h: object) -> TypeGuard[int]:
+        ...
+
+x: object
+if Y().typeguard(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+if Y.typeguard(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeGuardKwargFollowingThroughOverloaded]
+from typing import overload, Union
+from typing_extensions import TypeGuard
+
+@overload
+def typeguard(x: object, y: str) -> TypeGuard[str]:
+    ...
+
+@overload
+def typeguard(x: object, y: int) -> TypeGuard[int]:
+    ...
+
+def typeguard(x: object, y: Union[int, str]) -> Union[TypeGuard[int], TypeGuard[str]]:
+    ...
+
+x: object
+if typeguard(x=x, y=42):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if typeguard(y=42, x=x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if typeguard(x=x, y="42"):
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if typeguard(y="42", x=x):
+    reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
