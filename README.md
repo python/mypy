@@ -110,9 +110,13 @@ programs, even if mypy reports type errors:
     python3 PROGRAM
 
 You can also try mypy in an [online playground](https://mypy-play.net/) (developed by
-Yusuke Miyazaki).
+Yusuke Miyazaki). If you are working with large code bases, you can run mypy in
+[daemon mode], that will give much faster (often sub-second) incremental updates:
+
+    dmypy run -- PROGRAM
 
 [statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
+[daemon-mode]: https://mypy.readthedocs.io/en/stable/mypy_daemon.html
 
 
 Integrations
