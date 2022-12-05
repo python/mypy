@@ -84,6 +84,7 @@ more examples and information.
 In particular, see:
 - [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
 - [getting started](https://mypy.readthedocs.io/en/stable/getting_started.html)
+- [list of error codes](https://mypy.readthedocs.io/en/stable/error_code_list.html)
 
 Quick start
 -----------
