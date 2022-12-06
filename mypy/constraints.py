@@ -29,7 +29,6 @@ from mypy.types import (
     Type,
     TypeAliasType,
     TypedDictType,
-    TypeList,
     TypeOfAny,
     TypeQuery,
     TypeType,
