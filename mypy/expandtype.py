@@ -94,7 +94,9 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
                 instance.type.type_var_tuple_prefix,
                 instance.type.type_var_tuple_suffix,
             )
-            variables = {tvars_middle[0].id: TupleType(list(args_middle), tvars_middle[0].tuple_fallback)}
+            tvar = tvars_middle[0]
+            assert isinstance(tvar, TypeVarTupleType)
+            variables = {tvar.id: TupleType(list(args_middle), tvar.tuple_fallback)}
             instance_args = args_prefix + args_suffix
             tvars = tvars_prefix + tvars_suffix
         else:
