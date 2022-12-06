@@ -22,7 +22,6 @@ from mypy.types import (
     Type,
     TypeAliasType,
     TypedDictType,
-    TypeList,
     TypeType,
     TypeVarId,
     TypeVarLikeType,
@@ -95,7 +94,9 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
                 instance.type.type_var_tuple_prefix,
                 instance.type.type_var_tuple_suffix,
             )
-            variables = {tvars_middle[0].id: TypeList(list(args_middle))}
+            tvar = tvars_middle[0]
+            assert isinstance(tvar, TypeVarTupleType)
+            variables = {tvar.id: TupleType(list(args_middle), tvar.tuple_fallback)}
             instance_args = args_prefix + args_suffix
             tvars = tvars_prefix + tvars_suffix
         else:
@@ -446,8 +447,6 @@ def expand_unpack_with_variables(
     if isinstance(t.type, TypeVarTupleType):
         repl = get_proper_type(variables.get(t.type.id, t))
         if isinstance(repl, TupleType):
-            return repl.items
-        if isinstance(repl, TypeList):
             return repl.items
         elif isinstance(repl, Instance) and repl.type.fullname == "builtins.tuple":
             return repl

@@ -5,7 +5,7 @@ import pytest
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
 from mypy.test.helpers import Suite
 from mypy.test.typefixture import TypeFixture
-from mypy.types import Instance, TupleType, TypeList, UnpackType
+from mypy.types import Instance, TupleType, UnpackType
 
 
 class ConstraintsSuite(Suite):
@@ -27,13 +27,19 @@ class ConstraintsSuite(Suite):
         fx = self.fx
         assert infer_constraints(
             Instance(fx.gvi, [UnpackType(fx.ts)]), Instance(fx.gvi, [fx.a, fx.b]), SUBTYPE_OF
-        ) == [Constraint(type_var=fx.ts, op=SUBTYPE_OF, target=TypeList([fx.a, fx.b]))]
+        ) == [
+            Constraint(type_var=fx.ts, op=SUBTYPE_OF, target=TupleType([fx.a, fx.b], fx.std_tuple))
+        ]
 
     def test_basic_type_var_tuple(self) -> None:
         fx = self.fx
         assert infer_constraints(
             Instance(fx.gvi, [UnpackType(fx.ts)]), Instance(fx.gvi, [fx.a, fx.b]), SUPERTYPE_OF
-        ) == [Constraint(type_var=fx.ts, op=SUPERTYPE_OF, target=TypeList([fx.a, fx.b]))]
+        ) == [
+            Constraint(
+                type_var=fx.ts, op=SUPERTYPE_OF, target=TupleType([fx.a, fx.b], fx.std_tuple)
+            )
+        ]
 
     def test_type_var_tuple_with_prefix_and_suffix(self) -> None:
         fx = self.fx
@@ -45,7 +51,9 @@ class ConstraintsSuite(Suite):
             )
         ) == {
             Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.a),
-            Constraint(type_var=fx.ts, op=SUPERTYPE_OF, target=TypeList([fx.b, fx.c])),
+            Constraint(
+                type_var=fx.ts, op=SUPERTYPE_OF, target=TupleType([fx.b, fx.c], fx.std_tuple)
+            ),
             Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.d),
         }
 
