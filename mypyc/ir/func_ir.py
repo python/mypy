@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
     Register,
     Value,
 )
-from mypyc.ir.rtypes import RType, bitmap_rprimitive, deserialize_type, is_fixed_width_rtype
+from mypyc.ir.rtypes import RType, bitmap_rprimitive, deserialize_type
 from mypyc.namegen import NameGenerator
 
 
@@ -113,7 +113,7 @@ class FuncSignature:
 def num_bitmap_args(args: tuple[RuntimeArg, ...]) -> int:
     n = 0
     for arg in args:
-        if is_fixed_width_rtype(arg.type) and arg.kind.is_optional():
+        if arg.type.error_overlap and arg.kind.is_optional():
             n += 1
     return (n + (BITMAP_BITS - 1)) // BITMAP_BITS
 
