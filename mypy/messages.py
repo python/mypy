@@ -1670,17 +1670,16 @@ class MessageBuilder:
                 context,
             )
         else:
+            err_code = codes.TYPPEDICT_UNKNOWN_KEY if setitem else codes.TYPEDDICT_ITEM
             self.fail(
-                f'TypedDict {format_type(typ)} has no key "{item_name}"',
-                context,
-                code=codes.TYPPEDICT_UNKNOWN_KEY if setitem else codes.TYPEDDICT_ITEM,
+                f'TypedDict {format_type(typ)} has no key "{item_name}"', context, code=err_code
             )
             matches = best_matches(item_name, typ.items.keys())
             if matches:
                 self.note(
                     "Did you mean {}?".format(pretty_seq(matches[:3], "or")),
                     context,
-                    code=codes.TYPEDDICT_ITEM,
+                    code=err_code,
                 )
 
     def typeddict_context_ambiguous(self, types: list[TypedDictType], context: Context) -> None:
