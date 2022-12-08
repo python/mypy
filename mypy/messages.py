@@ -1656,12 +1656,12 @@ class MessageBuilder:
         self, typ: TypedDictType, item_name: str, context: Context, setitem: bool = False
     ) -> None:
         """
-            Handles error messages.
+        Handles error messages.
 
-            Note, that we differentiate in between reading a value and setting
-            a value.
-            Setting a value on a TypedDict is an 'unknown-key' error,
-            whereas reading it is the more serious/general 'item' error.
+        Note, that we differentiate in between reading a value and setting
+        a value.
+        Setting a value on a TypedDict is an 'unknown-key' error,
+        whereas reading it is the more serious/general 'item' error.
         """
         if typ.is_anonymous():
             self.fail(
