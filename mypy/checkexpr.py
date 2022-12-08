@@ -790,20 +790,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         orig_callee: Type | None,
     ) -> Type:
         actual_keys = kwargs.keys()
-        found_set = set(actual_keys)
-        if not (callee.required_keys <= found_set <= set(callee.items.keys())):
+        if not (callee.required_keys <= actual_keys <= callee.items.keys()):
             expected_keys = [
                 key
                 for key in callee.items.keys()
-                if key in callee.required_keys or key in found_set
+                if key in callee.required_keys or key in actual_keys
             ]
             self.msg.unexpected_typeddict_keys(
                 callee, expected_keys=expected_keys, actual_keys=list(actual_keys), context=context
             )
-            if callee.required_keys > found_set:
-                # found_set is not a sub-set of the required_keys
-                # This means we're dealing with something weird we can't
-                # properly type
+            if callee.required_keys > actual_keys:
+                # found_set is a sub-set of the required_keys
+                # This means we're missing some keys and as such, we can't
+                # properly type the object
                 return AnyType(TypeOfAny.from_error)
 
         orig_callee = get_proper_type(orig_callee)
