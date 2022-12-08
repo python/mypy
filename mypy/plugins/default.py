@@ -37,12 +37,21 @@ class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        from mypy.plugins import ctypes, singledispatch
+        from mypy.plugins import ctypes, dataclasses, singledispatch
 
         if fullname == "ctypes.Array":
             return ctypes.array_constructor_callback
-        elif fullname == "functools.singledispatch":
+        if fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+        name_pieces = fullname.split(".")
+        if len(name_pieces) == 2 and name_pieces[0] == "dataclasses":
+            callbacks: dict[str, Callable[[FunctionContext], Type]] = {
+                "asdict": dataclasses.asdict_callback,
+                "astuple": dataclasses.astuple_callback,
+                "fields": dataclasses.fields_callback,
+                "replace": dataclasses.replace_callback,
+            }
+            return callbacks.get(name_pieces[1], None)
         return None
 
     def get_method_signature_hook(

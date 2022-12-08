@@ -2001,3 +2001,29 @@ class Bar(Foo): ...
 e: Element[Bar]
 reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
 [builtins fixtures/dataclasses.pyi]
+
+[case testFuncsOnlyTakeDataclassArg]
+# flags: --python-version 3.7
+# Ensure asdict, astuple, fields, and replace methods from dataclasses module only accept
+# a dataclass instance as the first argument.
+# See mypy issue #14215
+from dataclasses import asdict, astuple, dataclass, fields, replace
+
+class Klass:
+    pass
+
+@dataclass
+class DClass:
+    pass
+
+klass = Klass()
+dclass = DClass()
+asdict(dclass)
+astuple(dclass)
+replace(dclass)
+fields(dclass)
+asdict(klass)  # E: asdict() should be called on dataclass instances
+astuple(klass)  # E: astuple() should be called on dataclass instances
+fields(klass)  # E: fields() should be called on dataclass instances
+replace(klass)  # E: replace() should be called on dataclass instances
+[builtins fixtures/dataclasses.pyi]

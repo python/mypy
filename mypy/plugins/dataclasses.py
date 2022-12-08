@@ -30,7 +30,7 @@ from mypy.nodes import (
     TypeVarExpr,
     Var,
 )
-from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import ClassDefContext, FunctionContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_decorator_bool_argument,
     add_attribute_to_class,
@@ -629,6 +629,39 @@ def dataclass_class_maker_callback(ctx: ClassDefContext) -> bool:
     """Hooks into the class typechecking process to add support for dataclasses."""
     transformer = DataclassTransformer(ctx)
     return transformer.transform()
+
+
+def _dataclass_exclusive_function_callback(ctx: FunctionContext, func_name: str) -> Type:
+    """Called for functions that should only be called on dataclasses.
+
+    Functions are (from dataclasses module): asdict, astuple, fields, replace
+    """
+    # Each of asdict, astuple, fields, and replace require the first argument
+    # to be a dataclass
+    arg_type = get_proper_type(ctx.arg_types[0][0])
+    if isinstance(arg_type, Instance) and "dataclass" not in arg_type.type.metadata:
+        ctx.api.msg.fail(f"{func_name}() should be called on dataclass instances", ctx.context)
+    return ctx.default_return_type
+
+
+def asdict_callback(ctx: FunctionContext) -> Type:
+    """Called for dataclasses.asdict."""
+    return _dataclass_exclusive_function_callback(ctx, "asdict")
+
+
+def astuple_callback(ctx: FunctionContext) -> Type:
+    """Called for dataclasses.astuple."""
+    return _dataclass_exclusive_function_callback(ctx, "astuple")
+
+
+def fields_callback(ctx: FunctionContext) -> Type:
+    """Called for dataclasses.fields."""
+    return _dataclass_exclusive_function_callback(ctx, "fields")
+
+
+def replace_callback(ctx: FunctionContext) -> Type:
+    """Called for dataclasses.replace."""
+    return _dataclass_exclusive_function_callback(ctx, "replace")
 
 
 def _collect_field_args(

@@ -1,4 +1,7 @@
-from typing import Any, Callable, Generic, Mapping, Optional, TypeVar, overload, Type
+from typing import (
+    Any, Callable, Generic, Mapping, Optional, TypeVar, overload, Tuple,
+    Type,
+)
 
 _T = TypeVar('_T')
 
@@ -32,3 +35,19 @@ def field(*,
 
 
 class Field(Generic[_T]): pass
+
+@overload
+def asdict(obj: Any) -> dict[str, Any]: ...
+
+@overload
+def asdict(obj: Any, *, dict_factory: Callable[[list[tuple[str, Any]]], _T]) -> _T: ...
+
+@overload
+def astuple(obj: Any) -> Tuple[Any, ...]: ...
+
+@overload
+def astuple(obj: Any, *, tuple_factory: Callable[[list[Any]], _T]) -> _T: ...
+
+def replace(obj: _T, **changes: Any) -> _T: ...
+
+def fields(class_or_instance: Any) -> Tuple[Field[Any], ...]: ...
