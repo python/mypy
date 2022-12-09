@@ -2355,7 +2355,7 @@ class State:
         manager = self.manager
         if manager.errors.is_error_code_enabled(
             codes.POSSIBLY_UNDEFINED
-        ) or manager.errors.is_error_code_enabled(codes.USE_BEFORE_DEF):
+        ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
             manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
             self.tree.accept(
                 PossiblyUndefinedVariableVisitor(

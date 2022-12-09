@@ -192,8 +192,8 @@ REDUNDANT_SELF_TYPE = ErrorCode(
     "General",
     default_enabled=False,
 )
-USE_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
-    "use-before-def",
+USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
+    "used-before-def",
     "Warn about variables that are used before they are defined",
     "General",
     default_enabled=False,

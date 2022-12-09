@@ -253,7 +253,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         x = 1
     print(x)  # Error: "x" may be undefined.
 
-    Example of a use before definition:
+    Example of a used before definition:
     x = y
     y: int = 2
 
@@ -273,7 +273,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             self.tracker.record_definition(name)
 
     def var_used_before_def(self, name: str, context: Context) -> None:
-        if self.msg.errors.is_error_code_enabled(errorcodes.USE_BEFORE_DEF):
+        if self.msg.errors.is_error_code_enabled(errorcodes.USED_BEFORE_DEF):
             self.msg.var_used_before_def(name, context)
 
     def variable_may_be_undefined(self, name: str, context: Context) -> None:
@@ -281,7 +281,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             self.msg.variable_may_be_undefined(name, context)
 
     def process_definition(self, name: str) -> None:
-        # Was this name previously used? If yes, it's a use-before-definition error.
+        # Was this name previously used? If yes, it's a used-before-definition error.
         refs = self.tracker.pop_undefined_ref(name)
         for ref in refs:
             self.var_used_before_def(name, ref)
@@ -488,7 +488,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             # 2. The variable is defined later in the code.
             # Case (1) will be caught by semantic analyzer. Case (2) is a forward ref that should
             # be caught by this visitor. Save the ref for later, so that if we see a definition,
-            # we know it's a use-before-definition scenario.
+            # we know it's a used-before-definition scenario.
             self.tracker.record_undefined_ref(o)
         super().visit_name_expr(o)
 
