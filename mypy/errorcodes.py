@@ -140,8 +140,8 @@ UNREACHABLE: Final = ErrorCode(
 ANNOTATION_UNCHECKED = ErrorCode(
     "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
 )
-PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
-    "partially-defined",
+POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
+    "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",
     "General",
     default_enabled=False,

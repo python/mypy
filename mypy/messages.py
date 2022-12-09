@@ -1229,7 +1229,7 @@ class MessageBuilder:
         self.fail(f'"{member}" undefined in superclass', context)
 
     def variable_may_be_undefined(self, name: str, context: Context) -> None:
-        self.fail(f'Name "{name}" may be undefined', context, code=codes.PARTIALLY_DEFINED)
+        self.fail(f'Name "{name}" may be undefined', context, code=codes.POSSIBLY_UNDEFINED)
 
     def var_used_before_def(self, name: str, context: Context) -> None:
         self.fail(f'Name "{name}" is used before definition', context, code=codes.USE_BEFORE_DEF)
