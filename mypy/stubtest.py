@@ -295,11 +295,10 @@ def _get_imported_symbol_names(runtime: types.ModuleType) -> frozenset[str] | No
     it won't include names imported via `from foo import *` imports.
     """
     try:
-        sourcelines = inspect.getsourcelines(runtime)[0]
+        source = inspect.getsource(runtime)
     except (OSError, TypeError, SyntaxError):
         return None
 
-    source = "".join(sourcelines)
     if not source.strip():
         return None
 
