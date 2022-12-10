@@ -250,6 +250,7 @@ MypyFile:1(
     AssignmentStmt:2(
       NameExpr(x [m])
       IntExpr(1)
+      builtins.int)
     AssignmentStmt:3(
       NameExpr(y* [m])
       NameExpr(x [__main__.A.x]))))
@@ -289,6 +290,7 @@ MypyFile:1(
         AssignmentStmt:3(
           NameExpr(x [m])
           IntExpr(1)
+          builtins.int))
       Else(
         AssignmentStmt:5(
           NameExpr(x [__main__.A.x])
@@ -543,6 +545,7 @@ MypyFile:1(
     AssignmentStmt:3(
       NameExpr(X [m])
       IntExpr(1)
+      builtins.int)
     FuncDef:4(
       f
       Args(

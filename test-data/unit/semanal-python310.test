@@ -10,6 +10,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -30,6 +31,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -51,6 +53,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -80,6 +83,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -101,6 +105,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -123,6 +128,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   AssignmentStmt:2(
     NameExpr(a* [__main__.a])
     IntExpr(1))
@@ -146,6 +152,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -166,6 +173,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -193,6 +201,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   MatchStmt:4(
     NameExpr(x [__main__.x])
     Pattern(

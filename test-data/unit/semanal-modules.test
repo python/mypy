@@ -327,6 +327,7 @@ y = 1
 [file m/n.py]
 x = 1
 [out]
+builtins.int))
 MypyFile:1(
   Import:1(m.n)
   ExpressionStmt:2(
@@ -441,6 +442,7 @@ MypyFile:1(
         NameExpr(m)
         n [m.n])
       b [m.n.b]))
+      builtins.int)
   ExpressionStmt:4(
     MemberExpr:4(
       NameExpr(m)
@@ -621,6 +623,7 @@ from . import z
 [file m/z.py]
 y = 1
 [out]
+builtins.int))
 MypyFile:1(
   Import:1(m.x)
   ExpressionStmt:2(

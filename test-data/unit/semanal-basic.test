@@ -10,6 +10,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   ExpressionStmt:2(
     NameExpr(x [__main__.x])))
 
@@ -27,6 +28,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(z [__main__.z])
     IntExpr(3)
+    builtins.int)
   ExpressionStmt:3(
     TupleExpr:3(
       NameExpr(x [__main__.x])
@@ -63,6 +65,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   FuncDef:4(
     f
     Block:4(
@@ -119,6 +122,7 @@ MypyFile:1(
   AssignmentStmt:4(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   FuncDef:5(
     g
     Block:5(
@@ -136,6 +140,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     IntExpr(2))
@@ -165,6 +170,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   FuncDef:2(
     f
     Block:2(
@@ -500,6 +506,7 @@ MypyFile:1(
   AssignmentStmt:4(
     NameExpr(x [__main__.x] = 1)
     IntExpr(1)
+    Literal[1]?)
   AssignmentStmt:5(
     NameExpr(y* [__main__.y] = 1.0)
     FloatExpr(1.0))
