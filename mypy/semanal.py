@@ -3252,10 +3252,8 @@ class SemanticAnalyzer(
 
         If this is a 'Final' context, we return "Literal[...]" instead.
         """
-        if self.options.semantic_analysis_only or self.function_stack:
-            # Skip this if we're only doing the semantic analysis pass.
-            # This is mostly to avoid breaking unit tests.
-            # Also skip inside a function; this is to avoid confusing
+        if self.function_stack:
+            # Skip inside a function; this is to avoid confusing
             # the code that handles dead code due to isinstance()
             # inside type variables with value restrictions (like
             # AnyStr).
