@@ -3276,8 +3276,6 @@ class SemanticAnalyzer(
             type_name = "builtins.int"
         elif isinstance(value, str):
             type_name = "builtins.str"
-        elif isinstance(value, bytes):
-            type_name = "builtins.bytes"
 
         typ = self.named_type_or_none(type_name)
         if typ and is_final:
@@ -3820,7 +3818,8 @@ class SemanticAnalyzer(
                 var = lvalue.node
                 var.type = typ
                 var.is_ready = True
-                if var.is_final and isinstance(get_proper_type(typ), Instance) and typ.last_known_value:
+                typ = get_proper_type(typ)
+                if var.is_final and isinstance(typ, Instance) and typ.last_known_value:
                     var.final_value = typ.last_known_value.value
             # If node is not a variable, we'll catch it elsewhere.
         elif isinstance(lvalue, TupleExpr):
