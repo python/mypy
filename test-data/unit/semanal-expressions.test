@@ -16,7 +16,7 @@ x.y
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   ExpressionStmt:2(
     MemberExpr:2(
       NameExpr(x [__main__.x])
@@ -81,7 +81,7 @@ not x
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   ExpressionStmt:2(
     UnaryExpr:2(
       -
@@ -188,7 +188,7 @@ a = 0
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [__main__.a])
-    IntExpr(0))
+    IntExpr(0)
   ExpressionStmt:2(
     ListComprehension:2(
       GeneratorExpr:2(
@@ -224,7 +224,7 @@ b = [x for x in a if x]
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [__main__.a])
-    IntExpr(0))
+    IntExpr(0)
   AssignmentStmt:2(
     NameExpr(b* [__main__.b])
     ListComprehension:2(
@@ -241,7 +241,7 @@ a = 0
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [__main__.a])
-    IntExpr(0))
+    IntExpr(0)
   ExpressionStmt:2(
     SetComprehension:2(
       GeneratorExpr:2(
@@ -259,7 +259,7 @@ b = {x for x in a if x}
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [__main__.a])
-    IntExpr(0))
+    IntExpr(0)
   AssignmentStmt:2(
     NameExpr(b* [__main__.b])
     SetComprehension:2(
@@ -276,7 +276,7 @@ a = 0
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [__main__.a])
-    IntExpr(0))
+    IntExpr(0)
   ExpressionStmt:2(
     DictionaryComprehension:2(
       NameExpr(x [l])
@@ -294,7 +294,7 @@ b = {x: x + 1 for x in a if x}
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [__main__.a])
-    IntExpr(0))
+    IntExpr(0)
   AssignmentStmt:2(
     NameExpr(b* [__main__.b])
     DictionaryComprehension:2(
@@ -314,7 +314,7 @@ a = 0
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [__main__.a])
-    IntExpr(0))
+    IntExpr(0)
   ExpressionStmt:2(
     GeneratorExpr:2(
       NameExpr(x [l])
@@ -328,7 +328,7 @@ a = 0
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [__main__.a])
-    IntExpr(0))
+    IntExpr(0)
   ExpressionStmt:2(
     GeneratorExpr:2(
       NameExpr(x [l])
@@ -346,7 +346,7 @@ lambda: x
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(0))
+    IntExpr(0)
   ExpressionStmt:2(
     LambdaExpr:2(
       Block:2(

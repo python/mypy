@@ -9,7 +9,7 @@ x
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   ExpressionStmt:2(
     NameExpr(x [__main__.x])))
 
@@ -26,7 +26,7 @@ MypyFile:1(
     IntExpr(2))
   AssignmentStmt:2(
     NameExpr(z [__main__.z])
-    IntExpr(3))
+    IntExpr(3)
   ExpressionStmt:3(
     TupleExpr:3(
       NameExpr(x [__main__.x])
@@ -62,7 +62,7 @@ MypyFile:1(
       Args()))
   AssignmentStmt:3(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   FuncDef:4(
     f
     Block:4(
@@ -118,7 +118,7 @@ MypyFile:1(
           Args()))))
   AssignmentStmt:4(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   FuncDef:5(
     g
     Block:5(
@@ -135,7 +135,7 @@ def f(y):
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     IntExpr(2))
@@ -164,7 +164,7 @@ x
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   FuncDef:2(
     f
     Block:2(
@@ -499,7 +499,7 @@ MypyFile:1(
         Ellipsis)))
   AssignmentStmt:4(
     NameExpr(x [__main__.x] = 1)
-    IntExpr(1))
+    IntExpr(1)
   AssignmentStmt:5(
     NameExpr(y* [__main__.y] = 1.0)
     FloatExpr(1.0))

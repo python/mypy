@@ -9,7 +9,7 @@ match x:
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -29,7 +29,7 @@ a
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -50,7 +50,7 @@ match x:
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -79,7 +79,7 @@ match x:
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -100,7 +100,7 @@ match x:
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -122,7 +122,7 @@ match x:
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   AssignmentStmt:2(
     NameExpr(a* [__main__.a])
     IntExpr(1))
@@ -145,7 +145,7 @@ match x:
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -165,7 +165,7 @@ match x:
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -192,7 +192,7 @@ MypyFile:1(
   Import:1(_a)
   AssignmentStmt:3(
     NameExpr(x [__main__.x])
-    IntExpr(1))
+    IntExpr(1)
   MatchStmt:4(
     NameExpr(x [__main__.x])
     Pattern(
