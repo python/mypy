@@ -301,6 +301,9 @@ def _is_subtype(
         is_subtype_of_item = any(
             check_item(orig_left, item, subtype_context) for item in right.items
         )
+        if proper_subtype:
+            # This is a hack to avoid some performance issues, see #13821
+            return is_subtype_of_item
         # Recombine rhs literal types, to make an enum type a subtype
         # of a union of all enum items as literal types. Only do it if
         # the previous check didn't succeed, since recombining can be
