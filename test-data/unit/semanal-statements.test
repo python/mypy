@@ -272,7 +272,7 @@ else:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   IfStmt:2(
     If(
@@ -326,7 +326,7 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     IntExpr(1))
   AssignmentStmt:2(
-    NameExpr(xx* [__main__.xx])
+    NameExpr(xx [__main__.xx])
     IntExpr(1))
   AssignmentStmt:3(
     MemberExpr:3(
@@ -408,7 +408,7 @@ MypyFile:1(
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
     TupleExpr:2(
@@ -436,7 +436,7 @@ y, x = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
     TupleExpr:2(
@@ -450,7 +450,7 @@ y, (x, z) = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
     TupleExpr:2(
@@ -468,7 +468,7 @@ if x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   IfStmt:2(
     If(
@@ -510,7 +510,7 @@ del x
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   DelStmt:2(
     NameExpr(x [__main__.x])))
@@ -961,7 +961,7 @@ MypyFile:1(
     Block:2(
       PassStmt:2()))
   AssignmentStmt:3(
-    NameExpr(x'* [__main__.x'])
+    NameExpr(x' [__main__.x'])
     IntExpr(0))
   ExpressionStmt:4(
     CallExpr:4(
@@ -993,7 +993,7 @@ MypyFile:1(
     Block:2(
       PassStmt:2()))
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(0))
   ExpressionStmt:4(
     CallExpr:4(
@@ -1046,7 +1046,7 @@ x = ''
 [out]
 MypyFile:1(
   AssignmentStmt:2(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(0))
   ExpressionStmt:3(
     NameExpr(x [__main__.x]))

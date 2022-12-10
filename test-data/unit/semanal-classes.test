@@ -248,7 +248,7 @@ MypyFile:1(
   ClassDef:1(
     A
     AssignmentStmt:2(
-      NameExpr(x* [m])
+      NameExpr(x [m])
       IntExpr(1))
     AssignmentStmt:3(
       NameExpr(y* [m])
@@ -287,7 +287,7 @@ MypyFile:1(
         NameExpr(A [__main__.A]))
       Then(
         AssignmentStmt:3(
-          NameExpr(x* [m])
+          NameExpr(x [m])
           IntExpr(1)))
       Else(
         AssignmentStmt:5(
@@ -541,7 +541,7 @@ MypyFile:1(
   ClassDef:2(
     A
     AssignmentStmt:3(
-      NameExpr(X* [m])
+      NameExpr(X [m])
       IntExpr(1))
     FuncDef:4(
       f

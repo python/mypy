@@ -8,7 +8,7 @@ x
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   ExpressionStmt:2(
     NameExpr(x [__main__.x])))
@@ -25,7 +25,7 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     IntExpr(2))
   AssignmentStmt:2(
-    NameExpr(z* [__main__.z])
+    NameExpr(z [__main__.z])
     IntExpr(3))
   ExpressionStmt:3(
     TupleExpr:3(
@@ -61,7 +61,7 @@ MypyFile:1(
       NameExpr(f [__main__.f])
       Args()))
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   FuncDef:4(
     f
@@ -117,7 +117,7 @@ MypyFile:1(
           NameExpr(g [__main__.g])
           Args()))))
   AssignmentStmt:4(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   FuncDef:5(
     g
@@ -134,7 +134,7 @@ def f(y):
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
@@ -163,7 +163,7 @@ x
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     IntExpr(1))
   FuncDef:2(
     f
@@ -498,7 +498,7 @@ MypyFile:1(
       ExpressionStmt:3(
         Ellipsis)))
   AssignmentStmt:4(
-    NameExpr(x* [__main__.x] = 1)
+    NameExpr(x [__main__.x] = 1)
     IntExpr(1))
   AssignmentStmt:5(
     NameExpr(y* [__main__.y] = 1.0)
