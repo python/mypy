@@ -312,6 +312,8 @@ class TestRun(MypycDataSuite):
             stderr=subprocess.STDOUT,
             env=env,
         )
+        if sys.version_info >= (3, 12):
+            proc.wait(timeout=30)
         output = proc.communicate()[0].decode("utf8")
         outlines = output.splitlines()
 
