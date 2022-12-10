@@ -29,7 +29,6 @@ from mypy.types import (
     Type,
     TypeAliasType,
     TypedDictType,
-    TypeList,
     TypeOfAny,
     TypeQuery,
     TypeType,
@@ -135,7 +134,13 @@ def infer_constraints_for_callable(
 
             unpacked_type = get_proper_type(unpack_type.type)
             if isinstance(unpacked_type, TypeVarTupleType):
-                constraints.append(Constraint(unpacked_type, SUPERTYPE_OF, TypeList(actual_types)))
+                constraints.append(
+                    Constraint(
+                        unpacked_type,
+                        SUPERTYPE_OF,
+                        TupleType(actual_types, unpacked_type.tuple_fallback),
+                    )
+                )
             elif isinstance(unpacked_type, TupleType):
                 # Prefixes get converted to positional args, so technically the only case we
                 # should have here is like Tuple[Unpack[Ts], Y1, Y2, Y3]. If this turns out
@@ -147,12 +152,13 @@ def infer_constraints_for_callable(
                 suffix_len = len(unpacked_type.items) - 1
                 constraints.append(
                     Constraint(
-                        inner_unpacked_type, SUPERTYPE_OF, TypeList(actual_types[:-suffix_len])
+                        inner_unpacked_type,
+                        SUPERTYPE_OF,
+                        TupleType(actual_types[:-suffix_len], inner_unpacked_type.tuple_fallback),
                     )
                 )
             else:
                 assert False, "mypy bug: unhandled constraint inference case"
-
         else:
             for actual in actuals:
                 actual_arg_type = arg_types[actual]
@@ -640,7 +646,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(instance_unpack, TypeVarTupleType):
                             res.append(
                                 Constraint(
-                                    instance_unpack, SUBTYPE_OF, TypeList(list(mapped_middle))
+                                    instance_unpack,
+                                    SUBTYPE_OF,
+                                    TupleType(list(mapped_middle), instance_unpack.tuple_fallback),
                                 )
                             )
                         elif (
@@ -742,7 +750,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(template_unpack, TypeVarTupleType):
                             res.append(
                                 Constraint(
-                                    template_unpack, SUPERTYPE_OF, TypeList(list(mapped_middle))
+                                    template_unpack,
+                                    SUPERTYPE_OF,
+                                    TupleType(list(mapped_middle), template_unpack.tuple_fallback),
                                 )
                             )
                         elif (

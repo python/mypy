@@ -39,10 +39,10 @@ understand, debug, and maintain.
 
 .. note::
 
-   Mypy is used in production by many companies and projects, but mypy is
-   officially beta software. There will be occasional changes
+   Although mypy is production ready, there will be occasional changes
    that break backward compatibility. The mypy development team tries to
-   minimize the impact of changes to user code.
+   minimize the impact of changes to user code. In case of a major breaking
+   change, mypy's major version will be bumped.
 
 Contents
 --------

@@ -364,7 +364,8 @@ class Emitter:
         self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str, clear: bool
     ) -> None:
         if value:
-            self.emit_line(f"if (unlikely({value} == {self.c_undefined_value(rtype)})) {{")
+            check = self.error_value_check(rtype, value, "==")
+            self.emit_line(f"if (unlikely({check})) {{")
         index = cl.bitmap_attrs.index(attr)
         mask = 1 << (index & (BITMAP_BITS - 1))
         bitmap = self.attr_bitmap_expr(obj, cl, index)
@@ -389,16 +390,10 @@ class Emitter:
         *,
         unlikely: bool = False,
     ) -> None:
-        if isinstance(rtype, RTuple):
-            check = "{}".format(
-                self.tuple_undefined_check_cond(rtype, attr_expr, self.c_undefined_value, compare)
-            )
-        else:
-            undefined = self.c_undefined_value(rtype)
-            check = f"{attr_expr} {compare} {undefined}"
+        check = self.error_value_check(rtype, attr_expr, compare)
         if unlikely:
             check = f"unlikely({check})"
-        if is_fixed_width_rtype(rtype):
+        if rtype.error_overlap:
             index = cl.bitmap_attrs.index(attr)
             bit = 1 << (index & (BITMAP_BITS - 1))
             attr = self.bitmap_field(index)
@@ -406,25 +401,47 @@ class Emitter:
             check = f"{check} && !(({obj_expr})->{attr} & {bit})"
         self.emit_line(f"if ({check}) {{")
 
+    def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
+        if isinstance(rtype, RTuple):
+            return self.tuple_undefined_check_cond(
+                rtype, value, self.c_error_value, compare, check_exception=False
+            )
+        else:
+            return f"{value} {compare} {self.c_error_value(rtype)}"
+
     def tuple_undefined_check_cond(
         self,
         rtuple: RTuple,
         tuple_expr_in_c: str,
         c_type_compare_val: Callable[[RType], str],
         compare: str,
+        *,
+        check_exception: bool = True,
     ) -> str:
         if len(rtuple.types) == 0:
             # empty tuple
             return "{}.empty_struct_error_flag {} {}".format(
                 tuple_expr_in_c, compare, c_type_compare_val(int_rprimitive)
             )
-        item_type = rtuple.types[0]
+        if rtuple.error_overlap:
+            i = 0
+            item_type = rtuple.types[0]
+        else:
+            for i, typ in enumerate(rtuple.types):
+                if not typ.error_overlap:
+                    item_type = rtuple.types[i]
+                    break
+            else:
+                assert False, "not expecting tuple with error overlap"
         if isinstance(item_type, RTuple):
             return self.tuple_undefined_check_cond(
-                item_type, tuple_expr_in_c + ".f0", c_type_compare_val, compare
+                item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
         else:
-            return f"{tuple_expr_in_c}.f0 {compare} {c_type_compare_val(item_type)}"
+            check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
+            if rtuple.error_overlap and check_exception:
+                check += " && PyErr_Occurred()"
+            return check
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
         return "tuple_undefined_" + rtuple.unique_id
@@ -986,18 +1003,18 @@ class Emitter:
 
     def emit_error_check(self, value: str, rtype: RType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""
-        if is_fixed_width_rtype(rtype):
-            # The error value is also valid as a normal value, so we need to also check
-            # for a raised exception.
-            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
-        elif not isinstance(rtype, RTuple):
-            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
-        else:
+        if isinstance(rtype, RTuple):
             if len(rtype.types) == 0:
                 return  # empty tuples can't fail.
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif rtype.error_overlap:
+            # The error value is also valid as a normal value, so we need to also check
+            # for a raised exception.
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
+        else:
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
         self.emit_lines(failure, "}")
 
     def emit_gc_visit(self, target: str, rtype: RType) -> None:
