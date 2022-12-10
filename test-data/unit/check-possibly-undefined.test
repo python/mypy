@@ -1,5 +1,5 @@
 [case testDefinedInOneBranch]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 if int():
     a = 1
 else:
@@ -8,7 +8,7 @@ z = a + 1  # E: Name "a" may be undefined
 z = a + 1  # We only report the error on first occurrence.
 
 [case testElif]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 if int():
     a = 1
 elif int():
@@ -19,14 +19,14 @@ else:
 z = a + 1  # E: Name "a" may be undefined
 
 [case testUsedInIf]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 if int():
     y = 1
 if int():
     x = y  # E: Name "y" may be undefined
 
 [case testDefinedInAllBranches]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 if int():
     a = 1
 elif int():
@@ -36,13 +36,13 @@ else:
 z = a + 1
 
 [case testOmittedElse]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 if int():
     a = 1
 z = a + 1  # E: Name "a" may be undefined
 
 [case testUpdatedInIf]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 # Variable a is already defined. Just updating it in an "if" is acceptable.
 a = 1
 if int():
@@ -50,7 +50,7 @@ if int():
 z = a + 1
 
 [case testNestedIf]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 if int():
     if int():
         a = 1
@@ -65,7 +65,7 @@ else:
 z = a + b  # E: Name "a" may be undefined
 
 [case testVeryNestedIf]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 if int():
     if int():
         if int():
@@ -81,7 +81,7 @@ else:
 z = a + b  # E: Name "a" may be undefined
 
 [case testTupleUnpack]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 
 if int():
     (x, y) = (1, 2)
@@ -91,7 +91,7 @@ a = y + x  # E: Name "x" may be undefined
 a = y + z  # E: Name "z" may be undefined
 
 [case testIndexExpr]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 
 if int():
     *x, y = (1, 2)
@@ -101,7 +101,7 @@ a = x  # No error.
 b = y  # E: Name "y" may be undefined
 
 [case testRedefined]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 y = 3
 if int():
     if int():
@@ -115,7 +115,7 @@ else:
 x = y + 2
 
 [case testFunction]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f0() -> None:
     if int():
         def some_func() -> None:
@@ -134,21 +134,21 @@ def f1() -> None:
     some_func()  # No error.
 
 [case testLambda]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f0(b: bool) -> None:
     if b:
         fn = lambda: 2
     y = fn   # E: Name "fn" may be undefined
 
-[case testUseBeforeDefClass]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+[case testUsedBeforeDefClass]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f(x: A):  # No error here.
     pass
 y = A()  # E: Name "A" is used before definition
 class A: pass
 
 [case testClassScope]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 class C:
     x = 0
     def f0(self) -> None: pass
@@ -163,26 +163,26 @@ y = x  # E: Name "x" is used before definition
 x = 1
 
 [case testClassInsideFunction]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f() -> None:
     class C: pass
 
 c = C()  # E: Name "C" is used before definition
 class C: pass
 
-[case testUseBeforeDefFunc]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+[case testUsedBeforeDefFunc]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 foo() # E: Name "foo" is used before definition
 def foo(): pass
 [case testGenerator]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 if int():
     a = 3
 s = [a + 1 for a in [1, 2, 3]]
 x = a  # E: Name "a" may be undefined
 
 [case testScope]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def foo() -> None:
     if int():
         y = 2
@@ -192,7 +192,7 @@ if int():
 x = y  # E: Name "y" may be undefined
 
 [case testVarDefinedInOuterScopeUpdated]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f0() -> None:
     global x
     y = x
@@ -201,7 +201,7 @@ def f0() -> None:
 x = 2
 
 [case testNonlocalVar]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f0() -> None:
     x = 2
 
@@ -212,7 +212,7 @@ def f0() -> None:
 
 
 [case testGlobalDeclarationAfterUsage]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f0() -> None:
     y = x  # E: Name "x" is used before definition
     global x
@@ -220,7 +220,7 @@ def f0() -> None:
 
 x = 2
 [case testVarDefinedInOuterScope]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f0() -> None:
   global x
   y = x  # We do not detect such errors right now.
@@ -228,21 +228,21 @@ def f0() -> None:
 f0()
 x = 1
 [case testDefinedInOuterScopeNoError]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def foo() -> None:
     bar()
 
 def bar() -> None:
     foo()
 [case testFuncParams]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def foo(a: int) -> None:
     if int():
         a = 2
     x = a
 
 [case testWhile]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 while int():
     a = 1
 
@@ -289,7 +289,7 @@ y = f  # E: Name "f" may be undefined
 y = g
 
 [case testForLoop]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 for x in [1, 2, 3]:
     if x:
         x = 1
@@ -300,7 +300,7 @@ else:
 a = z + y  # E: Name "y" may be undefined
 
 [case testReturn]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f1() -> int:
     if int():
         x = 1
@@ -351,8 +351,8 @@ def f6() -> int:
         return x
     return x  # E: Name "x" may be undefined
 
-[case testDefinedDifferentBranchUseBeforeDef]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+[case testDefinedDifferentBranchUsedBeforeDef]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 
 def f0() -> None:
     if int():
@@ -382,8 +382,8 @@ def f2() -> None:
             x = 2
         w = x  # No error.
 
-[case testDefinedDifferentBranchPartiallyDefined]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+[case testDefinedDifferentBranchPossiblyUndefined]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 
 def f0() -> None:
     first_iter = True
@@ -424,7 +424,7 @@ def f3() -> None:
         y = x  # E: Name "x" may be undefined
 
 [case testAssert]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f1() -> int:
     if int():
         x = 1
@@ -442,7 +442,7 @@ def f2() -> int:
     return x  # E: Name "x" may be undefined
 
 [case testRaise]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f1() -> int:
     if int():
         x = 1
@@ -461,7 +461,7 @@ def f2() -> int:
 [builtins fixtures/exception.pyi]
 
 [case testContinue]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f1() -> int:
     while int():
         if int():
@@ -495,7 +495,7 @@ def f3() -> None:
         y = x
 
 [case testBreak]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f1() -> None:
     while int():
         if int():
@@ -526,7 +526,7 @@ def f3() -> None:
     z = x  # E: Name "x" may be undefined
 
 [case testNoReturn]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 
 from typing import NoReturn
 def fail() -> NoReturn:
@@ -545,7 +545,7 @@ def f() -> None:
     z = x
 
 [case testDictComprehension]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 
 def f() -> None:
     for _ in [1, 2]:
@@ -562,7 +562,7 @@ def f() -> None:
 [builtins fixtures/dict.pyi]
 
 [case testWithStmt]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 from contextlib import contextmanager
 
 @contextmanager
@@ -582,7 +582,7 @@ def f() -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachable]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 import typing
 
 if typing.TYPE_CHECKING:
@@ -600,8 +600,8 @@ else:
 a = z
 [typing fixtures/typing-medium.pyi]
 
-[case testUseBeforeDef]
-# flags: --enable-error-code use-before-def
+[case testUsedBeforeDef]
+# flags: --enable-error-code used-before-def
 
 def f0() -> None:
     x = y  # E: Name "y" is used before definition
@@ -611,7 +611,7 @@ def f2() -> None:
     if int():
         pass
     else:
-        # No use-before-def error.
+        # No used-before-def error.
         y = z  # E: Name "z" is not defined
 
     def inner2() -> None:
@@ -632,8 +632,8 @@ def f4() -> None:
         x = z  # E: Name "z" is used before definition
     z: int = 2
 
-[case testUseBeforeDefImportsBasic]
-# flags: --enable-error-code use-before-def
+[case testUsedBeforeDefImportsBasic]
+# flags: --enable-error-code used-before-def
 import foo  # type: ignore
 import x.y  # type: ignore
 
@@ -653,8 +653,8 @@ def f3() -> None:
     a = x.y  # No error.
     x: int = 1
 
-[case testUseBeforeDefImportBasicRename]
-# flags: --enable-error-code use-before-def
+[case testUsedBeforeDefImportBasicRename]
+# flags: --enable-error-code used-before-def
 import x.y as z  # type: ignore
 from typing import Any
 
@@ -674,16 +674,16 @@ def f3() -> None:
     a = y  # E: Name "y" is used before definition
     y: int = 1
 
-[case testUseBeforeDefImportFrom]
-# flags: --enable-error-code use-before-def
+[case testUsedBeforeDefImportFrom]
+# flags: --enable-error-code used-before-def
 from foo import x  # type: ignore
 
 def f0() -> None:
     a = x  # No error.
     x: int = 1
 
-[case testUseBeforeDefImportFromRename]
-# flags: --enable-error-code use-before-def
+[case testUsedBeforeDefImportFromRename]
+# flags: --enable-error-code used-before-def
 from foo import x as y  # type: ignore
 
 def f0() -> None:
@@ -694,8 +694,8 @@ def f1() -> None:
     a = x  # E: Name "x" is used before definition
     x: int = 1
 
-[case testUseBeforeDefFunctionDeclarations]
-# flags: --enable-error-code use-before-def
+[case testUsedBeforeDefFunctionDeclarations]
+# flags: --enable-error-code used-before-def
 
 def f0() -> None:
     def inner() -> None:
@@ -704,30 +704,30 @@ def f0() -> None:
     inner()  # No error.
     inner = lambda: None
 
-[case testUseBeforeDefBuiltins]
-# flags: --enable-error-code use-before-def
+[case testUsedBeforeDefBuiltins]
+# flags: --enable-error-code used-before-def
 
 def f0() -> None:
     s = type(123)
     type = "abc"
     a = type
 
-[case testUseBeforeDefImplicitModuleAttrs]
-# flags: --enable-error-code use-before-def
+[case testUsedBeforeDefImplicitModuleAttrs]
+# flags: --enable-error-code used-before-def
 a = __name__  # No error.
 __name__ = "abc"
 
 [case testUntypedDef]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 
 def f():
     if int():
         x = 0
-    z = y  # No use-before-def error because def is untyped.
-    y = x  # No partially-defined error because def is untyped.
+    z = y  # No used-before-def error because def is untyped.
+    y = x  # No possibly-undefined error because def is untyped.
 
 [case testUntypedDefCheckUntypedDefs]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def --check-untyped-defs
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def --check-untyped-defs
 
 def f():
     if int():

@@ -104,7 +104,7 @@ class BranchStatement:
         assert len(self.branches) > 0
         self.branches[-1].skipped = True
 
-    def is_partially_defined(self, name: str) -> bool:
+    def is_possibly_undefined(self, name: str) -> bool:
         assert len(self.branches) > 0
         return name in self.branches[-1].may_be_defined
 
@@ -213,10 +213,10 @@ class DefinedVariableTracker:
         assert len(self.scopes) > 0
         return self._scope().pop_undefined_ref(name)
 
-    def is_partially_defined(self, name: str) -> bool:
+    def is_possibly_undefined(self, name: str) -> bool:
         assert len(self._scope().branch_stmts) > 0
         # A variable is undefined if it's in a set of `may_be_defined` but not in `must_be_defined`.
-        return self._scope().branch_stmts[-1].is_partially_defined(name)
+        return self._scope().branch_stmts[-1].is_possibly_undefined(name)
 
     def is_defined_in_different_branch(self, name: str) -> bool:
         """This will return true if a variable is defined in a branch that's not the current branch."""
@@ -243,7 +243,7 @@ class Loop:
         self.has_break = False
 
 
-class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
+class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
     """Detects the following cases:
     - A variable that's defined only part of the time.
     - If a variable is used before definition
@@ -253,7 +253,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
         x = 1
     print(x)  # Error: "x" may be undefined.
 
-    Example of a use before definition:
+    Example of a used before definition:
     x = y
     y: int = 2
 
@@ -273,15 +273,15 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             self.tracker.record_definition(name)
 
     def var_used_before_def(self, name: str, context: Context) -> None:
-        if self.msg.errors.is_error_code_enabled(errorcodes.USE_BEFORE_DEF):
+        if self.msg.errors.is_error_code_enabled(errorcodes.USED_BEFORE_DEF):
             self.msg.var_used_before_def(name, context)
 
     def variable_may_be_undefined(self, name: str, context: Context) -> None:
-        if self.msg.errors.is_error_code_enabled(errorcodes.PARTIALLY_DEFINED):
+        if self.msg.errors.is_error_code_enabled(errorcodes.POSSIBLY_UNDEFINED):
             self.msg.variable_may_be_undefined(name, context)
 
     def process_definition(self, name: str) -> None:
-        # Was this name previously used? If yes, it's a use-before-definition error.
+        # Was this name previously used? If yes, it's a used-before-definition error.
         refs = self.tracker.pop_undefined_ref(name)
         for ref in refs:
             self.var_used_before_def(name, ref)
@@ -471,7 +471,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_name_expr(self, o: NameExpr) -> None:
         if refers_to_builtin(o):
             return
-        if self.tracker.is_partially_defined(o.name):
+        if self.tracker.is_possibly_undefined(o.name):
             # A variable is only defined in some branches.
             self.variable_may_be_undefined(o.name, o)
             # We don't want to report the error on the same variable multiple times.
@@ -488,7 +488,7 @@ class PartiallyDefinedVariableVisitor(ExtendedTraverserVisitor):
             # 2. The variable is defined later in the code.
             # Case (1) will be caught by semantic analyzer. Case (2) is a forward ref that should
             # be caught by this visitor. Save the ref for later, so that if we see a definition,
-            # we know it's a use-before-definition scenario.
+            # we know it's a used-before-definition scenario.
             self.tracker.record_undefined_ref(o)
         super().visit_name_expr(o)
 
