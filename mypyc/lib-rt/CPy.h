@@ -499,13 +499,8 @@ static inline bool CPy_KeepPropagating(void) {
 }
 // We want to avoid the public PyErr_GetExcInfo API for these because
 // it requires a bunch of spurious refcount traffic on the parts of
-// the triple we don't care about. Unfortunately the layout of the
-// data structure changed in 3.7 so we need to handle that.
-#if PY_VERSION_HEX >= 0x03070000
+// the triple we don't care about.
 #define CPy_ExcState() PyThreadState_GET()->exc_info
-#else
-#define CPy_ExcState() PyThreadState_GET()
-#endif
 
 void CPy_Raise(PyObject *exc);
 void CPy_Reraise(void);
