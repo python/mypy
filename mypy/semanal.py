@@ -3819,7 +3819,7 @@ class SemanticAnalyzer(
                 var.type = typ
                 var.is_ready = True
                 typ = get_proper_type(typ)
-                if var.is_final and isinstance(typ, Instance) and typ.last_known_value:
+                if var.is_final and isinstance(typ, Instance) and typ.last_known_value and (not self.type or not self.type.is_enum):
                     var.final_value = typ.last_known_value.value
             # If node is not a variable, we'll catch it elsewhere.
         elif isinstance(lvalue, TupleExpr):
