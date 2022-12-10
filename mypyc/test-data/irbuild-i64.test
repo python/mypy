@@ -1663,3 +1663,23 @@ L1:
     x = 12
 L2:
     return 1
+
+[case testI64NegativeFinalConstant]
+from typing_extensions import Final
+from mypy_extensions import i64
+
+X: Final = -1
+Y: Final = -(1 + 3*2)
+
+def f() -> i64:
+    return X
+
+def g() -> i64:
+    return X + Y
+[out]
+def f():
+L0:
+    return -1
+def g():
+L0:
+    return -8

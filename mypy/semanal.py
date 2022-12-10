@@ -66,6 +66,7 @@ from mypy.messages import (
     pretty_seq,
 )
 from mypy.mro import MroError, calculate_mro
+from mypy.constant_fold import constant_fold_expr
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -3138,7 +3139,6 @@ class SemanticAnalyzer(
                 node = s.lvalues[0].node
                 if isinstance(node, Var):
                     node.is_final = True
-                    node.final_value = self.unbox_literal(s.rvalue)
                     if self.is_class_scope() and (
                         isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs
                     ):
@@ -3198,13 +3198,6 @@ class SemanticAnalyzer(
                 res.append(lv)
         return res
 
-    def unbox_literal(self, e: Expression) -> int | float | bool | str | None:
-        if isinstance(e, (IntExpr, FloatExpr, StrExpr)):
-            return e.value
-        elif isinstance(e, NameExpr) and e.name in ("True", "False"):
-            return True if e.name == "True" else False
-        return None
-
     def process_type_annotation(self, s: AssignmentStmt) -> None:
         """Analyze type annotation or infer simple literal type."""
         if s.type:
@@ -3259,7 +3252,9 @@ class SemanticAnalyzer(
 
     def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Type | None:
         """Return builtins.int if rvalue is an int literal, etc.
-        If this is a 'Final' context, we return "Literal[...]" instead."""
+
+        If this is a 'Final' context, we return "Literal[...]" instead.
+        """
         if self.options.semantic_analysis_only or self.function_stack:
             # Skip this if we're only doing the semantic analysis pass.
             # This is mostly to avoid breaking unit tests.
@@ -3271,27 +3266,25 @@ class SemanticAnalyzer(
         if isinstance(rvalue, FloatExpr):
             return self.named_type_or_none("builtins.float")
 
-        value: LiteralValue | None = None
-        type_name: str | None = None
-        if isinstance(rvalue, IntExpr):
-            value, type_name = rvalue.value, "builtins.int"
-        if isinstance(rvalue, StrExpr):
-            value, type_name = rvalue.value, "builtins.str"
-        if isinstance(rvalue, BytesExpr):
-            value, type_name = rvalue.value, "builtins.bytes"
+        value = constant_fold_expr(rvalue, self.cur_mod_id)
+        if value is None:
+            return None
 
-        if type_name is not None:
-            assert value is not None
-            typ = self.named_type_or_none(type_name)
-            if typ and is_final:
-                return typ.copy_modified(
-                    last_known_value=LiteralType(
-                        value=value, fallback=typ, line=typ.line, column=typ.column
-                    )
-                )
-            return typ
+        if isinstance(value, bool):
+            type_name = "builtins.bool"
+        elif isinstance(value, int):
+            type_name = "builtins.int"
+        elif isinstance(value, str):
+            type_name = "builtins.str"
+        elif isinstance(value, bytes):
+            type_name = "builtins.bytes"
 
-        return None
+        typ = self.named_type_or_none(type_name)
+        if typ and is_final:
+            return typ.copy_modified(
+                last_known_value=LiteralType(value=value, fallback=typ)
+            )
+        return typ
 
     def analyze_alias(
         self, name: str, rvalue: Expression, allow_placeholder: bool = False
@@ -3827,6 +3820,8 @@ class SemanticAnalyzer(
                 var = lvalue.node
                 var.type = typ
                 var.is_ready = True
+                if var.is_final and isinstance(get_proper_type(typ), Instance) and typ.last_known_value:
+                    var.final_value = typ.last_known_value.value
             # If node is not a variable, we'll catch it elsewhere.
         elif isinstance(lvalue, TupleExpr):
             typ = get_proper_type(typ)
