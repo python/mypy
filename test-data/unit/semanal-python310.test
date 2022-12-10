@@ -130,8 +130,9 @@ MypyFile:1(
     IntExpr(1)
     builtins.int)
   AssignmentStmt:2(
-    NameExpr(a* [__main__.a])
-    IntExpr(1))
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:3(
     NameExpr(x [__main__.x])
     Pattern(

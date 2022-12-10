@@ -18,6 +18,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(y [x.y])
     IntExpr(1)
+    builtins.int))
 
 [case testImportedNameInType]
 import m
@@ -53,6 +54,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(y [m.y])
     IntExpr(1)
+    builtins.int))
 
 [case testImportFromType]
 from m import c
@@ -327,7 +329,6 @@ y = 1
 [file m/n.py]
 x = 1
 [out]
-builtins.int))
 MypyFile:1(
   Import:1(m.n)
   ExpressionStmt:2(
@@ -345,6 +346,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [m.n.x])
     IntExpr(1)
+    builtins.int))
 
 [case testImportFromSubmodule]
 from m._n import x
@@ -442,7 +444,6 @@ MypyFile:1(
         NameExpr(m)
         n [m.n])
       b [m.n.b]))
-      builtins.int)
   ExpressionStmt:4(
     MemberExpr:4(
       NameExpr(m)
@@ -452,6 +453,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [m.n.k.x])
     IntExpr(1)
+    builtins.int))
 
 [case testImportInSubmodule]
 import m._n
@@ -613,6 +615,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(y [x.y])
     IntExpr(1)
+    builtins.int))
 
 [case testRelativeImport0]
 import m.x
@@ -623,7 +626,6 @@ from . import z
 [file m/z.py]
 y = 1
 [out]
-builtins.int))
 MypyFile:1(
   Import:1(m.x)
   ExpressionStmt:2(
@@ -642,6 +644,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(y [m.z.y])
     IntExpr(1)
+    builtins.int))
 
 [case testRelativeImport1]
 import m.t.b as b
@@ -678,11 +681,13 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(y [m.x.y])
     IntExpr(1)
+    builtins.int))
 MypyFile:1(
   tmp/m/z.py
   AssignmentStmt:1(
-    NameExpr(y* [m.z.y])
-    IntExpr(3)))
+    NameExpr(y [m.z.y])
+    IntExpr(3)
+    builtins.int))
 
 [case testRelativeImport2]
 import m.t.b as b
@@ -717,11 +722,13 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(y [m.x.y])
     IntExpr(1)
+    builtins.int))
 MypyFile:1(
   tmp/m/z.py
   AssignmentStmt:1(
-    NameExpr(y* [m.z.y])
-    IntExpr(3)))
+    NameExpr(y [m.z.y])
+    IntExpr(3)
+    builtins.int))
 
 [case testRelativeImport3]
 import m.t
@@ -767,6 +774,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(zy [m.z.zy])
     IntExpr(3)
+    builtins.int))
 
 [case testRelativeImportFromSameModule]
 import m.x
@@ -919,3 +927,4 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a [x.a])
     IntExpr(1)
+    builtins.int))

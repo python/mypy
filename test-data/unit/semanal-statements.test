@@ -325,11 +325,11 @@ MypyFile:1(
     Lvalues(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
-      IntExpr(1))
-    IntExpr(1)
+    IntExpr(1))
   AssignmentStmt:2(
     NameExpr(xx [__main__.xx])
-    IntExpr(1))
+    IntExpr(1)
+    builtins.int)
   AssignmentStmt:3(
     MemberExpr:3(
       NameExpr(x [__main__.x])
@@ -505,7 +505,6 @@ MypyFile:1(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
     IntExpr(1))
-    builtins.int)
   DelStmt:2(
     IndexExpr:2(
       NameExpr(x [__main__.x])
@@ -519,6 +518,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
+    builtins.int)
   DelStmt:2(
     NameExpr(x [__main__.x])))
 
@@ -977,8 +977,9 @@ MypyFile:1(
       Args(
         NameExpr(x' [__main__.x']))))
   AssignmentStmt:5(
-    NameExpr(x* [__main__.x])
-    StrExpr())
+    NameExpr(x [__main__.x])
+    StrExpr()
+    builtins.str)
   ExpressionStmt:6(
     CallExpr:6(
       NameExpr(f [__main__.f])
@@ -1003,6 +1004,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(x [__main__.x])
     IntExpr(0)
+    builtins.int)
   ExpressionStmt:4(
     CallExpr:4(
       NameExpr(f [__main__.f])
@@ -1062,8 +1064,9 @@ MypyFile:1(
   ClassDef:4(
     A
     AssignmentStmt:5(
-      NameExpr(x* [m])
-      IntExpr(1)))
+      NameExpr(x [m])
+      IntExpr(1)
+      builtins.int))
   AssignmentStmt:6(
     NameExpr(x [__main__.x])
     StrExpr()))
