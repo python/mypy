@@ -22,7 +22,7 @@ extern "C" {
 
 /////////////////////////////////////////
 // Adapted from bltinmodule.c in Python 3.7.0
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 7
+#if PY_VERSION_HEX >= 0x03070000
 _Py_IDENTIFIER(__mro_entries__);
 static PyObject*
 update_bases(PyObject *bases)
@@ -105,7 +105,7 @@ update_bases(PyObject *bases)
 #endif
 
 // From Python 3.7's typeobject.c
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
+#if PY_VERSION_HEX >= 0x03060000
 _Py_IDENTIFIER(__init_subclass__);
 static int
 init_subclass(PyTypeObject *type, PyObject *kwds)
@@ -306,7 +306,7 @@ list_count(PyListObject *self, PyObject *value)
     return CPyTagged_ShortFromSsize_t(count);
 }
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 8
+#if PY_VERSION_HEX < 0x03080000
 static PyObject *
 _PyDict_GetItemStringWithError(PyObject *v, const char *key)
 {
@@ -321,11 +321,11 @@ _PyDict_GetItemStringWithError(PyObject *v, const char *key)
 }
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 6
+#if PY_VERSION_HEX < 0x03060000
 /* _PyUnicode_EqualToASCIIString got added in 3.5.3 (argh!) so we can't actually know
  * whether it will be present at runtime, so we just assume we don't have it in 3.5. */
 #define CPyUnicode_EqualToASCIIString(x, y) (PyUnicode_CompareWithASCIIString((x), (y)) == 0)
-#elif PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
+#elif PY_VERSION_HEX >= 0x03060000
 #define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
 #endif
 
@@ -390,7 +390,7 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 }
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >=10
+#if PY_VERSION_HEX >= 0x030A0000  // 3.10
 static int
 _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     PyObject *tmp = NULL;
@@ -404,7 +404,7 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
 #define _CPyObject_HasAttrId _PyObject_HasAttrId
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 9
+#if PY_VERSION_HEX < 0x03090000
 // OneArgs and NoArgs functions got added in 3.9
 #define _PyObject_CallMethodIdNoArgs(self, name) \
     _PyObject_CallMethodIdObjArgs((self), (name), NULL)
