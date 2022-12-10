@@ -55,6 +55,7 @@ from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar,
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes, message_registry
+from mypy.constant_fold import constant_fold_expr
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -66,7 +67,6 @@ from mypy.messages import (
     pretty_seq,
 )
 from mypy.mro import MroError, calculate_mro
-from mypy.constant_fold import constant_fold_expr
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
