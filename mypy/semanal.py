@@ -3279,9 +3279,7 @@ class SemanticAnalyzer(
 
         typ = self.named_type_or_none(type_name)
         if typ and is_final:
-            return typ.copy_modified(
-                last_known_value=LiteralType(value=value, fallback=typ)
-            )
+            return typ.copy_modified(last_known_value=LiteralType(value=value, fallback=typ))
         return typ
 
     def analyze_alias(
@@ -3819,7 +3817,12 @@ class SemanticAnalyzer(
                 var.type = typ
                 var.is_ready = True
                 typ = get_proper_type(typ)
-                if var.is_final and isinstance(typ, Instance) and typ.last_known_value and (not self.type or not self.type.is_enum):
+                if (
+                    var.is_final
+                    and isinstance(typ, Instance)
+                    and typ.last_known_value
+                    and (not self.type or not self.type.is_enum)
+                ):
                     var.final_value = typ.last_known_value.value
             # If node is not a variable, we'll catch it elsewhere.
         elif isinstance(lvalue, TupleExpr):

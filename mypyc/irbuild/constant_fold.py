@@ -14,7 +14,11 @@ from typing import Union
 from typing_extensions import Final
 
 from mypy.nodes import Expression, IntExpr, MemberExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var
-from mypy.constant_fold import constant_fold_binary_int_op, constant_fold_unary_int_op, constant_fold_binary_str_op
+from mypy.constant_fold import (
+    constant_fold_binary_int_op,
+    constant_fold_unary_int_op,
+    constant_fold_binary_str_op,
+)
 from mypyc.irbuild.builder import IRBuilder
 
 # All possible result types of constant folding

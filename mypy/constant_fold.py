@@ -37,7 +37,11 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         elif expr.name == "False":
             return False
         node = expr.node
-        if isinstance(node, Var) and node.is_final and node.fullname.rsplit(".", 1)[0] == cur_mod_id:
+        if (
+            isinstance(node, Var)
+            and node.is_final
+            and node.fullname.rsplit(".", 1)[0] == cur_mod_id
+        ):
             value = node.final_value
             if isinstance(value, (CONST_TYPES)):
                 return value
