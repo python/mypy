@@ -1497,16 +1497,15 @@ def build_stubs(modules: list[str], options: Options, find_submodules: bool = Fa
             # find submodules via pkgutil
             try:
                 runtime = silent_import_module(module)
-            except KeyboardInterrupt:
-                raise
-            except BaseException:
-                pass
-            else:
                 all_modules.extend(
                     m.name
                     for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
                     if m.name not in all_modules
                 )
+            except KeyboardInterrupt:
+                raise
+            except BaseException:
+                pass
 
     if sources:
         try:
