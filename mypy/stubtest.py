@@ -205,6 +205,8 @@ def test_module(module_name: str) -> Iterator[Error]:
 
     try:
         runtime = silent_import_module(module_name)
+    except KeyboardInterrupt:
+        raise
     except BaseException as e:
         yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
@@ -1495,6 +1497,8 @@ def build_stubs(modules: list[str], options: Options, find_submodules: bool = Fa
             # find submodules via pkgutil
             try:
                 runtime = silent_import_module(module)
+            except KeyboardInterrupt:
+                raise
             except BaseException:
                 pass
             else:
