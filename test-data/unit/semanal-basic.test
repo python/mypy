@@ -508,14 +508,17 @@ MypyFile:1(
     IntExpr(1)
     Literal[1]?)
   AssignmentStmt:5(
-    NameExpr(y* [__main__.y] = 1.0)
-    FloatExpr(1.0))
+    NameExpr(y [__main__.y] = 1.0)
+    FloatExpr(1.0)
+    Literal[1.0]?)
   AssignmentStmt:6(
-    NameExpr(s* [__main__.s] = hi)
-    StrExpr(hi))
+    NameExpr(s [__main__.s] = hi)
+    StrExpr(hi)
+    Literal['hi']?)
   AssignmentStmt:7(
-    NameExpr(t* [__main__.t] = True)
-    NameExpr(True [builtins.True]))
+    NameExpr(t [__main__.t] = True)
+    NameExpr(True [builtins.True])
+    Literal[True]?)
   AssignmentStmt:8(
     NameExpr(n* [__main__.n] = None)
     CallExpr:8(

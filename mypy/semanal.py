@@ -3258,8 +3258,6 @@ class SemanticAnalyzer(
             # inside type variables with value restrictions (like
             # AnyStr).
             return None
-        if isinstance(rvalue, FloatExpr):
-            return self.named_type_or_none("builtins.float")
 
         value = constant_fold_expr(rvalue, self.cur_mod_id)
         if value is None:
@@ -3271,6 +3269,8 @@ class SemanticAnalyzer(
             type_name = "builtins.int"
         elif isinstance(value, str):
             type_name = "builtins.str"
+        elif isinstance(value, float):
+            type_name = "builtins.float"
 
         typ = self.named_type_or_none(type_name)
         if typ and is_final:
