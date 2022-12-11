@@ -108,7 +108,6 @@ from mypy.nodes import (
     Expression,
     ExpressionStmt,
     FakeExpression,
-    FloatExpr,
     ForStmt,
     FuncBase,
     FuncDef,

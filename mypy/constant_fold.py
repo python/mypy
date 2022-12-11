@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Union
 from typing_extensions import Final
 
-from mypy.nodes import Expression, IntExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var, FloatExpr
+from mypy.nodes import Expression, FloatExpr, IntExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var
 
 # All possible result types of constant folding
 ConstantValue = Union[int, bool, float, str]
