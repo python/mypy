@@ -3136,6 +3136,8 @@ class SemanticAnalyzer(
                 node = s.lvalues[0].node
                 if isinstance(node, Var):
                     node.is_final = True
+                    if s.type:
+                        node.final_value = constant_fold_expr(s.rvalue, self.cur_mod_id)
                     if self.is_class_scope() and (
                         isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs
                     ):
