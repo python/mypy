@@ -18,12 +18,18 @@ CONST_TYPES: Final = (int, bool, float, str)
 def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | None:
     """Return the constant value of an expression for supported operations.
 
-    Also bind simple references to final constants defined in module
-    'cur_mod_id'. Binding to references is best effort -- we don't bind
-    references to other cur_mod_ids to avoid dealing with reference loops
-    and other complexity. Also, mypyc trusts these to be correct, so we
-    don't want to infer constant values from stubs, as these might not
-    match the implementation.
+    Among other things, support int arithmetic and string
+    concatenation. For example, the expression 3 + 5 has the constant
+    value 8.
+
+    Also bind simple references to final constants defined in the
+    current module (cur_mod_id). Binding to references is best effort
+    -- we don't bind references to other modules. Mypyc trusts these
+    to be correct in compiled modules, so that it can replace a
+    constant expression (or a reference to one) with the statically
+    computed value. We don't want to infer constant values based on
+    stubs, in particular, as these might not match the implementation
+    (due to version skew, for example).
 
     Return None if unsuccessful.
     """
