@@ -163,6 +163,10 @@ X: Final = -1
 Y: Final = -(1 + 3*2)
 Z: Final = Y + 1
 
+class C:
+    A: Final = 1
+    B: Final = -1
+
 def f1() -> int:
     return X
 
@@ -171,7 +175,19 @@ def f2() -> int:
 
 def f3() -> int:
     return Z
+
+def f4() -> int:
+    return C.A
+
+def f5() -> int:
+    return C.B
 [out]
+def C.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.C
+L0:
+    __mypyc_self__.A = 2
+    __mypyc_self__.B = -2
+    return 1
 def f1():
 L0:
     return -2
@@ -181,3 +197,9 @@ L0:
 def f3():
 L0:
     return -12
+def f4():
+L0:
+    return 2
+def f5():
+L0:
+    return -2
