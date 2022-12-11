@@ -1724,7 +1724,7 @@ reveal_type = 1
 [case testRevealForward]
 def f() -> None:
     reveal_type(x)
-x = 1 + 1
+x = 1 + int()
 [out]
 main:2: note: Revealed type is "builtins.int"
 
