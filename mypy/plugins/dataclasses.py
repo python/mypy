@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 from typing_extensions import Final
+import mypy
 
 from mypy.expandtype import expand_type
 from mypy.nodes import (
@@ -629,6 +630,23 @@ def dataclass_class_maker_callback(ctx: ClassDefContext) -> bool:
     """Hooks into the class typechecking process to add support for dataclasses."""
     transformer = DataclassTransformer(ctx)
     return transformer.transform()
+
+def dataclass_check_type_callback(ctx: mypy.plugin.FunctionContext) -> Type:
+    """Will raise an error if the function is not called on a dataclass
+    instance. Examples of these functions are replace() and field() functions. 
+
+    This callback is called in default.py
+    """
+    if ctx != None:
+        if len(ctx.arg_types) != 0:
+            if len(ctx.arg_types[0]) != 0:
+                #this means there's no dataclass_tag in the metadata, so the argument is not a dataclass
+                if 'dataclass' not in (ctx.arg_types[0][0].type.metadata):
+                    ctx.api.msg.fail(
+                        "Calling replace on a non-dataclass.",
+                        ctx.context
+                    )
+    return ctx.default_return_type
 
 
 def _collect_field_args(

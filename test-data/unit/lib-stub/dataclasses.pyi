@@ -30,5 +30,7 @@ def field(*,
     init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ...,
     metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...,) -> Any: ...
 
+@overload 
+def replace(obj: _T, **changes: Any) -> _T: ...
 
 class Field(Generic[_T]): pass
