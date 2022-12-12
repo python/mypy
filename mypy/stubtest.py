@@ -1533,9 +1533,6 @@ def get_typeshed_stdlib_modules(
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
         version_info = sys.version_info[0:2]
-    # Typeshed's minimum supported Python 3 is Python 3.7
-    if sys.version_info < (3, 7):
-        version_info = (3, 7)
 
     def exists_in_version(module: str) -> bool:
         assert version_info is not None
