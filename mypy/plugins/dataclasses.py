@@ -19,7 +19,9 @@ from mypy.nodes import (
     CallExpr,
     Context,
     Expression,
+    FuncDef,
     JsonDict,
+    MemberExpr,
     NameExpr,
     PlaceholderNode,
     RefExpr,
@@ -412,7 +414,36 @@ class DataclassTransformer:
         # Second, collect attributes belonging to the current class.
         current_attr_names: set[str] = set()
         kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
+        final_unset_fields = set()
         for stmt in cls.defs.body:
+            # Check statements in __init__ and __post_init__ to see if any
+            # Final class variables = field() are being properly set
+            if isinstance(stmt, FuncDef) and (
+                stmt.name == "__init__" or stmt.name == "__post_init__"
+            ):
+                for init_stmt in stmt.body.body:
+                    if not isinstance(init_stmt, AssignmentStmt):
+                        continue
+                    if not (
+                        isinstance(init_stmt.lvalues[0], MemberExpr)
+                        or isinstance(init_stmt.lvalues[0], NameExpr)
+                    ):
+                        continue
+                    final_lhs = init_stmt.lvalues[0]
+                    sym = cls.info.names.get(final_lhs.name)
+                    if sym is None:
+                        # There was probably a semantic analysis error.
+                        continue
+
+                    node = sym.node
+                    assert not isinstance(node, PlaceholderNode)
+                    assert isinstance(node, Var)
+                    if final_lhs.name in final_unset_fields:
+                        node.final_unset_in_class = False
+                        node.final_set_in_init = True
+                        init_stmt.is_final_def = True
+                continue
+
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
             if not (isinstance(stmt, AssignmentStmt) and stmt.new_syntax):
@@ -468,6 +499,11 @@ class DataclassTransformer:
                 is_in_init = True
             else:
                 is_in_init = bool(ctx.api.parse_bool(is_in_init_param))
+
+            if has_field_call and node.is_final:
+                if not is_in_init:
+                    node.final_unset_in_class = True
+                final_unset_fields.add(lhs.name)
 
             has_default = False
             # Ensure that something like x: int = field() is rejected

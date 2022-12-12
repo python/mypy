@@ -1402,6 +1402,9 @@ class MessageBuilder:
         kind = "attribute" if attr_assign else "name"
         self.fail(f'Cannot assign to final {kind} "{unmangle(name)}"', ctx)
 
+    def final_field_not_set_in_init(self, name: str, ctx: Context) -> None:
+        self.fail(f'Final field "{name}" not set', ctx)
+
     def protocol_members_cant_be_final(self, ctx: Context) -> None:
         self.fail("Protocol member cannot be final", ctx)
 
