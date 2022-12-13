@@ -229,6 +229,7 @@ class Options:
         verbose: bool,
         quiet: bool,
         export_less: bool,
+        struct=bool,
     ) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
@@ -247,6 +248,7 @@ class Options:
         self.verbose = verbose
         self.quiet = quiet
         self.export_less = export_less
+        self.struct = struct
 
 
 class StubSource:
@@ -1683,28 +1685,29 @@ def generate_stubs(options: Options) -> None:
     py_modules, c_modules = collect_build_targets(options, mypy_opts)
     sig_generators = get_sig_generators(options)
     # Use parsed sources to generate stubs for Python modules.
-    generate_asts_for_modules(py_modules, options.parse_only, mypy_opts, options.verbose)
+    #generate_asts_for_modules(py_modules, options.parse_only, mypy_opts, options.verbose)
     files = []
-    for mod in py_modules:
-        assert mod.path is not None, "Not found module was not skipped"
-        target = mod.module.replace(".", "/")
-        if os.path.basename(mod.path) == "__init__.py":
-            target += "/__init__.pyi"
-        else:
-            target += ".pyi"
-        target = os.path.join(options.output_dir, target)
-        files.append(target)
-        with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
-            generate_stub_from_ast(
-                mod, target, options.parse_only, options.include_private, options.export_less
-            )
+    # for mod in py_modules:
+    #     assert mod.path is not None, "Not found module was not skipped"
+    #     target = mod.module.replace(".", "/")
+    #     if os.path.basename(mod.path) == "__init__.py":
+    #         target += "/__init__.pyi"
+    #     else:
+    #         target += ".pyi"
+    #     target = os.path.join(options.output_dir, target)
+    #     files.append(target)
+    #     with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
+    #         generate_stub_from_ast(
+    #             mod, target, options.parse_only, options.include_private, options.export_less
+    #         )
 
     # Separately analyse C modules using different logic.
+    suffix = "/__init__.py" if options.struct else ".pyi"
     for mod in c_modules:
         if any(py_mod.module.startswith(mod.module + ".") for py_mod in py_modules + c_modules):
-            target = mod.module.replace(".", "/") + "/__init__.pyi"
+            target = mod.module.replace(".", "/") + "/__init__" + suffix
         else:
-            target = mod.module.replace(".", "/") + ".pyi"
+            target = mod.module.replace(".", "/") + suffix
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
@@ -1810,6 +1813,7 @@ def parse_options(args: list[str]) -> Options:
         dest="files",
         help="generate stubs for given files or directories",
     )
+    parser.add_argument("-s", "--struct", action="store_true", help="import packages struct")
 
     ns = parser.parse_args(args)
 
@@ -1841,6 +1845,7 @@ def parse_options(args: list[str]) -> Options:
         verbose=ns.verbose,
         quiet=ns.quiet,
         export_less=ns.export_less,
+        struct=ns.struct,
     )
 
 

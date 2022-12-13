@@ -163,6 +163,13 @@ def generate_stub_for_c_module(
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
+
+    if target.endswith("__init__.py"):
+        with open(target, "w") as file:
+            file.write(f"# encoding: utf-8\n")
+            file.write(f"\n")
+            file.write(f"from {module_name} import *\n")
+        return
     imports: list[str] = []
     functions: list[str] = []
     done = set()
