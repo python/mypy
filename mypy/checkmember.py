@@ -512,7 +512,7 @@ def analyze_member_var_access(
         if mx.is_lvalue and not mx.chk.get_final_context():
             check_final_member(name, info, mx.msg, mx.context)
 
-        if not mx.is_lvalue and not mx.chk.get_final_context():
+        if not mx.is_lvalue and not mx.chk.get_final_context() and not mx.chk.is_stub:
             check_final_assigned_in_init(name, info, mx.msg, mx.context)
 
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
