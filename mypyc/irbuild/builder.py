@@ -90,7 +90,6 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
-    is_fixed_width_rtype,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
@@ -1308,7 +1307,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
 
             assert isinstance(target, AssignmentTargetRegister)
             reg = target.register
-            if not is_fixed_width_rtype(reg.type):
+            if not reg.type.error_overlap:
                 builder.assign_if_null(target.register, get_default, arg.initializer.line)
             else:
                 builder.assign_if_bitmap_unset(

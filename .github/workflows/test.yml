@@ -102,6 +102,16 @@ jobs:
     name: ${{ matrix.name }}
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
+      # Rich (pip)
+      FORCE_COLOR: 1
+      # Tox
+      PY_COLORS: 1
+      # Mypy (see https://github.com/python/mypy/issues/7771)
+      TERM: xterm-color
+      MYPY_FORCE_COLOR: 1
+      MYPY_FORCE_TERMINAL_WIDTH: 200
+      # Pytest
+      PYTEST_ADDOPTS: --color=yes
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v4

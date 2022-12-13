@@ -91,7 +91,7 @@ from mypyc.ir.ops import (
     SetMem,
     Unreachable,
 )
-from mypyc.ir.rtypes import RInstance, is_fixed_width_rtype
+from mypyc.ir.rtypes import RInstance
 
 # If True, print out all always-defined attributes of native classes (to aid
 # debugging and testing)
@@ -424,5 +424,5 @@ def detect_undefined_bitmap(cl: ClassIR, seen: Set[ClassIR]) -> None:
     if len(cl.base_mro) > 1:
         cl.bitmap_attrs.extend(cl.base_mro[1].bitmap_attrs)
     for n, t in cl.attributes.items():
-        if is_fixed_width_rtype(t) and not cl.is_always_defined(n):
+        if t.error_overlap and not cl.is_always_defined(n):
             cl.bitmap_attrs.append(n)

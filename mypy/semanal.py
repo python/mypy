@@ -4119,8 +4119,9 @@ class SemanticAnalyzer(
 
         # PEP 646 does not specify the behavior of variance, constraints, or bounds.
         if not call.analyzed:
+            tuple_fallback = self.named_type("builtins.tuple", [self.object_type()])
             typevartuple_var = TypeVarTupleExpr(
-                name, self.qualified_name(name), self.object_type(), INVARIANT
+                name, self.qualified_name(name), self.object_type(), tuple_fallback, INVARIANT
             )
             typevartuple_var.line = call.line
             call.analyzed = typevartuple_var

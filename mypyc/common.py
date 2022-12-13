@@ -44,13 +44,6 @@ IS_32_BIT_PLATFORM: Final = int(SIZEOF_SIZE_T) == 4
 
 PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 
-# Python 3.5 on macOS uses a hybrid 32/64-bit build that requires some workarounds.
-# The same generated C will be compiled in both 32 and 64 bit modes when building mypy
-# wheels (for an unknown reason).
-#
-# Note that we use "in ['darwin']" because of https://github.com/mypyc/mypyc/issues/761.
-IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_info < (3, 6)
-
 # Maximum value for a short tagged integer.
 MAX_SHORT_INT: Final = 2 ** (8 * int(SIZEOF_SIZE_T) - 2) - 1
 
@@ -59,9 +52,8 @@ MIN_SHORT_INT: Final = -(MAX_SHORT_INT) - 1
 
 # Maximum value for a short tagged integer represented as a C integer literal.
 #
-# Note: Assume that the compiled code uses the same bit width as mypyc, except for
-#       Python 3.5 on macOS.
-MAX_LITERAL_SHORT_INT: Final = MAX_SHORT_INT if not IS_MIXED_32_64_BIT_BUILD else 2**30 - 1
+# Note: Assume that the compiled code uses the same bit width as mypyc
+MAX_LITERAL_SHORT_INT: Final = MAX_SHORT_INT
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
 # Decription of the C type used to track the definedness of attributes and

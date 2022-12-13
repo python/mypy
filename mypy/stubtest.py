@@ -205,7 +205,9 @@ def test_module(module_name: str) -> Iterator[Error]:
 
     try:
         runtime = silent_import_module(module_name)
-    except Exception as e:
+    except KeyboardInterrupt:
+        raise
+    except BaseException as e:
         yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
 
@@ -261,10 +263,10 @@ def _verify_exported_names(
     if not (names_in_runtime_not_stub or names_in_stub_not_runtime):
         return
     yield Error(
-        object_path,
+        object_path + ["__all__"],
         (
             "names exported from the stub do not correspond to the names exported at runtime. "
-            "This is probably due to an inaccurate `__all__` in the stub or things being missing from the stub."
+            "This is probably due to things being missing from the stub, or if present, an inaccurate `__all__` in the stub"
         ),
         # Pass in MISSING instead of the stub and runtime objects, as the line numbers aren't very
         # relevant here, and it makes for a prettier error message
@@ -1500,7 +1502,9 @@ def build_stubs(modules: list[str], options: Options, find_submodules: bool = Fa
                     for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
                     if m.name not in all_modules
                 )
-            except Exception:
+            except KeyboardInterrupt:
+                raise
+            except BaseException:
                 pass
 
     if sources:
@@ -1529,9 +1533,6 @@ def get_typeshed_stdlib_modules(
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
         version_info = sys.version_info[0:2]
-    # Typeshed's minimum supported Python 3 is Python 3.7
-    if sys.version_info < (3, 7):
-        version_info = (3, 7)
 
     def exists_in_version(module: str) -> bool:
         assert version_info is not None

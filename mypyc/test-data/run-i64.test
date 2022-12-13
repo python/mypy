@@ -395,7 +395,7 @@ def test_for_loop() -> None:
     assert sum([x * x for x in range(i64(4 + int()))]) == 1 + 4 + 9
 
 [case testI64ErrorValuesAndUndefined]
-from typing import Any
+from typing import Any, Tuple
 import sys
 
 from mypy_extensions import mypyc_attr
@@ -429,6 +429,33 @@ def test_method_error_value() -> None:
         assert C().maybe_raise(i, False) == i
     with assertRaises(ValueError):
         C().maybe_raise(0, True)
+
+def maybe_raise_tuple(n: i64, error: bool) -> Tuple[i64, i64]:
+    if error:
+        raise ValueError()
+    return n, n+ 1
+
+def test_tuple_error_value() -> None:
+    for i in range(-1000, 1000):
+        assert maybe_raise_tuple(i, False) == (i, i + 1)
+    with assertRaises(ValueError):
+        maybe_raise_tuple(0, True)
+    f: Any = maybe_raise_tuple
+    for i in range(-1000, 1000):
+        assert f(i, False) == (i, i + 1)
+    with assertRaises(ValueError):
+        f(0, True)
+
+def maybe_raise_tuple2(n: i64, error: bool) -> Tuple[i64, int]:
+    if error:
+        raise ValueError()
+    return n, n+ 1
+
+def test_tuple_error_value_2() -> None:
+    for i in range(-1000, 1000):
+        assert maybe_raise_tuple2(i, False) == (i, i + 1)
+    with assertRaises(ValueError):
+        maybe_raise_tuple(0, True)
 
 def test_unbox_int() -> None:
     for i in list(range(-1000, 1000)) + [-(1 << 63), (1 << 63) - 1]:
@@ -733,8 +760,34 @@ def test_del() -> None:
     with assertRaises(AttributeError):
         o.x
 
+class UndefinedTuple:
+    def __init__(self, x: i64, y: i64) -> None:
+        if x != 0:
+            self.t = (x, y)
+
+def test_undefined_native_int_tuple() -> None:
+    o = UndefinedTuple(MAGIC, MAGIC)
+    assert o.t[0] == MAGIC
+    assert o.t[1] == MAGIC
+    o = UndefinedTuple(0, 0)
+    with assertRaises(AttributeError):
+        o.t
+    o = UndefinedTuple(-13, 45)
+    assert o.t == (-13, 45)
+
+def test_undefined_native_int_tuple_via_any() -> None:
+    cls: Any = UndefinedTuple
+    o: Any = cls(MAGIC, MAGIC)
+    assert o.t[0] == MAGIC
+    assert o.t[1] == MAGIC
+    o = cls(0, 0)
+    with assertRaises(AttributeError):
+        o.t
+    o = UndefinedTuple(-13, 45)
+    assert o.t == (-13, 45)
+
 [case testI64DefaultArgValues]
-from typing import Any, Iterator
+from typing import Any, Iterator, Tuple
 from typing_extensions import Final
 
 MAGIC: Final = -113
@@ -892,6 +945,31 @@ def test_kw_only_default_args() -> None:
     assert kw_only2(c=11) == 25
     assert kw_only2(a=2, c=4) == 12
     assert kw_only2(c=4, a=2) == 12
+
+def tuples(t: Tuple[i64, i64] = (MAGIC, MAGIC)) -> i64:
+    return t[0] + t[1]
+
+def test_tuple_arg_defaults() -> None:
+    assert tuples() == 2 * MAGIC
+    assert tuples((1, 2)) == 3
+    assert tuples((MAGIC, MAGIC)) == 2 * MAGIC
+    tuples2: Any = tuples
+    assert tuples2() == 2 * MAGIC
+    assert tuples2((1, 2)) == 3
+    assert tuples2((MAGIC, MAGIC)) == 2 * MAGIC
+
+class TupleInit:
+    def __init__(self, t: Tuple[i64, i64] = (MAGIC, MAGIC)) -> None:
+        self.t = t[0] + t[1]
+
+def test_tuple_init_arg_defaults() -> None:
+    assert TupleInit().t == 2 * MAGIC
+    assert TupleInit((1, 2)).t == 3
+    assert TupleInit((MAGIC, MAGIC)).t == 2 * MAGIC
+    o: Any = TupleInit
+    assert o().t == 2 * MAGIC
+    assert o((1, 2)).t == 3
+    assert o((MAGIC, MAGIC)).t == 2 * MAGIC
 
 def many_args(
     a1: i64 = 0,
@@ -1059,6 +1137,24 @@ def test_assign_error_value_conditionally() -> None:
         z: i32 = MAGIC
     assert y == MAGIC
     assert z == MAGIC
+
+def tuple_case(x: i64, y: i64) -> None:
+    if not int():
+        t = (x, y)
+    assert t == (x, y)
+    if int():
+        t2 = (x, y)
+    try:
+        print(t2)
+    except NameError as e:
+        assert str(e) == 'local variable "t2" referenced before assignment'
+    else:
+        assert False
+
+def test_conditionally_undefined_tuple() -> None:
+    tuple_case(2, 3)
+    tuple_case(-2, -3)
+    tuple_case(MAGIC, MAGIC)
 
 def test_many_locals() -> None:
     x = int()

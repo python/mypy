@@ -371,6 +371,7 @@ CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+int CPySequence_Check(PyObject *obj);
 
 
 // Dict operations
@@ -402,6 +403,7 @@ PyObject *CPyDict_GetValuesIter(PyObject *dict);
 tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset);
 tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset);
 tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
+int CPyMapping_Check(PyObject *obj);
 
 // Check that dictionary didn't change size during iteration.
 static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
@@ -497,13 +499,8 @@ static inline bool CPy_KeepPropagating(void) {
 }
 // We want to avoid the public PyErr_GetExcInfo API for these because
 // it requires a bunch of spurious refcount traffic on the parts of
-// the triple we don't care about. Unfortunately the layout of the
-// data structure changed in 3.7 so we need to handle that.
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 7
+// the triple we don't care about.
 #define CPy_ExcState() PyThreadState_GET()->exc_info
-#else
-#define CPy_ExcState() PyThreadState_GET()
-#endif
 
 void CPy_Raise(PyObject *exc);
 void CPy_Reraise(void);
@@ -525,7 +522,7 @@ void CPy_AttributeError(const char *filename, const char *funcname, const char *
 
 // Misc operations
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 8
+#if PY_VERSION_HEX >= 0x03080000
 #define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_BEGIN(op, dealloc)
 #define CPy_TRASHCAN_END(op) Py_TRASHCAN_END
 #else

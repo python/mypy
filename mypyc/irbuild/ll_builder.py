@@ -1034,7 +1034,7 @@ class LowLevelIRBuilder:
             bitmap = 0
             c = 0
             for lst, arg in zip(formal_to_actual, sig_args):
-                if arg.kind.is_optional() and is_fixed_width_rtype(arg.type):
+                if arg.kind.is_optional() and arg.type.error_overlap:
                     if i * BITMAP_BITS <= c < (i + 1) * BITMAP_BITS:
                         if lst:
                             bitmap |= 1 << (c & (BITMAP_BITS - 1))
