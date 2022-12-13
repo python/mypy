@@ -1,3 +1,48 @@
+[case testNoCrashOnReplace]
+def replace(__obj: _T, **changes: Any) -> _T: ...
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from dataclasses import replace
+@dataclass
+class D:
+    pass
+class C:
+    pass
+
+replace(C())  # E: replace() should be called on dataclass instances
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testNoCrashOnAstuple]
+def replace(__obj: _T, **changes: Any) -> _T: ...
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from dataclasses import astuple
+
+@dataclass
+class D:
+    pass
+class C:
+    pass
+
+astuple(C())  # E: astuple() should be called on dataclass instances
+[builtins fixtures/dataclasses.pyi]
+
+[case testNoCrashOnFields]
+def replace(__obj: _T, **changes: Any) -> _T: ...
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from dataclasses import fields
+
+@dataclass
+class D:
+    pass
+class C:
+    pass
+
+fields(C())   # E: astuple() should be called on dataclass instances
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesBasic]
 # flags: --python-version 3.7
 from dataclasses import dataclass
