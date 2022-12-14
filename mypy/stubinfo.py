@@ -78,9 +78,9 @@ legacy_bundled_packages = {
 # Note that these packages are omitted for now:
 #   sqlalchemy: It's unclear which stub package to suggest. There's also
 #               a mypy plugin available.
-#   pika:       These stubs exist in typeshed, but aren't being uploaded
-#               to PyPI at the moment (types-pika already exists on PyPI,
-#               but is a non-typeshed stubs package).
+#   pika:       typeshed's stubs are on PyPI as types-pika-ts.
+#               types-pika already exists on PyPI, and is more complete in many ways,
+#               but is a non-typeshed stubs package.
 non_bundled_packages = {
     "MySQLdb": "types-mysqlclient",
     "PIL": "types-Pillow",
