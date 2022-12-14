@@ -312,6 +312,9 @@ class TestRun(MypycDataSuite):
             stderr=subprocess.STDOUT,
             env=env,
         )
+        if sys.version_info >= (3, 12):
+            # TODO: testDecorators1 hangs on 3.12, remove this once fixed
+            proc.wait(timeout=30)
         output = proc.communicate()[0].decode("utf8")
         outlines = output.splitlines()
 
