@@ -569,7 +569,7 @@ _P = ParamSpec("_P")
 # it's not really an Awaitable, but can be used in an await expression. Real type: Generator & Awaitable
 # The type: ignore is due to overlapping overloads, not the use of ParamSpec
 @overload
-def coroutine(func: Callable[_P, Generator[_R, Any, Any]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[misc]
+def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[misc]
 @overload
 def coroutine(func: _Fn) -> _Fn: ...
 
