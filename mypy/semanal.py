@@ -5672,7 +5672,7 @@ class SemanticAnalyzer(
                     self.add_redefinition(names, name, symbol)
                 names[name] = symbol
                 self.progress = True
-                return True 
+                return True
             if not is_same_symbol(old, new):
                 if isinstance(new, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
                     self.add_redefinition(names, name, symbol)
@@ -6582,5 +6582,6 @@ def is_trivial_body(block: Block) -> bool:
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
     )
 
-def is_init_only(node: SymbolNode | None):
+
+def is_init_only(node: SymbolNode | None) -> bool:
     return isinstance(node, Var) and node.type is InitVar
