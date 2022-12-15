@@ -55,6 +55,7 @@ from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar,
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes, message_registry
+from mypy.constant_fold import constant_fold_expr
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -91,7 +92,6 @@ from mypy.nodes import (
     AwaitExpr,
     Block,
     BreakStmt,
-    BytesExpr,
     CallExpr,
     CastExpr,
     ClassDef,
@@ -108,7 +108,6 @@ from mypy.nodes import (
     Expression,
     ExpressionStmt,
     FakeExpression,
-    FloatExpr,
     ForStmt,
     FuncBase,
     FuncDef,
@@ -121,7 +120,6 @@ from mypy.nodes import (
     ImportBase,
     ImportFrom,
     IndexExpr,
-    IntExpr,
     LambdaExpr,
     ListComprehension,
     ListExpr,
@@ -250,7 +248,6 @@ from mypy.types import (
     FunctionLike,
     Instance,
     LiteralType,
-    LiteralValue,
     NoneType,
     Overloaded,
     Parameters,
@@ -3138,7 +3135,8 @@ class SemanticAnalyzer(
                 node = s.lvalues[0].node
                 if isinstance(node, Var):
                     node.is_final = True
-                    node.final_value = self.unbox_literal(s.rvalue)
+                    if s.type:
+                        node.final_value = constant_fold_expr(s.rvalue, self.cur_mod_id)
                     if self.is_class_scope() and (
                         isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs
                     ):
@@ -3198,13 +3196,6 @@ class SemanticAnalyzer(
                 res.append(lv)
         return res
 
-    def unbox_literal(self, e: Expression) -> int | float | bool | str | None:
-        if isinstance(e, (IntExpr, FloatExpr, StrExpr)):
-            return e.value
-        elif isinstance(e, NameExpr) and e.name in ("True", "False"):
-            return True if e.name == "True" else False
-        return None
-
     def process_type_annotation(self, s: AssignmentStmt) -> None:
         """Analyze type annotation or infer simple literal type."""
         if s.type:
@@ -3259,39 +3250,33 @@ class SemanticAnalyzer(
 
     def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Type | None:
         """Return builtins.int if rvalue is an int literal, etc.
-        If this is a 'Final' context, we return "Literal[...]" instead."""
-        if self.options.semantic_analysis_only or self.function_stack:
-            # Skip this if we're only doing the semantic analysis pass.
-            # This is mostly to avoid breaking unit tests.
-            # Also skip inside a function; this is to avoid confusing
+
+        If this is a 'Final' context, we return "Literal[...]" instead.
+        """
+        if self.function_stack:
+            # Skip inside a function; this is to avoid confusing
             # the code that handles dead code due to isinstance()
             # inside type variables with value restrictions (like
             # AnyStr).
             return None
-        if isinstance(rvalue, FloatExpr):
-            return self.named_type_or_none("builtins.float")
 
-        value: LiteralValue | None = None
-        type_name: str | None = None
-        if isinstance(rvalue, IntExpr):
-            value, type_name = rvalue.value, "builtins.int"
-        if isinstance(rvalue, StrExpr):
-            value, type_name = rvalue.value, "builtins.str"
-        if isinstance(rvalue, BytesExpr):
-            value, type_name = rvalue.value, "builtins.bytes"
+        value = constant_fold_expr(rvalue, self.cur_mod_id)
+        if value is None:
+            return None
 
-        if type_name is not None:
-            assert value is not None
-            typ = self.named_type_or_none(type_name)
-            if typ and is_final:
-                return typ.copy_modified(
-                    last_known_value=LiteralType(
-                        value=value, fallback=typ, line=typ.line, column=typ.column
-                    )
-                )
-            return typ
+        if isinstance(value, bool):
+            type_name = "builtins.bool"
+        elif isinstance(value, int):
+            type_name = "builtins.int"
+        elif isinstance(value, str):
+            type_name = "builtins.str"
+        elif isinstance(value, float):
+            type_name = "builtins.float"
 
-        return None
+        typ = self.named_type_or_none(type_name)
+        if typ and is_final:
+            return typ.copy_modified(last_known_value=LiteralType(value=value, fallback=typ))
+        return typ
 
     def analyze_alias(
         self, name: str, rvalue: Expression, allow_placeholder: bool = False
@@ -3827,6 +3812,14 @@ class SemanticAnalyzer(
                 var = lvalue.node
                 var.type = typ
                 var.is_ready = True
+                typ = get_proper_type(typ)
+                if (
+                    var.is_final
+                    and isinstance(typ, Instance)
+                    and typ.last_known_value
+                    and (not self.type or not self.type.is_enum)
+                ):
+                    var.final_value = typ.last_known_value.value
             # If node is not a variable, we'll catch it elsewhere.
         elif isinstance(lvalue, TupleExpr):
             typ = get_proper_type(typ)

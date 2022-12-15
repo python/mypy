@@ -67,7 +67,10 @@ JsonDict: _TypeAlias = Dict[str, Any]
 # Note: Although "Literal[None]" is a valid type, we internally always convert
 # such a type directly into "None". So, "None" is not a valid parameter of
 # LiteralType and is omitted from this list.
-LiteralValue: _TypeAlias = Union[int, str, bool]
+#
+# Note: Float values are only used internally. They are not accepted within
+# Literal[...].
+LiteralValue: _TypeAlias = Union[int, str, bool, float]
 
 
 # If we only import type_visitor in the middle of the file, mypy

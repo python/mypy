@@ -1348,13 +1348,13 @@ import a
 import b
 def f() -> int:
     return b.x
-y = 0 + 0
+y = 0 + int()
 [file b.py]
 import a
 def g() -> int:
     reveal_type(a.y)
     return a.y
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/b.py:3: note: Revealed type is "builtins.int"
 
@@ -1365,12 +1365,12 @@ import b
 def f() -> int:
     reveal_type(b.x)
     return b.x
-y = 0 + 0
+y = 0 + int()
 [file b.py]
 import a
 def g() -> int:
     return a.y
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:3: note: Revealed type is "builtins.int"
 
@@ -1385,7 +1385,7 @@ class C:
         self.x2 = b.b
 [file b.py]
 import a
-b = 1 + 1
+b = 1 + int()
 [out]
 tmp/a.py:4: error: Cannot determine type of "x2"
 
@@ -1398,7 +1398,7 @@ def f() -> None:
     a + ''
 [file b.py]
 import a
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
@@ -1411,7 +1411,7 @@ def f() -> None:
     a + ''
 [file b.py]
 import a
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
@@ -1424,7 +1424,7 @@ def g() -> None:
 @b.deco
 def f(a: str) -> int: pass
 reveal_type(f)
-x = 1 + 1
+x = 1 + int()
 [file b.py]
 from typing import Callable, TypeVar
 import a

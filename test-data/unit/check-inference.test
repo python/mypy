@@ -1979,7 +1979,7 @@ class A:
 [case testMultipassAndTopLevelVariable]
 y = x # E: Cannot determine type of "x"
 y()
-x = 1+0
+x = 1+int()
 [out]
 
 [case testMultipassAndDecoratedMethod]

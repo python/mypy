@@ -2256,3 +2256,14 @@ class Derived(Base):
     pass
 
 assert Derived()() == 1
+
+[case testClassWithFinalAttribute]
+from typing_extensions import Final
+
+class C:
+    A: Final = -1
+    a: Final = [A]
+
+def test_final_attribute() -> None:
+    assert C.A == -1
+    assert C.a == [-1]

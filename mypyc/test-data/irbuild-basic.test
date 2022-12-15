@@ -3273,7 +3273,7 @@ L2:
 [case testFinalStaticInt]
 from typing import Final
 
-x: Final = 1 + 1
+x: Final = 1 + int()
 
 def f() -> int:
     return x - 1

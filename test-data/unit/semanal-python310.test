@@ -8,8 +8,9 @@ match x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -28,8 +29,9 @@ a
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -49,8 +51,9 @@ match x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -78,8 +81,9 @@ match x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -99,8 +103,9 @@ match x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -121,11 +126,13 @@ match x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   AssignmentStmt:2(
-    NameExpr(a* [__main__.a])
-    IntExpr(1))
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:3(
     NameExpr(x [__main__.x])
     Pattern(
@@ -144,8 +151,9 @@ match x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -164,8 +172,9 @@ match x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:2(
     NameExpr(x [__main__.x])
     Pattern(
@@ -191,8 +200,9 @@ b = 1
 MypyFile:1(
   Import:1(_a)
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   MatchStmt:4(
     NameExpr(x [__main__.x])
     Pattern(
