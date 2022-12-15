@@ -914,7 +914,7 @@ app.database_name  # E: "SpecializedApplication" has no attribute "database_name
 
 [builtins fixtures/dataclasses.pyi]
 
-[case testDataclassesInitVarsWithPropery]
+[case testDataclassesInitVarsWithProperty]
 # flags: --python-version 3.7
 from dataclasses import InitVar, dataclass, field
 
@@ -933,7 +933,7 @@ class Application:
 
   @database_name.setter
   def database_name(self, value: str):
-   return self._database_name = value
+   self._database_name = value
 
 
 reveal_type(Application)  # N: Revealed type is "def (name: builtins.str, database_name: builtins.str) -> __main__.Application"
