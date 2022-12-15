@@ -51,6 +51,7 @@ Some important properties:
 from __future__ import annotations
 
 from contextlib import contextmanager, nullcontext
+from dataclasses import InitVar
 from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -5666,6 +5667,12 @@ class SemanticAnalyzer(
             if isinstance(new, PlaceholderNode):
                 # We don't know whether this is okay. Let's wait until the next iteration.
                 return False
+            if is_init_only(old):
+                if is_init_only(new):
+                    self.add_redefinition(names, name, symbol)
+                names[name] = symbol
+                self.progress = True
+                return True 
             if not is_same_symbol(old, new):
                 if isinstance(new, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
                     self.add_redefinition(names, name, symbol)
@@ -6574,3 +6581,6 @@ def is_trivial_body(block: Block) -> bool:
     return isinstance(stmt, PassStmt) or (
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
     )
+
+def is_init_only(node: SymbolNode | None):
+    return isinstance(node, Var) and node.type is InitVar

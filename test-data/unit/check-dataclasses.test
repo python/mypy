@@ -914,6 +914,34 @@ app.database_name  # E: "SpecializedApplication" has no attribute "database_name
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesInitVarsWithPropery]
+# flags: --python-version 3.7
+from dataclasses import InitVar, dataclass, field
+
+@dataclass
+class Application:
+  name: str
+  database_name: InitVar[str]
+  _database_name: field(init=False)
+
+  def __post_init__(self, database_name):
+    self.database_name = database_name
+
+  @property
+  def database_name(self):
+   return self._database_name
+
+  @database_name.setter
+  def database_name(self, value: str):
+   return self._database_name = value
+
+
+reveal_type(Application)  # N: Revealed type is "def (name: builtins.str, database_name: builtins.str) -> __main__.Application"
+app = Application("example", 42)  # E: Argument 2 to "Application" has incompatible type "int"; expected "str"
+app = Application("example", "apps")
+app.name
+app.database_name
+
 [case testDataclassesInitVarsAndDefer]
 # flags: --python-version 3.7
 from dataclasses import InitVar, dataclass
