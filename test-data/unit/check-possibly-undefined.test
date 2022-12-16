@@ -526,7 +526,7 @@ def f3() -> None:
     z = x  # E: Name "x" may be undefined
 
 [case testTryBasic]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f1() -> int:
     try:
         x = 1
@@ -568,7 +568,7 @@ def f6() -> None:
     except BaseException as exc:
         x = exc  # No error.
         exc = BaseException()
-    # This case is covered by the other check, not by partially defined check.
+    # This case is covered by the other check, not by possibly undefined check.
     y = exc # E: Trying to read deleted variable "exc"
 
 def f7() -> int:
@@ -582,7 +582,7 @@ def f7() -> int:
 [builtins fixtures/exception.pyi]
 
 [case testTryMultiExcept]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f1() -> int:
     try:
         x = 1
@@ -603,7 +603,7 @@ def f2() -> int:
 [builtins fixtures/exception.pyi]
 
 [case testTryFinally]
-# flags: --enable-error-code partially-defined --enable-error-code use-before-def
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f1() -> int:
     try:
         x = 1
@@ -660,7 +660,7 @@ def f6() -> int:
 [builtins fixtures/exception.pyi]
 
 [case testTryElse]
-# flags: --enable-error-code partially-defined
+# flags: --enable-error-code possibly-undefined
 def f1() -> int:
     try:
         return 0

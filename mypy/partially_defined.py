@@ -472,7 +472,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_try_stmt(self, o: TryStmt) -> None:
         """
-        Note that finding partially defined vars in `finally` requires different handling from
+        Note that finding undefined vars in `finally` requires different handling from
         the rest of the code. In particular, we want to disallow skipping branches due to jump
         statements in except/else clauses for finally but not for other cases. Imagine a case like:
         def f() -> int:
@@ -490,7 +490,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         """
         self.try_depth += 1
         if o.finally_body is not None:
-            # In order to find partially defined vars in `finally`, we need to
+            # In order to find undefined vars in `finally`, we need to
             # process try/except with branch skipping disabled. However, for the rest of the code
             # after finally, we need to process try/except with branch skipping enabled.
             # Therefore, we need to process try/finally twice.
