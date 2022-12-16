@@ -922,7 +922,7 @@ from dataclasses import InitVar, dataclass, field
 class Application:
   name: str
   database_name: InitVar[str]
-  _database_name: field(init=False)
+  _database_name: str = field(init=False)
 
   def __post_init__(self, database_name):
     self.database_name = database_name
