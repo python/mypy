@@ -302,10 +302,9 @@ Miscellaneous
    def get_sys_IO(mode: str = 'w') -> IO[str]:
        if mode == 'w':
            return sys.stdout
-       elif mode == 'r':
+       if mode == 'r':
            return sys.stdin
-       else:
-           return sys.stdout
+        return sys.stdout
 
    # Forward references are useful if you want to reference a class before
    # it is defined
