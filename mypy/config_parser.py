@@ -137,6 +137,15 @@ def check_follow_imports(choice: str) -> str:
     return choice
 
 
+def split_commas(value: str) -> list[str]:
+    # Uses a bit smarter technique to allow last trailing comma
+    # and to remove last `""` item from the split.
+    items = value.split(",")
+    if items and items[-1] == "":
+        items.pop(-1)
+    return items
+
+
 # For most options, the type of the default value set in options.py is
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
@@ -151,13 +160,13 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "junit_xml": expand_path,
     "follow_imports": check_follow_imports,
     "no_site_packages": bool,
-    "plugins": lambda s: [p.strip() for p in s.split(",")],
-    "always_true": lambda s: [p.strip() for p in s.split(",")],
-    "always_false": lambda s: [p.strip() for p in s.split(",")],
-    "enable_incomplete_feature": lambda s: [p.strip() for p in s.split(",")],
-    "disable_error_code": lambda s: validate_codes([p.strip() for p in s.split(",")]),
-    "enable_error_code": lambda s: validate_codes([p.strip() for p in s.split(",")]),
-    "package_root": lambda s: [p.strip() for p in s.split(",")],
+    "plugins": lambda s: [p.strip() for p in split_commas(s)],
+    "always_true": lambda s: [p.strip() for p in split_commas(s)],
+    "always_false": lambda s: [p.strip() for p in split_commas(s)],
+    "enable_incomplete_feature": lambda s: [p.strip() for p in split_commas(s)],
+    "disable_error_code": lambda s: validate_codes([p.strip() for p in split_commas(s)]),
+    "enable_error_code": lambda s: validate_codes([p.strip() for p in split_commas(s)]),
+    "package_root": lambda s: [p.strip() for p in split_commas(s)],
     "cache_dir": expand_path,
     "python_executable": expand_path,
     "strict": bool,

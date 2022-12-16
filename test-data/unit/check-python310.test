@@ -1726,8 +1726,8 @@ def my_func(pairs: Iterable[tuple[S, S]]) -> None:
                                    # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
-[case testPartiallyDefinedMatch]
-# flags: --enable-error-code partially-defined
+[case testPossiblyUndefinedMatch]
+# flags: --enable-error-code possibly-undefined
 def f0(x: int | str) -> int:
     match x:
         case int():
@@ -1789,8 +1789,8 @@ def f6(a: object) -> None:
             pass
 [builtins fixtures/tuple.pyi]
 
-[case testPartiallyDefinedMatchUnreachable]
-# flags: --enable-error-code partially-defined
+[case testPossiblyUndefinedMatchUnreachable]
+# flags: --enable-error-code possibly-undefined
 import typing
 
 def f0(x: int) -> int:

@@ -115,6 +115,7 @@ class TypeVarLikeScope:
                 tvar_expr.fullname,
                 i,
                 upper_bound=tvar_expr.upper_bound,
+                tuple_fallback=tvar_expr.tuple_fallback,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )

@@ -1560,3 +1560,4 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(TV* [__main__.TV])
     TypeVarTupleExpr:2()))
+[builtins fixtures/tuple.pyi]

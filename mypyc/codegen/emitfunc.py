@@ -60,7 +60,6 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
-    is_fixed_width_rtype,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -442,7 +441,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.emitter.emit_dec_ref(attr_expr, attr_rtype)
                 if not always_defined:
                     self.emitter.emit_line("}")
-            elif is_fixed_width_rtype(attr_rtype) and not cl.is_always_defined(op.attr):
+            elif attr_rtype.error_overlap and not cl.is_always_defined(op.attr):
                 # If there is overlap with the error value, update bitmap to mark
                 # attribute as defined.
                 self.emitter.emit_attr_bitmap_set(src, obj, attr_rtype, cl, op.attr)

@@ -2,14 +2,10 @@ import http.server
 import pydoc
 import socketserver
 from collections.abc import Callable, Iterable, Mapping
-from datetime import datetime
 from re import Pattern
 from typing import Any, ClassVar, Protocol
 from typing_extensions import TypeAlias
-from xmlrpc.client import Fault
-
-# TODO: Recursive type on tuple, list, dict
-_Marshallable: TypeAlias = None | bool | int | float | str | bytes | tuple[Any, ...] | list[Any] | dict[Any, Any] | datetime
+from xmlrpc.client import Fault, _Marshallable
 
 # The dispatch accepts anywhere from 0 to N arguments, no easy way to allow this in mypy
 class _DispatchArity0(Protocol):
