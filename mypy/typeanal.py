@@ -364,12 +364,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.fail(
                         f'Type variable "{t.name}" used with arguments', t, code=codes.VALID_TYPE
                     )
+
                 # Change the line number
                 return TypeVarTupleType(
                     tvar_def.name,
                     tvar_def.fullname,
                     tvar_def.id,
                     tvar_def.upper_bound,
+                    sym.node.tuple_fallback,
                     line=t.line,
                     column=t.column,
                 )

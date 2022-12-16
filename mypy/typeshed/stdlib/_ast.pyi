@@ -104,14 +104,14 @@ class Assign(stmt):
 class AugAssign(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("target", "op", "value")
-    target: expr
+    target: Name | Attribute | Subscript
     op: operator
     value: expr
 
 class AnnAssign(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("target", "annotation", "value", "simple")
-    target: expr
+    target: Name | Attribute | Subscript
     annotation: expr
     value: expr | None
     simple: int
@@ -355,7 +355,7 @@ if sys.version_info >= (3, 8):
     class NamedExpr(expr):
         if sys.version_info >= (3, 10):
             __match_args__ = ("target", "value")
-        target: expr
+        target: Name
         value: expr
 
 class Attribute(expr):

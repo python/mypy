@@ -140,8 +140,8 @@ UNREACHABLE: Final = ErrorCode(
 ANNOTATION_UNCHECKED = ErrorCode(
     "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
 )
-PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
-    "partially-defined",
+POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
+    "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",
     "General",
     default_enabled=False,
@@ -192,8 +192,8 @@ REDUNDANT_SELF_TYPE = ErrorCode(
     "General",
     default_enabled=False,
 )
-USE_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
-    "use-before-def",
+USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
+    "used-before-def",
     "Warn about variables that are used before they are defined",
     "General",
     default_enabled=False,

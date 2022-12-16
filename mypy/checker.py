@@ -848,6 +848,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
+        elif isinstance(return_type, UnionType):
+            return make_simplified_union(
+                [self.get_generator_yield_type(item, is_coroutine) for item in return_type.items]
+            )
         elif not self.is_generator_return_type(
             return_type, is_coroutine
         ) and not self.is_async_generator_return_type(return_type):
@@ -878,6 +882,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
+        elif isinstance(return_type, UnionType):
+            return make_simplified_union(
+                [self.get_generator_receive_type(item, is_coroutine) for item in return_type.items]
+            )
         elif not self.is_generator_return_type(
             return_type, is_coroutine
         ) and not self.is_async_generator_return_type(return_type):
@@ -917,6 +925,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
+        elif isinstance(return_type, UnionType):
+            return make_simplified_union(
+                [self.get_generator_return_type(item, is_coroutine) for item in return_type.items]
+            )
         elif not self.is_generator_return_type(return_type, is_coroutine):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
