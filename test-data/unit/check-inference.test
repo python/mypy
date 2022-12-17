@@ -3,7 +3,9 @@
 
 
 [case testInferSimpleGvarType]
-import typing
+class A: pass
+class B: pass
+
 x = A()
 y = B()
 if int():
@@ -14,9 +16,6 @@ if int():
     x = y   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
     x = x
-class A: pass
-class B: pass
-
 [case testInferSimpleLvarType]
 import typing
 def f() -> None:
@@ -401,6 +400,8 @@ a = None # type: A
 b = None # type: B
 c = None # type: Tuple[A, object]
 
+def id(a: T) -> T: pass
+
 if int():
     b = id(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = id(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -411,8 +412,6 @@ if int():
     a = id(a)
     b = id(b)
     c = id(c)
-
-def id(a: T) -> T: pass
 
 class A: pass
 class B: pass
@@ -444,19 +443,25 @@ def ff() -> None:
     x = f() # E: Need type annotation for "x"
     reveal_type(x) # N: Revealed type is "Any"
 
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+def g(a: T) -> None: pass
+
 g(None) # Ok
 f()     # Ok because not used to infer local variable type
 g(a)
-
-def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
-def g(a: T) -> None: pass
 [out]
 
 [case testInferenceWithMultipleConstraints]
 from typing import TypeVar
+
+class A: pass
+class B(A): pass
+
 T = TypeVar('T')
 a = None # type: A
 b = None # type: B
+
+def f(a: T, b: T) -> T: pass
 
 if int():
     b = f(a, b) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -467,15 +472,16 @@ if int():
 if int():
     a = f(b, a)
 
-def f(a: T, b: T) -> T: pass
-
-class A: pass
-class B(A): pass
-
 [case testInferenceWithMultipleVariables]
 from typing import Tuple, TypeVar
 T = TypeVar('T')
 S = TypeVar('S')
+
+def f(a: T, b: S) -> Tuple[T, S]: pass
+
+class A: pass
+class B: pass
+
 a, b = None, None # type: (A, B)
 taa = None # type: Tuple[A, A]
 tab = None # type: Tuple[A, B]
@@ -493,11 +499,6 @@ if int():
     tab = f(a, b)
 if int():
     tba = f(b, a)
-
-def f(a: T, b: S) -> Tuple[T, S]: pass
-
-class A: pass
-class B: pass
 [builtins fixtures/tuple.pyi]
 
 [case testConstraintSolvingWithSimpleGenerics]
@@ -506,6 +507,14 @@ T = TypeVar('T')
 ao = None # type: A[object]
 ab = None # type: A[B]
 ac = None # type: A[C]
+
+def f(a: 'A[T]') -> 'A[T]': pass
+
+def g(a: T) -> T: pass
+
+class A(Generic[T]): pass
+class B: pass
+class C: pass
 
 if int():
     ab = f(ao) # E: Argument 1 to "f" has incompatible type "A[object]"; expected "A[B]"
@@ -524,36 +533,32 @@ if int():
 if int():
     ab = g(ab)
     ao = g(ao)
-
-def f(a: 'A[T]') -> 'A[T]': pass
-
-def g(a: T) -> T: pass
-
-class A(Generic[T]): pass
-class B: pass
-class C: pass
-
 [case testConstraintSolvingFailureWithSimpleGenerics]
 from typing import TypeVar, Generic
 T = TypeVar('T')
 ao = None # type: A[object]
 ab = None # type: A[B]
 
-f(ao, ab) # E: Cannot infer type argument 1 of "f"
-f(ab, ao) # E: Cannot infer type argument 1 of "f"
-f(ao, ao)
-f(ab, ab)
-
 def f(a: 'A[T]', b: 'A[T]') -> None: pass
 
 class A(Generic[T]): pass
 class B: pass
 
+
+f(ao, ab) # E: Cannot infer type argument 1 of "f"
+f(ab, ao) # E: Cannot infer type argument 1 of "f"
+f(ao, ao)
+f(ab, ab)
 [case testTypeInferenceWithCalleeDefaultArgs]
 from typing import TypeVar
 T = TypeVar('T')
 a = None # type: A
 o = None # type: object
+
+def f(a: T = None) -> T: pass
+def g(a: T, b: T = None) -> T: pass
+
+class A: pass
 
 if int():
     a = f(o)    # E: Incompatible types in assignment (expression has type "object", variable has type "A")
@@ -568,11 +573,6 @@ if int():
     a = f(a)
 if int():
     a = g(a)
-
-def f(a: T = None) -> T: pass
-def g(a: T, b: T = None) -> T: pass
-
-class A: pass
 
 
 -- Generic function inference with multiple inheritance
@@ -655,6 +655,12 @@ g(c)
 [case testPrecedenceOfFirstBaseAsInferenceResult]
 from typing import TypeVar
 from abc import abstractmethod, ABCMeta
+class A: pass
+class B(A, I, J): pass
+class C(A, I, J): pass
+
+def f(a: T, b: T) -> T: pass
+
 T = TypeVar('T')
 a, i, j = None, None, None # type: (A, I, J)
 
@@ -663,11 +669,7 @@ a = f(B(), C())
 class I(metaclass=ABCMeta): pass
 class J(metaclass=ABCMeta): pass
 
-def f(a: T, b: T) -> T: pass
 
-class A: pass
-class B(A, I, J): pass
-class C(A, I, J): pass
 [builtins fixtures/tuple.pyi]
 
 
@@ -966,6 +968,9 @@ list_2 = [f, h]
 [case testInferenceOfFor1]
 a, b = None, None # type: (A, B)
 
+class A: pass
+class B: pass
+
 for x in [A()]:
     b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x
@@ -973,40 +978,32 @@ for x in [A()]:
 for y in []: # E: Need type annotation for "y"
     a = y
     reveal_type(y)  # N: Revealed type is "Any"
-
-class A: pass
-class B: pass
 [builtins fixtures/for.pyi]
 
 [case testInferenceOfFor2]
-
-a, b, c = None, None, None # type: (A, B, C)
-for x, (y, z) in [(A(), (B(), C()))]:
-    b = x # Fail
-    c = y # Fail
-    a = z # Fail
-    a = x
-    b = y
-    c = z
-for xx, yy, zz in [(A(), B())]: # Fail
-    pass
-for xx, (yy, zz) in [(A(), B())]: # Fail
-    pass
-for xxx, yyy in [(None, None)]:
-    pass
-
 class A: pass
 class B: pass
 class C: pass
+
+a, b, c = None, None, None # type: (A, B, C)
+for x, (y, z) in [(A(), (B(), C()))]:
+    b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    c = y # E: Incompatible types in assignment (expression has type "B", variable has type "C")
+    a = z # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+    a = x
+    b = y
+    c = z
+for xx, yy, zz in [(A(), B())]: # E: Need more than 2 values to unpack (3 expected)
+    pass
+for xx, (yy, zz) in [(A(), B())]: # E: "B" object is not iterable
+    pass
+for xxx, yyy in [(None, None)]:
+    pass
 [builtins fixtures/for.pyi]
-[out]
-main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "C")
-main:6: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:10: error: Need more than 2 values to unpack (3 expected)
-main:12: error: "B" object is not iterable
 
 [case testInferenceOfFor3]
+class A: pass
+class B: pass
 
 a, b = None, None # type: (A, B)
 
@@ -1021,19 +1018,21 @@ for e, f in [[]]:  # E: Need type annotation for "e" \
     reveal_type(e)  # N: Revealed type is "Any"
     reveal_type(f)  # N: Revealed type is "Any"
 
-class A: pass
-class B: pass
 [builtins fixtures/for.pyi]
 
 [case testForStatementInferenceWithVoid]
-import typing
+def f() -> None: pass
+
 for x in f(): # E: "f" does not return a value
     pass
-def f() -> None: pass
 [builtins fixtures/for.pyi]
 
 [case testReusingInferredForIndex]
 import typing
+
+class A: pass
+class B: pass
+
 for a in [A()]: pass
 a = A()
 if int():
@@ -1041,8 +1040,6 @@ if int():
     for a in []: pass
     a = A()
     a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-class A: pass
-class B: pass
 [builtins fixtures/for.pyi]
 
 [case testReusingInferredForIndex2]
@@ -1128,15 +1125,15 @@ if int():
 class A: pass
 
 [case testInferGlobalDefinedInBlock]
-import typing
+class A: pass
+class B: pass
+
 if A:
     a = A()
     if int():
         a = A()
     if int():
         a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-class A: pass
-class B: pass
 
 [case testAssigningAnyStrToNone]
 from typing import Tuple, TypeVar
@@ -1314,7 +1311,7 @@ class A: pass
 
 [case testAccessGlobalVarBeforeItsTypeIsAvailable]
 import typing
-x.y  # E: Cannot determine type of "x"
+x.y  # E: Cannot determine type of "x"  # E: Name "x" is used before definition
 x = object()
 x.y  # E: "object" has no attribute "y"
 
@@ -1977,7 +1974,7 @@ class A:
 [out]
 
 [case testMultipassAndTopLevelVariable]
-y = x # E: Cannot determine type of "x"
+y = x # E: Cannot determine type of "x"  # E: Name "x" is used before definition
 y()
 x = 1+int()
 [out]
@@ -2160,7 +2157,7 @@ from typing import TypeVar, Callable
 T = TypeVar('T')
 def dec() -> Callable[[T], T]: pass
 
-A.g  # E: Cannot determine type of "g"
+A.g  # E: Cannot determine type of "g"  # E: Name "A" is used before definition
 
 class A:
     @classmethod
@@ -2990,13 +2987,14 @@ class C:
 [case testUnionGenericWithBoundedVariable]
 from typing import Generic, TypeVar, Union
 
+class A: ...
+class B(A): ...
+
 T = TypeVar('T', bound=A)
 class Z(Generic[T]):
     def __init__(self, y: T) -> None:
         self.y = y
 
-class A: ...
-class B(A): ...
 F = TypeVar('F', bound=A)
 
 def q1(x: Union[F, Z[F]]) -> F:
