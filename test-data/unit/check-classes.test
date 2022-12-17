@@ -3,64 +3,56 @@
 
 
 [case testMethodCall]
-
-a = None # type: A
-b = None # type: B
-
-a.foo(B())        # Fail
-a.bar(B(), A())   # Fail
-
-a.foo(A())
-b.bar(B(), A())
-
 class A:
     def foo(self, x: 'A') -> None: pass
 class B:
     def bar(self, x: 'B', y: A) -> None: pass
-[out]
-main:5: error: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
-main:6: error: "A" has no attribute "bar"
-
-[case testMethodCallWithSubtype]
 
 a = None # type: A
-a.foo(A())
-a.foo(B())
-a.bar(A()) # Fail
-a.bar(B())
+b = None # type: B
 
+a.foo(B())  # E: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
+a.bar(B(), A())  # E: "A" has no attribute "bar"
+
+a.foo(A())
+b.bar(B(), A())
+
+[case testMethodCallWithSubtype]
 class A:
     def foo(self, x: 'A') -> None: pass
     def bar(self, x: 'B') -> None: pass
 class B(A): pass
-[out]
-main:5: error: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
+
+a = None # type: A
+a.foo(A())
+a.foo(B())
+a.bar(A()) # E: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
+a.bar(B())
 
 [case testInheritingMethod]
+class A:
+    def foo(self, x: 'B') -> None: pass
+class B(A): pass
 
 a = None # type: B
 a.foo(A()) # Fail
 a.foo(B())
 
-class A:
-    def foo(self, x: 'B') -> None: pass
-class B(A): pass
-[targets __main__, __main__, __main__.A.foo]
+[targets __main__, __main__.A.foo]
 [out]
-main:3: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
+main:6: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
 
 [case testMethodCallWithInvalidNumberOfArguments]
+class A:
+    def foo(self, x: 'A') -> None: pass
 
 a = None # type: A
 a.foo()               # Fail
 a.foo(object(), A())  # Fail
-
-class A:
-    def foo(self, x: 'A') -> None: pass
 [out]
-main:3: error: Missing positional argument "x" in call to "foo" of "A"
-main:4: error: Too many arguments for "foo" of "A"
-main:4: error: Argument 1 to "foo" of "A" has incompatible type "object"; expected "A"
+main:5: error: Missing positional argument "x" in call to "foo" of "A"
+main:6: error: Too many arguments for "foo" of "A"
+main:6: error: Argument 1 to "foo" of "A" has incompatible type "object"; expected "A"
 
 [case testMethodBody]
 import typing
@@ -216,13 +208,11 @@ main:11: error: "B" has no attribute "a"
 
 [case testExplicitAttributeInBody]
 
-a = None # type: A
-a.x = object() # Fail
-a.x = A()
 class A:
   x = None # type: A
-[out]
-main:3: error: Incompatible types in assignment (expression has type "object", variable has type "A")
+a = None # type: A
+a.x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+a.x = A()
 
 [case testAttributeDefinedInNonInitMethod]
 import typing
@@ -629,64 +619,50 @@ class B(A):
 
 
 [case testTrivialConstructor]
-import typing
-a = A() # type: A
-b = A() # type: B # Fail
 class A:
     def __init__(self) -> None: pass
-class B: pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
+a = A() # type: A
+b = A() # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+class B: pass
 [case testConstructor]
-import typing
-a = A(B()) # type: A
-aa = A(object()) # type: A  # Fail
-b = A(B()) # type: B       # Fail
 class A:
     def __init__(self, x: 'B') -> None: pass
 class B: pass
-[out]
-main:3: error: Argument 1 to "A" has incompatible type "object"; expected "B"
-main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+a = A(B()) # type: A
+aa = A(object()) # type: A  # E: Argument 1 to "A" has incompatible type "object"; expected "B"
+b = A(B()) # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testConstructorWithTwoArguments]
-import typing
-a = A(C(), B()) # type: A  # Fail
-
 class A:
     def __init__(self, x: 'B', y: 'C') -> None: pass
 class B: pass
 class C(B): pass
-[out]
-main:2: error: Argument 2 to "A" has incompatible type "B"; expected "C"
+
+a = A(C(), B()) # type: A  # E: Argument 2 to "A" has incompatible type "B"; expected "C"
 
 [case testInheritedConstructor]
-import typing
-b = B(C()) # type: B
-a = B(D()) # type: A # Fail
-class A:
-    def __init__(self, x: 'C') -> None: pass
 class B(A): pass
 class C: pass
 class D: pass
-[out]
-main:3: error: Argument 1 to "B" has incompatible type "D"; expected "C"
+
+b = B(C()) # type: B
+a = B(D()) # type: A # E: Argument 1 to "B" has incompatible type "D"; expected "C"
+class A:
+    def __init__(self, x: 'C') -> None: pass
 
 [case testOverridingWithIncompatibleConstructor]
-import typing
-A()    # Fail
-B(C()) # Fail
-A(C())
-B()
 class A:
     def __init__(self, x: 'C') -> None: pass
 class B(A):
     def __init__(self) -> None: pass
 class C: pass
-[out]
-main:2: error: Missing positional argument "x" in call to "A"
-main:3: error: Too many arguments for "B"
+
+A()    # E: Missing positional argument "x" in call to "A"
+B(C()) # E: Too many arguments for "B"
+A(C())
+B()
 
 [case testConstructorWithReturnValueType]
 import typing
@@ -826,15 +802,12 @@ class Foo:
         pass
 
 [case testGlobalFunctionInitWithReturnType]
-import typing
-a = __init__() # type: A
-b = __init__() # type: B # Fail
-def __init__() -> 'A': pass
 class A: pass
 class B: pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+def __init__() -> 'A': pass
 
+a = __init__() # type: A
+b = __init__() # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 [case testAccessingInit]
 from typing import Any, cast
 class A:
@@ -844,7 +817,12 @@ a.__init__(a)  # E: Accessing "__init__" on an instance is unsound, since instan
 (cast(Any, a)).__init__(a)
 
 [case testDeepInheritanceHierarchy]
-import typing
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(C): pass
+class D2(C): pass
+
 d = C() # type: D  # E: Incompatible types in assignment (expression has type "C", variable has type "D")
 if int():
     d = B()      # E: Incompatible types in assignment (expression has type "B", variable has type "D")
@@ -858,12 +836,6 @@ if int():
 b = D() # type: B
 if int():
     b = D2()
-
-class A: pass
-class B(A): pass
-class C(B): pass
-class D(C): pass
-class D2(C): pass
 
 [case testConstructorJoinsWithCustomMetaclass]
 # flags: --strict-optional
@@ -1030,7 +1002,7 @@ A.B = None # E: Cannot assign to a type
 [targets __main__]
 
 [case testAccessingClassAttributeWithTypeInferenceIssue]
-x = C.x # E: Cannot determine type of "x"
+x = C.x # E: Cannot determine type of "x" # E: Name "C" is used before definition
 def f() -> int: return 1
 class C:
     x = f()
@@ -1209,13 +1181,9 @@ class A:
 
 
 [case testMultipleClassDefinition]
-import typing
+class A: pass
+class A: pass  # E: Name "A" already defined on line 1
 A()
-class A: pass
-class A: pass
-[out]
-main:4: error: Name "A" already defined on line 3
-
 [case testDocstringInClass]
 import typing
 class A:
@@ -2351,7 +2319,7 @@ reveal_type(Fraction() + Fraction())  # N: Revealed type is "builtins.str"
 
 [case testReverseOperatorTypeVar2b]
 from typing import TypeVar
-T = TypeVar("T", Real, Fraction)
+T = TypeVar("T", "Real", "Fraction")
 class Real:
     def __add__(self, other: Fraction) -> str: ...
 class Fraction(Real):
@@ -2955,7 +2923,11 @@ c.__setattr__("x", 42, p=True)
 
 
 [case testCallableObject]
-import typing
+class A:
+    def __call__(self, x: 'A') -> 'A':
+        pass
+class B: pass
+
 a = A()
 b = B()
 
@@ -2967,11 +2939,6 @@ if int():
     a = a(b)  # E: Argument 1 to "__call__" of "A" has incompatible type "B"; expected "A"
 if int():
     b = a(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-
-class A:
-    def __call__(self, x: A) -> A:
-        pass
-class B: pass
 
 
 -- __new__
@@ -4933,7 +4900,7 @@ reveal_type(x.frob) # N: Revealed type is "def (foos: builtins.dict[Any, __main_
 [case testNewTypeFromForwardNamedTuple]
 from typing import NewType, NamedTuple, Tuple
 
-NT = NewType('NT', N)
+NT = NewType('NT', 'N')
 class N(NamedTuple):
     x: int
 
@@ -4947,7 +4914,7 @@ x = NT(N(1))
 from typing import NewType, Tuple
 from mypy_extensions import TypedDict
 
-NT = NewType('NT', N) # E: Argument 2 to NewType(...) must be subclassable (got "N")
+NT = NewType('NT', 'N') # E: Argument 2 to NewType(...) must be subclassable (got "N")
 class N(TypedDict):
     x: int
 [builtins fixtures/dict.pyi]
@@ -5060,7 +5027,7 @@ def foo(node: Node) -> Node:
 [case testForwardReferencesInNewTypeMRORecomputed]
 from typing import NewType
 x: Foo
-Foo = NewType('Foo', B)
+Foo = NewType('Foo', 'B')
 class A:
     x: int
 class B(A):
@@ -5445,7 +5412,7 @@ class F:
 
 [case testCorrectEnclosingClassPushedInDeferred2]
 from typing import TypeVar
-T = TypeVar('T', bound=C)
+T = TypeVar('T', bound='C')
 class C:
     def m(self: T) -> T:
         class Inner:
@@ -7059,7 +7026,7 @@ reveal_type(C.__new__)  # N: Revealed type is "def (cls: Type[__main__.C]) -> An
 [case testOverrideGenericSelfClassMethod]
 from typing import Generic, TypeVar, Type, List
 
-T = TypeVar('T', bound=A)
+T = TypeVar('T', bound='A')
 
 class A:
     @classmethod
