@@ -282,6 +282,8 @@ class ClassIR:
         for ir in self.mro:
             if name in ir.methods:
                 return ir.methods[name], ir
+            if name in ir.attributes:
+                return None
 
         return None
 
