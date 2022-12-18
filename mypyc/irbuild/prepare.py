@@ -50,7 +50,7 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, dict_rprimitive, tuple_rprimitive
+from mypyc.ir.rtypes import RInstance, dict_rprimitive, tuple_rprimitive, RType
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
@@ -302,7 +302,10 @@ def prepare_methods_and_attributes(
         if isinstance(node.node, Var):
             assert node.node.type, "Class member %s missing type" % name
             if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
-                ir.attributes[name] = mapper.type_to_rtype(node.node.type)
+                attr_rtype = mapper.type_to_rtype(node.node.type)
+                ir.attributes[name] = attr_rtype
+                add_property_methods_for_attribute_if_needed(
+                    info, ir, name, attr_rtype, module_name, mapper)
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)
         elif isinstance(node.node, OverloadedFuncDef):
@@ -318,6 +321,26 @@ def prepare_methods_and_attributes(
             else:
                 assert node.node.impl
                 prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
+
+
+def add_property_methods_for_attribute_if_needed(
+        info: TypeInfo, ir: ClassIR, name: str, attr_rtype: RType,
+        module_name: str, mapper: Mapper) -> None:
+    """Add getter and/or setter for attribute if defined as property in a base class."""
+    for base in info.mro[1:]:
+        if base in mapper.type_to_ir:
+            n = base.names.get(name)
+            # TODO: Also handle OverlodedFuncDef (setter)
+            if n and isinstance(n.node, Decorator):
+                # Defined as a property in a base class/trait. Generate an implicit
+                # accessor method that will be synthesized during irbuild.
+                self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+                sig = FuncSignature([self_arg], attr_rtype)
+                decl = FuncDecl(name, info.name, module_name, sig, FUNC_NORMAL)
+                decl.is_prop_getter = True
+                decl.implicit = True  # Triggers synthesization
+                ir.method_decls[name] = decl
+                ir.property_types[name] = attr_rtype  # TODO: Needed??
 
 
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:

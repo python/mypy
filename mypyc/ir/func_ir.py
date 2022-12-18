@@ -155,9 +155,13 @@ class FuncDecl:
             else:
                 self.bound_sig = sig.bound_sig()
 
-        # this is optional because this will be set to the line number when the corresponding
+        # This is optional because this will be set to the line number when the corresponding
         # FuncIR is created
         self._line: int | None = None
+
+        # If True, not present in the mypy AST and must be synthesized during irbuild
+        # Currently only supported for property getters/setters
+        self.implicit = False
 
     @property
     def line(self) -> int:
