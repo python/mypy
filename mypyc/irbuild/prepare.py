@@ -98,6 +98,12 @@ def build_type_map(
             else:
                 prepare_non_ext_class_def(module.path, module.fullname, cdef, errors, mapper)
 
+    # Prepare implicit attribute accessors as needed if an attribute overrides a property.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class:
+            prepare_implicit_property_accessors(cdef.info, class_ir, module.fullname, mapper)
+
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
     # is conditionally defined.
@@ -304,8 +310,6 @@ def prepare_methods_and_attributes(
             if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
                 attr_rtype = mapper.type_to_rtype(node.node.type)
                 ir.attributes[name] = attr_rtype
-                add_property_methods_for_attribute_if_needed(
-                    info, ir, name, attr_rtype, module_name, mapper)
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)
         elif isinstance(node.node, OverloadedFuncDef):
@@ -323,24 +327,32 @@ def prepare_methods_and_attributes(
                 prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
 
 
+def prepare_implicit_property_accessors(info: TypeInfo, ir: ClassIR, module_name: str,
+                                        mapper: Mapper) -> None:
+    for base in ir.base_mro:
+        for name, attr_rtype in base.attributes.items():
+            add_property_methods_for_attribute_if_needed(
+                info, ir, name, attr_rtype, module_name, mapper)
+
+
 def add_property_methods_for_attribute_if_needed(
-        info: TypeInfo, ir: ClassIR, name: str, attr_rtype: RType,
+        info: TypeInfo, ir: ClassIR, attr_name: str, attr_rtype: RType,
         module_name: str, mapper: Mapper) -> None:
     """Add getter and/or setter for attribute if defined as property in a base class."""
     for base in info.mro[1:]:
         if base in mapper.type_to_ir:
-            n = base.names.get(name)
+            n = base.names.get(attr_name)
             # TODO: Also handle OverlodedFuncDef (setter)
-            if n and isinstance(n.node, Decorator):
+            if n and isinstance(n.node, Decorator) and n.node.name not in ir.method_decls:
                 # Defined as a property in a base class/trait. Generate an implicit
                 # accessor method that will be synthesized during irbuild.
                 self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
                 sig = FuncSignature([self_arg], attr_rtype)
-                decl = FuncDecl(name, info.name, module_name, sig, FUNC_NORMAL)
+                decl = FuncDecl(attr_name, info.name, module_name, sig, FUNC_NORMAL)
                 decl.is_prop_getter = True
                 decl.implicit = True  # Triggers synthesization
-                ir.method_decls[name] = decl
-                ir.property_types[name] = attr_rtype  # TODO: Needed??
+                ir.method_decls[attr_name] = decl
+                ir.property_types[attr_name] = attr_rtype  # TODO: Needed??
 
 
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
