@@ -139,6 +139,7 @@ class FuncDecl:
         kind: int = FUNC_NORMAL,
         is_prop_setter: bool = False,
         is_prop_getter: bool = False,
+        implicit: bool = False,
     ) -> None:
         self.name = name
         self.class_name = class_name
@@ -155,13 +156,13 @@ class FuncDecl:
             else:
                 self.bound_sig = sig.bound_sig()
 
+        # If True, not present in the mypy AST and must be synthesized during irbuild
+        # Currently only supported for property getters/setters
+        self.implicit = implicit
+
         # This is optional because this will be set to the line number when the corresponding
         # FuncIR is created
         self._line: int | None = None
-
-        # If True, not present in the mypy AST and must be synthesized during irbuild
-        # Currently only supported for property getters/setters
-        self.implicit = False
 
     @property
     def line(self) -> int:
@@ -202,6 +203,7 @@ class FuncDecl:
             "kind": self.kind,
             "is_prop_setter": self.is_prop_setter,
             "is_prop_getter": self.is_prop_getter,
+            "implicit": self.implicit,
         }
 
     # TODO: move this to FuncIR?
@@ -223,6 +225,7 @@ class FuncDecl:
             data["kind"],
             data["is_prop_setter"],
             data["is_prop_getter"],
+            data["implicit"],
         )
 
 
