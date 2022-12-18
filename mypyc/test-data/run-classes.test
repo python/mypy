@@ -2014,7 +2014,7 @@ class B:
 
     @property
     def y(self) -> int:
-        return 22
+        return 25
 
 class C(B):
     x: int
@@ -2027,18 +2027,18 @@ def test_read_only_property_implemented_as_attribute() -> None:
     assert c.y == 4
     c.y = 6
     assert c.y == 6
-    #b: B = C()
-    #assert b.y == 4
-    #b = c
-    #assert b.x == 5
-    #assert b.y == 6
-    #a: Any = c
-    #assert c.x == 5
-    #assert c.y == 6
-    #c.x = 7
-    #c.y = 8
-    #assert c.x == 7
-    #assert c.y == 8
+    b: B = C()
+    assert b.y == 4
+    b = c
+    assert b.x == 5
+    assert b.y == 6
+    a: Any = c
+    assert c.x == 5
+    assert c.y == 6
+    c.x = 7
+    c.y = 8
+    assert c.x == 7
+    assert c.y == 8
 
 [case testAttributeOverridesProperty3]
 from typing import Any

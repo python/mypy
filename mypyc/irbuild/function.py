@@ -1026,3 +1026,13 @@ def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> dic
     """
     impls = builder.singledispatch_impls[singledispatch_func]
     return {impl: i for i, (typ, impl) in enumerate(impls) if not is_decorated(builder, impl)}
+
+
+def gen_property_getter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef) -> FuncIR:
+    name = func_decl.name
+    builder.enter(name)
+    self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
+    value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, -1)
+    builder.add(Return(value))
+    args, _, blocks, ret_type, fn_info = builder.leave()
+    return FuncIR(func_decl, args, blocks)

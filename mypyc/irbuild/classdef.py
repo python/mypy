@@ -53,7 +53,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.function import handle_ext_method, handle_non_ext_method, load_type
+from mypyc.irbuild.function import handle_ext_method, handle_non_ext_method, load_type, gen_property_getter_ir
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op
@@ -150,6 +150,15 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             pass
         else:
             builder.error("Unsupported statement in class body", stmt.line)
+
+    for name, decl in ir.method_decls.items():
+        if decl.implicit:
+            func_ir = gen_property_getter_ir(builder, decl, cdef)
+            builder.functions.append(func_ir)
+            ir.properties[name] = (func_ir, None)
+            ir.methods[func_ir.decl.name] = func_ir
+            # TODO: Generate glue method if needed
+            # TODO: Do we need interpreted glue methods? Maybe not?
 
     cls_builder.finalize(ir)
 

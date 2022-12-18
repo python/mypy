@@ -278,9 +278,9 @@ class ClassIR:
     def struct_name(self, names: NameGenerator) -> str:
         return f"{exported_name(self.fullname)}Object"
 
-    def get_method_and_class(self, name: str) -> tuple[FuncIR, ClassIR] | None:
+    def get_method_and_class(self, name: str, *, prefer_method: bool = False) -> tuple[FuncIR, ClassIR] | None:
         for ir in self.mro:
-            if name in ir.attributes:
+            if not prefer_method and name in ir.attributes:
                 # Prefer attributes over methods, if we have an attribute with
                 # an accessor. This happens if a base class defined the attribute
                 # as a property.
