@@ -280,10 +280,13 @@ class ClassIR:
 
     def get_method_and_class(self, name: str) -> tuple[FuncIR, ClassIR] | None:
         for ir in self.mro:
+            if name in ir.attributes:
+                # Prefer attributes over methods, if we have an attribute with
+                # an accessor. This happens if a base class defined the attribute
+                # as a property.
+                return None
             if name in ir.methods:
                 return ir.methods[name], ir
-            if name in ir.attributes:
-                return None
 
         return None
 
