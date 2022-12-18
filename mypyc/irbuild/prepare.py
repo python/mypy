@@ -228,8 +228,6 @@ def prepare_class_def(
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
 
-    populate_methods_and_attributes(cdef, ir, path, module_name, errors, mapper)
-
     # Check for subclassing from builtin types
     for cls in info.mro:
         # Special case exceptions and dicts
@@ -247,37 +245,6 @@ def prepare_class_def(
                 errors.error(
                     "Inheriting from most builtin types is unimplemented", path, cdef.line
                 )
-
-    if ir.builtin_base:
-        ir.attributes.clear()
-
-    # Set up a constructor decl
-    init_node = cdef.info["__init__"].node
-    if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
-        init_sig = mapper.fdef_to_sig(init_node)
-
-        defining_ir = mapper.type_to_ir.get(init_node.info)
-        # If there is a nontrivial __init__ that wasn't defined in an
-        # extension class, we need to make the constructor take *args,
-        # **kwargs so it can call tp_init.
-        if (
-            defining_ir is None
-            or not defining_ir.is_ext_class
-            or cdef.info["__init__"].plugin_generated
-        ) and init_node.info.fullname != "builtins.object":
-            init_sig = FuncSignature(
-                [
-                    init_sig.args[0],
-                    RuntimeArg("args", tuple_rprimitive, ARG_STAR),
-                    RuntimeArg("kwargs", dict_rprimitive, ARG_STAR2),
-                ],
-                init_sig.ret_type,
-            )
-
-        last_arg = len(init_sig.args) - init_sig.num_bitmap_args
-        ctor_sig = FuncSignature(init_sig.args[1:last_arg], RInstance(ir))
-        ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
-        mapper.func_to_decl[cdef.info] = ir.ctor
 
     # Set up the parent class
     bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]
@@ -306,6 +273,13 @@ def prepare_class_def(
     ir.mro = mro
     ir.base_mro = base_mro
 
+    prepare_methods_and_attributes(cdef, ir, path, module_name, errors, mapper)
+
+    if ir.builtin_base:
+        ir.attributes.clear()
+
+    prepare_init_method(cdef, ir, module_name, mapper)
+
     for base in bases:
         if base.children is not None:
             base.children.append(ir)
@@ -314,7 +288,7 @@ def prepare_class_def(
         ir.is_augmented = True
 
 
-def populate_methods_and_attributes(
+def prepare_methods_and_attributes(
     cdef: ClassDef, ir: ClassIR, path: str, module_name: str, errors: Errors, mapper: Mapper
 ) -> None:
     """Populate attribute and method declarations."""
@@ -344,6 +318,36 @@ def populate_methods_and_attributes(
             else:
                 assert node.node.impl
                 prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
+
+
+def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
+    # Set up a constructor decl
+    init_node = cdef.info["__init__"].node
+    if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
+        init_sig = mapper.fdef_to_sig(init_node)
+
+        defining_ir = mapper.type_to_ir.get(init_node.info)
+        # If there is a nontrivial __init__ that wasn't defined in an
+        # extension class, we need to make the constructor take *args,
+        # **kwargs so it can call tp_init.
+        if (
+            defining_ir is None
+            or not defining_ir.is_ext_class
+            or cdef.info["__init__"].plugin_generated
+        ) and init_node.info.fullname != "builtins.object":
+            init_sig = FuncSignature(
+                [
+                    init_sig.args[0],
+                    RuntimeArg("args", tuple_rprimitive, ARG_STAR),
+                    RuntimeArg("kwargs", dict_rprimitive, ARG_STAR2),
+                ],
+                init_sig.ret_type,
+            )
+
+        last_arg = len(init_sig.args) - init_sig.num_bitmap_args
+        ctor_sig = FuncSignature(init_sig.args[1:last_arg], RInstance(ir))
+        ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
+        mapper.func_to_decl[cdef.info] = ir.ctor
 
 
 def prepare_non_ext_class_def(
