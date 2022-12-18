@@ -212,6 +212,11 @@ def can_subclass_builtin(builtin_base: str) -> bool:
 def prepare_class_def(
     path: str, module_name: str, cdef: ClassDef, errors: Errors, mapper: Mapper
 ) -> None:
+    """Populate the interface-level information in a class IR.
+
+    This includes attribute and method declarations, and the MRO, among other things, but
+    method bodies are generated in a later pass.
+    """
 
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
@@ -223,31 +228,7 @@ def prepare_class_def(
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
 
-    # We sort the table for determinism here on Python 3.5
-    for name, node in sorted(info.names.items()):
-        # Currently all plugin generated methods are dummies and not included.
-        if node.plugin_generated:
-            continue
-
-        if isinstance(node.node, Var):
-            assert node.node.type, "Class member %s missing type" % name
-            if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
-                ir.attributes[name] = mapper.type_to_rtype(node.node.type)
-        elif isinstance(node.node, (FuncDef, Decorator)):
-            prepare_method_def(ir, module_name, cdef, mapper, node.node)
-        elif isinstance(node.node, OverloadedFuncDef):
-            # Handle case for property with both a getter and a setter
-            if node.node.is_property:
-                if is_valid_multipart_property_def(node.node):
-                    for item in node.node.items:
-                        prepare_method_def(ir, module_name, cdef, mapper, item)
-                else:
-                    errors.error("Unsupported property decorator semantics", path, cdef.line)
-
-            # Handle case for regular function overload
-            else:
-                assert node.node.impl
-                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
+    populate_methods_and_attributes(cdef, ir, path, module_name, errors, mapper)
 
     # Check for subclassing from builtin types
     for cls in info.mro:
@@ -304,8 +285,8 @@ def prepare_class_def(
         errors.error("Non-trait bases must appear first in parent list", path, cdef.line)
     ir.traits = [c for c in bases if c.is_trait]
 
-    mro = []
-    base_mro = []
+    mro = []  # All mypyc base classes
+    base_mro = []  # Non-trait mypyc base classes
     for cls in info.mro:
         if cls not in mapper.type_to_ir:
             if cls.fullname != "builtins.object":
@@ -331,6 +312,38 @@ def prepare_class_def(
 
     if is_dataclass(cdef):
         ir.is_augmented = True
+
+
+def populate_methods_and_attributes(
+    cdef: ClassDef, ir: ClassIR, path: str, module_name: str, errors: Errors, mapper: Mapper
+) -> None:
+    """Populate attribute and method declarations."""
+    info = cdef.info
+    # We sort the table for determinism here on Python 3.5.
+    for name, node in sorted(info.names.items()):
+        # Currently all plugin generated methods are dummies and not included.
+        if node.plugin_generated:
+            continue
+
+        if isinstance(node.node, Var):
+            assert node.node.type, "Class member %s missing type" % name
+            if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
+                ir.attributes[name] = mapper.type_to_rtype(node.node.type)
+        elif isinstance(node.node, (FuncDef, Decorator)):
+            prepare_method_def(ir, module_name, cdef, mapper, node.node)
+        elif isinstance(node.node, OverloadedFuncDef):
+            # Handle case for property with both a getter and a setter
+            if node.node.is_property:
+                if is_valid_multipart_property_def(node.node):
+                    for item in node.node.items:
+                        prepare_method_def(ir, module_name, cdef, mapper, item)
+                else:
+                    errors.error("Unsupported property decorator semantics", path, cdef.line)
+
+            # Handle case for regular function overload
+            else:
+                assert node.node.impl
+                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
 
 
 def prepare_non_ext_class_def(
