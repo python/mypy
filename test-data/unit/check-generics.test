@@ -2663,3 +2663,36 @@ def foo(x: A) -> A:
                 # N: (Hint: Use "B" in function signature to bind "B" inside a function)
         return y.x
     return bar()[0]
+
+
+-- TypeVar imported from typing_extensions
+-- ---------------------------------------
+
+[case testTypeVarTypingExtensionsSimpleGeneric]
+from typing import Generic
+from typing_extensions import TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+a: A = A(8)
+b: A[str] = A("")
+
+reveal_type(A(1.23))  # N: Revealed type is "__main__.A[builtins.float]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTypingExtensionsSimpleBound]
+from typing_extensions import TypeVar
+
+T= TypeVar("T")
+
+def func(var: T) -> T:
+    return var
+
+reveal_type(func(1))  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
