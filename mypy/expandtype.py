@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
+from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ARG_STAR, Var
 from mypy.type_visitor import TypeTranslator, TypeQuery2
@@ -144,11 +145,15 @@ T = TypeVar("T", bound=Type)
 from time import time
 tt = 0.0
 
+# Use singleton since since is performance sensitive.
+has_generic_callable: Final = HasGenericCallable()
+
 def freshen_all_functions_type_vars(t: T) -> T:
     #global tt
     #t0 = time()
     result: Type
-    if not t.accept(HasGenericCallable()):
+    has_generic_callable.reset()
+    if not t.accept(has_generic_callable):
         result = t
     else:
         result = t.accept(FreshenCallableVisitor())
@@ -163,7 +168,7 @@ class HasGenericCallable(TypeQuery2):
         super().__init__(0)
 
     def visit_callable_type(self, t: CallableType) -> bool:
-        return super().visit_callable_type(t) or t.is_generic()
+        return t.is_generic() or super().visit_callable_type(t)
 
 
 class FreshenCallableVisitor(TypeTranslator):

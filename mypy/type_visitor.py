@@ -422,12 +422,12 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 class TypeQuery2(SyntheticTypeVisitor[bool]):
     """Visitor for performing queries of types.
 
-    strategy is used to combine results for a series of types,
+    'strategy' is used to combine results for a series of types,
     common use cases involve a boolean query using `any` or `all`.
 
-    Note: this visitor keeps an internal state (tracks type aliases to avoid
-    recursion), so it should *never* be re-used for querying different types,
-    create a new visitor instance instead.
+    Note: This visitor keeps an internal state (tracks type aliases to avoid
+    recursion), so it should *never* be re-used for querying different types
+    unless you call reset() first.
 
     # TODO: check that we don't have existing violations of this rule.
     """
@@ -441,17 +441,24 @@ class TypeQuery2(SyntheticTypeVisitor[bool]):
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]]. An empty set is
         # represented as None as a micro-optimization.
-        self.seen_aliases: set[TypeAliasType] | None = set()
+        self.seen_aliases: set[TypeAliasType] | None = None
         # By default, we eagerly expand type aliases, and query also types in the
         # alias target. In most cases this is a desired behavior, but we may want
         # to skip targets in some cases (e.g. when collecting type variables).
         self.skip_alias_target = False
 
+    def reset(self) -> None:
+        """Clear mutable state (but preserve strategy).
+
+        This *must* be called if you want to reuse the visitor for another type.
+        """
+        self.seen_aliases = None
+
     def visit_unbound_type(self, t: UnboundType) -> bool:
-        return self.query_type_tuple(t.args)
+        return self.query_types(t.args)
 
     def visit_type_list(self, t: TypeList) -> bool:
-        return self.query_type_list(t.items)
+        return self.query_types(t.items)
 
     def visit_callable_argument(self, t: CallableArgument) -> bool:
         return t.typ.accept(self)
@@ -472,7 +479,7 @@ class TypeQuery2(SyntheticTypeVisitor[bool]):
         return self.empty
 
     def visit_type_var(self, t: TypeVarType) -> bool:
-        return self.query_type_list([t.upper_bound] + t.values)
+        return self.query_types([t.upper_bound] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType) -> bool:
         return self.empty
@@ -481,26 +488,26 @@ class TypeQuery2(SyntheticTypeVisitor[bool]):
         return self.empty
 
     def visit_unpack_type(self, t: UnpackType) -> bool:
-        return self.query_type_list([t.type])
+        return self.query_types([t.type])
 
     def visit_parameters(self, t: Parameters) -> bool:
-        return self.query_type_list(t.arg_types)
+        return self.query_types(t.arg_types)
 
     def visit_partial_type(self, t: PartialType) -> bool:
         return self.empty
 
     def visit_instance(self, t: Instance) -> bool:
-        return self.query_type_tuple(t.args)
+        return self.query_types(t.args)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         # FIX generics
-        return self.query_type_list(t.arg_types + [t.ret_type])
+        return self.query_types(t.arg_types + [t.ret_type])
 
     def visit_tuple_type(self, t: TupleType) -> bool:
-        return self.query_type_list(t.items)
+        return self.query_types(t.items)
 
     def visit_typeddict_type(self, t: TypedDictType) -> bool:
-        return self.query_type_list(list(t.items.values()))
+        return self.query_types(list(t.items.values()))
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> bool:
         return self.empty
@@ -512,10 +519,10 @@ class TypeQuery2(SyntheticTypeVisitor[bool]):
         return t.type.accept(self)
 
     def visit_union_type(self, t: UnionType) -> bool:
-        return self.query_type_list(t.items)
+        return self.query_types(t.items)
 
     def visit_overloaded(self, t: Overloaded) -> bool:
-        return self.query_type_list(t.items)  # type: ignore[arg-type]
+        return self.query_types(t.items)  # type: ignore[arg-type]
 
     def visit_type_type(self, t: TypeType) -> bool:
         return t.item.accept(self)
@@ -524,7 +531,7 @@ class TypeQuery2(SyntheticTypeVisitor[bool]):
         return self.empty
 
     def visit_placeholder_type(self, t: PlaceholderType) -> bool:
-        return self.query_type_list(t.args)
+        return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> bool:
         # Skip type aliases already visited types to avoid infinite recursion.
@@ -536,21 +543,19 @@ class TypeQuery2(SyntheticTypeVisitor[bool]):
             return self.empty
         self.seen_aliases.add(t)
         if self.skip_alias_target:
-            return self.query_type_list(t.args)
+            return self.query_types(t.args)
         return get_proper_type(t).accept(self)
 
-    # We special-case for lists and tuples since it lets mypyc produce better code.
-
-    def query_type_list(self, types: list[Type]) -> bool:
-        """Perform a query for a list of types using the strategy to combine the results."""
-        if self.strategy == 0:
-            return any(t.accept(self) for t in types)
+    def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:
+        """Perform a query for a sequence of types using the strategy to combine the results."""
+        # Special-case for lists and tuples since it allows mypyc produce better code.
+        if isinstance(types, list):
+            if self.strategy == 0:
+                return any(t.accept(self) for t in types)
+            else:
+                return all(t.accept(self) for t in types)
         else:
-            return all(t.accept(self) for t in types)
-
-    def query_type_tuple(self, types: tuple[Type, ...]) -> bool:
-        """Perform a query for a list of types using the strategy to combine the results."""
-        if self.strategy == 0:
-            return any(t.accept(self) for t in types)
-        else:
-            return all(t.accept(self) for t in types)
+            if self.strategy == 0:
+                return any(t.accept(self) for t in types)
+            else:
+                return all(t.accept(self) for t in types)
