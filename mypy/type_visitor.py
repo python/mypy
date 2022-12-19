@@ -420,14 +420,16 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy([t.accept(self) for t in types])
 
 
+# Return True if at least one type component returns True
 ANY_STRATEGY: Final = 0
-ALL_STRATEGY: Final = 0
+# Return True if no type component returns False
+ALL_STRATEGY: Final = 1
 
 
 class BoolTypeQuery(SyntheticTypeVisitor[bool]):
-    """Visitor for performing queries of types with bool results.
+    """Visitor for performing recursive queries of types with a bool result.
 
-    Use TypeQuery if need non-bool results (this is faster for bools).
+    Use TypeQuery if you need non-bool results.
 
     'strategy' is used to combine results for a series of types. It must
     be ANY_STRATEGY or ALL_STRATEGY.
@@ -440,10 +442,10 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
     def __init__(self, strategy: int) -> None:
         self.strategy = strategy
         if strategy == ANY_STRATEGY:
-            self.empty = False
+            self.default = False
         else:
             assert strategy == ALL_STRATEGY
-            self.empty = True
+            self.default = True
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]]. An empty set is
         # represented as None as a micro-optimization.
@@ -456,7 +458,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
     def reset(self) -> None:
         """Clear mutable state (but preserve strategy).
 
-        This *must* be called if you want to reuse the visitor for another type.
+        This *must* be called if you want to reuse the visitor.
         """
         self.seen_aliases = None
 
@@ -470,28 +472,28 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return t.typ.accept(self)
 
     def visit_any(self, t: AnyType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_none_type(self, t: NoneType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_erased_type(self, t: ErasedType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_deleted_type(self, t: DeletedType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return self.query_types([t.upper_bound] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_unpack_type(self, t: UnpackType) -> bool:
         return self.query_types([t.type])
@@ -500,7 +502,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return self.query_types(t.arg_types)
 
     def visit_partial_type(self, t: PartialType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_instance(self, t: Instance) -> bool:
         return self.query_types(t.args)
@@ -516,10 +518,10 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return self.query_types(list(t.items.values()))
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_literal_type(self, t: LiteralType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_star_type(self, t: StarType) -> bool:
         return t.type.accept(self)
@@ -534,7 +536,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return t.item.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> bool:
-        return self.empty
+        return self.default
 
     def visit_placeholder_type(self, t: PlaceholderType) -> bool:
         return self.query_types(t.args)
@@ -546,7 +548,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         if self.seen_aliases is None:
             self.seen_aliases = set()
         elif t in self.seen_aliases:
-            return self.empty
+            return self.default
         self.seen_aliases.add(t)
         if self.skip_alias_target:
             return self.query_types(t.args)

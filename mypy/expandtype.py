@@ -146,7 +146,16 @@ T = TypeVar("T", bound=Type)
 from time import time
 tt = 0.0
 
-# Use singleton since since is performance sensitive.
+
+class HasGenericCallable(BoolTypeQuery):
+    def __init__(self) -> None:
+        super().__init__(0)
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        return t.is_generic() or super().visit_callable_type(t)
+
+
+# Share a singleton since this is performance sensitive
 has_generic_callable: Final = HasGenericCallable()
 
 def freshen_all_functions_type_vars(t: T) -> T:
@@ -162,14 +171,6 @@ def freshen_all_functions_type_vars(t: T) -> T:
     #tt += time() - t0
     #print('freshen', t, '->', result)
     return result
-
-
-class HasGenericCallable(BoolTypeQuery):
-    def __init__(self) -> None:
-        super().__init__(0)
-
-    def visit_callable_type(self, t: CallableType) -> bool:
-        return t.is_generic() or super().visit_callable_type(t)
 
 
 class FreshenCallableVisitor(TypeTranslator):
