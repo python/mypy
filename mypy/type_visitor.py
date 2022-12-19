@@ -556,7 +556,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
 
     def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:
         """Perform a query for a sequence of types using the strategy to combine the results."""
-        # Special-case for lists and tuples since it allows mypyc produce better code.
+        # Special-case for lists and tuples to allow mypyc to produce better code.
         if isinstance(types, list):
             if self.strategy == ANY_STRATEGY:
                 return any(t.accept(self) for t in types)
