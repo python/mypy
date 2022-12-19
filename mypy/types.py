@@ -2879,6 +2879,7 @@ from mypy.type_visitor import (  # noqa: F811
     TypeQuery as TypeQuery,
     TypeTranslator as TypeTranslator,
     TypeVisitor as TypeVisitor,
+    BoolTypeQuery as BoolTypeQuery,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 

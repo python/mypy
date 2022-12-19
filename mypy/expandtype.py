@@ -4,7 +4,7 @@ from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
 from typing_extensions import Final
 
 from mypy.nodes import ARG_POS, ARG_STAR, Var
-from mypy.type_visitor import TypeTranslator, TypeQuery2
+from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     AnyType,
     CallableType,
@@ -38,6 +38,7 @@ from mypy.types import (
     get_proper_type,
     remove_trivial,
     TypeQuery,
+    BoolTypeQuery,
 )
 from mypy.typevartuples import (
     find_unpack_in_list,
@@ -163,7 +164,7 @@ def freshen_all_functions_type_vars(t: T) -> T:
     return result
 
 
-class HasGenericCallable(TypeQuery2):
+class HasGenericCallable(BoolTypeQuery):
     def __init__(self) -> None:
         super().__init__(0)
 

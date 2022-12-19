@@ -419,17 +419,16 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy([t.accept(self) for t in types])
 
 
-class TypeQuery2(SyntheticTypeVisitor[bool]):
-    """Visitor for performing queries of types.
+class BoolTypeQuery(SyntheticTypeVisitor[bool]):
+    """Visitor for performing queries of types with bool results.
 
-    'strategy' is used to combine results for a series of types,
-    common use cases involve a boolean query using `any` or `all`.
+    Use TypeQuery if need non-bool results (this is faster for bools).
+
+    'strategy' is used to combine results for a series of types.
 
     Note: This visitor keeps an internal state (tracks type aliases to avoid
     recursion), so it should *never* be re-used for querying different types
     unless you call reset() first.
-
-    # TODO: check that we don't have existing violations of this rule.
     """
 
     def __init__(self, strategy: int) -> None:
