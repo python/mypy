@@ -2479,6 +2479,12 @@ class State:
             or self.options.cache_dir == os.devnull
             or self.options.fine_grained_incremental
         ):
+            if self.options.debug_serialize:
+                try:
+                    self.tree.serialize()
+                except Exception:
+                    print(f"Error serializing {self.id}", file=self.manager.stdout)
+                    raise  # Propagate to display traceback
             return
         is_errors = self.transitive_error
         if is_errors:
