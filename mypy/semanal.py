@@ -3847,7 +3847,7 @@ class SemanticAnalyzer(
         Return True if this looks like a type variable declaration (but maybe
         with errors), otherwise return False.
         """
-        call = self.get_typevarlike_declaration(s, ("typing.TypeVar",))
+        call = self.get_typevarlike_declaration(s, ("typing.TypeVar", "typing_extensions.TypeVar"))
         if not call:
             return False
 

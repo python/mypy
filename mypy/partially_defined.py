@@ -322,7 +322,10 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         # Was this name previously used? If yes, it's a used-before-definition error.
         refs = self.tracker.pop_undefined_ref(name)
         for ref in refs:
-            self.var_used_before_def(name, ref)
+            if self.loops:
+                self.variable_may_be_undefined(name, ref)
+            else:
+                self.var_used_before_def(name, ref)
         self.tracker.record_definition(name)
 
     def visit_global_decl(self, o: GlobalDecl) -> None:
@@ -363,9 +366,10 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             b.accept(self)
             self.tracker.next_branch()
         if o.else_body:
-            if o.else_body.is_unreachable:
+            if not o.else_body.is_unreachable:
+                o.else_body.accept(self)
+            else:
                 self.tracker.skip_branch()
-            o.else_body.accept(self)
         self.tracker.end_branch_statement()
 
     def visit_match_stmt(self, o: MatchStmt) -> None:
