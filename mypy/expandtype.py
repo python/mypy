@@ -6,7 +6,9 @@ from typing_extensions import Final
 from mypy.nodes import ARG_POS, ARG_STAR, Var
 from mypy.type_visitor import TypeTranslator
 from mypy.types import (
+    ANY_STRATEGY,
     AnyType,
+    BoolTypeQuery,
     CallableType,
     DeletedType,
     ErasedType,
@@ -37,8 +39,6 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     remove_trivial,
-    TypeQuery,
-    BoolTypeQuery,
 )
 from mypy.typevartuples import (
     find_unpack_in_list,
@@ -141,15 +141,9 @@ def freshen_function_type_vars(callee: F) -> F:
         return cast(F, fresh_overload)
 
 
-T = TypeVar("T", bound=Type)
-
-from time import time
-tt = 0.0
-
-
 class HasGenericCallable(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(ANY_STRATEGY)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         return t.is_generic() or super().visit_callable_type(t)
@@ -158,9 +152,11 @@ class HasGenericCallable(BoolTypeQuery):
 # Share a singleton since this is performance sensitive
 has_generic_callable: Final = HasGenericCallable()
 
+
+T = TypeVar("T", bound=Type)
+
+
 def freshen_all_functions_type_vars(t: T) -> T:
-    #global tt
-    #t0 = time()
     result: Type
     has_generic_callable.reset()
     if not t.accept(has_generic_callable):
@@ -168,8 +164,6 @@ def freshen_all_functions_type_vars(t: T) -> T:
     else:
         result = t.accept(FreshenCallableVisitor())
         assert isinstance(result, type(t))
-    #tt += time() - t0
-    #print('freshen', t, '->', result)
     return result
 
 
