@@ -1976,7 +1976,7 @@ class CallableType(FunctionLike):
 
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
-            return NormalizedCallableType(self.copy_modified())
+            return cast(NormalizedCallableType, self)
         last_type = get_proper_type(self.arg_types[-1])
         assert isinstance(last_type, TypedDictType)
         extra_kinds = [
@@ -2126,7 +2126,9 @@ class Overloaded(FunctionLike):
         return self._items[0].name
 
     def with_unpacked_kwargs(self) -> Overloaded:
-        return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+        if any(i.unpack_kwargs for i in self.items):
+            return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+        return self
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_overloaded(self)
