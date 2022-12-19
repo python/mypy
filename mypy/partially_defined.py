@@ -366,9 +366,10 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             b.accept(self)
             self.tracker.next_branch()
         if o.else_body:
-            if o.else_body.is_unreachable:
+            if not o.else_body.is_unreachable:
+                o.else_body.accept(self)
+            else:
                 self.tracker.skip_branch()
-            o.else_body.accept(self)
         self.tracker.end_branch_statement()
 
     def visit_match_stmt(self, o: MatchStmt) -> None:

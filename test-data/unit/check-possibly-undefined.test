@@ -771,22 +771,30 @@ def f() -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachable]
-# flags: --enable-error-code possibly-undefined
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 import typing
 
-if typing.TYPE_CHECKING:
-    x = 1
-elif int():
-    y = 1
-else:
-    y = 2
-a = x
+def f0() -> None:
+    if typing.TYPE_CHECKING:
+        x = 1
+    elif int():
+        y = 1
+    else:
+        y = 2
+    a = x
 
-if not typing.TYPE_CHECKING:
-    pass
-else:
-    z = 1
-a = z
+def f1() -> None:
+    if not typing.TYPE_CHECKING:
+        pass
+    else:
+        z = 1
+    a = z
+
+def f2() -> None:
+    if typing.TYPE_CHECKING:
+        x = 1
+    else:
+        y = x
 [typing fixtures/typing-medium.pyi]
 
 [case testUsedBeforeDef]
