@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import Any, Callable, Generic, Iterable, Sequence, TypeVar, cast
+from typing_extensions import Final
 
 from mypy_extensions import mypyc_attr, trait
 
@@ -419,12 +420,17 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy([t.accept(self) for t in types])
 
 
+ANY_STRATEGY: Final = 0
+ALL_STRATEGY: Final = 0
+
+
 class BoolTypeQuery(SyntheticTypeVisitor[bool]):
     """Visitor for performing queries of types with bool results.
 
     Use TypeQuery if need non-bool results (this is faster for bools).
 
-    'strategy' is used to combine results for a series of types.
+    'strategy' is used to combine results for a series of types. It must
+    be ANY_STRATEGY or ALL_STRATEGY.
 
     Note: This visitor keeps an internal state (tracks type aliases to avoid
     recursion), so it should *never* be re-used for querying different types
@@ -433,9 +439,10 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
 
     def __init__(self, strategy: int) -> None:
         self.strategy = strategy
-        if self.strategy == 0:  # any
+        if strategy == ANY_STRATEGY:
             self.empty = False
-        else:  # all
+        else:
+            assert strategy == ALL_STRATEGY
             self.empty = True
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]]. An empty set is
@@ -549,12 +556,12 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         """Perform a query for a sequence of types using the strategy to combine the results."""
         # Special-case for lists and tuples since it allows mypyc produce better code.
         if isinstance(types, list):
-            if self.strategy == 0:
+            if self.strategy == ANY_STRATEGY:
                 return any(t.accept(self) for t in types)
             else:
                 return all(t.accept(self) for t in types)
         else:
-            if self.strategy == 0:
+            if self.strategy == ANY_STRATEGY:
                 return any(t.accept(self) for t in types)
             else:
                 return all(t.accept(self) for t in types)

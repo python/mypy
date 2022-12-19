@@ -2880,6 +2880,8 @@ from mypy.type_visitor import (  # noqa: F811
     TypeTranslator as TypeTranslator,
     TypeVisitor as TypeVisitor,
     BoolTypeQuery as BoolTypeQuery,
+    ANY_STRATEGY as ANY_STRATEGY,
+    ALL_STRATEGY as ALL_STRATEGY,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 
