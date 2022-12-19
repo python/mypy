@@ -382,7 +382,7 @@ def f2() -> None:
             x = 2
         w = x  # No error.
 
-[case testDefinedDifferentBranchPossiblyUndefined]
+[case testPossiblyUndefinedLoop]
 # flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 
 def f0() -> None:
@@ -422,6 +422,11 @@ def f3() -> None:
         x = 1
     else:
         y = x  # E: Name "x" may be undefined
+
+def f4() -> None:
+    while int():
+        y = x  # E: Name "x" may be undefined
+        x: int = 1
 
 [case testAssert]
 # flags: --enable-error-code possibly-undefined
