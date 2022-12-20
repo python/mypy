@@ -511,10 +511,15 @@ def analyze_member_var_access(
         # independently of types.
         if mx.is_lvalue and not mx.chk.get_final_context():
             check_final_member(name, info, mx.msg, mx.context)
-
-        if not mx.is_lvalue and not mx.chk.get_final_context() and not mx.chk.is_stub:
+        # If accessing a final attribute, check if it was properly assigned
+        # in init (for dataclass field() specifically)
+        if (
+            not mx.is_lvalue
+            and not mx.chk.get_final_context()
+            and not mx.chk.is_stub
+            and not mx.chk.is_typeshed_stub
+        ):
             check_final_assigned_in_init(name, info, mx.msg, mx.context)
-
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
@@ -616,6 +621,7 @@ def check_final_assigned_in_init(
                 isinstance(sym.node, Var)
                 and not sym.node.final_set_in_init
                 and sym.node.final_unset_in_class
+                and sym.node.has_explicit_value
             )
         ):
             msg.final_field_not_set_in_init(name, ctx=ctx)
