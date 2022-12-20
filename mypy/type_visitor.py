@@ -509,7 +509,13 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
 
     def visit_callable_type(self, t: CallableType) -> bool:
         # FIX generics
-        return self.query_types(t.arg_types + [t.ret_type])
+        # Avoid allocating any objects here as an optimization.
+        args = self.query_types(t.arg_types)
+        ret = t.ret_type.accept(self)
+        if self.strategy == ANY_STRATEGY:
+            return args or ret
+        else:
+            return args and ret
 
     def visit_tuple_type(self, t: TupleType) -> bool:
         return self.query_types(t.items)
