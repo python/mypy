@@ -1757,7 +1757,7 @@ class CallableType(FunctionLike):
         from_concatenate: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
     ) -> CT:
-        return type(self)(
+        modified = CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
@@ -1782,6 +1782,9 @@ class CallableType(FunctionLike):
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
         )
+        # Optimization: Only NewTypes are supported as subtypes since
+        # the class is effectively final, so we can use a cast safely.
+        return cast(CT, modified)
 
     def var_arg(self) -> FormalArgument | None:
         """The formal argument for *args."""
@@ -1976,7 +1979,7 @@ class CallableType(FunctionLike):
 
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
-            return NormalizedCallableType(self.copy_modified())
+            return cast(NormalizedCallableType, self)
         last_type = get_proper_type(self.arg_types[-1])
         assert isinstance(last_type, TypedDictType)
         extra_kinds = [
@@ -2126,7 +2129,9 @@ class Overloaded(FunctionLike):
         return self._items[0].name
 
     def with_unpacked_kwargs(self) -> Overloaded:
-        return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+        if any(i.unpack_kwargs for i in self.items):
+            return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+        return self
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_overloaded(self)
