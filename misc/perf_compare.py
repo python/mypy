@@ -1,15 +1,15 @@
-"""Compare performance of mypyc-compiled mypy between two or more commits/branches.
+"""Compare performance of mypyc-compiled mypy between one or more commits/branches.
 
 Simple usage:
 
-  python misc/perf_compare.py my-branch master
+  python misc/perf_compare.py my-branch master ...
 
 What this does:
 
  * Create a temp clone of the mypy repo for each target commit
  * Checkout a target commit in each of the clones
- * Compile mypyc in each of the clones in parallel
- * Create another temp clone of the mypy repo as the code to self check
+ * Compile mypyc in each of the clones *in parallel*
+ * Create another temp clone of the mypy repo as the code to check
  * Self check with each of the compiled mypys N times
  * Report the average runtimes and relative performance
 """
@@ -92,6 +92,7 @@ def main() -> None:
     clone(self_check_dir, None)
 
     heading("Compiling mypy")
+    print("(This will take a while...)")
 
     for t in build_threads:
         t.join()
