@@ -2879,7 +2879,10 @@ def get_proper_types(it: Iterable[Type | None]) -> list[ProperType] | list[Prope
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811
+from mypy.type_visitor import (  # noqa: F811,F401
+    ALL_STRATEGY as ALL_STRATEGY,
+    ANY_STRATEGY as ANY_STRATEGY,
+    BoolTypeQuery as BoolTypeQuery,
     SyntheticTypeVisitor as SyntheticTypeVisitor,
     TypeQuery as TypeQuery,
     TypeTranslator as TypeTranslator,
