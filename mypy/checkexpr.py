@@ -1583,8 +1583,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 res.append(arg_type)
         return res
 
-    @contextmanager
-    def allow_unions(self, type_context: Type) -> Iterator[None]:
+    def infer_more_unions_for_recursive_type(self, type_context: Type) -> bool:
         # This is a hack to better support inference for recursive types.
         # When the outer context for a function call is known to be recursive,
         # we solve type constraints inferred from arguments using unions instead
@@ -1594,10 +1593,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         old = type_state.infer_unions
         if has_recursive_types(type_context):
             type_state.infer_unions = True
-        try:
-            yield
-        finally:
-            type_state.infer_unions = old
+        return old
 
     def infer_arg_types_in_context(
         self,
@@ -1618,8 +1614,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
                 if not arg_kinds[ai].is_star():
-                    with self.allow_unions(callee.arg_types[i]):
-                        res[ai] = self.accept(args[ai], callee.arg_types[i])
+                    arg_type = callee.arg_types[i]
+                    old = self.infer_more_unions_for_recursive_type(arg_type)
+                    res[ai] = self.accept(args[ai], arg_type)
+                    type_state.infer_unions = old
 
         # Fill in the rest of the argument types.
         for i, t in enumerate(res):
