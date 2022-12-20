@@ -3321,17 +3321,22 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
-class HasRecursiveType(TypeQuery[bool]):
+class HasRecursiveType(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> bool:
         return t.is_recursive or self.query_types(t.args)
 
 
+# Use singleton since this is hot (note: call reset() before using)
+_has_recursive_type: Final = HasRecursiveType()
+
+
 def has_recursive_types(typ: Type) -> bool:
     """Check if a type contains any recursive aliases (recursively)."""
-    return typ.accept(HasRecursiveType())
+    _has_recursive_type.reset()
+    return typ.accept(_has_recursive_type)
 
 
 def flatten_nested_unions(
