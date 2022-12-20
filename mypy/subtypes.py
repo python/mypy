@@ -330,34 +330,28 @@ def _is_subtype(
 
 
 def check_type_parameter(
-    lefta: Type, righta: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
+    left: Type, right: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
 ) -> bool:
-    def check(left: Type, right: Type) -> bool:
-        return (
-            is_proper_subtype(left, right, subtype_context=subtype_context)
-            if proper_subtype
-            else is_subtype(left, right, subtype_context=subtype_context)
-        )
-
     if variance == COVARIANT:
-        return check(lefta, righta)
+        if proper_subtype:
+            return is_proper_subtype(left, right, subtype_context=subtype_context)
+        else:
+            return is_subtype(left, right, subtype_context=subtype_context)
     elif variance == CONTRAVARIANT:
-        return check(righta, lefta)
+        if proper_subtype:
+            return is_proper_subtype(right, left, subtype_context=subtype_context)
+        else:
+            return is_subtype(right, left, subtype_context=subtype_context)
     else:
         if proper_subtype:
             # We pass ignore_promotions=False because it is a default for subtype checks.
             # The actual value will be taken from the subtype_context, and it is whatever
             # the original caller passed.
             return is_same_type(
-                lefta, righta, ignore_promotions=False, subtype_context=subtype_context
+                left, right, ignore_promotions=False, subtype_context=subtype_context
             )
-        return is_equivalent(lefta, righta, subtype_context=subtype_context)
-
-
-def ignore_type_parameter(
-    lefta: Type, righta: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
-) -> bool:
-    return True
+        else:
+            return is_equivalent(left, right, subtype_context=subtype_context)
 
 
 class SubtypeVisitor(TypeVisitor[bool]):
@@ -366,9 +360,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         self.orig_right = right
         self.proper_subtype = proper_subtype
         self.subtype_context = subtype_context
-        self.check_type_parameter = (
-            ignore_type_parameter if subtype_context.ignore_type_params else check_type_parameter
-        )
         self.options = subtype_context.options
         self._subtype_kind = SubtypeVisitor.build_subtype_kind(subtype_context, proper_subtype)
 
@@ -572,17 +563,22 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     )
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
-                for lefta, righta, tvar in type_params:
-                    if isinstance(tvar, TypeVarType):
-                        if not self.check_type_parameter(
-                            lefta, righta, tvar.variance, self.proper_subtype, self.subtype_context
-                        ):
-                            nominal = False
-                    else:
-                        if not self.check_type_parameter(
-                            lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
-                        ):
-                            nominal = False
+                if not self.subtype_context.ignore_type_params:
+                    for lefta, righta, tvar in type_params:
+                        if isinstance(tvar, TypeVarType):
+                            if not check_type_parameter(
+                                lefta,
+                                righta,
+                                tvar.variance,
+                                self.proper_subtype,
+                                self.subtype_context,
+                            ):
+                                nominal = False
+                        else:
+                            if not check_type_parameter(
+                                lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
+                            ):
+                                nominal = False
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
