@@ -157,7 +157,7 @@ from mypy.server.aststrip import SavedAttributes, strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import WILDCARD_TAG, make_trigger
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import module_prefix, split_target
 
 MAX_ITER: Final = 1000
@@ -869,7 +869,7 @@ def propagate_changes_using_dependencies(
         # We need to do this to avoid false negatives if the protocol itself is
         # unchanged, but was marked stale because its sub- (or super-) type changed.
         for info in stale_protos:
-            TypeState.reset_subtype_caches_for(info)
+            type_state.reset_subtype_caches_for(info)
         # Then fully reprocess all targets.
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
@@ -1081,7 +1081,7 @@ def update_deps(
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
     # Merge also the newly added protocol deps (if any).
-    TypeState.update_protocol_deps(deps)
+    type_state.update_protocol_deps(deps)
 
 
 def lookup_target(

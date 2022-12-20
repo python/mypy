@@ -66,7 +66,7 @@ from mypy.nodes import (
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 
 SavedAttributes: _TypeAlias = Dict[Tuple[ClassDef, str], SymbolTableNode]
 
@@ -143,7 +143,7 @@ class NodeStripVisitor(TraverserVisitor):
             super().visit_class_def(node)
         node.defs.body.extend(node.removed_statements)
         node.removed_statements = []
-        TypeState.reset_subtype_caches_for(node.info)
+        type_state.reset_subtype_caches_for(node.info)
         # Kill the TypeInfo, since there is none before semantic analysis.
         node.info = CLASSDEF_NO_INFO
         node.analyzed = None

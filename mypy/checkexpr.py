@@ -162,7 +162,7 @@ from mypy.types import (
     is_self_type_like,
     remove_optional,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
@@ -1591,13 +1591,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # of joins. This is a bit arbitrary, but in practice it works for most
         # cases. A cleaner alternative would be to switch to single bin type
         # inference, but this is a lot of work.
-        old = TypeState.infer_unions
+        old = type_state.infer_unions
         if has_recursive_types(type_context):
-            TypeState.infer_unions = True
+            type_state.infer_unions = True
         try:
             yield
         finally:
-            TypeState.infer_unions = old
+            type_state.infer_unions = old
 
     def infer_arg_types_in_context(
         self,
