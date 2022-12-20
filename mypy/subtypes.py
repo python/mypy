@@ -289,18 +289,20 @@ def _is_subtype(
         # ErasedType as we do for non-proper subtyping.
         return True
 
-    def check_item(left: Type, right: Type, subtype_context: SubtypeContext) -> bool:
-        if proper_subtype:
-            return is_proper_subtype(left, right, subtype_context=subtype_context)
-        return is_subtype(left, right, subtype_context=subtype_context)
-
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
         # subtype of one of the items making up the union.
-        is_subtype_of_item = any(
-            check_item(orig_left, item, subtype_context) for item in right.items
-        )
+        if proper_subtype:
+            is_subtype_of_item = any(
+                is_proper_subtype(orig_left, item, subtype_context=subtype_context)
+                for item in right.items
+            )
+        else:
+            is_subtype_of_item = any(
+                is_subtype(orig_left, item, subtype_context=subtype_context)
+                for item in right.items
+            )
         # Recombine rhs literal types, to make an enum type a subtype
         # of a union of all enum items as literal types. Only do it if
         # the previous check didn't succeed, since recombining can be
@@ -312,9 +314,16 @@ def _is_subtype(
             and (left.type.is_enum or left.type.fullname == "builtins.bool")
         ):
             right = UnionType(mypy.typeops.try_contracting_literals_in_union(right.items))
-            is_subtype_of_item = any(
-                check_item(orig_left, item, subtype_context) for item in right.items
-            )
+            if proper_subtype:
+                is_subtype_of_item = any(
+                    is_proper_subtype(orig_left, item, subtype_context=subtype_context)
+                    for item in right.items
+                )
+            else:
+                is_subtype_of_item = any(
+                    is_subtype(orig_left, item, subtype_context=subtype_context)
+                    for item in right.items
+                )
         # However, if 'left' is a type variable T, T might also have
         # an upper bound which is itself a union. This case will be
         # handled below by the SubtypeVisitor. We have to check both
