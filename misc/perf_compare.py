@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import glob
 import os
+import random
 import shutil
 import statistics
 import subprocess
@@ -27,27 +28,35 @@ import threading
 import time
 
 
+def heading(s: str) -> None:
+    print()
+    print(f"=== {s} ===")
+    print()
+
+
 def build_mypy(target_dir: str) -> None:
     env = os.environ.copy()
     env["CC"] = "clang"
-    env["MYPYC_OPT_LEVEL"] = "2"
+    env["MYPYC_OPT_LEVEL"] = "0"
     cmd = ["python3", "setup.py", "--use-mypyc", "build_ext", "--inplace"]
     subprocess.run(cmd, env=env, check=True, cwd=target_dir)
 
 
 def clone(target_dir: str, commit: str | None) -> None:
+    heading(f"Cloning mypy to {target_dir}")
     repo_dir = os.getcwd()
     if os.path.isdir(target_dir):
         print(f"{target_dir} exists: deleting")
-        input()
         shutil.rmtree(target_dir)
-    print(f"cloning mypy to {target_dir}")
     subprocess.run(["git", "clone", repo_dir, target_dir], check=True)
     if commit:
         subprocess.run(["git", "checkout", commit], check=True, cwd=target_dir)
 
 
 def run_benchmark(compiled_dir: str, check_dir: str) -> float:
+    cache_dir = os.path.join(check_dir, ".mypy_cache")
+    if os.path.isdir(cache_dir):
+        shutil.rmtree(cache_dir)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.abspath(compiled_dir)
     cmd = ["python3", "-m", "mypy", "--config-file", "mypy_self_check.ini"]
@@ -63,7 +72,7 @@ def main() -> None:
     parser.add_argument("commit", nargs="+")
     args = parser.parse_args()
     commits = args.commit
-    num_bench = 2
+    num_runs = 11
 
     if not os.path.isdir(".git") or not os.path.isdir("mypyc"):
         sys.exit("error: Run this the mypy repo root")
@@ -81,20 +90,42 @@ def main() -> None:
     self_check_dir = "mypy.self.tmpdir"
     clone(self_check_dir, None)
 
+    heading("Compiling mypy")
+
     for t in build_threads:
         t.join()
 
-    print(f"built mypy at {len(commits)} commits")
+    print(f"Finished compiling mypy ({len(commits)} builds)")
+
+    heading("Performing measurements")
 
     results: dict[str, list[float]] = {}
-    for i in range(num_bench):
-        for i, commit in enumerate(commits):
+    for n in range(num_runs):
+        if n == 0:
+            print("Warmup...")
+        else:
+            print(f"Run {n}/{num_runs - 1}...")
+        items = list(enumerate(commits))
+        random.shuffle(items)
+        for i, commit in items:
             tt = run_benchmark(target_dirs[i], self_check_dir)
-            results.setdefault(commit, []).append(tt)
+            # Don't record the first warm-up run
+            if n > 0:
+                print(f"{commit}: t={tt:.3f}s")
+                results.setdefault(commit, []).append(tt)
 
+    print()
+    heading("Results")
+    first = -1.0
     for commit in commits:
         tt = statistics.mean(results[commit])
-        print(f"commit: {tt:.1f}s")
+        if first < 0:
+            delta = "0.0%"
+            first = tt
+        else:
+            d = 100 * ((tt / first) - 1)
+            delta = f"{d:+.1f}%"
+        print(f"{commit:<25}: {tt:.3f}s ({delta})")
 
 
 if __name__ == "__main__":
