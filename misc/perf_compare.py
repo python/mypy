@@ -54,16 +54,17 @@ def clone(target_dir: str, commit: str | None) -> None:
 
 
 def run_benchmark(compiled_dir: str, check_dir: str) -> float:
-    cache_dir = os.path.join(check_dir, ".mypy_cache")
+    cache_dir = os.path.join(compiled_dir, ".mypy_cache")
     if os.path.isdir(cache_dir):
         shutil.rmtree(cache_dir)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.abspath(compiled_dir)
-    cmd = ["python3", "-m", "mypy", "--config-file", "mypy_self_check.ini"]
-    cmd += glob.glob("mypy/*.py", root_dir=check_dir)
-    cmd += glob.glob("mypy/*/*.py", root_dir=check_dir)
+    abschk = os.path.abspath(check_dir)
+    cmd = ["python3", "-m", "mypy", "--config-file", os.path.join(abschk, "mypy_self_check.ini")]
+    cmd += glob.glob(os.path.join(abschk, "mypy/*.py"))
+    cmd += glob.glob(os.path.join(abschk, "mypy/*/*.py"))
     t0 = time.time()
-    subprocess.run(cmd, cwd=check_dir, env=env)
+    subprocess.run(cmd, cwd=compiled_dir, env=env)
     return time.time() - t0
 
 
@@ -125,7 +126,7 @@ def main() -> None:
         else:
             d = 100 * ((tt / first) - 1)
             delta = f"{d:+.1f}%"
-        print(f"{commit:<25}: {tt:.3f}s ({delta})")
+        print(f"{commit:<25} {tt:.3f}s ({delta})")
 
 
 if __name__ == "__main__":
