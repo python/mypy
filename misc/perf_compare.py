@@ -39,7 +39,7 @@ def build_mypy(target_dir: str) -> None:
     env = os.environ.copy()
     env["CC"] = "clang"
     env["MYPYC_OPT_LEVEL"] = "2"
-    cmd = ["python3", "setup.py", "--use-mypyc", "build_ext", "--inplace"]
+    cmd = [sys.executable, "setup.py", "--use-mypyc", "build_ext", "--inplace"]
     subprocess.run(cmd, env=env, check=True, cwd=target_dir)
 
 
