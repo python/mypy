@@ -2888,23 +2888,35 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
         typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
-    assert isinstance(typ, ProperType), typ
     # TODO: store the name of original type alias on this type, so we can show it in errors.
-    return typ
+    return cast(ProperType, typ)
 
 
 @overload
-def get_proper_types(it: Iterable[Type]) -> list[ProperType]:  # type: ignore[misc]
+def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]:  # type: ignore[misc]
     ...
 
 
 @overload
-def get_proper_types(it: Iterable[Type | None]) -> list[ProperType | None]:
+def get_proper_types(
+    types: list[Type | None] | tuple[Type | None, ...]
+) -> list[ProperType | None]:
     ...
 
 
-def get_proper_types(it: Iterable[Type | None]) -> list[ProperType] | list[ProperType | None]:
-    return [get_proper_type(t) for t in it]
+def get_proper_types(
+    types: list[Type] | list[Type | None] | tuple[Type | None, ...]
+) -> list[ProperType] | list[ProperType | None]:
+    if isinstance(types, list):
+        typelist = types
+        # Optimize for the common case so that we don't need to allocate anything
+        if not any(
+            isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist  # type: ignore[misc]
+        ):
+            return cast("list[ProperType]", typelist)
+        return [get_proper_type(t) for t in typelist]
+    else:
+        return [get_proper_type(t) for t in types]
 
 
 # We split off the type visitor base classes to another module

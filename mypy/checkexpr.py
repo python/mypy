@@ -2213,7 +2213,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # we don't want to introduce internal inconsistencies.
                     unioned_result = (
                         make_simplified_union(list(returns), context.line, context.column),
-                        self.combine_function_signatures(inferred_types),
+                        self.combine_function_signatures(get_proper_types(inferred_types)),
                     )
 
         # Step 3: We try checking each branch one-by-one.
@@ -2554,7 +2554,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for expr in exprs:
                 del self.type_overrides[expr]
 
-    def combine_function_signatures(self, types: Sequence[Type]) -> AnyType | CallableType:
+    def combine_function_signatures(self, types: list[ProperType]) -> AnyType | CallableType:
         """Accepts a list of function signatures and attempts to combine them together into a
         new CallableType consisting of the union of all of the given arguments and return types.
 
@@ -2562,10 +2562,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         an ambiguity because of Any in arguments).
         """
         assert types, "Trying to merge no callables"
-        types = get_proper_types(types)
         if not all(isinstance(c, CallableType) for c in types):
             return AnyType(TypeOfAny.special_form)
-        callables = cast(Sequence[CallableType], types)
+        callables = cast("list[CallableType]", types)
         if len(callables) == 1:
             return callables[0]
 
@@ -3463,7 +3462,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # we call 'combine_function_signature' instead of just unioning the inferred
             # callable types.
             results_final = make_simplified_union(all_results)
-            inferred_final = self.combine_function_signatures(all_inferred)
+            inferred_final = self.combine_function_signatures(get_proper_types(all_inferred))
             return results_final, inferred_final
         else:
             return self.check_method_call_by_name(
