@@ -71,6 +71,7 @@ def run_benchmark(compiled_dir: str, check_dir: str) -> float:
     cmd += glob.glob(os.path.join(abschk, "mypy/*.py"))
     cmd += glob.glob(os.path.join(abschk, "mypy/*/*.py"))
     t0 = time.time()
+    # Ignore errors, since some commits being measured may generate additional errors.
     subprocess.run(cmd, cwd=compiled_dir, env=env)
     return time.time() - t0
 
