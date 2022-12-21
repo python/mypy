@@ -33,8 +33,12 @@ from mypy.nodes import (
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
+    Assign,
     BasicBlock,
+    Branch,
+    ComparisonOp,
     Extend,
+    Goto,
     Integer,
     RaiseStandardError,
     Register,
@@ -51,6 +55,7 @@ from mypyc.ir.rtypes import (
     dict_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
+    int_rprimitive,
     is_dict_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -687,4 +692,30 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.coerce(val, int32_rprimitive, expr.line)
+    return None
+
+
+@specialize_function("builtins.bool")
+def translate_bool(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_int_rprimitive(arg_type):
+        src = builder.accept(arg)
+        tmp = Register(bool_rprimitive)
+        b1, b2, b3 = BasicBlock(), BasicBlock(), BasicBlock()
+        chk = builder.builder.comparison_op(
+            src, Integer(0, int_rprimitive), ComparisonOp.EQ, expr.line
+        )
+        builder.flush_keep_alives()
+        builder.add(Branch(chk, b1, b2, Branch.BOOL))
+        builder.activate_block(b1)
+        builder.add(Assign(tmp, Integer(0, bool_rprimitive)))
+        builder.add(Goto(b3))
+        builder.activate_block(b2)
+        builder.add(Assign(tmp, Integer(1, bool_rprimitive)))
+        builder.add(Goto(b3))
+        builder.activate_block(b3)
+        return tmp
     return None

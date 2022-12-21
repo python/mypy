@@ -326,6 +326,11 @@ class LowLevelIRBuilder:
             ):
                 # Equivalent types
                 return src
+            elif is_bool_rprimitive(src_type) and is_int_rprimitive(target_type):
+                shifted = self.int_op(
+                    bool_rprimitive, src, Integer(1, bool_rprimitive), IntOp.LEFT_SHIFT
+                )
+                return self.add(Extend(shifted, int_rprimitive, signed=False))
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -1795,7 +1800,7 @@ class LowLevelIRBuilder:
             return target
         return None
 
-    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:
         """Generate a native integer binary op.
 
         Use native/C semantics, which sometimes differ from Python
