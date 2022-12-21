@@ -5983,7 +5983,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert call is not None
                 if not is_subtype(subtype, call, options=self.options):
                     self.msg.note_call(supertype, call, context, code=msg.code)
-        self.check_possible_missing_await(subtype, supertype, context)
+        if not self.msg.prefer_simple_messages():
+            self.check_possible_missing_await(subtype, supertype, context)
         return False
 
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:

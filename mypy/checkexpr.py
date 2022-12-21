@@ -2157,7 +2157,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.incompatible_argument_note(
                 original_caller_type, callee_type, context, code=code
             )
-            self.chk.check_possible_missing_await(caller_type, callee_type, context)
+            if not self.msg.prefer_simple_messages():
+                self.chk.check_possible_missing_await(caller_type, callee_type, context)
 
     def check_overload_call(
         self,

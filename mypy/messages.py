@@ -191,6 +191,10 @@ class MessageBuilder:
     def are_type_names_disabled(self) -> bool:
         return len(self._disable_type_names) > 0 and self._disable_type_names[-1]
 
+    def prefer_simple_messages(self) -> bool:
+        """Should we generate simple/fast error messages?"""
+        return self.errors.prefer_simple_messages()
+
     def report(
         self,
         msg: str,
