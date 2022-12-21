@@ -60,7 +60,7 @@ from mypy.types import (
     get_proper_type,
     is_named_instance,
 )
-from mypy.typestate import SubtypeKind, TypeState
+from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars_with_any
 from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
 
@@ -154,7 +154,7 @@ def is_subtype(
                 options,
             }
         ), "Don't pass both context and individual flags"
-    if TypeState.is_assumed_subtype(left, right):
+    if type_state.is_assumed_subtype(left, right):
         return True
     if mypy.typeops.is_recursive_pair(left, right):
         # This case requires special care because it may cause infinite recursion.
@@ -174,7 +174,7 @@ def is_subtype(
         #     B = Union[int, Tuple[B, ...]]
         # When checking if A <: B we push pair (A, B) onto 'assuming' stack, then when after few
         # steps we come back to initial call is_subtype(A, B) and immediately return True.
-        with pop_on_exit(TypeState.get_assumptions(is_proper=False), left, right):
+        with pop_on_exit(type_state.get_assumptions(is_proper=False), left, right):
             return _is_subtype(left, right, subtype_context, proper_subtype=False)
     return _is_subtype(left, right, subtype_context, proper_subtype=False)
 
@@ -215,11 +215,11 @@ def is_proper_subtype(
                 ignore_uninhabited,
             }
         ), "Don't pass both context and individual flags"
-    if TypeState.is_assumed_proper_subtype(left, right):
+    if type_state.is_assumed_proper_subtype(left, right):
         return True
     if mypy.typeops.is_recursive_pair(left, right):
         # Same as for non-proper subtype, see detailed comment there for explanation.
-        with pop_on_exit(TypeState.get_assumptions(is_proper=True), left, right):
+        with pop_on_exit(type_state.get_assumptions(is_proper=True), left, right):
             return _is_subtype(left, right, subtype_context, proper_subtype=True)
     return _is_subtype(left, right, subtype_context, proper_subtype=True)
 
@@ -445,14 +445,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, Instance):
-            if TypeState.is_cached_subtype_check(self._subtype_kind, left, right):
+            if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
             if not self.subtype_context.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and any(
                         self._is_subtype(p, self.right) for p in base._promote
                     ):
-                        TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
+                        type_state.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
                 # Special case: Low-level integer types are compatible with 'int'. We can't
                 # use promotions, since 'int' is already promoted to low-level integer types,
@@ -589,7 +589,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             ):
                                 nominal = False
                 if nominal:
-                    TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
+                    type_state.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(
                 left, right, proper_subtype=self.proper_subtype
@@ -978,7 +978,7 @@ def is_protocol_implementation(
     if skip is None:
         skip = []
     # We need to record this check to generate protocol fine-grained dependencies.
-    TypeState.record_protocol_subtype_check(left.type, right.type)
+    type_state.record_protocol_subtype_check(left.type, right.type)
     # nominal subtyping currently ignores '__init__' and '__new__' signatures
     members_not_to_check = {"__init__", "__new__"}
     members_not_to_check.update(skip)
@@ -1078,7 +1078,7 @@ def is_protocol_implementation(
         subtype_context=SubtypeContext(ignore_pos_arg_names=ignore_names),
         proper_subtype=proper_subtype,
     )
-    TypeState.record_subtype_cache_entry(subtype_kind, left, right)
+    type_state.record_subtype_cache_entry(subtype_kind, left, right)
     return True
 
 

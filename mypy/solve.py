@@ -18,7 +18,7 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 
 
 def solve_constraints(
@@ -54,7 +54,7 @@ def solve_constraints(
                 if bottom is None:
                     bottom = c.target
                 else:
-                    if TypeState.infer_unions:
+                    if type_state.infer_unions:
                         # This deviates from the general mypy semantics because
                         # recursive types are union-heavy in 95% of cases.
                         bottom = UnionType.make_union([bottom, c.target])

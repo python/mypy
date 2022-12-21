@@ -100,7 +100,7 @@ from mypy.stubinfo import (
     stub_package_name,
 )
 from mypy.types import Type
-from mypy.typestate import TypeState, reset_global_state
+from mypy.typestate import reset_global_state, type_state
 from mypy.version import __version__
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -276,7 +276,7 @@ def _build(
     try:
         graph = dispatch(sources, manager, stdout)
         if not options.fine_grained_incremental:
-            TypeState.reset_all_subtype_caches()
+            type_state.reset_all_subtype_caches()
         if options.timing_stats is not None:
             dump_timing_stats(options.timing_stats, graph)
         if options.line_checking_stats is not None:
@@ -2459,7 +2459,7 @@ class State:
             from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
 
             merge_dependencies(self.compute_fine_grained_deps(), deps)
-            TypeState.update_protocol_deps(deps)
+            type_state.update_protocol_deps(deps)
 
     def valid_references(self) -> set[str]:
         assert self.ancestors is not None
@@ -2926,7 +2926,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            TypeState.add_all_protocol_deps(manager.fg_deps)
+            type_state.add_all_protocol_deps(manager.fg_deps)
             if not manager.options.fine_grained_incremental:
                 rdeps = generate_deps_for_cache(manager, graph)
                 write_deps_cache(rdeps, manager, graph)

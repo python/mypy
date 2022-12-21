@@ -172,7 +172,7 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import correct_relative_import
 
 
@@ -344,7 +344,7 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(
                     make_wildcard_trigger(base_info.fullname), target=make_trigger(target)
                 )
-                # More protocol dependencies are collected in TypeState._snapshot_protocol_deps
+                # More protocol dependencies are collected in type_state._snapshot_protocol_deps
                 # after a full run or update is finished.
 
         self.add_type_alias_deps(self.scope.current_target())
@@ -1123,7 +1123,7 @@ def dump_all_dependencies(
         deps = get_dependencies(node, type_map, python_version, options)
         for trigger, targets in deps.items():
             all_deps.setdefault(trigger, set()).update(targets)
-    TypeState.add_all_protocol_deps(all_deps)
+    type_state.add_all_protocol_deps(all_deps)
 
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)
