@@ -76,7 +76,7 @@ def main() -> None:
     commits = args.commit
     num_runs = 16
 
-    if not os.path.isdir(".git") or not os.path.isdir("mypyc"):
+    if not (os.path.isdir(".git") and os.path.isdir("mypyc")):
         sys.exit("error: Run this the mypy repo root")
 
     build_threads = []
