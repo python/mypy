@@ -177,8 +177,10 @@ from mypy.typeops import (
     tuple_fallback,
 )
 from mypy.types import (
+    ANY_STRATEGY,
     OVERLOAD_NAMES,
     AnyType,
+    BoolTypeQuery,
     CallableType,
     DeletedType,
     ErasedType,
@@ -196,7 +198,6 @@ from mypy.types import (
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
-    TypeQuery,
     TypeTranslator,
     TypeType,
     TypeVarId,
@@ -7134,7 +7135,7 @@ def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
     return not typ.accept(InvalidInferredTypes())
 
 
-class InvalidInferredTypes(TypeQuery[bool]):
+class InvalidInferredTypes(BoolTypeQuery):
     """Find type components that are not valid for an inferred type.
 
     These include <Erased> type, and any <nothing> types resulting from failed
@@ -7142,7 +7143,7 @@ class InvalidInferredTypes(TypeQuery[bool]):
     """
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return t.ambiguous

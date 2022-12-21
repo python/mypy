@@ -3305,9 +3305,9 @@ def replace_alias_tvars(
     return new_tp
 
 
-class HasTypeVars(TypeQuery[bool]):
+class HasTypeVars(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
         self.skip_alias_target = True
 
     def visit_type_var(self, t: TypeVarType) -> bool:

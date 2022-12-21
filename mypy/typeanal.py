@@ -42,11 +42,13 @@ from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, p
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     ANNOTATED_TYPE_NAMES,
+    ANY_STRATEGY,
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
     TYPE_ALIAS_NAMES,
     AnyType,
+    BoolTypeQuery,
     CallableArgument,
     CallableType,
     DeletedType,
@@ -1944,9 +1946,9 @@ def has_any_from_unimported_type(t: Type) -> bool:
     return t.accept(HasAnyFromUnimportedType())
 
 
-class HasAnyFromUnimportedType(TypeQuery[bool]):
+class HasAnyFromUnimportedType(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_any(self, t: AnyType) -> bool:
         return t.type_of_any == TypeOfAny.from_unimported_type
@@ -2033,10 +2035,10 @@ def find_self_type(typ: Type, lookup: Callable[[str], SymbolTableNode | None]) -
     return typ.accept(HasSelfType(lookup))
 
 
-class HasSelfType(TypeQuery[bool]):
+class HasSelfType(BoolTypeQuery):
     def __init__(self, lookup: Callable[[str], SymbolTableNode | None]) -> None:
         self.lookup = lookup
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_unbound_type(self, t: UnboundType) -> bool:
         sym = self.lookup(t.name)
