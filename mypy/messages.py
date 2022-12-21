@@ -334,10 +334,6 @@ class MessageBuilder:
         If member corresponds to an operator, use the corresponding operator
         name in the messages. Return type Any.
         """
-        if self.prefer_simple_messages():
-            self.fail("Attribute not defined", context)
-            return AnyType(TypeOfAny.from_error)
-
         original_type = get_proper_type(original_type)
         typ = get_proper_type(typ)
 
