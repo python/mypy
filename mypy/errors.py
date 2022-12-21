@@ -750,7 +750,7 @@ class Errors:
             # Errors ignored, so no point generating fancy messages
             return True
         for _watcher in self._watchers:
-            if _watcher._filter == True and _watcher._filtered is None:
+            if _watcher._filter is True and _watcher._filtered is None:
                 # Errors are filtered
                 return True
         return False
