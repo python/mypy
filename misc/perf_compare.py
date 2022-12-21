@@ -61,7 +61,7 @@ def run_benchmark(compiled_dir: str, check_dir: str) -> float:
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.abspath(compiled_dir)
     abschk = os.path.abspath(check_dir)
-    cmd = ["python3", "-m", "mypy", "--config-file", os.path.join(abschk, "mypy_self_check.ini")]
+    cmd = [sys.executable, "-m", "mypy", "--config-file", os.path.join(abschk, "mypy_self_check.ini")]
     cmd += glob.glob(os.path.join(abschk, "mypy/*.py"))
     cmd += glob.glob(os.path.join(abschk, "mypy/*/*.py"))
     t0 = time.time()
