@@ -132,8 +132,8 @@ def main() -> None:
             delta = "0.0%"
             first = tt
         else:
-            d = 100 * ((tt / first) - 1)
-            delta = f"{d:+.1f}%"
+            d = (tt / first) - 1
+            delta = f"{d:+.1%}"
         print(f"{commit:<25} {tt:.3f}s ({delta})")
 
     shutil.rmtree(self_check_dir)
