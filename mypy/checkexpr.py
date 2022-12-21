@@ -1584,12 +1584,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return res
 
     def infer_more_unions_for_recursive_type(self, type_context: Type) -> bool:
-        # This is a hack to better support inference for recursive types.
-        # When the outer context for a function call is known to be recursive,
-        # we solve type constraints inferred from arguments using unions instead
-        # of joins. This is a bit arbitrary, but in practice it works for most
-        # cases. A cleaner alternative would be to switch to single bin type
-        # inference, but this is a lot of work.
+        """Adjust type inference of unions if type context has a recursive type.
+
+        Return the old state. The caller must assign it to type_state.infer_unions
+        afterwards.
+
+        This is a hack to better support inference for recursive types.
+
+        Note: This is performance-sensitive and must not be a context manager
+        until mypyc supports them better.
+        """
         old = type_state.infer_unions
         if has_recursive_types(type_context):
             type_state.infer_unions = True
@@ -1615,8 +1619,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for ai in actuals:
                 if not arg_kinds[ai].is_star():
                     arg_type = callee.arg_types[i]
+                    # When the outer context for a function call is known to be recursive,
+                    # we solve type constraints inferred from arguments using unions instead
+                    # of joins. This is a bit arbitrary, but in practice it works for most
+                    # cases. A cleaner alternative would be to switch to single bin type
+                    # inference, but this is a lot of work.
                     old = self.infer_more_unions_for_recursive_type(arg_type)
                     res[ai] = self.accept(args[ai], arg_type)
+                    # We need to manually restore union inference state, ugh.
                     type_state.infer_unions = old
 
         # Fill in the rest of the argument types.
