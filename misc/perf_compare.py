@@ -6,7 +6,7 @@ Simple usage:
 
 What this does:
 
- * Create a temp clone of the mypy repo for each target commit
+ * Create a temp clone of the mypy repo for each target commit to measure
  * Checkout a target commit in each of the clones
  * Compile mypyc in each of the clones *in parallel*
  * Create another temp clone of the mypy repo as the code to check
@@ -73,7 +73,7 @@ def main() -> None:
     parser.add_argument("commit", nargs="+")
     args = parser.parse_args()
     commits = args.commit
-    num_runs = 11
+    num_runs = 16
 
     if not os.path.isdir(".git") or not os.path.isdir("mypyc"):
         sys.exit("error: Run this the mypy repo root")
@@ -128,6 +128,10 @@ def main() -> None:
             d = 100 * ((tt / first) - 1)
             delta = f"{d:+.1f}%"
         print(f"{commit:<25} {tt:.3f}s ({delta})")
+
+    shutil.rmtree(self_check_dir)
+    for target_dir in target_dirs:
+        shutil.rmtree(target_dir)
 
 
 if __name__ == "__main__":
