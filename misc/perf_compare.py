@@ -89,7 +89,7 @@ def main() -> None:
         build_threads.append(t)
 
     self_check_dir = "mypy.self.tmpdir"
-    clone(self_check_dir, None)
+    clone(self_check_dir, commits[0])
 
     heading("Compiling mypy")
     print("(This will take a while...)")
