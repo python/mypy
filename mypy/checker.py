@@ -177,8 +177,10 @@ from mypy.typeops import (
     tuple_fallback,
 )
 from mypy.types import (
+    ANY_STRATEGY,
     OVERLOAD_NAMES,
     AnyType,
+    BoolTypeQuery,
     CallableType,
     DeletedType,
     ErasedType,
@@ -196,8 +198,6 @@ from mypy.types import (
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
-    BoolTypeQuery,
-    ANY_STRATEGY,
     TypeTranslator,
     TypeType,
     TypeVarId,

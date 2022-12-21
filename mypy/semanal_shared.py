@@ -21,7 +21,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.type_visitor import BoolTypeQuery, ANY_STRATEGY
+from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TPDICT_FB_NAMES,
     FunctionLike,

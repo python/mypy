@@ -42,11 +42,13 @@ from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, p
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     ANNOTATED_TYPE_NAMES,
+    ANY_STRATEGY,
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
     TYPE_ALIAS_NAMES,
     AnyType,
+    BoolTypeQuery,
     CallableArgument,
     CallableType,
     DeletedType,
@@ -73,8 +75,6 @@ from mypy.types import (
     TypeList,
     TypeOfAny,
     TypeQuery,
-    BoolTypeQuery,
-    ANY_STRATEGY,
     TypeType,
     TypeVarLikeType,
     TypeVarTupleType,
