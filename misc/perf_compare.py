@@ -12,6 +12,7 @@ What this does:
  * Create another temp clone of the mypy repo as the code to check
  * Self check with each of the compiled mypys N times
  * Report the average runtimes and relative performance
+ * Remove the temp clones
 """
 
 from __future__ import annotations
