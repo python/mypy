@@ -25,7 +25,6 @@ from typing_extensions import Final, TypeAlias as _TypeAlias
 from mypy_extensions import trait
 
 import mypy.strconv
-from mypy.bogus_type import Bogus
 from mypy.util import short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
@@ -247,12 +246,10 @@ class SymbolNode(Node):
     def name(self) -> str:
         pass
 
-    # fullname can often be None even though the type system
-    # disagrees. We mark this with Bogus to let mypyc know not to
-    # worry about it.
+    # Fully qualified name
     @property
     @abstractmethod
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         pass
 
     @abstractmethod
@@ -294,7 +291,7 @@ class MypyFile(SymbolNode):
     __match_args__ = ("name", "path", "defs")
 
     # Fully qualified module name
-    _fullname: Bogus[str]
+    _fullname: str
     # Path to the file (empty string if not known)
     path: str
     # Top-level definitions and statements
@@ -361,7 +358,7 @@ class MypyFile(SymbolNode):
         return "" if not self._fullname else self._fullname.split(".")[-1]
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -526,8 +523,7 @@ class FuncBase(Node):
         self.is_static = False
         self.is_final = False
         # Name with module prefix
-        # TODO: Type should be Optional[str]
-        self._fullname = cast(Bogus[str], None)
+        self._fullname = ""
 
     @property
     @abstractmethod
@@ -535,7 +531,7 @@ class FuncBase(Node):
         pass
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
 
@@ -871,7 +867,7 @@ class Decorator(SymbolNode, Statement):
         return self.func.name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self.func.fullname
 
     @property
@@ -967,7 +963,7 @@ class Var(SymbolNode):
         super().__init__()
         self._name = name  # Name without module prefix
         # TODO: Should be Optional[str]
-        self._fullname = cast("Bogus[str]", None)  # Name with module prefix
+        self._fullname = ""  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
@@ -1019,7 +1015,7 @@ class Var(SymbolNode):
         return self._name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -1057,7 +1053,7 @@ class ClassDef(Statement):
 
     __slots__ = (
         "name",
-        "fullname",
+        "_fullname",
         "defs",
         "type_vars",
         "base_type_exprs",
@@ -1075,7 +1071,7 @@ class ClassDef(Statement):
     __match_args__ = ("name", "defs")
 
     name: str  # Name of the class without module prefix
-    fullname: Bogus[str]  # Fully qualified name of the class
+    _fullname: str  # Fully qualified name of the class
     defs: Block
     type_vars: list[mypy.types.TypeVarLikeType]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
@@ -1102,7 +1098,7 @@ class ClassDef(Statement):
     ) -> None:
         super().__init__()
         self.name = name
-        self.fullname = None  # type: ignore[assignment]
+        self._fullname = ""
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
@@ -1116,6 +1112,14 @@ class ClassDef(Statement):
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: int | None = None
         self.removed_statements = []
+
+    @property
+    def fullname(self) -> str:
+        return self._fullname
+
+    @fullname.setter
+    def fullname(self, v: str) -> None:
+        self._fullname = v
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
@@ -1725,7 +1729,7 @@ class RefExpr(Expression):
     __slots__ = (
         "kind",
         "node",
-        "fullname",
+        "_fullname",
         "is_new_def",
         "is_inferred_def",
         "is_alias_rvalue",
@@ -1739,7 +1743,7 @@ class RefExpr(Expression):
         # Var, FuncDef or TypeInfo that describes this
         self.node: SymbolNode | None = None
         # Fully qualified name (or name if not global)
-        self.fullname: str | None = None
+        self._fullname = ""
         # Does this define a new name?
         self.is_new_def = False
         # Does this define a new name with inferred type?
@@ -1751,6 +1755,14 @@ class RefExpr(Expression):
         self.is_alias_rvalue = False
         # Cache type guard from callable_type.type_guard
         self.type_guard: mypy.types.Type | None = None
+
+    @property
+    def fullname(self) -> str:
+        return self._fullname
+
+    @fullname.setter
+    def fullname(self, v: str) -> None:
+        self._fullname = v
 
 
 class NameExpr(RefExpr):
@@ -2806,7 +2818,7 @@ class TypeInfo(SymbolNode):
         "self_type",
     )
 
-    _fullname: Bogus[str]  # Fully qualified name
+    _fullname: str  # Fully qualified name
     # Fully qualified name for the module this type was defined in. This
     # information is also in the fullname, but is harder to extract in the
     # case of nested class definitions.
@@ -3023,7 +3035,7 @@ class TypeInfo(SymbolNode):
         return self.defn.name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def is_generic(self) -> bool:
@@ -3739,11 +3751,7 @@ class SymbolTableNode:
             if prefix is not None:
                 fullname = self.node.fullname
                 if (
-                    # See the comment above SymbolNode.fullname -- fullname can often be None,
-                    # but for complex reasons it's annotated as being `Bogus[str]` instead of `str | None`,
-                    # meaning mypy erroneously thinks the `fullname is not None` check here is redundant
-                    fullname is not None  # type: ignore[redundant-expr]
-                    and "." in fullname
+                    "." in fullname
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):

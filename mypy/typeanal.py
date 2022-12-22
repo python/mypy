@@ -1123,7 +1123,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
-        n = None if t.fullname is None else self.api.lookup_fully_qualified(t.fullname)
+        n = None if not t.fullname else self.api.lookup_fully_qualified(t.fullname)
         if not n or isinstance(n.node, PlaceholderNode):
             self.api.defer()  # Still incomplete
             return t

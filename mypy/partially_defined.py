@@ -287,7 +287,7 @@ class DefinedVariableTracker:
 
 
 def refers_to_builtin(o: RefExpr) -> bool:
-    return o.fullname is not None and o.fullname.startswith("builtins.")
+    return o.fullname.startswith("builtins.")
 
 
 class Loop:

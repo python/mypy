@@ -216,8 +216,8 @@ def extract_refexpr_names(expr: RefExpr) -> set[str]:
     Note that currently, the only two subclasses of RefExpr are NameExpr and
     MemberExpr."""
     output: set[str] = set()
-    while isinstance(expr.node, MypyFile) or expr.fullname is not None:
-        if isinstance(expr.node, MypyFile) and expr.fullname is not None:
+    while isinstance(expr.node, MypyFile) or expr.fullname:
+        if isinstance(expr.node, MypyFile) and expr.fullname:
             # If it's None, something's wrong (perhaps due to an
             # import cycle or a suppressed error).  For now we just
             # skip it.
@@ -228,7 +228,7 @@ def extract_refexpr_names(expr: RefExpr) -> set[str]:
             if isinstance(expr.node, TypeInfo):
                 # Reference to a class or a nested class
                 output.update(split_module_names(expr.node.module_name))
-            elif expr.fullname is not None and "." in expr.fullname and not is_suppressed_import:
+            elif "." in expr.fullname and not is_suppressed_import:
                 # Everything else (that is not a silenced import within a class)
                 output.add(expr.fullname.rsplit(".", 1)[0])
             break
@@ -526,7 +526,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # There are two special cases where plugins might act:
             # * A "static" reference/alias to a class or function;
             #   get_function_hook() will be invoked for these.
-            fullname = e.callee.fullname
+            fullname = e.callee.fullname or None
             if isinstance(e.callee.node, TypeAlias):
                 target = get_proper_type(e.callee.node.target)
                 if isinstance(target, Instance):
@@ -5489,7 +5489,7 @@ def type_info_from_type(typ: Type) -> TypeInfo | None:
 
 
 def is_operator_method(fullname: str | None) -> bool:
-    if fullname is None:
+    if not fullname:
         return False
     short_name = fullname.split(".")[-1]
     return (
