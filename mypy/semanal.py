@@ -1915,7 +1915,7 @@ class SemanticAnalyzer(
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
-                base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
+                base_tvars = base.accept(TypeVarLikeQuery(self, self.tvar_scope))
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
@@ -1933,7 +1933,7 @@ class SemanticAnalyzer(
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
+            base_tvars = base.accept(TypeVarLikeQuery(self, self.tvar_scope))
             tvars.extend(base_tvars)
         tvars = remove_dups(tvars)  # Variables are defined in order of textual appearance.
         tvar_defs = []
@@ -3294,7 +3294,7 @@ class SemanticAnalyzer(
             )
             return None, [], set(), []
 
-        found_type_vars = typ.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
+        found_type_vars = typ.accept(TypeVarLikeQuery(self, self.tvar_scope))
         tvar_defs: list[TypeVarLikeType] = []
         namespace = self.qualified_name(name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
