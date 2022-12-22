@@ -378,10 +378,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.path = path
         self.msg = MessageBuilder(errors, modules)
         self.plugin = plugin
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(
-            self, self.msg, self.plugin, per_line_checking_time_ns
-        )
-        self.pattern_checker = PatternChecker(self, self.msg, self.plugin)
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder()
@@ -418,6 +414,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # although this is technically unsafe, this is desirable in some context, for
         # example when type-checking class decorators.
         self.allow_abstract_call = False
+
+        # Child checker objects for specific AST node types
+        self.expr_checker = mypy.checkexpr.ExpressionChecker(
+            self, self.msg, self.plugin, per_line_checking_time_ns
+        )
+        self.pattern_checker = PatternChecker(self, self.msg, self.plugin)
 
     @property
     def type_context(self) -> list[Type | None]:
