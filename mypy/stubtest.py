@@ -300,7 +300,9 @@ def _get_imported_symbol_names(runtime: types.ModuleType) -> frozenset[str] | No
         return None
 
     if not source.strip():
-        return None
+        # The source code for the module was an empty file,
+        # no point in parsing it with symtable
+        return frozenset()
 
     try:
         module_symtable = symtable.symtable(source, runtime.__name__, "exec")
