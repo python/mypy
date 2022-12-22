@@ -153,6 +153,9 @@ NEVER_NAMES: Final = (
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
+# A placeholder for int parameters
+_dummy_int: Final = -999999
+
 
 class TypeOfAny:
     """
@@ -540,8 +543,8 @@ class TypeVarType(TypeVarLikeType):
         values: Bogus[list[Type]] = _dummy,
         upper_bound: Bogus[Type] = _dummy,
         id: Bogus[TypeVarId | int] = _dummy,
-        line: Bogus[int] = _dummy,
-        column: Bogus[int] = _dummy,
+        line: int = _dummy_int,
+        column: int = _dummy_int,
     ) -> TypeVarType:
         return TypeVarType(
             self.name,
@@ -550,8 +553,8 @@ class TypeVarType(TypeVarLikeType):
             self.values if values is _dummy else values,
             self.upper_bound if upper_bound is _dummy else upper_bound,
             self.variance,
-            self.line if line is _dummy else line,
-            self.column if column is _dummy else column,
+            self.line if line == _dummy_int else line,
+            self.column if column == _dummy_int else column,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -658,14 +661,14 @@ class ParamSpecType(TypeVarLikeType):
         self,
         *,
         id: Bogus[TypeVarId | int] = _dummy,
-        flavor: Bogus[int] = _dummy,
+        flavor: int = _dummy_int,
         prefix: Bogus[Parameters] = _dummy,
     ) -> ParamSpecType:
         return ParamSpecType(
             self.name,
             self.fullname,
             id if id is not _dummy else self.id,
-            flavor if flavor is not _dummy else self.flavor,
+            flavor if flavor != _dummy_int else self.flavor,
             self.upper_bound,
             line=self.line,
             column=self.column,
@@ -1024,10 +1027,10 @@ class AnyType(ProperType):
     def copy_modified(
         self,
         # Mark with Bogus because _dummy is just an object (with type Any)
-        type_of_any: Bogus[int] = _dummy,
+        type_of_any: int = _dummy_int,
         original_any: Bogus[AnyType | None] = _dummy,
     ) -> AnyType:
-        if type_of_any is _dummy:
+        if type_of_any == _dummy_int:
             type_of_any = self.type_of_any
         if original_any is _dummy:
             original_any = self.source_any
@@ -1745,8 +1748,8 @@ class CallableType(FunctionLike):
         name: Bogus[str | None] = _dummy,
         definition: Bogus[SymbolNode] = _dummy,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
-        line: Bogus[int] = _dummy,
-        column: Bogus[int] = _dummy,
+        line: int = _dummy_int,
+        column: int = _dummy_int,
         is_ellipsis_args: Bogus[bool] = _dummy,
         implicit: Bogus[bool] = _dummy,
         special_sig: Bogus[str | None] = _dummy,
@@ -1766,8 +1769,8 @@ class CallableType(FunctionLike):
             name=name if name is not _dummy else self.name,
             definition=definition if definition is not _dummy else self.definition,
             variables=variables if variables is not _dummy else self.variables,
-            line=line if line is not _dummy else self.line,
-            column=column if column is not _dummy else self.column,
+            line=line if line != _dummy_int else self.line,
+            column=column if column != _dummy_int else self.column,
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args
             ),
