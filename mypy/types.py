@@ -3381,12 +3381,20 @@ def _flattened(types: Iterable[Type]) -> Iterable[Type]:
 
 
 def flatten_nested_unions(
-    types: Iterable[Type], handle_type_alias_type: bool = True
+    types: Sequence[Type], handle_type_alias_type: bool = True
 ) -> list[Type]:
     """Flatten nested unions in a type list."""
+    if not isinstance(types, list):
+        typelist = list(types)
+    else:
+        typelist = cast("list[Type]", types)
+
+    # Fast path: most of the time there is nothing to flatten
+    if not any(isinstance(t, (TypeAliasType, UnionType)) for t in typelist):  # type: ignore[misc]
+        return typelist
+
     flat_items: list[Type] = []
-    # TODO: avoid duplicate types in unions (e.g. using hash)
-    for t in types:
+    for t in typelist:
         tp = get_proper_type(t) if handle_type_alias_type else t
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(
