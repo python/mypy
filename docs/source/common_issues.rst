@@ -188,6 +188,8 @@ Ignoring a whole file
 
 A ``# type: ignore`` comment at the top of a module (before any statements,
 including imports or docstrings) has the effect of ignoring the entire contents of the module.
+This behaviour can be surprising and result in
+"Module ... has no attribute ... [attr-defined]" errors.
 
 To only ignore errors, use a top-level ``# mypy: ignore-errors`` comment instead.
 To only ignore errors with a specific error code, use a top-level
