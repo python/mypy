@@ -1717,54 +1717,31 @@ class LowLevelIRBuilder:
         return result
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
-        if is_runtime_subtype(value.type, int_rprimitive):
-            zero = Integer(0, short_int_rprimitive)
-            self.compare_tagged_condition(value, zero, "!=", true, false, value.line)
-            return
-        elif is_fixed_width_rtype(value.type):
-            zero = Integer(0, value.type)
-            value = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
-        elif is_same_type(value.type, str_rprimitive):
-            value = self.call_c(str_check_if_true, [value], value.line)
-        elif is_same_type(value.type, list_rprimitive) or is_same_type(
-            value.type, dict_rprimitive
-        ):
-            length = self.builtin_len(value, value.line)
-            zero = Integer(0)
-            value = self.binary_op(length, zero, "!=", value.line)
-        elif (
-            isinstance(value.type, RInstance)
-            and value.type.class_ir.is_ext_class
-            and value.type.class_ir.has_method("__bool__")
-        ):
-            # Directly call the __bool__ method on classes that have it.
-            value = self.gen_method_call(value, "__bool__", [], bool_rprimitive, value.line)
+        opt_value_type = optional_value_type(value.type)
+        if opt_value_type is None:
+            bool_value = self.bool_value(value)
+            self.add(Branch(bool_value, true, false, Branch.BOOL))
         else:
-            value_type = optional_value_type(value.type)
-            if value_type is not None:
-                is_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
-                branch = Branch(is_none, true, false, Branch.BOOL)
-                self.add(branch)
-                always_truthy = False
-                if isinstance(value_type, RInstance):
-                    # check whether X.__bool__ is always just the default (object.__bool__)
-                    if not value_type.class_ir.has_method(
-                        "__bool__"
-                    ) and value_type.class_ir.is_method_final("__bool__"):
-                        always_truthy = True
+            # Special-case optional types
+            is_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
+            branch = Branch(is_none, true, false, Branch.BOOL)
+            self.add(branch)
+            always_truthy = False
+            if isinstance(opt_value_type, RInstance):
+                # check whether X.__bool__ is always just the default (object.__bool__)
+                if not opt_value_type.class_ir.has_method(
+                    "__bool__"
+                ) and opt_value_type.class_ir.is_method_final("__bool__"):
+                    always_truthy = True
 
-                if not always_truthy:
-                    # Optional[X] where X may be falsey and requires a check
-                    branch.true = BasicBlock()
-                    self.activate_block(branch.true)
-                    # unbox_or_cast instead of coerce because we want the
-                    # type to change even if it is a subtype.
-                    remaining = self.unbox_or_cast(value, value_type, value.line)
-                    self.add_bool_branch(remaining, true, false)
-                return
-            elif not is_bool_rprimitive(value.type) and not is_bit_rprimitive(value.type):
-                value = self.call_c(bool_op, [value], value.line)
-        self.add(Branch(value, true, false, Branch.BOOL))
+            if not always_truthy:
+                # Optional[X] where X may be falsey and requires a check
+                branch.true = BasicBlock()
+                self.activate_block(branch.true)
+                # unbox_or_cast instead of coerce because we want the
+                # type to change even if it is a subtype.
+                remaining = self.unbox_or_cast(value, opt_value_type, value.line)
+                self.add_bool_branch(remaining, true, false)
 
     def call_c(
         self,
