@@ -191,6 +191,14 @@ class MessageBuilder:
     def are_type_names_disabled(self) -> bool:
         return len(self._disable_type_names) > 0 and self._disable_type_names[-1]
 
+    def prefer_simple_messages(self) -> bool:
+        """Should we generate simple/fast error messages?
+
+        If errors aren't shown to the user, we don't want to waste cyles producing
+        complex error messages.
+        """
+        return self.errors.prefer_simple_messages()
+
     def report(
         self,
         msg: str,
@@ -685,64 +693,69 @@ class MessageBuilder:
                 actual_type_str, expected_type_str
             )
         else:
-            try:
-                expected_type = callee.arg_types[m - 1]
-            except IndexError:  # Varargs callees
-                expected_type = callee.arg_types[-1]
-            arg_type_str, expected_type_str = format_type_distinctly(
-                arg_type, expected_type, bare=True
-            )
-            if arg_kind == ARG_STAR:
-                arg_type_str = "*" + arg_type_str
-            elif arg_kind == ARG_STAR2:
-                arg_type_str = "**" + arg_type_str
-
-            # For function calls with keyword arguments, display the argument name rather than the
-            # number.
-            arg_label = str(n)
-            if isinstance(outer_context, CallExpr) and len(outer_context.arg_names) >= n:
-                arg_name = outer_context.arg_names[n - 1]
-                if arg_name is not None:
-                    arg_label = f'"{arg_name}"'
-            if (
-                arg_kind == ARG_STAR2
-                and isinstance(arg_type, TypedDictType)
-                and m <= len(callee.arg_names)
-                and callee.arg_names[m - 1] is not None
-                and callee.arg_kinds[m - 1] != ARG_STAR2
-            ):
-                arg_name = callee.arg_names[m - 1]
-                assert arg_name is not None
-                arg_type_str, expected_type_str = format_type_distinctly(
-                    arg_type.items[arg_name], expected_type, bare=True
-                )
-                arg_label = f'"{arg_name}"'
-            if isinstance(outer_context, IndexExpr) and isinstance(outer_context.index, StrExpr):
-                msg = 'Value of "{}" has incompatible type {}; expected {}'.format(
-                    outer_context.index.value,
-                    quote_type_string(arg_type_str),
-                    quote_type_string(expected_type_str),
-                )
+            if self.prefer_simple_messages():
+                msg = "Argument has incompatible type"
             else:
-                msg = "Argument {} {}has incompatible type {}; expected {}".format(
-                    arg_label,
-                    target,
-                    quote_type_string(arg_type_str),
-                    quote_type_string(expected_type_str),
+                try:
+                    expected_type = callee.arg_types[m - 1]
+                except IndexError:  # Varargs callees
+                    expected_type = callee.arg_types[-1]
+                arg_type_str, expected_type_str = format_type_distinctly(
+                    arg_type, expected_type, bare=True
                 )
+                if arg_kind == ARG_STAR:
+                    arg_type_str = "*" + arg_type_str
+                elif arg_kind == ARG_STAR2:
+                    arg_type_str = "**" + arg_type_str
+
+                # For function calls with keyword arguments, display the argument name rather
+                # than the number.
+                arg_label = str(n)
+                if isinstance(outer_context, CallExpr) and len(outer_context.arg_names) >= n:
+                    arg_name = outer_context.arg_names[n - 1]
+                    if arg_name is not None:
+                        arg_label = f'"{arg_name}"'
+                if (
+                    arg_kind == ARG_STAR2
+                    and isinstance(arg_type, TypedDictType)
+                    and m <= len(callee.arg_names)
+                    and callee.arg_names[m - 1] is not None
+                    and callee.arg_kinds[m - 1] != ARG_STAR2
+                ):
+                    arg_name = callee.arg_names[m - 1]
+                    assert arg_name is not None
+                    arg_type_str, expected_type_str = format_type_distinctly(
+                        arg_type.items[arg_name], expected_type, bare=True
+                    )
+                    arg_label = f'"{arg_name}"'
+                if isinstance(outer_context, IndexExpr) and isinstance(
+                    outer_context.index, StrExpr
+                ):
+                    msg = 'Value of "{}" has incompatible type {}; expected {}'.format(
+                        outer_context.index.value,
+                        quote_type_string(arg_type_str),
+                        quote_type_string(expected_type_str),
+                    )
+                else:
+                    msg = "Argument {} {}has incompatible type {}; expected {}".format(
+                        arg_label,
+                        target,
+                        quote_type_string(arg_type_str),
+                        quote_type_string(expected_type_str),
+                    )
+                expected_type = get_proper_type(expected_type)
+                if isinstance(expected_type, UnionType):
+                    expected_types = list(expected_type.items)
+                else:
+                    expected_types = [expected_type]
+                for type in get_proper_types(expected_types):
+                    if isinstance(arg_type, Instance) and isinstance(type, Instance):
+                        notes = append_invariance_notes(notes, arg_type, type)
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):
                 code = codes.TYPEDDICT_ITEM
             else:
                 code = codes.ARG_TYPE
-            expected_type = get_proper_type(expected_type)
-            if isinstance(expected_type, UnionType):
-                expected_types = list(expected_type.items)
-            else:
-                expected_types = [expected_type]
-            for type in get_proper_types(expected_types):
-                if isinstance(arg_type, Instance) and isinstance(type, Instance):
-                    notes = append_invariance_notes(notes, arg_type, type)
         self.fail(msg, context, code=code)
         if notes:
             for note_msg in notes:
@@ -756,6 +769,8 @@ class MessageBuilder:
         context: Context,
         code: ErrorCode | None,
     ) -> None:
+        if self.prefer_simple_messages():
+            return
         if isinstance(
             original_caller_type, (Instance, TupleType, TypedDictType, TypeType, CallableType)
         ):
@@ -832,7 +847,9 @@ class MessageBuilder:
     def too_few_arguments(
         self, callee: CallableType, context: Context, argument_names: Sequence[str | None] | None
     ) -> None:
-        if argument_names is not None:
+        if self.prefer_simple_messages():
+            msg = "Too few arguments"
+        elif argument_names is not None:
             num_positional_args = sum(k is None for k in argument_names)
             arguments_left = callee.arg_names[num_positional_args : callee.min_args]
             diff = [k for k in arguments_left if k not in argument_names]
@@ -856,7 +873,10 @@ class MessageBuilder:
         self.fail(msg, context, code=codes.CALL_ARG)
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
-        msg = "Too many arguments" + for_function(callee)
+        if self.prefer_simple_messages():
+            msg = "Too many arguments"
+        else:
+            msg = "Too many arguments" + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
         self.maybe_note_about_special_args(callee, context)
 
@@ -874,11 +894,16 @@ class MessageBuilder:
         self.fail(msg, context)
 
     def too_many_positional_arguments(self, callee: CallableType, context: Context) -> None:
-        msg = "Too many positional arguments" + for_function(callee)
+        if self.prefer_simple_messages():
+            msg = "Too many positional arguments"
+        else:
+            msg = "Too many positional arguments" + for_function(callee)
         self.fail(msg, context)
         self.maybe_note_about_special_args(callee, context)
 
     def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:
+        if self.prefer_simple_messages():
+            return
         # https://github.com/python/mypy/issues/11309
         first_arg = callee.def_extras.get("first_arg")
         if first_arg and first_arg not in {"self", "cls", "mcs"}:

@@ -5936,6 +5936,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(msg, str):
             msg = ErrorMessage(msg, code=code)
 
+        if self.msg.prefer_simple_messages():
+            self.fail(msg, context)  # Fast path -- skip all fancy logic
+            return False
+
         orig_subtype = subtype
         subtype = get_proper_type(subtype)
         orig_supertype = supertype

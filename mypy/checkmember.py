@@ -272,8 +272,9 @@ def report_missing_attribute(
     override_info: TypeInfo | None = None,
 ) -> Type:
     res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
-    if may_be_awaitable_attribute(name, typ, mx, override_info):
-        mx.msg.possible_missing_await(mx.context)
+    if not mx.msg.prefer_simple_messages():
+        if may_be_awaitable_attribute(name, typ, mx, override_info):
+            mx.msg.possible_missing_await(mx.context)
     return res_type
 
 
