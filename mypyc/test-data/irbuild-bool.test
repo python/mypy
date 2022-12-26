@@ -58,7 +58,7 @@ L0:
     r1 = extend r0: bit to int64
     return r1
 
-[case testBoolConversions]
+[case testConversionToBool]
 from typing import List, Optional
 
 class C: pass
