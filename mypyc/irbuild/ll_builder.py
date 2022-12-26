@@ -326,11 +326,13 @@ class LowLevelIRBuilder:
             ):
                 # Equivalent types
                 return src
-            elif is_bool_rprimitive(src_type) and is_int_rprimitive(target_type):
+            elif (is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)) and is_int_rprimitive(target_type):
                 shifted = self.int_op(
                     bool_rprimitive, src, Integer(1, bool_rprimitive), IntOp.LEFT_SHIFT
                 )
                 return self.add(Extend(shifted, int_rprimitive, signed=False))
+            elif (is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)) and is_fixed_width_rtype(target_type):
+                return self.add(Extend(src, target_type, signed=False))
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -1654,7 +1656,7 @@ class LowLevelIRBuilder:
         """
         if is_bool_rprimitive(value.type) or is_bit_rprimitive(value.type):
             result = value
-        if is_runtime_subtype(value.type, int_rprimitive):
+        elif is_runtime_subtype(value.type, int_rprimitive):
             zero = Integer(0, short_int_rprimitive)
             result = self.comparison_op(value, zero, ComparisonOp.NEQ, value.line)
         elif is_fixed_width_rtype(value.type):
@@ -1699,11 +1701,11 @@ class LowLevelIRBuilder:
                     # unbox_or_cast instead of coerce because we want the
                     # type to change even if it is a subtype.
                     remaining = self.unbox_or_cast(value, value_type, value.line)
-                    b = self.bool_value(remaining)
-                    self.add(Assign(result, b))
+                    as_bool = self.bool_value(remaining)
+                    self.add(Assign(result, as_bool))
                     self.goto(end)
                     self.activate_block(false)
-                    self.add(Assign(result, not_none))
+                    self.add(Assign(result, Integer(0, bit_rprimitive)))
                     self.goto(end)
                     self.activate_block(end)
             else:

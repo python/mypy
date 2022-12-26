@@ -700,8 +700,5 @@ def translate_bool(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
         return None
     arg = expr.args[0]
-    arg_type = builder.node_type(arg)
-    if is_int_rprimitive(arg_type):
-        src = builder.accept(arg)
-        return builder.builder.bool_value(src)
-    return None
+    src = builder.accept(arg)
+    return builder.builder.bool_value(src)
