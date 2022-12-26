@@ -1,0 +1,19 @@
+[case testBoolToAndFromInt]
+def b2i(b: bool) -> int:
+    return b
+def i2b(n: int) -> bool:
+    return bool(n)
+[out]
+def b2i(b):
+    b, r0 :: bool
+    r1 :: int
+L0:
+    r0 = b << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    return r1
+def i2b(n):
+    n :: int
+    r0 :: bit
+L0:
+    r0 = n != 0
+    return r0

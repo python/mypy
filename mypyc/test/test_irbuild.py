@@ -24,6 +24,7 @@ from mypyc.test.testutil import (
 files = [
     "irbuild-basic.test",
     "irbuild-int.test",
+    "irbuild-bool.test",
     "irbuild-lists.test",
     "irbuild-tuple.test",
     "irbuild-dict.test",
