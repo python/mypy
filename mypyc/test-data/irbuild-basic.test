@@ -3075,8 +3075,7 @@ def call_sum(l, comparison):
     r1, r2 :: object
     r3, x :: int
     r4, r5 :: object
-    r6 :: bool
-    r7 :: object
+    r6, r7 :: bool
     r8, r9 :: int
     r10 :: bit
 L0:
@@ -3091,8 +3090,8 @@ L2:
     r4 = box(int, x)
     r5 = PyObject_CallFunctionObjArgs(comparison, r4, 0)
     r6 = unbox(bool, r5)
-    r7 = box(bool, r6)
-    r8 = unbox(int, r7)
+    r7 = r6 << 1
+    r8 = extend r7: builtins.bool to builtins.int
     r9 = CPyTagged_Add(r0, r8)
     r0 = r9
 L3:
