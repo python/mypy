@@ -119,3 +119,33 @@ def test_any_to_bool() -> None:
     b: Any = a + 1
     assert not bool(a)
     assert bool(b)
+
+def eq(x: bool, y: bool) -> bool:
+    return x == y
+
+def ne(x: bool, y: bool) -> bool:
+    return x != y
+
+def lt(x: bool, y: bool) -> bool:
+    return x < y
+
+def le(x: bool, y: bool) -> bool:
+    return x <= y
+
+def gt(x: bool, y: bool) -> bool:
+    return x > y
+
+def ge(x: bool, y: bool) -> bool:
+    return x >= y
+
+def test_comparisons() -> None:
+    for x in True, False:
+        for y in True, False:
+            x2: Any = x
+            y2: Any = y
+            assert eq(x, y) == (x2 == y2)
+            assert ne(x, y) == (x2 != y2)
+            assert lt(x, y) == (x2 < y2)
+            assert le(x, y) == (x2 <= y2)
+            assert gt(x, y) == (x2 > y2)
+            assert ge(x, y) == (x2 >= y2)

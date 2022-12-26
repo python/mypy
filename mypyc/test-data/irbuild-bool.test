@@ -142,3 +142,59 @@ L2:
     r4 = 0
 L3:
     return r4
+
+[case testBoolComparisons]
+def eq(x: bool, y: bool) -> bool:
+    return x == y
+
+def neq(x: bool, y: bool) -> bool:
+    return x != y
+
+def lt(x: bool, y: bool) -> bool:
+    return x < y
+
+def le(x: bool, y: bool) -> bool:
+    return x <= y
+
+def gt(x: bool, y: bool) -> bool:
+    return x > y
+
+def ge(x: bool, y: bool) -> bool:
+    return x >= y
+[out]
+def eq(x, y):
+    x, y :: bool
+    r0 :: bit
+L0:
+    r0 = x == y
+    return r0
+def neq(x, y):
+    x, y :: bool
+    r0 :: bit
+L0:
+    r0 = x != y
+    return r0
+def lt(x, y):
+    x, y :: bool
+    r0 :: bit
+L0:
+    r0 = x < y :: signed
+    return r0
+def le(x, y):
+    x, y :: bool
+    r0 :: bit
+L0:
+    r0 = x <= y :: signed
+    return r0
+def gt(x, y):
+    x, y :: bool
+    r0 :: bit
+L0:
+    r0 = x > y :: signed
+    return r0
+def ge(x, y):
+    x, y :: bool
+    r0 :: bit
+L0:
+    r0 = x >= y :: signed
+    return r0

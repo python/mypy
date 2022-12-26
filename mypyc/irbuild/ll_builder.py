@@ -199,6 +199,8 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
     ">>=",
 }
 
+BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
+
 
 class LowLevelIRBuilder:
     def __init__(self, current_module: str, mapper: Mapper, options: CompilerOptions) -> None:
@@ -1245,12 +1247,11 @@ class LowLevelIRBuilder:
             return self.compare_bytes(lreg, rreg, op, line)
         if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping:
             return self.compare_tagged(lreg, rreg, op, line)
-        if (
-            is_bool_rprimitive(ltype)
-            and is_bool_rprimitive(rtype)
-            and op in ("&", "&=", "|", "|=", "^", "^=")
-        ):
-            return self.bool_bitwise_op(lreg, rreg, op[0], line)
+        if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in BOOL_BINARY_OPS:
+            if op in ComparisonOp.signed_ops:
+                return self.bool_comparison_op(lreg, rreg, op, line)
+            else:
+                return self.bool_bitwise_op(lreg, rreg, op[0], line)
         if isinstance(rtype, RInstance) and op in ("in", "not in"):
             return self.translate_instance_contains(rreg, lreg, op, line)
         if is_fixed_width_rtype(ltype):
@@ -1508,6 +1509,10 @@ class LowLevelIRBuilder:
         else:
             assert False, op
         return self.add(IntOp(bool_rprimitive, lreg, rreg, code, line))
+
+    def bool_comparison_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
+        op_id = ComparisonOp.signed_ops[op]
+        return self.comparison_op(lreg, rreg, op_id, line)
 
     def unary_not(self, value: Value, line: int) -> Value:
         mask = Integer(1, value.type, line)
