@@ -374,9 +374,21 @@ def test_int_as_bool() -> None:
 def bool_as_int(b: bool) -> int:
     return b
 
+def bool_as_int2(b: bool) -> int:
+    return int(b)
+
 def test_bool_as_int() -> None:
     assert bool_as_int(False) == 0
     assert bool_as_int(True) == 1
+    assert bool_as_int2(False) == 0
+    assert bool_as_int2(True) == 1
+
+def no_op_conversion(n: int) -> int:
+    return int(n)
+
+def test_no_op_conversion() -> None:
+    for x in 1, 55, -1, -7, 1 << 50, 1 << 101, -(1 << 50), -(1 << 101):
+        assert no_op_conversion(x) == x
 
 def test_divide() -> None:
     for x in range(-100, 100):
