@@ -1559,6 +1559,32 @@ L2:
 L3:
     return r3
 
+[case testI64ExplicitConversionToInt_64bit]
+from mypy_extensions import i64
+
+def f(x: i64) -> int:
+    return int(x)
+[out]
+def f(x):
+    x :: int64
+    r0, r1 :: bit
+    r2, r3, r4 :: int
+L0:
+    r0 = x <= 4611686018427387903 :: signed
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = x >= -4611686018427387904 :: signed
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    r2 = CPyTagged_FromInt64(x)
+    r3 = r2
+    goto L4
+L3:
+    r4 = x << 1
+    r3 = r4
+L4:
+    return r3
+
 [case testI64ExplicitConversionFromLiteral]
 from mypy_extensions import i64
 
