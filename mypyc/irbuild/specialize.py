@@ -33,12 +33,8 @@ from mypy.nodes import (
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
-    Assign,
     BasicBlock,
-    Branch,
-    ComparisonOp,
     Extend,
-    Goto,
     Integer,
     RaiseStandardError,
     Register,
@@ -55,7 +51,6 @@ from mypyc.ir.rtypes import (
     dict_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
-    int_rprimitive,
     is_dict_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
