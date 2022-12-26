@@ -1647,6 +1647,69 @@ class LowLevelIRBuilder:
         self.activate_block(next_block)
         return target
 
+    def bool_value(self, value: Value) -> Value:
+        """Return bool(value).
+
+        The result type can be bit_rprimitive or bool_rprimitive.
+        """
+        if is_bool_rprimitive(value.type) or is_bit_rprimitive(value.type):
+            result = value
+        if is_runtime_subtype(value.type, int_rprimitive):
+            zero = Integer(0, short_int_rprimitive)
+            result = self.comparison_op(value, zero, ComparisonOp.NEQ, value.line)
+        elif is_fixed_width_rtype(value.type):
+            zero = Integer(0, value.type)
+            result = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
+        elif is_same_type(value.type, str_rprimitive):
+            result = self.call_c(str_check_if_true, [value], value.line)
+        elif is_same_type(value.type, list_rprimitive) or is_same_type(
+            value.type, dict_rprimitive
+        ):
+            length = self.builtin_len(value, value.line)
+            zero = Integer(0)
+            result = self.binary_op(length, zero, "!=", value.line)
+        elif (
+            isinstance(value.type, RInstance)
+            and value.type.class_ir.is_ext_class
+            and value.type.class_ir.has_method("__bool__")
+        ):
+            # Directly call the __bool__ method on classes that have it.
+            result = self.gen_method_call(value, "__bool__", [], bool_rprimitive, value.line)
+        else:
+            value_type = optional_value_type(value.type)
+            if value_type is not None:
+                not_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
+                always_truthy = False
+                if isinstance(value_type, RInstance):
+                    # check whether X.__bool__ is always just the default (object.__bool__)
+                    if not value_type.class_ir.has_method(
+                        "__bool__"
+                    ) and value_type.class_ir.is_method_final("__bool__"):
+                        always_truthy = True
+
+                if always_truthy:
+                    result = not_none
+                else:
+                    # "X | None" where X may be falsey and requires a check
+                    result = Register(bit_rprimitive)
+                    true, false, end = BasicBlock(), BasicBlock(), BasicBlock()
+                    branch = Branch(not_none, true, false, Branch.BOOL)
+                    self.add(branch)
+                    self.activate_block(true)
+                    # unbox_or_cast instead of coerce because we want the
+                    # type to change even if it is a subtype.
+                    remaining = self.unbox_or_cast(value, value_type, value.line)
+                    b = self.bool_value(remaining)
+                    self.add(Assign(result, b))
+                    self.goto(end)
+                    self.activate_block(false)
+                    self.add(Assign(result, not_none))
+                    self.goto(end)
+                    self.activate_block(end)
+            else:
+                result = self.call_c(bool_op, [value], value.line)
+        return result
+
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         if is_runtime_subtype(value.type, int_rprimitive):
             zero = Integer(0, short_int_rprimitive)
