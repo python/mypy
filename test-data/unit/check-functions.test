@@ -340,6 +340,8 @@ class A: pass
 class A:
     def __init__(self, a: 'A') -> None: pass
 
+def f() -> None: pass
+
 t = None # type: type
 a = None # type: A
 
@@ -349,8 +351,6 @@ if int():
     t = f # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
 if int():
     t = A
-
-def f() -> None: pass
 
 [case testFunctionTypesWithOverloads]
 from foo import *
@@ -470,6 +470,8 @@ class A: pass
 class AA(A): pass
 class B: pass
 
+def f(x: 'A'  =  None) -> 'B': pass
+
 a, b = None, None # type: (A, B)
 if int():
     a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -485,7 +487,6 @@ if int():
 if int():
     b = f(AA())
 
-def f(x: 'A'  =  None) -> 'B': pass
 [builtins fixtures/tuple.pyi]
 
 [case testDefaultArgumentExpressions]
@@ -2611,7 +2612,7 @@ def f() -> int: ...
 [case testLambdaDefaultTypeErrors]
 lambda a=(1 + 'asdf'): a  # E: Unsupported operand types for + ("int" and "str")
 lambda a=nonsense: a  # E: Name "nonsense" is not defined
-def f(x: int = i):  # E: Name "i" is not defined
+def f(x: int = i):  # E: Name "i" is not defined  # E: Name "i" is used before definition
     i = 42
 
 [case testRevealTypeOfCallExpressionReturningNoneWorks]
