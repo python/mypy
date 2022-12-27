@@ -162,7 +162,7 @@ from mypy.types import (
     is_self_type_like,
     remove_optional,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
@@ -1583,21 +1583,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 res.append(arg_type)
         return res
 
-    @contextmanager
-    def allow_unions(self, type_context: Type) -> Iterator[None]:
-        # This is a hack to better support inference for recursive types.
-        # When the outer context for a function call is known to be recursive,
-        # we solve type constraints inferred from arguments using unions instead
-        # of joins. This is a bit arbitrary, but in practice it works for most
-        # cases. A cleaner alternative would be to switch to single bin type
-        # inference, but this is a lot of work.
-        old = TypeState.infer_unions
+    def infer_more_unions_for_recursive_type(self, type_context: Type) -> bool:
+        """Adjust type inference of unions if type context has a recursive type.
+
+        Return the old state. The caller must assign it to type_state.infer_unions
+        afterwards.
+
+        This is a hack to better support inference for recursive types.
+
+        Note: This is performance-sensitive and must not be a context manager
+        until mypyc supports them better.
+        """
+        old = type_state.infer_unions
         if has_recursive_types(type_context):
-            TypeState.infer_unions = True
-        try:
-            yield
-        finally:
-            TypeState.infer_unions = old
+            type_state.infer_unions = True
+        return old
 
     def infer_arg_types_in_context(
         self,
@@ -1618,8 +1618,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
                 if not arg_kinds[ai].is_star():
-                    with self.allow_unions(callee.arg_types[i]):
-                        res[ai] = self.accept(args[ai], callee.arg_types[i])
+                    arg_type = callee.arg_types[i]
+                    # When the outer context for a function call is known to be recursive,
+                    # we solve type constraints inferred from arguments using unions instead
+                    # of joins. This is a bit arbitrary, but in practice it works for most
+                    # cases. A cleaner alternative would be to switch to single bin type
+                    # inference, but this is a lot of work.
+                    old = self.infer_more_unions_for_recursive_type(arg_type)
+                    res[ai] = self.accept(args[ai], arg_type)
+                    # We need to manually restore union inference state, ugh.
+                    type_state.infer_unions = old
 
         # Fill in the rest of the argument types.
         for i, t in enumerate(res):
@@ -2149,7 +2157,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.incompatible_argument_note(
                 original_caller_type, callee_type, context, code=code
             )
-            self.chk.check_possible_missing_await(caller_type, callee_type, context)
+            if not self.msg.prefer_simple_messages():
+                self.chk.check_possible_missing_await(caller_type, callee_type, context)
 
     def check_overload_call(
         self,
@@ -5106,9 +5115,9 @@ def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
     return t.accept(HasAnyType(ignore_in_type_obj))
 
 
-class HasAnyType(types.TypeQuery[bool]):
+class HasAnyType(types.BoolTypeQuery):
     def __init__(self, ignore_in_type_obj: bool) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
         self.ignore_in_type_obj = ignore_in_type_obj
 
     def visit_any(self, t: AnyType) -> bool:
@@ -5185,7 +5194,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
     return c.copy_modified(ret_type=new_ret_type)
 
 
-class ArgInferSecondPassQuery(types.TypeQuery[bool]):
+class ArgInferSecondPassQuery(types.BoolTypeQuery):
     """Query whether an argument type should be inferred in the second pass.
 
     The result is True if the type has a type variable in a callable return
@@ -5194,17 +5203,17 @@ class ArgInferSecondPassQuery(types.TypeQuery[bool]):
     """
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 
-class HasTypeVarQuery(types.TypeQuery[bool]):
+class HasTypeVarQuery(types.BoolTypeQuery):
     """Visitor for querying whether a type has a type variable component."""
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
@@ -5214,11 +5223,11 @@ def has_erased_component(t: Type | None) -> bool:
     return t is not None and t.accept(HasErasedComponentsQuery())
 
 
-class HasErasedComponentsQuery(types.TypeQuery[bool]):
+class HasErasedComponentsQuery(types.BoolTypeQuery):
     """Visitor for querying whether a type has an erased component."""
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True
@@ -5228,11 +5237,11 @@ def has_uninhabited_component(t: Type | None) -> bool:
     return t is not None and t.accept(HasUninhabitedComponentsQuery())
 
 
-class HasUninhabitedComponentsQuery(types.TypeQuery[bool]):
+class HasUninhabitedComponentsQuery(types.BoolTypeQuery):
     """Visitor for querying whether a type has an UninhabitedType component."""
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return True

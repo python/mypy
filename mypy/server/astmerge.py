@@ -110,7 +110,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import get_prefix, replace_object_state
 
 
@@ -360,7 +360,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             # The subclass relationships may change, so reset all caches relevant to the
             # old MRO.
             new = cast(TypeInfo, self.replacements[node])
-            TypeState.reset_all_subtype_caches_for(new)
+            type_state.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 
     def fixup_type(self, typ: Type | None) -> None:

@@ -1082,6 +1082,9 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
         yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
+        yield Case(stub="", runtime="import re; constant = re.compile('foo')", error="constant")
+        yield Case(stub="", runtime="from json.scanner import NUMBER_RE", error=None)
+        yield Case(stub="", runtime="from string import ascii_letters", error=None)
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:

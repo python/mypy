@@ -21,7 +21,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.type_visitor import TypeQuery
+from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TPDICT_FB_NAMES,
     FunctionLike,
@@ -319,9 +319,9 @@ def paramspec_kwargs(
     )
 
 
-class HasPlaceholders(TypeQuery[bool]):
+class HasPlaceholders(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> bool:
         return True

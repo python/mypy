@@ -15,7 +15,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
 from mypy.types import Type
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 
 # Only dependencies in these modules are dumped
 dumped_modules = ["__main__", "pkg", "pkg.mod"]
@@ -54,7 +54,7 @@ class GetDependenciesSuite(DataSuite):
                     for source in new_deps:
                         deps[source].update(new_deps[source])
 
-            TypeState.add_all_protocol_deps(deps)
+            type_state.add_all_protocol_deps(deps)
 
             for source, targets in sorted(deps.items()):
                 if source.startswith(("<enum", "<typing", "<mypy")):

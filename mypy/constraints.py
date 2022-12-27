@@ -48,7 +48,7 @@ from mypy.types import (
     is_named_instance,
     is_union_with_any,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.typevartuples import (
     extract_unpack,
     find_unpack_in_list,
@@ -198,7 +198,7 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> list[Cons
     if any(
         get_proper_type(template) == get_proper_type(t)
         and get_proper_type(actual) == get_proper_type(a)
-        for (t, a) in reversed(TypeState.inferring)
+        for (t, a) in reversed(type_state.inferring)
     ):
         return []
     if has_recursive_types(template) or isinstance(get_proper_type(template), Instance):
@@ -207,9 +207,9 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> list[Cons
         if not has_type_vars(template):
             # Return early on an empty branch.
             return []
-        TypeState.inferring.append((template, actual))
+        type_state.inferring.append((template, actual))
         res = _infer_constraints(template, actual, direction)
-        TypeState.inferring.pop()
+        type_state.inferring.pop()
         return res
     return _infer_constraints(template, actual, direction)
 

@@ -2025,6 +2025,191 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testOperatorContainsNarrowsTypedDicts_unionWithList]
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+from typing_extensions import final
+
+@final
+class D(TypedDict):
+    foo: int
+
+
+d_or_list: D | list[str]
+
+if 'foo' in d_or_list:
+    assert_type(d_or_list, Union[D, list[str]])
+elif 'bar' in d_or_list:
+    assert_type(d_or_list, list[str])
+else:
+    assert_type(d_or_list, list[str])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_total]
+from __future__ import annotations
+from typing import assert_type, Literal, TypedDict, TypeVar, Union
+from typing_extensions import final
+
+@final
+class D1(TypedDict):
+    foo: int
+
+
+@final
+class D2(TypedDict):
+    bar: int
+
+
+d: D1 | D2
+
+if 'foo' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+foo_or_bar: Literal['foo', 'bar']
+if foo_or_bar in d:
+    assert_type(d, Union[D1, D2])
+else:
+    assert_type(d, Union[D1, D2])
+
+foo_or_invalid: Literal['foo', 'invalid']
+if foo_or_invalid in d:
+    assert_type(d, D1)
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
+else:
+    assert_type(d, Union[D1, D2])
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
+
+TD = TypeVar('TD', D1, D2)
+
+def f(arg: TD) -> None:
+    value: int
+    if 'foo' in arg:
+        assert_type(arg['foo'], int)
+    else:
+        assert_type(arg['bar'], int)
+
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_final]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+from typing_extensions import final
+
+@final
+class DFinal(TypedDict):
+    foo: int
+
+
+class DNotFinal(TypedDict):
+    bar: int
+
+
+d_not_final: DNotFinal
+
+if 'bar' in d_not_final:
+    assert_type(d_not_final, DNotFinal)
+else:
+    spam = 'ham'  # E: Statement is unreachable
+
+if 'spam' in d_not_final:
+    assert_type(d_not_final, DNotFinal)
+else:
+    assert_type(d_not_final, DNotFinal)
+
+d_final: DFinal
+
+if 'spam' in d_final:
+    spam = 'ham'  # E: Statement is unreachable
+else:
+    assert_type(d_final, DFinal)
+
+d_union: DFinal | DNotFinal
+
+if 'foo' in d_union:
+    assert_type(d_union, Union[DFinal, DNotFinal])
+else:
+    assert_type(d_union, DNotFinal)
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse]
+from __future__ import annotations
+from typing import assert_type, Literal, TypedDict, Union
+from typing_extensions import final
+
+@final
+class DTotal(TypedDict):
+    required_key: int
+
+
+@final
+class DNotTotal(TypedDict, total=False):
+    optional_key: int
+
+
+d: DTotal | DNotTotal
+
+if 'required_key' in d:
+    assert_type(d, DTotal)
+else:
+    assert_type(d, DNotTotal)
+
+if 'optional_key' in d:
+    assert_type(d, DNotTotal)
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+
+key: Literal['optional_key', 'required_key']
+if key in d:
+    assert_type(d, Union[DTotal, DNotTotal])
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired]
+from __future__ import annotations
+from typing import assert_type, Required, NotRequired, TypedDict, Union
+from typing_extensions import final
+
+@final
+class D1(TypedDict):
+    required_key: Required[int]
+    optional_key: NotRequired[int]
+
+
+@final
+class D2(TypedDict):
+    abc: int
+    xyz: int
+
+
+d: D1 | D2
+
+if 'required_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+if 'optional_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, Union[D1, D2])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testCannotSubclassFinalTypedDict]
 from typing import TypedDict
 from typing_extensions import final

@@ -1757,7 +1757,7 @@ class CallableType(FunctionLike):
         from_concatenate: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
     ) -> CT:
-        return type(self)(
+        modified = CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
@@ -1782,6 +1782,9 @@ class CallableType(FunctionLike):
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
         )
+        # Optimization: Only NewTypes are supported as subtypes since
+        # the class is effectively final, so we can use a cast safely.
+        return cast(CT, modified)
 
     def var_arg(self) -> FormalArgument | None:
         """The formal argument for *args."""
@@ -1976,7 +1979,7 @@ class CallableType(FunctionLike):
 
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
-            return NormalizedCallableType(self.copy_modified())
+            return cast(NormalizedCallableType, self)
         last_type = get_proper_type(self.arg_types[-1])
         assert isinstance(last_type, TypedDictType)
         extra_kinds = [
@@ -2126,7 +2129,9 @@ class Overloaded(FunctionLike):
         return self._items[0].name
 
     def with_unpacked_kwargs(self) -> Overloaded:
-        return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+        if any(i.unpack_kwargs for i in self.items):
+            return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+        return self
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_overloaded(self)
@@ -2328,6 +2333,10 @@ class TypedDictType(ProperType):
             set(data["required_keys"]),
             Instance.deserialize(data["fallback"]),
         )
+
+    @property
+    def is_final(self) -> bool:
+        return self.fallback.type.is_final
 
     def is_anonymous(self) -> bool:
         return self.fallback.type.fullname in TPDICT_FB_NAMES
@@ -2874,7 +2883,10 @@ def get_proper_types(it: Iterable[Type | None]) -> list[ProperType] | list[Prope
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811
+from mypy.type_visitor import (  # noqa: F811,F401
+    ALL_STRATEGY as ALL_STRATEGY,
+    ANY_STRATEGY as ANY_STRATEGY,
+    BoolTypeQuery as BoolTypeQuery,
     SyntheticTypeVisitor as SyntheticTypeVisitor,
     TypeQuery as TypeQuery,
     TypeTranslator as TypeTranslator,
@@ -3293,9 +3305,9 @@ def replace_alias_tvars(
     return new_tp
 
 
-class HasTypeVars(TypeQuery[bool]):
+class HasTypeVars(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
         self.skip_alias_target = True
 
     def visit_type_var(self, t: TypeVarType) -> bool:
@@ -3313,17 +3325,22 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
-class HasRecursiveType(TypeQuery[bool]):
+class HasRecursiveType(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> bool:
         return t.is_recursive or self.query_types(t.args)
 
 
+# Use singleton since this is hot (note: call reset() before using)
+_has_recursive_type: Final = HasRecursiveType()
+
+
 def has_recursive_types(typ: Type) -> bool:
     """Check if a type contains any recursive aliases (recursively)."""
-    return typ.accept(HasRecursiveType())
+    _has_recursive_type.reset()
+    return typ.accept(_has_recursive_type)
 
 
 def flatten_nested_unions(

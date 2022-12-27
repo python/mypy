@@ -737,6 +737,24 @@ class Errors:
         """Are there any errors for the given file?"""
         return file in self.error_info_map
 
+    def prefer_simple_messages(self) -> bool:
+        """Should we generate simple/fast error messages?
+
+        Return True if errors are not shown to user, i.e. errors are ignored
+        or they are collected for internal use only.
+
+        If True, we should prefer to generate a simple message quickly.
+        All normal errors should still be reported.
+        """
+        if self.file in self.ignored_files:
+            # Errors ignored, so no point generating fancy messages
+            return True
+        for _watcher in self._watchers:
+            if _watcher._filter is True and _watcher._filtered is None:
+                # Errors are filtered
+                return True
+        return False
+
     def raise_error(self, use_stdout: bool = True) -> NoReturn:
         """Raise a CompileError with the generated messages.
 
