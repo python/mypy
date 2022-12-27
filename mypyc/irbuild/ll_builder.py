@@ -1258,36 +1258,34 @@ class LowLevelIRBuilder:
             if op in FIXED_WIDTH_INT_BINARY_OPS:
                 if op.endswith("="):
                     op = op[:-1]
+                if op != "//":
+                    op_id = int_op_to_id[op]
+                else:
+                    op_id = IntOp.DIV
+                if is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype):
+                    rreg = self.coerce(rreg, ltype, line)
+                    rtype = ltype
                 if is_fixed_width_rtype(rtype) or is_tagged(rtype):
-                    if op != "//":
-                        op_id = int_op_to_id[op]
-                    else:
-                        op_id = IntOp.DIV
                     return self.fixed_width_int_op(ltype, lreg, rreg, op_id, line)
                 if isinstance(rreg, Integer):
                     # TODO: Check what kind of Integer
-                    if op != "//":
-                        op_id = int_op_to_id[op]
-                    else:
-                        op_id = IntOp.DIV
                     return self.fixed_width_int_op(
                         ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line
                     )
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(rtype):
                     rreg = self.coerce_int_to_fixed_width(rreg, ltype, line)
+                elif is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype):
+                    rreg = self.coerce(rreg, ltype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if is_fixed_width_rtype(rreg.type):
                     return self.comparison_op(lreg, rreg, op_id, line)
                 if isinstance(rreg, Integer):
                     return self.comparison_op(lreg, Integer(rreg.value >> 1, ltype), op_id, line)
         elif is_fixed_width_rtype(rtype):
-            if (
-                isinstance(lreg, Integer) or is_tagged(ltype)
-            ) and op in FIXED_WIDTH_INT_BINARY_OPS:
+            if op in FIXED_WIDTH_INT_BINARY_OPS:
                 if op.endswith("="):
                     op = op[:-1]
-                # TODO: Support comparison ops (similar to above)
                 if op != "//":
                     op_id = int_op_to_id[op]
                 else:
@@ -1297,15 +1295,21 @@ class LowLevelIRBuilder:
                     return self.fixed_width_int_op(
                         rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line
                     )
-                else:
+                if is_tagged(ltype):
+                    return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
+                if is_bool_rprimitive(ltype) or is_bit_rprimitive(ltype):
+                    lreg = self.coerce(lreg, rtype, line)
                     return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(ltype):
                     lreg = self.coerce_int_to_fixed_width(lreg, rtype, line)
+                elif is_bool_rprimitive(ltype) or is_bit_rprimitive(ltype):
+                    lreg = self.coerce(lreg, rtype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if isinstance(lreg, Integer):
                     return self.comparison_op(Integer(lreg.value >> 1, rtype), rreg, op_id, line)
-                return self.comparison_op(lreg, rreg, op_id, line)
+                if is_fixed_width_rtype(lreg.type):
+                    return self.comparison_op(lreg, rreg, op_id, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
