@@ -248,6 +248,11 @@ def mixed(b: bool, n: int) -> int:
     z -= b
     z = z * b
     return z
+def negate(b: bool) -> int:
+    return -b
+def unary_plus(b: bool) -> int:
+    x = +b
+    return x
 [out]
 def add(x, y):
     x, y, r0 :: bool
@@ -285,3 +290,19 @@ L0:
     r8 = CPyTagged_Multiply(z, r7)
     z = r8
     return z
+def negate(b):
+    b, r0 :: bool
+    r1, r2 :: int
+L0:
+    r0 = b << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = CPyTagged_Negate(r1)
+    return r2
+def unary_plus(b):
+    b, r0 :: bool
+    r1, x :: int
+L0:
+    r0 = b << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    x = r1
+    return x

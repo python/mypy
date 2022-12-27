@@ -1520,8 +1520,11 @@ class LowLevelIRBuilder:
 
     def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
         typ = value.type
-        if (is_bool_rprimitive(typ) or is_bit_rprimitive(typ)) and expr_op == "not":
-            return self.unary_not(value, line)
+        if is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+            if expr_op == "not":
+                return self.unary_not(value, line)
+            if expr_op == "+":
+                return value
         if is_fixed_width_rtype(typ):
             if expr_op == "-":
                 # Translate to '0 - x'
@@ -1537,6 +1540,8 @@ class LowLevelIRBuilder:
             if is_short_int_rprimitive(typ):
                 num >>= 1
             return Integer(-num, typ, value.line)
+        if is_tagged(typ) and expr_op == "+":
+            return value
         if isinstance(typ, RInstance):
             if expr_op == "-":
                 method = "__neg__"
