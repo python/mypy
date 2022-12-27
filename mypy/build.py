@@ -2347,19 +2347,19 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return result
 
-    def detect_possibly_undefined_vars(self, type_map: dict[Expression, Type]) -> None:
+    def detect_possibly_undefined_vars(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         if self.tree.is_stub:
             # We skip stub files because they aren't actually executed.
             return
         manager = self.manager
+        manager.errors.set_file(self.xpath, self.tree.fullname, options=self.options)
         if manager.errors.is_error_code_enabled(
             codes.POSSIBLY_UNDEFINED
         ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
-            manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
             self.tree.accept(
                 PossiblyUndefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules), type_map, manager.options
+                    MessageBuilder(manager.errors, manager.modules), self.type_map(), self.options
                 )
             )
 
@@ -3418,7 +3418,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         graph[id].type_check_first_pass()
         if not graph[id].type_checker().deferred_nodes:
             unfinished_modules.discard(id)
-            graph[id].detect_possibly_undefined_vars(graph[id].type_map())
+            graph[id].detect_possibly_undefined_vars()
             graph[id].finish_passes()
 
     while unfinished_modules:
@@ -3427,7 +3427,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
                 continue
             if not graph[id].type_check_second_pass():
                 unfinished_modules.discard(id)
-                graph[id].detect_possibly_undefined_vars(graph[id].type_map())
+                graph[id].detect_possibly_undefined_vars()
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
