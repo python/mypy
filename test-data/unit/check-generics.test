@@ -20,21 +20,19 @@ class C: pass
 [case testGenericMethodArgument]
 from typing import TypeVar, Generic
 T = TypeVar('T')
-a.f(c) # Fail
-a.f(b)
+
+class A(Generic[T]):
+    def f(self, a: T) -> None: pass
 
 a = None # type: A[B]
 b = None # type: B
 c = None # type: C
 
-class A(Generic[T]):
-    def f(self, a: T) -> None: pass
+a.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"; expected "B"
+a.f(b)
 
 class B: pass
 class C: pass
-[out]
-main:3: error: Argument 1 to "f" of "A" has incompatible type "C"; expected "B"
-
 [case testGenericMemberVariable]
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -661,10 +659,10 @@ main:3: error: Type argument "float" of "Array" must be a subtype of "generic"  
 [file other.py]
 from typing import Any, Generic, TypeVar
 
-DT = TypeVar("DT", covariant=True, bound=dtype[Any])
-DTS = TypeVar("DTS", covariant=True, bound=generic)
+DT = TypeVar("DT", covariant=True, bound='dtype[Any]')
+DTS = TypeVar("DTS", covariant=True, bound='generic')
 S = TypeVar("S", bound=Any)
-ST = TypeVar("ST", bound=generic, covariant=True)
+ST = TypeVar("ST", bound='generic', covariant=True)
 
 class common: pass
 class generic(common): pass
@@ -1383,10 +1381,11 @@ Z = TypeVar('Z')
 class OO: pass
 a = None # type: A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]
 
-f(a) # E: Argument 1 to "f" has incompatible type "A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]"; expected "OO"
-
 def f(a: OO) -> None:
     pass
+
+f(a) # E: Argument 1 to "f" has incompatible type "A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]"; expected "OO"
+
 class A(Generic[B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z]): pass
 
 [case testErrorWithShorterGenericTypeName]
@@ -1394,9 +1393,10 @@ from typing import TypeVar, Generic
 S = TypeVar('S')
 T = TypeVar('T')
 a = None # type: A[object, B]
+def f(a: 'B') -> None: pass
+
 f(a) # E: Argument 1 to "f" has incompatible type "A[object, B]"; expected "B"
 
-def f(a: 'B') -> None: pass
 class A(Generic[S, T]): pass
 class B: pass
 
@@ -1405,9 +1405,10 @@ from typing import Callable, TypeVar, Generic
 S = TypeVar('S')
 T = TypeVar('T')
 a = None # type: A[object, Callable[[], None]]
+def f(a: 'B') -> None: pass
+
 f(a) # E: Argument 1 to "f" has incompatible type "A[object, Callable[[], None]]"; expected "B"
 
-def f(a: 'B') -> None: pass
 class A(Generic[S, T]): pass
 class B: pass
 
@@ -2143,7 +2144,7 @@ from typing import Generic, TypeVar, Any, Tuple, Type
 
 T = TypeVar('T')
 S = TypeVar('S')
-Q = TypeVar('Q', bound=A[Any])
+Q = TypeVar('Q', bound='A[Any]')
 
 class A(Generic[T]):
     @classmethod

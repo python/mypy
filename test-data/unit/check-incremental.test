@@ -2507,7 +2507,7 @@ A = Tuple[int]
 [case testNewTypeFromForwardNamedTupleIncremental]
 from typing import NewType, NamedTuple, Tuple
 
-NT = NewType('NT', N)
+NT = NewType('NT', 'N')
 class N(NamedTuple):
     x: int
 
@@ -2591,8 +2591,8 @@ class C(NamedTuple): # type: ignore
 from typing import TypeVar, Generic
 T = TypeVar('T')
 S = TypeVar('S')
-IntNode = Node[int, S]
-AnyNode = Node[S, T]
+IntNode = Node[int, S]  # type: ignore[used-before-def]
+AnyNode = Node[S, T]  # type: ignore[used-before-def]
 
 class Node(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
@@ -2642,8 +2642,8 @@ class G(Generic[T]):
     x: T
 
 yg: G[M]
-z: int = G[M]().x.x
-z = G[M]().x[0]
+z: int = G[M]().x.x  # type: ignore[used-before-def]
+z = G[M]().x[0]  # type: ignore[used-before-def]
 M = NamedTuple('M', [('x', int)])
 [builtins fixtures/tuple.pyi]
 [out]

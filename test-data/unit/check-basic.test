@@ -12,25 +12,26 @@ class A: pass
 class B: pass
 
 [case testConstructionAndAssignment]
-x = None # type: A
-x = A()
-if int():
-    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A:
     def __init__(self): pass
 class B:
     def __init__(self): pass
 
+x = None # type: A
+x = A()
+if int():
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [case testInheritInitFromObject]
+class A(object): pass
+class B(object): pass
 x = None # type: A
 if int():
     x = A()
 if int():
     x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-class A(object): pass
-class B(object): pass
-
 [case testImplicitInheritInitFromObject]
+class A: pass
+class B: pass
 x = None # type: A
 o = None # type: object
 if int():
@@ -39,10 +40,6 @@ if int():
     x = A()
 if int():
     o = x
-class A: pass
-class B: pass
-[out]
-
 [case testTooManyConstructorArgs]
 import typing
 object(object())
@@ -51,21 +48,15 @@ main:2: error: Too many arguments for "object"
 
 [case testVarDefWithInit]
 import typing
-a = A() # type: A
-b = object() # type: A
 class A: pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-
+a = A() # type: A
+b = object() # type: A  # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [case testInheritanceBasedSubtyping]
 import typing
-x = B() # type: A
-y = A() # type: B # Fail
 class A: pass
 class B(A): pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-
+x = B() # type: A
+y = A() # type: B  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 [case testDeclaredVariableInParentheses]
 
 (x) = None # type: int
@@ -101,32 +92,22 @@ w = 1  # E: Incompatible types in assignment (expression has type "int", variabl
 
 [case testFunction]
 import typing
-def f(x: 'A') -> None: pass
-f(A())
-f(B()) # Fail
 class A: pass
 class B: pass
-[out]
-main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
-
+def f(x: 'A') -> None: pass
+f(A())
+f(B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 [case testNotCallable]
 import typing
-A()()
 class A: pass
-[out]
-main:2: error: "A" not callable
-
+A()()  # E: "A" not callable
 [case testSubtypeArgument]
 import typing
-def f(x: 'A', y: 'B') -> None: pass
-f(B(), A()) # Fail
-f(B(), B())
-
 class A: pass
 class B(A): pass
-[out]
-main:3: error: Argument 2 to "f" has incompatible type "A"; expected "B"
-
+def f(x: 'A', y: 'B') -> None: pass
+f(B(), A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+f(B(), B())
 [case testInvalidArgumentCount]
 import typing
 def f(x, y) -> None: pass
@@ -194,12 +175,10 @@ main:4: error: Incompatible types in assignment (expression has type "B", variab
 
 [case testVariableInitializationWithSubtype]
 import typing
-x = B() # type: A
-y = A() # type: B # Fail
 class A: pass
 class B(A): pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+x = B() # type: A
+y = A() # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 
 -- Misc
@@ -217,15 +196,11 @@ main:3: error: Incompatible return value type (got "B", expected "A")
 
 [case testTopLevelContextAndInvalidReturn]
 import typing
-def f() -> 'A':
-  return B()
-a = B() # type: A
 class A: pass
 class B: pass
-[out]
-main:3: error: Incompatible return value type (got "B", expected "A")
-main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-
+def f() -> 'A':
+  return B()  # E: Incompatible return value type (got "B", expected "A")
+a = B() # type: A  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [case testEmptyReturnInAnyTypedFunction]
 from typing import Any
 def f() -> Any:
@@ -252,6 +227,8 @@ reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str,
 
 
 [case testLocalVariableShadowing]
+class A: pass
+class B: pass
 a = None # type: A
 if int():
     a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -263,10 +240,6 @@ def f() -> None:
       a = B()
 a = B()       # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = A()
-
-class A: pass
-class B: pass
-
 [case testGlobalDefinedInBlockWithType]
 class A: pass
 while A:
