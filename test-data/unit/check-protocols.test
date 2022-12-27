@@ -794,7 +794,7 @@ main:18: note:         def attr2(self) -> str
 [case testSelfTypesWithProtocolsBehaveAsWithNominal]
 from typing import Protocol, TypeVar
 
-T = TypeVar('T', bound=Shape)
+T = TypeVar('T', bound='Shape')
 class Shape(Protocol):
     def combine(self: T, other: T) -> T:
         pass
