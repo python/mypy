@@ -933,7 +933,7 @@ def f():
     y: int = x  # E: Name "x" may be undefined
 
 [case testClassBody]
-# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def --check-untyped-defs
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 
 class A:
     # The following should not only trigger an error from semantic analyzer, but not the used-before-def check.
