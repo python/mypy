@@ -149,3 +149,20 @@ def test_comparisons() -> None:
             assert le(x, y) == (x2 <= y2)
             assert gt(x, y) == (x2 > y2)
             assert ge(x, y) == (x2 >= y2)
+
+def add(x: bool, y: bool) -> int:
+    return x + y
+
+def add_mixed(b: bool, n: int) -> int:
+    return b + n
+
+def sub_mixed(n: int, b: bool) -> int:
+    return n - b
+
+def test_arithmetic() -> None:
+    for x in True, False:
+        for y in True, False:
+            assert add(x, y) == int(x) + int(y)
+        for n in -(1 << 70), -123, 0, 1, 1753, 1 << 70:
+            assert add_mixed(x, n) == int(x) + n
+            assert sub_mixed(n, x) == n - int(x)

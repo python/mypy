@@ -198,3 +198,90 @@ def ge(x, y):
 L0:
     r0 = x >= y :: signed
     return r0
+
+[case testBoolBitwise]
+def bitand(x: bool, y: bool) -> bool:
+    b = x & y
+    return b
+def bitor(x: bool, y: bool) -> bool:
+    b = x | y
+    return b
+def bitxor(x: bool, y: bool) -> bool:
+    b = x ^ y
+    return b
+def invert(x: bool) -> int:
+    return ~x
+[out]
+def bitand(x, y):
+    x, y, r0, b :: bool
+L0:
+    r0 = x & y
+    b = r0
+    return b
+def bitor(x, y):
+    x, y, r0, b :: bool
+L0:
+    r0 = x | y
+    b = r0
+    return b
+def bitxor(x, y):
+    x, y, r0, b :: bool
+L0:
+    r0 = x ^ y
+    b = r0
+    return b
+def invert(x):
+    x, r0 :: bool
+    r1, r2 :: int
+L0:
+    r0 = x << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = CPyTagged_Invert(r1)
+    return r2
+
+[case testBoolArithmetic]
+def add(x: bool, y: bool) -> int:
+    z = x + y
+    return z
+def mixed(b: bool, n: int) -> int:
+    z = b + n
+    z -= b
+    z = z * b
+    return z
+[out]
+def add(x, y):
+    x, y, r0 :: bool
+    r1 :: int
+    r2 :: bool
+    r3, r4, z :: int
+L0:
+    r0 = x << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = y << 1
+    r3 = extend r2: builtins.bool to builtins.int
+    r4 = CPyTagged_Add(r1, r3)
+    z = r4
+    return z
+def mixed(b, n):
+    b :: bool
+    n :: int
+    r0 :: bool
+    r1, r2, z :: int
+    r3 :: bool
+    r4, r5 :: int
+    r6 :: bool
+    r7, r8 :: int
+L0:
+    r0 = b << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = CPyTagged_Add(r1, n)
+    z = r2
+    r3 = b << 1
+    r4 = extend r3: builtins.bool to builtins.int
+    r5 = CPyTagged_Subtract(z, r4)
+    z = r5
+    r6 = b << 1
+    r7 = extend r6: builtins.bool to builtins.int
+    r8 = CPyTagged_Multiply(z, r7)
+    z = r8
+    return z
