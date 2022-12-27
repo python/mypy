@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from enum import Enum
+
 from mypy import checker, errorcodes
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -164,13 +166,21 @@ class BranchStatement:
         )
 
 
+class ScopeType(Enum):
+    Global = 1
+    Class = 2
+    Func = 3
+    Generator = 3
+
+
 class Scope:
-    def __init__(self, stmts: list[BranchStatement]) -> None:
+    def __init__(self, stmts: list[BranchStatement], scope_type: ScopeType) -> None:
         self.branch_stmts: list[BranchStatement] = stmts
+        self.scope_type = scope_type
         self.undefined_refs: dict[str, set[NameExpr]] = {}
 
     def copy(self) -> Scope:
-        result = Scope([s.copy() for s in self.branch_stmts])
+        result = Scope([s.copy() for s in self.branch_stmts], self.scope_type)
         result.undefined_refs = self.undefined_refs.copy()
         return result
 
@@ -188,7 +198,7 @@ class DefinedVariableTracker:
 
     def __init__(self) -> None:
         # There's always at least one scope. Within each scope, there's at least one "global" BranchingStatement.
-        self.scopes: list[Scope] = [Scope([BranchStatement(BranchState())])]
+        self.scopes: list[Scope] = [Scope([BranchStatement(BranchState())], ScopeType.Global)]
         # disable_branch_skip is used to disable skipping a branch due to a return/raise/etc. This is useful
         # in things like try/except/finally statements.
         self.disable_branch_skip = False
@@ -203,12 +213,17 @@ class DefinedVariableTracker:
         assert len(self.scopes) > 0
         return self.scopes[-1]
 
-    def enter_scope(self) -> None:
+    def enter_scope(self, scope_type: ScopeType) -> None:
         assert len(self._scope().branch_stmts) > 0
-        self.scopes.append(Scope([BranchStatement(self._scope().branch_stmts[-1].branches[-1])]))
+        self.scopes.append(
+            Scope([BranchStatement(self._scope().branch_stmts[-1].branches[-1])], scope_type)
+        )
 
     def exit_scope(self) -> None:
         self.scopes.pop()
+
+    def in_scope(self, scope_type: ScopeType) -> bool:
+        return self._scope().scope_type == scope_type
 
     def start_branch_statement(self) -> None:
         assert len(self._scope().branch_stmts) > 0
@@ -320,12 +335,14 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def process_definition(self, name: str) -> None:
         # Was this name previously used? If yes, it's a used-before-definition error.
-        refs = self.tracker.pop_undefined_ref(name)
-        for ref in refs:
-            if self.loops:
-                self.variable_may_be_undefined(name, ref)
-            else:
-                self.var_used_before_def(name, ref)
+        if not self.tracker.in_scope(ScopeType.Class):
+            # Errors in class scopes are caught by the semantic analyzer.
+            refs = self.tracker.pop_undefined_ref(name)
+            for ref in refs:
+                if self.loops:
+                    self.variable_may_be_undefined(name, ref)
+                else:
+                    self.var_used_before_def(name, ref)
         self.tracker.record_definition(name)
 
     def visit_global_decl(self, o: GlobalDecl) -> None:
@@ -392,7 +409,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.process_definition(o.name)
-        self.tracker.enter_scope()
+        self.tracker.enter_scope(ScopeType.Func)
         super().visit_func_def(o)
         self.tracker.exit_scope()
 
@@ -405,14 +422,14 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_func(o)
 
     def visit_generator_expr(self, o: GeneratorExpr) -> None:
-        self.tracker.enter_scope()
+        self.tracker.enter_scope(ScopeType.Generator)
         for idx in o.indices:
             self.process_lvalue(idx)
         super().visit_generator_expr(o)
         self.tracker.exit_scope()
 
     def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
-        self.tracker.enter_scope()
+        self.tracker.enter_scope(ScopeType.Generator)
         for idx in o.indices:
             self.process_lvalue(idx)
         super().visit_dictionary_comprehension(o)
@@ -446,7 +463,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.skip_branch()
 
     def visit_lambda_expr(self, o: LambdaExpr) -> None:
-        self.tracker.enter_scope()
+        self.tracker.enter_scope(ScopeType.Func)
         super().visit_lambda_expr(o)
         self.tracker.exit_scope()
 
@@ -613,7 +630,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_class_def(self, o: ClassDef) -> None:
         self.process_definition(o.name)
-        self.tracker.enter_scope()
+        self.tracker.enter_scope(ScopeType.Class)
         super().visit_class_def(o)
         self.tracker.exit_scope()
 
