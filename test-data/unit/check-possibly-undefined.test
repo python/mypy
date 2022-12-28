@@ -931,3 +931,30 @@ def f():
         x = 0
     z = y  # E: Name "y" is used before definition
     y: int = x  # E: Name "x" may be undefined
+
+[case testClassBody]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
+
+class A:
+    # The following should not only trigger an error from semantic analyzer, but not the used-before-def check.
+    y = x + 1  # E: Name "x" is not defined
+    x = 0
+    # Same as above but in a loop, which should trigger a possibly-undefined error.
+    for _ in [1, 2, 3]:
+        b = a + 1  # E: Name "a" is not defined
+        a = 0
+
+
+class B:
+    if int():
+        x = 0
+    else:
+        # This type of check is not caught by the semantic analyzer. If we ever update it to catch such issues,
+        # we should make sure that errors are not double-reported.
+        y = x  # E: Name "x" is used before definition
+    for _ in [1, 2, 3]:
+        if int():
+            a = 0
+        else:
+            # Same as above but in a loop.
+            b = a  # E: Name "a" may be undefined
