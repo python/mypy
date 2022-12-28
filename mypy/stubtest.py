@@ -370,7 +370,11 @@ def verify_mypyfile(
         else {
             m
             for m in dir(runtime)
-            if not is_probably_private(m) and _belongs_to_runtime(runtime, m)
+            if not is_probably_private(m)
+            # Do our best to filter out objects that originate from different modules,
+            # since in the absence of __all__,
+            # we don't have a sure-fire way to detect re-exports at runtime
+            and _belongs_to_runtime(runtime, m)
         }
     )
     # Check all things declared in module's __all__, falling back to our best guess
