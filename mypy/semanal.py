@@ -50,7 +50,7 @@ Some important properties:
 
 from __future__ import annotations
 
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -2645,11 +2645,15 @@ class SemanticAnalyzer(
         # But we can't use a full visit because it may emit extra incomplete refs (namely
         # when analysing any type applications there) thus preventing the further analysis.
         # To break the tie, we first analyse rvalue partially, if it can be a type alias.
-        with self.basic_type_applications_set(s):
-            with self.allow_unbound_tvars_set() if self.can_possibly_be_index_alias(
-                s
-            ) else nullcontext():
+        if self.can_possibly_be_index_alias(s):
+            old_basic_type_applications = self.basic_type_applications
+            self.basic_type_applications = True
+            with self.allow_unbound_tvars_set():
                 s.rvalue.accept(self)
+            self.basic_type_applications = old_basic_type_applications
+        else:
+            s.rvalue.accept(self)
+
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
@@ -2818,17 +2822,6 @@ class SemanticAnalyzer(
             return False
         # Something that looks like Foo = Bar[Baz, ...]
         return True
-
-    @contextmanager
-    def basic_type_applications_set(self, s: AssignmentStmt) -> Iterator[None]:
-        old = self.basic_type_applications
-        # As an optimization, only use the double visit logic if this
-        # can possibly be a recursive type alias.
-        self.basic_type_applications = self.can_possibly_be_index_alias(s)
-        try:
-            yield
-        finally:
-            self.basic_type_applications = old
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
         """Does this expression refer to a type?
