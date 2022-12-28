@@ -3346,6 +3346,15 @@ def has_recursive_types(typ: Type) -> bool:
     return typ.accept(_has_recursive_type)
 
 
+def _flattened(types: Iterable[Type]) -> Iterable[Type]:
+    for t in types:
+        tp = get_proper_type(t)
+        if isinstance(tp, UnionType):
+            yield from _flattened(tp.items)
+        else:
+            yield t
+
+
 def flatten_nested_unions(
     types: Iterable[Type], handle_type_alias_type: bool = True
 ) -> list[Type]:
