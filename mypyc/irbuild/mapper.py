@@ -116,7 +116,18 @@ class Mapper:
         elif isinstance(typ, NoneTyp):
             return none_rprimitive
         elif isinstance(typ, UnionType):
-            return RUnion([self.type_to_rtype(item) for item in typ.items])
+            # Remove redundant items using set + list to preserve item order
+            seen = set()
+            items = []
+            for item in typ.items:
+                rtype = self.type_to_rtype(item)
+                if rtype not in seen:
+                    items.append(rtype)
+                    seen.add(rtype)
+            if len(items) > 1:
+                return RUnion(items)
+            else:
+                return items[0]
         elif isinstance(typ, AnyType):
             return object_rprimitive
         elif isinstance(typ, TypeType):
