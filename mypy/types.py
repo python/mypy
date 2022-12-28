@@ -201,7 +201,7 @@ def deserialize_type(data: JsonDict | str) -> Type:
 class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
-    __slots__ = ("can_be_true", "can_be_false")
+    __slots__ = ("_can_be_true", "_can_be_false")
     # 'can_be_true' and 'can_be_false' mean whether the value of the
     # expression can be true or false in a boolean context. They are useful
     # when inferring the type of logic expressions like `x and y`.
@@ -214,8 +214,29 @@ class Type(mypy.nodes.Context):
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.can_be_true = self.can_be_true_default()
-        self.can_be_false = self.can_be_false_default()
+        # Value of these can be -1 (use the default, lazy init), 0 (false) or 1 (true)
+        self._can_be_true = -1
+        self._can_be_false = -1
+
+    @property
+    def can_be_true(self) -> bool:
+        if self._can_be_true == -1:  # Lazy init helps mypyc
+            self._can_be_true = self.can_be_true_default()
+        return bool(self._can_be_true)
+
+    @can_be_true.setter
+    def can_be_true(self, v: bool) -> None:
+        self._can_be_true = v
+
+    @property
+    def can_be_false(self) -> bool:
+        if self._can_be_false == -1:  # Lazy init helps mypyc
+            self._can_be_false = self.can_be_false_default()
+        return bool(self._can_be_false)
+
+    @can_be_false.setter
+    def can_be_false(self, v: bool) -> None:
+        self._can_be_false = v
 
     def can_be_true_default(self) -> bool:
         return True
@@ -264,10 +285,10 @@ class TypeAliasType(Type):
         line: int = -1,
         column: int = -1,
     ) -> None:
+        super().__init__(line, column)
         self.alias = alias
         self.args = args
         self.type_ref: str | None = None
-        super().__init__(line, column)
 
     def _expand_once(self) -> Type:
         """Expand to the target type exactly once.
@@ -1424,7 +1445,7 @@ class FunctionLike(ProperType):
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.can_be_false = False
+        self._can_be_false = False
 
     @abstractmethod
     def is_type_obj(self) -> bool:
@@ -2183,10 +2204,10 @@ class TupleType(ProperType):
         column: int = -1,
         implicit: bool = False,
     ) -> None:
+        super().__init__(line, column)
         self.partial_fallback = fallback
         self.items = items
         self.implicit = implicit
-        super().__init__(line, column)
 
     def can_be_true_default(self) -> bool:
         if self.can_be_any_bool():
@@ -2495,8 +2516,8 @@ class LiteralType(ProperType):
     def __init__(
         self, value: LiteralValue, fallback: Instance, line: int = -1, column: int = -1
     ) -> None:
-        self.value = value
         super().__init__(line, column)
+        self.value = value
         self.fallback = fallback
         self._hash = -1  # Cached hash value
 
