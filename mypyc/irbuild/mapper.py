@@ -116,6 +116,7 @@ class Mapper:
         elif isinstance(typ, NoneTyp):
             return none_rprimitive
         elif isinstance(typ, UnionType):
+            # Remove redundant items using set + list to preserve item order
             seen = set()
             items = []
             for item in typ.items:
