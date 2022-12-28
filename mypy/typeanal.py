@@ -268,10 +268,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.api.record_incomplete_ref()
                     # Always allow ParamSpec for placeholders, if they are actually not valid,
                     # they will be reported later, after we resolve placeholders.
-                    with self.set_allow_param_spec_literals(True):
-                        return PlaceholderType(
-                            node.fullname, self.anal_array(t.args, allow_param_spec=True), t.line
-                        )
+                    return PlaceholderType(
+                        node.fullname,
+                        self.anal_array(
+                            t.args, allow_param_spec=True, allow_param_spec_literals=True
+                        ),
+                        t.line,
+                    )
                 else:
                     if self.api.final_iteration:
                         self.cannot_resolve_type(t)
@@ -382,10 +385,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return special
             if isinstance(node, TypeAlias):
                 self.aliases_used.add(fullname)
-                with self.set_allow_param_spec_literals(node.has_param_spec_type):
-                    an_args = self.anal_array(t.args, allow_param_spec=True)
-                    if node.has_param_spec_type and len(node.alias_tvars) == 1:
-                        an_args = self.pack_paramspec_args(an_args)
+                an_args = self.anal_array(
+                    t.args,
+                    allow_param_spec=True,
+                    allow_param_spec_literals=node.has_param_spec_type,
+                )
+                if node.has_param_spec_type and len(node.alias_tvars) == 1:
+                    an_args = self.pack_paramspec_args(an_args)
 
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
                 res = expand_type_alias(
@@ -660,17 +666,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
             return TupleType(self.anal_array(args), fallback, ctx.line)
 
-        # This is a heuristic: it will be checked later anyways but the error
-        # message may be worse.
-        with self.set_allow_param_spec_literals(info.has_param_spec_type):
-            # Analyze arguments and (usually) construct Instance type. The
-            # number of type arguments and their values are
-            # checked only later, since we do not always know the
-            # valid count at this point. Thus we may construct an
-            # Instance with an invalid number of type arguments.
-            instance = Instance(
-                info, self.anal_array(args, allow_param_spec=True), ctx.line, ctx.column
-            )
+        # Analyze arguments and (usually) construct Instance type. The
+        # number of type arguments and their values are
+        # checked only later, since we do not always know the
+        # valid count at this point. Thus we may construct an
+        # Instance with an invalid number of type arguments.
+        #
+        # We allow ParamSpec literals based on a heuristic: it will be
+        # checked later anyways but the error message may be worse.
+        instance = Instance(
+            info,
+            self.anal_array(
+                args, allow_param_spec=True, allow_param_spec_literals=info.has_param_spec_type
+            ),
+            ctx.line,
+            ctx.column,
+        )
         if len(info.type_vars) == 1 and info.has_param_spec_type:
             instance.args = tuple(self.pack_paramspec_args(instance.args))
 
@@ -1466,11 +1477,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return self.tvar_scope.get_binding(tvar_node) is not None
 
     def anal_array(
-        self, a: Iterable[Type], nested: bool = True, *, allow_param_spec: bool = False
+        self,
+        a: Iterable[Type],
+        nested: bool = True,
+        *,
+        allow_param_spec: bool = False,
+        allow_param_spec_literals: bool = False,
     ) -> list[Type]:
+        old_allow_param_spec_literals = self.allow_param_spec_literals
+        self.allow_param_spec_literals = allow_param_spec_literals
         res: list[Type] = []
         for t in a:
             res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
+        self.allow_param_spec_literals = old_allow_param_spec_literals
         return self.check_unpacks_in_list(res)
 
     def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
@@ -1557,15 +1576,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def tuple_type(self, items: list[Type]) -> TupleType:
         any_type = AnyType(TypeOfAny.special_form)
         return TupleType(items, fallback=self.named_type("builtins.tuple", [any_type]))
-
-    @contextmanager
-    def set_allow_param_spec_literals(self, to: bool) -> Iterator[None]:
-        old = self.allow_param_spec_literals
-        try:
-            self.allow_param_spec_literals = to
-            yield
-        finally:
-            self.allow_param_spec_literals = old
 
 
 TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]
