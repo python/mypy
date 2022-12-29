@@ -53,6 +53,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     UninhabitedType,
+    UnionType,
     get_proper_type,
 )
 from mypy.util import split_target
@@ -85,6 +86,7 @@ from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
     RType,
+    RUnion,
     bitmap_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -864,8 +866,15 @@ class IRBuilder:
             return None
 
     def get_sequence_type(self, expr: Expression) -> RType:
-        target_type = get_proper_type(self.types[expr])
-        assert isinstance(target_type, Instance)
+        return self.get_sequence_type_from_type(self.types[expr])
+
+    def get_sequence_type_from_type(self, target_type: Type) -> RType:
+        target_type = get_proper_type(target_type)
+        if isinstance(target_type, UnionType):
+            return RUnion.make_simplified_union(
+                [self.get_sequence_type_from_type(item) for item in target_type.items]
+            )
+        assert isinstance(target_type, Instance), target_type
         if target_type.type.fullname == "builtins.str":
             return str_rprimitive
         else:

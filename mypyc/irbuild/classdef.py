@@ -84,7 +84,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # classes aren't necessarily populated yet at
     # prepare_class_def time.
     if any(ir.base_mro[i].base != ir.base_mro[i + 1] for i in range(len(ir.base_mro) - 1)):
-        builder.error("Non-trait MRO must be linear", cdef.line)
+        builder.error("Multiple inheritance is not supported (except for traits)", cdef.line)
 
     if ir.allow_interpreted_subclasses:
         for parent in ir.mro:

@@ -15,5 +15,5 @@ pytest-xdist>=1.34.0
 pytest-forked>=1.3.0,<2.0.0
 pytest-cov>=2.10.0
 py>=1.5.2
-setuptools!=50
+setuptools>=65.5.1
 six

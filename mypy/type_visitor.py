@@ -315,7 +315,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     # TODO: check that we don't have existing violations of this rule.
     """
 
-    def __init__(self, strategy: Callable[[Iterable[T]], T]) -> None:
+    def __init__(self, strategy: Callable[[list[T]], T]) -> None:
         self.strategy = strategy
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].

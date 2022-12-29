@@ -57,6 +57,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    _flattened,
     get_proper_type,
     is_named_instance,
 )
@@ -891,6 +892,35 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if not self._is_subtype(item, self.orig_right):
                     return False
             return True
+
+        elif isinstance(self.right, UnionType):
+            # prune literals early to avoid nasty quadratic behavior which would otherwise arise when checking
+            # subtype relationships between slightly different narrowings of an Enum
+            # we achieve O(N+M) instead of O(N*M)
+
+            fast_check: set[ProperType] = set()
+
+            for item in _flattened(self.right.relevant_items()):
+                p_item = get_proper_type(item)
+                if isinstance(p_item, LiteralType):
+                    fast_check.add(p_item)
+                elif isinstance(p_item, Instance):
+                    if p_item.last_known_value is None:
+                        fast_check.add(p_item)
+                    else:
+                        fast_check.add(p_item.last_known_value)
+
+            for item in left.relevant_items():
+                p_item = get_proper_type(item)
+                if p_item in fast_check:
+                    continue
+                lit_type = mypy.typeops.simple_literal_type(p_item)
+                if lit_type in fast_check:
+                    continue
+                if not self._is_subtype(item, self.orig_right):
+                    return False
+            return True
+
         return all(self._is_subtype(item, self.orig_right) for item in left.items)
 
     def visit_partial_type(self, left: PartialType) -> bool:

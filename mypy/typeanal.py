@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import itertools
 from contextlib import contextmanager
-from itertools import chain
 from typing import Callable, Iterable, Iterator, List, Sequence, Tuple, TypeVar
 from typing_extensions import Final, Protocol
 
@@ -203,8 +202,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_type_any: bool = False,
     ) -> None:
         self.api = api
-        self.lookup_qualified = api.lookup_qualified
-        self.lookup_fqn_func = api.lookup_fully_qualified
         self.fail_func = api.fail
         self.note_func = api.note
         self.tvar_scope = tvar_scope
@@ -244,6 +241,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Allow variables typed as Type[Any] and type (useful for base classes).
         self.allow_type_any = allow_type_any
 
+    def lookup_qualified(
+        self, name: str, ctx: Context, suppress_errors: bool = False
+    ) -> SymbolTableNode | None:
+        return self.api.lookup_qualified(name, ctx, suppress_errors)
+
+    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+        return self.api.lookup_fully_qualified(name)
+
     def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
         typ = self.visit_unbound_type_nonoptional(t, defining_literal)
         if t.optional:
@@ -268,10 +273,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.api.record_incomplete_ref()
                     # Always allow ParamSpec for placeholders, if they are actually not valid,
                     # they will be reported later, after we resolve placeholders.
-                    with self.set_allow_param_spec_literals(True):
-                        return PlaceholderType(
-                            node.fullname, self.anal_array(t.args, allow_param_spec=True), t.line
-                        )
+                    return PlaceholderType(
+                        node.fullname,
+                        self.anal_array(
+                            t.args, allow_param_spec=True, allow_param_spec_literals=True
+                        ),
+                        t.line,
+                    )
                 else:
                     if self.api.final_iteration:
                         self.cannot_resolve_type(t)
@@ -382,10 +390,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return special
             if isinstance(node, TypeAlias):
                 self.aliases_used.add(fullname)
-                with self.set_allow_param_spec_literals(node.has_param_spec_type):
-                    an_args = self.anal_array(t.args, allow_param_spec=True)
-                    if node.has_param_spec_type and len(node.alias_tvars) == 1:
-                        an_args = self.pack_paramspec_args(an_args)
+                an_args = self.anal_array(
+                    t.args,
+                    allow_param_spec=True,
+                    allow_param_spec_literals=node.has_param_spec_type,
+                )
+                if node.has_param_spec_type and len(node.alias_tvars) == 1:
+                    an_args = self.pack_paramspec_args(an_args)
 
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
                 res = expand_type_alias(
@@ -660,17 +671,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
             return TupleType(self.anal_array(args), fallback, ctx.line)
 
-        # This is a heuristic: it will be checked later anyways but the error
-        # message may be worse.
-        with self.set_allow_param_spec_literals(info.has_param_spec_type):
-            # Analyze arguments and (usually) construct Instance type. The
-            # number of type arguments and their values are
-            # checked only later, since we do not always know the
-            # valid count at this point. Thus we may construct an
-            # Instance with an invalid number of type arguments.
-            instance = Instance(
-                info, self.anal_array(args, allow_param_spec=True), ctx.line, ctx.column
-            )
+        # Analyze arguments and (usually) construct Instance type. The
+        # number of type arguments and their values are
+        # checked only later, since we do not always know the
+        # valid count at this point. Thus we may construct an
+        # Instance with an invalid number of type arguments.
+        #
+        # We allow ParamSpec literals based on a heuristic: it will be
+        # checked later anyways but the error message may be worse.
+        instance = Instance(
+            info,
+            self.anal_array(
+                args, allow_param_spec=True, allow_param_spec_literals=info.has_param_spec_type
+            ),
+            ctx.line,
+            ctx.column,
+        )
         if len(info.type_vars) == 1 and info.has_param_spec_type:
             instance.args = tuple(self.pack_paramspec_args(instance.args))
 
@@ -1397,14 +1413,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         yield
         self.tvar_scope = old_scope
 
+    def find_type_var_likes(self, t: Type, include_callables: bool = True) -> TypeVarLikeList:
+        return t.accept(
+            TypeVarLikeQuery(self.api, self.tvar_scope, include_callables=include_callables)
+        )
+
     def infer_type_variables(self, type: CallableType) -> list[tuple[str, TypeVarLikeExpr]]:
         """Return list of unique type variables referred to in a callable."""
         names: list[str] = []
         tvars: list[TypeVarLikeExpr] = []
         for arg in type.arg_types:
-            for name, tvar_expr in arg.accept(
-                TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope)
-            ):
+            for name, tvar_expr in self.find_type_var_likes(arg):
                 if name not in names:
                     names.append(name)
                     tvars.append(tvar_expr)
@@ -1412,12 +1431,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # look inside Callable types.  Type variables only appearing in
         # functions in the return type belong to those functions, not the
         # function we're currently analyzing.
-        for name, tvar_expr in type.ret_type.accept(
-            TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope, include_callables=False)
-        ):
+        for name, tvar_expr in self.find_type_var_likes(type.ret_type, include_callables=False):
             if name not in names:
                 names.append(name)
                 tvars.append(tvar_expr)
+
+        if not names:
+            return []  # Fast path
         return list(zip(names, tvars))
 
     def bind_function_type_variables(
@@ -1466,11 +1486,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return self.tvar_scope.get_binding(tvar_node) is not None
 
     def anal_array(
-        self, a: Iterable[Type], nested: bool = True, *, allow_param_spec: bool = False
+        self,
+        a: Iterable[Type],
+        nested: bool = True,
+        *,
+        allow_param_spec: bool = False,
+        allow_param_spec_literals: bool = False,
     ) -> list[Type]:
+        old_allow_param_spec_literals = self.allow_param_spec_literals
+        self.allow_param_spec_literals = allow_param_spec_literals
         res: list[Type] = []
         for t in a:
             res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
+        self.allow_param_spec_literals = old_allow_param_spec_literals
         return self.check_unpacks_in_list(res)
 
     def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
@@ -1527,7 +1555,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         line: int = -1,
         column: int = -1,
     ) -> Instance:
-        node = self.lookup_fqn_func(fully_qualified_name)
+        node = self.lookup_fully_qualified(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
         any_type = AnyType(TypeOfAny.special_form)
         if args is not None:
@@ -1557,15 +1585,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def tuple_type(self, items: list[Type]) -> TupleType:
         any_type = AnyType(TypeOfAny.special_form)
         return TupleType(items, fallback=self.named_type("builtins.tuple", [any_type]))
-
-    @contextmanager
-    def set_allow_param_spec_literals(self, to: bool) -> Iterator[None]:
-        old = self.allow_param_spec_literals
-        try:
-            self.allow_param_spec_literals = to
-            yield
-        finally:
-            self.allow_param_spec_literals = old
 
 
 TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]
@@ -1775,7 +1794,9 @@ def set_any_tvars(
     return TypeAliasType(node, [any_type] * len(node.alias_tvars), newline, newcolumn)
 
 
-def remove_dups(tvars: Iterable[T]) -> list[T]:
+def remove_dups(tvars: list[T]) -> list[T]:
+    if len(tvars) <= 1:
+        return tvars
     # Get unique elements in order of appearance
     all_tvars: set[T] = set()
     new_tvars: list[T] = []
@@ -1786,8 +1807,13 @@ def remove_dups(tvars: Iterable[T]) -> list[T]:
     return new_tvars
 
 
-def flatten_tvars(ll: Iterable[list[T]]) -> list[T]:
-    return remove_dups(chain.from_iterable(ll))
+def flatten_tvars(lists: list[list[T]]) -> list[T]:
+    result: list[T] = []
+    for lst in lists:
+        for item in lst:
+            if item not in result:
+                result.append(item)
+    return result
 
 
 class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
@@ -1795,17 +1821,15 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
 
     def __init__(
         self,
-        lookup: Callable[[str, Context], SymbolTableNode | None],
+        api: SemanticAnalyzerCoreInterface,
         scope: TypeVarLikeScope,
         *,
         include_callables: bool = True,
-        include_bound_tvars: bool = False,
     ) -> None:
-        self.include_callables = include_callables
-        self.lookup = lookup
-        self.scope = scope
-        self.include_bound_tvars = include_bound_tvars
         super().__init__(flatten_tvars)
+        self.api = api
+        self.scope = scope
+        self.include_callables = include_callables
         # Only include type variables in type aliases args. This would be anyway
         # that case if we expand (as target variables would be overridden with args)
         # and it may cause infinite recursion on invalid (diverging) recursive aliases.
@@ -1823,16 +1847,16 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         if name.endswith("args"):
             if name.endswith(".args") or name.endswith(".kwargs"):
                 base = ".".join(name.split(".")[:-1])
-                n = self.lookup(base, t)
+                n = self.api.lookup_qualified(base, t)
                 if n is not None and isinstance(n.node, ParamSpecExpr):
                     node = n
                     name = base
         if node is None:
-            node = self.lookup(name, t)
+            node = self.api.lookup_qualified(name, t)
         if (
             node
             and isinstance(node.node, TypeVarLikeExpr)
-            and (self.include_bound_tvars or self.scope.get_binding(node) is None)
+            and self.scope.get_binding(node) is None
         ):
             assert isinstance(node.node, TypeVarLikeExpr)
             return [(name, node.node)]
