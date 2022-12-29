@@ -430,14 +430,20 @@ L5:
     return 1
 
 [case testSimplifyListUnion]
-from typing import List, Union
+from typing import List, Union, Optional
 
-def f(a: Union[List[str], List[bytes], int]) -> int:
+def narrow(a: Union[List[str], List[bytes], int]) -> int:
     if isinstance(a, list):
         return len(a)
     return a
+def loop(a: Union[List[str], List[bytes]]) -> None:
+    for x in a:
+         pass
+def nested_union(a: Union[List[str], List[Optional[str]]]) -> None:
+    for x in a:
+        pass
 [out]
-def f(a):
+def narrow(a):
     a :: union[list, int]
     r0 :: object
     r1 :: int32
@@ -465,3 +471,61 @@ L1:
 L2:
     r8 = unbox(int, a)
     return r8
+def loop(a):
+    a :: list
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bit
+    r5 :: object
+    r6, x :: union[str, bytes]
+    r7 :: short_int
+L0:
+    r0 = 0
+L1:
+    r1 = get_element_ptr a ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    keep_alive a
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = CPyList_GetItemUnsafe(a, r0)
+    r6 = cast(union[str, bytes], r5)
+    x = r6
+L3:
+    r7 = r0 + 2
+    r0 = r7
+    goto L1
+L4:
+    return 1
+def nested_union(a):
+    a :: list
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bit
+    r5 :: object
+    r6, x :: union[str, None]
+    r7 :: short_int
+L0:
+    r0 = 0
+L1:
+    r1 = get_element_ptr a ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    keep_alive a
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = CPyList_GetItemUnsafe(a, r0)
+    r6 = cast(union[str, None], r5)
+    x = r6
+L3:
+    r7 = r0 + 2
+    r0 = r7
+    goto L1
+L4:
+    return 1
