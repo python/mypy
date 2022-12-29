@@ -346,16 +346,20 @@ def verify_mypyfile(
     imported_symbols = _get_imported_symbol_names(runtime)
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
+        """Heuristics to determine whether a name originates from another module."""
         obj = getattr(r, attr)
         if isinstance(obj, types.ModuleType):
             return False
         if callable(obj):
+            # It's highly likely to be a class or a function if it's callable,
+            # so the __module__ attribute will give a good indication of which module it comes from
             try:
-                obj_mod = getattr(obj, "__module__", None)
+                obj_mod = obj.__module__
             except Exception:
-                return False
-            if obj_mod is not None:
-                return bool(obj_mod == r.__name__)
+                pass
+            else:
+                if isinstance(obj_mod, str):
+                    return bool(obj_mod == r.__name__)
         if imported_symbols is not None:
             return attr not in imported_symbols
         return True
@@ -367,8 +371,9 @@ def verify_mypyfile(
             m
             for m in dir(runtime)
             if not is_probably_private(m)
-            # Ensure that the object's module is `runtime`, since in the absence of __all__ we
-            # don't have a good way to detect re-exports at runtime.
+            # Filter out objects that originate from other modules (best effort). Note that in the
+            # absence of __all__, we don't have a way to detect explicit / intentional re-exports
+            # at runtime
             and _belongs_to_runtime(runtime, m)
         }
     )
