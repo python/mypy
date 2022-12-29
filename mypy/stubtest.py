@@ -267,7 +267,7 @@ def _verify_exported_names(
         object_path + ["__all__"],
         (
             "names exported from the stub do not correspond to the names exported at runtime. "
-            "This is probably due to things being missing from the stub, or if present, an inaccurate `__all__` in the stub"
+            "This is probably due to things being missing from the stub or an inaccurate `__all__` in the stub"
         ),
         # Pass in MISSING instead of the stub and runtime objects, as the line numbers aren't very
         # relevant here, and it makes for a prettier error message
