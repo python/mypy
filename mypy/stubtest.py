@@ -372,7 +372,7 @@ def verify_mypyfile(
             for m in dir(runtime)
             if not is_probably_private(m)
             # Filter out objects that originate from other modules (best effort). Note that in the
-            # absence of __all__, we don't have a way to detect re-exports at runtime
+            # absence of __all__, we don't have a way to detect explicit re-exports at runtime
             and _belongs_to_runtime(runtime, m)
         }
     )
