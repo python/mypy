@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import itertools
 from contextlib import contextmanager
-from itertools import chain
 from typing import Callable, Iterable, Iterator, List, Sequence, Tuple, TypeVar
 from typing_extensions import Final, Protocol
 
@@ -203,8 +202,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_type_any: bool = False,
     ) -> None:
         self.api = api
-        self.lookup_qualified = api.lookup_qualified
-        self.lookup_fqn_func = api.lookup_fully_qualified
         self.fail_func = api.fail
         self.note_func = api.note
         self.tvar_scope = tvar_scope
@@ -243,6 +240,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.prohibit_self_type = prohibit_self_type
         # Allow variables typed as Type[Any] and type (useful for base classes).
         self.allow_type_any = allow_type_any
+
+    def lookup_qualified(
+        self, name: str, ctx: Context, suppress_errors: bool = False
+    ) -> SymbolTableNode | None:
+        return self.api.lookup_qualified(name, ctx, suppress_errors)
+
+    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+        return self.api.lookup_fully_qualified(name)
 
     def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
         typ = self.visit_unbound_type_nonoptional(t, defining_literal)
@@ -1408,14 +1413,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         yield
         self.tvar_scope = old_scope
 
+    def find_type_var_likes(self, t: Type, include_callables: bool = True) -> TypeVarLikeList:
+        return t.accept(
+            TypeVarLikeQuery(self.api, self.tvar_scope, include_callables=include_callables)
+        )
+
     def infer_type_variables(self, type: CallableType) -> list[tuple[str, TypeVarLikeExpr]]:
         """Return list of unique type variables referred to in a callable."""
         names: list[str] = []
         tvars: list[TypeVarLikeExpr] = []
         for arg in type.arg_types:
-            for name, tvar_expr in arg.accept(
-                TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope)
-            ):
+            for name, tvar_expr in self.find_type_var_likes(arg):
                 if name not in names:
                     names.append(name)
                     tvars.append(tvar_expr)
@@ -1423,12 +1431,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # look inside Callable types.  Type variables only appearing in
         # functions in the return type belong to those functions, not the
         # function we're currently analyzing.
-        for name, tvar_expr in type.ret_type.accept(
-            TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope, include_callables=False)
-        ):
+        for name, tvar_expr in self.find_type_var_likes(type.ret_type, include_callables=False):
             if name not in names:
                 names.append(name)
                 tvars.append(tvar_expr)
+
+        if not names:
+            return []  # Fast path
         return list(zip(names, tvars))
 
     def bind_function_type_variables(
@@ -1546,7 +1555,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         line: int = -1,
         column: int = -1,
     ) -> Instance:
-        node = self.lookup_fqn_func(fully_qualified_name)
+        node = self.lookup_fully_qualified(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
         any_type = AnyType(TypeOfAny.special_form)
         if args is not None:
@@ -1785,7 +1794,9 @@ def set_any_tvars(
     return TypeAliasType(node, [any_type] * len(node.alias_tvars), newline, newcolumn)
 
 
-def remove_dups(tvars: Iterable[T]) -> list[T]:
+def remove_dups(tvars: list[T]) -> list[T]:
+    if len(tvars) <= 1:
+        return tvars
     # Get unique elements in order of appearance
     all_tvars: set[T] = set()
     new_tvars: list[T] = []
@@ -1796,8 +1807,13 @@ def remove_dups(tvars: Iterable[T]) -> list[T]:
     return new_tvars
 
 
-def flatten_tvars(ll: Iterable[list[T]]) -> list[T]:
-    return remove_dups(chain.from_iterable(ll))
+def flatten_tvars(lists: list[list[T]]) -> list[T]:
+    result: list[T] = []
+    for lst in lists:
+        for item in lst:
+            if item not in result:
+                result.append(item)
+    return result
 
 
 class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
@@ -1805,17 +1821,15 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
 
     def __init__(
         self,
-        lookup: Callable[[str, Context], SymbolTableNode | None],
+        api: SemanticAnalyzerCoreInterface,
         scope: TypeVarLikeScope,
         *,
         include_callables: bool = True,
-        include_bound_tvars: bool = False,
     ) -> None:
-        self.include_callables = include_callables
-        self.lookup = lookup
-        self.scope = scope
-        self.include_bound_tvars = include_bound_tvars
         super().__init__(flatten_tvars)
+        self.api = api
+        self.scope = scope
+        self.include_callables = include_callables
         # Only include type variables in type aliases args. This would be anyway
         # that case if we expand (as target variables would be overridden with args)
         # and it may cause infinite recursion on invalid (diverging) recursive aliases.
@@ -1833,16 +1847,16 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         if name.endswith("args"):
             if name.endswith(".args") or name.endswith(".kwargs"):
                 base = ".".join(name.split(".")[:-1])
-                n = self.lookup(base, t)
+                n = self.api.lookup_qualified(base, t)
                 if n is not None and isinstance(n.node, ParamSpecExpr):
                     node = n
                     name = base
         if node is None:
-            node = self.lookup(name, t)
+            node = self.api.lookup_qualified(name, t)
         if (
             node
             and isinstance(node.node, TypeVarLikeExpr)
-            and (self.include_bound_tvars or self.scope.get_binding(node) is None)
+            and self.scope.get_binding(node) is None
         ):
             assert isinstance(node.node, TypeVarLikeExpr)
             return [(name, node.node)]
