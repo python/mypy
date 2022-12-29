@@ -276,7 +276,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg = msg
         self.plugin = plugin
         self.per_line_checking_time_ns = per_line_checking_time_ns
-        self.collect_line_checking_stats = self.chk.options.line_checking_stats is not None
+        self.collect_line_checking_stats = chk.options.line_checking_stats is not None
         # Are we already visiting some expression? This is used to avoid double counting
         # time for nested expressions.
         self.in_expression = False
