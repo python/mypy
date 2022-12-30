@@ -1968,7 +1968,7 @@ import other_interpreted
 
 [out]
 
-[case testAttributeOverridesProperty1]
+[case testAttributeOverridesProperty]
 from typing import Any
 from mypy_extensions import trait
 
@@ -1979,18 +1979,18 @@ class T1:
     @property
     def y(self) -> int: ...
 
-class C(T1):
+class C1(T1):
     x: int
     y: int = 4
 
-def test_read_only_property_implemented_as_attribute() -> None:
-    c = C()
+def test_read_only_property_in_trait_implemented_as_attribute() -> None:
+    c = C1()
     c.x = 5
     assert c.x == 5
     assert c.y == 4
     c.y = 6
     assert c.y == 6
-    t: T1 = C()
+    t: T1 = C1()
     assert t.y == 4
     t = c
     assert t.x == 5
@@ -2003,11 +2003,7 @@ def test_read_only_property_implemented_as_attribute() -> None:
     assert c.x == 7
     assert c.y == 8
 
-[case testAttributeOverridesProperty2]
-from typing import Any
-from mypy_extensions import trait
-
-class B:
+class B2:
     @property
     def x(self) -> int:
         return 11
@@ -2016,18 +2012,18 @@ class B:
     def y(self) -> int:
         return 25
 
-class C(B):
+class C2(B2):
     x: int
     y: int = 4
 
-def test_read_only_property_implemented_as_attribute() -> None:
-    c = C()
+def test_read_only_property_in_class_implemented_as_attribute() -> None:
+    c = C2()
     c.x = 5
     assert c.x == 5
     assert c.y == 4
     c.y = 6
     assert c.y == 6
-    b: B = C()
+    b: B2 = C2()
     assert b.y == 4
     b = c
     assert b.x == 5
@@ -2078,7 +2074,6 @@ def test_read_only_property_implemented_as_attribute() -> None:
     assert c.x == 7
     assert c.y == 8
 
-
 [case testAttributeOverridesProperty4]
 from typing import Any
 from mypy_extensions import trait
@@ -2119,8 +2114,6 @@ def test_read_only_property_implemented_as_attribute() -> None:
     c.y = 8
     assert c.x == 7
     assert c.y == 8
-
-
 
 [case testSubclassAttributeAccess]
 from mypy_extensions import trait
