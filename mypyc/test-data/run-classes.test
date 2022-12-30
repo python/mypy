@@ -2107,6 +2107,49 @@ def test_read_write_property_implemented_as_attribute() -> None:
     assert c.x == 7
     assert c.y == 8
 
+@trait
+class T5:
+    @property
+    def x(self) -> int: ...
+    @x.setter
+    def x(self, v1: int) -> None: ...
+
+    @property
+    def y(self) -> int: ...
+    @y.setter
+    def y(self, v2: int) -> None: ...
+
+class B5:
+    x: int
+    y: int = 4
+
+class BB5(B5):
+    pass
+
+class C5(BB5, T4):
+    pass
+
+def test_read_write_property_indirectly_implemented_as_attribute() -> None:
+    c = C5()
+    c.x = 5
+    assert c.x == 5
+    assert c.y == 4
+    c.y = 6
+    assert c.y == 6
+    t: T4 = C5()
+    assert t.y == 4
+    t.x = 5
+    assert t.x == 5
+    t.y = 6
+    assert t.y == 6
+    a: Any = c
+    assert c.x == 5
+    assert c.y == 6
+    c.x = 7
+    c.y = 8
+    assert c.x == 7
+    assert c.y == 8
+
 [case testSubclassAttributeAccess]
 from mypy_extensions import trait
 
