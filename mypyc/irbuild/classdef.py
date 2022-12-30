@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import Callable
 from typing_extensions import Final
 
+from mypyc.common import PROPSET_PREFIX
 from mypy.nodes import (
     AssignmentStmt,
     CallExpr,
@@ -53,7 +54,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.function import handle_ext_method, handle_non_ext_method, load_type, gen_property_getter_ir
+from mypyc.irbuild.function import handle_ext_method, handle_non_ext_method, load_type, gen_property_getter_ir, gen_property_setter_ir
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op
@@ -152,11 +153,19 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             builder.error("Unsupported statement in class body", stmt.line)
 
     for name, decl in ir.method_decls.items():
-        if decl.implicit:
-            func_ir = gen_property_getter_ir(builder, decl, cdef)
-            builder.functions.append(func_ir)
-            ir.properties[name] = (func_ir, None)
-            ir.methods[func_ir.decl.name] = func_ir
+        if decl.implicit and decl.is_prop_getter:
+            getter_ir = gen_property_getter_ir(builder, decl, cdef)
+            builder.functions.append(getter_ir)
+            ir.methods[getter_ir.decl.name] = getter_ir
+
+            setter_ir = None
+            setter_name = PROPSET_PREFIX + name
+            if setter_name in ir.method_decls:
+                setter_ir = gen_property_setter_ir(builder, ir.method_decls[setter_name], cdef)
+                builder.functions.append(setter_ir)
+                ir.methods[setter_name] = setter_ir
+
+            ir.properties[name] = (getter_ir, setter_ir)
             # TODO: Generate glue method if needed
             # TODO: Do we need interpreted glue methods? Maybe not?
 

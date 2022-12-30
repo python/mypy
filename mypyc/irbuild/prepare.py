@@ -50,7 +50,7 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, dict_rprimitive, tuple_rprimitive, RType
+from mypyc.ir.rtypes import RInstance, dict_rprimitive, tuple_rprimitive, RType, none_rprimitive
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
@@ -174,6 +174,8 @@ def prepare_method_def(
             # works correctly.
             decl.name = PROPSET_PREFIX + decl.name
             decl.is_prop_setter = True
+            # Making the argument positional-only avoids needless glue method generation
+            decl.sig.args[1].pos_only = True
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
 
         if node.func.is_property:
@@ -338,21 +340,52 @@ def prepare_implicit_property_accessors(info: TypeInfo, ir: ClassIR, module_name
 def add_property_methods_for_attribute_if_needed(
         info: TypeInfo, ir: ClassIR, attr_name: str, attr_rtype: RType,
         module_name: str, mapper: Mapper) -> None:
-    """Add getter and/or setter for attribute if defined as property in a base class."""
+    """Add getter and/or setter for attribute if defined as property in a base class.
+
+    Only add declarations. The body IR will be synthesized later during irbuild.
+    """
     for base in info.mro[1:]:
         if base in mapper.type_to_ir:
             n = base.names.get(attr_name)
-            # TODO: Also handle OverlodedFuncDef (setter)
-            if n and isinstance(n.node, Decorator) and n.node.name not in ir.method_decls:
-                # Defined as a property in a base class/trait. Generate an implicit
-                # accessor method that will be synthesized during irbuild.
-                self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
-                sig = FuncSignature([self_arg], attr_rtype)
-                decl = FuncDecl(attr_name, info.name, module_name, sig, FUNC_NORMAL)
-                decl.is_prop_getter = True
-                decl.implicit = True  # Triggers synthesization
-                ir.method_decls[attr_name] = decl
-                ir.property_types[attr_name] = attr_rtype  # TODO: Needed??
+            if n is None:
+                continue
+            node = n.node
+            if isinstance(node, Decorator) and node.name not in ir.method_decls:
+                # Defined as a read-only property in base class/trait
+                add_getter_declaration(ir, attr_name, attr_rtype, module_name)
+            elif isinstance(node, OverloadedFuncDef) and is_property_with_setter(node):
+                # Defined as a read-write property in base class/trait
+                add_getter_declaration(ir, attr_name, attr_rtype, module_name)
+                add_setter_declaration(ir, attr_name, attr_rtype, module_name)
+
+
+def add_getter_declaration(ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str) -> None:
+    self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+    sig = FuncSignature([self_arg], attr_rtype)
+    decl = FuncDecl(attr_name, ir.name, module_name, sig, FUNC_NORMAL)
+    decl.is_prop_getter = True
+    decl.implicit = True  # Triggers synthesization
+    ir.method_decls[attr_name] = decl
+    ir.property_types[attr_name] = attr_rtype  # TODO: Needed??
+
+
+def add_setter_declaration(ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str) -> None:
+    self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+    value_arg = RuntimeArg("value", attr_rtype, pos_only=True)
+    sig = FuncSignature([self_arg, value_arg], none_rprimitive)
+    setter_name = PROPSET_PREFIX + attr_name
+    decl = FuncDecl(setter_name, ir.name, module_name, sig, FUNC_NORMAL)
+    decl.is_prop_setter = True
+    decl.implicit = True  # Triggers synthesization
+    ir.method_decls[setter_name] = decl
+
+
+def is_property_with_setter(node: OverloadedFuncDef) -> bool:
+    return (
+        len(node.items) == 2
+        and isinstance(node.items[0], Decorator)
+        and isinstance(node.items[1], Decorator)
+        and node.items[0].func.is_property)
 
 
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
