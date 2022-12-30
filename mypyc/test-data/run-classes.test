@@ -2036,32 +2036,28 @@ def test_read_only_property_in_class_implemented_as_attribute() -> None:
     assert c.x == 7
     assert c.y == 8
 
-[case testAttributeOverridesProperty3]
-from typing import Any
-from mypy_extensions import trait
-
 @trait
-class T1:
+class T3:
     @property
     def x(self) -> int: ...
     @property
     def y(self) -> int: ...
 
-class B:
+class B3:
     x: int
     y: int = 4
 
-class C(B, T1):
+class C3(B3, T3):
     pass
 
-def test_read_only_property_implemented_as_attribute() -> None:
-    c = C()
+def test_read_only_property_implemented_as_attribute_indirectly() -> None:
+    c = C3()
     c.x = 5
     assert c.x == 5
     assert c.y == 4
     c.y = 6
     assert c.y == 6
-    t: T1 = C()
+    t: T3 = C3()
     assert t.y == 4
     t = c
     assert t.x == 5
@@ -2074,12 +2070,8 @@ def test_read_only_property_implemented_as_attribute() -> None:
     assert c.x == 7
     assert c.y == 8
 
-[case testAttributeOverridesProperty4]
-from typing import Any
-from mypy_extensions import trait
-
 @trait
-class T1:
+class T4:
     @property
     def x(self) -> int: ...
     @x.setter
@@ -2090,18 +2082,18 @@ class T1:
     @y.setter
     def y(self, v2: int) -> None: ...
 
-class C(T1):
+class C4(T4):
     x: int
     y: int = 4
 
-def test_read_only_property_implemented_as_attribute() -> None:
-    c = C()
+def test_read_write_property_implemented_as_attribute() -> None:
+    c = C4()
     c.x = 5
     assert c.x == 5
     assert c.y == 4
     c.y = 6
     assert c.y == 6
-    t: T1 = C()
+    t: T4 = C4()
     assert t.y == 4
     t.x = 5
     assert t.x == 5
