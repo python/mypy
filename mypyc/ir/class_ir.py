@@ -278,8 +278,9 @@ class ClassIR:
     def struct_name(self, names: NameGenerator) -> str:
         return f"{exported_name(self.fullname)}Object"
 
-    def get_method_and_class(self, name: str, *,
-                             prefer_method: bool = False) -> tuple[FuncIR, ClassIR] | None:
+    def get_method_and_class(
+        self, name: str, *, prefer_method: bool = False
+    ) -> tuple[FuncIR, ClassIR] | None:
         for ir in self.mro:
             if name in ir.methods:
                 func_ir = ir.methods[name]

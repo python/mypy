@@ -50,7 +50,7 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, dict_rprimitive, tuple_rprimitive, RType, none_rprimitive
+from mypyc.ir.rtypes import RInstance, RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
@@ -329,17 +329,24 @@ def prepare_methods_and_attributes(
                 prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
 
 
-def prepare_implicit_property_accessors(info: TypeInfo, ir: ClassIR, module_name: str,
-                                        mapper: Mapper) -> None:
+def prepare_implicit_property_accessors(
+    info: TypeInfo, ir: ClassIR, module_name: str, mapper: Mapper
+) -> None:
     for base in ir.base_mro:
         for name, attr_rtype in base.attributes.items():
             add_property_methods_for_attribute_if_needed(
-                info, ir, name, attr_rtype, module_name, mapper)
+                info, ir, name, attr_rtype, module_name, mapper
+            )
 
 
 def add_property_methods_for_attribute_if_needed(
-        info: TypeInfo, ir: ClassIR, attr_name: str, attr_rtype: RType,
-        module_name: str, mapper: Mapper) -> None:
+    info: TypeInfo,
+    ir: ClassIR,
+    attr_name: str,
+    attr_rtype: RType,
+    module_name: str,
+    mapper: Mapper,
+) -> None:
     """Add getter and/or setter for attribute if defined as property in a base class.
 
     Only add declarations. The body IR will be synthesized later during irbuild.
@@ -359,7 +366,9 @@ def add_property_methods_for_attribute_if_needed(
                 add_setter_declaration(ir, attr_name, attr_rtype, module_name)
 
 
-def add_getter_declaration(ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str) -> None:
+def add_getter_declaration(
+    ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str
+) -> None:
     self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
     sig = FuncSignature([self_arg], attr_rtype)
     decl = FuncDecl(attr_name, ir.name, module_name, sig, FUNC_NORMAL)
@@ -369,7 +378,9 @@ def add_getter_declaration(ir: ClassIR, attr_name: str, attr_rtype: RType, modul
     ir.property_types[attr_name] = attr_rtype  # TODO: Needed??
 
 
-def add_setter_declaration(ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str) -> None:
+def add_setter_declaration(
+    ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str
+) -> None:
     self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
     value_arg = RuntimeArg("value", attr_rtype, pos_only=True)
     sig = FuncSignature([self_arg, value_arg], none_rprimitive)
@@ -385,7 +396,8 @@ def is_property_with_setter(node: OverloadedFuncDef) -> bool:
         len(node.items) == 2
         and isinstance(node.items[0], Decorator)
         and isinstance(node.items[1], Decorator)
-        and node.items[0].func.is_property)
+        and node.items[0].func.is_property
+    )
 
 
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:

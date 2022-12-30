@@ -28,7 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import CallableType, get_proper_type
-from mypyc.common import LAMBDA_NAME, SELF_NAME, PROPSET_PREFIX
+from mypyc.common import LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -1044,8 +1044,8 @@ def gen_property_setter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassD
     self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
     value_reg = builder.add_argument("value", func_decl.sig.args[1].type)
     assert name.startswith(PROPSET_PREFIX)
-    attr_name = name[len(PROPSET_PREFIX):]
-    value = builder.add(SetAttr(self_reg, attr_name, value_reg, -1))
+    attr_name = name[len(PROPSET_PREFIX) :]
+    builder.add(SetAttr(self_reg, attr_name, value_reg, -1))
     builder.add(Return(builder.none()))
     args, _, blocks, ret_type, fn_info = builder.leave()
     return FuncIR(func_decl, args, blocks)
