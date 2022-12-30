@@ -1996,12 +1996,12 @@ def test_read_only_property_in_trait_implemented_as_attribute() -> None:
     assert t.x == 5
     assert t.y == 6
     a: Any = c
-    assert c.x == 5
-    assert c.y == 6
-    c.x = 7
-    c.y = 8
-    assert c.x == 7
-    assert c.y == 8
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
 
 class B2:
     @property
@@ -2029,12 +2029,12 @@ def test_read_only_property_in_class_implemented_as_attribute() -> None:
     assert b.x == 5
     assert b.y == 6
     a: Any = c
-    assert c.x == 5
-    assert c.y == 6
-    c.x = 7
-    c.y = 8
-    assert c.x == 7
-    assert c.y == 8
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
 
 @trait
 class T3:
@@ -2063,12 +2063,12 @@ def test_read_only_property_implemented_as_attribute_indirectly() -> None:
     assert t.x == 5
     assert t.y == 6
     a: Any = c
-    assert c.x == 5
-    assert c.y == 6
-    c.x = 7
-    c.y = 8
-    assert c.x == 7
-    assert c.y == 8
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
 
 @trait
 class T4:
@@ -2100,12 +2100,12 @@ def test_read_write_property_implemented_as_attribute() -> None:
     t.y = 6
     assert t.y == 6
     a: Any = c
-    assert c.x == 5
-    assert c.y == 6
-    c.x = 7
-    c.y = 8
-    assert c.x == 7
-    assert c.y == 8
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
 
 @trait
 class T5:
@@ -2126,7 +2126,7 @@ class B5:
 class BB5(B5):
     pass
 
-class C5(BB5, T4):
+class C5(BB5, T5):
     pass
 
 def test_read_write_property_indirectly_implemented_as_attribute() -> None:
@@ -2143,12 +2143,12 @@ def test_read_write_property_indirectly_implemented_as_attribute() -> None:
     t.y = 6
     assert t.y == 6
     a: Any = c
-    assert c.x == 5
-    assert c.y == 6
-    c.x = 7
-    c.y = 8
-    assert c.x == 7
-    assert c.y == 8
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
 
 [case testSubclassAttributeAccess]
 from mypy_extensions import trait
