@@ -178,7 +178,7 @@ def insert_overlapping_error_value_check(ops: list[Op], target: Value) -> Compar
         if is_float_rprimitive(target.type):
             errvalue = Float(float(typ.c_undefined))
         else:
-            errvalue = Integer(int(typ.c_undefined), rtype=op.type)
+            errvalue = Integer(int(typ.c_undefined), rtype=typ)
         op = ComparisonOp(target, errvalue, ComparisonOp.EQ)
         ops.append(op)
         return op

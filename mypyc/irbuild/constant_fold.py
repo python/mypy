@@ -16,6 +16,7 @@ from typing_extensions import Final
 from mypy.constant_fold import (
     constant_fold_binary_int_op,
     constant_fold_binary_str_op,
+    constant_fold_unary_float_op,
     constant_fold_unary_int_op,
 )
 from mypy.nodes import (
@@ -74,12 +75,4 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
             return constant_fold_unary_int_op(expr.op, value)
         if isinstance(value, float):
             return constant_fold_unary_float_op(expr.op, value)
-    return None
-
-
-def constant_fold_unary_float_op(op: str, value: float) -> Optional[float]:
-    if op == "-":
-        return -value
-    elif op == "+":
-        return value
     return None

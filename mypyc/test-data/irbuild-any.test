@@ -187,15 +187,14 @@ def f() -> None:
 def f():
     r0, r1 :: object
     r2, a :: int
-    r3, r4, b :: float
+    r3, b :: float
 L0:
     r0 = object 1
     r1 = PyNumber_Absolute(r0)
     r2 = unbox(int, r1)
     a = r2
-    r3 = 1.1
-    r4 = PyNumber_Absolute(r3)
-    b = r4
+    r3 = CPyFloat_Abs(1.1)
+    b = r3
     return 1
 
 [case testFunctionBasedOps]
@@ -237,4 +236,3 @@ L0:
     r4 = unbox(int, r3)
     r5 = box(int, r4)
     return r5
-
