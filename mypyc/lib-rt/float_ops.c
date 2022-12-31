@@ -161,9 +161,11 @@ double CPyFloat_Pow(double x, double y) {
             else if (y > 0.0 && fabs(x) > 1.0)
                 return y;
             else if (y < 0.0 && fabs(x) < 1.0) {
+                #if PY_VERSION_HEX < 0x030B0000
                 if (x == 0.0) { /* 0**-inf: divide-by-zero */
                     return CPy_DomainError();
                 }
+                #endif
                 return -y; /* result is +inf */
             } else
                 return 0.0;
