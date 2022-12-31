@@ -193,7 +193,7 @@ L0:
     r1 = PyNumber_Absolute(r0)
     r2 = unbox(int, r1)
     a = r2
-    r3 = CPyFloat_Abs(1.1)
+    r3 = fabs(1.1)
     b = r3
     return 1
 
