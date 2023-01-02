@@ -158,6 +158,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         else:
             builder.error("Unsupported statement in class body", stmt.line)
 
+    # Generate implicit property setters/getters
     for name, decl in ir.method_decls.items():
         if decl.implicit and decl.is_prop_getter:
             getter_ir = gen_property_getter_ir(builder, decl, cdef)
@@ -172,7 +173,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 ir.methods[setter_name] = setter_ir
 
             ir.properties[name] = (getter_ir, setter_ir)
-            # TODO: Generate glue method if needed
+            # TODO: Generate glue method if needed?
             # TODO: Do we need interpreted glue methods? Maybe not?
 
     cls_builder.finalize(ir)

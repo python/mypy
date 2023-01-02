@@ -1029,6 +1029,10 @@ def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> dic
 
 
 def gen_property_getter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef) -> FuncIR:
+    """Generate an implicit trivial property getter for an attribute.
+
+    These are used if an attribute can also be accessed as a property.
+    """
     name = func_decl.name
     builder.enter(name)
     self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
@@ -1039,6 +1043,10 @@ def gen_property_getter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassD
 
 
 def gen_property_setter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef) -> FuncIR:
+    """Generate an implicit trivial property setter for an attribute.
+
+    These are used if an attribute can also be accessed as a property.
+    """
     name = func_decl.name
     builder.enter(name)
     self_reg = builder.add_argument("self", func_decl.sig.args[0].type)

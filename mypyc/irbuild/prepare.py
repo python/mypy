@@ -174,7 +174,7 @@ def prepare_method_def(
             # works correctly.
             decl.name = PROPSET_PREFIX + decl.name
             decl.is_prop_setter = True
-            # Making the argument positional-only avoids needless glue method generation
+            # Making the argument implicitly positional-only avoids unnecessary glue methods
             decl.sig.args[1].pos_only = True
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
 
@@ -310,8 +310,7 @@ def prepare_methods_and_attributes(
         if isinstance(node.node, Var):
             assert node.node.type, "Class member %s missing type" % name
             if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
-                attr_rtype = mapper.type_to_rtype(node.node.type)
-                ir.attributes[name] = attr_rtype
+                ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)
         elif isinstance(node.node, OverloadedFuncDef):
