@@ -360,7 +360,7 @@ def add_property_methods_for_attribute_if_needed(
             if isinstance(node, Decorator) and node.name not in ir.method_decls:
                 # Defined as a read-only property in base class/trait
                 add_getter_declaration(ir, attr_name, attr_rtype, module_name)
-            elif isinstance(node, OverloadedFuncDef) and is_property_with_setter(node):
+            elif isinstance(node, OverloadedFuncDef) and is_valid_multipart_property_def(node):
                 # Defined as a read-write property in base class/trait
                 add_getter_declaration(ir, attr_name, attr_rtype, module_name)
                 add_setter_declaration(ir, attr_name, attr_rtype, module_name)
@@ -389,15 +389,6 @@ def add_setter_declaration(
     decl.is_prop_setter = True
     decl.implicit = True  # Triggers synthesization
     ir.method_decls[setter_name] = decl
-
-
-def is_property_with_setter(node: OverloadedFuncDef) -> bool:
-    return (
-        len(node.items) == 2
-        and isinstance(node.items[0], Decorator)
-        and isinstance(node.items[1], Decorator)
-        and node.items[0].func.is_property
-    )
 
 
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
