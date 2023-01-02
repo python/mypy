@@ -1881,7 +1881,7 @@ class SemanticAnalyzer(
                 # It's bound by our type variable scope
                 return None
             return unbound.name, sym.node
-        if sym and sym.fullname == "typing_extensions.Unpack":
+        if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
             inner_t = unbound.args[0]
             if not isinstance(inner_t, UnboundType):
                 return None
