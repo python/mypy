@@ -2136,7 +2136,7 @@ def test_read_write_property_indirectly_implemented_as_attribute() -> None:
     assert c.y == 4
     c.y = 6
     assert c.y == 6
-    t: T4 = C5()
+    t: T5 = C5()
     assert t.y == 4
     t.x = 5
     assert t.x == 5
