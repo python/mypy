@@ -282,10 +282,6 @@ def prepare_class_def(
     ir.base_mro = base_mro
 
     prepare_methods_and_attributes(cdef, ir, path, module_name, errors, mapper)
-
-    if ir.builtin_base:
-        ir.attributes.clear()
-
     prepare_init_method(cdef, ir, module_name, mapper)
 
     for base in bases:
@@ -301,8 +297,7 @@ def prepare_methods_and_attributes(
 ) -> None:
     """Populate attribute and method declarations."""
     info = cdef.info
-    # We sort the table for determinism here on Python 3.5.
-    for name, node in sorted(info.names.items()):
+    for name, node in info.names.items():
         # Currently all plugin generated methods are dummies and not included.
         if node.plugin_generated:
             continue
@@ -326,6 +321,9 @@ def prepare_methods_and_attributes(
             else:
                 assert node.node.impl
                 prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
+
+    if ir.builtin_base:
+        ir.attributes.clear()
 
 
 def prepare_implicit_property_accessors(
