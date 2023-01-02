@@ -2498,7 +2498,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ok = is_equivalent(first_type, second_type)
             if not ok:
                 second_node = base2[name].node
-                if isinstance(second_type, FunctionLike) and is_property(second_node):
+                if (
+                    isinstance(second_type, FunctionLike)
+                    and second_node is not None
+                    and is_property(second_node)
+                ):
                     second_type = get_property_type(second_type)
                     ok = is_subtype(first_type, second_type)
         else:
