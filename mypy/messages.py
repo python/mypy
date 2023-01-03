@@ -2798,7 +2798,7 @@ def find_defining_module(modules: dict[str, MypyFile], typ: CallableType) -> Myp
 COMMON_MISTAKES: Final[dict[str, Sequence[str]]] = {"add": ("append", "extend")}
 
 
-def real_quick_ratio(a, b):
+def _real_quick_ratio(a: str, b: str) -> float:
     # this is an upper bound on difflib.SequenceMatcher.ratio
     # similar to difflib.SequenceMatcher.real_quick_ratio, but faster since we don't instantiate
     al = len(a)
@@ -2809,7 +2809,7 @@ def real_quick_ratio(a, b):
 def best_matches(current: str, options: Collection[str], n: int) -> list[str]:
     # narrow down options cheaply
     assert current
-    options = [o for o in options if real_quick_ratio(current, o) > 0.75]
+    options = [o for o in options if _real_quick_ratio(current, o) > 0.75]
     if len(options) >= 50:
         options = [o for o in options if abs(len(o) - len(current)) <= 1]
 
