@@ -764,6 +764,19 @@ the provided type.
 
    assert_type([1], list[str])  # Error
 
+Check that function isn't used in boolean context [truthy-function]
+-------------------------------------------------------------------
+
+Functions will always evaluate to true in boolean contexts.
+
+.. code-block:: python
+
+    def f():
+        ...
+
+    if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+        pass
+
 Report syntax errors [syntax]
 -----------------------------
 
