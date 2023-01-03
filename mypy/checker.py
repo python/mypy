@@ -4455,7 +4455,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if s.is_async:
             iterator_type, item_type = self.analyze_async_iterable_item_type(s.expr)
         else:
-            iterator_type, item_type = self.analyze_iterable_item_type(s.expr)
+            iterator_type, item_type = self.analyze_iterable_item_expression(s.expr)
         s.inferred_item_type = item_type
         s.inferred_iterator_type = iterator_type
         self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
@@ -4472,7 +4472,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
         return iterator, item_type
 
-    def analyze_iterable_item_type(self, expr: Expression) -> tuple[Type, Type]:
+    def analyze_iterable_item_expression(self, expr: Expression) -> tuple[Type, Type]:
         """Analyse iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = get_proper_type(echk.accept(expr))
@@ -4490,6 +4490,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             # Non-tuple iterable.
             return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
+
+    def analyze_iterable_item_type(self, type: Type, context: Context) -> tuple[Type, Type]:
+        """Analyse iterable expression and return iterator and iterator item types."""
+        echk = self.expr_checker
+        iterable = get_proper_type(type)
+        iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
+
+        if isinstance(iterable, TupleType):
+            joined: Type = UninhabitedType()
+            for item in iterable.items:
+                joined = join_types(joined, item)
+            return iterator, joined
+        else:
+            # Non-tuple iterable.
+            return (
+                iterator,
+                echk.check_method_call_by_name("__next__", iterator, [], [], context)[0],
+            )
 
     def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
         """Try to infer native int item type from arguments to range(...).
