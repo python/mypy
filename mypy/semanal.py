@@ -2531,7 +2531,7 @@ class SemanticAnalyzer(
                 )
             else:
                 alternatives = set(module.names.keys()).difference({source_id})
-                matches = best_matches(source_id, alternatives)[:3]
+                matches = best_matches(source_id, alternatives, n=3)
                 if matches:
                     suggestion = f"; maybe {pretty_seq(matches, 'or')}?"
                     message += f"{suggestion}"
