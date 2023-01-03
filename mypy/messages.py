@@ -2798,16 +2798,24 @@ def find_defining_module(modules: dict[str, MypyFile], typ: CallableType) -> Myp
 COMMON_MISTAKES: Final[dict[str, Sequence[str]]] = {"add": ("append", "extend")}
 
 
+def real_quick_ratio(a, b):
+    # this is an upper bound on difflib.SequenceMatcher.ratio
+    # similar to difflib.SequenceMatcher.real_quick_ratio, but faster since we don't instantiate
+    al = len(a)
+    bl = len(b)
+    return 2.0 * min(al, bl) / (al + bl)
+
+
 def best_matches(current: str, options: Collection[str], n: int) -> list[str]:
-    # if options is large, narrow it down cheaply
-    for len_diff in (2, 1, 0):
-        if len(options) < 30:
-            break
-        options = [o for o in options if abs(len(o) - len(current)) <= len_diff]
+    # narrow down options cheaply
+    assert current
+    options = [o for o in options if real_quick_ratio(current, o) >= 0.75]
+    if len(options) >= 50:
+        options = [o for o in options if abs(len(o) - len(current)) <= 1]
 
     ratios = {option: difflib.SequenceMatcher(a=current, b=option).ratio() for option in options}
-    candidates = [option for option, ratio in ratios.items() if ratio >= 0.75]
-    return sorted(candidates, reverse=True, key=lambda v: ratios[v])[:n]
+    options = [option for option, ratio in ratios.items() if ratio >= 0.75]
+    return sorted(options, reverse=True, key=lambda v: ratios[v])[:n]
 
 
 def pretty_seq(args: Sequence[str], conjunction: str) -> str:
