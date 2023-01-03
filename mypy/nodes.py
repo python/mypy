@@ -2017,17 +2017,20 @@ class OpExpr(Expression):
 class ComparisonExpr(Expression):
     """Comparison expression (e.g. a < b > c < d)."""
 
-    __slots__ = ("operators", "operands")
+    __slots__ = ("operators", "operands", "method_types")
 
     __match_args__ = ("operands", "operators")
 
     operators: list[str]
     operands: list[Expression]
+    # Inferred type for the operator methods (when relevant; None for 'is').
+    method_types: list[mypy.types.Type | None]
 
     def __init__(self, operators: list[str], operands: list[Expression]) -> None:
         super().__init__()
         self.operators = operators
         self.operands = operands
+        self.method_types = []
 
     def pairwise(self) -> Iterator[tuple[str, Expression, Expression]]:
         """If this comparison expr is "a < b is c == d", yields the sequence

@@ -530,6 +530,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_comparison_expr(self, node: ComparisonExpr) -> ComparisonExpr:
         new = ComparisonExpr(node.operators, self.expressions(node.operands))
+        new.method_types = [self.optional_type(t) for t in node.method_types]
         return new
 
     def visit_cast_expr(self, node: CastExpr) -> CastExpr:

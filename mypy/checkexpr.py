@@ -2925,7 +2925,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # Keep track of whether we get type check errors (these won't be reported, they
                     # are just to verify whether something is valid typing wise).
                     with self.msg.filter_errors(save_filtered_errors=True) as container_errors:
-                        self.check_method_call_by_name(
+                        _, method_type = self.check_method_call_by_name(
                             method="__contains__",
                             base_type=item_type,
                             args=[left],
@@ -2933,7 +2933,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             context=e,
                             original_type=right_type,
                         )
-
                         # Container item type for strict type overlap checks. Note: we need to only
                         # check for nominal type, because a usual "Unsupported operands for in"
                         # will be reported for types incompatible with __contains__().
@@ -2952,14 +2951,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     ):
                         # it's not a container, but it is an iterable
                         with self.msg.filter_errors(save_filtered_errors=True) as iterable_errors:
-                            _, itertype = self.chk.analyze_iterable_item_type(item_type, e)
+                            _, itertype = self.chk.analyze_iterable_item_type_without_expression(
+                                item_type, e
+                            )
                         if iterable_errors.has_new_errors():
                             self.msg.add_errors(iterable_errors.filtered_errors())
                             failed_out = True
                         else:
+                            method_type = CallableType(
+                                [left_type],
+                                [nodes.ARG_POS],
+                                [None],
+                                self.bool_type(),
+                                self.named_type("builtins.function"),
+                            )
+                            e.method_types.append(method_type)
                             iterable_types.append(itertype)
                     elif not container_errors.has_new_errors() and cont_type:
                         container_types.append(cont_type)
+                        e.method_types.append(method_type)
                     else:
                         self.msg.add_errors(container_errors.filtered_errors())
                         failed_out = True
@@ -2982,7 +2992,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 method = operators.op_methods[operator]
 
                 with ErrorWatcher(self.msg.errors) as w:
-                    sub_result, _ = self.check_op(method, left_type, right, e, allow_reverse=True)
+                    sub_result, method_type = self.check_op(
+                        method, left_type, right, e, allow_reverse=True
+                    )
+                    e.method_types.append(method_type)
 
                 # Only show dangerous overlap if there are no other errors. See
                 # testCustomEqCheckStrictEquality for an example.
@@ -3010,6 +3023,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 right_type = try_getting_literal(right_type)
                 if self.dangerous_comparison(left_type, right_type):
                     self.msg.dangerous_comparison(left_type, right_type, "identity", e)
+                e.method_types.append(None)
             else:
                 raise RuntimeError(f"Unknown comparison operator {operator}")
 
@@ -4642,7 +4656,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if is_async:
                 _, sequence_type = self.chk.analyze_async_iterable_item_type(sequence)
             else:
-                _, sequence_type = self.chk.analyze_iterable_item_expression(sequence)
+                _, sequence_type = self.chk.analyze_iterable_item_type(sequence)
             self.chk.analyze_index_variables(index, sequence_type, True, e)
             for condition in conditions:
                 self.accept(condition)
