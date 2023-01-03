@@ -948,7 +948,7 @@ class SemanticAnalyzer(
                 func.is_class = True
             if not func.arguments:
                 self.fail(
-                    "Method must have at least one argument. Did you forget the self argument?",
+                    'Method must have at least one argument. Did you forget the "self" argument?',
                     func,
                 )
             elif isinstance(functype, CallableType):
