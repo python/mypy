@@ -277,7 +277,7 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         and isinstance(callee.node, TypeInfo)
         and callee.node.is_newtype
     ):
-        # Calls to a NewType type is a no-op at runtime.
+        # A call to a NewType type is a no-op at runtime.
         return builder.accept(expr.args[0])
 
     if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
