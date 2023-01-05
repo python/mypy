@@ -266,13 +266,20 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
 
 
 def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
+    callee = expr.callee
     if isinstance(expr.analyzed, CastExpr):
         return translate_cast_expr(builder, expr.analyzed)
     elif isinstance(expr.analyzed, AssertTypeExpr):
         # Compile to a no-op.
         return builder.accept(expr.analyzed.expr)
+    elif (
+        isinstance(callee, (NameExpr, MemberExpr))
+        and isinstance(callee.node, TypeInfo)
+        and callee.node.is_newtype
+    ):
+        # A call to a NewType type is a no-op at runtime.
+        return builder.accept(expr.args[0])
 
-    callee = expr.callee
     if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
         callee = callee.analyzed.expr  # Unwrap type application
 
