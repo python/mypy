@@ -840,6 +840,7 @@ class GroupGenerator:
         emitter.emit_line("CPy_Init();")
         for symbol, fixup in self.simple_inits:
             emitter.emit_line(f"{symbol} = {fixup};")
+
         values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple, CPyLit_FrozenSet"
         emitter.emit_lines(
             f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"

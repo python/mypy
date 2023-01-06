@@ -140,7 +140,7 @@ class Literals:
     def _encode_collection_values(
         self, values: dict[tuple[object, ...], int] | dict[frozenset[object], int]
     ) -> list[str]:
-        """Encode tuple/frozen values into a C array.
+        """Encode tuple/frozenset values into a C array.
 
         The format of the result is like this:
 

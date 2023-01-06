@@ -657,19 +657,88 @@ L0:
     return r0
 
 [case testOperatorInLiteral]
-def f(i: object) -> bool:
-    return i in {1, 2.7, "daylily", b"daylily", (None, (None,))}
+from typing import Final
+
+CONST: Final = 1
+non_const = 10
+
+def precomputed(i: object) -> bool:
+    return i in {1, 2.7, 1j, "daylily", b"daylily", CONST, (None, (None,))}
+def not_precomputed(i: int) -> bool:
+    return i in {non_const}
+def not_precomputed2(i: int) -> bool:
+    return i in {{1}, 2}
 [out]
-def f(i):
+def precomputed(i):
     i :: object
     r0 :: set
     r1 :: int32
     r2 :: bit
     r3 :: bool
 L0:
-    r0 = frozenset({1, 2.7, (None, (None,)), 'daylily'})
+    r0 = frozenset({(None, (None,)), 1, 1j, 2.7, b'daylily', 'daylily'})
     r1 = PySet_Contains(r0, i)
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
     return r3
+def not_precomputed(i):
+    i :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: int
+    r4 :: set
+    r5 :: object
+    r6 :: int32
+    r7 :: bit
+    r8 :: object
+    r9 :: int32
+    r10 :: bit
+    r11 :: bool
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'non_const'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = unbox(int, r2)
+    r4 = PySet_New(0)
+    r5 = box(int, r3)
+    r6 = PySet_Add(r4, r5)
+    r7 = r6 >= 0 :: signed
+    r8 = box(int, i)
+    r9 = PySet_Contains(r4, r8)
+    r10 = r9 >= 0 :: signed
+    r11 = truncate r9: int32 to builtins.bool
+    return r11
+def not_precomputed2(i):
+    i :: int
+    r0 :: set
+    r1 :: object
+    r2 :: int32
+    r3 :: bit
+    r4 :: set
+    r5 :: int32
+    r6 :: bit
+    r7 :: object
+    r8 :: int32
+    r9 :: bit
+    r10 :: object
+    r11 :: int32
+    r12 :: bit
+    r13 :: bool
+L0:
+    r0 = PySet_New(0)
+    r1 = object 1
+    r2 = PySet_Add(r0, r1)
+    r3 = r2 >= 0 :: signed
+    r4 = PySet_New(0)
+    r5 = PySet_Add(r4, r0)
+    r6 = r5 >= 0 :: signed
+    r7 = object 2
+    r8 = PySet_Add(r4, r7)
+    r9 = r8 >= 0 :: signed
+    r10 = box(int, i)
+    r11 = PySet_Contains(r4, r10)
+    r12 = r11 >= 0 :: signed
+    r13 = truncate r11: int32 to builtins.bool
+    return r13
 
