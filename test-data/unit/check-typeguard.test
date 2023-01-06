@@ -314,7 +314,8 @@ def ismethod(a: object) -> TypeGuard[float]:
 def isfunction(a: object) -> TypeGuard[str]:
     pass
 def isclassmethod(obj: Any) -> bool:
-    if ismethod(obj) and obj.__self__ is not None and isclass(obj.__self__):  # E: "float" has no attribute "__self__"
+    if ismethod(obj) and obj.__self__ is not None and isclass(obj.__self__):  # E: "float" has no attribute "__self__" \
+                                                                              # E: "float" has no attribute "__self__"
         return True
 
     return False

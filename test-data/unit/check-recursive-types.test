@@ -400,6 +400,8 @@ reveal_type(g())  # N: Revealed type is "Any"
 
 def local() -> None:
     L = List[Union[int, L]]  # E: Cannot resolve name "L" (possible cyclic definition) \
+                             # N: Recursive types are not allowed at function scope \
+                             # E: Cannot resolve name "L" (possible cyclic definition) \
                              # N: Recursive types are not allowed at function scope
     x: L
     reveal_type(x)  # N: Revealed type is "builtins.list[Union[builtins.int, Any]]"

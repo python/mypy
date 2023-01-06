@@ -201,9 +201,9 @@ Alias = Tuple[int, T]
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
-A = Union[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
-B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
-C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
+A = Union[A, int] # E: Cannot resolve name "A" (possible cyclic definition) # E: Cannot resolve name "A" (possible cyclic definition)
+B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition) # E: Cannot resolve name "B" (possible cyclic definition)
+C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition) # E: Cannot resolve name "C" (possible cyclic definition)
 
 [case testRecursiveAliasesErrors2]
 # flags: --disable-recursive-aliases
@@ -246,7 +246,9 @@ reveal_type(x[0].x) # N: Revealed type is "builtins.str"
 # flags: --disable-recursive-aliases
 from typing import List, Union, Dict
 x: JSON # E: Cannot resolve name "JSON" (possible cyclic definition)
-JSON = Union[int, str, List[JSON], Dict[str, JSON]] # E: Cannot resolve name "JSON" (possible cyclic definition)
+JSON = Union[int, str, List[JSON], Dict[str, JSON]] # E: Cannot resolve name "JSON" (possible cyclic definition) \
+ # E: Cannot resolve name "JSON" (possible cyclic definition) \
+ # E: Cannot resolve name "JSON" (possible cyclic definition)
 reveal_type(x) # N: Revealed type is "Any"
 if isinstance(x, list):
     reveal_type(x) # N: Revealed type is "builtins.list[Any]"

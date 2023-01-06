@@ -1006,7 +1006,7 @@ takes_int(x)  # E: Argument 1 to "takes_int" has incompatible type "Union[Extrem
 [case testRecursiveForwardReferenceInUnion]
 # flags: --disable-recursive-aliases
 from typing import List, Union
-MYTYPE = List[Union[str, "MYTYPE"]] # E: Cannot resolve name "MYTYPE" (possible cyclic definition)
+MYTYPE = List[Union[str, "MYTYPE"]] # E: Cannot resolve name "MYTYPE" (possible cyclic definition)  # E: Cannot resolve name "MYTYPE" (possible cyclic definition)
 [builtins fixtures/list.pyi]
 
 [case testNonStrictOptional]

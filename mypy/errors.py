@@ -1048,7 +1048,12 @@ class Errors:
                         conflicts_notes = True
                     j -= 1
                 j = i - 1
-                while j >= 0 and errors[j][0] == errors[i][0] and errors[j][1] == errors[i][1]:
+                while (
+                    j >= 0
+                    and errors[j][0] == errors[i][0]
+                    and errors[j][1] == errors[i][1]
+                    and errors[j][2] == errors[i][2]
+                ):
                     if (
                         errors[j][5] == errors[i][5]
                         and

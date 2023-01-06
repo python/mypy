@@ -2085,7 +2085,7 @@ class Base(Generic[T]):
     @classmethod
     def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]:
         if bool():
-            return cls(0), cls(0)  # E: Argument 1 to "Base" has incompatible type "int"; expected "T"
+            return cls(0), cls(0)  # E: Argument 1 to "Base" has incompatible type "int"; expected "T"  # E: Argument 1 to "Base" has incompatible type "int"; expected "T"
         return cls(item), cls(item)
 [builtins fixtures/classmethod.pyi]
 

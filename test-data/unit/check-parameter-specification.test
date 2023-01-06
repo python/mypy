@@ -23,12 +23,15 @@ x: P  # E: ParamSpec "P" is unbound
 def foo1(x: Callable[P, int]) -> Callable[P, str]:  ...
 
 def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P" \
+                          # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]' \
+                          # E: Invalid location for ParamSpec "P" \
                           # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 
 def foo3(x: Concatenate[int, P]) -> int: ...  # E: Invalid location for Concatenate \
                                               # N: You can use Concatenate as the first argument to Callable
 
 def foo4(x: List[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
+                                   # E: Invalid location for ParamSpec "P" \
                                    # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 
 def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for ParamSpec "P" \

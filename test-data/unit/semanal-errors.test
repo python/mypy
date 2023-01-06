@@ -989,8 +989,10 @@ a.x = None # type: int \
 [case testInvalidLvalueWithExplicitType3]
 a = 1
 a.y, a.x = None, None # type: int, int \
+    # E: Type cannot be declared in assignment to non-self attribute \
     # E: Type cannot be declared in assignment to non-self attribute
 a[1], a[2] = None, None # type: int, int \
+    # E: Unexpected type declaration \
     # E: Unexpected type declaration
 [builtins fixtures/tuple.pyi]
 [out]

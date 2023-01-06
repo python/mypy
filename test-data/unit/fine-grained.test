@@ -5543,6 +5543,7 @@ def T() -> None:
 [out]
 ==
 main:4: error: "C" expects no type arguments, but 1 given
+main:4: error: "C" expects no type arguments, but 1 given
 main:4: error: Function "a.T" is not valid as a type
 main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:6: error: Free type variable expected in Generic[...]
@@ -5574,6 +5575,7 @@ import T
 [out]
 ==
 ==
+main:4: error: "C" expects no type arguments, but 1 given
 main:4: error: "C" expects no type arguments, but 1 given
 main:4: error: Module "T" is not valid as a type
 main:4: note: Perhaps you meant to use a protocol matching the module structure?
@@ -5630,6 +5632,7 @@ from typing import TypeVar
 T = int
 [out]
 ==
+main:4: error: "C" expects no type arguments, but 1 given
 main:4: error: "C" expects no type arguments, but 1 given
 main:6: error: Free type variable expected in Generic[...]
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
@@ -8130,7 +8133,11 @@ a.py:1: error: Name "TypeVar" is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
 a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a.py:7: error: Variable "a.T" is not valid as a type
+a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 a.py:10: error: Name "bar" already defined on line 6
+a.py:11: error: Variable "a.T" is not valid as a type
+a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 a.py:11: error: Variable "a.T" is not valid as a type
 a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ==
@@ -8138,7 +8145,11 @@ a.py:1: error: Name "TypeVar" is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
 a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a.py:7: error: Variable "a.T" is not valid as a type
+a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 a.py:10: error: Name "bar" already defined on line 6
+a.py:11: error: Variable "a.T" is not valid as a type
+a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 a.py:11: error: Variable "a.T" is not valid as a type
 a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 

@@ -1153,7 +1153,7 @@ def f(s):
     yield s
 
 x = f(0)  # E: Expression has type "Any"
-for x in f(0):  # E: Expression has type "Any"
+for x in f(0):  # E: Expression has type "Any"  # E: Expression has type "Any"
     g(x)  # E: Expression has type "Any"
 
 def g(x) -> Any:

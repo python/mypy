@@ -774,7 +774,7 @@ class C(Generic[T]):
     def __init__(self, x: T) -> None: ...
 def func(x: U) -> U: ...
 
-U = TypeVar('U', asdf, asdf)  # E: Name "asdf" is not defined
+U = TypeVar('U', asdf, asdf)  # E: Name "asdf" is not defined  # E: Name "asdf" is not defined
 T = TypeVar('T', bound=asdf)  # E: Name "asdf" is not defined
 
 reveal_type(C)  # N: Revealed type is "def [T <: Any] (x: T`1) -> __main__.C[T`1]"
@@ -3138,7 +3138,7 @@ reveal_type(C()) # N: Revealed type is "__main__.C"
 reveal_type(x) # N: Revealed type is "__main__.C"
 
 [case testNewAnalyzerIdentityAssignment7]
-C = C # E: Name "C" is not defined
+C = C # E: Name "C" is not defined # E: Name "C" is not defined
 
 reveal_type(C) # E: Name "C" is not defined \
                # N: Revealed type is "Any"
