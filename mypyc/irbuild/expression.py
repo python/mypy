@@ -601,6 +601,33 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     return target
 
 
+def set_literal_values(items: Sequence[Expression]) -> list[object] | None:
+    values: list[object] = []
+    for item in items:
+        if isinstance(item, NameExpr) and item.name in ("None", "True", "False"):
+            if item.name == "None":
+                values.append(None)
+            elif item.name == "True":
+                values.append(True)
+            elif item.name == "False":
+                values.append(False)
+        elif isinstance(item, (NameExpr, MemberExpr)) and isinstance(item.node, Var):
+            if item.node.is_final:
+                v = item.node.final_value
+                if isinstance(v, (str, int, float, bool)):
+                    values.append(v)
+        elif isinstance(item, (StrExpr, BytesExpr, IntExpr, FloatExpr, ComplexExpr)):
+            values.append(item.true_value if isinstance(item, BytesExpr) else item.value)
+        elif isinstance(item, TupleExpr):
+            t = set_literal_values(item.items)
+            if t is not None:
+                values.append(tuple(t))
+
+    if len(values) != len(items):
+        return None
+    return values
+
+
 def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
     """Try to pre-compute a frozenset literal during module initialization.
 
@@ -609,37 +636,10 @@ def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
     Only references to "simple" final variables, tuple literals (with items that
     are themselves supported), and other non-container literals are supported.
     """
-    SupportedValue = Union[str, bytes, bool, int, float, complex, Tuple[object, ...], None]
-
-    def _set_literal_final_values(items: Sequence[Expression]) -> list[SupportedValue] | None:
-        values: list[SupportedValue] = []
-        for item in items:
-            if isinstance(item, NameExpr) and item.name in ("None", "True", "False"):
-                if item.name == "None":
-                    values.append(None)
-                elif item.name == "True":
-                    values.append(True)
-                elif item.name == "False":
-                    values.append(False)
-            elif isinstance(item, (NameExpr, MemberExpr)) and isinstance(item.node, Var):
-                if item.node.is_final:
-                    v = item.node.final_value
-                    if isinstance(v, (str, int, float, bool)):
-                        values.append(v)
-            elif isinstance(item, (StrExpr, BytesExpr, IntExpr, FloatExpr, ComplexExpr)):
-                values.append(item.value)
-            elif isinstance(item, TupleExpr):
-                t = _set_literal_final_values(item.items)
-                if t is not None:
-                    values.append(tuple(t))
-
-        if len(values) != len(items):
-            return None
-        return values
-
-    values = _set_literal_final_values(s.items)
+    values = set_literal_values(s.items)
     if values is not None:
         return builder.add(LoadLiteral(frozenset(values), set_rprimitive))
+
     return None
 
 
