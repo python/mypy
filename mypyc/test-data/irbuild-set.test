@@ -659,15 +659,18 @@ L0:
 [case testOperatorInLiteral]
 from typing import Final
 
-CONST: Final = 1
+CONST: Final = "daylily"
 non_const = 10
 
 def precomputed(i: object) -> bool:
-    return i in {1, 2.7, 1j, "daylily", b"daylily", CONST, (None, (None,))}
-def not_precomputed(i: int) -> bool:
+    return i in {1, 2.7, 1j, "foo", b"bar", CONST, (None, (27,))}
+def not_precomputed_non_final_name(i: int) -> bool:
     return i in {non_const}
-def not_precomputed2(i: int) -> bool:
+def not_precomputed_nested_set(i: int) -> bool:
     return i in {{1}, 2}
+def not_precomputed_add_operation(i: int) -> bool:
+    # TODO: support this?
+    return i in {1 + 2}
 [out]
 def precomputed(i):
     i :: object
@@ -676,12 +679,12 @@ def precomputed(i):
     r2 :: bit
     r3 :: bool
 L0:
-    r0 = frozenset({(None, (None,)), 1, 1j, 2.7, b'daylily', 'daylily'})
+    r0 = frozenset({(None, (27,)), 1, 1j, 2.7, b'bar', 'daylily', 'foo'})
     r1 = PySet_Contains(r0, i)
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
     return r3
-def not_precomputed(i):
+def not_precomputed_non_final_name(i):
     i :: int
     r0 :: dict
     r1 :: str
@@ -709,7 +712,7 @@ L0:
     r10 = r9 >= 0 :: signed
     r11 = truncate r9: int32 to builtins.bool
     return r11
-def not_precomputed2(i):
+def not_precomputed_nested_set(i):
     i :: int
     r0 :: set
     r1 :: object
@@ -741,4 +744,23 @@ L0:
     r12 = r11 >= 0 :: signed
     r13 = truncate r11: int32 to builtins.bool
     return r13
-
+def not_precomputed_add_operation(i):
+    i :: int
+    r0 :: set
+    r1 :: object
+    r2 :: int32
+    r3 :: bit
+    r4 :: object
+    r5 :: int32
+    r6 :: bit
+    r7 :: bool
+L0:
+    r0 = PySet_New(0)
+    r1 = object 3
+    r2 = PySet_Add(r0, r1)
+    r3 = r2 >= 0 :: signed
+    r4 = box(int, i)
+    r5 = PySet_Contains(r0, r4)
+    r6 = r5 >= 0 :: signed
+    r7 = truncate r5: int32 to builtins.bool
+    return r7
