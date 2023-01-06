@@ -106,7 +106,13 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         # it explicit that this is a Python object.
         if isinstance(op.value, int):
             prefix = "object "
-        return self.format("%r = %s%s", op, prefix, repr(op.value))
+
+        rvalue = repr(op.value)
+        if isinstance(op.value, frozenset):
+            # Pretty print frozensets in a hacky but stable way.
+            sorted_items = sorted(op.value, key=str)
+            rvalue = "frozenset({" + repr(sorted_items)[1:-1] + "})"
+        return self.format("%r = %s%s", op, prefix, rvalue)
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format("%r = %s%r.%s", op, self.borrow_prefix(op), op.obj, op.attr)
