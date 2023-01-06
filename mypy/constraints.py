@@ -421,10 +421,8 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     satisfiable = []
     for c in option:
         if isinstance(c.origin_type_var, TypeVarType) and c.origin_type_var.values:
-            for value in c.origin_type_var.values:
-                if mypy.subtypes.is_subtype(c.target, value):
-                    satisfiable.append(c)
-                    break
+            if any(mypy.subtypes.is_subtype(c.target, value) for value in c.origin_type_var.values):
+                satisfiable.append(c)
         elif mypy.subtypes.is_subtype(c.target, c.origin_type_var.upper_bound):
             satisfiable.append(c)
     if not satisfiable:
