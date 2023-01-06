@@ -113,6 +113,7 @@ class ASTMergeSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.export_types = True
         options.show_traceback = True
+        options.allow_empty_bodies = True
         main_path = os.path.join(test_temp_dir, "main")
         with open(main_path, "w", encoding="utf8") as f:
             f.write(source)

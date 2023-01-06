@@ -1,4 +1,4 @@
-[case testAttrsSimple]
+[case testAttrsSimple_no_empty]
 import attr
 @attr.s
 class A:
@@ -1428,7 +1428,7 @@ class B(A):
 reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
 [builtins fixtures/bool.pyi]
 
-[case testAttrsClassHasAttributeWithAttributes]
+[case testAttrsClassHasMagicAttribute]
 import attr
 
 @attr.s
@@ -1436,14 +1436,14 @@ class A:
     b: int = attr.ib()
     c: str = attr.ib()
 
-reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A._AttrsAttributes]"
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
 reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
 reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[builtins.int]"
-A.__attrs_attrs__.x  # E: "_AttrsAttributes" has no attribute "x"
+A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
 
 [builtins fixtures/attr.pyi]
 
-[case testAttrsBareClassHasAttributeWithAttributes]
+[case testAttrsBareClassHasMagicAttribute]
 import attr
 
 @attr.s
@@ -1451,14 +1451,14 @@ class A:
     b = attr.ib()
     c = attr.ib()
 
-reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[Any], attr.Attribute[Any], fallback=__main__.A._AttrsAttributes]"
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[Any], attr.Attribute[Any], fallback=__main__.A.____main___A_AttrsAttributes__]"
 reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[Any]"
 reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[Any]"
-A.__attrs_attrs__.x  # E: "_AttrsAttributes" has no attribute "x"
+A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
 
 [builtins fixtures/attr.pyi]
 
-[case testAttrsNGClassHasAttributeWithAttributes]
+[case testAttrsNGClassHasMagicAttribute]
 import attr
 
 @attr.define
@@ -1466,10 +1466,53 @@ class A:
     b: int
     c: str
 
-reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A._AttrsAttributes]"
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
 reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
 reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[builtins.int]"
-A.__attrs_attrs__.x  # E: "_AttrsAttributes" has no attribute "x"
+A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+
+[builtins fixtures/attr.pyi]
+
+[case testAttrsMagicAttributeProtocol]
+import attr
+from typing import Any, Protocol, Type, ClassVar
+
+class AttrsInstance(Protocol):
+    __attrs_attrs__: ClassVar[Any]
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+def takes_attrs_cls(cls: Type[AttrsInstance]) -> None:
+    pass
+
+def takes_attrs_instance(inst: AttrsInstance) -> None:
+    pass
+
+takes_attrs_cls(A)
+takes_attrs_instance(A(1, ""))
+
+takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible type "A"; expected "Type[AttrsInstance]"
+takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
+[builtins fixtures/attr.pyi]
+
+[case testAttrsInitMethodAlwaysGenerates]
+from typing import Tuple
+import attr
+
+@attr.define(init=False)
+class A:
+    b: int
+    c: str
+    def __init__(self, bc: Tuple[int, str]) -> None:
+        b, c = bc
+        self.__attrs_init__(b, c)
+
+reveal_type(A)  # N: Revealed type is "def (bc: Tuple[builtins.int, builtins.str]) -> __main__.A"
+reveal_type(A.__init__)  # N: Revealed type is "def (self: __main__.A, bc: Tuple[builtins.int, builtins.str])"
+reveal_type(A.__attrs_init__)  # N: Revealed type is "def (self: __main__.A, b: builtins.int, c: builtins.str)"
 
 [builtins fixtures/attr.pyi]
 
@@ -1745,3 +1788,82 @@ class C:
 c = C(x=[C.D()])
 reveal_type(c.x)  # N: Revealed type is "builtins.list[__main__.C.D]"
 [builtins fixtures/list.pyi]
+
+[case testRedefinitionInFrozenClassNoCrash]
+import attr
+
+@attr.s
+class MyData:
+    is_foo: bool = attr.ib()
+
+    @staticmethod  # E: Name "is_foo" already defined on line 5
+    def is_foo(string: str) -> bool: ...
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideWithPropertyInFrozenClassNoCrash]
+from attrs import frozen
+
+@frozen(kw_only=True)
+class Base:
+    name: str
+
+@frozen(kw_only=True)
+class Sub(Base):
+    first_name: str
+    last_name: str
+
+    @property
+    def name(self) -> str: ...
+[builtins fixtures/property.pyi]
+
+[case testOverrideWithPropertyInFrozenClassChecked]
+from attrs import frozen
+
+@frozen(kw_only=True)
+class Base:
+    name: str
+
+@frozen(kw_only=True)
+class Sub(Base):
+    first_name: str
+    last_name: str
+
+    @property
+    def name(self) -> int: ...  # E: Signature of "name" incompatible with supertype "Base"
+
+# This matches runtime semantics
+reveal_type(Sub)  # N: Revealed type is "def (*, name: builtins.str, first_name: builtins.str, last_name: builtins.str) -> __main__.Sub"
+[builtins fixtures/property.pyi]
+
+[case testFinalInstanceAttribute]
+from attrs import define
+from typing import Final
+
+@define
+class C:
+    a: Final[int]
+
+reveal_type(C) # N: Revealed type is "def (a: builtins.int) -> __main__.C"
+
+C(1).a = 2 # E: Cannot assign to final attribute "a"
+
+[builtins fixtures/property.pyi]
+
+[case testFinalInstanceAttributeInheritance]
+from attrs import define
+from typing import Final
+
+@define
+class C:
+    a: Final[int]
+
+@define
+class D(C):
+    b: Final[str]
+
+reveal_type(D) # N: Revealed type is "def (a: builtins.int, b: builtins.str) -> __main__.D"
+
+D(1, "").a = 2 # E: Cannot assign to final attribute "a"
+D(1, "").b = "2" # E: Cannot assign to final attribute "b"
+
+[builtins fixtures/property.pyi]

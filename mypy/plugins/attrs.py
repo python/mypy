@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Iterable, List, cast
-from typing_extensions import Final
+from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -75,7 +75,7 @@ attr_optional_converters: Final = {"attr.converters.optional", "attrs.converters
 
 SELF_TVAR_NAME: Final = "_AT"
 MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
-MAGIC_ATTR_CLS_NAME: Final = "_AttrsAttributes"  # The namedtuple subclass name.
+MAGIC_ATTR_CLS_NAME_TEMPLATE: Final = "__{}_AttrsAttributes__"  # The tuple subclass pattern.
 
 
 class Converter:
@@ -257,7 +257,7 @@ def attr_tag_callback(ctx: mypy.plugin.ClassDefContext) -> None:
     """Record that we have an attrs class in the main semantic analysis pass.
 
     The later pass implemented by attr_class_maker_callback will use this
-    to detect attrs lasses in base classes.
+    to detect attrs classes in base classes.
     """
     # The value is ignored, only the existence matters.
     ctx.cls.info.metadata["attrs_tag"] = {}
@@ -324,8 +324,8 @@ def attr_class_maker_callback(
     }
 
     adder = MethodAdder(ctx)
-    if init:
-        _add_init(ctx, attributes, adder)
+    # If  __init__ is not being generated, attrs still generates it as __attrs_init__ instead.
+    _add_init(ctx, attributes, adder, "__init__" if init else "__attrs_init__")
     if order:
         _add_order(ctx, adder)
     if frozen:
@@ -736,7 +736,11 @@ def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) 
         if attribute.name in ctx.cls.info.names:
             # This variable belongs to this class so we can modify it.
             node = ctx.cls.info.names[attribute.name].node
-            assert isinstance(node, Var)
+            if not isinstance(node, Var):
+                # The superclass attribute was overridden with a non-variable.
+                # No need to do anything here, override will be verified during
+                # type checking.
+                continue
             node.is_property = True
         else:
             # This variable belongs to a super class so create new Var so we
@@ -749,13 +753,17 @@ def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) 
 
 
 def _add_init(
-    ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute], adder: MethodAdder
+    ctx: mypy.plugin.ClassDefContext,
+    attributes: list[Attribute],
+    adder: MethodAdder,
+    method_name: Literal["__init__", "__attrs_init__"],
 ) -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
-    # Convert attributes to arguments with kw_only arguments at the  end of
+    # Convert attributes to arguments with kw_only arguments at the end of
     # the argument list
     pos_args = []
     kw_only_args = []
+    sym_table = ctx.cls.info.names
     for attribute in attributes:
         if not attribute.init:
             continue
@@ -763,6 +771,13 @@ def _add_init(
             kw_only_args.append(attribute.argument(ctx))
         else:
             pos_args.append(attribute.argument(ctx))
+
+        # If the attribute is Final, present in `__init__` and has
+        # no default, make sure it doesn't error later.
+        if not attribute.has_default and attribute.name in sym_table:
+            sym_node = sym_table[attribute.name].node
+            if isinstance(sym_node, Var) and sym_node.is_final:
+                sym_node.final_set_in_init = True
     args = pos_args + kw_only_args
     if all(
         # We use getattr rather than instance checks because the variable.type
@@ -777,7 +792,7 @@ def _add_init(
         for a in args:
             a.variable.type = AnyType(TypeOfAny.implementation_artifact)
             a.type_annotation = AnyType(TypeOfAny.implementation_artifact)
-    adder.add_method("__init__", args, NoneType())
+    adder.add_method(method_name, args, NoneType())
 
 
 def _add_attrs_magic_attribute(
@@ -792,10 +807,11 @@ def _add_attrs_magic_attribute(
         "builtins.tuple", [ctx.api.named_type_or_none("attr.Attribute", [any_type]) or any_type]
     )
 
-    ti = ctx.api.basic_new_typeinfo(MAGIC_ATTR_CLS_NAME, fallback_type, 0)
-    ti.is_named_tuple = True
+    attr_name = MAGIC_ATTR_CLS_NAME_TEMPLATE.format(ctx.cls.fullname.replace(".", "_"))
+    ti = ctx.api.basic_new_typeinfo(attr_name, fallback_type, 0)
     for (name, _), attr_type in zip(attrs, attributes_types):
         var = Var(name, attr_type)
+        var._fullname = name
         var.is_property = True
         proper_type = get_proper_type(attr_type)
         if isinstance(proper_type, Instance):
@@ -803,14 +819,18 @@ def _add_attrs_magic_attribute(
         ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
     attributes_type = Instance(ti, [])
 
-    # TODO: refactor using `add_attribute_to_class`
-    var = Var(name=MAGIC_ATTR_NAME, type=TupleType(attributes_types, fallback=attributes_type))
-    var.info = ctx.cls.info
-    var.is_classvar = True
-    var._fullname = f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}"
-    var.allow_incompatible_override = True
-    ctx.cls.info.names[MAGIC_ATTR_NAME] = SymbolTableNode(
-        kind=MDEF, node=var, plugin_generated=True, no_serialize=True
+    # We need to stash the type of the magic attribute so it can be
+    # loaded on cached runs.
+    ctx.cls.info.names[attr_name] = SymbolTableNode(MDEF, ti, plugin_generated=True)
+
+    add_attribute_to_class(
+        ctx.api,
+        ctx.cls,
+        MAGIC_ATTR_NAME,
+        TupleType(attributes_types, fallback=attributes_type),
+        fullname=f"{ctx.cls.fullname}.{attr_name}",
+        override_allow_incompatible=True,
+        is_classvar=True,
     )
 
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import unittest
 from typing import Any, cast
 
 import pytest
@@ -28,8 +29,9 @@ from mypy.dmypy_util import DEFAULT_STATUS_FILE
 from mypy.errors import CompileError
 from mypy.find_sources import create_source_list
 from mypy.modulefinder import BuildSource
-from mypy.options import Options
+from mypy.options import TYPE_VAR_TUPLE, UNPACK, Options
 from mypy.server.mergecheck import check_consistency
+from mypy.server.update import sort_messages_preserving_file_order
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, DeleteFile, UpdateFile
 from mypy.test.helpers import (
@@ -151,7 +153,9 @@ class FineGrainedSuite(DataSuite):
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
-        options.enable_incomplete_features = True
+        options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
+        # Treat empty bodies safely for these test cases.
+        options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
         if re.search("flags:.*--follow-imports", source) is None:
             # Override the default for follow_imports
             options.follow_imports = "error"
@@ -367,3 +371,70 @@ class FineGrainedSuite(DataSuite):
 
 def normalize_messages(messages: list[str]) -> list[str]:
     return [re.sub("^tmp" + re.escape(os.sep), "", message) for message in messages]
+
+
+class TestMessageSorting(unittest.TestCase):
+    def test_simple_sorting(self) -> None:
+        msgs = ['x.py:1: error: "int" not callable', 'foo/y.py:123: note: "X" not defined']
+        old_msgs = ['foo/y.py:12: note: "Y" not defined', 'x.py:8: error: "str" not callable']
+        assert sort_messages_preserving_file_order(msgs, old_msgs) == list(reversed(msgs))
+        assert sort_messages_preserving_file_order(list(reversed(msgs)), old_msgs) == list(
+            reversed(msgs)
+        )
+
+    def test_long_form_sorting(self) -> None:
+        # Multi-line errors should be sorted together and not split.
+        msg1 = [
+            'x.py:1: error: "int" not callable',
+            "and message continues (x: y)",
+            "    1()",
+            "    ^~~",
+        ]
+        msg2 = [
+            'foo/y.py: In function "f":',
+            'foo/y.py:123: note: "X" not defined',
+            "and again message continues",
+        ]
+        old_msgs = ['foo/y.py:12: note: "Y" not defined', 'x.py:8: error: "str" not callable']
+        assert sort_messages_preserving_file_order(msg1 + msg2, old_msgs) == msg2 + msg1
+        assert sort_messages_preserving_file_order(msg2 + msg1, old_msgs) == msg2 + msg1
+
+    def test_mypy_error_prefix(self) -> None:
+        # Some errors don't have a file and start with "mypy: ". These
+        # shouldn't be sorted together with file-specific errors.
+        msg1 = 'x.py:1: error: "int" not callable'
+        msg2 = 'foo/y:123: note: "X" not defined'
+        msg3 = "mypy: Error not associated with a file"
+        old_msgs = [
+            "mypy: Something wrong",
+            'foo/y:12: note: "Y" not defined',
+            'x.py:8: error: "str" not callable',
+        ]
+        assert sort_messages_preserving_file_order([msg1, msg2, msg3], old_msgs) == [
+            msg2,
+            msg1,
+            msg3,
+        ]
+        assert sort_messages_preserving_file_order([msg3, msg2, msg1], old_msgs) == [
+            msg2,
+            msg1,
+            msg3,
+        ]
+
+    def test_new_file_at_the_end(self) -> None:
+        msg1 = 'x.py:1: error: "int" not callable'
+        msg2 = 'foo/y.py:123: note: "X" not defined'
+        new1 = "ab.py:3: error: Problem: error"
+        new2 = "aaa:3: error: Bad"
+        old_msgs = ['foo/y.py:12: note: "Y" not defined', 'x.py:8: error: "str" not callable']
+        assert sort_messages_preserving_file_order([msg1, msg2, new1], old_msgs) == [
+            msg2,
+            msg1,
+            new1,
+        ]
+        assert sort_messages_preserving_file_order([new1, msg1, msg2, new2], old_msgs) == [
+            msg2,
+            msg1,
+            new1,
+            new2,
+        ]

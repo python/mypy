@@ -17,7 +17,7 @@
 #   " Convert to 0-based column offsets
 #   let startcol = startcol - 1
 #   " Change this line to point to the find_type.py script.
-#   execute '!python3 /path/to/mypy/scripts/find_type.py % ' . startline . ' ' . startcol . ' ' . endline . ' ' . endcol . ' ' . mypycmd
+#   execute '!python3 /path/to/mypy/misc/find_type.py % ' . startline . ' ' . startcol . ' ' . endline . ' ' . endcol . ' ' . mypycmd
 # endfunction
 # vnoremap <Leader>t :call RevealType()<CR>
 #

@@ -1,4 +1,5 @@
 import sys
+from _ctypes import RTLD_GLOBAL as RTLD_GLOBAL, RTLD_LOCAL as RTLD_LOCAL
 from _typeshed import ReadableBuffer, Self, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -12,8 +13,6 @@ _T = TypeVar("_T")
 _DLLT = TypeVar("_DLLT", bound=CDLL)
 _CT = TypeVar("_CT", bound=_CData)
 
-RTLD_GLOBAL: int
-RTLD_LOCAL: int
 DEFAULT_MODE: int
 
 class CDLL:
@@ -65,8 +64,8 @@ class _CDataMeta(type):
     # By default mypy complains about the following two methods, because strictly speaking cls
     # might not be a Type[_CT]. However this can never actually happen, because the only class that
     # uses _CDataMeta as its metaclass is _CData. So it's safe to ignore the errors here.
-    def __mul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]
-    def __rmul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]
+    def __mul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
+    def __rmul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
 
 class _CData(metaclass=_CDataMeta):
     _b_base: int
@@ -166,13 +165,10 @@ class _Pointer(Generic[_CT], _PointerLike, _CData):
     @overload
     def __init__(self, arg: _CT) -> None: ...
     @overload
-    def __getitem__(self, __i: int) -> _CT: ...
+    def __getitem__(self, __i: int) -> Any: ...
     @overload
-    def __getitem__(self, __s: slice) -> list[_CT]: ...
-    @overload
-    def __setitem__(self, __i: int, __o: _CT) -> None: ...
-    @overload
-    def __setitem__(self, __s: slice, __o: Iterable[_CT]) -> None: ...
+    def __getitem__(self, __s: slice) -> list[Any]: ...
+    def __setitem__(self, __i: int, __o: Any) -> None: ...
 
 def pointer(__arg: _CT) -> _Pointer[_CT]: ...
 def resize(obj: _CData, size: int) -> None: ...
@@ -198,7 +194,7 @@ class _SimpleCData(Generic[_T], _CData):
 class c_byte(_SimpleCData[int]): ...
 
 class c_char(_SimpleCData[bytes]):
-    def __init__(self, value: int | bytes = ...) -> None: ...
+    def __init__(self, value: int | bytes | bytearray = ...) -> None: ...
 
 class c_char_p(_PointerLike, _SimpleCData[bytes | None]):
     def __init__(self, value: int | bytes | None = ...) -> None: ...

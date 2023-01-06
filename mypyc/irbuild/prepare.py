@@ -178,15 +178,20 @@ def prepare_method_def(
 
 def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
     # Checks to ensure supported property decorator semantics
-    if len(prop.items) == 2:
-        getter = prop.items[0]
-        setter = prop.items[1]
-        if isinstance(getter, Decorator) and isinstance(setter, Decorator):
-            if getter.func.is_property and len(setter.decorators) == 1:
-                if isinstance(setter.decorators[0], MemberExpr):
-                    if setter.decorators[0].name == "setter":
-                        return True
-    return False
+    if len(prop.items) != 2:
+        return False
+
+    getter = prop.items[0]
+    setter = prop.items[1]
+
+    return (
+        isinstance(getter, Decorator)
+        and isinstance(setter, Decorator)
+        and getter.func.is_property
+        and len(setter.decorators) == 1
+        and isinstance(setter.decorators[0], MemberExpr)
+        and setter.decorators[0].name == "setter"
+    )
 
 
 def can_subclass_builtin(builtin_base: str) -> bool:
@@ -288,7 +293,8 @@ def prepare_class_def(
                 init_sig.ret_type,
             )
 
-        ctor_sig = FuncSignature(init_sig.args[1:], RInstance(ir))
+        last_arg = len(init_sig.args) - init_sig.num_bitmap_args
+        ctor_sig = FuncSignature(init_sig.args[1:last_arg], RInstance(ir))
         ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
         mapper.func_to_decl[cdef.info] = ir.ctor
 

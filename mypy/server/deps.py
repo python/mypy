@@ -172,7 +172,7 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import correct_relative_import
 
 
@@ -344,7 +344,7 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(
                     make_wildcard_trigger(base_info.fullname), target=make_trigger(target)
                 )
-                # More protocol dependencies are collected in TypeState._snapshot_protocol_deps
+                # More protocol dependencies are collected in type_state._snapshot_protocol_deps
                 # after a full run or update is finished.
 
         self.add_type_alias_deps(self.scope.current_target())
@@ -969,6 +969,9 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             triggers.extend(self.get_type_triggers(arg))
         if typ.last_known_value:
             triggers.extend(self.get_type_triggers(typ.last_known_value))
+        if typ.extra_attrs and typ.extra_attrs.mod_name:
+            # Module as type effectively depends on all module attributes, use wildcard.
+            triggers.append(make_wildcard_trigger(typ.extra_attrs.mod_name))
         return triggers
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> list[str]:
@@ -1120,7 +1123,7 @@ def dump_all_dependencies(
         deps = get_dependencies(node, type_map, python_version, options)
         for trigger, targets in deps.items():
             all_deps.setdefault(trigger, set()).update(targets)
-    TypeState.add_all_protocol_deps(all_deps)
+    type_state.add_all_protocol_deps(all_deps)
 
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)

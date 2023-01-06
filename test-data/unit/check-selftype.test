@@ -128,6 +128,120 @@ reveal_type(cast(A, C()).copy())  # N: Revealed type is "__main__.A"
 
 [builtins fixtures/bool.pyi]
 
+[case testSelfTypeOverrideCompatibility]
+from typing import overload, TypeVar, Generic
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    @overload
+    def f(self: A[int]) -> int: ...
+    @overload
+    def f(self: A[str]) -> str: ...
+    def f(self): ...
+
+class B(A[T]):
+    @overload
+    def f(self: A[int]) -> int: ...
+    @overload
+    def f(self: A[str]) -> str: ...
+    def f(self): ...
+
+class B2(A[T]):
+    @overload
+    def f(self: A[int]) -> int: ...
+    @overload
+    def f(self: A[str]) -> str: ...
+    @overload
+    def f(self: A[bytes]) -> bytes: ...
+    def f(self): ...
+
+class C(A[int]):
+    def f(self) -> int: ...
+
+class D(A[str]):
+    def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                             # N:      Superclass:            \
+                             # N:          @overload          \
+                             # N:          def f(self) -> str \
+                             # N:      Subclass:              \
+                             # N:          def f(self) -> int
+
+class E(A[T]):
+    def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                             # N:      Superclass:            \
+                             # N:          @overload          \
+                             # N:          def f(self) -> int \
+                             # N:          @overload          \
+                             # N:          def f(self) -> str \
+                             # N:      Subclass:              \
+                             # N:          def f(self) -> int
+
+
+class F(A[bytes]):
+    # Note there's an argument to be made that this is actually compatible with the supertype
+    def f(self) -> bytes: ...  # E: Signature of "f" incompatible with supertype "A" \
+                               # N:      Superclass:            \
+                               # N:          @overload          \
+                               # N:          def f(self) -> int \
+                               # N:          @overload          \
+                               # N:          def f(self) -> str \
+                               # N:      Subclass:              \
+                               # N:          def f(self) -> bytes
+
+class G(A):
+    def f(self): ...
+
+class H(A[int]):
+    def f(self): ...
+
+class I(A[int]):
+    def f(*args): ...
+
+class J(A[int]):
+    def f(self, arg) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                                  # N:      Superclass:            \
+                                  # N:          @overload          \
+                                  # N:          def f(self) -> int \
+                                  # N:      Subclass:              \
+                                  # N:          def f(self, arg: Any) -> int
+
+[builtins fixtures/tuple.pyi]
+
+[case testSelfTypeOverrideCompatibilityTypeVar-xfail]
+from typing import overload, TypeVar, Union
+
+AT = TypeVar("AT", bound="A")
+
+class A:
+    @overload
+    def f(self: AT, x: int) -> AT: ...
+    @overload
+    def f(self, x: str) -> None: ...
+    @overload
+    def f(self: AT) -> bytes: ...
+    def f(*a, **kw): ...
+
+class B(A):
+    @overload  # E: Signature of "f" incompatible with supertype "A" \
+               # N:      Superclass:                                 \
+               # N:          @overload                               \
+               # N:          def f(self, x: int) -> B                \
+               # N:          @overload                               \
+               # N:          def f(self, x: str) -> None             \
+               # N:          @overload                               \
+               # N:          def f(self) -> bytes                    \
+               # N:      Subclass:                                   \
+               # N:          @overload                               \
+               # N:          def f(self, x: int) -> B                \
+               # N:          @overload                               \
+               # N:          def f(self, x: str) -> None
+    def f(self, x: int) -> B: ...
+    @overload
+    def f(self, x: str) -> None: ...
+    def f(*a, **kw): ...
+[builtins fixtures/dict.pyi]
+
 [case testSelfTypeSuper]
 from typing import TypeVar, cast
 
@@ -417,15 +531,15 @@ reveal_type(B().ft())  # N: Revealed type is "Tuple[builtins.int, builtins.int, 
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeProperSupertypeAttributeMeta]
-from typing import Callable, TypeVar, Type
+from typing import Callable, TypeVar, Type, ClassVar
 T = TypeVar('T')
 class A(type):
     @property
     def g(cls: object) -> int: return 0
     @property
     def gt(cls: T) -> T: return cls
-    f: Callable[[object], int]
-    ft: Callable[[T], T]
+    f: ClassVar[Callable[[object], int]]
+    ft: ClassVar[Callable[[T], T]]
 
 class B(A):
     pass
@@ -677,6 +791,26 @@ b.atomic_close()  # E: Invalid self argument "Bad" to attribute function "atomic
 reveal_type(f.copy())  # N: Revealed type is "__main__.File"
 b.copy()  # E: Invalid self argument "Bad" to attribute function "copy" with type "Callable[[T], T]"
 [builtins fixtures/tuple.pyi]
+
+[case testMixinProtocolSuper]
+from typing import Protocol
+
+class Base(Protocol):
+    def func(self) -> int:
+        ...
+
+class TweakFunc:
+    def func(self: Base) -> int:
+        return reveal_type(super().func())  # N: Revealed type is "builtins.int"
+
+class Good:
+    def func(self) -> int: ...
+class C(TweakFunc, Good): pass
+C().func()  # OK
+
+class Bad:
+    def func(self) -> str: ...
+class CC(TweakFunc, Bad): pass  # E: Definition of "func" in base class "TweakFunc" is incompatible with definition in base class "Bad"
 
 [case testBadClassLevelDecoratorHack]
 from typing_extensions import Protocol
@@ -1239,3 +1373,415 @@ class Test(Generic[T]):
         a: deque[List[T]]
         # previously this failed with 'Incompatible types in assignment (expression has type "deque[List[List[T]]]", variable has type "deque[List[T]]")'
         b: deque[List[T]] = a.copy()
+
+[case testTypingSelfBasic]
+from typing import Self, List
+
+class C:
+    attr: List[Self]
+    def meth(self) -> List[Self]: ...
+    def test(self) -> Self:
+        if bool():
+            return C()  # E: Incompatible return value type (got "C", expected "Self")
+        else:
+            return self
+class D(C): ...
+
+reveal_type(C.meth)  # N: Revealed type is "def [Self <: __main__.C] (self: Self`0) -> builtins.list[Self`0]"
+C.attr  # E: Access to generic instance variables via class is ambiguous
+reveal_type(D().meth())  # N: Revealed type is "builtins.list[__main__.D]"
+reveal_type(D().attr)  # N: Revealed type is "builtins.list[__main__.D]"
+
+[case testTypingSelfInvalidLocations]
+from typing import Self, Callable
+
+var: Self  # E: Self type is only allowed in annotations within class definition
+reveal_type(var)  # N: Revealed type is "Any"
+
+def foo() -> Self: ...  # E: Self type is only allowed in annotations within class definition
+reveal_type(foo)  # N: Revealed type is "def () -> Any"
+
+bad: Callable[[Self], Self]  # E: Self type is only allowed in annotations within class definition
+reveal_type(bad)  # N: Revealed type is "def (Any) -> Any"
+
+def func() -> None:
+    var: Self  # E: Self type is only allowed in annotations within class definition
+
+class C(Self): ...  # E: Self type is only allowed in annotations within class definition
+
+[case testTypingSelfInvalidArgs]
+from typing import Self, List
+
+class C:
+    x: Self[int]  # E: Self type cannot have type arguments
+    def meth(self) -> List[Self[int]]:  # E: Self type cannot have type arguments
+        ...
+
+[case testTypingSelfConflict]
+from typing import Self, TypeVar, Tuple
+
+T = TypeVar("T")
+class C:
+    def meth(self: T) -> Tuple[Self, T]: ...  # E: Method cannot have explicit self annotation and Self type
+reveal_type(C().meth())  # N: Revealed type is "Tuple[<nothing>, __main__.C]"
+[builtins fixtures/property.pyi]
+
+[case testTypingSelfProperty]
+from typing import Self, Tuple
+class C:
+    @property
+    def attr(self) -> Tuple[Self, ...]: ...
+class D(C): ...
+
+reveal_type(D().attr)  # N: Revealed type is "builtins.tuple[__main__.D, ...]"
+[builtins fixtures/property.pyi]
+
+[case testTypingSelfCallableVar]
+from typing import Self, Callable
+
+class C:
+    x: Callable[[Self], Self]
+    def meth(self) -> Callable[[Self], Self]: ...
+class D(C): ...
+
+reveal_type(C().x)  # N: Revealed type is "def (__main__.C) -> __main__.C"
+reveal_type(D().x)  # N: Revealed type is "def (__main__.D) -> __main__.D"
+reveal_type(D().meth())  # N: Revealed type is "def (__main__.D) -> __main__.D"
+
+[case testTypingSelfClassMethod]
+from typing import Self
+
+class C:
+    @classmethod
+    def meth(cls) -> Self: ...
+    @staticmethod
+    def bad() -> Self: ...  # E: Static methods cannot use Self type \
+        # E: A function returning TypeVar should receive at least one argument containing the same TypeVar \
+        # N: Consider using the upper bound "C" instead
+
+class D(C): ...
+reveal_type(D.meth())  # N: Revealed type is "__main__.D"
+reveal_type(D.bad())  # N: Revealed type is "<nothing>"
+[builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfOverload]
+from typing import Self, overload, Union
+
+class C:
+    @overload
+    def foo(self, other: Self) -> Self: ...
+    @overload
+    def foo(self, other: int) -> int: ...
+    def foo(self, other: Union[Self, int]) -> Union[Self, int]:
+        return other
+class D(C): ...
+reveal_type(D().foo)  # N: Revealed type is "Overload(def (other: __main__.D) -> __main__.D, def (other: builtins.int) -> builtins.int)"
+
+[case testTypingSelfNestedInAlias]
+from typing import Generic, Self, TypeVar, List, Tuple
+
+T = TypeVar("T")
+Pairs = List[Tuple[T, T]]
+
+class C(Generic[T]):
+    def pairs(self) -> Pairs[Self]: ...
+class D(C[T]): ...
+reveal_type(D[int]().pairs())  # N: Revealed type is "builtins.list[Tuple[__main__.D[builtins.int], __main__.D[builtins.int]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingSelfOverrideVar]
+from typing import Self, TypeVar, Generic
+
+T = TypeVar("T")
+class C(Generic[T]):
+    x: Self
+
+class D(C[int]):
+    x: D
+class Bad(C[int]):
+    x: C[int]  # E: Incompatible types in assignment (expression has type "C[int]", base class "C" defined the type as "Bad")
+
+[case testTypingSelfOverrideVarMulti]
+from typing import Self
+
+class C:
+    x: Self
+class D:
+    x: C
+class E:
+    x: Good
+
+class Bad(D, C):  # E: Definition of "x" in base class "D" is incompatible with definition in base class "C"
+    ...
+class Good(E, C):
+    ...
+
+[case testTypingSelfAlternativeGenericConstructor]
+from typing import Self, Generic, TypeVar, Tuple
+
+T = TypeVar("T")
+class C(Generic[T]):
+    def __init__(self, val: T) -> None: ...
+    @classmethod
+    def pair(cls, val: T) -> Tuple[Self, Self]:
+        return (cls(val), C(val))  # E: Incompatible return value type (got "Tuple[Self, C[T]]", expected "Tuple[Self, Self]")
+
+class D(C[int]): pass
+reveal_type(C.pair(42))  # N: Revealed type is "Tuple[__main__.C[builtins.int], __main__.C[builtins.int]]"
+reveal_type(D.pair("no"))  # N: Revealed type is "Tuple[__main__.D, __main__.D]" \
+    # E: Argument 1 to "pair" of "C" has incompatible type "str"; expected "int"
+[builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfMixedTypeVars]
+from typing import Self, TypeVar, Generic, Tuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class C(Generic[T]):
+    def meth(self, arg: S) -> Tuple[Self, S, T]: ...
+
+class D(C[int]): ...
+
+c: C[int]
+d: D
+reveal_type(c.meth("test"))  # N: Revealed type is "Tuple[__main__.C[builtins.int], builtins.str, builtins.int]"
+reveal_type(d.meth("test"))  # N: Revealed type is "Tuple[__main__.D, builtins.str, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingSelfRecursiveInit]
+from typing import Self
+
+class C:
+    def __init__(self, other: Self) -> None: ...
+class D(C): ...
+
+reveal_type(C)  # N: Revealed type is "def (other: __main__.C) -> __main__.C"
+reveal_type(D)  # N: Revealed type is "def (other: __main__.D) -> __main__.D"
+
+[case testTypingSelfCorrectName]
+from typing import Self, List
+
+class C:
+    Self = List[C]
+    def meth(self) -> Self: ...
+reveal_type(C.meth)  # N: Revealed type is "def (self: __main__.C) -> builtins.list[__main__.C]"
+
+[case testTypingSelfClassVar]
+from typing import Self, ClassVar, Generic, TypeVar
+
+class C:
+    DEFAULT: ClassVar[Self]
+reveal_type(C.DEFAULT)  # N: Revealed type is "__main__.C"
+
+T = TypeVar("T")
+class G(Generic[T]):
+    BAD: ClassVar[Self]  # E: ClassVar cannot contain Self type in generic classes
+reveal_type(G.BAD)  # N: Revealed type is "__main__.G[Any]"
+
+[case testTypingSelfMetaClassDisabled]
+from typing import Self
+
+class Meta(type):
+    def meth(cls) -> Self: ...  # E: Self type cannot be used in a metaclass
+
+[case testTypingSelfNonAnnotationUses]
+from typing import Self, List, cast
+
+class C:
+    A = List[Self]  # E: Self type cannot be used in type alias target
+    B = cast(Self, ...)
+    def meth(self) -> A: ...
+
+class D(C): ...
+reveal_type(D().meth())  # N: Revealed type is "builtins.list[Any]"
+reveal_type(D().B)  # N: Revealed type is "__main__.D"
+
+[case testTypingSelfInternalSafe]
+from typing import Self
+
+class C:
+    x: Self
+    def __init__(self, x: C) -> None:
+        self.x = x  # E: Incompatible types in assignment (expression has type "C", variable has type "Self")
+
+[case testTypingSelfRedundantAllowed]
+from typing import Self, Type
+
+class C:
+    def f(self: Self) -> Self:
+        d: Defer
+        class Defer: ...
+        return self
+
+    @classmethod
+    def g(cls: Type[Self]) -> Self:
+        d: DeferAgain
+        class DeferAgain: ...
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfRedundantWarning]
+# mypy: enable-error-code="redundant-self"
+
+from typing import Self, Type
+
+class C:
+    def copy(self: Self) -> Self:  # E: Redundant Self annotation on method first argument
+        d: Defer
+        class Defer: ...
+        return self
+
+    @classmethod
+    def g(cls: Type[Self]) -> Self:  # E: Redundant Self annotation on method first argument
+        d: DeferAgain
+        class DeferAgain: ...
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfAssertType]
+from typing import Self, assert_type
+
+class C:
+    def foo(self) -> None:
+        assert_type(self, Self)  # E: Expression is of type "C", not "Self"
+        assert_type(C(), Self)  # E: Expression is of type "C", not "Self"
+
+    def bar(self) -> Self:
+        assert_type(self, Self)  # OK
+        assert_type(C(), Self)  # E: Expression is of type "C", not "Self"
+        return self
+
+[case testTypingSelfTypeVarClash]
+from typing import Self, TypeVar, Tuple
+
+S = TypeVar("S")
+class C:
+    def bar(self) -> Self: ...
+    def foo(self, x: S) -> Tuple[Self, S]: ...
+
+reveal_type(C.foo)  # N: Revealed type is "def [Self <: __main__.C, S] (self: Self`0, x: S`-1) -> Tuple[Self`0, S`-1]"
+reveal_type(C().foo(42))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingSelfTypeVarClashAttr]
+from typing import Self, TypeVar, Tuple, Callable
+
+class Defer(This): ...
+
+S = TypeVar("S")
+class C:
+    def bar(self) -> Self: ...
+    foo: Callable[[S, Self], Tuple[Self, S]]
+
+reveal_type(C().foo)  # N: Revealed type is "def [S] (S`1, __main__.C) -> Tuple[__main__.C, S`1]"
+reveal_type(C().foo(42, C()))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
+class This: ...
+[builtins fixtures/tuple.pyi]
+
+[case testTypingSelfAttrOldVsNewStyle]
+from typing import Self, TypeVar
+
+T = TypeVar("T", bound=C)
+class C:
+    x: Self
+    def foo(self: T) -> T:
+        return self.x
+    def bar(self: T) -> T:
+        self.x = self
+        return self
+    def baz(self: Self) -> None:
+        self.x = self
+    def bad(self) -> None:
+        # This is unfortunate, but required by PEP 484
+        self.x = self  # E: Incompatible types in assignment (expression has type "C", variable has type "Self")
+
+[case testTypingSelfClashInBodies]
+from typing import Self, TypeVar
+
+T = TypeVar("T")
+class C:
+    def very_bad(self, x: T) -> None:
+        self.x = x  # E: Incompatible types in assignment (expression has type "T", variable has type "Self")
+    x: Self
+    def baz(self: Self, x: T) -> None:
+        y: T = x
+
+[case testTypingSelfClashUnrelated]
+from typing import Self, Generic, TypeVar
+
+class B: ...
+
+T = TypeVar("T", bound=B)
+class C(Generic[T]):
+    def __init__(self, val: T) -> None:
+        self.val = val
+    def foo(self) -> Self: ...
+
+def test(x: C[T]) -> T:
+    reveal_type(x.val)  # N: Revealed type is "T`-1"
+    return x.val
+
+[case testTypingSelfGenericBound]
+from typing import Self, Generic, TypeVar
+
+T = TypeVar("T")
+class C(Generic[T]):
+    val: T
+    def foo(self) -> Self:
+        reveal_type(self.val)  # N: Revealed type is "T`1"
+        return self
+
+[case testTypingSelfDifferentImport]
+import typing as t
+
+class Foo:
+    def foo(self) -> t.Self:
+        return self
+    @classmethod
+    def bar(cls) -> t.Self:
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfAllowAliasUseInFinalClasses]
+from typing import Self, final
+
+@final
+class C:
+    def meth(self) -> Self:
+        return C()  # OK for final classes
+
+[case testTypingSelfCallableClassVar]
+from typing import Self, ClassVar, Callable, TypeVar
+
+class C:
+    f: ClassVar[Callable[[Self], Self]]
+class D(C): ...
+
+reveal_type(D.f)  # N: Revealed type is "def (__main__.D) -> __main__.D"
+reveal_type(D().f)  # N: Revealed type is "def () -> __main__.D"
+
+[case testSelfTypeCallableClassVarOldStyle]
+from typing import ClassVar, Callable, TypeVar
+
+T = TypeVar("T")
+class C:
+    f: ClassVar[Callable[[T], T]]
+
+class D(C): ...
+
+reveal_type(D.f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
+reveal_type(D().f)  # N: Revealed type is "def () -> __main__.D"
+
+[case testTypingSelfOnSuperTypeVarValues]
+from typing import Self, Generic, TypeVar
+
+T = TypeVar("T", int, str)
+
+class B:
+    def copy(self) -> Self: ...
+class C(B, Generic[T]):
+    def copy(self) -> Self:
+        inst = super().copy()
+        reveal_type(inst)  # N: Revealed type is "Self`0"
+        return inst

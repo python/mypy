@@ -40,7 +40,7 @@ SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.__call__"
 
 def get_singledispatch_info(typ: Instance) -> SingledispatchTypeVars | None:
     if len(typ.args) == 2:
-        return SingledispatchTypeVars(*typ.args)  # type: ignore
+        return SingledispatchTypeVars(*typ.args)  # type: ignore[arg-type]
     return None
 
 
@@ -200,7 +200,7 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
     """Called on the function after passing a type to register"""
     register_callable = ctx.type
     if isinstance(register_callable, Instance):
-        type_args = RegisterCallableInfo(*register_callable.args)  # type: ignore
+        type_args = RegisterCallableInfo(*register_callable.args)  # type: ignore[arg-type]
         func = get_first_arg(ctx.arg_types)
         if func is not None:
             register_function(ctx, type_args.singledispatch_obj, func, type_args.register_type)

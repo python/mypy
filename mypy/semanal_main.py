@@ -367,7 +367,11 @@ def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:
     for module in scc:
         state = graph[module]
         assert state.tree
-        analyzer = TypeArgumentAnalyzer(errors, state.options, is_typeshed_file(state.path or ""))
+        analyzer = TypeArgumentAnalyzer(
+            errors,
+            state.options,
+            is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        )
         with state.wrap_context():
             with mypy.state.state.strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
@@ -381,7 +385,11 @@ def check_type_arguments_in_targets(
     This mirrors the logic in check_type_arguments() except that we process only
     some targets. This is used in fine grained incremental mode.
     """
-    analyzer = TypeArgumentAnalyzer(errors, state.options, is_typeshed_file(state.path or ""))
+    analyzer = TypeArgumentAnalyzer(
+        errors,
+        state.options,
+        is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+    )
     with state.wrap_context():
         with mypy.state.state.strict_optional_set(state.options.strict_optional):
             for target in targets:

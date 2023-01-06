@@ -2,14 +2,10 @@ import http.server
 import pydoc
 import socketserver
 from collections.abc import Callable, Iterable, Mapping
-from datetime import datetime
 from re import Pattern
 from typing import Any, ClassVar, Protocol
 from typing_extensions import TypeAlias
-from xmlrpc.client import Fault
-
-# TODO: Recursive type on tuple, list, dict
-_Marshallable: TypeAlias = None | bool | int | float | str | bytes | tuple[Any, ...] | list[Any] | dict[Any, Any] | datetime
+from xmlrpc.client import Fault, _Marshallable
 
 # The dispatch accepts anywhere from 0 to N arguments, no easy way to allow this in mypy
 class _DispatchArity0(Protocol):
@@ -72,11 +68,9 @@ class SimpleXMLRPCRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self) -> None: ...
     def decode_request_content(self, data: bytes) -> bytes | None: ...
     def report_404(self) -> None: ...
-    def log_request(self, code: int | str = ..., size: int | str = ...) -> None: ...
 
 class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
 
-    allow_reuse_address: bool
     _send_traceback_handler: bool
     def __init__(
         self,
@@ -92,8 +86,6 @@ class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
 class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
 
     dispatchers: dict[str, SimpleXMLRPCDispatcher]
-    allow_none: bool
-    encoding: str
     def __init__(
         self,
         addr: tuple[str, int],
@@ -106,12 +98,6 @@ class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
     ) -> None: ...
     def add_dispatcher(self, path: str, dispatcher: SimpleXMLRPCDispatcher) -> SimpleXMLRPCDispatcher: ...
     def get_dispatcher(self, path: str) -> SimpleXMLRPCDispatcher: ...
-    def _marshaled_dispatch(
-        self,
-        data: str,
-        dispatch_method: Callable[[str | None, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = ...,
-        path: Any | None = ...,
-    ) -> str: ...
 
 class CGIXMLRPCRequestHandler(SimpleXMLRPCDispatcher):
     def __init__(self, allow_none: bool = ..., encoding: str | None = ..., use_builtin_types: bool = ...) -> None: ...
@@ -137,7 +123,6 @@ class XMLRPCDocGenerator:  # undocumented
     server_name: str
     server_documentation: str
     server_title: str
-    def __init__(self) -> None: ...
     def set_server_title(self, server_title: str) -> None: ...
     def set_server_name(self, server_name: str) -> None: ...
     def set_server_documentation(self, server_documentation: str) -> None: ...

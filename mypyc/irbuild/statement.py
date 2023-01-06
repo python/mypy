@@ -28,6 +28,7 @@ from mypy.nodes import (
     ImportFrom,
     ListExpr,
     Lvalue,
+    MatchStmt,
     OperatorAssignmentStmt,
     RaiseStmt,
     ReturnStmt,
@@ -98,6 +99,8 @@ from mypyc.primitives.misc_ops import (
     type_op,
     yield_from_except_op,
 )
+
+from .match import MatchVisitor
 
 GenFunc = Callable[[], None]
 ValueGenFunc = Callable[[], Value]
@@ -616,6 +619,8 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
     # constructs that we compile separately. When we have a
     # try/except/else/finally, we treat the try/except/else as the
     # body of a try/finally block.
+    if t.is_star:
+        builder.error("Exception groups and except* cannot be compiled yet", t.line)
     if t.finally_body:
 
         def transform_try_body() -> None:
@@ -896,3 +901,7 @@ def transform_yield_from_expr(builder: IRBuilder, o: YieldFromExpr) -> Value:
 
 def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
     return emit_yield_from_or_await(builder, builder.accept(o.expr), o.line, is_await=True)
+
+
+def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
+    m.accept(MatchVisitor(builder, m))

@@ -56,9 +56,6 @@ class TypeFixture:
         ) -> TypeVarType:
             return TypeVarType(name, name, id, values, upper_bound, variance)
 
-        def make_type_var_tuple(name: str, id: int, upper_bound: Type) -> TypeVarTupleType:
-            return TypeVarTupleType(name, name, id, upper_bound)
-
         self.t = make_type_var("T", 1, [], self.o, variance)  # T`1 (type variable)
         self.tf = make_type_var("T", -1, [], self.o, variance)  # T`-1 (type variable)
         self.tf2 = make_type_var("T", -2, [], self.o, variance)  # T`-2 (type variable)
@@ -66,10 +63,7 @@ class TypeFixture:
         self.s1 = make_type_var("S", 1, [], self.o, variance)  # S`1 (type variable)
         self.sf = make_type_var("S", -2, [], self.o, variance)  # S`-2 (type variable)
         self.sf1 = make_type_var("S", -1, [], self.o, variance)  # S`-1 (type variable)
-
-        self.ts = make_type_var_tuple("Ts", 1, self.o)  # Ts`1 (type var tuple)
-        self.ss = make_type_var_tuple("Ss", 2, self.o)  # Ss`2 (type var tuple)
-        self.us = make_type_var_tuple("Us", 3, self.o)  # Us`3 (type var tuple)
+        self.u = make_type_var("U", 3, [], self.o, variance)  # U`3 (type variable)
 
         # Simple types
         self.anyt = AnyType(TypeOfAny.special_form)
@@ -132,10 +126,6 @@ class TypeFixture:
             bases=[Instance(self.gi, [self.s1])],
         )
 
-        self.gvi = self.make_type_info("GV", mro=[self.oi], typevars=["Ts"], typevar_tuple_index=0)
-        self.gv2i = self.make_type_info(
-            "GV2", mro=[self.oi], typevars=["T", "Ts", "S"], typevar_tuple_index=1
-        )
         # list[T]
         self.std_listi = self.make_type_info(
             "builtins.list", mro=[self.oi], typevars=["T"], variances=[variance]
@@ -217,6 +207,18 @@ class TypeFixture:
         self._add_bool_dunder(self.bool_type_info)
         self._add_bool_dunder(self.ai)
 
+        def make_type_var_tuple(name: str, id: int, upper_bound: Type) -> TypeVarTupleType:
+            return TypeVarTupleType(name, name, id, upper_bound, self.std_tuple)
+
+        self.ts = make_type_var_tuple("Ts", 1, self.o)  # Ts`1 (type var tuple)
+        self.ss = make_type_var_tuple("Ss", 2, self.o)  # Ss`2 (type var tuple)
+        self.us = make_type_var_tuple("Us", 3, self.o)  # Us`3 (type var tuple)
+
+        self.gvi = self.make_type_info("GV", mro=[self.oi], typevars=["Ts"], typevar_tuple_index=0)
+        self.gv2i = self.make_type_info(
+            "GV2", mro=[self.oi], typevars=["T", "Ts", "S"], typevar_tuple_index=1
+        )
+
     def _add_bool_dunder(self, type_info: TypeInfo) -> None:
         signature = CallableType([], [], [], Instance(self.bool_type_info, []), self.function)
         bool_func = FuncDef("__bool__", [], Block([]))
@@ -295,7 +297,7 @@ class TypeFixture:
             v: list[TypeVarLikeType] = []
             for id, n in enumerate(typevars, 1):
                 if typevar_tuple_index is not None and id - 1 == typevar_tuple_index:
-                    v.append(TypeVarTupleType(n, n, id, self.o))
+                    v.append(TypeVarTupleType(n, n, id, self.o, self.std_tuple))
                 else:
                     if variances:
                         variance = variances[id - 1]
@@ -338,9 +340,16 @@ class TypeFixture:
         A.alias = AN
         return A, target
 
-    def non_rec_alias(self, target: Type) -> TypeAliasType:
-        AN = TypeAlias(target, "__main__.A", -1, -1)
-        return TypeAliasType(AN, [])
+    def non_rec_alias(
+        self,
+        target: Type,
+        alias_tvars: list[TypeVarLikeType] | None = None,
+        args: list[Type] | None = None,
+    ) -> TypeAliasType:
+        AN = TypeAlias(target, "__main__.A", -1, -1, alias_tvars=alias_tvars)
+        if args is None:
+            args = []
+        return TypeAliasType(AN, args)
 
 
 class InterfaceTypeFixture(TypeFixture):

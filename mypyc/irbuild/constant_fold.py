@@ -1,6 +1,11 @@
 """Constant folding of IR values.
 
 For example, 3 + 5 can be constant folded into 8.
+
+This is mostly like mypy.constant_fold, but we can bind some additional
+NameExpr and MemberExpr references here, since we have more knowledge
+about which definitions can be trusted -- we constant fold only references
+to other compiled modules in the same compilation unit.
 """
 
 from __future__ import annotations
@@ -8,6 +13,11 @@ from __future__ import annotations
 from typing import Union
 from typing_extensions import Final
 
+from mypy.constant_fold import (
+    constant_fold_binary_int_op,
+    constant_fold_binary_str_op,
+    constant_fold_unary_int_op,
+)
 from mypy.nodes import Expression, IntExpr, MemberExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var
 from mypyc.irbuild.builder import IRBuilder
 
@@ -50,51 +60,4 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if isinstance(value, int):
             return constant_fold_unary_int_op(expr.op, value)
-    return None
-
-
-def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | None:
-    if op == "+":
-        return left + right
-    if op == "-":
-        return left - right
-    elif op == "*":
-        return left * right
-    elif op == "//":
-        if right != 0:
-            return left // right
-    elif op == "%":
-        if right != 0:
-            return left % right
-    elif op == "&":
-        return left & right
-    elif op == "|":
-        return left | right
-    elif op == "^":
-        return left ^ right
-    elif op == "<<":
-        if right >= 0:
-            return left << right
-    elif op == ">>":
-        if right >= 0:
-            return left >> right
-    elif op == "**":
-        if right >= 0:
-            return left**right
-    return None
-
-
-def constant_fold_unary_int_op(op: str, value: int) -> int | None:
-    if op == "-":
-        return -value
-    elif op == "~":
-        return ~value
-    elif op == "+":
-        return value
-    return None
-
-
-def constant_fold_binary_str_op(op: str, left: str, right: str) -> str | None:
-    if op == "+":
-        return left + right
     return None

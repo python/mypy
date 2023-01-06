@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import (
+    expand_self_type,
+    expand_type_by_instance,
+    freshen_all_functions_type_vars,
+)
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -31,13 +35,14 @@ from mypy.nodes import (
     is_final_node,
 )
 from mypy.plugin import AttributeContext
-from mypy.typeanal import set_any_tvars
 from mypy.typeops import (
     bind_self,
     class_callable,
     erase_to_bound,
     function_type,
+    get_type_vars,
     make_simplified_union,
+    supported_self_type,
     tuple_fallback,
     type_object_type_from_function,
 )
@@ -64,8 +69,8 @@ from mypy.types import (
     TypeVarType,
     UnionType,
     get_proper_type,
-    has_type_vars,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 
 if TYPE_CHECKING:  # import for forward declaration only
     import mypy.checker
@@ -90,6 +95,8 @@ class MemberContext:
         chk: mypy.checker.TypeChecker,
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
+        no_deferral: bool = False,
+        is_self: bool = False,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -100,6 +107,8 @@ class MemberContext:
         self.msg = msg
         self.chk = chk
         self.module_symbol_table = module_symbol_table
+        self.no_deferral = no_deferral
+        self.is_self = is_self
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -124,6 +133,7 @@ class MemberContext:
             self.chk,
             self.self_type,
             self.module_symbol_table,
+            self.no_deferral,
         )
         if messages is not None:
             mx.msg = messages
@@ -149,6 +159,8 @@ def analyze_member_access(
     in_literal_context: bool = False,
     self_type: Type | None = None,
     module_symbol_table: SymbolTable | None = None,
+    no_deferral: bool = False,
+    is_self: bool = False,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -183,6 +195,8 @@ def analyze_member_access(
         chk=chk,
         self_type=self_type,
         module_symbol_table=module_symbol_table,
+        no_deferral=no_deferral,
+        is_self=is_self,
     )
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
@@ -232,8 +246,6 @@ def _analyze_member_access(
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
         return AnyType(TypeOfAny.from_error)
-    if mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     return report_missing_attribute(mx.original_type, typ, name, mx)
 
 
@@ -260,8 +272,9 @@ def report_missing_attribute(
     override_info: TypeInfo | None = None,
 ) -> Type:
     res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
-    if may_be_awaitable_attribute(name, typ, mx, override_info):
-        mx.msg.possible_missing_await(mx.context)
+    if not mx.msg.prefer_simple_messages():
+        if may_be_awaitable_attribute(name, typ, mx, override_info):
+            mx.msg.possible_missing_await(mx.context)
     return res_type
 
 
@@ -294,6 +307,9 @@ def analyze_instance_member_access(
     # Look up the member. First look up the method dictionary.
     method = info.get_method(name)
     if method and not isinstance(method, Decorator):
+        if mx.is_super:
+            validate_super_call(method, mx)
+
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
             first_item = cast(Decorator, method.items[0])
@@ -301,13 +317,13 @@ def analyze_instance_member_access(
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type("builtins.function"))
-        signature = freshen_function_type_vars(signature)
+        signature = freshen_all_functions_type_vars(signature)
         if name == "__new__" or method.is_static:
             # __new__ is special and behaves like a static method -- don't strip
             # the first argument.
             pass
         else:
-            if isinstance(signature, FunctionLike) and name != "__call__":
+            if name != "__call__":
                 # TODO: use proper treatment of special methods on unions instead
                 #       of this hack here and below (i.e. mx.self_type).
                 dispatched_type = meet.meet_types(mx.original_type, typ)
@@ -319,11 +335,30 @@ def analyze_instance_member_access(
         # Since generic static methods should not be allowed.
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
-        freeze_type_vars(member_type)
+        freeze_all_type_vars(member_type)
         return member_type
     else:
         # Not a method.
         return analyze_member_var_access(name, typ, info, mx)
+
+
+def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
+    unsafe_super = False
+    if isinstance(node, FuncDef) and node.is_trivial_body:
+        unsafe_super = True
+        impl = node
+    elif isinstance(node, OverloadedFuncDef):
+        if node.impl:
+            impl = node.impl if isinstance(node.impl, FuncDef) else node.impl.func
+            unsafe_super = impl.is_trivial_body
+    if unsafe_super:
+        ret_type = (
+            impl.type.ret_type
+            if isinstance(impl.type, CallableType)
+            else AnyType(TypeOfAny.unannotated)
+        )
+        if not subtypes.is_subtype(NoneType(), ret_type):
+            mx.msg.unsafe_super(node.name, node.info.name, mx.context)
 
 
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
@@ -427,8 +462,6 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
             ret_type=literal_false,
             fallback=mx.named_type("builtins.function"),
         )
-    elif mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     else:
         return _analyze_member_access(name, mx.named_type("builtins.object"), mx)
 
@@ -449,6 +482,8 @@ def analyze_member_var_access(
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
         v = vv.var
+        if mx.is_super:
+            validate_super_call(vv.func, mx)
 
     if isinstance(vv, TypeInfo):
         # If the associated variable is a TypeInfo synthesize a Var node for
@@ -457,14 +492,16 @@ def analyze_member_var_access(
         v = Var(name, type=type_object_type(vv, mx.named_type))
         v.info = info
 
-    if isinstance(vv, TypeAlias) and isinstance(get_proper_type(vv.target), Instance):
+    if isinstance(vv, TypeAlias):
         # Similar to the above TypeInfo case, we allow using
         # qualified type aliases in runtime context if it refers to an
         # instance type. For example:
         #     class C:
         #         A = List[int]
         #     x = C.A() <- this is OK
-        typ = instance_alias_type(vv, mx.named_type)
+        typ = mx.chk.expr_checker.alias_type_in_runtime_context(
+            vv, ctx=mx.context, alias_definition=mx.is_lvalue
+        )
         v = Var(name, type=typ)
         v.info = info
 
@@ -479,6 +516,9 @@ def analyze_member_var_access(
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
+    elif isinstance(v, MypyFile):
+        mx.chk.module_refs.add(v.fullname)
+        return mx.chk.expr_checker.module_type(v)
     elif (
         not v
         and name not in ["__getattr__", "__setattr__", "__getattribute__"]
@@ -541,12 +581,15 @@ def analyze_member_var_access(
         return AnyType(TypeOfAny.special_form)
 
     # Could not find the member.
+    if itype.extra_attrs and name in itype.extra_attrs.attrs:
+        # For modules use direct symbol table lookup.
+        if not itype.extra_attrs.mod_name:
+            return itype.extra_attrs.attrs[name]
+
     if mx.is_super:
         mx.msg.undefined_in_superclass(name, mx.context)
         return AnyType(TypeOfAny.from_error)
     else:
-        if mx.chk and mx.chk.should_suppress_optional_error([itype]):
-            return AnyType(TypeOfAny.from_error)
         return report_missing_attribute(mx.original_type, itype, name, mx)
 
 
@@ -595,7 +638,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         itype=descriptor_type,
         info=descriptor_type.type,
         self_type=descriptor_type,
-        name="__set__",
+        name="__get__",
         mx=mx,
     )
 
@@ -650,27 +693,12 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     return inferred_dunder_get_type.ret_type
 
 
-def instance_alias_type(alias: TypeAlias, named_type: Callable[[str], Instance]) -> Type:
-    """Type of a type alias node targeting an instance, when appears in runtime context.
-
-    As usual, we first erase any unbound type variables to Any.
-    """
-    target: Type = get_proper_type(alias.target)
-    assert isinstance(
-        get_proper_type(target), Instance
-    ), "Must be called only with aliases to classes"
-    target = get_proper_type(set_any_tvars(alias, alias.line, alias.column))
-    assert isinstance(target, Instance)
-    tp = type_object_type(target.type, named_type)
-    return expand_type_by_instance(tp, target)
-
-
-def is_instance_var(var: Var, info: TypeInfo) -> bool:
+def is_instance_var(var: Var) -> bool:
     """Return if var is an instance variable according to PEP 526."""
     return (
         # check the type_info node is the var (not a decorated function, etc.)
-        var.name in info.names
-        and info.names[var.name].node is var
+        var.name in var.info.names
+        and var.info.names[var.name].node is var
         and not var.is_classvar
         # variables without annotations are treated as classvar
         and not var.is_inferred
@@ -705,12 +733,18 @@ def analyze_var(
             mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
-        t = get_proper_type(expand_type_by_instance(typ, itype))
+        t = freshen_all_functions_type_vars(typ)
+        if not (mx.is_self or mx.is_super) or supported_self_type(
+            get_proper_type(mx.original_type)
+        ):
+            t = expand_self_type(var, t, mx.original_type)
+        t = get_proper_type(expand_type_by_instance(t, itype))
+        freeze_all_type_vars(t)
         result: Type = t
         typ = get_proper_type(typ)
         if (
             var.is_initialized_in_class
-            and (not is_instance_var(var, info) or mx.is_operator)
+            and (not is_instance_var(var) or mx.is_operator)
             and isinstance(typ, FunctionLike)
             and not typ.is_type_obj()
         ):
@@ -733,13 +767,16 @@ def analyze_var(
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
                 # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
-                signature = freshen_function_type_vars(functype)
+                signature = freshen_all_functions_type_vars(functype)
+                bound = get_proper_type(expand_self_type(var, signature, mx.original_type))
+                assert isinstance(bound, FunctionLike)
+                signature = bound
                 signature = check_self_arg(
                     signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
                 )
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
-                expanded_signature = get_proper_type(expand_type_by_instance(signature, itype))
-                freeze_type_vars(expanded_signature)
+                expanded_signature = expand_type_by_instance(signature, itype)
+                freeze_all_type_vars(expanded_signature)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
@@ -747,7 +784,7 @@ def analyze_var(
                 else:
                     result = expanded_signature
     else:
-        if not var.is_ready:
+        if not var.is_ready and not mx.no_deferral:
             mx.not_ready_callback(var.name, mx.context)
         # Implicit 'Any' type.
         result = AnyType(TypeOfAny.special_form)
@@ -762,16 +799,15 @@ def analyze_var(
     return result
 
 
-def freeze_type_vars(member_type: Type) -> None:
-    if not isinstance(member_type, ProperType):
-        return
-    if isinstance(member_type, CallableType):
-        for v in member_type.variables:
+def freeze_all_type_vars(member_type: Type) -> None:
+    member_type.accept(FreezeTypeVarsVisitor())
+
+
+class FreezeTypeVarsVisitor(TypeTraverserVisitor):
+    def visit_callable_type(self, t: CallableType) -> None:
+        for v in t.variables:
             v.id.meta_level = 0
-    if isinstance(member_type, Overloaded):
-        for it in member_type.items:
-            for v in it.variables:
-                v.id.meta_level = 0
+        super().visit_callable_type(t)
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) -> SymbolNode | None:
@@ -861,6 +897,10 @@ def analyze_class_attribute_access(
 
     node = info.get(name)
     if not node:
+        if itype.extra_attrs and name in itype.extra_attrs.attrs:
+            # For modules use direct symbol table lookup.
+            if not itype.extra_attrs.mod_name:
+                return itype.extra_attrs.attrs[name]
         if info.fallback_to_any:
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         return None
@@ -872,6 +912,10 @@ def analyze_class_attribute_access(
             mx.msg.cant_assign_to_method(mx.context)
         if isinstance(node.node, TypeInfo):
             mx.msg.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, mx.context)
+
+    # Refuse class attribute access if slot defined
+    if info.slots and name in info.slots:
+        mx.msg.fail(message_registry.CLASS_VAR_CONFLICTS_SLOTS.format(name), mx.context)
 
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.
@@ -924,7 +968,12 @@ def analyze_class_attribute_access(
             #         x: T
             #     C.x  # Error, ambiguous access
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
-            if isinstance(t, TypeVarType) or has_type_vars(t):
+            # Exception is Self type wrapped in ClassVar, that is safe.
+            def_vars = set(node.node.info.defn.type_vars)
+            if not node.node.is_classvar and node.node.info.self_type:
+                def_vars.add(node.node.info.self_type)
+            typ_vars = set(get_type_vars(t))
+            if def_vars & typ_vars:
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
@@ -937,7 +986,8 @@ def analyze_class_attribute_access(
             # In the above example this means that we infer following types:
             #     C.x -> Any
             #     C[int].x -> int
-            t = erase_typevars(expand_type_by_instance(t, isuper))
+            t = get_proper_type(expand_self_type(node.node, t, itype))
+            t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
             isinstance(node.node, FuncBase) and node.node.is_class
@@ -969,10 +1019,10 @@ def analyze_class_attribute_access(
         # Reference to a module object.
         return mx.named_type("types.ModuleType")
 
-    if isinstance(node.node, TypeAlias) and isinstance(
-        get_proper_type(node.node.target), Instance
-    ):
-        return instance_alias_type(node.node, mx.named_type)
+    if isinstance(node.node, TypeAlias):
+        return mx.chk.expr_checker.alias_type_in_runtime_context(
+            node.node, ctx=mx.context, alias_definition=mx.is_lvalue
+        )
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
@@ -1095,11 +1145,11 @@ def add_class_tvars(
     if isinstance(t, CallableType):
         tvars = original_vars if original_vars is not None else []
         if is_classmethod:
-            t = freshen_function_type_vars(t)
+            t = freshen_all_functions_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
             t = cast(CallableType, expand_type_by_instance(t, isuper))
-            freeze_type_vars(t)
+            freeze_all_type_vars(t)
         return t.copy_modified(variables=list(tvars) + list(t.variables))
     elif isinstance(t, Overloaded):
         return Overloaded(
@@ -1114,7 +1164,7 @@ def add_class_tvars(
             ]
         )
     if isuper is not None:
-        t = cast(ProperType, expand_type_by_instance(t, isuper))
+        t = expand_type_by_instance(t, isuper)
     return t
 
 

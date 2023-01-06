@@ -89,9 +89,6 @@ class IPCBase:
         if sys.platform == "win32":
             try:
                 ov, err = _winapi.WriteFile(self.connection, data, overlapped=True)
-                # TODO: remove once typeshed supports Literal types
-                assert isinstance(ov, _winapi.Overlapped)
-                assert isinstance(err, int)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
@@ -217,8 +214,6 @@ class IPCServer(IPCBase):
             # client never connects, though this can be "solved" by killing the server
             try:
                 ov = _winapi.ConnectNamedPipe(self.connection, overlapped=True)
-                # TODO: remove once typeshed supports Literal types
-                assert isinstance(ov, _winapi.Overlapped)
             except OSError as e:
                 # Don't raise if the client already exists, or the client already connected
                 if e.winerror not in (_winapi.ERROR_PIPE_CONNECTED, _winapi.ERROR_NO_DATA):
@@ -252,7 +247,7 @@ class IPCServer(IPCBase):
                 # Wait for the client to finish reading the last write before disconnecting
                 if not FlushFileBuffers(self.connection):
                     raise IPCException(
-                        "Failed to flush NamedPipe buffer," "maybe the client hung up?"
+                        "Failed to flush NamedPipe buffer, maybe the client hung up?"
                     )
             finally:
                 DisconnectNamedPipe(self.connection)
@@ -270,4 +265,6 @@ class IPCServer(IPCBase):
         if sys.platform == "win32":
             return self.name
         else:
-            return self.sock.getsockname()
+            name = self.sock.getsockname()
+            assert isinstance(name, str)
+            return name

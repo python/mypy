@@ -1,6 +1,6 @@
 import sys
 from _typeshed import Self
-from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Coroutine, Iterable, Mapping, Sequence
 from contextlib import _GeneratorContextManager
 from types import TracebackType
 from typing import Any, Generic, TypeVar, overload
@@ -9,6 +9,8 @@ from typing_extensions import Literal, TypeAlias
 _T = TypeVar("_T")
 _TT = TypeVar("_TT", bound=type[Any])
 _R = TypeVar("_R")
+_F = TypeVar("_F", bound=Callable[..., Any])
+_AF = TypeVar("_AF", bound=Callable[..., Coroutine[Any, Any, Any]])
 
 if sys.version_info >= (3, 8):
     __all__ = (
@@ -55,7 +57,6 @@ class _SentinelObject:
     def __init__(self, name: Any) -> None: ...
 
 class _Sentinel:
-    def __init__(self) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
 
 sentinel: Any
@@ -83,7 +84,7 @@ class _Call(tuple[Any, ...]):
     def __eq__(self, other: object) -> bool: ...
     def __ne__(self, __other: object) -> bool: ...
     def __call__(self, *args: Any, **kwargs: Any) -> _Call: ...
-    def __getattr__(self, attr: Any) -> Any: ...
+    def __getattr__(self, attr: str) -> Any: ...
     def __getattribute__(self, attr: str) -> Any: ...
     if sys.version_info >= (3, 8):
         @property
@@ -259,6 +260,10 @@ class _patch_dict:
     clear: Any
     def __init__(self, in_dict: Any, values: Any = ..., clear: Any = ..., **kwargs: Any) -> None: ...
     def __call__(self, f: Any) -> Any: ...
+    if sys.version_info >= (3, 10):
+        def decorate_callable(self, f: _F) -> _F: ...
+        def decorate_async_callable(self, f: _AF) -> _AF: ...
+
     def decorate_class(self, klass: Any) -> Any: ...
     def __enter__(self) -> Any: ...
     def __exit__(self, *args: object) -> Any: ...
@@ -301,8 +306,8 @@ class _patcher:
         **kwargs: Any,
     ) -> _patch[_Mock]: ...
     @overload
+    @staticmethod
     def object(  # type: ignore[misc]
-        self,
         target: Any,
         attribute: str,
         new: _T,
@@ -314,8 +319,8 @@ class _patcher:
         **kwargs: Any,
     ) -> _patch[_T]: ...
     @overload
+    @staticmethod
     def object(
-        self,
         target: Any,
         attribute: str,
         *,
@@ -326,8 +331,8 @@ class _patcher:
         new_callable: Any | None = ...,
         **kwargs: Any,
     ) -> _patch[_Mock]: ...
+    @staticmethod
     def multiple(
-        self,
         target: Any,
         spec: Any | None = ...,
         create: bool = ...,
@@ -336,18 +341,16 @@ class _patcher:
         new_callable: Any | None = ...,
         **kwargs: Any,
     ) -> _patch[Any]: ...
-    def stopall(self) -> None: ...
+    @staticmethod
+    def stopall() -> None: ...
 
 patch: _patcher
 
 class MagicMixin:
     def __init__(self, *args: Any, **kw: Any) -> None: ...
 
-class NonCallableMagicMock(MagicMixin, NonCallableMock):
-    def mock_add_spec(self, spec: Any, spec_set: bool = ...) -> None: ...
-
-class MagicMock(MagicMixin, Mock):
-    def mock_add_spec(self, spec: Any, spec_set: bool = ...) -> None: ...
+class NonCallableMagicMock(MagicMixin, NonCallableMock): ...
+class MagicMock(MagicMixin, Mock): ...
 
 if sys.version_info >= (3, 8):
     class AsyncMockMixin(Base):

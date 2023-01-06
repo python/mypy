@@ -1,6 +1,6 @@
-from collections.abc import Sequence
 import sys
 from _typeshed import StrOrBytesPath
+from collections.abc import Sequence
 from types import SimpleNamespace
 
 if sys.version_info >= (3, 9):

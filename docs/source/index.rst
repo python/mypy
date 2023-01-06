@@ -6,35 +6,43 @@
 Welcome to mypy documentation!
 ==============================
 
-Mypy is a static type checker for Python 3. If you sprinkle
-your code with type annotations, mypy can type check your code and find common
-bugs. As mypy is a static analyzer, or a lint-like tool, the type
-annotations are just hints for mypy and don't interfere when running your program.
-You run your program with a standard Python interpreter, and the annotations
-are treated effectively as comments.
+Mypy is a static type checker for Python.
 
-Using the Python 3 annotation syntax (using :pep:`484` and :pep:`526` notation),
-you will be able to
-efficiently annotate your code and use mypy to check the code for common errors.
-Mypy has a powerful and easy-to-use type system with modern features such as
-type inference, generics, callable types, tuple types, union types, and
-structural subtyping.
+Type checkers help ensure that you're using variables and functions in your code
+correctly. With mypy, add type hints (:pep:`484`)
+to your Python programs, and mypy will warn you when you use those types
+incorrectly.
 
-As a developer, you decide how to use mypy in your workflow. You can always
-escape to dynamic typing as mypy's approach to static typing doesn't restrict
-what you can do in your programs. Using mypy will make your programs easier to
+Python is a dynamic language, so usually you'll only see errors in your code
+when you attempt to run it. Mypy is a *static* checker, so it finds bugs
+in your programs without even running them!
+
+Here is a small example to whet your appetite:
+
+.. code-block:: python
+
+   number = input("What is your favourite number?")
+   print("It is", number + 1)  # error: Unsupported operand types for + ("str" and "int")
+
+Adding type hints for mypy does not interfere with the way your program would
+otherwise run. Think of type hints as similar to comments! You can always use
+the Python interpreter to run your code, even if mypy reports errors.
+
+Mypy is designed with gradual typing in mind. This means you can add type
+hints to your code base slowly and that you can always fall back to dynamic
+typing when static typing is not convenient.
+
+Mypy has a powerful and easy-to-use type system, supporting features such as
+type inference, generics, callable types, tuple types, union types,
+structural subtyping and more. Using mypy will make your programs easier to
 understand, debug, and maintain.
-
-This documentation provides a short introduction to mypy. It will help you
-get started writing statically typed code. Knowledge of Python and a
-statically typed object-oriented language, such as Java, are assumed.
 
 .. note::
 
-   Mypy is used in production by many companies and projects, but mypy is
-   officially beta software. There will be occasional changes
+   Although mypy is production ready, there will be occasional changes
    that break backward compatibility. The mypy development team tries to
-   minimize the impact of changes to user code.
+   minimize the impact of changes to user code. In case of a major breaking
+   change, mypy's major version will be bumped.
 
 Contents
 --------

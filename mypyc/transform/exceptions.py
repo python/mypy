@@ -23,13 +23,17 @@ from mypyc.ir.ops import (
     Branch,
     CallC,
     ComparisonOp,
+    GetAttr,
     Integer,
     LoadErrorValue,
+    Op,
     RegisterOp,
     Return,
+    SetAttr,
+    TupleGet,
     Value,
 )
-from mypyc.ir.rtypes import bool_rprimitive
+from mypyc.ir.rtypes import RTuple, bool_rprimitive
 from mypyc.primitives.exc_ops import err_occurred_op
 from mypyc.primitives.registry import CFunctionDescription
 
@@ -40,6 +44,7 @@ def insert_exception_handling(ir: FuncIR) -> None:
     # block. The block just returns an error value.
     error_label = None
     for block in ir.blocks:
+        adjust_error_kinds(block)
         can_raise = any(op.can_raise() for op in block.ops)
         if can_raise:
             error_label = add_handler_block(ir)
@@ -97,13 +102,15 @@ def split_blocks_at_errors(
                     # semantics, using a temporary bool with value false
                     target = Integer(0, bool_rprimitive)
                 elif op.error_kind == ERR_MAGIC_OVERLAPPING:
-                    errvalue = Integer(int(target.type.c_undefined), rtype=op.type)
-                    comp = ComparisonOp(target, errvalue, ComparisonOp.EQ)
-                    cur_block.ops.append(comp)
+                    comp = insert_overlapping_error_value_check(cur_block.ops, target)
                     new_block2 = BasicBlock()
                     new_blocks.append(new_block2)
                     branch = Branch(
-                        comp, true_label=new_block2, false_label=new_block, op=Branch.BOOL
+                        comp,
+                        true_label=new_block2,
+                        false_label=new_block,
+                        op=Branch.BOOL,
+                        rare=True,
                     )
                     cur_block.ops.append(branch)
                     cur_block = new_block2
@@ -141,3 +148,32 @@ def primitive_call(desc: CFunctionDescription, args: list[Value], line: int) -> 
         desc.error_kind,
         line,
     )
+
+
+def adjust_error_kinds(block: BasicBlock) -> None:
+    """Infer more precise error_kind attributes for ops.
+
+    We have access here to more information than what was available
+    when the IR was initially built.
+    """
+    for op in block.ops:
+        if isinstance(op, GetAttr):
+            if op.class_type.class_ir.is_always_defined(op.attr):
+                op.error_kind = ERR_NEVER
+        if isinstance(op, SetAttr):
+            if op.class_type.class_ir.is_always_defined(op.attr):
+                op.error_kind = ERR_NEVER
+
+
+def insert_overlapping_error_value_check(ops: list[Op], target: Value) -> ComparisonOp:
+    """Append to ops to check for an overlapping error value."""
+    typ = target.type
+    if isinstance(typ, RTuple):
+        item = TupleGet(target, 0)
+        ops.append(item)
+        return insert_overlapping_error_value_check(ops, item)
+    else:
+        errvalue = Integer(int(typ.c_undefined), rtype=typ)
+        op = ComparisonOp(target, errvalue, ComparisonOp.EQ)
+        ops.append(op)
+        return op

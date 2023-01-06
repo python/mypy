@@ -1,3 +1,4 @@
+from _typeshed import Incomplete
 from typing import Any, NoReturn
 from typing_extensions import Literal, TypeAlias
 from urllib.request import OpenerDirector
@@ -11,20 +12,20 @@ __all__ = ["DOMBuilder", "DOMEntityResolver", "DOMInputSource"]
 #       The same as `_DOMBuilderErrorHandlerType`?
 #       Maybe `xml.sax.handler.ErrorHandler`?
 # - Return type of DOMBuilder.getFeature().
-#       We could get rid of the `Any` if we knew more
+#       We could get rid of the `Incomplete` if we knew more
 #       about `Options.errorHandler`.
 
 # ALIASES REPRESENTING MORE UNKNOWN TYPES:
 
 # probably the same as `Options.errorHandler`?
 # Maybe `xml.sax.handler.ErrorHandler`?
-_DOMBuilderErrorHandlerType: TypeAlias = Any | None
+_DOMBuilderErrorHandlerType: TypeAlias = Incomplete | None
 # probably some kind of IO...
-_DOMInputSourceCharacterStreamType: TypeAlias = Any | None
+_DOMInputSourceCharacterStreamType: TypeAlias = Incomplete | None
 # probably a string??
-_DOMInputSourceStringDataType: TypeAlias = Any | None
+_DOMInputSourceStringDataType: TypeAlias = Incomplete | None
 # probably a string??
-_DOMInputSourceEncodingType: TypeAlias = Any | None
+_DOMInputSourceEncodingType: TypeAlias = Incomplete | None
 
 class Options:
     namespaces: int
@@ -55,12 +56,11 @@ class DOMBuilder:
     ACTION_APPEND_AS_CHILDREN: Literal[2]
     ACTION_INSERT_AFTER: Literal[3]
     ACTION_INSERT_BEFORE: Literal[4]
-    def __init__(self) -> None: ...
     def setFeature(self, name: str, state: int) -> None: ...
     def supportsFeature(self, name: str) -> bool: ...
     def canSetFeature(self, name: str, state: int) -> bool: ...
     # getFeature could return any attribute from an instance of `Options`
-    def getFeature(self, name: str) -> Any: ...
+    def getFeature(self, name: str) -> Incomplete: ...
     def parseURI(self, uri: str) -> ExpatBuilder | ExpatBuilderNS: ...
     def parse(self, input: DOMInputSource) -> ExpatBuilder | ExpatBuilderNS: ...
     # `input` and `cnode` argtypes for `parseWithContext` are unknowable

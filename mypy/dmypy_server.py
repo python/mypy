@@ -197,7 +197,7 @@ class Server:
 
         # Since the object is created in the parent process we can check
         # the output terminal options here.
-        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes)
+        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.hide_error_codes)
 
     def _response_metadata(self) -> dict[str, str]:
         py_version = f"{self.options.python_version[0]}_{self.options.python_version[1]}"
@@ -214,6 +214,8 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
+                    debug_stdout = io.StringIO()
+                    sys.stdout = debug_stdout
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -230,8 +232,10 @@ class Server:
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
+                                resp["stdout"] = debug_stdout.getvalue()
                                 server.write(json.dumps(resp).encode("utf8"))
                                 raise
+                    resp["stdout"] = debug_stdout.getvalue()
                     try:
                         resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode("utf8"))
@@ -267,7 +271,9 @@ class Server:
                 # Only the above commands use some error formatting.
                 del data["is_tty"]
                 del data["terminal_width"]
-            return method(self, **data)
+            ret = method(self, **data)
+            assert isinstance(ret, dict)
+            return ret
 
     # Command functions (run in the server via RPC).
 
@@ -506,7 +512,8 @@ class Server:
 
             print_memory_profile(run_gc=False)
 
-        status = 1 if messages else 0
+        __, n_notes, __ = count_stats(messages)
+        status = 1 if messages and n_notes < len(messages) else 0
         messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
         return {"out": "".join(s + "\n" for s in messages), "err": "", "status": status}
 
@@ -586,7 +593,7 @@ class Server:
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
-        messages = fine_grained_manager.update(changed, [])
+        messages = fine_grained_manager.update(changed, [], followed=True)
 
         # Follow deps from changed modules (still within graph).
         worklist = changed[:]
@@ -603,13 +610,13 @@ class Server:
                 sources2, graph, seen, changed_paths
             )
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(changed, [])
+            messages = fine_grained_manager.update(changed, [], followed=True)
             worklist.extend(changed)
 
         t2 = time.time()
 
         def refresh_file(module: str, path: str) -> list[str]:
-            return fine_grained_manager.update([(module, path)], [])
+            return fine_grained_manager.update([(module, path)], [], followed=True)
 
         for module_id, state in list(graph.items()):
             new_messages = refresh_suppressed_submodules(
@@ -626,10 +633,10 @@ class Server:
             new_unsuppressed = self.find_added_suppressed(graph, seen, manager.search_paths)
             if not new_unsuppressed:
                 break
-            new_files = [BuildSource(mod[1], mod[0]) for mod in new_unsuppressed]
+            new_files = [BuildSource(mod[1], mod[0], followed=True) for mod in new_unsuppressed]
             sources.extend(new_files)
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(new_unsuppressed, [])
+            messages = fine_grained_manager.update(new_unsuppressed, [], followed=True)
 
             for module_id, path in new_unsuppressed:
                 new_messages = refresh_suppressed_submodules(
@@ -711,7 +718,7 @@ class Server:
                 for dep in state.dependencies:
                     if dep not in seen:
                         seen.add(dep)
-                        worklist.append(BuildSource(graph[dep].path, graph[dep].id))
+                        worklist.append(BuildSource(graph[dep].path, graph[dep].id, followed=True))
         return changed, new_files
 
     def direct_imports(
@@ -719,7 +726,7 @@ class Server:
     ) -> list[BuildSource]:
         """Return the direct imports of module not included in seen."""
         state = graph[module[0]]
-        return [BuildSource(graph[dep].path, dep) for dep in state.dependencies]
+        return [BuildSource(graph[dep].path, dep, followed=True) for dep in state.dependencies]
 
     def find_added_suppressed(
         self, graph: mypy.build.Graph, seen: set[str], search_paths: SearchPaths

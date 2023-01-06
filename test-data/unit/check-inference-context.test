@@ -814,7 +814,7 @@ if int():
 from typing import List
 class A:
   def __init__(self):
-    self.x = [] # type: List[int]
+    self.x = [] # type: List[int]  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 a = A()
 a.x = []
 a.x = [1]
@@ -1419,3 +1419,60 @@ def bar(x: Union[Mapping[Any, Any], Dict[Any, Sequence[Any]]]) -> None:
     ...
 bar({1: 2})
 [builtins fixtures/dict.pyi]
+
+[case testOptionalTypeNarrowedByGenericCall]
+# flags: --strict-optional
+from typing import Dict, Optional
+
+d: Dict[str, str] = {}
+
+def foo(arg: Optional[str] = None) -> None:
+    if arg is None:
+        arg = d.get("a", "b")
+    reveal_type(arg)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+
+[case testOptionalTypeNarrowedByGenericCall2]
+# flags: --strict-optional
+from typing import Dict, Optional
+
+d: Dict[str, str] = {}
+x: Optional[str]
+if x:
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+    x = d.get(x, x)
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+
+[case testOptionalTypeNarrowedByGenericCall3]
+# flags: --strict-optional
+from typing import Generic, TypeVar, Union
+
+T = TypeVar("T")
+def bar(arg: Union[str, T]) -> Union[str, T]: ...
+
+def foo(arg: Union[str, int]) -> None:
+    if isinstance(arg, int):
+        arg = bar("default")
+    reveal_type(arg)  # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
+
+[case testOptionalTypeNarrowedByGenericCall4]
+# flags: --strict-optional
+from typing import Optional, List, Generic, TypeVar
+
+T = TypeVar("T", covariant=True)
+class C(Generic[T]): ...
+
+x: Optional[C[int]] = None
+y = x = C()
+reveal_type(y)  # N: Revealed type is "__main__.C[builtins.int]"
+
+[case testOptionalTypeNarrowedByGenericCall5]
+from typing import Any, Tuple, Union
+
+i: Union[Tuple[Any, ...], int]
+b: Any
+i = i if isinstance(i, int) else b
+reveal_type(i)  # N: Revealed type is "Union[Any, builtins.int]"
+[builtins fixtures/isinstance.pyi]

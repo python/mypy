@@ -1,13 +1,17 @@
-from typing import TypeVar, Any, Mapping, Iterator, NoReturn as NoReturn, Dict, Type
+import typing
+from typing import Any, Mapping, Iterator, NoReturn as NoReturn, Dict, Type
 from typing import TYPE_CHECKING as TYPE_CHECKING
 from typing import NewType as NewType, overload as overload
 
 import sys
 
-_T = TypeVar('_T')
+_T = typing.TypeVar('_T')
 
 class _SpecialForm:
     def __getitem__(self, typeargs: Any) -> Any:
+        pass
+
+    def __call__(self, arg: Any) -> Any:
         pass
 
 NamedTuple = 0
@@ -21,6 +25,8 @@ def final(x: _T) -> _T: pass
 Literal: _SpecialForm = ...
 
 Annotated: _SpecialForm = ...
+
+TypeVar: _SpecialForm
 
 ParamSpec: _SpecialForm
 Concatenate: _SpecialForm

@@ -20,7 +20,7 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore
+    import lxml  # type: ignore[import]
 except ImportError:
     lxml = None
 
@@ -57,6 +57,10 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     args.append("--show-traceback")
     if "--error-summary" not in args:
         args.append("--no-error-summary")
+    if "--show-error-codes" not in args:
+        args.append("--hide-error-codes")
+    if "--disallow-empty-bodies" not in args:
+        args.append("--allow-empty-bodies")
     # Type check the program.
     fixed = [python3_path, "-m", "mypy"]
     env = os.environ.copy()
@@ -65,12 +69,10 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     env["PYTHONPATH"] = PREFIX
     if os.path.isdir(extra_path):
         env["PYTHONPATH"] += os.pathsep + extra_path
+    cwd = os.path.join(test_temp_dir, custom_cwd or "")
+    args = [arg.replace("$CWD", os.path.abspath(cwd)) for arg in args]
     process = subprocess.Popen(
-        fixed + args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=os.path.join(test_temp_dir, custom_cwd or ""),
-        env=env,
+        fixed + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, env=env
     )
     outb, errb = process.communicate()
     result = process.returncode

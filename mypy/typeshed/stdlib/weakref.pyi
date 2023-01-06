@@ -1,10 +1,5 @@
 import sys
 from _typeshed import Self, SupportsKeysAndGetItem
-from _weakrefset import WeakSet as WeakSet
-from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import ParamSpec
-
 from _weakref import (
     CallableProxyType as CallableProxyType,
     ProxyType as ProxyType,
@@ -14,6 +9,10 @@ from _weakref import (
     proxy as proxy,
     ref as ref,
 )
+from _weakrefset import WeakSet as WeakSet
+from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
+from typing import Any, Generic, TypeVar, overload
+from typing_extensions import ParamSpec
 
 __all__ = [
     "ref",

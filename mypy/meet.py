@@ -6,7 +6,13 @@ from mypy import join
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
-from mypy.subtypes import is_callable_compatible, is_equivalent, is_proper_subtype, is_subtype
+from mypy.subtypes import (
+    is_callable_compatible,
+    is_equivalent,
+    is_proper_subtype,
+    is_same_type,
+    is_subtype,
+)
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
     AnyType,
@@ -61,10 +67,24 @@ def meet_types(s: Type, t: Type) -> ProperType:
     """Return the greatest lower bound of two types."""
     if is_recursive_pair(s, t):
         # This case can trigger an infinite recursion, general support for this will be
-        # tricky so we use a trivial meet (like for protocols).
+        # tricky, so we use a trivial meet (like for protocols).
         return trivial_meet(s, t)
     s = get_proper_type(s)
     t = get_proper_type(t)
+
+    if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
+        # Code in checker.py should merge any extra_items where possible, so we
+        # should have only compatible extra_items here. We check this before
+        # the below subtype check, so that extra_attrs will not get erased.
+        if (s.extra_attrs or t.extra_attrs) and is_same_type(s, t):
+            if s.extra_attrs and t.extra_attrs:
+                if len(s.extra_attrs.attrs) > len(t.extra_attrs.attrs):
+                    # Return the one that has more precise information.
+                    return s
+                return t
+            if s.extra_attrs:
+                return s
+            return t
 
     if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
         if is_proper_subtype(s, t, ignore_promotions=True):
@@ -101,7 +121,19 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return original_declared
     if isinstance(declared, UnionType):
         return make_simplified_union(
-            [narrow_declared_type(x, narrowed) for x in declared.relevant_items()]
+            [
+                narrow_declared_type(x, narrowed)
+                for x in declared.relevant_items()
+                # This (ugly) special-casing is needed to support checking
+                # branches like this:
+                # x: Union[float, complex]
+                # if isinstance(x, int):
+                #     ...
+                if (
+                    is_overlapping_types(x, narrowed, ignore_promotions=True)
+                    or is_subtype(narrowed, x, ignore_promotions=False)
+                )
+            ]
         )
     if is_enum_overlapping_union(declared, narrowed):
         return original_narrowed
@@ -130,6 +162,14 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     elif isinstance(declared, Instance):
         if declared.type.alt_promote:
             # Special case: low-level integer type can't be narrowed
+            return original_declared
+        if (
+            isinstance(narrowed, Instance)
+            and narrowed.type.alt_promote
+            and narrowed.type.alt_promote is declared.type
+        ):
+            # Special case: 'int' can't be narrowed down to a native int type such as
+            # i64, since they have different runtime representations.
             return original_declared
         return meet_types(original_declared, original_narrowed)
     elif isinstance(declared, (TupleType, TypeType, LiteralType)):
@@ -398,18 +438,13 @@ def is_overlapping_types(
         return _type_object_overlap(left, right) or _type_object_overlap(right, left)
 
     if isinstance(left, CallableType) and isinstance(right, CallableType):
-
-        def _callable_overlap(left: CallableType, right: CallableType) -> bool:
-            return is_callable_compatible(
-                left,
-                right,
-                is_compat=_is_overlapping_types,
-                ignore_pos_arg_names=True,
-                allow_partial_overlap=True,
-            )
-
-        # Compare both directions to handle type objects.
-        return _callable_overlap(left, right) or _callable_overlap(right, left)
+        return is_callable_compatible(
+            left,
+            right,
+            is_compat=_is_overlapping_types,
+            ignore_pos_arg_names=True,
+            allow_partial_overlap=True,
+        )
     elif isinstance(left, CallableType):
         left = left.fallback
     elif isinstance(right, CallableType):

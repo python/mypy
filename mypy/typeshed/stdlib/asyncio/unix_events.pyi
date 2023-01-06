@@ -118,7 +118,6 @@ if sys.platform != "win32":
 
     if sys.version_info >= (3, 9):
         class PidfdChildWatcher(AbstractChildWatcher):
-            def __init__(self) -> None: ...
             def __enter__(self: Self) -> Self: ...
             def __exit__(
                 self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None

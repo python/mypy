@@ -282,8 +282,14 @@ def num_skipped_suffix_lines(a1: list[str], a2: list[str]) -> int:
 
 
 def testfile_pyversion(path: str) -> tuple[int, int]:
-    if path.endswith("python310.test"):
+    if path.endswith("python311.test"):
+        return 3, 11
+    elif path.endswith("python310.test"):
         return 3, 10
+    elif path.endswith("python39.test"):
+        return 3, 9
+    elif path.endswith("python38.test"):
+        return 3, 8
     else:
         return defaults.PYTHON3_VERSION
 
@@ -369,12 +375,15 @@ def parse_options(
         if targets:
             # TODO: support specifying targets via the flags pragma
             raise RuntimeError("Specifying targets via the flags pragma is not supported.")
+        if "--show-error-codes" not in flag_list:
+            options.hide_error_codes = True
     else:
         flag_list = []
         options = Options()
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
         options.error_summary = False
+        options.hide_error_codes = True
 
     # Allow custom python version to override testfile_pyversion.
     if all(flag.split("=")[0] not in ["--python-version", "-2", "--py2"] for flag in flag_list):

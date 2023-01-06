@@ -15,7 +15,7 @@ on:
     - CREDITS
     - LICENSE
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
@@ -26,11 +26,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - name: Test suite with py37-windows-32
-          python: '3.7'
-          arch: x86
-          os: windows-latest
-          toxenv: py37
         - name: Test suite with py37-windows-64
           python: '3.7'
           arch: x64
@@ -68,6 +63,13 @@ jobs:
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
+        - name: Test suite with py311-ubuntu, mypyc-compiled
+          python: '3.11'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+          test_mypyc: true
         - name: mypyc runtime tests with py37-macos
           python: '3.7'
           arch: x64
@@ -100,6 +102,16 @@ jobs:
     name: ${{ matrix.name }}
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
+      # Rich (pip)
+      FORCE_COLOR: 1
+      # Tox
+      PY_COLORS: 1
+      # Mypy (see https://github.com/python/mypy/issues/7771)
+      TERM: xterm-color
+      MYPY_FORCE_COLOR: 1
+      MYPY_FORCE_TERMINAL_WIDTH: 200
+      # Pytest
+      PYTEST_ADDOPTS: --color=yes
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v4
@@ -120,7 +132,7 @@ jobs:
       if: ${{ matrix.test_mypyc }}
       run: |
         pip install -r test-requirements.txt
-        CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace
+        CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
     - name: Setup tox environment
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: Test
@@ -130,16 +142,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Test suite with Python nightly
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.11-dev'
-    - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' tox==3.24.5
-    - name: Setup tox environment
-      run: tox -e py --notest
-    - name: Test
-      run: tox -e py --skip-pkg-install -- "-n 2"
-      continue-on-error: true
-    - name: Mark as a success
-      run: exit 0
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12-dev'
+      - name: Install tox
+        run: pip install --upgrade 'setuptools!=50' tox==3.24.5
+      - name: Setup tox environment
+        run: tox -e py --notest
+      - name: Test
+        run: tox -e py --skip-pkg-install -- "-n 2"
+        continue-on-error: true
+      - name: Mark as a success
+        run: exit 0

@@ -263,6 +263,16 @@ class TestEnum(Enum):
 
 assert TestEnum.test() == 3
 
+import enum
+
+class Pokemon(enum.Enum):
+    magikarp = 1
+    squirtle = 2
+    slowbro = 3
+
+assert Pokemon.magikarp.value == 1
+assert Pokemon.squirtle.name == 'squirtle'
+
 [file other.py]
 # Force a multi-module test to make sure we can compile multi-file with
 # non-extension classes
@@ -1774,6 +1784,36 @@ Represents a sequence of values. Updates itself by next, which is a new value.
 Represents a sequence of values. Updates itself by next, which is a new value.
 3
 3
+[out version>=3.11]
+Traceback (most recent call last):
+  File "driver.py", line 5, in <module>
+    print (x.rankine)
+           ^^^^^^^^^
+  File "native.py", line 16, in rankine
+    raise NotImplementedError
+NotImplementedError
+0.0
+F: 32.0 C: 0.0
+100.0
+F: 212.0 C: 100.0
+1
+2
+3
+4
+ [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+ [7, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2, 1, 4, 2, 1]
+ [7, 11, 17, 26, 40, 10, 16, 4, 1, 2, 4, 1, 2, 4, 1, 2, 4, 1, 2, 4]
+10
+34
+26
+ [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+ [7, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2, 1, 4, 2, 1]
+ [7, 11, 17, 26, 40, 10, 16, 4, 1, 2, 4, 1, 2, 4, 1, 2, 4, 1, 2, 4]
+Represents a sequence of values. Updates itself by next, which is a new value.
+Represents a sequence of values. Updates itself by next, which is a new value.
+Represents a sequence of values. Updates itself by next, which is a new value.
+3
+3
 
 [case testPropertySetters]
 
@@ -2216,3 +2256,14 @@ class Derived(Base):
     pass
 
 assert Derived()() == 1
+
+[case testClassWithFinalAttribute]
+from typing_extensions import Final
+
+class C:
+    A: Final = -1
+    a: Final = [A]
+
+def test_final_attribute() -> None:
+    assert C.A == -1
+    assert C.a == [-1]

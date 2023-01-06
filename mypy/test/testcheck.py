@@ -10,6 +10,7 @@ from mypy import build
 from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
+from mypy.options import TYPE_VAR_TUPLE, UNPACK
 from mypy.semanal_main import core_modules
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
@@ -26,7 +27,7 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore
+    import lxml  # type: ignore[import]
 except ImportError:
     lxml = None
 
@@ -43,6 +44,8 @@ if sys.version_info < (3, 9):
     typecheck_files.remove("check-python39.test")
 if sys.version_info < (3, 10):
     typecheck_files.remove("check-python310.test")
+if sys.version_info < (3, 11):
+    typecheck_files.remove("check-python311.test")
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform not in ("darwin", "win32"):
@@ -110,7 +113,8 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
-        options.enable_incomplete_features = True
+        if not testcase.name.endswith("_no_incomplete"):
+            options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
@@ -119,7 +123,9 @@ class TypeCheckSuite(DataSuite):
         if "columns" in testcase.file:
             options.show_column_numbers = True
         if "errorcodes" in testcase.file:
-            options.show_error_codes = True
+            options.hide_error_codes = False
+        if "abstract" not in testcase.file:
+            options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases

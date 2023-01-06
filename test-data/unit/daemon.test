@@ -185,7 +185,7 @@ Daemon started
 $ dmypy check foo.py bar.py
 $ dmypy recheck
 $ dmypy recheck --update foo.py --remove bar.py sir_not_appearing_in_this_film.py
-foo.py:1: error: Import of "bar" ignored
+foo.py:1: error: Import of "bar" ignored  [misc]
 foo.py:1: note: (Using --follow-imports=error, module not passed on command line)
 == Return code: 1
 $ dmypy recheck --update bar.py
@@ -213,6 +213,20 @@ mypy-daemon: error: Missing target module, package, files, or command.
 == Return code: 2
 $ dmypy stop
 Daemon stopped
+
+[case testDaemonWarningSuccessExitCode-posix]
+$ dmypy run -- foo.py --follow-imports=error
+Daemon started
+foo.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+Success: no issues found in 1 source file
+$ echo $?
+0
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def foo():
+    a: int = 1
+    print(a + "2")
 
 -- this is carefully constructed to be able to break if the quickstart system lets
 -- something through incorrectly. in particular, the files need to have the same size
@@ -277,7 +291,7 @@ $ dmypy suggest foo.foo
 (str) -> int
 $ {python} -c "import shutil; shutil.copy('foo2.py', 'foo.py')"
 $ dmypy check foo.py bar.py
-bar.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+bar.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
 == Return code: 1
 [file foo.py]
 def foo(arg):
@@ -304,7 +318,7 @@ $ dmypy inspect foo:1:2:3:4
 Command "inspect" is only valid after a "check" command (that produces no parse errors)
 == Return code: 2
 $ dmypy check foo.py --export-types
-foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 == Return code: 1
 $ dmypy inspect foo:1
 Format should be file:line:column[:end_line:end_column]
@@ -434,12 +448,12 @@ $ dmypy inspect --show attrs bar.py:10:1 --union-attrs
 
 [file foo.py]
 class B:
-    def b(self) -> int: ...
+    def b(self) -> int: return 0
     a: int
 class C(B):
     a: int
     y: int
-    def x(self) -> int: ...
+    def x(self) -> int: return 0
 
 v: C  # line 9
 if False:

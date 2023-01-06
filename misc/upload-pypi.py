@@ -29,15 +29,32 @@ def is_whl_or_tar(name: str) -> bool:
     return name.endswith(".tar.gz") or name.endswith(".whl")
 
 
+def item_ok_for_pypi(name: str) -> bool:
+    if not is_whl_or_tar(name):
+        return False
+
+    if name.endswith(".tar.gz"):
+        name = name[:-7]
+    if name.endswith(".whl"):
+        name = name[:-4]
+
+    if name.endswith("wasm32"):
+        return False
+
+    return True
+
+
 def get_release_for_tag(tag: str) -> dict[str, Any]:
     with urlopen(f"{BASE}/{REPO}/releases/tags/{tag}") as f:
         data = json.load(f)
+    assert isinstance(data, dict)
     assert data["tag_name"] == tag
     return data
 
 
 def download_asset(asset: dict[str, Any], dst: Path) -> Path:
     name = asset["name"]
+    assert isinstance(name, str)
     download_url = asset["browser_download_url"]
     assert is_whl_or_tar(name)
     with urlopen(download_url) as src_file:
@@ -47,7 +64,7 @@ def download_asset(asset: dict[str, Any], dst: Path) -> Path:
 
 
 def download_all_release_assets(release: dict[str, Any], dst: Path) -> None:
-    print(f"Downloading assets...")
+    print("Downloading assets...")
     with ThreadPoolExecutor() as e:
         for asset in e.map(lambda asset: download_asset(asset, dst), release["assets"]):
             print(f"Downloaded {asset}")
@@ -68,12 +85,12 @@ def check_sdist(dist: Path, version: str) -> None:
         hashless_version = match.group(1) if match else version
 
         assert (
-            f"'{hashless_version}'" in version_py_contents
+            f'"{hashless_version}"' in version_py_contents
         ), "Version does not match version.py in sdist"
 
 
 def spot_check_dist(dist: Path, version: str) -> None:
-    items = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
+    items = [item for item in dist.iterdir() if item_ok_for_pypi(item.name)]
     assert len(items) > 10
     assert all(version in item.name for item in items)
     assert any(item.name.endswith("py3-none-any.whl") for item in items)
@@ -91,7 +108,7 @@ def tmp_twine() -> Iterator[Path]:
 
 def upload_dist(dist: Path, dry_run: bool = True) -> None:
     with tmp_twine() as twine:
-        files = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
+        files = [item for item in dist.iterdir() if item_ok_for_pypi(item.name)]
         cmd: list[Any] = [twine, "upload"]
         cmd += files
         if dry_run:

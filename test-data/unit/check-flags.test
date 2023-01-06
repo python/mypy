@@ -366,6 +366,22 @@ def f() -> NoReturn:  # E: Implicit return in function which does not return
   non_trivial_function = 1
 [builtins fixtures/dict.pyi]
 
+[case testNoReturnImplicitReturnCheckInDeferredNode]
+# flags: --warn-no-return
+from typing import NoReturn
+
+def exit() -> NoReturn: ...
+
+def force_forward_reference() -> int:
+    return 4
+
+def f() -> NoReturn:
+    x
+    exit()
+
+x = force_forward_reference()
+[builtins fixtures/exception.pyi]
+
 [case testNoReturnNoWarnNoReturn]
 # flags: --warn-no-return
 from mypy_extensions import NoReturn
@@ -827,6 +843,7 @@ standard.f(None)
 [file mypy.ini]
 \[mypy]
 strict_optional = False
+implicit_optional = true
 \[mypy-optional]
 strict_optional = True
 
@@ -846,6 +863,7 @@ standard.f(None)
 [file pyproject.toml]
 \[tool.mypy]
 strict_optional = false
+implicit_optional = true
 \[[tool.mypy.overrides]]
 module = 'optional'
 strict_optional = true
@@ -1588,14 +1606,19 @@ strict_equality = false
 
 
 [case testNoImplicitReexport]
-# flags: --no-implicit-reexport
-from other_module_2 import a
+# flags: --no-implicit-reexport --show-error-codes
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"  [attr-defined]
+reveal_type(a)  # N: Revealed type is "builtins.int"
+
+import other_module_2
+# TODO: this should also reveal builtins.int, see #13965
+reveal_type(other_module_2.a)  # E: "object" does not explicitly export attribute "a"  [attr-defined] \
+                               # N: Revealed type is "Any"
+
 [file other_module_1.py]
 a = 5
 [file other_module_2.py]
 from other_module_1 import a
-[out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1609,7 +1632,7 @@ from other_module_1 import a, b
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 [case testNoImplicitReexportStarConsideredExplicit]
 # flags: --no-implicit-reexport
@@ -1625,7 +1648,7 @@ __all__ = ('b',)
 
 [case testNoImplicitReexportGetAttr]
 # flags: --no-implicit-reexport --python-version 3.7
-from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"
 [file other_module_1.py]
 from typing import Any
 def __getattr__(name: str) -> Any: ...
@@ -1643,7 +1666,7 @@ attr_2 = 6
 [file other_module_2.py]
 from other_module_1 import attr_1, attr_2
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"
 
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
@@ -1661,7 +1684,7 @@ implicit_reexport = True
 \[mypy-other_module_2]
 implicit_reexport = False
 [out]
-main:2: error: Module "other_module_2" has no attribute "a"
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 
 [case testNoImplicitReexportPyProjectTOML]
@@ -1682,7 +1705,7 @@ module = 'other_module_2'
 implicit_reexport = false
 
 [out]
-main:2: error: Module "other_module_2" has no attribute "a"
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 
 [case testImplicitAnyOKForNoArgs]
@@ -2005,12 +2028,12 @@ x = 'should be fine'
 x.trim()
 
 [case testDisableDifferentErrorCode]
-# flags: --disable-error-code name-defined --show-error-code
+# flags: --disable-error-code name-defined --show-error-codes
 x = 'should not be fine'
 x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 
 [case testDisableMultipleErrorCode]
-# flags: --disable-error-code attr-defined --disable-error-code return-value --show-error-code
+# flags: --disable-error-code attr-defined --disable-error-code return-value --show-error-codes
 x = 'should be fine'
 x.trim()
 
@@ -2020,12 +2043,12 @@ def bad_return_type() -> str:
 bad_return_type('no args taken!')  # E: Too many arguments for "bad_return_type"  [call-arg]
 
 [case testEnableErrorCode]
-# flags: --disable-error-code attr-defined --enable-error-code attr-defined --show-error-code
+# flags: --disable-error-code attr-defined --enable-error-code attr-defined --show-error-codes
 x = 'should be fine'
 x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 
 [case testEnableDifferentErrorCode]
-# flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-code
+# flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-codes
 x = 'should not be fine'
 x.trim()
 y.trim()  # E: Name "y" is not defined  [name-defined]
@@ -2036,7 +2059,7 @@ y.trim()  # E: Name "y" is not defined  [name-defined]
     --disable-error-code return-value \
     --disable-error-code call-arg \
     --enable-error-code attr-defined \
-    --enable-error-code return-value --show-error-code
+    --enable-error-code return-value --show-error-codes
 x = 'should be fine'
 x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 
@@ -2053,3 +2076,75 @@ def f(x):
 y = 1
 f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
                   # N: Revealed type is "builtins.int"
+
+[case testPerModuleErrorCodes]
+# flags: --config-file tmp/mypy.ini
+import tests.foo
+import bar
+[file bar.py]
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+[file tests/__init__.py]
+[file tests/foo.py]
+x = []  # OK
+[file mypy.ini]
+\[mypy]
+strict = True
+
+\[mypy-tests.*]
+allow_untyped_defs = True
+allow_untyped_calls = True
+disable_error_code = var-annotated
+
+[case testPerModuleErrorCodesOverride]
+# flags: --config-file tmp/mypy.ini
+import tests.foo
+import bar
+[file bar.py]
+def foo() -> int: ...
+if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+[file tests/__init__.py]
+[file tests/foo.py]
+def foo() -> int: ...
+if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+42 + "no"  # type: ignore
+[file mypy.ini]
+\[mypy]
+enable_error_code = ignore-without-code, truthy-bool, used-before-def
+
+\[mypy-tests.*]
+disable_error_code = ignore-without-code
+
+[case testShowErrorCodes]
+# flags: --show-error-codes
+x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
+[case testHideErrorCodes]
+# flags: --hide-error-codes
+x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTypeVarTupleDisabled_no_incomplete]
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")  # E: "TypeVarTuple" support is experimental, use --enable-incomplete-feature=TypeVarTuple to enable
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleEnabled_no_incomplete]
+# flags: --enable-incomplete-feature=TypeVarTuple
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")  # OK
+[builtins fixtures/tuple.pyi]
+
+
+[case testDisableBytearrayPromotion]
+# flags: --disable-bytearray-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))
+[builtins fixtures/primitives.pyi]
+
+[case testDisableMemoryviewPromotion]
+# flags: --disable-memoryview-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+[builtins fixtures/primitives.pyi]

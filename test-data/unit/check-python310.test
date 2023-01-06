@@ -317,6 +317,21 @@ match x:
     case [str()]:
         pass
 
+[case testMatchSequencePatternWithInvalidClassPattern]
+class Example:
+    __match_args__ = ("value",)
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+SubClass: type[Example]
+
+match [SubClass("a"), SubClass("b")]:
+    case [SubClass(value), *rest]:  # E: Expected type in class pattern; found "Type[__main__.Example]"
+        reveal_type(value)  # E: Cannot determine type of "value" \
+                            # N: Revealed type is "Any"
+        reveal_type(rest)  # N: Revealed type is "builtins.list[__main__.Example]"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchSequenceUnion-skip]
 from typing import List, Union
 m: Union[List[List[str]], str]
@@ -1600,3 +1615,216 @@ def foo(x: NoneType): # E: NoneType should not be used as a type, please use Non
     reveal_type(x) # N: Revealed type is "None"
 
 [builtins fixtures/tuple.pyi]
+
+[case testMatchTupleInstanceUnionNoCrash]
+from typing import Union
+
+def func(e: Union[str, tuple[str]]) -> None:
+    match e:
+        case (a,) if isinstance(a, str):
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleOptionalNoCrash]
+# flags: --strict-optional
+foo: tuple[int] | None
+match foo:
+    case x,:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchUnionTwoTuplesNoCrash]
+var: tuple[int, int] | tuple[str, str]
+
+# TODO: we can infer better here.
+match var:
+    case (42, a):
+        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    case ("yes", b):
+        reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchNamedAndKeywordsAreTheSame]
+from typing import Generic, TypeVar, Union
+from typing_extensions import Final
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+class Regular:
+    x: str
+    y: int
+    __match_args__ = ("x",)
+class ReveresedOrder:
+    x: int
+    y: str
+    __match_args__ = ("y",)
+class GenericRegular(Generic[T]):
+    x: T
+    __match_args__ = ("x",)
+class GenericWithFinal(Generic[T]):
+    x: T
+    __match_args__: Final = ("x",)
+class RegularSubtype(GenericRegular[str]): ...
+
+@dataclass
+class GenericDataclass(Generic[T]):
+    x: T
+
+input_arg: Union[
+    Regular,
+    ReveresedOrder,
+    GenericRegular[str],
+    GenericWithFinal[str],
+    RegularSubtype,
+    GenericDataclass[str],
+]
+
+# Positional:
+match input_arg:
+    case Regular(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case ReveresedOrder(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericWithFinal(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case RegularSubtype(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericRegular(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericDataclass(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+# Keywords:
+match input_arg:
+    case Regular(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case ReveresedOrder(x=b):  # Order is different
+        reveal_type(b)  # N: Revealed type is "builtins.int"
+    case GenericWithFinal(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case RegularSubtype(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericRegular(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case GenericDataclass(x=a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dataclasses.pyi]
+
+[case testMatchValueConstrainedTypeVar]
+from typing import TypeVar, Iterable
+
+S = TypeVar("S", int, str)
+
+def my_func(pairs: Iterable[tuple[S, S]]) -> None:
+    for pair in pairs:
+        reveal_type(pair)  # N: Revealed type is "Tuple[builtins.int, builtins.int]" \
+                           # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+        match pair:
+            case _:
+                reveal_type(pair)  # N: Revealed type is "Tuple[builtins.int, builtins.int]" \
+                                   # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testPossiblyUndefinedMatch]
+# flags: --enable-error-code possibly-undefined
+def f0(x: int | str) -> int:
+    match x:
+        case int():
+            y = 1
+    return y  # E: Name "y" may be undefined
+
+def f1(a: object) -> None:
+    match a:
+        case [y]: pass
+        case _:
+            y = 1
+            x = 2
+    z = y
+    z = x  # E: Name "x" may be undefined
+
+def f2(a: object) -> None:
+    match a:
+        case [[y] as x]: pass
+        case {"k1": 1, "k2": x, "k3": y}: pass
+        case [0, *x]:
+            y = 2
+        case _:
+            y = 1
+            x = [2]
+    z = x
+    z = y
+
+def f3(a: object) -> None:
+    y = 1
+    match a:
+        case [x]:
+            y = 2
+        # Note the missing `case _:`
+    z = x  # E: Name "x" may be undefined
+    z = y
+
+def f4(a: object) -> None:
+    y = 1
+    match a:
+        case [x]:
+            y = 2
+        case _:
+            assert False, "unsupported"
+    z = x
+    z = y
+
+def f5(a: object) -> None:
+    match a:
+        case tuple(x): pass
+        case _:
+            return
+    y = x
+
+def f6(a: object) -> None:
+    if int():
+        y = 1
+    match a:
+        case _ if y is not None:  # E: Name "y" may be undefined
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testPossiblyUndefinedMatchUnreachable]
+# flags: --enable-error-code possibly-undefined
+import typing
+
+def f0(x: int) -> int:
+    match x:
+        case 1 if not typing.TYPE_CHECKING:
+            pass
+        case 2:
+            y = 2
+        case _:
+            y = 3
+    return y # No error.
+
+def f1(x: int) -> int:
+    match x:
+        case 1 if not typing.TYPE_CHECKING:
+            pass
+        case 2:
+            y = 2
+    return y  # E: Name "y" may be undefined
+
+[typing fixtures/typing-medium.pyi]
+
+[case testTypeAliasWithNewUnionSyntaxAndNoneLeftOperand]
+from typing import overload
+class C:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: int) -> None: pass
+    def __init__(self, x=0):
+        pass
+
+class D: pass
+
+X = None | C
+Y = None | D
+[builtins fixtures/type.pyi]

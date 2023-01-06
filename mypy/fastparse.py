@@ -212,6 +212,10 @@ try:
         MatchAs = Any
         MatchOr = Any
         AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
+    if sys.version_info >= (3, 11):
+        TryStar = ast3.TryStar
+    else:
+        TryStar = Any
 except ImportError:
     try:
         from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
@@ -258,15 +262,17 @@ def parse(
     on failure. Otherwise, use the errors object to report parse errors.
     """
     raise_on_error = False
-    if errors is None:
-        errors = Errors()
-        raise_on_error = True
     if options is None:
         options = Options()
-    errors.set_file(fnam, module)
+    if errors is None:
+        errors = Errors(hide_error_codes=options.hide_error_codes)
+        raise_on_error = True
+    errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")
     if is_stub_file:
         feature_version = defaults.PYTHON3_VERSION[1]
+        if options.python_version[0] == 3 and options.python_version[1] > feature_version:
+            feature_version = options.python_version[1]
     else:
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
@@ -303,6 +309,7 @@ def parse(
     if raise_on_error and errors.is_errors():
         errors.raise_error()
 
+    assert isinstance(tree, MypyFile)
     return tree
 
 
@@ -480,6 +487,16 @@ class ASTConverter:
             and self.type_ignores
             and min(self.type_ignores) < self.get_lineno(stmts[0])
         ):
+            if self.type_ignores[min(self.type_ignores)]:
+                self.fail(
+                    (
+                        "type ignore with error code is not supported for modules; "
+                        "use `# mypy: disable-error-code=...`"
+                    ),
+                    line=min(self.type_ignores),
+                    column=0,
+                    blocker=False,
+                )
             self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
                 codes.FILE.code
             )
@@ -731,7 +748,7 @@ class ASTConverter:
         if stmt.else_body is None:
             return overload_name
 
-        if isinstance(stmt.else_body, Block) and len(stmt.else_body.body) == 1:
+        if len(stmt.else_body.body) == 1:
             # For elif: else_body contains an IfStmt itself -> do a recursive check.
             if (
                 isinstance(stmt.else_body.body[0], (Decorator, FuncDef, OverloadedFuncDef))
@@ -828,7 +845,7 @@ class ASTConverter:
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
-                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
+                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body, self.imports, False, self.type_ignores)
 
@@ -888,13 +905,11 @@ class ASTConverter:
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
-                    translated_args = TypeConverter(
+                    translated_args: list[Type] = TypeConverter(
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
-                    arg_types = [
-                        a if a is not None else AnyType(TypeOfAny.unannotated)
-                        for a in translated_args
-                    ]
+                    # Use a cast to work around `list` invariance
+                    arg_types = cast(List[Optional[Type]], translated_args)
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
@@ -923,7 +938,7 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail(
-                    "Ellipses cannot accompany other argument types " "in function type signature",
+                    "Ellipses cannot accompany other argument types in function type signature",
                     lineno,
                     n.col_offset,
                 )
@@ -992,7 +1007,7 @@ class ASTConverter:
         return retval
 
     def set_type_optional(self, type: Type | None, initializer: Expression | None) -> None:
-        if self.options.no_implicit_optional:
+        if not self.options.implicit_optional:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == "None"
@@ -1236,6 +1251,24 @@ class ASTConverter:
             self.as_block(n.orelse, n.lineno),
             self.as_block(n.finalbody, n.lineno),
         )
+        return self.set_line(node, n)
+
+    def visit_TryStar(self, n: TryStar) -> TryStmt:
+        vs = [
+            self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
+        ]
+        types = [self.visit(h.type) for h in n.handlers]
+        handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
+
+        node = TryStmt(
+            self.as_required_block(n.body, n.lineno),
+            vs,
+            types,
+            handlers,
+            self.as_block(n.orelse, n.lineno),
+            self.as_block(n.finalbody, n.lineno),
+        )
+        node.is_star = True
         return self.set_line(node, n)
 
     # Assert(expr test, expr? msg)
@@ -1630,7 +1663,9 @@ class ASTConverter:
     # Index(expr value)
     def visit_Index(self, n: Index) -> Node:
         # cast for mypyc's benefit on Python 3.9
-        return self.visit(cast(Any, n).value)
+        value = self.visit(cast(Any, n).value)
+        assert isinstance(value, Node)
+        return value
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
     def visit_Match(self, n: Match) -> MatchStmt:
@@ -1760,7 +1795,9 @@ class TypeConverter:
             method = "visit_" + node.__class__.__name__
             visitor = getattr(self, method, None)
             if visitor is not None:
-                return visitor(node)
+                typ = visitor(node)
+                assert isinstance(typ, ProperType)
+                return typ
             else:
                 return self.invalid_type(node)
         finally:
@@ -1947,7 +1984,9 @@ class TypeConverter:
 
     def visit_Index(self, n: ast3.Index) -> Type:
         # cast for mypyc's benefit on Python 3.9
-        return self.visit(cast(Any, n).value)
+        value = self.visit(cast(Any, n).value)
+        assert isinstance(value, Type)
+        return value
 
     def visit_Slice(self, n: ast3.Slice) -> Type:
         return self.invalid_type(n, note="did you mean to use ',' instead of ':' ?")
@@ -1971,9 +2010,10 @@ class TypeConverter:
             for s in dims:
                 if getattr(s, "col_offset", None) is None:
                     if isinstance(s, ast3.Index):
-                        s.col_offset = s.value.col_offset  # type: ignore
+                        s.col_offset = s.value.col_offset  # type: ignore[attr-defined]
                     elif isinstance(s, ast3.Slice):
-                        s.col_offset = s.lower.col_offset  # type: ignore
+                        assert s.lower is not None
+                        s.col_offset = s.lower.col_offset  # type: ignore[attr-defined]
             sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False

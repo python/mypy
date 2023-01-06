@@ -28,7 +28,6 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     is_bit_rprimitive,
     is_bool_rprimitive,
-    is_fixed_width_rtype,
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
@@ -640,8 +639,8 @@ class GetAttr(RegisterOp):
         self.class_type = obj.type
         attr_type = obj.type.attr_type(attr)
         self.type = attr_type
-        if is_fixed_width_rtype(attr_type):
-            self.error_kind = ERR_NEVER
+        if attr_type.error_overlap:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
         self.is_borrowed = borrow and attr_type.is_refcounted
 
     def sources(self) -> list[Value]:
@@ -793,7 +792,7 @@ class TupleGet(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value, index: int, line: int) -> None:
+    def __init__(self, src: Value, index: int, line: int = -1) -> None:
         super().__init__(line)
         self.src = src
         self.index = index

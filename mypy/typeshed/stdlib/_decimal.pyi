@@ -4,7 +4,7 @@ from _typeshed import Self
 from collections.abc import Container, Sequence
 from types import TracebackType
 from typing import Any, ClassVar, NamedTuple, Union, overload
-from typing_extensions import TypeAlias
+from typing_extensions import Literal, TypeAlias
 
 _Decimal: TypeAlias = Decimal | int
 _DecimalNew: TypeAlias = Union[Decimal, float, str, tuple[int, Sequence[int], int]]
@@ -16,7 +16,7 @@ __libmpdec_version__: str
 class DecimalTuple(NamedTuple):
     sign: int
     digits: tuple[int, ...]
-    exponent: int
+    exponent: int | Literal["n", "N", "F"]
 
 ROUND_DOWN: str
 ROUND_HALF_UP: str

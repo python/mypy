@@ -52,8 +52,8 @@ class Meta(type):
 ==
 {"C": ["meth", "x"]}
 {"C": ["meth", "x"], "Meta": ["y"], "type": ["__init__"]}
-{}
-{"object": ["__init__"]}
+{"function": ["__name__"]}
+{"function": ["__name__"], "object": ["__init__"]}
 
 [case testInspectDefBasic]
 # inspect2: --show=definition foo.py:5:5
@@ -236,7 +236,7 @@ class C: ...
 [builtins fixtures/module.pyi]
 [out]
 ==
-{"<pack.bar>": ["C", "__annotations__", "__doc__", "__file__", "__name__", "__package__", "bar", "x"], "ModuleType": ["__file__"]}
+{"<pack.bar>": ["C", "__annotations__", "__doc__", "__file__", "__name__", "__package__", "bar", "x"], "ModuleType": ["__file__", "__getattr__"]}
 
 [case testInspectModuleDef]
 # inspect2: --show=definition --include-kind foo.py:2:1

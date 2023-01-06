@@ -434,6 +434,7 @@ def main() -> None:
             x  # E: Name "x" is not defined
 
 [case testNewAnalyzerCyclicDefinitions]
+# flags: --disable-recursive-aliases
 gx = gy  # E: Cannot resolve name "gy" (possible cyclic definition)
 gy = gx
 def main() -> None:
@@ -1499,6 +1500,7 @@ reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyDirectBase]
+# flags: --disable-recursive-aliases
 from typing import List
 
 x: B
@@ -1509,11 +1511,11 @@ reveal_type(x)
 reveal_type(x[0][0])
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: Cannot resolve name "B" (possible cyclic definition)
 main:4: error: Cannot resolve name "B" (possible cyclic definition)
-main:4: error: Cannot resolve name "C" (possible cyclic definition)
-main:7: note: Revealed type is "Any"
+main:5: error: Cannot resolve name "B" (possible cyclic definition)
+main:5: error: Cannot resolve name "C" (possible cyclic definition)
 main:8: note: Revealed type is "Any"
+main:9: note: Revealed type is "Any"
 
 [case testNewAnalyzerAliasToNotReadyTwoDeferralsFunction]
 import a
@@ -1532,6 +1534,7 @@ reveal_type(f)  # N: Revealed type is "def (x: builtins.list[a.C]) -> builtins.l
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyDirectBaseFunction]
+# flags: --disable-recursive-aliases
 import a
 [file a.py]
 from typing import List
@@ -1864,7 +1867,11 @@ if int():
 elif bool():
     def f(x: int) -> None:
         1()  # E: "int" not callable
-    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
+    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures \
+                            # N: Original: \
+                            # N:     def g(x: int) -> None \
+                            # N: Redefinition: \
+                            # N:     def g(x: str) -> None
         pass
 else:
     def f(x: int) -> None:
@@ -1881,7 +1888,12 @@ if int():
 else:
     def f(x: A) -> None:
         1()  # E: "int" not callable
-    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
+    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures \
+                            # N: Original: \
+                            # N:     def g(x: A) -> None \
+                            # N: Redefinition: \
+                            # N:     def g(x: str) -> None
+
         pass
 
 reveal_type(g) # N: Revealed type is "def (x: __main__.A)"
@@ -2110,6 +2122,7 @@ class B(List[C]):
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerNewTypeForwardClassAliasDirect]
+# flags: --disable-recursive-aliases
 from typing import NewType, List
 
 x: D
@@ -2122,12 +2135,12 @@ class B(D):
     pass
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: Cannot resolve name "D" (possible cyclic definition)
-main:4: note: Revealed type is "Any"
-main:6: error: Cannot resolve name "D" (possible cyclic definition)
-main:6: error: Cannot resolve name "C" (possible cyclic definition)
-main:7: error: Argument 2 to NewType(...) must be a valid type
-main:7: error: Cannot resolve name "B" (possible cyclic definition)
+main:4: error: Cannot resolve name "D" (possible cyclic definition)
+main:5: note: Revealed type is "Any"
+main:7: error: Cannot resolve name "D" (possible cyclic definition)
+main:7: error: Cannot resolve name "C" (possible cyclic definition)
+main:8: error: Argument 2 to NewType(...) must be a valid type
+main:8: error: Cannot resolve name "B" (possible cyclic definition)
 
 -- Copied from check-classes.test (tricky corner cases).
 [case testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass]
@@ -2144,6 +2157,7 @@ class C:
 [builtins fixtures/dict.pyi]
 
 [case testNewAnalyzerForwardTypeAliasInBase]
+# flags: --disable-recursive-aliases
 from typing import List, Generic, TypeVar, NamedTuple
 T = TypeVar('T')
 
@@ -2584,6 +2598,7 @@ import n
 def __getattr__(x): pass
 
 [case testNewAnalyzerReportLoopInMRO2]
+# flags: --disable-recursive-aliases
 def f() -> None:
     class A(A): ... # E: Cannot resolve name "A" (possible cyclic definition)
 
@@ -2948,6 +2963,7 @@ def g() -> None:
     reveal_type(y)  # N: Revealed type is "__main__.G[Any]"
 
 [case testNewAnalyzerRedefinedNonlocal]
+# flags: --disable-error-code=annotation-unchecked
 import typing
 
 def f():
@@ -2962,7 +2978,7 @@ def g() -> None:
 
     def foo() -> None:
         nonlocal bar
-        bar = []  # type: typing.List[int] # E: Name "bar" already defined on line 11
+        bar = []  # type: typing.List[int] # E: Name "bar" already defined on line 12
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred]

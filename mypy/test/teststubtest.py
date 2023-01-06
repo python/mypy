@@ -302,7 +302,7 @@ class StubtestUnit(unittest.TestCase):
             )
 
     @collect_cases
-    def test_default_value(self) -> Iterator[Case]:
+    def test_default_presence(self) -> Iterator[Case]:
         yield Case(
             stub="def f1(text: str = ...) -> None: ...",
             runtime="def f1(text = 'asdf'): pass",
@@ -334,6 +334,59 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="def f6(text = None): pass",
             error="f6",
+        )
+
+    @collect_cases
+    def test_default_value(self) -> Iterator[Case]:
+        yield Case(
+            stub="def f1(text: str = 'x') -> None: ...",
+            runtime="def f1(text = 'y'): pass",
+            error="f1",
+        )
+        yield Case(
+            stub='def f2(text: bytes = b"x\'") -> None: ...',
+            runtime='def f2(text = b"x\'"): pass',
+            error=None,
+        )
+        yield Case(
+            stub='def f3(text: bytes = b"y\'") -> None: ...',
+            runtime='def f3(text = b"x\'"): pass',
+            error="f3",
+        )
+        yield Case(
+            stub="def f4(text: object = 1) -> None: ...",
+            runtime="def f4(text = 1.0): pass",
+            error="f4",
+        )
+        yield Case(
+            stub="def f5(text: object = True) -> None: ...",
+            runtime="def f5(text = 1): pass",
+            error="f5",
+        )
+        yield Case(
+            stub="def f6(text: object = True) -> None: ...",
+            runtime="def f6(text = True): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f7(text: object = not True) -> None: ...",
+            runtime="def f7(text = False): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f8(text: object = not True) -> None: ...",
+            runtime="def f8(text = True): pass",
+            error="f8",
+        )
+        yield Case(
+            stub="def f9(text: object = {1: 2}) -> None: ...",
+            runtime="def f9(text = {1: 3}): pass",
+            error="f9",
+        )
+        yield Case(
+            stub="def f10(text: object = [1, 2]) -> None: ...",
+            runtime="def f10(text = [1, 2]): pass",
+            error=None,
         )
 
     @collect_cases
@@ -975,7 +1028,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
-        # We *should* emit an error with the module name itself,
+        # We *should* emit an error with the module name itself + __all__,
         # if the stub *does* define __all__,
         # but the stub's __all__ is inconsistent with the runtime's __all__
         yield Case(
@@ -987,7 +1040,7 @@ class StubtestUnit(unittest.TestCase):
             __all__ = []
             foo = 'foo'
             """,
-            error="",
+            error="__all__",
         )
 
     @collect_cases
@@ -1029,6 +1082,9 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
         yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
+        yield Case(stub="", runtime="import re; constant = re.compile('foo')", error="constant")
+        yield Case(stub="", runtime="from json.scanner import NUMBER_RE", error=None)
+        yield Case(stub="", runtime="from string import ascii_letters", error=None)
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
@@ -1272,6 +1328,69 @@ class StubtestUnit(unittest.TestCase):
             yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
 
     @collect_cases
+    def test_metaclass_match(self) -> Iterator[Case]:
+        yield Case(stub="class Meta(type): ...", runtime="class Meta(type): ...", error=None)
+        yield Case(stub="class A0: ...", runtime="class A0: ...", error=None)
+        yield Case(
+            stub="class A1(metaclass=Meta): ...",
+            runtime="class A1(metaclass=Meta): ...",
+            error=None,
+        )
+        yield Case(stub="class A2: ...", runtime="class A2(metaclass=Meta): ...", error="A2")
+        yield Case(stub="class A3(metaclass=Meta): ...", runtime="class A3: ...", error="A3")
+
+        # Explicit `type` metaclass can always be added in any part:
+        yield Case(
+            stub="class T1(metaclass=type): ...",
+            runtime="class T1(metaclass=type): ...",
+            error=None,
+        )
+        yield Case(stub="class T2: ...", runtime="class T2(metaclass=type): ...", error=None)
+        yield Case(stub="class T3(metaclass=type): ...", runtime="class T3: ...", error=None)
+
+        # Explicit check that `_protected` names are also supported:
+        yield Case(stub="class _P1(type): ...", runtime="class _P1(type): ...", error=None)
+        yield Case(stub="class P2: ...", runtime="class P2(metaclass=_P1): ...", error="P2")
+
+        # With inheritance:
+        yield Case(
+            stub="""
+            class I1(metaclass=Meta): ...
+            class S1(I1): ...
+            """,
+            runtime="""
+            class I1(metaclass=Meta): ...
+            class S1(I1): ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class I2(metaclass=Meta): ...
+            class S2: ...  # missing inheritance
+            """,
+            runtime="""
+            class I2(metaclass=Meta): ...
+            class S2(I2): ...
+            """,
+            error="S2",
+        )
+
+    @collect_cases
+    def test_metaclass_abcmeta(self) -> Iterator[Case]:
+        # Handling abstract metaclasses is special:
+        yield Case(stub="from abc import ABCMeta", runtime="from abc import ABCMeta", error=None)
+        yield Case(
+            stub="class A1(metaclass=ABCMeta): ...",
+            runtime="class A1(metaclass=ABCMeta): ...",
+            error=None,
+        )
+        # Stubs cannot miss abstract metaclass:
+        yield Case(stub="class A2: ...", runtime="class A2(metaclass=ABCMeta): ...", error="A2")
+        # But, stubs can add extra abstract metaclass, this might be a typing hack:
+        yield Case(stub="class A3(metaclass=ABCMeta): ...", runtime="class A3: ...", error=None)
+
+    @collect_cases
     def test_abstract_methods(self) -> Iterator[Case]:
         yield Case(
             stub="from abc import abstractmethod",
@@ -1319,6 +1438,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_abstract_properties(self) -> Iterator[Case]:
+        # TODO: test abstract properties with setters
         yield Case(
             stub="from abc import abstractmethod",
             runtime="from abc import abstractmethod",
@@ -1328,6 +1448,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             class AP1:
+                @property
                 def some(self) -> int: ...
             """,
             runtime="""
@@ -1337,6 +1458,19 @@ class StubtestUnit(unittest.TestCase):
                 def some(self) -> int: ...
             """,
             error="AP1.some",
+        )
+        yield Case(
+            stub="""
+            class AP1_2:
+                def some(self) -> int: ...  # missing `@property` decorator
+            """,
+            runtime="""
+            class AP1_2:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            error="AP1_2.some",
         )
         yield Case(
             stub="""
@@ -1481,13 +1615,13 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub="+", runtime="", options=[])
         assert remove_color_code(output) == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
-            "error: invalid syntax\n".format(TEST_MODULE_NAME)
+            "error: invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
         assert remove_color_code(output) == (
             "error: not checking stubs due to mypy build errors:\n{}.pyi:2: "
-            'error: Name "f" already defined on line 1\n'.format(TEST_MODULE_NAME)
+            'error: Name "f" already defined on line 1  [no-redef]\n'.format(TEST_MODULE_NAME)
         )
 
     def test_missing_stubs(self) -> None:

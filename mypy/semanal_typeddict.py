@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing_extensions import Final
 
-from mypy import errorcodes as codes
+from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
@@ -23,6 +23,7 @@ from mypy.nodes import (
     NameExpr,
     PassStmt,
     RefExpr,
+    Statement,
     StrExpr,
     TempNode,
     TupleExpr,
@@ -79,6 +80,9 @@ class TypedDictAnalyzer:
                 self.api.accept(base_expr)
                 if base_expr.fullname in TPDICT_NAMES or self.is_typeddict(base_expr):
                     possible = True
+                    if isinstance(base_expr.node, TypeInfo) and base_expr.node.is_final:
+                        err = message_registry.CANNOT_INHERIT_FROM_FINAL
+                        self.fail(err.format(base_expr.node.name).value, defn, code=err.code)
         if not possible:
             return False, None
         existing_info = None
@@ -90,7 +94,7 @@ class TypedDictAnalyzer:
             and defn.base_type_exprs[0].fullname in TPDICT_NAMES
         ):
             # Building a new TypedDict
-            fields, types, required_keys = self.analyze_typeddict_classdef_fields(defn)
+            fields, types, statements, required_keys = self.analyze_typeddict_classdef_fields(defn)
             if fields is None:
                 return True, None  # Defer
             info = self.build_typeddict_typeinfo(
@@ -99,6 +103,7 @@ class TypedDictAnalyzer:
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
             defn.analyzed.column = defn.column
+            defn.defs.body = statements
             return True, info
 
         # Extending/merging existing TypedDicts
@@ -136,7 +141,12 @@ class TypedDictAnalyzer:
         # Iterate over bases in reverse order so that leftmost base class' keys take precedence
         for base in reversed(typeddict_bases):
             self.add_keys_and_types_from_base(base, keys, types, required_keys, defn)
-        new_keys, new_types, new_required_keys = self.analyze_typeddict_classdef_fields(defn, keys)
+        (
+            new_keys,
+            new_types,
+            new_statements,
+            new_required_keys,
+        ) = self.analyze_typeddict_classdef_fields(defn, keys)
         if new_keys is None:
             return True, None  # Defer
         keys.extend(new_keys)
@@ -148,6 +158,7 @@ class TypedDictAnalyzer:
         defn.analyzed = TypedDictExpr(info)
         defn.analyzed.line = defn.line
         defn.analyzed.column = defn.column
+        defn.defs.body = new_statements
         return True, info
 
     def add_keys_and_types_from_base(
@@ -178,7 +189,7 @@ class TypedDictAnalyzer:
         valid_items = base_items.copy()
 
         # Always fix invalid bases to avoid crashes.
-        tvars = info.type_vars
+        tvars = info.defn.type_vars
         if len(base_args) != len(tvars):
             any_kind = TypeOfAny.from_omitted_generics
             if base_args:
@@ -215,7 +226,7 @@ class TypedDictAnalyzer:
             analyzed = self.api.anal_type(
                 type,
                 allow_required=True,
-                allow_placeholder=self.options.enable_recursive_aliases
+                allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
             )
             if analyzed is None:
@@ -224,7 +235,7 @@ class TypedDictAnalyzer:
         return base_args
 
     def map_items_to_base(
-        self, valid_items: dict[str, Type], tvars: list[str], base_args: list[Type]
+        self, valid_items: dict[str, Type], tvars: list[TypeVarLikeType], base_args: list[Type]
     ) -> dict[str, Type]:
         """Map item types to how they would look in their base with type arguments applied.
 
@@ -247,7 +258,7 @@ class TypedDictAnalyzer:
 
     def analyze_typeddict_classdef_fields(
         self, defn: ClassDef, oldfields: list[str] | None = None
-    ) -> tuple[list[str] | None, list[Type], set[str]]:
+    ) -> tuple[list[str] | None, list[Type], list[Statement], set[str]]:
         """Analyze fields defined in a TypedDict class definition.
 
         This doesn't consider inherited fields (if any). Also consider totality,
@@ -256,20 +267,27 @@ class TypedDictAnalyzer:
         Return tuple with these items:
          * List of keys (or None if found an incomplete reference --> deferral)
          * List of types for each key
+         * List of statements from defn.defs.body that are legally allowed to be a
+           part of a TypedDict definition
          * Set of required keys
         """
         fields: list[str] = []
         types: list[Type] = []
+        statements: list[Statement] = []
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
-                # Still allow pass or ... (for empty TypedDict's).
-                if not isinstance(stmt, PassStmt) and not (
+                # Still allow pass or ... (for empty TypedDict's) and docstrings
+                if isinstance(stmt, PassStmt) or (
                     isinstance(stmt, ExpressionStmt)
                     and isinstance(stmt.expr, (EllipsisExpr, StrExpr))
                 ):
+                    statements.append(stmt)
+                else:
+                    defn.removed_statements.append(stmt)
                     self.fail(TPDICT_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
+                defn.removed_statements.append(stmt)
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
                 name = stmt.lvalues[0].name
@@ -278,21 +296,23 @@ class TypedDictAnalyzer:
                 if name in fields:
                     self.fail(f'Duplicate TypedDict key "{name}"', stmt)
                     continue
-                # Append name and type in this case...
+                # Append stmt, name, and type in this case...
                 fields.append(name)
+                statements.append(stmt)
                 if stmt.type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
                     analyzed = self.api.anal_type(
                         stmt.type,
                         allow_required=True,
-                        allow_placeholder=self.options.enable_recursive_aliases
+                        allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
+                        prohibit_self_type="TypedDict item type",
                     )
                     if analyzed is None:
-                        return None, [], set()  # Need to defer
+                        return None, [], [], set()  # Need to defer
                     types.append(analyzed)
-                # ...despite possible minor failures that allow further analyzis.
+                # ...despite possible minor failures that allow further analysis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
                 elif not isinstance(stmt.rvalue, TempNode):
@@ -314,7 +334,7 @@ class TypedDictAnalyzer:
             t.item if isinstance(t, RequiredType) else t for t in types
         ]
 
-        return fields, types, required_keys
+        return fields, types, statements, required_keys
 
     def check_typeddict(
         self, node: Expression, var_name: str | None, is_func_scope: bool
@@ -481,8 +501,9 @@ class TypedDictAnalyzer:
             analyzed = self.api.anal_type(
                 type,
                 allow_required=True,
-                allow_placeholder=self.options.enable_recursive_aliases
+                allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
+                prohibit_self_type="TypedDict item type",
             )
             if analyzed is None:
                 return None

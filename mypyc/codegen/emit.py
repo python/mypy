@@ -9,6 +9,7 @@ from typing_extensions import Final
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     ATTR_PREFIX,
+    BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     NATIVE_PREFIX,
     REG_PREFIX,
@@ -329,21 +330,84 @@ class Emitter:
 
         return result
 
+    def bitmap_field(self, index: int) -> str:
+        """Return C field name used for attribute bitmap."""
+        n = index // BITMAP_BITS
+        if n == 0:
+            return "bitmap"
+        return f"bitmap{n + 1}"
+
+    def attr_bitmap_expr(self, obj: str, cl: ClassIR, index: int) -> str:
+        """Return reference to the attribute definedness bitmap."""
+        cast = f"({cl.struct_name(self.names)} *)"
+        attr = self.bitmap_field(index)
+        return f"({cast}{obj})->{attr}"
+
+    def emit_attr_bitmap_set(
+        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str
+    ) -> None:
+        """Mark an attribute as defined in the attribute bitmap.
+
+        Assumes that the attribute is tracked in the bitmap (only some attributes
+        use the bitmap). If 'value' is not equal to the error value, do nothing.
+        """
+        self._emit_attr_bitmap_update(value, obj, rtype, cl, attr, clear=False)
+
+    def emit_attr_bitmap_clear(self, obj: str, rtype: RType, cl: ClassIR, attr: str) -> None:
+        """Mark an attribute as undefined in the attribute bitmap.
+
+        Unlike emit_attr_bitmap_set, clear unconditionally.
+        """
+        self._emit_attr_bitmap_update("", obj, rtype, cl, attr, clear=True)
+
+    def _emit_attr_bitmap_update(
+        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str, clear: bool
+    ) -> None:
+        if value:
+            check = self.error_value_check(rtype, value, "==")
+            self.emit_line(f"if (unlikely({check})) {{")
+        index = cl.bitmap_attrs.index(attr)
+        mask = 1 << (index & (BITMAP_BITS - 1))
+        bitmap = self.attr_bitmap_expr(obj, cl, index)
+        if clear:
+            self.emit_line(f"{bitmap} &= ~{mask};")
+        else:
+            self.emit_line(f"{bitmap} |= {mask};")
+        if value:
+            self.emit_line("}")
+
     def use_vectorcall(self) -> bool:
         return use_vectorcall(self.capi_version)
 
     def emit_undefined_attr_check(
-        self, rtype: RType, attr_expr: str, compare: str, unlikely: bool = False
+        self,
+        rtype: RType,
+        attr_expr: str,
+        compare: str,
+        obj: str,
+        attr: str,
+        cl: ClassIR,
+        *,
+        unlikely: bool = False,
     ) -> None:
+        check = self.error_value_check(rtype, attr_expr, compare)
+        if unlikely:
+            check = f"unlikely({check})"
+        if rtype.error_overlap:
+            index = cl.bitmap_attrs.index(attr)
+            bit = 1 << (index & (BITMAP_BITS - 1))
+            attr = self.bitmap_field(index)
+            obj_expr = f"({cl.struct_name(self.names)} *){obj}"
+            check = f"{check} && !(({obj_expr})->{attr} & {bit})"
+        self.emit_line(f"if ({check}) {{")
+
+    def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
         if isinstance(rtype, RTuple):
-            check = "({})".format(
-                self.tuple_undefined_check_cond(rtype, attr_expr, self.c_undefined_value, compare)
+            return self.tuple_undefined_check_cond(
+                rtype, value, self.c_error_value, compare, check_exception=False
             )
         else:
-            check = f"({attr_expr} {compare} {self.c_undefined_value(rtype)})"
-        if unlikely:
-            check = f"(unlikely{check})"
-        self.emit_line(f"if {check} {{")
+            return f"{value} {compare} {self.c_error_value(rtype)}"
 
     def tuple_undefined_check_cond(
         self,
@@ -351,19 +415,33 @@ class Emitter:
         tuple_expr_in_c: str,
         c_type_compare_val: Callable[[RType], str],
         compare: str,
+        *,
+        check_exception: bool = True,
     ) -> str:
         if len(rtuple.types) == 0:
             # empty tuple
             return "{}.empty_struct_error_flag {} {}".format(
                 tuple_expr_in_c, compare, c_type_compare_val(int_rprimitive)
             )
-        item_type = rtuple.types[0]
+        if rtuple.error_overlap:
+            i = 0
+            item_type = rtuple.types[0]
+        else:
+            for i, typ in enumerate(rtuple.types):
+                if not typ.error_overlap:
+                    item_type = rtuple.types[i]
+                    break
+            else:
+                assert False, "not expecting tuple with error overlap"
         if isinstance(item_type, RTuple):
             return self.tuple_undefined_check_cond(
-                item_type, tuple_expr_in_c + ".f0", c_type_compare_val, compare
+                item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
         else:
-            return f"{tuple_expr_in_c}.f0 {compare} {c_type_compare_val(item_type)}"
+            check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
+            if rtuple.error_overlap and check_exception:
+                check += " && PyErr_Occurred()"
+            return check
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
         return "tuple_undefined_" + rtuple.unique_id
@@ -925,14 +1003,18 @@ class Emitter:
 
     def emit_error_check(self, value: str, rtype: RType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""
-        if not isinstance(rtype, RTuple):
-            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
-        else:
+        if isinstance(rtype, RTuple):
             if len(rtype.types) == 0:
                 return  # empty tuples can't fail.
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif rtype.error_overlap:
+            # The error value is also valid as a normal value, so we need to also check
+            # for a raised exception.
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
+        else:
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
         self.emit_lines(failure, "}")
 
     def emit_gc_visit(self, target: str, rtype: RType) -> None:

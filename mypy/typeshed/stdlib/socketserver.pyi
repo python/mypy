@@ -72,7 +72,6 @@ class BaseServer:
 class TCPServer(BaseServer):
     if sys.version_info >= (3, 11):
         allow_reuse_port: bool
-    request_queue_size: int
     def __init__(
         self: Self,
         server_address: tuple[str, int],

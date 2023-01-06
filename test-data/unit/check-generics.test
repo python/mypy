@@ -655,7 +655,7 @@ a: other.Array[float]
 reveal_type(a) # N: Revealed type is "other.array[Any, other.dtype[builtins.float]]"
 
 [out]
-main:3: error: Type argument "float" of "dtype" must be a subtype of "generic"  [type-var]
+main:3: error: Type argument "float" of "Array" must be a subtype of "generic"  [type-var]
     a: other.Array[float]
        ^
 [file other.py]
@@ -1031,8 +1031,9 @@ IntNode[int](1, 1)
 IntNode[int](1, 'a')  # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
 
 SameNode = Node[T, T]
-# TODO: fix https://github.com/python/mypy/issues/7084.
-ff = SameNode[T](1, 1)
+ff = SameNode[T](1, 1)  # E: Type variable "__main__.T" is unbound \
+        # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
+        # N: (Hint: Use "T" in function signature to bind "T" inside a function)
 a = SameNode(1, 'x')
 reveal_type(a) # N: Revealed type is "__main__.Node[Any, Any]"
 b = SameNode[int](1, 1)
@@ -1049,20 +1050,20 @@ CA = Callable[[T], int]
 TA = Tuple[T, int]
 UA = Union[T, int]
 
-cs = CA + 1 # E: Unsupported left operand type for + ("object")
+cs = CA + 1 # E: Unsupported left operand type for + ("<typing special form>")
 reveal_type(cs) # N: Revealed type is "Any"
 
-ts = TA() # E: "object" not callable
+ts = TA() # E: "<typing special form>" not callable
 reveal_type(ts) # N: Revealed type is "Any"
 
-us = UA.x # E: "object" has no attribute "x"
+us = UA.x # E: "<typing special form>" has no attribute "x"
 reveal_type(us) # N: Revealed type is "Any"
 
 xx = CA[str] + 1  # E: Type application is only supported for generic classes
 yy = TA[str]()  # E: Type application is only supported for generic classes
 zz = UA[str].x  # E: Type application is only supported for generic classes
 [builtins fixtures/tuple.pyi]
-
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testGenericTypeAliasesTypeVarBinding]
@@ -1101,13 +1102,12 @@ BadA = A[str, T]  # One error here
 SameA = A[T, T]
 
 x = None # type: SameA[int]
-y = None # type: SameA[str] # Two errors here, for both args of A
+y = None # type: SameA[str] # Another error here
 
 [builtins fixtures/list.pyi]
 [out]
 main:9:8: error: Value of type variable "T" of "A" cannot be "str"
-main:13:1: error: Value of type variable "T" of "A" cannot be "str"
-main:13:1: error: Value of type variable "S" of "A" cannot be "str"
+main:13:1: error: Value of type variable "T" of "SameA" cannot be "str"
 
 [case testGenericTypeAliasesIgnoredPotentialAlias]
 class A: ...
@@ -1544,7 +1544,7 @@ class C(Generic[T]):
 reveal_type(C.F(17).foo())      # N: Revealed type is "builtins.int"
 reveal_type(C("").F(17).foo())  # N: Revealed type is "builtins.int"
 reveal_type(C.F)                # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
-reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
+reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`6) -> __main__.C.F[K`6]"
 
 
 -- Callable subtyping with generic functions
@@ -1557,9 +1557,9 @@ A = TypeVar('A')
 B = TypeVar('B')
 
 def f1(x: A) -> A: ...
-def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 def f3(x: B) -> B: ...
-def f4(x: int) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def f4(x: int) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 
 y1 = f1
 if int():
@@ -1608,8 +1608,8 @@ B = TypeVar('B')
 T = TypeVar('T')
 def outer(t: T) -> None:
     def f1(x: A) -> A: ...
-    def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
-    def f3(x: T) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+    def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+    def f3(x: T) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
     def f4(x: A) -> T: ...
     def f5(x: T) -> T: ...
 
@@ -1778,7 +1778,7 @@ from typing import TypeVar
 A = TypeVar('A')
 B = TypeVar('B')
 def f1(x: int, y: A) -> A: ...
-def f2(x: int, y: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def f2(x: int, y: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
 def f3(x: A, y: B) -> B: ...
 g = f1
 g = f2
@@ -2580,3 +2580,119 @@ class Bar(Foo[AnyStr]):
 [out]
 main:10: error: Argument 1 to "method1" of "Foo" has incompatible type "str"; expected "AnyStr"
 main:10: error: Argument 2 to "method1" of "Foo" has incompatible type "bytes"; expected "AnyStr"
+
+[case testTypeVariableClashVar]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    x: Callable[[T], R]
+
+def func(x: C[R]) -> R:
+    return x.x(42)  # OK
+
+[case testTypeVariableClashVarTuple]
+from typing import Generic, TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    x: Callable[[T], Tuple[R, T]]
+
+def func(x: C[R]) -> R:
+    if bool():
+        return x.x(42)[0]  # OK
+    else:
+        return x.x(42)[1]  # E: Incompatible return value type (got "int", expected "R")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVariableClashMethod]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    def x(self) -> Callable[[T], R]: ...
+
+def func(x: C[R]) -> R:
+    return x.x()(42)  # OK
+
+[case testTypeVariableClashMethodTuple]
+from typing import Generic, TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+R = TypeVar("R")
+class C(Generic[R]):
+    def x(self) -> Callable[[T], Tuple[R, T]]: ...
+
+def func(x: C[R]) -> R:
+    if bool():
+        return x.x()(42)[0]  # OK
+    else:
+        return x.x()(42)[1]  # E: Incompatible return value type (got "int", expected "R")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVariableClashVarSelf]
+from typing import Self, TypeVar, Generic, Callable
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class C(Generic[T]):
+    x: Callable[[S], Self]
+    y: T
+
+def foo(x: C[T]) -> T:
+    return x.x(42).y  # OK
+
+[case testNestedGenericFunctionTypeApplication]
+from typing import TypeVar, Generic, List
+
+A = TypeVar("A")
+B = TypeVar("B")
+
+class C(Generic[A]):
+    x: A
+
+def foo(x: A) -> A:
+    def bar() -> List[A]:
+        y = C[List[A]]()
+        z = C[List[B]]()  # E: Type variable "__main__.B" is unbound \
+                # N: (Hint: Use "Generic[B]" or "Protocol[B]" base class to bind "B" inside a class) \
+                # N: (Hint: Use "B" in function signature to bind "B" inside a function)
+        return y.x
+    return bar()[0]
+
+
+-- TypeVar imported from typing_extensions
+-- ---------------------------------------
+
+[case testTypeVarTypingExtensionsSimpleGeneric]
+from typing import Generic
+from typing_extensions import TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+a: A = A(8)
+b: A[str] = A("")
+
+reveal_type(A(1.23))  # N: Revealed type is "__main__.A[builtins.float]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTypingExtensionsSimpleBound]
+from typing_extensions import TypeVar
+
+T= TypeVar("T")
+
+def func(var: T) -> T:
+    return var
+
+reveal_type(func(1))  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]

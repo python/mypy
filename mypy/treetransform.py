@@ -49,6 +49,7 @@ from mypy.nodes import (
     LambdaExpr,
     ListComprehension,
     ListExpr,
+    MatchStmt,
     MemberExpr,
     MypyFile,
     NamedTupleExpr,
@@ -89,6 +90,17 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
+)
+from mypy.patterns import (
+    AsPattern,
+    ClassPattern,
+    MappingPattern,
+    OrPattern,
+    Pattern,
+    SequencePattern,
+    SingletonPattern,
+    StarredPattern,
+    ValuePattern,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import FunctionLike, ProperType, Type
@@ -361,7 +373,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return RaiseStmt(self.optional_expr(node.expr), self.optional_expr(node.from_expr))
 
     def visit_try_stmt(self, node: TryStmt) -> TryStmt:
-        return TryStmt(
+        new = TryStmt(
             self.block(node.body),
             self.optional_names(node.vars),
             self.optional_expressions(node.types),
@@ -369,6 +381,8 @@ class TransformVisitor(NodeVisitor[Node]):
             self.optional_block(node.else_body),
             self.optional_block(node.finally_body),
         )
+        new.is_star = node.is_star
+        return new
 
     def visit_with_stmt(self, node: WithStmt) -> WithStmt:
         new = WithStmt(
@@ -380,6 +394,52 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_async = node.is_async
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
+
+    def visit_as_pattern(self, p: AsPattern) -> AsPattern:
+        return AsPattern(
+            pattern=self.pattern(p.pattern) if p.pattern is not None else None,
+            name=self.duplicate_name(p.name) if p.name is not None else None,
+        )
+
+    def visit_or_pattern(self, p: OrPattern) -> OrPattern:
+        return OrPattern([self.pattern(pat) for pat in p.patterns])
+
+    def visit_value_pattern(self, p: ValuePattern) -> ValuePattern:
+        return ValuePattern(self.expr(p.expr))
+
+    def visit_singleton_pattern(self, p: SingletonPattern) -> SingletonPattern:
+        return SingletonPattern(p.value)
+
+    def visit_sequence_pattern(self, p: SequencePattern) -> SequencePattern:
+        return SequencePattern([self.pattern(pat) for pat in p.patterns])
+
+    def visit_starred_pattern(self, p: StarredPattern) -> StarredPattern:
+        return StarredPattern(self.duplicate_name(p.capture) if p.capture is not None else None)
+
+    def visit_mapping_pattern(self, p: MappingPattern) -> MappingPattern:
+        return MappingPattern(
+            keys=[self.expr(expr) for expr in p.keys],
+            values=[self.pattern(pat) for pat in p.values],
+            rest=self.duplicate_name(p.rest) if p.rest is not None else None,
+        )
+
+    def visit_class_pattern(self, p: ClassPattern) -> ClassPattern:
+        class_ref = p.class_ref.accept(self)
+        assert isinstance(class_ref, RefExpr)
+        return ClassPattern(
+            class_ref=class_ref,
+            positionals=[self.pattern(pat) for pat in p.positionals],
+            keyword_keys=list(p.keyword_keys),
+            keyword_values=[self.pattern(pat) for pat in p.keyword_values],
+        )
+
+    def visit_match_stmt(self, o: MatchStmt) -> MatchStmt:
+        return MatchStmt(
+            subject=self.expr(o.subject),
+            patterns=[self.pattern(p) for p in o.patterns],
+            guards=self.optional_expressions(o.guards),
+            bodies=self.blocks(o.bodies),
+        )
 
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
         return StarExpr(node.expr)
@@ -459,7 +519,12 @@ class TransformVisitor(NodeVisitor[Node]):
         )
 
     def visit_op_expr(self, node: OpExpr) -> OpExpr:
-        new = OpExpr(node.op, self.expr(node.left), self.expr(node.right))
+        new = OpExpr(
+            node.op,
+            self.expr(node.left),
+            self.expr(node.right),
+            cast(Optional[TypeAliasExpr], self.optional_expr(node.analyzed)),
+        )
         new.method_type = self.optional_type(node.method_type)
         return new
 
@@ -490,7 +555,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
-        return AssignmentExpr(node.target, node.value)
+        return AssignmentExpr(self.expr(node.target), self.expr(node.value))
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))
@@ -588,7 +653,11 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_type_var_tuple_expr(self, node: TypeVarTupleExpr) -> TypeVarTupleExpr:
         return TypeVarTupleExpr(
-            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+            node.name,
+            node.fullname,
+            self.type(node.upper_bound),
+            node.tuple_fallback,
+            variance=node.variance,
         )
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
@@ -635,6 +704,12 @@ class TransformVisitor(NodeVisitor[Node]):
         new = stmt.accept(self)
         assert isinstance(new, Statement)
         new.set_line(stmt)
+        return new
+
+    def pattern(self, pattern: Pattern) -> Pattern:
+        new = pattern.accept(self)
+        assert isinstance(new, Pattern)
+        new.set_line(pattern)
         return new
 
     # Helpers

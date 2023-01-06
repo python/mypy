@@ -15,6 +15,7 @@ import inspect
 import os
 import pkgutil
 import re
+import symtable
 import sys
 import traceback
 import types
@@ -29,11 +30,13 @@ from typing_extensions import get_origin
 
 import mypy.build
 import mypy.modulefinder
+import mypy.nodes
 import mypy.state
 import mypy.types
 import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
+from mypy.evalexpr import UNKNOWN, evaluate_expression
 from mypy.options import Options
 from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
@@ -136,7 +139,7 @@ class Error:
         if not isinstance(self.runtime_object, Missing):
             try:
                 runtime_line = inspect.getsourcelines(self.runtime_object)[1]
-            except (OSError, TypeError):
+            except (OSError, TypeError, SyntaxError):
                 pass
             try:
                 runtime_file = inspect.getsourcefile(self.runtime_object)
@@ -203,7 +206,9 @@ def test_module(module_name: str) -> Iterator[Error]:
 
     try:
         runtime = silent_import_module(module_name)
-    except Exception as e:
+    except KeyboardInterrupt:
+        raise
+    except BaseException as e:
         yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
 
@@ -259,10 +264,10 @@ def _verify_exported_names(
     if not (names_in_runtime_not_stub or names_in_stub_not_runtime):
         return
     yield Error(
-        object_path,
+        object_path + ["__all__"],
         (
             "names exported from the stub do not correspond to the names exported at runtime. "
-            "This is probably due to an inaccurate `__all__` in the stub or things being missing from the stub."
+            "This is probably due to things being missing from the stub or an inaccurate `__all__` in the stub"
         ),
         # Pass in MISSING instead of the stub and runtime objects, as the line numbers aren't very
         # relevant here, and it makes for a prettier error message
@@ -277,6 +282,36 @@ def _verify_exported_names(
             f"Names exported at runtime but not in the stub: " f"{names_in_runtime_not_stub}"
         ),
     )
+
+
+def _get_imported_symbol_names(runtime: types.ModuleType) -> frozenset[str] | None:
+    """Retrieve the names in the global namespace which are known to be imported.
+
+    1). Use inspect to retrieve the source code of the module
+    2). Use symtable to parse the source and retrieve names that are known to be imported
+        from other modules.
+
+    If either of the above steps fails, return `None`.
+
+    Note that if a set of names is returned,
+    it won't include names imported via `from foo import *` imports.
+    """
+    try:
+        source = inspect.getsource(runtime)
+    except (OSError, TypeError, SyntaxError):
+        return None
+
+    if not source.strip():
+        # The source code for the module was an empty file,
+        # no point in parsing it with symtable
+        return frozenset()
+
+    try:
+        module_symtable = symtable.symtable(source, runtime.__name__, "exec")
+    except SyntaxError:
+        return None
+
+    return frozenset(sym.get_name() for sym in module_symtable.get_symbols() if sym.is_imported())
 
 
 @verify.register(nodes.MypyFile)
@@ -308,15 +343,26 @@ def verify_mypyfile(
         if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
     }
 
+    imported_symbols = _get_imported_symbol_names(runtime)
+
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
+        """Heuristics to determine whether a name originates from another module."""
         obj = getattr(r, attr)
-        try:
-            obj_mod = getattr(obj, "__module__", None)
-        except Exception:
+        if isinstance(obj, types.ModuleType):
             return False
-        if obj_mod is not None:
-            return obj_mod == r.__name__
-        return not isinstance(obj, types.ModuleType)
+        if callable(obj):
+            # It's highly likely to be a class or a function if it's callable,
+            # so the __module__ attribute will give a good indication of which module it comes from
+            try:
+                obj_mod = obj.__module__
+            except Exception:
+                pass
+            else:
+                if isinstance(obj_mod, str):
+                    return bool(obj_mod == r.__name__)
+        if imported_symbols is not None:
+            return attr not in imported_symbols
+        return True
 
     runtime_public_contents = (
         runtime_all_as_set
@@ -325,8 +371,9 @@ def verify_mypyfile(
             m
             for m in dir(runtime)
             if not is_probably_private(m)
-            # Ensure that the object's module is `runtime`, since in the absence of __all__ we
-            # don't have a good way to detect re-exports at runtime.
+            # Filter out objects that originate from other modules (best effort). Note that in the
+            # absence of __all__, we don't have a way to detect explicit / intentional re-exports
+            # at runtime
             and _belongs_to_runtime(runtime, m)
         }
     )
@@ -349,20 +396,12 @@ def verify_mypyfile(
         yield from verify(stub_entry, runtime_entry, object_path + [entry])
 
 
-@verify.register(nodes.TypeInfo)
-def verify_typeinfo(
-    stub: nodes.TypeInfo, runtime: MaybeMissing[type[Any]], object_path: list[str]
+def _verify_final(
+    stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
-        return
-    if not isinstance(runtime, type):
-        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
-        return
-
     try:
 
-        class SubClass(runtime):  # type: ignore
+        class SubClass(runtime):  # type: ignore[misc]
             pass
 
     except TypeError:
@@ -379,6 +418,59 @@ def verify_typeinfo(
         # The class probably wants its subclasses to do something special.
         # Examples: ctypes.Array, ctypes._SimpleCData
         pass
+
+
+def _verify_metaclass(
+    stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str]
+) -> Iterator[Error]:
+    # We exclude protocols, because of how complex their implementation is in different versions of
+    # python. Enums are also hard, ignoring.
+    # TODO: check that metaclasses are identical?
+    if not stub.is_protocol and not stub.is_enum:
+        runtime_metaclass = type(runtime)
+        if runtime_metaclass is not type and stub.metaclass_type is None:
+            # This means that runtime has a custom metaclass, but a stub does not.
+            yield Error(
+                object_path,
+                "is inconsistent, metaclass differs",
+                stub,
+                runtime,
+                stub_desc="N/A",
+                runtime_desc=f"{runtime_metaclass}",
+            )
+        elif (
+            runtime_metaclass is type
+            and stub.metaclass_type is not None
+            # We ignore extra `ABCMeta` metaclass on stubs, this might be typing hack.
+            # We also ignore `builtins.type` metaclass as an implementation detail in mypy.
+            and not mypy.types.is_named_instance(
+                stub.metaclass_type, ("abc.ABCMeta", "builtins.type")
+            )
+        ):
+            # This means that our stub has a metaclass that is not present at runtime.
+            yield Error(
+                object_path,
+                "metaclass mismatch",
+                stub,
+                runtime,
+                stub_desc=f"{stub.metaclass_type.type.fullname}",
+                runtime_desc="N/A",
+            )
+
+
+@verify.register(nodes.TypeInfo)
+def verify_typeinfo(
+    stub: nodes.TypeInfo, runtime: MaybeMissing[type[Any]], object_path: list[str]
+) -> Iterator[Error]:
+    if isinstance(runtime, Missing):
+        yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
+        return
+    if not isinstance(runtime, type):
+        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
+        return
+
+    yield from _verify_final(stub, runtime, object_path)
+    yield from _verify_metaclass(stub, runtime, object_path)
 
     # Check everything already defined on the stub class itself (i.e. not inherited)
     to_check = set(stub.names)
@@ -528,6 +620,23 @@ def _verify_arg_default_value(
                     f"has a default value of type {runtime_type}, "
                     f"which is incompatible with stub argument type {stub_type}"
                 )
+            if stub_arg.initializer is not None:
+                stub_default = evaluate_expression(stub_arg.initializer)
+                if (
+                    stub_default is not UNKNOWN
+                    and stub_default is not ...
+                    and (
+                        stub_default != runtime_arg.default
+                        # We want the types to match exactly, e.g. in case the stub has
+                        # True and the runtime has 1 (or vice versa).
+                        or type(stub_default) is not type(runtime_arg.default)  # noqa: E721
+                    )
+                ):
+                    yield (
+                        f'runtime argument "{runtime_arg.name}" '
+                        f"has a default value of {runtime_arg.default!r}, "
+                        f"which is different from stub argument default {stub_default!r}"
+                    )
     else:
         if stub_arg.kind.is_optional():
             yield (
@@ -569,7 +678,7 @@ class Signature(Generic[T]):
 
         def has_default(arg: Any) -> bool:
             if isinstance(arg, inspect.Parameter):
-                return arg.default != inspect.Parameter.empty
+                return bool(arg.default != inspect.Parameter.empty)
             if isinstance(arg, nodes.Argument):
                 return arg.kind.is_optional()
             raise AssertionError
@@ -825,16 +934,8 @@ def verify_funcitem(
             return
 
     if isinstance(stub, nodes.FuncDef):
-        stub_abstract = stub.abstract_status == nodes.IS_ABSTRACT
-        runtime_abstract = getattr(runtime, "__isabstractmethod__", False)
-        # The opposite can exist: some implementations omit `@abstractmethod` decorators
-        if runtime_abstract and not stub_abstract:
-            yield Error(
-                object_path,
-                "is inconsistent, runtime method is abstract but stub is not",
-                stub,
-                runtime,
-            )
+        for error_text in _verify_abstract_status(stub, runtime):
+            yield Error(object_path, error_text, stub, runtime)
 
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
@@ -1021,6 +1122,15 @@ def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[s
     yield "is inconsistent, cannot reconcile @property on stub with runtime object"
 
 
+def _verify_abstract_status(stub: nodes.FuncDef, runtime: Any) -> Iterator[str]:
+    stub_abstract = stub.abstract_status == nodes.IS_ABSTRACT
+    runtime_abstract = getattr(runtime, "__isabstractmethod__", False)
+    # The opposite can exist: some implementations omit `@abstractmethod` decorators
+    if runtime_abstract and not stub_abstract:
+        item_type = "property" if stub.is_property else "method"
+        yield f"is inconsistent, runtime {item_type} is abstract but stub is not"
+
+
 def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem | None:
     """Returns a FuncItem that corresponds to the output of the decorator.
 
@@ -1078,6 +1188,8 @@ def verify_decorator(
         return
     if stub.func.is_property:
         for message in _verify_readonly_property(stub, runtime):
+            yield Error(object_path, message, stub, runtime)
+        for message in _verify_abstract_status(stub.func, runtime):
             yield Error(object_path, message, stub, runtime)
         return
 
@@ -1176,6 +1288,8 @@ IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
         "__annotations__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
+        # Created by `warnings.warn`, does not make much sense to have in stubs:
+        "__warningregistry__",
         # TODO: remove the following from this list
         "__author__",
         "__version__",
@@ -1270,16 +1384,13 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
         and left.value in (0, 1)
-        and isinstance(right, mypy.types.Instance)
-        and right.type.fullname == "builtins.bool"
+        and mypy.types.is_named_instance(right, "builtins.bool")
     ):
         # Pretend Literal[0, 1] is a subtype of bool to avoid unhelpful errors.
         return True
 
-    if (
-        isinstance(right, mypy.types.TypedDictType)
-        and isinstance(left, mypy.types.Instance)
-        and left.type.fullname == "builtins.dict"
+    if isinstance(right, mypy.types.TypedDictType) and mypy.types.is_named_instance(
+        left, "builtins.dict"
     ):
         # Special case checks against TypedDicts
         return True
@@ -1434,7 +1545,9 @@ def build_stubs(modules: list[str], options: Options, find_submodules: bool = Fa
                     for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
                     if m.name not in all_modules
                 )
-            except Exception:
+            except KeyboardInterrupt:
+                raise
+            except BaseException:
                 pass
 
     if sources:
@@ -1463,9 +1576,6 @@ def get_typeshed_stdlib_modules(
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
         version_info = sys.version_info[0:2]
-    # Typeshed's minimum supported Python 3 is Python 3.7
-    if sys.version_info < (3, 7):
-        version_info = (3, 7)
 
     def exists_in_version(module: str) -> bool:
         assert version_info is not None
@@ -1555,6 +1665,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options = Options()
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
+    if options.custom_typeshed_dir:
+        options.abs_custom_typeshed_dir = os.path.abspath(args.custom_typeshed_dir)
     options.config_file = args.mypy_config_file
     options.use_builtins_fixtures = use_builtins_fixtures
 
@@ -1687,7 +1799,7 @@ def parse_options(args: list[str]) -> _Arguments:
     parser.add_argument(
         "--mypy-config-file",
         metavar="FILE",
-        help=("Use specified mypy config file to determine mypy plugins " "and mypy path"),
+        help=("Use specified mypy config file to determine mypy plugins and mypy path"),
     )
     parser.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"

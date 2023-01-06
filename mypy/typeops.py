@@ -33,6 +33,7 @@ from mypy.types import (
     ENUM_REMOVED_PROPS,
     AnyType,
     CallableType,
+    ExtraAttrs,
     FormalArgument,
     FunctionLike,
     Instance,
@@ -41,10 +42,12 @@ from mypy.types import (
     Overloaded,
     Parameters,
     ParamSpecType,
+    PartialType,
     ProperType,
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeQuery,
     TypeType,
@@ -70,13 +73,13 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
     """
     if isinstance(s, TypeAliasType) and s.is_recursive:
         return (
-            isinstance(get_proper_type(t), Instance)
+            isinstance(get_proper_type(t), (Instance, UnionType))
             or isinstance(t, TypeAliasType)
             and t.is_recursive
         )
     if isinstance(t, TypeAliasType) and t.is_recursive:
         return (
-            isinstance(get_proper_type(s), Instance)
+            isinstance(get_proper_type(s), (Instance, UnionType))
             or isinstance(s, TypeAliasType)
             and s.is_recursive
         )
@@ -104,7 +107,7 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    return Instance(info, [join_type_list(items)])
+    return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
 
 
 def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
@@ -438,6 +441,7 @@ def make_simplified_union(
     * [int, int] -> int
     * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
     * [Any, Any] -> Any
+    * [int, Union[bytes, str]] -> Union[int, bytes, str]
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
@@ -452,17 +456,45 @@ def make_simplified_union(
     # Step 1: expand all nested unions
     items = flatten_nested_unions(items)
 
-    # Step 2: remove redundant unions
+    # Step 2: fast path for single item
+    if len(items) == 1:
+        return get_proper_type(items[0])
+
+    # Step 3: remove redundant unions
     simplified_set: Sequence[Type] = _remove_redundant_union_items(items, keep_erased)
 
-    # Step 3: If more than one literal exists in the union, try to simplify
+    # Step 4: If more than one literal exists in the union, try to simplify
     if (
         contract_literals
         and sum(isinstance(get_proper_type(item), LiteralType) for item in simplified_set) > 1
     ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return get_proper_type(UnionType.make_union(simplified_set, line, column))
+    result = get_proper_type(UnionType.make_union(simplified_set, line, column))
+
+    nitems = len(items)
+    if nitems > 1 and (
+        nitems > 2 or not (type(items[0]) is NoneType or type(items[1]) is NoneType)
+    ):
+        # Step 5: At last, we erase any (inconsistent) extra attributes on instances.
+
+        # Initialize with None instead of an empty set as a micro-optimization. The set
+        # is needed very rarely, so we try to avoid constructing it.
+        extra_attrs_set: set[ExtraAttrs] | None = None
+        for item in items:
+            instance = try_getting_instance_fallback(item)
+            if instance and instance.extra_attrs:
+                if extra_attrs_set is None:
+                    extra_attrs_set = {instance.extra_attrs}
+                else:
+                    extra_attrs_set.add(instance.extra_attrs)
+
+        if extra_attrs_set is not None and len(extra_attrs_set) > 1:
+            fallback = try_getting_instance_fallback(result)
+            if fallback:
+                fallback.extra_attrs = None
+
+    return result
 
 
 def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
@@ -517,7 +549,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                 continue
             # actual redundancy checks (XXX?)
             if is_redundant_literal_instance(proper_item, proper_tj) and is_proper_subtype(
-                tj, item, keep_erased_types=keep_erased
+                tj, item, keep_erased_types=keep_erased, ignore_promotions=True
             ):
                 # We found a redundant item in the union.
                 removed.add(j)
@@ -984,3 +1016,37 @@ def separate_union_literals(t: UnionType) -> tuple[Sequence[LiteralType], Sequen
             union_items.append(item)
 
     return literal_items, union_items
+
+
+def try_getting_instance_fallback(typ: Type) -> Instance | None:
+    """Returns the Instance fallback for this type if one exists or None."""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return typ
+    elif isinstance(typ, LiteralType):
+        return typ.fallback
+    elif isinstance(typ, NoneType):
+        return None  # Fast path for None, which is common
+    elif isinstance(typ, FunctionLike):
+        return typ.fallback
+    elif isinstance(typ, TupleType):
+        return typ.partial_fallback
+    elif isinstance(typ, TypedDictType):
+        return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
+    return None
+
+
+def fixup_partial_type(typ: Type) -> Type:
+    """Convert a partial type that we couldn't resolve into something concrete.
+
+    This means, for None we make it Optional[Any], and for anything else we
+    fill in all of the type arguments with Any.
+    """
+    if not isinstance(typ, PartialType):
+        return typ
+    if typ.type is None:
+        return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
+    else:
+        return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))

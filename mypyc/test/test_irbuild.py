@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os.path
+import sys
 
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
@@ -37,13 +38,19 @@ files = [
     "irbuild-generics.test",
     "irbuild-try.test",
     "irbuild-strip-asserts.test",
+    "irbuild-i64.test",
+    "irbuild-i32.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",
     "irbuild-dunders.test",
     "irbuild-singledispatch.test",
     "irbuild-constant-fold.test",
+    "irbuild-glue-methods.test",
 ]
+
+if sys.version_info >= (3, 10):
+    files.append("irbuild-match.test")
 
 
 class TestGenOps(MypycDataSuite):

@@ -22,7 +22,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.types import Instance, Type
+from mypy.types import Instance, ProperType
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
@@ -95,7 +95,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     # implement some methods.
     typ.abstract_attributes = sorted(abstract)
     if is_stub_file:
-        if typ.declared_metaclass and typ.declared_metaclass.type.fullname == "abc.ABCMeta":
+        if typ.declared_metaclass and typ.declared_metaclass.type.has_base("abc.ABCMeta"):
             return
         if typ.is_protocol:
             return
@@ -155,7 +155,7 @@ def add_type_promotion(
     This includes things like 'int' being compatible with 'float'.
     """
     defn = info.defn
-    promote_targets: list[Type] = []
+    promote_targets: list[ProperType] = []
     for decorator in defn.decorators:
         if isinstance(decorator, CallExpr):
             analyzed = decorator.analyzed
@@ -165,6 +165,10 @@ def add_type_promotion(
     if not promote_targets:
         if defn.fullname in TYPE_PROMOTIONS:
             target_sym = module_names.get(TYPE_PROMOTIONS[defn.fullname])
+            if defn.fullname == "builtins.bytearray" and options.disable_bytearray_promotion:
+                target_sym = None
+            elif defn.fullname == "builtins.memoryview" and options.disable_memoryview_promotion:
+                target_sym = None
             # With test stubs, the target may not exist.
             if target_sym:
                 target_info = target_sym.node

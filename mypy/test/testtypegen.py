@@ -7,7 +7,7 @@ import re
 from mypy import build
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource
-from mypy.nodes import NameExpr
+from mypy.nodes import NameExpr, TempNode
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -34,6 +34,7 @@ class TypeExportSuite(DataSuite):
             options.show_traceback = True
             options.export_types = True
             options.preserve_asts = True
+            options.allow_empty_bodies = True
             result = build.build(
                 sources=[BuildSource("main", None, src)],
                 options=options,
@@ -53,7 +54,9 @@ class TypeExportSuite(DataSuite):
             # Filter nodes that should be included in the output.
             keys = []
             for node in nodes:
-                if node.line is not None and node.line != -1 and map[node]:
+                if isinstance(node, TempNode):
+                    continue
+                if node.line != -1 and map[node]:
                     if ignore_node(node) or node in ignored:
                         continue
                     if re.match(mask, short_type(node)) or (

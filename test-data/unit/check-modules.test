@@ -625,7 +625,11 @@ try:
     from m import f, g
 except:
     def f(x): pass
-    def g(x): pass # E: All conditional function variants must have identical signatures
+    def g(x): pass # E: All conditional function variants must have identical signatures \
+                   # N: Original: \
+                   # N:     def g(x: Any, y: Any) -> Any \
+                   # N: Redefinition: \
+                   # N:     def g(x: Any) -> Any
 [file m.py]
 def f(x): pass
 def g(x, y): pass
@@ -647,9 +651,28 @@ try:
     from m import f, g # E: Incompatible import of "g" (imported name has type "Callable[[Any, Any], Any]", local name has type "Callable[[Any], Any]")
 except:
     pass
+
+import m as f  # E: Incompatible import of "f" (imported name has type "object", local name has type "Callable[[Any], Any]")
+
 [file m.py]
 def f(x): pass
 def g(x, y): pass
+
+[case testRedefineTypeViaImport]
+from typing import Type
+import mod
+
+X: Type[mod.A]
+Y: Type[mod.B]
+from mod import B as X
+from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "Type[A]", local name has type "Type[B]")
+
+import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "Type[A]")
+
+[file mod.py]
+class A: ...
+class B(A): ...
+
 
 [case testImportVariableAndAssignNone]
 try:
@@ -1325,13 +1348,13 @@ import a
 import b
 def f() -> int:
     return b.x
-y = 0 + 0
+y = 0 + int()
 [file b.py]
 import a
 def g() -> int:
     reveal_type(a.y)
     return a.y
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/b.py:3: note: Revealed type is "builtins.int"
 
@@ -1342,12 +1365,12 @@ import b
 def f() -> int:
     reveal_type(b.x)
     return b.x
-y = 0 + 0
+y = 0 + int()
 [file b.py]
 import a
 def g() -> int:
     return a.y
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:3: note: Revealed type is "builtins.int"
 
@@ -1362,7 +1385,7 @@ class C:
         self.x2 = b.b
 [file b.py]
 import a
-b = 1 + 1
+b = 1 + int()
 [out]
 tmp/a.py:4: error: Cannot determine type of "x2"
 
@@ -1375,7 +1398,7 @@ def f() -> None:
     a + ''
 [file b.py]
 import a
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
@@ -1388,7 +1411,7 @@ def f() -> None:
     a + ''
 [file b.py]
 import a
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
@@ -1401,7 +1424,7 @@ def g() -> None:
 @b.deco
 def f(a: str) -> int: pass
 reveal_type(f)
-x = 1 + 1
+x = 1 + int()
 [file b.py]
 from typing import Callable, TypeVar
 import a
@@ -1668,11 +1691,11 @@ mod_any: Any = m
 mod_int: int = m  # E: Incompatible types in assignment (expression has type Module, variable has type "int")
 
 reveal_type(mod_mod)  # N: Revealed type is "types.ModuleType"
-mod_mod.a  # E: Module has no attribute "a"
+reveal_type(mod_mod.a)  # N: Revealed type is "Any"
 reveal_type(mod_mod2)  # N: Revealed type is "types.ModuleType"
-mod_mod2.a  # E: Module has no attribute "a"
+reveal_type(mod_mod2.a)  # N: Revealed type is "Any"
 reveal_type(mod_mod3)  # N: Revealed type is "types.ModuleType"
-mod_mod3.a  # E: Module has no attribute "a"
+reveal_type(mod_mod3.a)  # N: Revealed type is "Any"
 reveal_type(mod_any)  # N: Revealed type is "Any"
 
 [file m.py]
@@ -1732,7 +1755,7 @@ if bool():
 else:
     x = n
 
-x.a  # E: Module has no attribute "a"
+reveal_type(x.nope)  # N: Revealed type is "Any"
 reveal_type(x.__file__)  # N: Revealed type is "builtins.str"
 
 [file m.py]
@@ -1783,14 +1806,14 @@ m = n  # E: Cannot assign multiple modules to name "m" without explicit "types.M
 [builtins fixtures/module.pyi]
 
 [case testNoReExportFromStubs]
-from stub import Iterable  # E: Module "stub" has no attribute "Iterable"
-from stub import D  # E: Module "stub" has no attribute "D"
+from stub import Iterable  # E: Module "stub" does not explicitly export attribute "Iterable"
+from stub import D  # E: Module "stub" does not explicitly export attribute "D"
 from stub import C
 
 c = C()
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
 it: Iterable[int]
-reveal_type(it)  # N: Revealed type is "Any"
+reveal_type(it)  # N: Revealed type is "typing.Iterable[builtins.int]"
 
 [file stub.pyi]
 from typing import Iterable
@@ -1829,7 +1852,7 @@ class C:
 import stub
 
 reveal_type(stub.y)  # N: Revealed type is "builtins.int"
-reveal_type(stub.z)  # E: Module has no attribute "z" \
+reveal_type(stub.z)  # E: "Module stub" does not explicitly export attribute "z" \
                      # N: Revealed type is "Any"
 
 [file stub.pyi]
@@ -1880,7 +1903,7 @@ class C:
 from util import mod
 reveal_type(mod)  # N: Revealed type is "def () -> package.mod.mod"
 
-from util import internal_detail  # E: Module "util" has no attribute "internal_detail"
+from util import internal_detail  # E: Module "util" does not explicitly export attribute "internal_detail"
 
 [file package/__init__.pyi]
 from .mod import mod as mod
@@ -1895,7 +1918,7 @@ from package import mod as internal_detail
 [builtins fixtures/module.pyi]
 
 [case testNoReExportUnrelatedModule]
-from mod2 import unrelated  # E: Module "mod2" has no attribute "unrelated"
+from mod2 import unrelated  # E: Module "mod2" does not explicitly export attribute "unrelated"
 
 [file mod1/__init__.pyi]
 [file mod1/unrelated.pyi]
@@ -1906,7 +1929,7 @@ from mod1 import unrelated
 [builtins fixtures/module.pyi]
 
 [case testNoReExportUnrelatedSiblingPrefix]
-from pkg.unrel import unrelated  # E: Module "pkg.unrel" has no attribute "unrelated"
+from pkg.unrel import unrelated  # E: Module "pkg.unrel" does not explicitly export attribute "unrelated"
 
 [file pkg/__init__.pyi]
 [file pkg/unrelated.pyi]
@@ -1918,10 +1941,10 @@ from pkg import unrelated
 
 [case testNoReExportChildStubs]
 import mod
-from mod import C, D  # E: Module "mod" has no attribute "C"
+from mod import C, D  # E: Module "mod" does not explicitly export attribute "C"
 
 reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
-mod.C  # E: Module has no attribute "C"
+mod.C  # E: "Module mod" does not explicitly export attribute "C"
 y = mod.D()
 reveal_type(y.a)  # N: Revealed type is "builtins.str"
 
@@ -1936,7 +1959,7 @@ class D:
 [builtins fixtures/module.pyi]
 
 [case testNoReExportNestedStub]
-from stub import substub  # E: Module "stub" has no attribute "substub"
+from stub import substub  # E: Module "stub" does not explicitly export attribute "substub"
 
 [file stub.pyi]
 import substub
@@ -2661,12 +2684,13 @@ from foo.bar import x
 x = 0
 
 [case testClassicNotPackage]
+# flags: --no-namespace-packages
 from foo.bar import x
 [file foo/bar.py]
 x = 0
 [out]
-main:1: error: Cannot find implementation or library stub for module named "foo.bar"
-main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "foo.bar"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNamespacePackage]
 # flags: --namespace-packages
@@ -2847,7 +2871,7 @@ aaaaa: int
 
 [case testModuleAttributeThreeSuggestions]
 import m
-m.aaaaa # E: Module has no attribute "aaaaa"; maybe "aabaa", "aaaba", or "aaaab"?
+m.aaaaa # E: Module has no attribute "aaaaa"; maybe "aaaab", "aaaba", or "aabaa"?
 
 [file m.py]
 aaaab: int
@@ -2882,10 +2906,10 @@ CustomDict = TypedDict(
 [builtins fixtures/tuple.pyi]
 
 [case testNoReExportFromMissingStubs]
-from stub import a  # E: Module "stub" has no attribute "a"
+from stub import a  # E: Module "stub" does not explicitly export attribute "a"
 from stub import b
 from stub import c  # E: Module "stub" has no attribute "c"
-from stub import d  # E: Module "stub" has no attribute "d"
+from stub import d  # E: Module "stub" does not explicitly export attribute "d"
 
 [file stub.pyi]
 from mystery import a, b as b, c as d
@@ -2903,6 +2927,20 @@ p.m.__path__  # E: "object" has no attribute "__path__"
 from . import m as m
 [file p/m.py]
 [builtins fixtures/list.pyi]
+
+[case testSpecialModulesNameImplicitAttr]
+import typing
+import builtins
+import abc
+
+reveal_type(abc.__name__)       # N: Revealed type is "builtins.str"
+reveal_type(builtins.__name__)  # N: Revealed type is "builtins.str"
+reveal_type(typing.__name__)    # N: Revealed type is "builtins.str"
+
+[case testSpecialAttrsAreAvaliableInClasses]
+class Some:
+    name = __name__
+reveal_type(Some.name)  # N: Revealed type is "builtins.str"
 
 [case testReExportAllInStub]
 from m1 import C
@@ -3097,10 +3135,15 @@ from google.cloud import x
 [case testErrorFromGoogleCloud]
 import google.cloud
 from google.cloud import x
+import google.non_existent
+from google.non_existent import x
 [out]
-main:1: error: Cannot find implementation or library stub for module named "google.cloud"
+main:1: error: Library stubs not installed for "google.cloud"
+main:1: note: Hint: "python3 -m pip install types-google-cloud-ndb"
+main:1: note: (or run "mypy --install-types" to install all missing stub packages)
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:1: error: Cannot find implementation or library stub for module named "google"
+main:3: error: Cannot find implementation or library stub for module named "google.non_existent"
 
 [case testMissingSubmoduleOfInstalledStubPackage]
 import bleach.xyz

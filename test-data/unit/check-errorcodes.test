@@ -180,7 +180,9 @@ import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
 [case testErrorCodeBadIgnore]
-import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
+                                  # E: Cannot find implementation or library stub for module named "nostub"  [import] \
+                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
@@ -207,6 +209,8 @@ def f(x,  # type: int  # type: ignore[
     pass
 [out]
 main:2: error: Invalid "type: ignore" comment  [syntax]
+main:2: error: Cannot find implementation or library stub for module named "nostub"  [import]
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
@@ -241,7 +245,8 @@ x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
       # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 import sys
-y: sys  # E: Module "sys" is not valid as a type  [valid-type]
+y: sys  # E: Module "sys" is not valid as a type  [valid-type] \
+        # N: Perhaps you meant to use a protocol matching the module structure?
 z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/tuple.pyi]
@@ -250,7 +255,7 @@ z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
 from typing import TypeVar
 
 T = TypeVar('T')
-def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar  [type-var]
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar  [type-var]
 x = f()  # E: Need type annotation for "x"  [var-annotated]
 y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
@@ -628,9 +633,6 @@ def g() -> int:
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]
 
-[case testErrorCodeIgnoreMiscNote]
-x: [int]  # type: ignore[misc]
-
 [case testErrorCodeProtocolProblemsIgnore]
 from typing_extensions import Protocol
 
@@ -840,18 +842,27 @@ if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, object]" of which 
 if not bad_union:  # E: "__main__.bad_union" has type "object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
-def f():
-    pass
-if f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
-    pass
-if not f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
-    pass
-conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
-
 lst: List[int] = []
 if lst:
     pass
 [builtins fixtures/list.pyi]
+
+[case testTruthyFunctions]
+# flags: --strict-optional
+def f():
+    pass
+if f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+    pass
+if not f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+    pass
+conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+
+[case testTruthyIterable]
+# flags: --strict-optional --enable-error-code truthy-iterable
+from typing import Iterable
+def func(var: Iterable[str]) -> None:
+    if var:  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
+        ...
 
 [case testNoOverloadImplementation]
 from typing import overload
@@ -916,3 +927,59 @@ def f(d: D, s: str) -> None:
     d[s]  # type: ignore[literal-required]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testRecommendErrorCode]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code=...`  [syntax]
+1 + "asdf"
+
+[case testShowErrorCodesInConfig]
+# flags: --config-file tmp/mypy.ini
+# Test 'show_error_codes = True' in config doesn't raise an exception
+var: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
+[file mypy.ini]
+\[mypy]
+show_error_codes = True
+
+[case testErrorCodeUnsafeSuper_no_empty]
+# flags: --strict-optional
+from abc import abstractmethod
+
+class Base:
+    @abstractmethod
+    def meth(self) -> int:
+        raise NotImplementedError()
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()  # E: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe  [safe-super]
+[builtins fixtures/exception.pyi]
+
+[case testDedicatedErrorCodeForEmpty_no_empty]
+# flags: --strict-optional
+from typing import Optional
+def foo() -> int: ...  # E: Missing return statement  [empty-body]
+def bar() -> None: ...
+# This is inconsistent with how --warn-no-return behaves in general
+# but we want to minimize fallout of finally handling empty bodies.
+def baz() -> Optional[int]: ...  # OK
+
+[case testDedicatedErrorCodeTypeAbstract]
+import abc
+from typing import TypeVar, Type
+
+class C(abc.ABC):
+    @abc.abstractmethod
+    def foo(self) -> None: ...
+
+T = TypeVar("T")
+def test(tp: Type[T]) -> T: ...
+test(C)  # E: Only concrete class can be given where "Type[C]" is expected  [type-abstract]
+
+[case testUncheckedAnnotationCodeShown]
+def f():
+    x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+
+[case testUncheckedAnnotationSuppressed]
+# flags: --disable-error-code=annotation-unchecked
+def f():
+    x: int = "no"  # No warning here

@@ -221,6 +221,19 @@ reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'y': builtins.in
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testCannotCreateTypedDictWithDecoratedFunction]
+# flags: --disallow-any-expr
+# https://github.com/python/mypy/issues/13066
+from typing import TypedDict
+class D(TypedDict):
+    @classmethod  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+    def m(self) -> D:
+        pass
+d = D()
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictWithClassmethodAlternativeConstructorDoesNotCrash]
 # https://github.com/python/mypy/issues/5653
 from typing import TypedDict
@@ -880,7 +893,7 @@ B = TypedDict('B', {'@type': Literal['b-type'], 'b': int})
 
 c: Union[A, B] = {'@type': 'a-type', 'a': 'Test'}
 reveal_type(c) # N: Revealed type is "Union[TypedDict('__main__.A', {'@type': Literal['a-type'], 'a': builtins.str}), TypedDict('__main__.B', {'@type': Literal['b-type'], 'b': builtins.int})]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testTypedDictUnionAmbiguousCase]
 from typing import Union, Mapping, Any, cast
@@ -1443,7 +1456,7 @@ reveal_type(x['a']['b']) # N: Revealed type is "builtins.int"
 [case testSelfRecursiveTypedDictInheriting]
 
 from mypy_extensions import TypedDict
-
+# flags: --disable-recursive-aliases
 class MovieBase(TypedDict):
     name: str
     year: int
@@ -1457,7 +1470,7 @@ reveal_type(m['director']['name']) # N: Revealed type is "Any"
 [out]
 
 [case testSubclassOfRecursiveTypedDict]
-
+# flags: --disable-recursive-aliases
 from typing import List
 from mypy_extensions import TypedDict
 
@@ -2012,15 +2025,219 @@ v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testCannotUseFinalDecoratorWithTypedDict]
+[case testOperatorContainsNarrowsTypedDicts_unionWithList]
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+from typing_extensions import final
+
+@final
+class D(TypedDict):
+    foo: int
+
+
+d_or_list: D | list[str]
+
+if 'foo' in d_or_list:
+    assert_type(d_or_list, Union[D, list[str]])
+elif 'bar' in d_or_list:
+    assert_type(d_or_list, list[str])
+else:
+    assert_type(d_or_list, list[str])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_total]
+from __future__ import annotations
+from typing import assert_type, Literal, TypedDict, TypeVar, Union
+from typing_extensions import final
+
+@final
+class D1(TypedDict):
+    foo: int
+
+
+@final
+class D2(TypedDict):
+    bar: int
+
+
+d: D1 | D2
+
+if 'foo' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+foo_or_bar: Literal['foo', 'bar']
+if foo_or_bar in d:
+    assert_type(d, Union[D1, D2])
+else:
+    assert_type(d, Union[D1, D2])
+
+foo_or_invalid: Literal['foo', 'invalid']
+if foo_or_invalid in d:
+    assert_type(d, D1)
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
+else:
+    assert_type(d, Union[D1, D2])
+    # won't narrow 'foo_or_invalid'
+    assert_type(foo_or_invalid, Literal['foo', 'invalid'])
+
+TD = TypeVar('TD', D1, D2)
+
+def f(arg: TD) -> None:
+    value: int
+    if 'foo' in arg:
+        assert_type(arg['foo'], int)
+    else:
+        assert_type(arg['bar'], int)
+
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_final]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing import assert_type, TypedDict, Union
+from typing_extensions import final
+
+@final
+class DFinal(TypedDict):
+    foo: int
+
+
+class DNotFinal(TypedDict):
+    bar: int
+
+
+d_not_final: DNotFinal
+
+if 'bar' in d_not_final:
+    assert_type(d_not_final, DNotFinal)
+else:
+    spam = 'ham'  # E: Statement is unreachable
+
+if 'spam' in d_not_final:
+    assert_type(d_not_final, DNotFinal)
+else:
+    assert_type(d_not_final, DNotFinal)
+
+d_final: DFinal
+
+if 'spam' in d_final:
+    spam = 'ham'  # E: Statement is unreachable
+else:
+    assert_type(d_final, DFinal)
+
+d_union: DFinal | DNotFinal
+
+if 'foo' in d_union:
+    assert_type(d_union, Union[DFinal, DNotFinal])
+else:
+    assert_type(d_union, DNotFinal)
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse]
+from __future__ import annotations
+from typing import assert_type, Literal, TypedDict, Union
+from typing_extensions import final
+
+@final
+class DTotal(TypedDict):
+    required_key: int
+
+
+@final
+class DNotTotal(TypedDict, total=False):
+    optional_key: int
+
+
+d: DTotal | DNotTotal
+
+if 'required_key' in d:
+    assert_type(d, DTotal)
+else:
+    assert_type(d, DNotTotal)
+
+if 'optional_key' in d:
+    assert_type(d, DNotTotal)
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+
+key: Literal['optional_key', 'required_key']
+if key in d:
+    assert_type(d, Union[DTotal, DNotTotal])
+else:
+    assert_type(d, Union[DTotal, DNotTotal])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired]
+from __future__ import annotations
+from typing import assert_type, Required, NotRequired, TypedDict, Union
+from typing_extensions import final
+
+@final
+class D1(TypedDict):
+    required_key: Required[int]
+    optional_key: NotRequired[int]
+
+
+@final
+class D2(TypedDict):
+    abc: int
+    xyz: int
+
+
+d: D1 | D2
+
+if 'required_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, D2)
+
+if 'optional_key' in d:
+    assert_type(d, D1)
+else:
+    assert_type(d, Union[D1, D2])
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCannotSubclassFinalTypedDict]
 from typing import TypedDict
 from typing_extensions import final
 
-@final  # E: @final cannot be used with TypedDict
+@final
 class DummyTypedDict(TypedDict):
     int_val: int
     float_val: float
     str_val: str
+
+class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedDict"
+    pass
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCannotSubclassFinalTypedDictWithForwardDeclarations]
+from typing import TypedDict
+from typing_extensions import final
+
+@final
+class DummyTypedDict(TypedDict):
+    forward_declared: "ForwardDeclared"
+
+class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedDict"
+    pass
+
+class ForwardDeclared: pass
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -2526,12 +2743,28 @@ Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testGenericTypedDictMultipleGenerics]
+# See https://github.com/python/mypy/issues/13755
+from typing import Generic, TypeVar, TypedDict
+
+T = TypeVar("T")
+Foo = TypedDict("Foo", {"bar": T})
+class Stack(Generic[T]): pass
+
+a = Foo[str]
+b = Foo[int]
+reveal_type(a)  # N: Revealed type is "def (*, bar: builtins.str) -> TypedDict('__main__.Foo', {'bar': builtins.str})"
+reveal_type(b)  # N: Revealed type is "def (*, bar: builtins.int) -> TypedDict('__main__.Foo', {'bar': builtins.int})"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testGenericTypedDictCallSyntax]
 from typing import TypedDict, TypeVar
 
 T = TypeVar("T")
 TD = TypedDict("TD", {"key": int, "value": T})
-reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`-1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`-1})"
+reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`1})"
 
 tds: TD[str]
 reveal_type(tds)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.str})"
@@ -2540,5 +2773,16 @@ tdi = TD(key=0, value=0)
 reveal_type(tdi)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.int})"
 TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
 TD[str]({"key": 0, "value": 0})  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSelfItemNotAllowed]
+from typing import Self, TypedDict, Optional
+
+class TD(TypedDict):
+    val: int
+    next: Optional[Self]  # E: Self type cannot be used in TypedDict item type
+TDC = TypedDict("TDC", {"val": int, "next": Optional[Self]})  # E: Self type cannot be used in TypedDict item type
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

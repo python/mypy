@@ -465,6 +465,7 @@ if int():
 
 
 [case testCallingFunctionsWithDefaultArgumentValues]
+# flags: --implicit-optional --no-strict-optional
 
 a, b = None, None # type: (A, B)
 if int():
@@ -1393,7 +1394,11 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(x): pass # E: All conditional function variants must have identical signatures
+    def f(x): pass # E: All conditional function variants must have identical signatures \
+                   # N: Original: \
+                   # N:     def f(x: int) -> None \
+                   # N: Redefinition: \
+                   # N:     def f(x: Any) -> Any
 
 [case testIncompatibleConditionalFunctionDefinition2]
 from typing import Any
@@ -1401,7 +1406,11 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original: \
+                                # N:     def f(x: int) -> None \
+                                # N: Redefinition: \
+                                # N:     def f(y: int) -> None
 
 [case testIncompatibleConditionalFunctionDefinition3]
 from typing import Any
@@ -1409,7 +1418,11 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures \
+                                    # N: Original: \
+                                    # N:     def f(x: int) -> None \
+                                    # N: Redefinition: \
+                                    # N:     def f(x: int = ...) -> None
 
 [case testConditionalFunctionDefinitionUsingDecorator1]
 from typing import Callable
@@ -1462,19 +1475,41 @@ else:
     @dec
     def f(): pass
 
+[case testConditionalFunctionDefinitionUnreachable]
+def bar() -> None:
+    if False:
+        foo = 1
+    else:
+        def foo(obj): ...
+
+def baz() -> None:
+    if False:
+        foo: int = 1
+    else:
+        def foo(obj): ...  # E: Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "int")
+[builtins fixtures/tuple.pyi]
+
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
 def f(x: str) -> None: pass
 x = None # type: Any
 if x:
-    def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original: \
+                                # N:     def f(x: str) -> None \
+                                # N: Redefinition: \
+                                # N:     def f(x: int) -> None
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2]
 from typing import Any
 def f(x: int) -> None: pass # N: "f" defined here
 x = None # type: Any
 if x:
-    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures \
+                                # N: Original: \
+                                # N:     def f(x: int) -> None \
+                                # N: Redefinition: \
+                                # N:     def f(y: int) -> None
 f(x=1) # The first definition takes precedence.
 f(y=1) # E: Unexpected keyword argument "y" for "f"
 
@@ -1640,7 +1675,11 @@ class A:
     if x:
         def f(self, x: int) -> None: pass
     else:
-        def f(self, x): pass # E: All conditional function variants must have identical signatures
+        def f(self, x): pass # E: All conditional function variants must have identical signatures \
+                             # N: Original: \
+                             # N:     def f(self: A, x: int) -> None \
+                             # N: Redefinition: \
+                             # N:     def f(self: A, x: Any) -> Any
 [out]
 
 [case testConditionalFunctionDefinitionInTry]
@@ -2669,7 +2708,7 @@ class A:
     @dec
     def e(self) -> int: pass
     @property
-    def g() -> int: pass   # E: Method must have at least one argument
+    def g() -> int: pass   # E: Method must have at least one argument. Did you forget the "self" argument?
     @property
     def h(self, *args, **kwargs) -> int: pass   # OK
 [builtins fixtures/property.pyi]

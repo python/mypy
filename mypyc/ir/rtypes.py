@@ -361,6 +361,9 @@ c_pointer_rprimitive: Final = RPrimitive(
     "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *"
 )
 
+# The type corresponding to mypyc.common.BITMAP_TYPE
+bitmap_rprimitive: Final = uint32_rprimitive
+
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
 float_rprimitive: Final = RPrimitive("builtins.float", is_unboxed=False, is_refcounted=True)
@@ -569,6 +572,7 @@ class RTuple(RType):
         # Nominally the max c length is 31 chars, but I'm not honestly worried about this.
         self.struct_name = f"tuple_{self.unique_id}"
         self._ctype = f"{self.struct_name}"
+        self.error_overlap = all(t.error_overlap for t in self.types) and bool(self.types)
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
@@ -793,6 +797,30 @@ class RUnion(RType):
         self.items_set = frozenset(items)
         self._ctype = "PyObject *"
 
+    @staticmethod
+    def make_simplified_union(items: list[RType]) -> RType:
+        """Return a normalized union that covers the given items.
+
+        Flatten nested unions and remove duplicate items.
+
+        Overlapping items are *not* simplified. For example,
+        [object, str] will not be simplified.
+        """
+        items = flatten_nested_unions(items)
+        assert items
+
+        # Remove duplicate items using set + list to preserve item order
+        seen = set()
+        new_items = []
+        for item in items:
+            if item not in seen:
+                new_items.append(item)
+                seen.add(item)
+        if len(new_items) > 1:
+            return RUnion(new_items)
+        else:
+            return new_items[0]
+
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
 
@@ -817,6 +845,19 @@ class RUnion(RType):
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RUnion:
         types = [deserialize_type(t, ctx) for t in data["types"]]
         return RUnion(types)
+
+
+def flatten_nested_unions(types: list[RType]) -> list[RType]:
+    if not any(isinstance(t, RUnion) for t in types):
+        return types  # Fast path
+
+    flat_items: list[RType] = []
+    for t in types:
+        if isinstance(t, RUnion):
+            flat_items.extend(flatten_nested_unions(t.items))
+        else:
+            flat_items.append(t)
+    return flat_items
 
 
 def optional_value_type(rtype: RType) -> RType | None:

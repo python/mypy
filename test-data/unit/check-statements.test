@@ -945,6 +945,18 @@ x = f()
 main:10: note: Revealed type is "builtins.int"
 main:15: note: Revealed type is "builtins.str"
 
+[case testExceptionVariableWithDisallowAnyExprInDeferredNode]
+# flags: --disallow-any-expr
+def f() -> int:
+    x
+    try:
+        pass
+    except Exception as ex:
+        pass
+    return 0
+x = f()
+[builtins fixtures/exception.pyi]
+
 [case testArbitraryExpressionAsExceptionType]
 import typing
 a = BaseException
@@ -1073,6 +1085,10 @@ a = A()
 del a.x, a.y # E: "A" has no attribute "y"
 [builtins fixtures/tuple.pyi]
 
+[case testDelStmtWithTypeInfo]
+class Foo: ...
+del Foo
+Foo + 1  # E: Trying to read deleted variable "Foo"
 
 [case testDelStatementWithAssignmentSimple]
 a = 1
@@ -2170,7 +2186,7 @@ N = TypedDict('N', {'x': int})
 [out]
 
 [case testGlobalWithoutInitialization]
-
+# flags: --disable-error-code=annotation-unchecked
 from typing import List
 
 def foo() -> None:
@@ -2184,3 +2200,18 @@ def foo2():
     bar2 = []  # type: List[str]
     bar2
 [builtins fixtures/list.pyi]
+
+[case testNoteUncheckedAnnotation]
+def foo():
+    x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    y = "no"  # type: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    z: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case testGeneratorUnion]
+from typing import Generator, Union
+
+class A: pass
+class B: pass
+
+def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
+    yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")
