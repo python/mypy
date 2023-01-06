@@ -1157,9 +1157,9 @@ def find_matching_overload_items(
 def find_and_build_constraints_for_unpack(
     mapped: tuple[Type, ...], template: tuple[Type, ...], direction: int
 ) -> tuple[list[Constraint], tuple[Type, ...], tuple[Type, ...]]:
-    mapped_prefix_len: int | None = find_unpack_in_list(mapped)
+    mapped_prefix_len = find_unpack_in_list(mapped)
     if mapped_prefix_len is not None:
-        mapped_suffix_len = len(mapped) - mapped_prefix_len - 1
+        mapped_suffix_len: int | None = len(mapped) - mapped_prefix_len - 1
     else:
         mapped_suffix_len = None
 
