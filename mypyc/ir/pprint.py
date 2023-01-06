@@ -109,9 +109,14 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
         rvalue = repr(op.value)
         if isinstance(op.value, frozenset):
-            # Pretty print frozensets in a hacky but stable way.
-            sorted_items = sorted(op.value, key=str)
-            rvalue = "frozenset({" + repr(sorted_items)[1:-1] + "})"
+            # We need to generate a string representation that won't vary
+            # run-to-run because sets are unordered, otherwise we may get
+            # spurious irbuild test failures.
+            #
+            # Sorting by the item's string representation is a bit of a
+            # hack, but it's stable and won't cause TypeErrors.
+            formatted_items = [repr(i) for i in sorted(op.value, key=str)]
+            rvalue = "frozenset({" + ", ".join(formatted_items) + "})"
         return self.format("%r = %s%s", op, prefix, rvalue)
 
     def visit_get_attr(self, op: GetAttr) -> str:

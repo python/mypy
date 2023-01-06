@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
 )
 
 if TYPE_CHECKING:
+    from mypyc.codegen.literals import LiteralValue
     from mypyc.ir.class_ir import ClassIR
     from mypyc.ir.func_ir import FuncDecl, FuncIR
 
@@ -603,19 +604,7 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(
-        self,
-        value: None
-        | str
-        | bytes
-        | bool
-        | int
-        | float
-        | complex
-        | tuple[object, ...]
-        | frozenset[object],
-        rtype: RType,
-    ) -> None:
+    def __init__(self, value: LiteralValue, rtype: RType) -> None:
         self.value = value
         self.type = rtype
 

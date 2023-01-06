@@ -252,14 +252,14 @@ class OpChecker(OpVisitor[None]):
             if isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
 
-    def check_frozenset_items_valid_literals(
-        self, op: LoadLiteral, s: frozenset[object, ...]
-    ) -> None:
+    def check_frozenset_items_valid_literals(self, op: LoadLiteral, s: frozenset[object]) -> None:
         for x in s:
-            if x is not None and not isinstance(x, (str, bytes, bool, int, float, complex, tuple)):
-                self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
-            if isinstance(x, tuple):
+            if x is None or isinstance(x, (str, bytes, bool, int, float, complex)):
+                pass
+            elif isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
+            else:
+                self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None

@@ -718,15 +718,15 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         and len(e.operators) == 1
         and isinstance(e.operands[1], SetExpr)
     ):
-        literal = precompute_set_literal(builder, e.operands[1])
-        if literal is not None:
+        set_literal = precompute_set_literal(builder, e.operands[1])
+        if set_literal is not None:
             lhs = e.operands[0]
-            v = builder.builder.call_c(
-                set_in_op, [builder.accept(lhs), literal], e.line, bool_rprimitive
+            result = builder.builder.call_c(
+                set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
             )
             if first_op == "not in":
-                return builder.unary_op(v, "not", e.line)
-            return v
+                return builder.unary_op(result, "not", e.line)
+            return result
 
     if len(e.operators) == 1:
         # Special some common simple cases

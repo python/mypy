@@ -123,10 +123,10 @@ CONST: Final = "CONST"
 non_const = "non_const"
 
 def main_set(item: Any) -> bool:
-    return item in {None, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST}
+    return item in {None, False, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST}
 
 def main_negated_set(item: Any) -> bool:
-    return item not in {None, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST}
+    return item not in {None, False, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST}
 
 def non_final_name_set(item: Any) -> bool:
     return item in {non_const}
@@ -135,7 +135,7 @@ def non_final_name_set(item: Any) -> bool:
 import native
 from native import CONST, main_set, main_negated_set, non_final_name_set
 
-for item in (None, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST):
+for item in (None, False, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST):
     assert main_set(item), f"{item!r} should be in set_main"
     assert not main_negated_set(item), item
 

@@ -663,11 +663,11 @@ CONST: Final = "daylily"
 non_const = 10
 
 def precomputed(i: object) -> bool:
-    return i in {1, 2.7, 1j, "foo", b"bar", CONST, (None, (27,))}
+    return i in {1, 2.7, 1j, "foo", b"bar", CONST, (None, (27,)), (), False}
 def not_precomputed_non_final_name(i: int) -> bool:
     return i in {non_const}
 def not_precomputed_nested_set(i: int) -> bool:
-    return i in {{1}, 2}
+    return i in {frozenset({1}), 2}
 def not_precomputed_add_operation(i: int) -> bool:
     # TODO: support this?
     return i in {1 + 2}
@@ -679,7 +679,7 @@ def precomputed(i):
     r2 :: bit
     r3 :: bool
 L0:
-    r0 = frozenset({(None, (27,)), 1, 1j, 2.7, b'bar', 'daylily', 'foo'})
+    r0 = frozenset({(), (None, (27,)), 1, 1j, 2.7, False, b'bar', 'daylily', 'foo'})
     r1 = PySet_Contains(r0, i)
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
@@ -718,32 +718,34 @@ def not_precomputed_nested_set(i):
     r1 :: object
     r2 :: int32
     r3 :: bit
-    r4 :: set
-    r5 :: int32
-    r6 :: bit
-    r7 :: object
-    r8 :: int32
-    r9 :: bit
-    r10 :: object
-    r11 :: int32
-    r12 :: bit
-    r13 :: bool
+    r4 :: object
+    r5 :: set
+    r6 :: int32
+    r7 :: bit
+    r8 :: object
+    r9 :: int32
+    r10 :: bit
+    r11 :: object
+    r12 :: int32
+    r13 :: bit
+    r14 :: bool
 L0:
     r0 = PySet_New(0)
     r1 = object 1
     r2 = PySet_Add(r0, r1)
     r3 = r2 >= 0 :: signed
-    r4 = PySet_New(0)
-    r5 = PySet_Add(r4, r0)
-    r6 = r5 >= 0 :: signed
-    r7 = object 2
-    r8 = PySet_Add(r4, r7)
-    r9 = r8 >= 0 :: signed
-    r10 = box(int, i)
-    r11 = PySet_Contains(r4, r10)
-    r12 = r11 >= 0 :: signed
-    r13 = truncate r11: int32 to builtins.bool
-    return r13
+    r4 = PyFrozenSet_New(r0)
+    r5 = PySet_New(0)
+    r6 = PySet_Add(r5, r4)
+    r7 = r6 >= 0 :: signed
+    r8 = object 2
+    r9 = PySet_Add(r5, r8)
+    r10 = r9 >= 0 :: signed
+    r11 = box(int, i)
+    r12 = PySet_Contains(r5, r11)
+    r13 = r12 >= 0 :: signed
+    r14 = truncate r12: int32 to builtins.bool
+    return r14
 def not_precomputed_add_operation(i):
     i :: int
     r0 :: set
