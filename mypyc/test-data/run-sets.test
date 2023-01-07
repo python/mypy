@@ -131,6 +131,10 @@ def main_negated_set(item: Any) -> bool:
 def non_final_name_set(item: Any) -> bool:
     return item in {non_const}
 
+s = set()
+for i in {None, False, 1, 2.0, "3", b"4", 5j, (6,), CONST}:
+    s.add(i)
+
 [file driver.py]
 import native
 from native import CONST, main_set, main_negated_set, non_final_name_set
@@ -142,3 +146,5 @@ for item in (None, False, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST):
 assert non_final_name_set(native.non_const)
 native.non_const = "updated"
 assert non_final_name_set("updated")
+
+assert not native.s ^ {None, False, 1, 2.0, "3", b"4", 5j, (6,), CONST}, native.s

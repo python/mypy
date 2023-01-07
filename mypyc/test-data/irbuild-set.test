@@ -656,7 +656,7 @@ L0:
     r13 = r12 >= 0 :: signed
     return r0
 
-[case testOperatorInLiteral]
+[case testOperatorInSetLiteral]
 from typing import Final
 
 CONST: Final = "daylily"
@@ -766,3 +766,122 @@ L0:
     r6 = r5 >= 0 :: signed
     r7 = truncate r5: int32 to builtins.bool
     return r7
+
+[case testForSetLiteral]
+from typing import Final
+
+CONST: Final = 10
+non_const = 20
+
+def precomputed() -> None:
+    for _ in {"None", "True", "False"}:
+        pass
+
+def precomputed2() -> None:
+    for _ in {None, False, 1, 2.0, "4", b"5", (6,), 7j, CONST}:
+        pass
+
+def not_precomputed() -> None:
+    for not_optimized in {1 + 1}:
+        pass
+    for not_optimized in {non_const}:
+        pass
+
+[out]
+def precomputed():
+    r0 :: set
+    r1, r2 :: object
+    r3 :: str
+    _ :: object
+    r4 :: bit
+L0:
+    r0 = frozenset({'False', 'None', 'True'})
+    r1 = PyObject_GetIter(r0)
+L1:
+    r2 = PyIter_Next(r1)
+    if is_error(r2) goto L4 else goto L2
+L2:
+    r3 = cast(str, r2)
+    _ = r3
+L3:
+    goto L1
+L4:
+    r4 = CPy_NoErrOccured()
+L5:
+    return 1
+def precomputed2():
+    r0 :: set
+    r1, r2, _ :: object
+    r3 :: bit
+L0:
+    r0 = frozenset({(6,), 1, 10, 2.0, '4', 7j, False, None, b'5'})
+    r1 = PyObject_GetIter(r0)
+L1:
+    r2 = PyIter_Next(r1)
+    if is_error(r2) goto L4 else goto L2
+L2:
+    _ = r2
+L3:
+    goto L1
+L4:
+    r3 = CPy_NoErrOccured()
+L5:
+    return 1
+def not_precomputed():
+    r0 :: set
+    r1 :: object
+    r2 :: int32
+    r3 :: bit
+    r4, r5 :: object
+    r6, not_optimized :: int
+    r7 :: bit
+    r8 :: dict
+    r9 :: str
+    r10 :: object
+    r11 :: int
+    r12 :: set
+    r13 :: object
+    r14 :: int32
+    r15 :: bit
+    r16, r17 :: object
+    r18 :: int
+    r19 :: bit
+L0:
+    r0 = PySet_New(0)
+    r1 = object 2
+    r2 = PySet_Add(r0, r1)
+    r3 = r2 >= 0 :: signed
+    r4 = PyObject_GetIter(r0)
+L1:
+    r5 = PyIter_Next(r4)
+    if is_error(r5) goto L4 else goto L2
+L2:
+    r6 = unbox(int, r5)
+    not_optimized = r6
+L3:
+    goto L1
+L4:
+    r7 = CPy_NoErrOccured()
+L5:
+    r8 = __main__.globals :: static
+    r9 = 'non_const'
+    r10 = CPyDict_GetItem(r8, r9)
+    r11 = unbox(int, r10)
+    r12 = PySet_New(0)
+    r13 = box(int, r11)
+    r14 = PySet_Add(r12, r13)
+    r15 = r14 >= 0 :: signed
+    r16 = PyObject_GetIter(r12)
+L6:
+    r17 = PyIter_Next(r16)
+    if is_error(r17) goto L9 else goto L7
+L7:
+    r18 = unbox(int, r17)
+    not_optimized = r18
+L8:
+    goto L6
+L9:
+    r19 = CPy_NoErrOccured()
+L10:
+    return 1
+
