@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any, FrozenSet, List, Tuple, Union, cast
-
 from typing_extensions import Final
 
 # Supported Python literal types. All tuple / frozenset items must have supported
@@ -157,11 +156,11 @@ class Literals:
         count = len(values)
         result.append(str(count))
         for i in range(count):
-           value = value_by_index[i]
-           result.append(str(len(value)))
-           for item in value:
-               index = self.literal_index(cast(Any, item))
-               result.append(str(index))
+            value = value_by_index[i]
+            result.append(str(len(value)))
+            for item in value:
+                index = self.literal_index(cast(Any, item))
+                result.append(str(index))
         return result
 
 
