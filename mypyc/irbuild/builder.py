@@ -885,7 +885,7 @@ class IRBuilder:
         This is useful for dict subclasses like SymbolTable.
         """
         target_type = get_proper_type(self.types[expr])
-        assert isinstance(target_type, Instance)
+        assert isinstance(target_type, Instance), target_type
         dict_base = next(base for base in target_type.type.mro if base.fullname == "builtins.dict")
         return map_instance_to_supertype(target_type, dict_base)
 
