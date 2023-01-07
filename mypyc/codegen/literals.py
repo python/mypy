@@ -151,7 +151,8 @@ class Literals:
            <length of the second collection>
            ...
         """
-        value_by_index = {index: value for value, index in cast(Dict[Any, int], values.items())}
+        values = cast(Dict[Any, int], values)  # FIXME: https://github.com/mypyc/mypyc/issues/965
+        value_by_index = {index: value for value, index in values.items()}
         result = []
         count = len(values)
         result.append(str(count))
