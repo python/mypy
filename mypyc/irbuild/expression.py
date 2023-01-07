@@ -6,7 +6,7 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
-from typing import Callable, Sequence, Tuple, Union, cast
+from typing import Callable, Sequence, cast
 
 from mypy.nodes import (
     ARG_POS,
@@ -89,6 +89,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
+from mypyc.irbuild.util import bytes_from_str
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op
@@ -616,29 +617,32 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     return target
 
 
-def set_literal_values(items: Sequence[Expression]) -> list[object] | None:
+def set_literal_values(builder: IRBuilder, items: Sequence[Expression]) -> list[object] | None:
     values: list[object] = []
     for item in items:
-        if isinstance(item, NameExpr) and item.name in ("None", "True", "False"):
-            if item.name == "None":
+        const_value = constant_fold_expr(builder, item)
+        if const_value is not None:
+            values.append(const_value)
+            continue
+
+        if isinstance(item, RefExpr):
+            if item.fullname == "builtins.None":
                 values.append(None)
-            elif item.name == "True":
+            elif item.fullname == "builtins.True":
                 values.append(True)
-            elif item.name == "False":
+            elif item.fullname == "builtins.False":
                 values.append(False)
-        elif isinstance(item, (NameExpr, MemberExpr)) and isinstance(item.node, Var):
-            if item.node.is_final:
-                v = item.node.final_value
-                if isinstance(v, (str, int, float, bool)):
-                    values.append(v)
-        elif isinstance(item, (StrExpr, BytesExpr, IntExpr, FloatExpr, ComplexExpr)):
-            values.append(item.true_value if isinstance(item, BytesExpr) else item.value)
+        elif isinstance(item, (BytesExpr, FloatExpr, ComplexExpr)):
+            # constant_fold_expr() doesn't handle these (yet?)
+            v = bytes_from_str(item.value) if isinstance(item, BytesExpr) else item.value
+            values.append(v)
         elif isinstance(item, TupleExpr):
-            t = set_literal_values(item.items)
-            if t is not None:
-                values.append(tuple(t))
+            tuple_values = set_literal_values(builder, item.items)
+            if tuple_values is not None:
+                values.append(tuple(tuple_values))
 
     if len(values) != len(items):
+        # Bail if not all items can be converted into values.
         return None
     return values
 
@@ -651,7 +655,7 @@ def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
     Only references to "simple" final variables, tuple literals (with items that
     are themselves supported), and other non-container literals are supported.
     """
-    values = set_literal_values(s.items)
+    values = set_literal_values(builder, s.items)
     if values is not None:
         return builder.add(LoadLiteral(frozenset(values), set_rprimitive))
 

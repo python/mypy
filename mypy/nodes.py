@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 import os
 from abc import abstractmethod
 from collections import defaultdict
@@ -1654,10 +1653,6 @@ class BytesExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
-
-    @property
-    def true_value(self) -> bytes:
-        return ast.literal_eval("b" + repr(self.value))
 
 
 class FloatExpr(Expression):

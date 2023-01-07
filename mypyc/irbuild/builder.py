@@ -118,7 +118,7 @@ from mypyc.irbuild.targets import (
     AssignmentTargetRegister,
     AssignmentTargetTuple,
 )
-from mypyc.irbuild.util import is_constant
+from mypyc.irbuild.util import bytes_from_str, is_constant
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
@@ -296,8 +296,7 @@ class IRBuilder:
         are stored in BytesExpr.value, whose type is 'str' not 'bytes'.
         Thus we perform a special conversion here.
         """
-        bytes_value = bytes(value, "utf8").decode("unicode-escape").encode("raw-unicode-escape")
-        return self.builder.load_bytes(bytes_value)
+        return self.builder.load_bytes(bytes_from_str(value))
 
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
