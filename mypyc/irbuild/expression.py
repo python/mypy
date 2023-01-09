@@ -652,8 +652,11 @@ def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
 
     Return None if it's not possible.
 
-    Only references to "simple" final variables, tuple literals (with items that
-    are themselves supported), and other non-container literals are supported.
+    Supported items:
+     - Anything supported by irbuild.constant_fold.constant_fold_expr()
+     - None, True, and False
+     - Float, byte, and complex literals
+     - Tuple literals with only items listed above
     """
     values = set_literal_values(builder, s.items)
     if values is not None:
