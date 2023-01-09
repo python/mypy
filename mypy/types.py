@@ -3568,10 +3568,16 @@ def store_argument_type(
         if isinstance(arg_type, ParamSpecType):
             pass
         elif isinstance(arg_type, UnpackType):
-            if isinstance(get_proper_type(arg_type.type), TupleType):
+            unpacked_type = get_proper_type(arg_type.type)
+            if isinstance(unpacked_type, TupleType):
                 # Instead of using Tuple[Unpack[Tuple[...]]], just use
                 # Tuple[...]
-                arg_type = arg_type.type
+                arg_type = unpacked_type
+            elif (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                arg_type = unpacked_type
             else:
                 arg_type = TupleType(
                     [arg_type],
