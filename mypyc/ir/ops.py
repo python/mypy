@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
 )
 
 if TYPE_CHECKING:
+    from mypyc.codegen.literals import LiteralValue
     from mypyc.ir.class_ir import ClassIR
     from mypyc.ir.func_ir import FuncDecl, FuncIR
 
@@ -588,7 +589,7 @@ class LoadLiteral(RegisterOp):
     This is used to load a static PyObject * value corresponding to
     a literal of one of the supported types.
 
-    Tuple literals must contain only valid literal values as items.
+    Tuple / frozenset literals must contain only valid literal values as items.
 
     NOTE: You can use this to load boxed (Python) int objects. Use
           Integer to load unboxed, tagged integers or fixed-width,
@@ -603,11 +604,7 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(
-        self,
-        value: None | str | bytes | bool | int | float | complex | tuple[object, ...],
-        rtype: RType,
-    ) -> None:
+    def __init__(self, value: LiteralValue, rtype: RType) -> None:
         self.value = value
         self.type = rtype
 
