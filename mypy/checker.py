@@ -3477,11 +3477,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Type check the assignment separately for each union item and collect
                 # the inferred lvalue types for each union item.
                 self.check_multi_assignment(
-                    lvalues,
-                    rvalue,
-                    context,
-                    infer_lvalue_type=infer_lvalue_type,
-                    rv_type=item,
+                    lvalues, rvalue, context, infer_lvalue_type=infer_lvalue_type, rv_type=item
                 )
                 for t, lv in zip(transposed, self.flatten_lvalues(lvalues)):
                     # We can access _type_maps directly since temporary type maps are
