@@ -1223,12 +1223,15 @@ def test_many_locals() -> None:
     assert a32 == 55
     assert a33 == 20
 
-[case testI64GlueMethods]
+[case testI64GlueMethodsAndInheritance]
+from typing import Any
 from typing_extensions import Final
 
 MYPY = False
 if MYPY:
-    from mypy_extensions import i64
+    from mypy_extensions import i64, trait
+
+from testutil import assertRaises
 
 MAGIC: Final = -113
 
@@ -1266,3 +1269,64 @@ def test_derived_switches_arg_to_have_default() -> None:
     b: Base = Derived()
     assert b.hoho(5) == 3
     assert b.hoho(MAGIC) == MAGIC - 2
+
+@trait
+class T:
+    @property
+    def x(self) -> i64: ...
+    @property
+    def y(self) -> i64: ...
+
+class C(T):
+    x: i64 = 1
+    y: i64 = 4
+
+def test_read_only_property_in_trait_implemented_as_attribute() -> None:
+    c = C()
+    c.x = 5
+    assert c.x == 5
+    c.x = MAGIC
+    assert c.x == MAGIC
+    assert c.y == 4
+    c.y = 6
+    assert c.y == 6
+    t: T = C()
+    assert t.y == 4
+    t = c
+    assert t.x == MAGIC
+    c.x = 55
+    assert t.x == 55
+    assert t.y == 6
+    a: Any = c
+    assert a.x == 55
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
+class D(T):
+    xx: i64
+
+    @property
+    def x(self) -> i64:
+        return self.xx
+
+    @property
+    def y(self) -> i64:
+        raise TypeError
+
+def test_read_only_property_in_trait_implemented_as_property() -> None:
+    d = D()
+    d.xx = 5
+    assert d.x == 5
+    d.xx = MAGIC
+    assert d.x == MAGIC
+    with assertRaises(TypeError):
+        d.y
+    t: T = d
+    assert t.x == MAGIC
+    d.xx = 6
+    assert t.x == 6
+    with assertRaises(TypeError):
+        t.y

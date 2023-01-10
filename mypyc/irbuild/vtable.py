@@ -62,7 +62,7 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
         # (This may not be the method in the entry, if it was overridden.)
         orig_parent_method = entry.cls.get_method(entry.name)
         assert orig_parent_method
-        method_cls = cls.get_method_and_class(entry.name)
+        method_cls = cls.get_method_and_class(entry.name, prefer_method=True)
         if method_cls:
             child_method, defining_cls = method_cls
             # TODO: emit a wrapper for __init__ that raises or something

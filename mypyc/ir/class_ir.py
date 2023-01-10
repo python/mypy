@@ -278,10 +278,18 @@ class ClassIR:
     def struct_name(self, names: NameGenerator) -> str:
         return f"{exported_name(self.fullname)}Object"
 
-    def get_method_and_class(self, name: str) -> tuple[FuncIR, ClassIR] | None:
+    def get_method_and_class(
+        self, name: str, *, prefer_method: bool = False
+    ) -> tuple[FuncIR, ClassIR] | None:
         for ir in self.mro:
             if name in ir.methods:
-                return ir.methods[name], ir
+                func_ir = ir.methods[name]
+                if not prefer_method and func_ir.decl.implicit:
+                    # This is an implicit accessor, so there is also an attribute definition
+                    # which the caller prefers. This happens if an attribute overrides a
+                    # property.
+                    return None
+                return func_ir, ir
 
         return None
 

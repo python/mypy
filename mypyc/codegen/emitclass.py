@@ -824,7 +824,10 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                 )
             )
 
-    for prop in cl.properties:
+    for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         # Generate getter declaration
         emitter.emit_line("static PyObject *")
         emitter.emit_line(
@@ -834,7 +837,7 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
         )
 
         # Generate property setter declaration if a setter exists
-        if cl.properties[prop][1]:
+        if setter:
             emitter.emit_line("static int")
             emitter.emit_line(
                 "{}({} *self, PyObject *value, void *closure);".format(
@@ -854,11 +857,13 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
                 )
             )
             emitter.emit_line(" NULL, NULL},")
-    for prop in cl.properties:
+    for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         emitter.emit_line(f'{{"{prop}",')
         emitter.emit_line(f" (getter){getter_name(cl, prop, emitter.names)},")
 
-        setter = cl.properties[prop][1]
         if setter:
             emitter.emit_line(f" (setter){setter_name(cl, prop, emitter.names)},")
             emitter.emit_line("NULL, NULL},")
@@ -878,6 +883,9 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
             if i < len(cl.attributes) - 1:
                 emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         rtype = getter.sig.ret_type
         emitter.emit_line("")
         generate_readonly_getter(cl, prop, rtype, getter, emitter)
