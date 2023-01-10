@@ -947,7 +947,10 @@ class SemanticAnalyzer(
             if func.name in ["__init_subclass__", "__class_getitem__"]:
                 func.is_class = True
             if not func.arguments:
-                self.fail("Method must have at least one argument", func)
+                self.fail(
+                    'Method must have at least one argument. Did you forget the "self" argument?',
+                    func,
+                )
             elif isinstance(functype, CallableType):
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
@@ -1881,7 +1884,7 @@ class SemanticAnalyzer(
                 # It's bound by our type variable scope
                 return None
             return unbound.name, sym.node
-        if sym and sym.fullname == "typing_extensions.Unpack":
+        if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
             inner_t = unbound.args[0]
             if not isinstance(inner_t, UnboundType):
                 return None
@@ -2531,7 +2534,7 @@ class SemanticAnalyzer(
                 )
             else:
                 alternatives = set(module.names.keys()).difference({source_id})
-                matches = best_matches(source_id, alternatives)[:3]
+                matches = best_matches(source_id, alternatives, n=3)
                 if matches:
                     suggestion = f"; maybe {pretty_seq(matches, 'or')}?"
                     message += f"{suggestion}"

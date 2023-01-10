@@ -2871,7 +2871,7 @@ aaaaa: int
 
 [case testModuleAttributeThreeSuggestions]
 import m
-m.aaaaa # E: Module has no attribute "aaaaa"; maybe "aabaa", "aaaba", or "aaaab"?
+m.aaaaa # E: Module has no attribute "aaaaa"; maybe "aaaab", "aaaba", or "aabaa"?
 
 [file m.py]
 aaaab: int

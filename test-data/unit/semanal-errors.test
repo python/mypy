@@ -542,7 +542,7 @@ import typing
 class A:
   def f(): pass
 [out]
-main:3: error: Method must have at least one argument
+main:3: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testInvalidBaseClass]
 import typing
@@ -564,8 +564,8 @@ class A:
   def f() -> None: pass
   def g(): pass
 [out]
-main:3: error: Method must have at least one argument
-main:4: error: Method must have at least one argument
+main:3: error: Method must have at least one argument. Did you forget the "self" argument?
+main:4: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testMultipleMethodDefinition]
 import typing

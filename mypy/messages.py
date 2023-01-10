@@ -15,7 +15,7 @@ import difflib
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Iterable, Iterator, List, Sequence, cast
+from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast
 from typing_extensions import Final
 
 from mypy import errorcodes as codes, message_registry
@@ -440,7 +440,7 @@ class MessageBuilder:
                         alternatives.discard(member)
 
                         matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
-                        matches.extend(best_matches(member, alternatives)[:3])
+                        matches.extend(best_matches(member, alternatives, n=3))
                         if member == "__aiter__" and matches == ["__iter__"]:
                             matches = []  # Avoid misleading suggestion
                         if matches:
@@ -928,11 +928,11 @@ class MessageBuilder:
                     matching_type_args.append(callee_arg_name)
                 else:
                     not_matching_type_args.append(callee_arg_name)
-        matches = best_matches(name, matching_type_args)
+        matches = best_matches(name, matching_type_args, n=3)
         if not matches:
-            matches = best_matches(name, not_matching_type_args)
+            matches = best_matches(name, not_matching_type_args, n=3)
         if matches:
-            msg += f"; did you mean {pretty_seq(matches[:3], 'or')}?"
+            msg += f"; did you mean {pretty_seq(matches, 'or')}?"
         self.fail(msg, context, code=codes.CALL_ARG)
         module = find_defining_module(self.modules, callee)
         if module:
@@ -1695,10 +1695,10 @@ class MessageBuilder:
                 context,
                 code=codes.TYPEDDICT_ITEM,
             )
-            matches = best_matches(item_name, typ.items.keys())
+            matches = best_matches(item_name, typ.items.keys(), n=3)
             if matches:
                 self.note(
-                    "Did you mean {}?".format(pretty_seq(matches[:3], "or")),
+                    "Did you mean {}?".format(pretty_seq(matches, "or")),
                     context,
                     code=codes.TYPEDDICT_ITEM,
                 )
@@ -2798,11 +2798,24 @@ def find_defining_module(modules: dict[str, MypyFile], typ: CallableType) -> Myp
 COMMON_MISTAKES: Final[dict[str, Sequence[str]]] = {"add": ("append", "extend")}
 
 
-def best_matches(current: str, options: Iterable[str]) -> list[str]:
-    ratios = {v: difflib.SequenceMatcher(a=current, b=v).ratio() for v in options}
-    return sorted(
-        (o for o in options if ratios[o] > 0.75), reverse=True, key=lambda v: (ratios[v], v)
-    )
+def _real_quick_ratio(a: str, b: str) -> float:
+    # this is an upper bound on difflib.SequenceMatcher.ratio
+    # similar to difflib.SequenceMatcher.real_quick_ratio, but faster since we don't instantiate
+    al = len(a)
+    bl = len(b)
+    return 2.0 * min(al, bl) / (al + bl)
+
+
+def best_matches(current: str, options: Collection[str], n: int) -> list[str]:
+    # narrow down options cheaply
+    assert current
+    options = [o for o in options if _real_quick_ratio(current, o) > 0.75]
+    if len(options) >= 50:
+        options = [o for o in options if abs(len(o) - len(current)) <= 1]
+
+    ratios = {option: difflib.SequenceMatcher(a=current, b=option).ratio() for option in options}
+    options = [option for option, ratio in ratios.items() if ratio > 0.75]
+    return sorted(options, key=lambda v: (-ratios[v], v))[:n]
 
 
 def pretty_seq(args: Sequence[str], conjunction: str) -> str:

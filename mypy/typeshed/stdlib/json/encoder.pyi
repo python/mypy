@@ -20,7 +20,7 @@ class JSONEncoder:
     check_circular: bool
     allow_nan: bool
     sort_keys: bool
-    indent: int
+    indent: int | str
     def __init__(
         self,
         *,
@@ -29,7 +29,7 @@ class JSONEncoder:
         check_circular: bool = ...,
         allow_nan: bool = ...,
         sort_keys: bool = ...,
-        indent: int | None = ...,
+        indent: int | str | None = ...,
         separators: tuple[str, str] | None = ...,
         default: Callable[..., Any] | None = ...,
     ) -> None: ...

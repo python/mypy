@@ -1,6 +1,6 @@
+import _ast
 import sys
 import types
-from _ast import AST
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import (
     AnyStr_co,
@@ -1096,7 +1096,7 @@ class property:
 class _NotImplementedType(Any):  # type: ignore[misc]
     # A little weird, but typing the __call__ as NotImplemented makes the error message
     # for NotImplemented() much better
-    __call__: NotImplemented  # type: ignore[valid-type]
+    __call__: NotImplemented  # type: ignore[valid-type]  # pyright: ignore[reportGeneralTypeIssues]
 
 NotImplemented: _NotImplementedType
 
@@ -1131,7 +1131,7 @@ if sys.version_info >= (3, 10):
 # TODO: `compile` has a more precise return type in reality; work on a way of expressing that?
 if sys.version_info >= (3, 8):
     def compile(
-        source: str | ReadableBuffer | AST,
+        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
         filename: str | ReadableBuffer | _PathLike[Any],
         mode: str,
         flags: int = ...,
@@ -1143,7 +1143,7 @@ if sys.version_info >= (3, 8):
 
 else:
     def compile(
-        source: str | ReadableBuffer | AST,
+        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
         filename: str | ReadableBuffer | _PathLike[Any],
         mode: str,
         flags: int = ...,

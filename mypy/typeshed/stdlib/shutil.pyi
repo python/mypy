@@ -2,7 +2,7 @@ import os
 import sys
 from _typeshed import BytesPath, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, AnyStr, NamedTuple, TypeVar, overload
+from typing import Any, AnyStr, NamedTuple, Protocol, TypeVar, overload
 from typing_extensions import TypeAlias
 
 __all__ = [
@@ -84,13 +84,22 @@ else:
 
 _OnErrorCallback: TypeAlias = Callable[[Callable[..., Any], Any, Any], object]
 
-if sys.version_info >= (3, 11):
-    def rmtree(
-        path: StrOrBytesPath, ignore_errors: bool = ..., onerror: _OnErrorCallback | None = ..., *, dir_fd: int | None = ...
-    ) -> None: ...
+class _RmtreeType(Protocol):
+    avoids_symlink_attacks: bool
+    if sys.version_info >= (3, 11):
+        def __call__(
+            self,
+            path: StrOrBytesPath,
+            ignore_errors: bool = ...,
+            onerror: _OnErrorCallback | None = ...,
+            *,
+            dir_fd: int | None = ...,
+        ) -> None: ...
 
-else:
-    def rmtree(path: StrOrBytesPath, ignore_errors: bool = ..., onerror: _OnErrorCallback | None = ...) -> None: ...
+    else:
+        def __call__(self, path: StrOrBytesPath, ignore_errors: bool = ..., onerror: _OnErrorCallback | None = ...) -> None: ...
+
+rmtree: _RmtreeType
 
 _CopyFn: TypeAlias = Callable[[str, str], object] | Callable[[StrPath, StrPath], object]
 
