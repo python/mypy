@@ -168,9 +168,8 @@ if int():
     ab, ao = f(b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 if int():
     ao, ab = f(b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-
 if int():
-    ao, ao = f(b)
+    ao, ao = f(b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 if int():
     ab, ab = f(b)
 if int():
@@ -199,11 +198,10 @@ if int():
     ao, ab, ab, ab = h(b, b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 if int():
     ab, ab, ao, ab = h(b, b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-
 if int():
-    ao, ab, ab = f(b, b)
+    ao, ab, ab = f(b, b)     # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 if int():
-    ab, ab, ao = g(b, b)
+    ab, ab, ao = g(b, b)     # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 if int():
     ab, ab, ab, ab = h(b, b)
 
