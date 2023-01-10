@@ -221,12 +221,14 @@ class set(Generic[T]):
     def pop(self) -> T: pass
     def update(self, x: Iterable[S]) -> None: pass
     def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> Set[Union[T, S]]: ...
+    def __xor__(self, s: Union[Set[S], FrozenSet[S]]) -> Set[Union[T, S]]: ...
 
 class frozenset(Generic[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
     def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> FrozenSet[Union[T, S]]: ...
+    def __xor__(self, s: Union[Set[S], FrozenSet[S]]) -> FrozenSet[Union[T, S]]: ...
 
 class slice: pass
 

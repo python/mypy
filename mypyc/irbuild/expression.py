@@ -6,7 +6,7 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
-from typing import Callable, cast
+from typing import Callable, Sequence, cast
 
 from mypy.nodes import (
     ARG_POS,
@@ -55,6 +55,7 @@ from mypyc.ir.ops import (
     ComparisonOp,
     Integer,
     LoadAddress,
+    LoadLiteral,
     RaiseStandardError,
     Register,
     TupleGet,
@@ -63,12 +64,14 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RTuple,
+    bool_rprimitive,
     int_rprimitive,
     is_fixed_width_rtype,
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
     object_rprimitive,
+    set_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
@@ -86,6 +89,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
+from mypyc.irbuild.util import bytes_from_str
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op
@@ -93,7 +97,7 @@ from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
-from mypyc.primitives.set_ops import set_add_op, set_update_op
+from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
@@ -613,6 +617,54 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     return target
 
 
+def set_literal_values(builder: IRBuilder, items: Sequence[Expression]) -> list[object] | None:
+    values: list[object] = []
+    for item in items:
+        const_value = constant_fold_expr(builder, item)
+        if const_value is not None:
+            values.append(const_value)
+            continue
+
+        if isinstance(item, RefExpr):
+            if item.fullname == "builtins.None":
+                values.append(None)
+            elif item.fullname == "builtins.True":
+                values.append(True)
+            elif item.fullname == "builtins.False":
+                values.append(False)
+        elif isinstance(item, (BytesExpr, FloatExpr, ComplexExpr)):
+            # constant_fold_expr() doesn't handle these (yet?)
+            v = bytes_from_str(item.value) if isinstance(item, BytesExpr) else item.value
+            values.append(v)
+        elif isinstance(item, TupleExpr):
+            tuple_values = set_literal_values(builder, item.items)
+            if tuple_values is not None:
+                values.append(tuple(tuple_values))
+
+    if len(values) != len(items):
+        # Bail if not all items can be converted into values.
+        return None
+    return values
+
+
+def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
+    """Try to pre-compute a frozenset literal during module initialization.
+
+    Return None if it's not possible.
+
+    Supported items:
+     - Anything supported by irbuild.constant_fold.constant_fold_expr()
+     - None, True, and False
+     - Float, byte, and complex literals
+     - Tuple literals with only items listed above
+    """
+    values = set_literal_values(builder, s.items)
+    if values is not None:
+        return builder.add(LoadLiteral(frozenset(values), set_rprimitive))
+
+    return None
+
+
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
@@ -665,6 +717,23 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                 return builder.false()
             else:
                 return builder.true()
+
+    # x in {...}
+    # x not in {...}
+    if (
+        first_op in ("in", "not in")
+        and len(e.operators) == 1
+        and isinstance(e.operands[1], SetExpr)
+    ):
+        set_literal = precompute_set_literal(builder, e.operands[1])
+        if set_literal is not None:
+            lhs = e.operands[0]
+            result = builder.builder.call_c(
+                set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
+            )
+            if first_op == "not in":
+                return builder.unary_op(result, "not", e.line)
+            return result
 
     if len(e.operators) == 1:
         # Special some common simple cases

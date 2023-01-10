@@ -17,6 +17,7 @@ from mypy.nodes import (
     Lvalue,
     MemberExpr,
     RefExpr,
+    SetExpr,
     TupleExpr,
     TypeAlias,
 )
@@ -469,12 +470,22 @@ def make_for_loop_generator(
             for_dict_gen.init(expr_reg, target_type)
             return for_dict_gen
 
+    iterable_expr_reg: Value | None = None
+    if isinstance(expr, SetExpr):
+        # Special case "for x in <set literal>".
+        from mypyc.irbuild.expression import precompute_set_literal
+
+        set_literal = precompute_set_literal(builder, expr)
+        if set_literal is not None:
+            iterable_expr_reg = set_literal
+
     # Default to a generic for loop.
-    expr_reg = builder.accept(expr)
+    if iterable_expr_reg is None:
+        iterable_expr_reg = builder.accept(expr)
     for_obj = ForIterable(builder, index, body_block, loop_exit, line, nested)
     item_type = builder._analyze_iterable_item_type(expr)
     item_rtype = builder.type_to_rtype(item_type)
-    for_obj.init(expr_reg, item_rtype)
+    for_obj.init(iterable_expr_reg, item_rtype)
     return for_obj
 
 
