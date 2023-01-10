@@ -1278,7 +1278,7 @@ class T:
     def y(self) -> i64: ...
 
 class C(T):
-    x: i64
+    x: i64 = 1
     y: i64 = 4
 
 def test_read_only_property_in_trait_implemented_as_attribute() -> None:

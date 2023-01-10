@@ -1980,7 +1980,7 @@ class T1:
     def y(self) -> int: ...
 
 class C1(T1):
-    x: int
+    x: int = 1
     y: int = 4
 
 def test_read_only_property_in_trait_implemented_as_attribute() -> None:
@@ -2013,7 +2013,7 @@ class B2:
         return 25
 
 class C2(B2):
-    x: int
+    x: int = 1
     y: int = 4
 
 def test_read_only_property_in_class_implemented_as_attribute() -> None:
@@ -2044,7 +2044,7 @@ class T3:
     def y(self) -> int: ...
 
 class B3:
-    x: int
+    x: int = 1
     y: int = 4
 
 class C3(B3, T3):
@@ -2083,7 +2083,7 @@ class T4:
     def y(self, v2: int) -> None: ...
 
 class C4(T4):
-    x: int
+    x: int = 1
     y: int = 4
 
 def test_read_write_property_implemented_as_attribute() -> None:
@@ -2120,7 +2120,7 @@ class T5:
     def y(self, v2: int) -> None: ...
 
 class B5:
-    x: int
+    x: int = 1
     y: int = 4
 
 class BB5(B5):
