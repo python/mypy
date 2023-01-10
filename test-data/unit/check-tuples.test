@@ -1054,7 +1054,8 @@ def g(x: T) -> Tuple[T, T]:
     return (x, x)
 
 z = 1
-x, y = g(z) # E: Argument 1 to "g" has incompatible type "int"; expected "Tuple[B1, B2]"
+x, y = g(z) # E: Incompatible types in assignment (expression has type "int", variable has type "Tuple[A, ...]") \
+            # E: Incompatible types in assignment (expression has type "int", variable has type "Tuple[Union[B1, C], Union[B2, C]]")
 [builtins fixtures/tuple.pyi]
 [out]
 
