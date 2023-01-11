@@ -51,7 +51,10 @@ from mypyc.ir.rtypes import (
     dict_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
+    int_rprimitive,
+    is_bool_rprimitive,
     is_dict_rprimitive,
+    is_fixed_width_rtype,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -688,3 +691,28 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         val = builder.accept(arg)
         return builder.coerce(val, int32_rprimitive, expr.line)
     return None
+
+
+@specialize_function("builtins.int")
+def translate_int(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if (
+        is_bool_rprimitive(arg_type)
+        or is_int_rprimitive(arg_type)
+        or is_fixed_width_rtype(arg_type)
+    ):
+        src = builder.accept(arg)
+        return builder.coerce(src, int_rprimitive, expr.line)
+    return None
+
+
+@specialize_function("builtins.bool")
+def translate_bool(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    src = builder.accept(arg)
+    return builder.builder.bool_value(src)

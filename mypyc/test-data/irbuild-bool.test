@@ -1,0 +1,144 @@
+[case testBoolToAndFromInt]
+from mypy_extensions import i64
+
+def bool_to_int(b: bool) -> int:
+    return b
+def int_to_bool(n: int) -> bool:
+    return bool(n)
+def bool_to_i64(b: bool) -> i64:
+    return b
+def i64_to_bool(n: i64) -> bool:
+    return bool(n)
+def bit_to_int(n1: i64, n2: i64) -> int:
+    return bool(n1 == n2)
+def bit_to_i64(n1: i64, n2: i64) -> i64:
+    return bool(n1 == n2)
+[out]
+def bool_to_int(b):
+    b, r0 :: bool
+    r1 :: int
+L0:
+    r0 = b << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    return r1
+def int_to_bool(n):
+    n :: int
+    r0 :: bit
+L0:
+    r0 = n != 0
+    return r0
+def bool_to_i64(b):
+    b :: bool
+    r0 :: int64
+L0:
+    r0 = extend b: builtins.bool to int64
+    return r0
+def i64_to_bool(n):
+    n :: int64
+    r0 :: bit
+L0:
+    r0 = n != 0
+    return r0
+def bit_to_int(n1, n2):
+    n1, n2 :: int64
+    r0 :: bit
+    r1 :: bool
+    r2 :: int
+L0:
+    r0 = n1 == n2
+    r1 = r0 << 1
+    r2 = extend r1: builtins.bool to builtins.int
+    return r2
+def bit_to_i64(n1, n2):
+    n1, n2 :: int64
+    r0 :: bit
+    r1 :: int64
+L0:
+    r0 = n1 == n2
+    r1 = extend r0: bit to int64
+    return r1
+
+[case testConversionToBool]
+from typing import List, Optional
+
+class C: pass
+class D:
+    def __bool__(self) -> bool:
+        return True
+
+def list_to_bool(l: List[str]) -> bool:
+    return bool(l)
+
+def always_truthy_instance_to_bool(o: C) -> bool:
+    return bool(o)
+
+def instance_to_bool(o: D) -> bool:
+    return bool(o)
+
+def optional_truthy_to_bool(o: Optional[C]) -> bool:
+    return bool(o)
+
+def optional_maybe_falsey_to_bool(o: Optional[D]) -> bool:
+    return bool(o)
+[out]
+def D.__bool__(self):
+    self :: __main__.D
+L0:
+    return 1
+def list_to_bool(l):
+    l :: list
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: bit
+L0:
+    r0 = get_element_ptr l ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive l
+    r2 = r1 << 1
+    r3 = r2 != 0
+    return r3
+def always_truthy_instance_to_bool(o):
+    o :: __main__.C
+    r0 :: int32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = PyObject_IsTrue(o)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: int32 to builtins.bool
+    return r2
+def instance_to_bool(o):
+    o :: __main__.D
+    r0 :: bool
+L0:
+    r0 = o.__bool__()
+    return r0
+def optional_truthy_to_bool(o):
+    o :: union[__main__.C, None]
+    r0 :: object
+    r1 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = o != r0
+    return r1
+def optional_maybe_falsey_to_bool(o):
+    o :: union[__main__.D, None]
+    r0 :: object
+    r1 :: bit
+    r2 :: __main__.D
+    r3 :: bool
+    r4 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = o != r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = cast(__main__.D, o)
+    r3 = r2.__bool__()
+    r4 = r3
+    goto L3
+L2:
+    r4 = 0
+L3:
+    return r4

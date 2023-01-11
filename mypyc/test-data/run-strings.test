@@ -136,6 +136,9 @@ def is_true(x: str) -> bool:
     else:
         return False
 
+def is_true2(x: str) -> bool:
+    return bool(x)
+
 def is_false(x: str) -> bool:
     if not x:
         return True
@@ -145,8 +148,10 @@ def is_false(x: str) -> bool:
 def test_str_to_bool() -> None:
     assert is_false('')
     assert not is_true('')
+    assert not is_true2('')
     for x in 'a', 'foo', 'bar', 'some string':
         assert is_true(x)
+        assert is_true2(x)
         assert not is_false(x)
 
 def test_str_min_max() -> None:

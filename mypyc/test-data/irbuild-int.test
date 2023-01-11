@@ -203,3 +203,22 @@ L0:
 def f5():
 L0:
     return -2
+
+[case testConvertIntegralToInt]
+def bool_to_int(b: bool) -> int:
+    return int(b)
+
+def int_to_int(n: int) -> int:
+    return int(n)
+[out]
+def bool_to_int(b):
+    b, r0 :: bool
+    r1 :: int
+L0:
+    r0 = b << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    return r1
+def int_to_int(n):
+    n :: int
+L0:
+    return n
