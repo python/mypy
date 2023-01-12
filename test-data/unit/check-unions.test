@@ -931,7 +931,7 @@ reveal_type(a3)   # N: Revealed type is "Union[__main__.A, __main__.D]"
 reveal_type(b3)   # N: Revealed type is "Union[__main__.B, __main__.D]"
 reveal_type(c3)   # N: Revealed type is "Union[builtins.list[__main__.C], builtins.list[__main__.D]]"
 
-t4: Union[Tuple[A, B, C], List[D], Any]
+t4: Union[Tuple[A, B, C], Tuple[D, ...], Any]
 a4, b4, *c4 = t4
 reveal_type(a4)   # N: Revealed type is "Union[__main__.A, __main__.D, Any]"
 reveal_type(b4)   # N: Revealed type is "Union[__main__.B, __main__.D, Any]"
