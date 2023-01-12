@@ -199,6 +199,20 @@ L0:
     r0 = x >= y :: signed
     return r0
 
+[case testBoolMixedComparisons]
+from mypy_extensions import i64
+
+def eq(x: int, y: bool) -> bool:
+    return x == y
+
+def neq(x: bool, y: i64) -> bool:
+    return x != y
+
+def lt(x: bool, y: int) -> bool:
+    return x < y
+[out]
+.
+
 [case testBoolBitwise]
 def bitand(x: bool, y: bool) -> bool:
     b = x & y
