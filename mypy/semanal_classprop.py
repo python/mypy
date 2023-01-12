@@ -34,6 +34,8 @@ from mypy.types import Instance, ProperType
 TYPE_PROMOTIONS: Final = {
     "builtins.int": "float",
     "builtins.float": "complex",
+    "builtins.bytearray": "bytes",
+    "builtins.memoryview": "bytes",
 }
 
 

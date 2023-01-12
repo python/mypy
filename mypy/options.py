@@ -340,8 +340,8 @@ class Options:
         # Deprecated reverse version of the above, do not use.
         self.enable_recursive_aliases = False
 
-        self.disable_bytearray_promotion = False
-        self.disable_memoryview_promotion = False
+        self.disable_bytearray_promotion = True
+        self.disable_memoryview_promotion = True
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
