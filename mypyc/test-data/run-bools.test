@@ -16,6 +16,9 @@ False
 
 [case testBoolOps]
 from typing import Optional, Any
+MYPY = False
+if MYPY:
+    from mypy_extensions import i64
 
 def f(x: bool) -> bool:
     if x:
@@ -166,3 +169,15 @@ def test_arithmetic() -> None:
         for n in -(1 << 70), -123, 0, 1, 1753, 1 << 70:
             assert add_mixed(x, n) == int(x) + n
             assert sub_mixed(n, x) == n - int(x)
+
+def add_mixed_i64(b: bool, n: i64) -> i64:
+    return b + n
+
+def sub_mixed_i64(n: i64, b: bool) -> i64:
+    return n - b
+
+def test_arithmetic_i64() -> None:
+    for x in True, False:
+        for n in -(1 << 62), -123, 0, 1, 1753, 1 << 62:
+            assert add_mixed_i64(x, n) == int(x) + n
+            assert sub_mixed_i64(n, x) == n - int(x)
