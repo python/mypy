@@ -12,6 +12,7 @@ The function build() is the main interface to this module.
 
 from __future__ import annotations
 
+import collections
 import contextlib
 import errno
 import gc
@@ -49,7 +50,7 @@ from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable, TypeInfo
-from mypy.partially_defined import PartiallyDefinedVariableVisitor
+from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
@@ -99,7 +100,7 @@ from mypy.stubinfo import (
     stub_package_name,
 )
 from mypy.types import Type
-from mypy.typestate import TypeState, reset_global_state
+from mypy.typestate import reset_global_state, type_state
 from mypy.version import __version__
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -275,9 +276,11 @@ def _build(
     try:
         graph = dispatch(sources, manager, stdout)
         if not options.fine_grained_incremental:
-            TypeState.reset_all_subtype_caches()
+            type_state.reset_all_subtype_caches()
         if options.timing_stats is not None:
             dump_timing_stats(options.timing_stats, graph)
+        if options.line_checking_stats is not None:
+            dump_line_checking_stats(options.line_checking_stats, graph)
         return BuildResult(manager, graph)
     finally:
         t0 = time.time()
@@ -1889,6 +1892,10 @@ class State:
     # Cumulative time spent on this file, in microseconds (for profiling stats)
     time_spent_us: int = 0
 
+    # Per-line type-checking time (cumulative time spent type-checking expressions
+    # on a given source code line).
+    per_line_checking_time_ns: dict[int, int]
+
     def __init__(
         self,
         id: str | None,
@@ -1940,7 +1947,7 @@ class State:
                 raise
             if follow_imports == "silent":
                 self.ignore_all = True
-        elif path and is_silent_import_module(manager, path):
+        elif path and is_silent_import_module(manager, path) and not root_source:
             self.ignore_all = True
         self.path = path
         if path:
@@ -1956,6 +1963,7 @@ class State:
             source = ""
         self.source = source
         self.add_ancestors()
+        self.per_line_checking_time_ns = collections.defaultdict(int)
         t0 = time.time()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
         self.manager.add_stats(validate_meta_time=time.time() - t0)
@@ -2320,6 +2328,7 @@ class State:
                 self.tree,
                 self.xpath,
                 manager.plugin,
+                self.per_line_checking_time_ns,
             )
         return self._type_checker
 
@@ -2338,14 +2347,19 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return result
 
-    def detect_partially_defined_vars(self, type_map: dict[Expression, Type]) -> None:
+    def detect_possibly_undefined_vars(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
+        if self.tree.is_stub:
+            # We skip stub files because they aren't actually executed.
+            return
         manager = self.manager
-        if manager.errors.is_error_code_enabled(codes.PARTIALLY_DEFINED):
-            manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
+        manager.errors.set_file(self.xpath, self.tree.fullname, options=self.options)
+        if manager.errors.is_error_code_enabled(
+            codes.POSSIBLY_UNDEFINED
+        ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
             self.tree.accept(
-                PartiallyDefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules), type_map
+                PossiblyUndefinedVariableVisitor(
+                    MessageBuilder(manager.errors, manager.modules), self.type_map(), self.options
                 )
             )
 
@@ -2445,7 +2459,7 @@ class State:
             from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
 
             merge_dependencies(self.compute_fine_grained_deps(), deps)
-            TypeState.update_protocol_deps(deps)
+            type_state.update_protocol_deps(deps)
 
     def valid_references(self) -> set[str]:
         assert self.ancestors is not None
@@ -2465,6 +2479,12 @@ class State:
             or self.options.cache_dir == os.devnull
             or self.options.fine_grained_incremental
         ):
+            if self.options.debug_serialize:
+                try:
+                    self.tree.serialize()
+                except Exception:
+                    print(f"Error serializing {self.id}", file=self.manager.stdout)
+                    raise  # Propagate to display traceback
             return
         is_errors = self.transitive_error
         if is_errors:
@@ -2629,7 +2649,7 @@ def find_module_and_diagnose(
                 else:
                     skipping_module(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
-        if is_silent_import_module(manager, result):
+        if is_silent_import_module(manager, result) and not root_source:
             follow_imports = "silent"
         return (result, follow_imports)
     else:
@@ -2728,11 +2748,8 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
             else:
                 parent_mod = parent_st.tree
         if parent_mod is not None:
-            if parent_mod.is_partial_stub_package:
-                return True
-            else:
-                # Bail out soon, complete subpackage found
-                return False
+            # Bail out soon, complete subpackage found
+            return parent_mod.is_partial_stub_package
         id = parent
     return False
 
@@ -2909,7 +2926,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            TypeState.add_all_protocol_deps(manager.fg_deps)
+            type_state.add_all_protocol_deps(manager.fg_deps)
             if not manager.options.fine_grained_incremental:
                 rdeps = generate_deps_for_cache(manager, graph)
                 write_deps_cache(rdeps, manager, graph)
@@ -2946,13 +2963,22 @@ class NodeInfo:
 
 
 def dump_timing_stats(path: str, graph: Graph) -> None:
-    """
-    Dump timing stats for each file in the given graph
-    """
+    """Dump timing stats for each file in the given graph."""
     with open(path, "w") as f:
-        for k in sorted(graph.keys()):
-            v = graph[k]
-            f.write(f"{v.id} {v.time_spent_us}\n")
+        for id in sorted(graph):
+            f.write(f"{id} {graph[id].time_spent_us}\n")
+
+
+def dump_line_checking_stats(path: str, graph: Graph) -> None:
+    """Dump per-line expression type checking stats."""
+    with open(path, "w") as f:
+        for id in sorted(graph):
+            if not graph[id].per_line_checking_time_ns:
+                continue
+            f.write(f"{id}:\n")
+            for line in sorted(graph[id].per_line_checking_time_ns):
+                line_time = graph[id].per_line_checking_time_ns[line]
+                f.write(f"{line:>5} {line_time/1000:8.1f}\n")
 
 
 def dump_graph(graph: Graph, stdout: TextIO | None = None) -> None:
@@ -3024,7 +3050,11 @@ def load_graph(
     for bs in sources:
         try:
             st = State(
-                id=bs.module, path=bs.path, source=bs.text, manager=manager, root_source=True
+                id=bs.module,
+                path=bs.path,
+                source=bs.text,
+                manager=manager,
+                root_source=not bs.followed,
             )
         except ModuleNotFound:
             continue
@@ -3388,7 +3418,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         graph[id].type_check_first_pass()
         if not graph[id].type_checker().deferred_nodes:
             unfinished_modules.discard(id)
-            graph[id].detect_partially_defined_vars(graph[id].type_map())
+            graph[id].detect_possibly_undefined_vars()
             graph[id].finish_passes()
 
     while unfinished_modules:
@@ -3397,7 +3427,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
                 continue
             if not graph[id].type_check_second_pass():
                 unfinished_modules.discard(id)
-                graph[id].detect_partially_defined_vars(graph[id].type_map())
+                graph[id].detect_possibly_undefined_vars()
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
@@ -3576,9 +3606,10 @@ def record_missing_stub_packages(cache_dir: str, missing_stub_packages: set[str]
 
 
 def is_silent_import_module(manager: BuildManager, path: str) -> bool:
-    if not manager.options.no_silence_site_packages:
-        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
-            if is_sub_path(path, dir):
-                # Silence errors in site-package dirs and typeshed
-                return True
-    return False
+    if manager.options.no_silence_site_packages:
+        return False
+    # Silence errors in site-package dirs and typeshed
+    return any(
+        is_sub_path(path, dir)
+        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path
+    )

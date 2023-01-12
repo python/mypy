@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import (
+    expand_self_type,
+    expand_type_by_instance,
+    freshen_all_functions_type_vars,
+)
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -36,7 +40,9 @@ from mypy.typeops import (
     class_callable,
     erase_to_bound,
     function_type,
+    get_type_vars,
     make_simplified_union,
+    supported_self_type,
     tuple_fallback,
     type_object_type_from_function,
 )
@@ -63,8 +69,8 @@ from mypy.types import (
     TypeVarType,
     UnionType,
     get_proper_type,
-    has_type_vars,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 
 if TYPE_CHECKING:  # import for forward declaration only
     import mypy.checker
@@ -90,6 +96,7 @@ class MemberContext:
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
         no_deferral: bool = False,
+        is_self: bool = False,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -101,6 +108,7 @@ class MemberContext:
         self.chk = chk
         self.module_symbol_table = module_symbol_table
         self.no_deferral = no_deferral
+        self.is_self = is_self
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -152,6 +160,7 @@ def analyze_member_access(
     self_type: Type | None = None,
     module_symbol_table: SymbolTable | None = None,
     no_deferral: bool = False,
+    is_self: bool = False,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -187,6 +196,7 @@ def analyze_member_access(
         self_type=self_type,
         module_symbol_table=module_symbol_table,
         no_deferral=no_deferral,
+        is_self=is_self,
     )
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
@@ -262,8 +272,9 @@ def report_missing_attribute(
     override_info: TypeInfo | None = None,
 ) -> Type:
     res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
-    if may_be_awaitable_attribute(name, typ, mx, override_info):
-        mx.msg.possible_missing_await(mx.context)
+    if not mx.msg.prefer_simple_messages():
+        if may_be_awaitable_attribute(name, typ, mx, override_info):
+            mx.msg.possible_missing_await(mx.context)
     return res_type
 
 
@@ -306,7 +317,7 @@ def analyze_instance_member_access(
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type("builtins.function"))
-        signature = freshen_function_type_vars(signature)
+        signature = freshen_all_functions_type_vars(signature)
         if name == "__new__" or method.is_static:
             # __new__ is special and behaves like a static method -- don't strip
             # the first argument.
@@ -324,7 +335,7 @@ def analyze_instance_member_access(
         # Since generic static methods should not be allowed.
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
-        freeze_type_vars(member_type)
+        freeze_all_type_vars(member_type)
         return member_type
     else:
         # Not a method.
@@ -682,12 +693,12 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     return inferred_dunder_get_type.ret_type
 
 
-def is_instance_var(var: Var, info: TypeInfo) -> bool:
+def is_instance_var(var: Var) -> bool:
     """Return if var is an instance variable according to PEP 526."""
     return (
         # check the type_info node is the var (not a decorated function, etc.)
-        var.name in info.names
-        and info.names[var.name].node is var
+        var.name in var.info.names
+        and var.info.names[var.name].node is var
         and not var.is_classvar
         # variables without annotations are treated as classvar
         and not var.is_inferred
@@ -722,12 +733,18 @@ def analyze_var(
             mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
-        t = get_proper_type(expand_type_by_instance(typ, itype))
+        t = freshen_all_functions_type_vars(typ)
+        if not (mx.is_self or mx.is_super) or supported_self_type(
+            get_proper_type(mx.original_type)
+        ):
+            t = expand_self_type(var, t, mx.original_type)
+        t = get_proper_type(expand_type_by_instance(t, itype))
+        freeze_all_type_vars(t)
         result: Type = t
         typ = get_proper_type(typ)
         if (
             var.is_initialized_in_class
-            and (not is_instance_var(var, info) or mx.is_operator)
+            and (not is_instance_var(var) or mx.is_operator)
             and isinstance(typ, FunctionLike)
             and not typ.is_type_obj()
         ):
@@ -750,13 +767,16 @@ def analyze_var(
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
                 # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
-                signature = freshen_function_type_vars(functype)
+                signature = freshen_all_functions_type_vars(functype)
+                bound = get_proper_type(expand_self_type(var, signature, mx.original_type))
+                assert isinstance(bound, FunctionLike)
+                signature = bound
                 signature = check_self_arg(
                     signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
                 )
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
                 expanded_signature = expand_type_by_instance(signature, itype)
-                freeze_type_vars(expanded_signature)
+                freeze_all_type_vars(expanded_signature)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
@@ -779,16 +799,15 @@ def analyze_var(
     return result
 
 
-def freeze_type_vars(member_type: Type) -> None:
-    if not isinstance(member_type, ProperType):
-        return
-    if isinstance(member_type, CallableType):
-        for v in member_type.variables:
+def freeze_all_type_vars(member_type: Type) -> None:
+    member_type.accept(FreezeTypeVarsVisitor())
+
+
+class FreezeTypeVarsVisitor(TypeTraverserVisitor):
+    def visit_callable_type(self, t: CallableType) -> None:
+        for v in t.variables:
             v.id.meta_level = 0
-    if isinstance(member_type, Overloaded):
-        for it in member_type.items:
-            for v in it.variables:
-                v.id.meta_level = 0
+        super().visit_callable_type(t)
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) -> SymbolNode | None:
@@ -894,6 +913,10 @@ def analyze_class_attribute_access(
         if isinstance(node.node, TypeInfo):
             mx.msg.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, mx.context)
 
+    # Refuse class attribute access if slot defined
+    if info.slots and name in info.slots:
+        mx.msg.fail(message_registry.CLASS_VAR_CONFLICTS_SLOTS.format(name), mx.context)
+
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
@@ -945,7 +968,12 @@ def analyze_class_attribute_access(
             #         x: T
             #     C.x  # Error, ambiguous access
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
-            if isinstance(t, TypeVarType) or has_type_vars(t):
+            # Exception is Self type wrapped in ClassVar, that is safe.
+            def_vars = set(node.node.info.defn.type_vars)
+            if not node.node.is_classvar and node.node.info.self_type:
+                def_vars.add(node.node.info.self_type)
+            typ_vars = set(get_type_vars(t))
+            if def_vars & typ_vars:
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
@@ -958,7 +986,8 @@ def analyze_class_attribute_access(
             # In the above example this means that we infer following types:
             #     C.x -> Any
             #     C[int].x -> int
-            t = erase_typevars(expand_type_by_instance(t, isuper))
+            t = get_proper_type(expand_self_type(node.node, t, itype))
+            t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
             isinstance(node.node, FuncBase) and node.node.is_class
@@ -1116,11 +1145,11 @@ def add_class_tvars(
     if isinstance(t, CallableType):
         tvars = original_vars if original_vars is not None else []
         if is_classmethod:
-            t = freshen_function_type_vars(t)
+            t = freshen_all_functions_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
             t = cast(CallableType, expand_type_by_instance(t, isuper))
-            freeze_type_vars(t)
+            freeze_all_type_vars(t)
         return t.copy_modified(variables=list(tvars) + list(t.variables))
     elif isinstance(t, Overloaded):
         return Overloaded(

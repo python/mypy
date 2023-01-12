@@ -12,6 +12,7 @@ from typing import (
     Callable,
     Dict,
     Iterator,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -70,14 +71,6 @@ class Context:
 
         if end_column is not None:
             self.end_column = end_column
-
-    def get_line(self) -> int:
-        """Don't use. Use x.line."""
-        return self.line
-
-    def get_column(self) -> int:
-        """Don't use. Use x.column."""
-        return self.column
 
 
 if TYPE_CHECKING:
@@ -488,43 +481,6 @@ class ImportAll(ImportBase):
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
-
-
-class ImportedName(SymbolNode):
-    """Indirect reference to a fullname stored in symbol table.
-
-    This node is not present in the original program as such. This is
-    just a temporary artifact in binding imported names. After semantic
-    analysis pass 2, these references should be replaced with direct
-    reference to a real AST node.
-
-    Note that this is neither a Statement nor an Expression so this
-    can't be visited.
-    """
-
-    __slots__ = ("target_fullname",)
-
-    def __init__(self, target_fullname: str) -> None:
-        super().__init__()
-        self.target_fullname = target_fullname
-
-    @property
-    def name(self) -> str:
-        return self.target_fullname.split(".")[-1]
-
-    @property
-    def fullname(self) -> str:
-        return self.target_fullname
-
-    def serialize(self) -> JsonDict:
-        assert False, "ImportedName leaked from semantic analysis"
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> ImportedName:
-        assert False, "ImportedName should never be serialized"
-
-    def __str__(self) -> str:
-        return f"ImportedName({self.target_fullname})"
 
 
 FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
@@ -1113,6 +1069,7 @@ class ClassDef(Statement):
         "analyzed",
         "has_incompatible_baseclass",
         "deco_line",
+        "removed_statements",
     )
 
     __match_args__ = ("name", "defs")
@@ -1131,6 +1088,8 @@ class ClassDef(Statement):
     keywords: dict[str, Expression]
     analyzed: Expression | None
     has_incompatible_baseclass: bool
+    # Used by special forms like NamedTuple and TypedDict to store invalid statements
+    removed_statements: list[Statement]
 
     def __init__(
         self,
@@ -1156,6 +1115,7 @@ class ClassDef(Statement):
         self.has_incompatible_baseclass = False
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: int | None = None
+        self.removed_statements = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
@@ -2009,10 +1969,20 @@ class AssignmentExpr(Expression):
 
 
 class OpExpr(Expression):
-    """Binary operation (other than . or [] or comparison operators,
-    which have specific nodes)."""
+    """Binary operation.
 
-    __slots__ = ("op", "left", "right", "method_type", "right_always", "right_unreachable")
+    The dot (.), [] and comparison operators have more specific nodes.
+    """
+
+    __slots__ = (
+        "op",
+        "left",
+        "right",
+        "method_type",
+        "right_always",
+        "right_unreachable",
+        "analyzed",
+    )
 
     __match_args__ = ("left", "op", "right")
 
@@ -2025,8 +1995,12 @@ class OpExpr(Expression):
     right_always: bool
     # Per static analysis only: Is the right side unreachable?
     right_unreachable: bool
+    # Used for expressions that represent a type "X | Y" in some contexts
+    analyzed: TypeAliasExpr | None
 
-    def __init__(self, op: str, left: Expression, right: Expression) -> None:
+    def __init__(
+        self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
+    ) -> None:
         super().__init__()
         self.op = op
         self.left = left
@@ -2034,6 +2008,7 @@ class OpExpr(Expression):
         self.method_type = None
         self.right_always = False
         self.right_unreachable = False
+        self.analyzed = analyzed
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
@@ -2551,9 +2526,22 @@ class ParamSpecExpr(TypeVarLikeExpr):
 class TypeVarTupleExpr(TypeVarLikeExpr):
     """Type variable tuple expression TypeVarTuple(...)."""
 
-    __slots__ = ()
+    __slots__ = "tuple_fallback"
+
+    tuple_fallback: mypy.types.Instance
 
     __match_args__ = ("name", "upper_bound")
+
+    def __init__(
+        self,
+        name: str,
+        fullname: str,
+        upper_bound: mypy.types.Type,
+        tuple_fallback: mypy.types.Instance,
+        variance: int = INVARIANT,
+    ) -> None:
+        super().__init__(name, fullname, upper_bound, variance)
+        self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_tuple_expr(self)
@@ -2564,6 +2552,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             "name": self._name,
             "fullname": self._fullname,
             "upper_bound": self.upper_bound.serialize(),
+            "tuple_fallback": self.tuple_fallback.serialize(),
             "variance": self.variance,
         }
 
@@ -2574,6 +2563,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             data["name"],
             data["fullname"],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.Instance.deserialize(data["tuple_fallback"]),
             data["variance"],
         )
 
@@ -2587,7 +2577,7 @@ class TypeAliasExpr(Expression):
 
     # The target type.
     type: mypy.types.Type
-    # Names of unbound type variables used to define the alias
+    # Names of type variables used to define the alias
     tvars: list[str]
     # Whether this alias was defined in bare form. Used to distinguish
     # between
@@ -2600,7 +2590,7 @@ class TypeAliasExpr(Expression):
     def __init__(self, node: TypeAlias) -> None:
         super().__init__()
         self.type = node.target
-        self.tvars = node.alias_tvars
+        self.tvars = [v.name for v in node.alias_tvars]
         self.no_args = node.no_args
         self.node = node
 
@@ -2813,6 +2803,7 @@ class TypeInfo(SymbolNode):
         "has_type_var_tuple_type",
         "type_var_tuple_prefix",
         "type_var_tuple_suffix",
+        "self_type",
     )
 
     _fullname: Bogus[str]  # Fully qualified name
@@ -2953,6 +2944,9 @@ class TypeInfo(SymbolNode):
     # in case we are doing multiple semantic analysis passes.
     special_alias: TypeAlias | None
 
+    # Shared type variable for typing.Self in this class (if used, otherwise None).
+    self_type: mypy.types.TypeVarType | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3005,6 +2999,7 @@ class TypeInfo(SymbolNode):
         self.is_newtype = False
         self.is_intersection = False
         self.metadata = {}
+        self.self_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3222,6 +3217,7 @@ class TypeInfo(SymbolNode):
             "metadata": self.metadata,
             "slots": list(sorted(self.slots)) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
+            "self_type": self.self_type.serialize() if self.self_type is not None else None,
         }
         return data
 
@@ -3278,6 +3274,8 @@ class TypeInfo(SymbolNode):
         ti.slots = set(data["slots"]) if data["slots"] is not None else None
         ti.deletable_attributes = data["deletable_attributes"]
         set_flags(ti, data["flags"])
+        st = data["self_type"]
+        ti.self_type = mypy.types.TypeVarType.deserialize(st) if st is not None else None
         return ti
 
 
@@ -3342,10 +3340,9 @@ class TypeAlias(SymbolNode):
     class-valued attributes. See SemanticAnalyzerPass2.check_and_set_up_type_alias
     for details.
 
-    Aliases can be generic. Currently, mypy uses unbound type variables for
-    generic aliases and identifies them by name. Essentially, type aliases
-    work as macros that expand textually. The definition and expansion rules are
-    following:
+    Aliases can be generic. We use bound type variables for generic aliases, similar
+    to classes. Essentially, type aliases work as macros that expand textually.
+    The definition and expansion rules are following:
 
         1. An alias targeting a generic class without explicit variables act as
         the given class (this doesn't apply to TypedDict, Tuple and Callable, which
@@ -3396,11 +3393,11 @@ class TypeAlias(SymbolNode):
 
     Meaning of other fields:
 
-    target: The target type. For generic aliases contains unbound type variables
-        as nested types.
+    target: The target type. For generic aliases contains bound type variables
+        as nested types (currently TypeVar and ParamSpec are supported).
     _fullname: Qualified name of this type alias. This is used in particular
         to track fine grained dependencies from aliases.
-    alias_tvars: Names of unbound type variables used to define this alias.
+    alias_tvars: Type variables used to define this alias.
     normalized: Used to distinguish between `A = List`, and `A = list`. Both
         are internally stored using `builtins.list` (because `typing.List` is
         itself an alias), while the second cannot be subscripted because of
@@ -3429,7 +3426,7 @@ class TypeAlias(SymbolNode):
         line: int,
         column: int,
         *,
-        alias_tvars: list[str] | None = None,
+        alias_tvars: list[mypy.types.TypeVarLikeType] | None = None,
         no_args: bool = False,
         normalized: bool = False,
         eager: bool = False,
@@ -3479,12 +3476,16 @@ class TypeAlias(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    @property
+    def has_param_spec_type(self) -> bool:
+        return any(isinstance(v, mypy.types.ParamSpecType) for v in self.alias_tvars)
+
     def serialize(self) -> JsonDict:
         data: JsonDict = {
             ".class": "TypeAlias",
             "fullname": self._fullname,
             "target": self.target.serialize(),
-            "alias_tvars": self.alias_tvars,
+            "alias_tvars": [v.serialize() for v in self.alias_tvars],
             "no_args": self.no_args,
             "normalized": self.normalized,
             "line": self.line,
@@ -3499,7 +3500,8 @@ class TypeAlias(SymbolNode):
     def deserialize(cls, data: JsonDict) -> TypeAlias:
         assert data[".class"] == "TypeAlias"
         fullname = data["fullname"]
-        alias_tvars = data["alias_tvars"]
+        alias_tvars = [mypy.types.deserialize_type(v) for v in data["alias_tvars"]]
+        assert all(isinstance(t, mypy.types.TypeVarLikeType) for t in alias_tvars)
         target = mypy.types.deserialize_type(data["target"])
         no_args = data["no_args"]
         normalized = data["normalized"]
@@ -3510,7 +3512,7 @@ class TypeAlias(SymbolNode):
             fullname,
             line,
             column,
-            alias_tvars=alias_tvars,
+            alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
         )

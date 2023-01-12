@@ -68,6 +68,9 @@ _V_co = TypeVar("_V_co", covariant=True)
 
 @final
 class _Cell:
+    if sys.version_info >= (3, 8):
+        def __init__(self, __contents: object = ...) -> None: ...
+
     __hash__: ClassVar[None]  # type: ignore[assignment]
     cell_contents: Any
 
@@ -569,7 +572,7 @@ _P = ParamSpec("_P")
 # it's not really an Awaitable, but can be used in an await expression. Real type: Generator & Awaitable
 # The type: ignore is due to overlapping overloads, not the use of ParamSpec
 @overload
-def coroutine(func: Callable[_P, Generator[_R, Any, Any]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[misc]
+def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[misc]
 @overload
 def coroutine(func: _Fn) -> _Fn: ...
 
@@ -585,13 +588,15 @@ if sys.version_info >= (3, 9):
         @property
         def __parameters__(self) -> tuple[Any, ...]: ...
         def __init__(self, origin: type, args: Any) -> None: ...
+        def __getitem__(self, __typeargs: Any) -> GenericAlias: ...
         if sys.version_info >= (3, 11):
             @property
             def __unpacked__(self) -> bool: ...
             @property
             def __typing_unpacked_tuple_args__(self) -> tuple[Any, ...] | None: ...
 
-        def __getattr__(self, name: str) -> Any: ...  # incomplete
+        # GenericAlias delegates attr access to `__origin__`
+        def __getattr__(self, name: str) -> Any: ...
 
 if sys.version_info >= (3, 10):
     @final

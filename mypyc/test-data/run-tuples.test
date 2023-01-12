@@ -99,8 +99,6 @@ assert f(Sub(3, 2)) == 3
 [case testNamedTupleClassSyntax]
 from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
-class ClassIR: pass
-
 class FuncIR: pass
 
 StealsDescription = Union[bool, List[bool]]
@@ -119,8 +117,12 @@ class Record(NamedTuple):
     ordering: Optional[List[int]]
     extra_int_constants: List[Tuple[int]]
 
+# Make sure mypyc loads the annotation string for this forward reference.
+# Ref: https://github.com/mypyc/mypyc/issues/938
+class ClassIR: pass
+
 [file driver.py]
-from typing import Optional
+from typing import ForwardRef, Optional
 from native import ClassIR, FuncIR, Record
 
 assert Record.__annotations__ == {
@@ -129,7 +131,7 @@ assert Record.__annotations__ == {
     'is_borrowed': bool,
     'hash': str,
     'python_path': tuple,
-    'type': ClassIR,
+    'type': ForwardRef('ClassIR'),
     'method': FuncIR,
     'shadow_method': type,
     'classes': dict,

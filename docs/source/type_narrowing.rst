@@ -16,7 +16,7 @@ The simplest way to narrow a type is to use one of the supported expressions:
 
 - :py:func:`isinstance` like in ``isinstance(obj, float)`` will narrow ``obj`` to have ``float`` type
 - :py:func:`issubclass` like in ``issubclass(cls, MyClass)`` will narrow ``cls`` to be ``Type[MyClass]``
-- :py:func:`type` like in ``type(obj) is int`` will narrow ``obj`` to have ``int`` type
+- :py:class:`type` like in ``type(obj) is int`` will narrow ``obj`` to have ``int`` type
 - :py:func:`callable` like in ``callable(obj)`` will narrow object to callable type
 
 Type narrowing is contextual. For example, based on the condition, mypy will narrow an expression only within an ``if`` branch:

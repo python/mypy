@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import time
 from contextlib import contextmanager
 from typing import Callable, ClassVar, Iterator, List, Optional, Sequence, cast
 from typing_extensions import Final, TypeAlias as _TypeAlias, overload
@@ -150,6 +151,7 @@ from mypy.types import (
     TypeVarType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -160,8 +162,9 @@ from mypy.types import (
     is_self_type_like,
     remove_optional,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
+from mypy.typevartuples import find_unpack_in_list
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
 
@@ -262,11 +265,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
 
-    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
+    def __init__(
+        self,
+        chk: mypy.checker.TypeChecker,
+        msg: MessageBuilder,
+        plugin: Plugin,
+        per_line_checking_time_ns: dict[int, int],
+    ) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
+        self.per_line_checking_time_ns = per_line_checking_time_ns
+        self.collect_line_checking_stats = chk.options.line_checking_stats is not None
+        # Are we already visiting some expression? This is used to avoid double counting
+        # time for nested expressions.
+        self.in_expression = False
         self.type_context = [None]
 
         # Temporary overrides for expression types. This is currently
@@ -1404,13 +1418,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
+            if need_refresh:
+                # Argument kinds etc. may have changed due to
+                # ParamSpec or TypeVarTuple variables being replaced with an arbitrary
+                # number of arguments; recalculate actual-to-formal map
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds,
+                    arg_names,
+                    callee.arg_kinds,
+                    callee.arg_names,
+                    lambda i: self.accept(args[i]),
+                )
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context
             )
             if need_refresh:
-                # Argument kinds etc. may have changed due to
-                # ParamSpec variables being replaced with an arbitrary
-                # number of arguments; recalculate actual-to-formal map
                 formal_to_actual = map_actuals_to_formals(
                     arg_kinds,
                     arg_names,
@@ -1562,21 +1584,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 res.append(arg_type)
         return res
 
-    @contextmanager
-    def allow_unions(self, type_context: Type) -> Iterator[None]:
-        # This is a hack to better support inference for recursive types.
-        # When the outer context for a function call is known to be recursive,
-        # we solve type constraints inferred from arguments using unions instead
-        # of joins. This is a bit arbitrary, but in practice it works for most
-        # cases. A cleaner alternative would be to switch to single bin type
-        # inference, but this is a lot of work.
-        old = TypeState.infer_unions
+    def infer_more_unions_for_recursive_type(self, type_context: Type) -> bool:
+        """Adjust type inference of unions if type context has a recursive type.
+
+        Return the old state. The caller must assign it to type_state.infer_unions
+        afterwards.
+
+        This is a hack to better support inference for recursive types.
+
+        Note: This is performance-sensitive and must not be a context manager
+        until mypyc supports them better.
+        """
+        old = type_state.infer_unions
         if has_recursive_types(type_context):
-            TypeState.infer_unions = True
-        try:
-            yield
-        finally:
-            TypeState.infer_unions = old
+            type_state.infer_unions = True
+        return old
 
     def infer_arg_types_in_context(
         self,
@@ -1597,8 +1619,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
                 if not arg_kinds[ai].is_star():
-                    with self.allow_unions(callee.arg_types[i]):
-                        res[ai] = self.accept(args[ai], callee.arg_types[i])
+                    arg_type = callee.arg_types[i]
+                    # When the outer context for a function call is known to be recursive,
+                    # we solve type constraints inferred from arguments using unions instead
+                    # of joins. This is a bit arbitrary, but in practice it works for most
+                    # cases. A cleaner alternative would be to switch to single bin type
+                    # inference, but this is a lot of work.
+                    old = self.infer_more_unions_for_recursive_type(arg_type)
+                    res[ai] = self.accept(args[ai], arg_type)
+                    # We need to manually restore union inference state, ugh.
+                    type_state.infer_unions = old
 
         # Fill in the rest of the argument types.
         for i, t in enumerate(res):
@@ -1999,11 +2029,84 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Keep track of consumed tuple *arg items.
         mapper = ArgTypeExpander(self.argument_infer_context())
         for i, actuals in enumerate(formal_to_actual):
-            for actual in actuals:
-                actual_type = arg_types[actual]
+            orig_callee_arg_type = get_proper_type(callee.arg_types[i])
+
+            # Checking the case that we have more than one item but the first argument
+            # is an unpack, so this would be something like:
+            # [Tuple[Unpack[Ts]], int]
+            #
+            # In this case we have to check everything together, we do this by re-unifying
+            # the suffices to the tuple, e.g. a single actual like
+            # Tuple[Unpack[Ts], int]
+            expanded_tuple = False
+            if len(actuals) > 1:
+                first_actual_arg_type = get_proper_type(arg_types[actuals[0]])
+                if (
+                    isinstance(first_actual_arg_type, TupleType)
+                    and len(first_actual_arg_type.items) == 1
+                    and isinstance(get_proper_type(first_actual_arg_type.items[0]), UnpackType)
+                ):
+                    # TODO: use walrus operator
+                    actual_types = [first_actual_arg_type.items[0]] + [
+                        arg_types[a] for a in actuals[1:]
+                    ]
+                    actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
+
+                    assert isinstance(orig_callee_arg_type, TupleType)
+                    assert orig_callee_arg_type.items
+                    callee_arg_types = orig_callee_arg_type.items
+                    callee_arg_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (
+                        len(orig_callee_arg_type.items) - 1
+                    )
+                    expanded_tuple = True
+
+            if not expanded_tuple:
+                actual_types = [arg_types[a] for a in actuals]
+                actual_kinds = [arg_kinds[a] for a in actuals]
+                if isinstance(orig_callee_arg_type, UnpackType):
+                    unpacked_type = get_proper_type(orig_callee_arg_type.type)
+                    if isinstance(unpacked_type, TupleType):
+                        inner_unpack_index = find_unpack_in_list(unpacked_type.items)
+                        if inner_unpack_index is None:
+                            callee_arg_types = unpacked_type.items
+                            callee_arg_kinds = [ARG_POS] * len(actuals)
+                        else:
+                            inner_unpack = get_proper_type(unpacked_type.items[inner_unpack_index])
+                            assert isinstance(inner_unpack, UnpackType)
+                            inner_unpacked_type = get_proper_type(inner_unpack.type)
+                            # We assume heterogenous tuples are desugared earlier
+                            assert isinstance(inner_unpacked_type, Instance)
+                            assert inner_unpacked_type.type.fullname == "builtins.tuple"
+                            callee_arg_types = (
+                                unpacked_type.items[:inner_unpack_index]
+                                + [inner_unpacked_type.args[0]]
+                                * (len(actuals) - len(unpacked_type.items) + 1)
+                                + unpacked_type.items[inner_unpack_index + 1 :]
+                            )
+                            callee_arg_kinds = [ARG_POS] * len(actuals)
+                    else:
+                        assert isinstance(unpacked_type, Instance)
+                        assert unpacked_type.type.fullname == "builtins.tuple"
+                        callee_arg_types = [unpacked_type.args[0]] * len(actuals)
+                        callee_arg_kinds = [ARG_POS] * len(actuals)
+                else:
+                    callee_arg_types = [orig_callee_arg_type] * len(actuals)
+                    callee_arg_kinds = [callee.arg_kinds[i]] * len(actuals)
+
+            assert len(actual_types) == len(actuals) == len(actual_kinds)
+
+            if len(callee_arg_types) != len(actual_types):
+                # TODO: Improve error message
+                self.chk.fail("Invalid number of arguments", context)
+                continue
+
+            assert len(callee_arg_types) == len(actual_types)
+            assert len(callee_arg_types) == len(callee_arg_kinds)
+            for actual, actual_type, actual_kind, callee_arg_type, callee_arg_kind in zip(
+                actuals, actual_types, actual_kinds, callee_arg_types, callee_arg_kinds
+            ):
                 if actual_type is None:
                     continue  # Some kind of error was already reported.
-                actual_kind = arg_kinds[actual]
                 # Check that a *arg is valid as varargs.
                 if actual_kind == nodes.ARG_STAR and not self.is_valid_var_arg(actual_type):
                     self.msg.invalid_var_arg(actual_type, context)
@@ -2013,13 +2116,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     is_mapping = is_subtype(actual_type, self.chk.named_type("typing.Mapping"))
                     self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
-                    actual_type, actual_kind, callee.arg_names[i], callee.arg_kinds[i]
+                    actual_type, actual_kind, callee.arg_names[i], callee_arg_kind
                 )
                 check_arg(
                     expanded_actual,
                     actual_type,
-                    arg_kinds[actual],
-                    callee.arg_types[i],
+                    actual_kind,
+                    callee_arg_type,
                     actual + 1,
                     i + 1,
                     callee,
@@ -2073,7 +2176,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.incompatible_argument_note(
                 original_caller_type, callee_type, context, code=code
             )
-            self.chk.check_possible_missing_await(caller_type, callee_type, context)
+            if not self.msg.prefer_simple_messages():
+                self.chk.check_possible_missing_await(caller_type, callee_type, context)
 
     def check_overload_call(
         self,
@@ -2128,7 +2232,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # we don't want to introduce internal inconsistencies.
                     unioned_result = (
                         make_simplified_union(list(returns), context.line, context.column),
-                        self.combine_function_signatures(inferred_types),
+                        self.combine_function_signatures(get_proper_types(inferred_types)),
                     )
 
         # Step 3: We try checking each branch one-by-one.
@@ -2469,7 +2573,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for expr in exprs:
                 del self.type_overrides[expr]
 
-    def combine_function_signatures(self, types: Sequence[Type]) -> AnyType | CallableType:
+    def combine_function_signatures(self, types: list[ProperType]) -> AnyType | CallableType:
         """Accepts a list of function signatures and attempts to combine them together into a
         new CallableType consisting of the union of all of the given arguments and return types.
 
@@ -2477,10 +2581,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         an ambiguity because of Any in arguments).
         """
         assert types, "Trying to merge no callables"
-        types = get_proper_types(types)
         if not all(isinstance(c, CallableType) for c in types):
             return AnyType(TypeOfAny.special_form)
-        callables = cast(Sequence[CallableType], types)
+        callables = cast("list[CallableType]", types)
         if len(callables) == 1:
             return callables[0]
 
@@ -2667,6 +2770,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
                 module_symbol_table = base.node.names
+            if isinstance(base, RefExpr) and isinstance(base.node, Var):
+                is_self = base.node.is_self
+            else:
+                is_self = False
 
             member_type = analyze_member_access(
                 e.name,
@@ -2680,6 +2787,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 chk=self.chk,
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table,
+                is_self=is_self,
             )
 
             return member_type
@@ -2766,6 +2874,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
+        if e.analyzed:
+            # It's actually a type expression X | Y.
+            return self.accept(e.analyzed)
         if e.op == "and" or e.op == "or":
             return self.check_boolean_op(e, e)
         if e.op == "*" and isinstance(e.left, ListExpr):
@@ -3370,7 +3481,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # we call 'combine_function_signature' instead of just unioning the inferred
             # callable types.
             results_final = make_simplified_union(all_results)
-            inferred_final = self.combine_function_signatures(all_inferred)
+            inferred_final = self.combine_function_signatures(get_proper_types(all_inferred))
             return results_final, inferred_final
         else:
             return self.check_method_call_by_name(
@@ -3773,10 +3884,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         There are two different options here, depending on whether expr refers
         to a type alias or directly to a generic class. In the first case we need
-        to use a dedicated function typeanal.expand_type_aliases. This
-        is due to the fact that currently type aliases machinery uses
-        unbound type variables, while normal generics use bound ones;
-        see TypeAlias docstring for more details.
+        to use a dedicated function typeanal.expand_type_alias(). This
+        is due to some differences in how type arguments are applied and checked.
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.
@@ -3887,6 +3996,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if isinstance(tp, CallableType):
             if len(tp.variables) != len(args):
+                if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
+                    # TODO: Specialize the callable for the type arguments
+                    return tp
                 self.msg.incompatible_type_application(len(tp.variables), len(args), ctx)
                 return AnyType(TypeOfAny.from_error)
             return self.apply_generic_arguments(tp, args, ctx)
@@ -4305,19 +4417,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             index = mro.index(type_info)
         else:
             method = self.chk.scope.top_function()
-            assert method is not None
             # Mypy explicitly allows supertype upper bounds (and no upper bound at all)
             # for annotating self-types. However, if such an annotation is used for
             # checking super() we will still get an error. So to be consistent, we also
             # allow such imprecise annotations for use with super(), where we fall back
-            # to the current class MRO instead.
-            if is_self_type_like(instance_type, is_classmethod=method.is_class):
+            # to the current class MRO instead. This works only from inside a method.
+            if method is not None and is_self_type_like(
+                instance_type, is_classmethod=method.is_class
+            ):
                 if e.info and type_info in e.info.mro:
                     mro = e.info.mro
                     index = mro.index(type_info)
         if index is None:
-            self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
-            return AnyType(TypeOfAny.from_error)
+            if (
+                instance_info.is_protocol
+                and instance_info != type_info
+                and not type_info.is_protocol
+            ):
+                # A special case for mixins, in this case super() should point
+                # directly to the host protocol, this is not safe, since the real MRO
+                # is not known yet for mixin, but this feature is more like an escape hatch.
+                index = -1
+            else:
+                self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
+                return AnyType(TypeOfAny.from_error)
 
         if len(mro) == index + 1:
             self.chk.fail(message_registry.TARGET_CLASS_HAS_NO_BASE_CLASS, e)
@@ -4648,7 +4771,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         applies only to this expression and not any subexpressions.
         """
         if node in self.type_overrides:
+            # This branch is very fast, there is no point timing it.
             return self.type_overrides[node]
+        # We don't use context manager here to get most precise data (and avoid overhead).
+        record_time = False
+        if self.collect_line_checking_stats and not self.in_expression:
+            t0 = time.perf_counter_ns()
+            self.in_expression = True
+            record_time = True
         self.type_context.append(type_context)
         old_is_callee = self.is_callee
         self.is_callee = is_callee
@@ -4683,9 +4813,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function() or self.chk.current_node_deferred:
-            return AnyType(TypeOfAny.unannotated)
+            result: Type = AnyType(TypeOfAny.unannotated)
         else:
-            return typ
+            result = typ
+        if record_time:
+            self.per_line_checking_time_ns[node.line] += time.perf_counter_ns() - t0
+            self.in_expression = False
+        return result
 
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no type
@@ -4704,6 +4838,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             or isinstance(typ, AnyType)
             or isinstance(typ, ParamSpecType)
+            or isinstance(typ, UnpackType)
         )
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
@@ -4998,9 +5133,9 @@ def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
     return t.accept(HasAnyType(ignore_in_type_obj))
 
 
-class HasAnyType(types.TypeQuery[bool]):
+class HasAnyType(types.BoolTypeQuery):
     def __init__(self, ignore_in_type_obj: bool) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
         self.ignore_in_type_obj = ignore_in_type_obj
 
     def visit_any(self, t: AnyType) -> bool:
@@ -5077,7 +5212,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
     return c.copy_modified(ret_type=new_ret_type)
 
 
-class ArgInferSecondPassQuery(types.TypeQuery[bool]):
+class ArgInferSecondPassQuery(types.BoolTypeQuery):
     """Query whether an argument type should be inferred in the second pass.
 
     The result is True if the type has a type variable in a callable return
@@ -5086,17 +5221,17 @@ class ArgInferSecondPassQuery(types.TypeQuery[bool]):
     """
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 
-class HasTypeVarQuery(types.TypeQuery[bool]):
+class HasTypeVarQuery(types.BoolTypeQuery):
     """Visitor for querying whether a type has a type variable component."""
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
@@ -5106,11 +5241,11 @@ def has_erased_component(t: Type | None) -> bool:
     return t is not None and t.accept(HasErasedComponentsQuery())
 
 
-class HasErasedComponentsQuery(types.TypeQuery[bool]):
+class HasErasedComponentsQuery(types.BoolTypeQuery):
     """Visitor for querying whether a type has an erased component."""
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True
@@ -5120,11 +5255,11 @@ def has_uninhabited_component(t: Type | None) -> bool:
     return t is not None and t.accept(HasUninhabitedComponentsQuery())
 
 
-class HasUninhabitedComponentsQuery(types.TypeQuery[bool]):
+class HasUninhabitedComponentsQuery(types.BoolTypeQuery):
     """Visitor for querying whether a type has an UninhabitedType component."""
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(types.ANY_STRATEGY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return True

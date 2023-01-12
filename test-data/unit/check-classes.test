@@ -2901,7 +2901,7 @@ b.bad = 'a'  # E: Incompatible types in assignment (expression has type "str", v
 from typing import Any
 
 class Test:
-    def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "Callable[[], None]" for "__setattr__"
+    def __setattr__() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument? # E: Invalid signature "Callable[[], None]" for "__setattr__"
 t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
@@ -7120,7 +7120,7 @@ reveal_type(Foo().y)  # N: Revealed type is "builtins.list[Any]"
 # flags: --check-untyped-defs
 
 class Foo:
-    def bad():  # E: Method must have at least one argument
+    def bad():  # E: Method must have at least one argument. Did you forget the "self" argument?
         self.x = 0  # E: Name "self" is not defined
 
 [case testTypeAfterAttributeAccessWithDisallowAnyExpr]
@@ -7209,7 +7209,7 @@ from typing import Callable
 class C:
     x: Callable[[C], int] = lambda x: x.y.g()  # E: "C" has no attribute "y"
 
-[case testOpWithInheritedFromAny]
+[case testOpWithInheritedFromAny-xfail]
 from typing import Any
 C: Any
 class D(C):
@@ -7664,3 +7664,33 @@ class C(B):
     def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B"
         ...
 [builtins fixtures/property.pyi]
+
+[case testAllowArgumentAsBaseClass]
+from typing import Any, Type
+
+def e(b) -> None:
+    class D(b): ...
+
+def f(b: Any) -> None:
+    class D(b): ...
+
+def g(b: Type[Any]) -> None:
+    class D(b): ...
+
+def h(b: type) -> None:
+    class D(b): ...
+
+[case testNoCrashOnSelfWithForwardRefGenericClass]
+from typing import Generic, Sequence, TypeVar, Self
+
+_T = TypeVar('_T', bound="Foo")
+
+class Foo:
+    foo: int
+
+class Element(Generic[_T]):
+    elements: Sequence[Self]
+
+class Bar(Foo): ...
+e: Element[Bar]
+reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"

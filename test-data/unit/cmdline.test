@@ -1505,3 +1505,94 @@ def f():
 [out]
 a.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 == Return code: 0
+
+[case testCustomTypeshedDirFilePassedExplicitly]
+# cmd: mypy --custom-typeshed-dir dir m.py dir/stdlib/foo.pyi
+[file m.py]
+1()
+[file dir/stdlib/abc.pyi]
+1()  # Errors are not reported from typeshed by default
+[file dir/stdlib/builtins.pyi]
+class object: pass
+class str(object): pass
+class int(object): pass
+[file dir/stdlib/sys.pyi]
+[file dir/stdlib/types.pyi]
+[file dir/stdlib/typing.pyi]
+[file dir/stdlib/mypy_extensions.pyi]
+[file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/foo.pyi]
+1()  # Errors are reported if the file was explicitly passed on the command line
+[file dir/stdlib/VERSIONS]
+[out]
+dir/stdlib/foo.pyi:1: error: "int" not callable
+m.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly1]
+# cmd: mypy $CWD/pypath/foo.py
+[file pypath/foo.py]
+1()
+[out]
+pypath/foo.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly2]
+# cmd: mypy pypath/foo.py
+[file pypath/foo.py]
+1()
+[out]
+pypath/foo.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly3]
+# cmd: mypy -p foo
+# cwd: pypath
+[file pypath/foo/__init__.py]
+1()
+[file pypath/foo/m.py]
+1()
+[out]
+foo/m.py:1: error: "int" not callable
+foo/__init__.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly4]
+# cmd: mypy -m foo
+# cwd: pypath
+[file pypath/foo.py]
+1()
+[out]
+foo.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly5]
+# cmd: mypy -m foo.m
+# cwd: pypath
+[file pypath/foo/__init__.py]
+1()  # TODO: Maybe this should generate errors as well? But how would we decide?
+[file pypath/foo/m.py]
+1()
+[out]
+foo/m.py:1: error: "int" not callable
+
+[case testCmdlineCfgEnableErrorCodeTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+enable_error_code =
+  truthy-bool,
+  redundant-expr,
+[out]
+
+[case testCmdlineCfgDisableErrorCodeTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+disable_error_code =
+  misc,
+  override,
+[out]
+
+[case testCmdlineCfgAlwaysTrueTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+always_true =
+  MY_VAR,
+[out]

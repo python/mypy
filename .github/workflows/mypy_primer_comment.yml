@@ -48,14 +48,28 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const MAX_CHARACTERS = 30000
+            const MAX_CHARACTERS_PER_PROJECT = MAX_CHARACTERS / 3
+
             const fs = require('fs')
             let data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
-            // posting comment fails if too long, so truncate
-            if (data.length > 30000) {
-              let truncated_data = data.substring(0, 30000)
-              let lines_truncated = data.split('\n').length - truncated_data.split('\n').length
-              data = truncated_data + `\n\n... (truncated ${lines_truncated} lines) ...\n`
+
+            function truncateIfNeeded(original, maxLength) {
+              if (original.length <= maxLength) {
+                return original
+              }
+              let truncated = original.substring(0, maxLength)
+              // further, remove last line that might be truncated
+              truncated = truncated.substring(0, truncated.lastIndexOf('\n'))
+              let lines_truncated = original.split('\n').length - truncated.split('\n').length
+              return `${truncated}\n\n... (truncated ${lines_truncated} lines) ...`
             }
+
+            const projects = data.split('\n\n')
+            // don't let one project dominate
+            data = projects.map(project => truncateIfNeeded(project, MAX_CHARACTERS_PER_PROJECT)).join('\n\n')
+            // posting comment fails if too long, so truncate
+            data = truncateIfNeeded(data, MAX_CHARACTERS)
 
             console.log("Diff from mypy_primer:")
             console.log(data)
@@ -76,8 +90,8 @@ jobs:
             return prNumber
 
       - name: Hide old comments
-        # v0.3.0
-        uses: kanga333/comment-hider@bbdf5b562fbec24e6f60572d8f712017428b92e0
+        # v0.4.0
+        uses: kanga333/comment-hider@c12bb20b48aeb8fc098e35967de8d4f8018fffdf
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           leave_visible: 1

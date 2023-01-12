@@ -1171,6 +1171,25 @@ def foo(
 foo([1])
 [builtins fixtures/list.pyi]
 
+[case testGenericUnionMemberWithTypeVarConstraints]
+
+from typing import Generic, TypeVar, Union
+
+T = TypeVar('T', str, int)
+
+class C(Generic[T]): ...
+
+def f(s: Union[T, C[T]]) -> T:  ...
+
+ci: C[int]
+cs: C[str]
+
+reveal_type(f(1))  # N: Revealed type is "builtins.int"
+reveal_type(f(''))  # N: Revealed type is "builtins.str"
+reveal_type(f(ci))  # N: Revealed type is "builtins.int"
+reveal_type(f(cs))  # N: Revealed type is "builtins.str"
+
+
 [case testNestedInstanceTypeAliasUnsimplifiedUnion]
 from typing import TypeVar, Union, Iterator, List, Any
 T = TypeVar("T")

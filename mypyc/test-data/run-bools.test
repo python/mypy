@@ -15,6 +15,8 @@ True
 False
 
 [case testBoolOps]
+from typing import Optional, Any
+
 def f(x: bool) -> bool:
     if x:
         return False
@@ -27,8 +29,8 @@ def test_if() -> None:
 
 def test_bitwise_and() -> None:
     # Use eval() to avoid constand folding
-    t = eval('True')  # type: bool
-    f = eval('False')  # type: bool
+    t: bool = eval('True')
+    f: bool = eval('False')
     assert t & t == True
     assert t & f == False
     assert f & t == False
@@ -40,8 +42,8 @@ def test_bitwise_and() -> None:
 
 def test_bitwise_or() -> None:
     # Use eval() to avoid constand folding
-    t = eval('True')  # type: bool
-    f = eval('False')  # type: bool
+    t: bool = eval('True')
+    f: bool = eval('False')
     assert t | t == True
     assert t | f == True
     assert f | t == True
@@ -53,8 +55,8 @@ def test_bitwise_or() -> None:
 
 def test_bitwise_xor() -> None:
     # Use eval() to avoid constand folding
-    t = eval('True')  # type: bool
-    f = eval('False')  # type: bool
+    t: bool = eval('True')
+    f: bool = eval('False')
     assert t ^ t == False
     assert t ^ f == True
     assert f ^ t == True
@@ -66,7 +68,6 @@ def test_bitwise_xor() -> None:
     f ^= f
     assert f == False
 
-[case testIsinstanceBool]
 def test_isinstance_bool() -> None:
     a = True
     b = 1.0
@@ -76,3 +77,45 @@ def test_isinstance_bool() -> None:
     assert isinstance(b, bool) == False
     assert isinstance(c, bool) == False
     assert isinstance(d, bool) == True
+
+class C: pass
+class D:
+    def __init__(self, b: bool) -> None:
+        self.b = b
+
+    def __bool__(self) -> bool:
+        return self.b
+
+class E: pass
+class F(E):
+    def __init__(self, b: bool) -> None:
+        self.b = b
+
+    def __bool__(self) -> bool:
+        return self.b
+
+def optional_to_bool1(o: Optional[C]) -> bool:
+    return bool(o)
+
+def optional_to_bool2(o: Optional[D]) -> bool:
+    return bool(o)
+
+def optional_to_bool3(o: Optional[E]) -> bool:
+    return bool(o)
+
+def test_optional_to_bool() -> None:
+    assert not optional_to_bool1(None)
+    assert optional_to_bool1(C())
+    assert not optional_to_bool2(None)
+    assert not optional_to_bool2(D(False))
+    assert optional_to_bool2(D(True))
+    assert not optional_to_bool3(None)
+    assert optional_to_bool3(E())
+    assert not optional_to_bool3(F(False))
+    assert optional_to_bool3(F(True))
+
+def test_any_to_bool() -> None:
+    a: Any = int()
+    b: Any = a + 1
+    assert not bool(a)
+    assert bool(b)

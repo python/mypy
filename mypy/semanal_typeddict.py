@@ -189,7 +189,7 @@ class TypedDictAnalyzer:
         valid_items = base_items.copy()
 
         # Always fix invalid bases to avoid crashes.
-        tvars = info.type_vars
+        tvars = info.defn.type_vars
         if len(base_args) != len(tvars):
             any_kind = TypeOfAny.from_omitted_generics
             if base_args:
@@ -235,7 +235,7 @@ class TypedDictAnalyzer:
         return base_args
 
     def map_items_to_base(
-        self, valid_items: dict[str, Type], tvars: list[str], base_args: list[Type]
+        self, valid_items: dict[str, Type], tvars: list[TypeVarLikeType], base_args: list[Type]
     ) -> dict[str, Type]:
         """Map item types to how they would look in their base with type arguments applied.
 
@@ -283,9 +283,11 @@ class TypedDictAnalyzer:
                 ):
                     statements.append(stmt)
                 else:
+                    defn.removed_statements.append(stmt)
                     self.fail(TPDICT_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
+                defn.removed_statements.append(stmt)
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
                 name = stmt.lvalues[0].name
@@ -305,6 +307,7 @@ class TypedDictAnalyzer:
                         allow_required=True,
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
+                        prohibit_self_type="TypedDict item type",
                     )
                     if analyzed is None:
                         return None, [], [], set()  # Need to defer
@@ -500,6 +503,7 @@ class TypedDictAnalyzer:
                 allow_required=True,
                 allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
+                prohibit_self_type="TypedDict item type",
             )
             if analyzed is None:
                 return None

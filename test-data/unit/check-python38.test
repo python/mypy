@@ -707,8 +707,8 @@ def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
     ...
 [builtins fixtures/dict.pyi]
 
-[case testPartiallyDefinedWithAssignmentExpr]
-# flags: --python-version 3.8 --enable-error-code partially-defined
+[case testPossiblyUndefinedWithAssignmentExpr]
+# flags: --python-version 3.8 --enable-error-code possibly-undefined
 def f1() -> None:
     d = {0: 1}
     if int():
@@ -718,3 +718,19 @@ def f1() -> None:
         y = x
     z = x
 [builtins fixtures/dict.pyi]
+
+[case testNarrowOnSelfInGeneric]
+# flags: --strict-optional
+from typing import Generic, TypeVar, Optional
+
+T = TypeVar("T", int, str)
+
+class C(Generic[T]):
+    x: Optional[T]
+    def meth(self) -> Optional[T]:
+        if (y := self.x) is not None:
+            reveal_type(y)
+        return None
+[out]
+main:10: note: Revealed type is "builtins.int"
+main:10: note: Revealed type is "builtins.str"

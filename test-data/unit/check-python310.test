@@ -1726,8 +1726,8 @@ def my_func(pairs: Iterable[tuple[S, S]]) -> None:
                                    # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
-[case testPartiallyDefinedMatch]
-# flags: --enable-error-code partially-defined
+[case testPossiblyUndefinedMatch]
+# flags: --enable-error-code possibly-undefined
 def f0(x: int | str) -> int:
     match x:
         case int():
@@ -1788,6 +1788,30 @@ def f6(a: object) -> None:
         case _ if y is not None:  # E: Name "y" may be undefined
             pass
 [builtins fixtures/tuple.pyi]
+
+[case testPossiblyUndefinedMatchUnreachable]
+# flags: --enable-error-code possibly-undefined
+import typing
+
+def f0(x: int) -> int:
+    match x:
+        case 1 if not typing.TYPE_CHECKING:
+            pass
+        case 2:
+            y = 2
+        case _:
+            y = 3
+    return y # No error.
+
+def f1(x: int) -> int:
+    match x:
+        case 1 if not typing.TYPE_CHECKING:
+            pass
+        case 2:
+            y = 2
+    return y  # E: Name "y" may be undefined
+
+[typing fixtures/typing-medium.pyi]
 
 [case testTypeAliasWithNewUnionSyntaxAndNoneLeftOperand]
 from typing import overload

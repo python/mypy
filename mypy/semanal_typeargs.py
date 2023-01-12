@@ -7,23 +7,27 @@ operations, including subtype checks.
 
 from __future__ import annotations
 
+from typing import Sequence
+
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors
 from mypy.messages import format_type
 from mypy.mixedtraverser import MixedTraverserVisitor
-from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile, TypeInfo
+from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
     Instance,
+    Parameters,
     ParamSpecType,
     TupleType,
     Type,
     TypeAliasType,
     TypeOfAny,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     UnboundType,
@@ -35,6 +39,7 @@ from mypy.types import (
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def __init__(self, errors: Errors, options: Options, is_typeshed_file: bool) -> None:
+        super().__init__()
         self.errors = errors
         self.options = options
         self.is_typeshed_file = is_typeshed_file
@@ -77,7 +82,12 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # correct aliases.
         if t.alias and len(t.args) != len(t.alias.alias_tvars):
             t.args = [AnyType(TypeOfAny.from_error) for _ in t.alias.alias_tvars]
-        get_proper_type(t).accept(self)
+        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
+        is_error = self.validate_args(t.alias.name, t.args, t.alias.alias_tvars, t)
+        if not is_error:
+            # If there was already an error for the alias itself, there is no point in checking
+            # the expansion, most likely it will result in the same kind of error.
+            get_proper_type(t).accept(self)
 
     def visit_instance(self, t: Instance) -> None:
         # Type argument counts were checked in the main semantic analyzer pass. We assume
@@ -85,36 +95,67 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         info = t.type
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
-        for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
+        self.validate_args(info.name, t.args, info.defn.type_vars, t)
+        super().visit_instance(t)
+
+    def validate_args(
+        self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context
+    ) -> bool:
+        is_error = False
+        for (i, arg), tvar in zip(enumerate(args), type_vars):
             if isinstance(tvar, TypeVarType):
                 if isinstance(arg, ParamSpecType):
                     # TODO: Better message
-                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', t)
+                    is_error = True
+                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', ctx)
+                    self.note(
+                        "You can use ParamSpec as the first argument to Callable, e.g., "
+                        "'Callable[{}, int]'".format(arg.name),
+                        ctx,
+                    )
                     continue
                 if tvar.values:
                     if isinstance(arg, TypeVarType):
+                        if self.in_type_alias_expr:
+                            # Type aliases are allowed to use unconstrained type variables
+                            # error will be checked at substitution point.
+                            continue
                         arg_values = arg.values
                         if not arg_values:
+                            is_error = True
                             self.fail(
-                                message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(
-                                    arg.name, info.name
-                                ),
-                                t,
+                                message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(arg.name, name),
+                                ctx,
                                 code=codes.TYPE_VAR,
                             )
                             continue
                     else:
                         arg_values = [arg]
-                    self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
+                    if self.check_type_var_values(name, arg_values, tvar.name, tvar.values, ctx):
+                        is_error = True
                 if not is_subtype(arg, tvar.upper_bound):
+                    if self.in_type_alias_expr and isinstance(arg, TypeVarType):
+                        # Type aliases are allowed to use unconstrained type variables
+                        # error will be checked at substitution point.
+                        continue
+                    is_error = True
                     self.fail(
                         message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
-                            format_type(arg), info.name, format_type(tvar.upper_bound)
+                            format_type(arg), name, format_type(tvar.upper_bound)
                         ),
-                        t,
+                        ctx,
                         code=codes.TYPE_VAR,
                     )
-        super().visit_instance(t)
+            elif isinstance(tvar, ParamSpecType):
+                if not isinstance(
+                    get_proper_type(arg), (ParamSpecType, Parameters, AnyType, UnboundType)
+                ):
+                    self.fail(
+                        "Can only replace ParamSpec with a parameter types list or"
+                        f" another ParamSpec, got {format_type(arg)}",
+                        ctx,
+                    )
+        return is_error
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
         proper_type = get_proper_type(typ.type)
@@ -132,28 +173,25 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.fail(message_registry.INVALID_UNPACK.format(proper_type), typ)
 
     def check_type_var_values(
-        self,
-        type: TypeInfo,
-        actuals: list[Type],
-        arg_name: str,
-        valids: list[Type],
-        arg_number: int,
-        context: Context,
-    ) -> None:
+        self, name: str, actuals: list[Type], arg_name: str, valids: list[Type], context: Context
+    ) -> bool:
+        is_error = False
         for actual in get_proper_types(actuals):
-            # TODO: bind type variables in class bases/alias targets
-            # so we can safely check this, currently we miss some errors.
+            # We skip UnboundType here, since they may appear in defn.bases,
+            # the error will be caught when visiting info.bases, that have bound type
+            # variables.
             if not isinstance(actual, (AnyType, UnboundType)) and not any(
                 is_same_type(actual, value) for value in valids
             ):
+                is_error = True
                 if len(actuals) > 1 or not isinstance(actual, Instance):
                     self.fail(
-                        message_registry.INVALID_TYPEVAR_ARG_VALUE.format(type.name),
+                        message_registry.INVALID_TYPEVAR_ARG_VALUE.format(name),
                         context,
                         code=codes.TYPE_VAR,
                     )
                 else:
-                    class_name = f'"{type.name}"'
+                    class_name = f'"{name}"'
                     actual_type_name = f'"{actual.type.name}"'
                     self.fail(
                         message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
@@ -162,6 +200,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         context,
                         code=codes.TYPE_VAR,
                     )
+        return is_error
 
     def fail(self, msg: str, context: Context, *, code: ErrorCode | None = None) -> None:
-        self.errors.report(context.get_line(), context.get_column(), msg, code=code)
+        self.errors.report(context.line, context.column, msg, code=code)
+
+    def note(self, msg: str, context: Context, *, code: ErrorCode | None = None) -> None:
+        self.errors.report(context.line, context.column, msg, severity="note", code=code)

@@ -163,6 +163,15 @@ reveal_type(f())  # N: Revealed type is "builtins.int"
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/customentry.py:register
 
+[case testCustomPluginEntryPointFileTrailingComma]
+# flags: --config-file tmp/mypy.ini
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+plugins =
+    <ROOT>/test-data/unit/plugins/customentry.py:register,
+
 [case testCustomPluginEntryPoint]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...

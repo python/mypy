@@ -1,16 +1,19 @@
-"""Test cases for is_subtype and is_runtime_subtype."""
+"""Test cases for various RType operations."""
 
 from __future__ import annotations
 
 import unittest
 
 from mypyc.ir.rtypes import (
+    RUnion,
     bit_rprimitive,
     bool_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
+    object_rprimitive,
     short_int_rprimitive,
+    str_rprimitive,
 )
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -50,3 +53,24 @@ class TestRuntimeSubtype(unittest.TestCase):
     def test_bool(self) -> None:
         assert not is_runtime_subtype(bool_rprimitive, bit_rprimitive)
         assert not is_runtime_subtype(bool_rprimitive, int_rprimitive)
+
+
+class TestUnionSimplification(unittest.TestCase):
+    def test_simple_type_result(self) -> None:
+        assert RUnion.make_simplified_union([int_rprimitive]) == int_rprimitive
+
+    def test_remove_duplicate(self) -> None:
+        assert RUnion.make_simplified_union([int_rprimitive, int_rprimitive]) == int_rprimitive
+
+    def test_cannot_simplify(self) -> None:
+        assert RUnion.make_simplified_union(
+            [int_rprimitive, str_rprimitive, object_rprimitive]
+        ) == RUnion([int_rprimitive, str_rprimitive, object_rprimitive])
+
+    def test_nested(self) -> None:
+        assert RUnion.make_simplified_union(
+            [int_rprimitive, RUnion([str_rprimitive, int_rprimitive])]
+        ) == RUnion([int_rprimitive, str_rprimitive])
+        assert RUnion.make_simplified_union(
+            [int_rprimitive, RUnion([str_rprimitive, RUnion([int_rprimitive])])]
+        ) == RUnion([int_rprimitive, str_rprimitive])

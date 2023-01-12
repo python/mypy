@@ -27,6 +27,9 @@ NoReturn = 0
 Never = 0
 NewType = 0
 ParamSpec = 0
+TypeVarTuple = 0
+Unpack = 0
+Self = 0
 TYPE_CHECKING = 0
 
 T = TypeVar('T')
