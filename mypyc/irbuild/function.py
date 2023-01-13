@@ -789,7 +789,7 @@ def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
 
 
 def load_func(builder: IRBuilder, func_name: str, fullname: str | None, line: int) -> Value:
-    if fullname is not None and not fullname.startswith(builder.current_module):
+    if fullname and not fullname.startswith(builder.current_module):
         # we're calling a function in a different module
 
         # We can't use load_module_attr_by_fullname here because we need to load the function using

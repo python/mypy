@@ -230,7 +230,7 @@ class NodeStripVisitor(TraverserVisitor):
     def strip_ref_expr(self, node: RefExpr) -> None:
         node.kind = None
         node.node = None
-        node.fullname = None
+        node.fullname = ""
         node.is_new_def = False
         node.is_inferred_def = False
 
