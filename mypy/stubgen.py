@@ -1572,9 +1572,13 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.show_traceback = True
     options.transform_source = remove_misplaced_type_comments
     if stubgen_options.mypy_config_file:
+
         def set_strict_flags() -> None:  # not needed yet
             return
-        parse_config_file(options, set_strict_flags, stubgen_options.mypy_config_file, sys.stdout, sys.stderr)
+
+        parse_config_file(
+            options, set_strict_flags, stubgen_options.mypy_config_file, sys.stdout, sys.stderr
+        )
     return options
 
 
