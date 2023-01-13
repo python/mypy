@@ -1450,6 +1450,6 @@ class OpVisitor(Generic[T]):
 #
 # (Serialization and deserialization *will* be used for incremental
 # compilation but so far it is not hooked up to anything.)
-DeserMaps = NamedTuple(
-    "DeserMaps", [("classes", Dict[str, "ClassIR"]), ("functions", Dict[str, "FuncIR"])]
-)
+class DeserMaps(NamedTuple):
+    classes: Dict[str, "ClassIR"]
+    functions: Dict[str, "FuncIR"]
