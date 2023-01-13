@@ -506,7 +506,7 @@ class DependencyVisitor(TraverserVisitor):
                         fname = init.node.fullname
                 else:
                     fname = rvalue.callee.fullname
-                if fname is None:
+                if not fname:
                     return
                 for lv in o.lvalues:
                     if isinstance(lv, RefExpr) and lv.fullname and lv.is_new_def:

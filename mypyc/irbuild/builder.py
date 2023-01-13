@@ -1240,7 +1240,7 @@ class IRBuilder:
             and isinstance(expr.node, TypeInfo)
             and not self.is_synthetic_type(expr.node)
         ):
-            assert expr.fullname is not None
+            assert expr.fullname
             return self.load_native_type_object(expr.fullname)
         return self.load_global_str(expr.name, expr.line)
 

@@ -536,7 +536,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #   get_method_hook() and get_method_signature_hook() will
             #   be invoked for these.
             if (
-                fullname is None
+                not fullname
                 and isinstance(e.callee, MemberExpr)
                 and self.chk.has_type(e.callee.expr)
             ):
@@ -605,7 +605,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(object_type, TupleType):
             type_name = tuple_fallback(object_type).type.fullname
 
-        if type_name is not None:
+        if type_name:
             return f"{type_name}.{method_name}"
         else:
             return None
