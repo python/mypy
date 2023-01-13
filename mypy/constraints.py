@@ -1006,9 +1006,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res: list[Constraint] = []
             if unpack_index is not None:
                 if is_varlength_tuple:
-                    unpacked_type = template.items[unpack_index].type
+                    unpack_type = template.items[unpack_index]
+                    assert isinstance(unpack_type, UnpackType)
+                    unpacked_type = unpack_type.type
+                    assert isinstance(unpacked_type, TypeVarTupleType)
                     return [Constraint(type_var=unpacked_type, op=self.direction, target=actual)]
                 else:
+                    assert isinstance(actual, TupleType)
                     (
                         unpack_constraints,
                         actual_items,
@@ -1018,8 +1022,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     )
                     res.extend(unpack_constraints)
             else:
-                actual_items = actual.items
-                template_items = template.items
+                assert isinstance(actual, TupleType)
+                actual_items = tuple(actual.items)
+                template_items = tuple(template.items)
 
             if len(actual_items) == len(template_items) and isinstance(actual, TupleType):
                 if (
