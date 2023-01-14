@@ -721,7 +721,8 @@ reveal_type(d) # N: Revealed type is "builtins.list[builtins.int]"
 from typing import Union
 bad: Union[int, str]
 
-x, y = bad     # E: "int" object is not iterable
+x, y = bad     # E: "int" object is not iterable \
+               # E: Unpacking a string is disallowed
 reveal_type(x) # E: Cannot determine type of "x" \
                # N: Revealed type is "Any"
 reveal_type(y) # E: Cannot determine type of "y" \
@@ -831,20 +832,32 @@ reveal_type(lst) # N: Revealed type is "Union[builtins.list[builtins.int], built
 from typing import Tuple, Union
 t: Union[Tuple[int, int], Tuple[float, float, float], Tuple[str, str, str, str]]
 
-a1, = t          # E: Too many values to unpack (1 expected, 2 provided)
+a1, = t          # E: Too many values to unpack (1 expected, 2 provided) \
+                 # E: Too many values to unpack (1 expected, 3 provided) \
+                 # E: Too many values to unpack (1 expected, 4 provided)
 reveal_type(a1)  # E: Cannot determine type of "a1" \
                  # N: Revealed type is "Any"
-*b2, = t
-reveal_type(b2)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.float], builtins.list[builtins.str]]"
-a1, b2 = t       # E: Too many values to unpack (2 expected, 3 provided)
+*b1, = t
+reveal_type(b1)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.float], builtins.list[builtins.str]]"
+
+a2, b2 = t       # E: Too many values to unpack (2 expected, 3 provided) \
+                 # E: Too many values to unpack (2 expected, 4 provided)
+reveal_type(a2)  # N: Revealed type is "builtins.int"
+reveal_type(b2)  # N: Revealed type is "builtins.int"
+
 *c2, d2 = t
 reveal_type(c2)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.float], builtins.list[builtins.str]]"
 reveal_type(d2)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
+
 e2, *h2 = t
 reveal_type(e2)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
 reveal_type(h2)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.float], builtins.list[builtins.str]]"
 
-a3, b3, c3 = t   # E: Need more than 2 values to unpack (3 expected)
+a3, b3, c3 = t   # E: Need more than 2 values to unpack (3 expected) \
+                 # E: Too many values to unpack (3 expected, 4 provided)
+reveal_type(a3)  # N: Revealed type is "builtins.float"
+reveal_type(b3)  # N: Revealed type is "builtins.float"
+reveal_type(c3)  # N: Revealed type is "builtins.float"
 
 *e3, f3, g3 = t
 reveal_type(e3)  # N: Revealed type is "Union[builtins.list[builtins.float], builtins.list[builtins.str]]"
@@ -861,9 +874,18 @@ reveal_type(k3)  # N: Revealed type is "Union[builtins.int, builtins.float, buil
 reveal_type(l3)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
 reveal_type(m3)  # N: Revealed type is "Union[builtins.list[builtins.float], builtins.list[builtins.str]]"
 
-a4, b4, c4, d4 = t  # E: Need more than 2 values to unpack (4 expected)
+a4, b4, c4, d4 = t  # E: Need more than 2 values to unpack (4 expected) \
+                    # E: Need more than 3 values to unpack (4 expected)
+reveal_type(a4)     # N: Revealed type is "builtins.str"
+reveal_type(b4)     # N: Revealed type is "builtins.str"
+reveal_type(c4)     # N: Revealed type is "builtins.str"
+reveal_type(d4)     # N: Revealed type is "builtins.str"
 
-*e4, f4, g4, h4 = t   # E: Need more than 2 values to unpack (3 expected)
+*e4, f4, g4, h4 = t  # E: Need more than 2 values to unpack (3 expected)
+reveal_type(e4)      # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(f4)      # N: Revealed type is "Union[builtins.float, builtins.str]"
+reveal_type(g4)      # N: Revealed type is "Union[builtins.float, builtins.str]"
+reveal_type(h4)      # N: Revealed type is "Union[builtins.float, builtins.str]"
 
 [builtins fixtures/tuple.pyi]
 

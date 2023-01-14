@@ -3416,14 +3416,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         infer_lvalue_type: bool,
     ) -> None:
         """Check assignment to multiple lvalue targets when rvalue type is a Union[...].
+
         For example:
 
-            t: Union[Tuple[int, int], Tuple[str, str]]
+            t: Union[Tuple[int, int], Tuple[str, float]]
             x, y = t
             reveal_type(x)  # Union[int, str]
 
-        The idea is to convert unions of tuples or other iterables to tuples of (simplified)
-        unions and then simply apply `check_multi_assignment_from_tuple`.
+        The idea is to check each single assignment by constructing a union of the
+        relevant rvalue types:
+
+            x = Union[int, str]
+            y = Union[int, float]
         """
         # if `rvalue_type` is Optional type in non-strict Optional code, unwap it:
         relevant_items = rvalue_type.relevant_items()
@@ -3433,7 +3437,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
             return
 
-        # union to tuple conversion:
+        # cases like a, *b, c require special care
         star_idx = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), None)
 
         def handle_star_index(orig_types: list[Type]) -> list[Type]:
@@ -3443,6 +3447,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
             return orig_types
 
+        # collect the relevant rvalue types
         nmb_subitems = len(lvalues)
         items: list[list[Type]] = []
         for idx, item in enumerate(rvalue_type.items):
@@ -3450,58 +3455,48 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(item, TupleType):
                 delta = len(item.items) - nmb_subitems
                 if star_idx is None:
-                    if delta != 0:  # a, b = x, y, z  or  a, b, c = x, y
+                    if delta == 0:  # a, b = x, y
+                        items.append(item.items.copy())
+                    else:  # a, b = x, y, z  or  a, b, c = x, y
                         self.msg.wrong_number_values_to_unpack(
                             len(item.items), nmb_subitems, context
                         )
-                        return
-                    items.append(item.items.copy())  # a, b = x, y
-                else:
-                    if delta < -1:  # a, b, c, *d = x, y
-                        self.msg.wrong_number_values_to_unpack(
-                            len(item.items), nmb_subitems - 1, context
-                        )
-                        return
-                    if delta == -1:  # a, b, *c = x, y
-                        items.append(item.items.copy())
-                        # to be removed after transposing:
-                        items[-1].insert(star_idx, PlaceholderType("temp", [], -1))
-                    elif delta == 0:  # a, b, *c = x, y, z
-                        items.append(handle_star_index(item.items.copy()))
-                    else:  # a, *b = x, y, z
-                        union = make_simplified_union(item.items[star_idx : star_idx + delta + 1])
-                        subitems = (
-                            item.items[:star_idx] + [union] + item.items[star_idx + delta + 1 :]
-                        )
-                        items.append(handle_star_index(subitems))
-            else:
-                if isinstance(item, AnyType):
-                    items.append(handle_star_index(nmb_subitems * [cast(Type, item)]))
-                elif isinstance(item, Instance) and (item.type.fullname == "builtins.str"):
+                elif delta < -1:  # a, b, c, *d = x, y
+                    self.msg.wrong_number_values_to_unpack(
+                        len(item.items), nmb_subitems - 1, context
+                    )
+                elif delta == -1:  # a, b, *c = x, y
+                    items.append(item.items.copy())
+                    # to be removed after transposing:
+                    items[-1].insert(star_idx, PlaceholderType("temp", [], -1))
+                elif delta == 0:  # a, b, *c = x, y, z
+                    items.append(handle_star_index(item.items.copy()))
+                else:  # a, *b = x, y, z
+                    union = make_simplified_union(item.items[star_idx : star_idx + delta + 1])
+                    subitems = item.items[:star_idx] + [union] + item.items[star_idx + delta + 1 :]
+                    items.append(handle_star_index(subitems))
+            elif isinstance(item, AnyType):
+                items.append(handle_star_index(nmb_subitems * [cast(Type, item)]))
+            elif isinstance(item, Instance):
+                if item.type.fullname == "builtins.str":
                     self.msg.unpacking_strings_disallowed(context)
-                    return
-                elif isinstance(item, Instance) and self.type_is_iterable(item):
+                elif self.type_is_iterable(item):
                     items.append(handle_star_index(nmb_subitems * [self.iterable_item_type(item)]))
                 else:
                     self.msg.type_not_iterable(item, context)
-                    return
+
+        # construct the unions and perform the single assignment checks
         items_transposed = zip(*items)
-        items_cleared = []
-        for subitems_ in items_transposed:
+        for lvalue, subitems_ in zip(lvalues, items_transposed):
             subitems = []
             for item in subitems_:
                 item = get_proper_type(item)
                 if not isinstance(item, PlaceholderType):
                     subitems.append(item)
-            items_cleared.append(subitems)
-        tupletype = TupleType(
-            [make_simplified_union(subitems) for subitems in items_cleared],
-            fallback=self.named_type("builtins.tuple"),
-        )
-        self.check_multi_assignment_from_tuple(
-            lvalues, rvalue, tupletype, context, infer_lvalue_type, False
-        )
-        return
+            uniontype = make_simplified_union(subitems)
+            if isinstance(lvalue, StarExpr):
+                lvalue = lvalue.expr
+            self.check_assignment(lvalue, self.temp_node(uniontype, context), infer_lvalue_type)
 
     def flatten_lvalues(self, lvalues: list[Expression]) -> list[Expression]:
         res: list[Expression] = []
@@ -3521,7 +3516,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         rvalue_type: TupleType,
         context: Context,
         infer_lvalue_type: bool = True,
-        convert_star_rvalue_type: bool = True,
     ) -> None:
         if self.check_rvalue_count_in_assignment(lvalues, len(rvalue_type.items), context):
             star_index = next(
@@ -3539,16 +3533,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for lv, rv_type in zip(left_lvs, left_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
             if star_lv:
-                if convert_star_rvalue_type:
-                    list_expr = ListExpr(
-                        [self.temp_node(rv_type, context) for rv_type in star_rv_types]
-                    )
-                    list_expr.set_line(context)
-                    self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
-                else:
-                    self.check_assignment(
-                        star_lv.expr, self.temp_node(star_rv_types[0], context), infer_lvalue_type
-                    )
+                list_expr = ListExpr(
+                    [self.temp_node(rv_type, context) for rv_type in star_rv_types]
+                )
+                list_expr.set_line(context)
+                self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
             for lv, rv_type in zip(right_lvs, right_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
 
