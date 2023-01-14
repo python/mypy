@@ -1410,7 +1410,9 @@ def remove_blacklisted_modules(modules: list[StubSource]) -> list[StubSource]:
 
 
 def is_blacklisted_path(path: str) -> bool:
-    return any(substr in (normalize_path_separators(path) + "\n") for substr in BLACKLIST)
+    return path.endswith((".dll", ".so")) or any(
+        substr in (normalize_path_separators(path) + "\n") for substr in BLACKLIST
+    )
 
 
 def normalize_path_separators(path: str) -> str:
