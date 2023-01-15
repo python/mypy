@@ -1,6 +1,6 @@
 import os
 import sys
-from _typeshed import BytesPath, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
+from _typeshed import BytesPath, FileDescriptorOrPath, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any, AnyStr, NamedTuple, Protocol, TypeVar, overload
 from typing_extensions import TypeAlias
@@ -118,7 +118,7 @@ class _ntuple_diskusage(NamedTuple):
     used: int
     free: int
 
-def disk_usage(path: int | StrOrBytesPath) -> _ntuple_diskusage: ...
+def disk_usage(path: FileDescriptorOrPath) -> _ntuple_diskusage: ...
 
 # While chown can be imported on Windows, it doesn't actually work;
 # see https://bugs.python.org/issue33140. We keep it here because it's
