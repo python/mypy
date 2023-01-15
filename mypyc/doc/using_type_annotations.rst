@@ -194,8 +194,8 @@ Traits have some special properties:
 * You shouldn't create instances of traits (though mypyc does not
   prevent it yet).
 
-* Traits can subclass other traits, but they can't subclass non-trait
-  classes (other than ``object``).
+* Traits can subclass other traits or native classes, but the MRO must be
+  linear (just like with native classes).
 
 * Accessing methods or attributes through a trait type is somewhat
   less efficient than through a native class type, but this is much
