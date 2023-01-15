@@ -330,11 +330,11 @@ class LowLevelIRBuilder:
                 return src
             elif (
                 is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
-            ) and is_int_rprimitive(target_type):
+            ) and is_tagged(target_type):
                 shifted = self.int_op(
                     bool_rprimitive, src, Integer(1, bool_rprimitive), IntOp.LEFT_SHIFT
                 )
-                return self.add(Extend(shifted, int_rprimitive, signed=False))
+                return self.add(Extend(shifted, target_type, signed=False))
             elif (
                 is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
             ) and is_fixed_width_rtype(target_type):
@@ -1310,6 +1310,23 @@ class LowLevelIRBuilder:
                     return self.comparison_op(Integer(lreg.value >> 1, rtype), rreg, op_id, line)
                 if is_fixed_width_rtype(lreg.type):
                     return self.comparison_op(lreg, rreg, op_id, line)
+
+        # Mixed int comparisons
+        if op in ("==", "!="):
+            op_id = ComparisonOp.signed_ops[op]
+            if is_tagged(ltype) and is_subtype(rtype, ltype):
+                rreg = self.coerce(rreg, int_rprimitive, line)
+                return self.comparison_op(lreg, rreg, op_id, line)
+            if is_tagged(rtype) and is_subtype(ltype, rtype):
+                lreg = self.coerce(lreg, int_rprimitive, line)
+                return self.comparison_op(lreg, rreg, op_id, line)
+        elif op in op in int_comparison_op_mapping:
+            if is_tagged(ltype) and is_subtype(rtype, ltype):
+                rreg = self.coerce(rreg, short_int_rprimitive, line)
+                return self.compare_tagged(lreg, rreg, op, line)
+            if is_tagged(rtype) and is_subtype(ltype, rtype):
+                lreg = self.coerce(lreg, short_int_rprimitive, line)
+                return self.compare_tagged(lreg, rreg, op, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
