@@ -80,13 +80,15 @@ File system changes within the container are not visible to the host
 system. You can't use the container to format code using Black, for
 example.
 
-On a mac, you may want to try using different CPU allocations for the
-container. The default allocation may be quite low (e.g. 2 CPUs). For
-example, to use 4 CPUs when using Colima, use the `-c` option when
-starting the VM:
+On a mac, you may want to give more CPU to the VM used to run the
+container. The default allocation may be way too low (e.g. 2 CPUs).
+For example, use the `-c` option when starting the VM if you use
+Colima:
 
 ```
-$ colima start -c 4
+$ colima start -c 8
 ```
 
-Giving access to all available CPUs for the VM may not be optimal.
+Giving access to all available CPUs to the Linux VM tends to provide
+the best performance. This is unncessary on a Linux host, since the
+container is not run in a VM.
