@@ -12,4 +12,4 @@
 SCRIPT_DIR=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 MYPY_DIR="$SCRIPT_DIR/../.."
 
-docker run -ti --rm -v "$MYPY_DIR:/repo" -w /repo mypy-test "$@"
+docker run -ti --rm -v "$MYPY_DIR:/repo" mypy-test /repo/misc/docker/run-wrapper.sh "$@"

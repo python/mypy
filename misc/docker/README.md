@@ -76,6 +76,10 @@ $ misc/docker/run.sh ./runtests.py self lint
 Notes
 -----
 
+File system changes within the container are not visible to the host
+system. You can't use the container to format code using Black, for
+example.
+
 On a mac, you may want to try using different CPU allocations for the
 container. The default allocation may be quite low (e.g. 2 CPUs). For
 example, to use 4 CPUs when using Colima, use the `-c` option when
