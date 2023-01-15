@@ -22,8 +22,15 @@ Prerequisites
 
 First install Docker. On macOS, both Docker Desktop (proprietary, but
 with a free of charge subscription for some use cases) and Colima (MIT
-license) should work as runtimes. You may have to explicitly start the
-runtime.
+license) should work as runtimes.
+
+You may have to explicitly start the runtime first. Colima example
+(replace '8' with the number of CPU cores you have):
+
+```
+$ colima start -c 8
+
+```
 
 How to run tests
 ----------------
@@ -80,15 +87,15 @@ File system changes within the container are not visible to the host
 system. You can't use the container to format code using Black, for
 example.
 
-On a mac, you may want to give more CPU to the VM used to run the
-container. The default allocation may be way too low (e.g. 2 CPUs).
-For example, use the `-c` option when starting the VM if you use
-Colima:
+On a mac, you may want to give additional CPU to the VM used to run
+the container. The default allocation may be way too low (e.g. 2 CPU
+cores). For example, use the `-c` option when starting the VM if you
+use Colima:
 
 ```
 $ colima start -c 8
 ```
 
 Giving access to all available CPUs to the Linux VM tends to provide
-the best performance. This is unncessary on a Linux host, since the
+the best performance. This is not needed on a Linux host, since the
 container is not run in a VM.
