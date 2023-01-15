@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import io
 import os
@@ -820,3 +821,38 @@ def plural_s(s: int | Sized) -> str:
         return "s"
     else:
         return ""
+
+
+class ColoredHelpFormatter(argparse.HelpFormatter):
+    def __init__(
+        self,
+        prog: str,
+        indent_increment: int = 2,
+        max_help_position: int = 24,
+        width: int | None = None,
+        formatter: FancyFormatter | None = None,
+    ) -> None:
+        super().__init__(prog, indent_increment, max_help_position, width)
+        self.fancy_fmt = formatter or FancyFormatter(sys.stdout, sys.stdin, False)
+
+    def start_section(self, heading: str | None) -> None:
+        if heading:
+            heading = self.fancy_fmt.style(heading, "yellow")
+        return super().start_section(heading)
+
+    def _format_action(self, action: argparse.Action) -> str:
+        action_help = super()._format_action(action)
+        action_header = self._format_action_invocation(action)
+        padding, header, help = action_help.partition(action_header)
+        if not action.option_strings:  # positional-argument
+            header = self.fancy_fmt.style(header, "green")
+        else:  # --optional-argument METAVAR
+            parts = []
+            for part in header.split(", "):
+                opt_str, space, metavar = part.partition(" ")
+                opt_str = self.fancy_fmt.style(opt_str, "green")
+                if metavar:
+                    metavar = self.fancy_fmt.style(metavar, "blue")
+                parts.append(opt_str + space + metavar)
+            header = ", ".join(parts)
+        return padding + header + help

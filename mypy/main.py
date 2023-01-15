@@ -63,11 +63,14 @@ def main(
         args = sys.argv[1:]
 
     fscache = FileSystemCache()
-    sources, options = process_options(args, stdout=stdout, stderr=stderr, fscache=fscache)
+    formatter = util.FancyFormatter(stdout, stderr, hide_error_codes=False)
+    sources, options = process_options(
+        args, stdout=stdout, stderr=stderr, fscache=fscache, formatter=formatter
+    )
     if clean_exit:
         options.fast_exit = False
 
-    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
+    formatter.hide_error_codes = options.hide_error_codes
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -212,9 +215,9 @@ def show_messages(
 
 
 # Make the help output a little less jarring.
-class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=28)
+class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter, util.ColoredHelpFormatter):
+    def __init__(self, prog: str, formatter: util.FancyFormatter) -> None:
+        super().__init__(prog=prog, max_help_position=28, formatter=formatter)
 
     def _fill_text(self, text: str, width: int, indent: str) -> str:
         if "\n" in text:
@@ -437,6 +440,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
+    formatter: util.FancyFormatter | None = None,
 ) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -445,6 +449,7 @@ def process_options(
     """
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
+    formatter = formatter or util.FancyFormatter(stdout, stderr, False)
 
     parser = CapturableArgumentParser(
         prog=program,
@@ -452,7 +457,7 @@ def process_options(
         description=DESCRIPTION,
         epilog=FOOTER,
         fromfile_prefix_chars="@",
-        formatter_class=AugmentedHelpFormatter,
+        formatter_class=lambda prog: AugmentedHelpFormatter(prog, formatter),
         add_help=False,
         stdout=stdout,
         stderr=stderr,

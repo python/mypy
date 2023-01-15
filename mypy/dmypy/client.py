@@ -19,20 +19,28 @@ from typing import Any, Callable, Mapping, NoReturn
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
-from mypy.util import check_python_version, get_terminal_width, should_force_color
+from mypy.util import (
+    ColoredHelpFormatter,
+    check_python_version,
+    get_terminal_width,
+    should_force_color,
+)
 from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
 
 
-class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
+class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter, ColoredHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=30)
 
 
 parser = argparse.ArgumentParser(
-    prog="dmypy", description="Client for mypy daemon mode", fromfile_prefix_chars="@"
+    prog="dmypy",
+    description="Client for mypy daemon mode",
+    fromfile_prefix_chars="@",
+    formatter_class=ColoredHelpFormatter,
 )
 parser.set_defaults(action=None)
 parser.add_argument(
@@ -47,7 +55,9 @@ parser.add_argument(
 )
 subparsers = parser.add_subparsers()
 
-start_parser = p = subparsers.add_parser("start", help="Start daemon")
+start_parser = p = subparsers.add_parser(
+    "start", formatter_class=parser.formatter_class, help="Start daemon"
+)
 p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdout/stderr to FILE")
 p.add_argument(
     "--timeout", metavar="TIMEOUT", type=int, help="Server shutdown timeout (in seconds)"
@@ -57,7 +67,9 @@ p.add_argument(
 )
 
 restart_parser = p = subparsers.add_parser(
-    "restart", help="Restart daemon (stop or kill followed by start)"
+    "restart",
+    formatter_class=parser.formatter_class,
+    help="Restart daemon (stop or kill followed by start)",
 )
 p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdout/stderr to FILE")
 p.add_argument(
@@ -67,13 +79,21 @@ p.add_argument(
     "flags", metavar="FLAG", nargs="*", type=str, help="Regular mypy flags (precede with --)"
 )
 
-status_parser = p = subparsers.add_parser("status", help="Show daemon status")
+status_parser = p = subparsers.add_parser(
+    "status", formatter_class=parser.formatter_class, help="Show daemon status"
+)
 p.add_argument("-v", "--verbose", action="store_true", help="Print detailed status")
 p.add_argument("--fswatcher-dump-file", help="Collect information about the current file state")
 
-stop_parser = p = subparsers.add_parser("stop", help="Stop daemon (asks it politely to go away)")
+stop_parser = p = subparsers.add_parser(
+    "stop",
+    formatter_class=parser.formatter_class,
+    help="Stop daemon (asks it politely to go away)",
+)
 
-kill_parser = p = subparsers.add_parser("kill", help="Kill daemon (kills the process)")
+kill_parser = p = subparsers.add_parser(
+    "kill", formatter_class=parser.formatter_class, help="Kill daemon (kills the process)"
+)
 
 check_parser = p = subparsers.add_parser(
     "check", formatter_class=AugmentedHelpFormatter, help="Check some files (requires daemon)"
@@ -137,7 +157,9 @@ p.add_argument(
 p.add_argument("--remove", metavar="FILE", nargs="*", help="Files to remove from the run")
 
 suggest_parser = p = subparsers.add_parser(
-    "suggest", help="Suggest a signature or show call sites for a specific function"
+    "suggest",
+    formatter_class=parser.formatter_class,
+    help="Suggest a signature or show call sites for a specific function",
 )
 p.add_argument(
     "function",
@@ -177,7 +199,9 @@ p.add_argument(
 )
 
 inspect_parser = p = subparsers.add_parser(
-    "inspect", help="Locate and statically inspect expression(s)"
+    "inspect",
+    formatter_class=parser.formatter_class,
+    help="Locate and statically inspect expression(s)",
 )
 p.add_argument(
     "location",
@@ -238,9 +262,13 @@ p.add_argument(
     help="Re-parse and re-type-check file before inspection (may be slow)",
 )
 
-hang_parser = p = subparsers.add_parser("hang", help="Hang for 100 seconds")
+hang_parser = p = subparsers.add_parser(
+    "hang", formatter_class=parser.formatter_class, help="Hang for 100 seconds"
+)
 
-daemon_parser = p = subparsers.add_parser("daemon", help="Run daemon in foreground")
+daemon_parser = p = subparsers.add_parser(
+    "daemon", formatter_class=parser.formatter_class, help="Run daemon in foreground"
+)
 p.add_argument(
     "--timeout", metavar="TIMEOUT", type=int, help="Server shutdown timeout (in seconds)"
 )
@@ -248,7 +276,7 @@ p.add_argument(
     "flags", metavar="FLAG", nargs="*", type=str, help="Regular mypy flags (precede with --)"
 )
 p.add_argument("--options-data", help=argparse.SUPPRESS)
-help_parser = p = subparsers.add_parser("help")
+help_parser = p = subparsers.add_parser("help", formatter_class=parser.formatter_class)
 
 del p
 

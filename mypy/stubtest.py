@@ -38,7 +38,13 @@ from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.evalexpr import UNKNOWN, evaluate_expression
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
+from mypy.util import (
+    ColoredHelpFormatter,
+    FancyFormatter,
+    bytes_to_human_readable_repr,
+    is_dunder,
+    plural_s,
+)
 
 
 class Missing:
@@ -1754,7 +1760,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
 
 def parse_options(args: list[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
-        description="Compares stubs to objects introspected from the runtime."
+        description="Compares stubs to objects introspected from the runtime.",
+        formatter_class=lambda prog: ColoredHelpFormatter(prog, formatter=_formatter),
     )
     parser.add_argument("modules", nargs="*", help="Modules to test")
     parser.add_argument(
