@@ -1,10 +1,10 @@
-from _typeshed import StrOrBytesPath, SupportsWrite
+from _typeshed import FileDescriptorOrPath, SupportsWrite
 from collections.abc import Iterable, Mapping
 from distutils.cmd import Command
 from typing import IO, Any
 
 class DistributionMetadata:
-    def __init__(self, path: int | StrOrBytesPath | None = ...) -> None: ...
+    def __init__(self, path: FileDescriptorOrPath | None = ...) -> None: ...
     name: str | None
     version: str | None
     author: str | None

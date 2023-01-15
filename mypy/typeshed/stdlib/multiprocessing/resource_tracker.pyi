@@ -1,4 +1,4 @@
-from _typeshed import Incomplete, StrOrBytesPath
+from _typeshed import FileDescriptorOrPath, Incomplete
 from collections.abc import Sized
 
 __all__ = ["ensure_running", "register", "unregister"]
@@ -15,4 +15,4 @@ register = _resource_tracker.register
 unregister = _resource_tracker.unregister
 getfd = _resource_tracker.getfd
 
-def main(fd: StrOrBytesPath | int) -> None: ...
+def main(fd: FileDescriptorOrPath) -> None: ...
