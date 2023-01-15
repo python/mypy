@@ -3484,6 +3484,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     items.append(handle_star_index(nmb_subitems * [self.iterable_item_type(item)]))
                 else:
                     self.msg.type_not_iterable(item, context)
+            else:
+                self.msg.type_not_iterable(item, context)
 
         # construct the unions and perform the single assignment checks
         items_transposed = zip(*items)

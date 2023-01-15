@@ -929,6 +929,7 @@ reveal_type(abcd5)  # N: Revealed type is "Union[builtins.list[Union[__main__.A1
 
 [case testUnionUnpackingIncludingListPackingForVariousItemTypes]
 from typing import Any, List, Tuple, Union
+from typing_extensions import Literal
 
 class A: ...
 class B: ...
@@ -961,9 +962,17 @@ reveal_type(c4)   # N: Revealed type is "Union[builtins.list[__main__.C], builti
 
 t5: Union[Tuple[A, B, C], str]
 a5, b5, *c5 = t5  # E: Unpacking a string is disallowed
+reveal_type(a5)   # N: Revealed type is "__main__.A"
+reveal_type(b5)   # N: Revealed type is "__main__.B"
+reveal_type(c5)   # N: Revealed type is "builtins.list[__main__.C]"
 
-t6: Union[Tuple[A, B, C], D]
-a6, b6, *c6 = t6  # E: "D" object is not iterable
+t6: Union[Tuple[A, B, C], D, Literal["abc"], None]
+a6, b6, *c6 = t6  # E: "D" object is not iterable \
+                  # E: "Literal['abc']" object is not iterable \
+                  # E: "None" object is not iterable
+reveal_type(a6)   # N: Revealed type is "__main__.A"
+reveal_type(b6)   # N: Revealed type is "__main__.B"
+reveal_type(c6)   # N: Revealed type is "builtins.list[__main__.C]"
 
 [builtins fixtures/tuple.pyi]
 
