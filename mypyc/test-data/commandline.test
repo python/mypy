@@ -223,3 +223,9 @@ def h(arg: str) -> None:
 @a.register
 def i(arg: Foo) -> None:
     pass
+
+[case testOnlyWarningOutput]
+# cmd: test.py
+
+[file test.py]
+names = (str(v) for v in [1, 2, 3])  # W: Treating generator comprehension as list
