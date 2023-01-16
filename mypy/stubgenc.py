@@ -44,6 +44,17 @@ _DEFAULT_TYPING_IMPORTS: Final = (
 class SignatureGenerator:
     """Abstract base class for extracting a list of FunctionSigs for each function."""
 
+    def remove_self_type(
+        self, inferred: list[FunctionSig] | None, self_var: str
+    ) -> list[FunctionSig] | None:
+        """Remove type annotation from self/cls argument"""
+        if inferred:
+            for signature in inferred:
+                if signature.args:
+                    if signature.args[0].name == self_var:
+                        signature.args[0].type = None
+        return inferred
+
     @abstractmethod
     def get_function_sig(
         self, func: object, module_name: str, name: str
@@ -97,7 +108,8 @@ class ExternalSignatureGenerator(SignatureGenerator):
                     ret_type=infer_method_ret_type(name),
                 )
             ]
-        return self.get_function_sig(func, module_name, name)
+        inferred = self.get_function_sig(func, module_name, name)
+        return self.remove_self_type(inferred, self_var)
 
 
 class DocstringSignatureGenerator(SignatureGenerator):
@@ -126,7 +138,7 @@ class DocstringSignatureGenerator(SignatureGenerator):
         if not inferred and func_name == "__init__":
             # look for class-level constructor signatures of the form <class_name>(<signature>)
             inferred = self.get_function_sig(cls, module_name, class_name)
-        return inferred
+        return self.remove_self_type(inferred, self_var)
 
 
 class FallbackSignatureGenerator(SignatureGenerator):
@@ -353,18 +365,15 @@ def generate_c_function_stub(
         for signature in inferred:
             args: list[str] = []
             for arg in signature.args:
-                if arg.name == self_var:
-                    arg_def = self_var
-                else:
-                    arg_def = arg.name
-                    if arg_def == "None":
-                        arg_def = "_none"  # None is not a valid argument name
+                arg_def = arg.name
+                if arg_def == "None":
+                    arg_def = "_none"  # None is not a valid argument name
 
-                    if arg.type:
-                        arg_def += ": " + strip_or_import(arg.type, module, known_modules, imports)
+                if arg.type:
+                    arg_def += ": " + strip_or_import(arg.type, module, known_modules, imports)
 
-                    if arg.default:
-                        arg_def += " = ..."
+                if arg.default:
+                    arg_def += " = ..."
 
                 args.append(arg_def)
 
