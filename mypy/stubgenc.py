@@ -179,7 +179,7 @@ def generate_stub_for_c_module(
     imports: list[str] = []
     functions: list[str] = []
     done = set()
-    items = sorted(module.__dict__.items(), key=lambda x: x[0])
+    items = sorted(get_members(module), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
             generate_c_function_stub(
@@ -243,6 +243,24 @@ def add_typing_import(output: list[str]) -> list[str]:
         return [f"from typing import {', '.join(names)}", ""] + output
     else:
         return output[:]
+
+
+def get_members(obj: type) -> list[tuple[str, Any]]:
+    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa: B009
+    results = []
+    for name in obj_dict:
+        if is_skipped_attribute(name):
+            continue
+        # First try to get the value via getattr.  Some descriptors don't
+        # like calling their __get__ (see bug #1785), so fall back to
+        # looking in the __dict__.
+        try:
+            results.append((name, getattr(obj, name)))
+        except AttributeError:
+            # could be a (currently) missing slot member, or a buggy
+            # __dir__; discard and move on
+            continue
+    return results
 
 
 def is_c_function(obj: object) -> bool:
@@ -435,10 +453,6 @@ def generate_c_property_stub(
         else:
             return None
 
-    # Ignore special properties/attributes.
-    if is_skipped_attribute(name):
-        return
-
     inferred = infer_prop_type(getattr(obj, "__doc__", None))
     if not inferred:
         fget = getattr(obj, "fget", None)
@@ -474,46 +488,41 @@ def generate_c_type_stub(
     The result lines will be appended to 'output'. If necessary, any
     required names will be added to 'imports'.
     """
-    # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
-    # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
-    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa: B009
-    items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
+    items = sorted(get_members(obj), key=lambda x: method_name_sort_key(x[0]))
+    names = set(x[0] for x in items)
     methods: list[str] = []
     types: list[str] = []
     static_properties: list[str] = []
     rw_properties: list[str] = []
     ro_properties: list[str] = []
-    done: set[str] = set()
+    attrs: list[tuple[str, Any]] = []
     for attr, value in items:
         if is_c_method(value) or is_c_classmethod(value):
-            done.add(attr)
-            if not is_skipped_attribute(attr):
-                if attr == "__new__":
-                    # TODO: We should support __new__.
-                    if "__init__" in obj_dict:
-                        # Avoid duplicate functions if both are present.
-                        # But is there any case where .__new__() has a
-                        # better signature than __init__() ?
-                        continue
-                    attr = "__init__"
-                if is_c_classmethod(value):
-                    self_var = "cls"
-                else:
-                    self_var = "self"
-                generate_c_function_stub(
-                    module,
-                    attr,
-                    value,
-                    output=methods,
-                    known_modules=known_modules,
-                    imports=imports,
-                    self_var=self_var,
-                    cls=obj,
-                    class_name=class_name,
-                    sig_generators=sig_generators,
-                )
+            if attr == "__new__":
+                # TODO: We should support __new__.
+                if "__init__" in names:
+                    # Avoid duplicate functions if both are present.
+                    # But is there any case where .__new__() has a
+                    # better signature than __init__() ?
+                    continue
+                attr = "__init__"
+            if is_c_classmethod(value):
+                self_var = "cls"
+            else:
+                self_var = "self"
+            generate_c_function_stub(
+                module,
+                attr,
+                value,
+                output=methods,
+                known_modules=known_modules,
+                imports=imports,
+                self_var=self_var,
+                cls=obj,
+                class_name=class_name,
+                sig_generators=sig_generators,
+            )
         elif is_c_property(value):
-            done.add(attr)
             generate_c_property_stub(
                 attr,
                 value,
@@ -535,20 +544,16 @@ def generate_c_type_stub(
                 known_modules=known_modules,
                 sig_generators=sig_generators,
             )
-            done.add(attr)
+        else:
+            attrs.append((attr, value))
 
-    for attr, value in items:
-        if is_skipped_attribute(attr):
-            continue
-        if attr not in done:
-            static_properties.append(
-                "{}: ClassVar[{}] = ...".format(
-                    attr,
-                    strip_or_import(
-                        get_type_fullname(type(value)), module, known_modules, imports
-                    ),
-                )
+    for attr, value in attrs:
+        static_properties.append(
+            "{}: ClassVar[{}] = ...".format(
+                attr,
+                strip_or_import(get_type_fullname(type(value)), module, known_modules, imports),
             )
+        )
     all_bases = type.mro(obj)
     if all_bases[-1] is object:
         # TODO: Is this always object?
@@ -616,6 +621,7 @@ def is_pybind_skipped_attribute(attr: str) -> bool:
 
 def is_skipped_attribute(attr: str) -> bool:
     return attr in (
+        "__class__",
         "__getattribute__",
         "__str__",
         "__repr__",
