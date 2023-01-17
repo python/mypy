@@ -1777,7 +1777,7 @@ class NameExpr(RefExpr):
 
     def __init__(self, name: str) -> None:
         super().__init__()
-        self.name = name  # Name referred to (may be qualified)
+        self.name = name  # Name referred to
         # Is this a l.h.s. of a special form assignment like typed dict or type variable?
         self.is_special_form = False
 
