@@ -158,7 +158,7 @@ class C:
         return False
 
     def __complex__(self) -> complex:
-        return 7+1j
+        return 7j
 
 def f(c: C) -> None:
     -c
@@ -202,12 +202,10 @@ L0:
     return 0
 def C.__complex__(self):
     self :: __main__.C
-    r0, r1, r2 :: object
+    r0 :: object
 L0:
-    r0 = 1j
-    r1 = object 7
-    r2 = PyNumber_Add(r1, r0)
-    return r2
+    r0 = 7j
+    return r0
 def f(c):
     c :: __main__.C
     r0, r1, r2 :: int
