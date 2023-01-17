@@ -1021,12 +1021,15 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         tuple(actual.items), tuple(template.items), self.direction
                     )
                     res.extend(unpack_constraints)
-            else:
-                assert isinstance(actual, TupleType)
+            elif isinstance(actual, TupleType):
                 actual_items = tuple(actual.items)
                 template_items = tuple(template.items)
+            else:
+                return res
 
-            if len(actual_items) == len(template_items) and isinstance(actual, TupleType):
+            # Cases above will return if actual wasn't a TupleType.
+            assert isinstance(actual, TupleType)
+            if len(actual_items) == len(template_items):
                 if (
                     actual.partial_fallback.type.is_named_tuple
                     and template.partial_fallback.type.is_named_tuple
