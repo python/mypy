@@ -157,7 +157,7 @@ class C:
     def __bool__(self) -> bool:
         return False
 
-    def __complex__(self):
+    def __complex__(self) -> complex:
         return 7+1j
 
 def f(c: C) -> None:
