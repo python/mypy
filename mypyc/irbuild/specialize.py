@@ -159,6 +159,7 @@ def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
 @specialize_function("builtins.abs")
 @specialize_function("builtins.int")
 @specialize_function("builtins.float")
+@specialize_function("builtins.complex")
 def translate_builtins_with_unary_dunder(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:

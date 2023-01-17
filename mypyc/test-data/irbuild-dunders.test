@@ -157,6 +157,9 @@ class C:
     def __bool__(self) -> bool:
         return False
 
+    def __complex__(self):
+        return 7+1j
+
 def f(c: C) -> None:
     -c
     ~c
@@ -165,6 +168,7 @@ def f(c: C) -> None:
     +c
     abs(c)
     bool(c)
+    complex(c)
 [out]
 def C.__neg__(self):
     self :: __main__.C
@@ -196,12 +200,21 @@ def C.__bool__(self):
     self :: __main__.C
 L0:
     return 0
+def C.__complex__(self):
+    self :: __main__.C
+    r0, r1, r2 :: object
+L0:
+    r0 = 1j
+    r1 = object 7
+    r2 = PyNumber_Add(r1, r0)
+    return r2
 def f(c):
     c :: __main__.C
     r0, r1, r2 :: int
     r3 :: float
     r4, r5 :: int
     r6 :: bool
+    r7 :: object
 L0:
     r0 = c.__neg__()
     r1 = c.__invert__()
@@ -210,5 +223,6 @@ L0:
     r4 = c.__pos__()
     r5 = c.__abs__()
     r6 = c.__bool__()
+    r7 = c.__complex__()
     return 1
 
