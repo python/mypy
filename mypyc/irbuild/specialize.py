@@ -157,14 +157,20 @@ def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
 
 
 @specialize_function("builtins.abs")
-def translate_abs(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
-    """Specialize calls on native classes that implement __abs__."""
-    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+@specialize_function("builtins.int")
+@specialize_function("builtins.float")
+@specialize_function("builtins.complex")
+def translate_builtins_with_unary_dunder(
+    builder: IRBuilder, expr: CallExpr, callee: RefExpr
+) -> Value | None:
+    """Specialize calls on native classes that implement the associated dunder."""
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS] and isinstance(callee, NameExpr):
         arg = expr.args[0]
         arg_typ = builder.node_type(arg)
-        if isinstance(arg_typ, RInstance) and arg_typ.class_ir.has_method("__abs__"):
+        method = f"__{callee.name}__"
+        if isinstance(arg_typ, RInstance) and arg_typ.class_ir.has_method(method):
             obj = builder.accept(arg)
-            return builder.gen_method_call(obj, "__abs__", [], None, expr.line)
+            return builder.gen_method_call(obj, method, [], None, expr.line)
 
     return None
 
