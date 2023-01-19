@@ -50,7 +50,7 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, dict_rprimitive, tuple_rprimitive
+from mypyc.ir.rtypes import RInstance, RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
@@ -97,6 +97,12 @@ def build_type_map(
                 prepare_class_def(module.path, module.fullname, cdef, errors, mapper)
             else:
                 prepare_non_ext_class_def(module.path, module.fullname, cdef, errors, mapper)
+
+    # Prepare implicit attribute accessors as needed if an attribute overrides a property.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class:
+            prepare_implicit_property_accessors(cdef.info, class_ir, module.fullname, mapper)
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
@@ -168,6 +174,8 @@ def prepare_method_def(
             # works correctly.
             decl.name = PROPSET_PREFIX + decl.name
             decl.is_prop_setter = True
+            # Making the argument implicitly positional-only avoids unnecessary glue methods
+            decl.sig.args[1].pos_only = True
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
 
         if node.func.is_property:
@@ -212,6 +220,11 @@ def can_subclass_builtin(builtin_base: str) -> bool:
 def prepare_class_def(
     path: str, module_name: str, cdef: ClassDef, errors: Errors, mapper: Mapper
 ) -> None:
+    """Populate the interface-level information in a class IR.
+
+    This includes attribute and method declarations, and the MRO, among other things, but
+    method bodies are generated in a later pass.
+    """
 
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
@@ -223,8 +236,68 @@ def prepare_class_def(
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
 
-    # We sort the table for determinism here on Python 3.5
-    for name, node in sorted(info.names.items()):
+    # Check for subclassing from builtin types
+    for cls in info.mro:
+        # Special case exceptions and dicts
+        # XXX: How do we handle *other* things??
+        if cls.fullname == "builtins.BaseException":
+            ir.builtin_base = "PyBaseExceptionObject"
+        elif cls.fullname == "builtins.dict":
+            ir.builtin_base = "PyDictObject"
+        elif cls.fullname.startswith("builtins."):
+            if not can_subclass_builtin(cls.fullname):
+                # Note that if we try to subclass a C extension class that
+                # isn't in builtins, bad things will happen and we won't
+                # catch it here! But this should catch a lot of the most
+                # common pitfalls.
+                errors.error(
+                    "Inheriting from most builtin types is unimplemented", path, cdef.line
+                )
+
+    # Set up the parent class
+    bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]
+    if not all(c.is_trait for c in bases[1:]):
+        errors.error("Non-trait bases must appear first in parent list", path, cdef.line)
+    ir.traits = [c for c in bases if c.is_trait]
+
+    mro = []  # All mypyc base classes
+    base_mro = []  # Non-trait mypyc base classes
+    for cls in info.mro:
+        if cls not in mapper.type_to_ir:
+            if cls.fullname != "builtins.object":
+                ir.inherits_python = True
+            continue
+        base_ir = mapper.type_to_ir[cls]
+        if not base_ir.is_trait:
+            base_mro.append(base_ir)
+        mro.append(base_ir)
+
+        if cls.defn.removed_base_type_exprs or not base_ir.is_ext_class:
+            ir.inherits_python = True
+
+    base_idx = 1 if not ir.is_trait else 0
+    if len(base_mro) > base_idx:
+        ir.base = base_mro[base_idx]
+    ir.mro = mro
+    ir.base_mro = base_mro
+
+    prepare_methods_and_attributes(cdef, ir, path, module_name, errors, mapper)
+    prepare_init_method(cdef, ir, module_name, mapper)
+
+    for base in bases:
+        if base.children is not None:
+            base.children.append(ir)
+
+    if is_dataclass(cdef):
+        ir.is_augmented = True
+
+
+def prepare_methods_and_attributes(
+    cdef: ClassDef, ir: ClassIR, path: str, module_name: str, errors: Errors, mapper: Mapper
+) -> None:
+    """Populate attribute and method declarations."""
+    info = cdef.info
+    for name, node in info.names.items():
         # Currently all plugin generated methods are dummies and not included.
         if node.plugin_generated:
             continue
@@ -249,27 +322,73 @@ def prepare_class_def(
                 assert node.node.impl
                 prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
 
-    # Check for subclassing from builtin types
-    for cls in info.mro:
-        # Special case exceptions and dicts
-        # XXX: How do we handle *other* things??
-        if cls.fullname == "builtins.BaseException":
-            ir.builtin_base = "PyBaseExceptionObject"
-        elif cls.fullname == "builtins.dict":
-            ir.builtin_base = "PyDictObject"
-        elif cls.fullname.startswith("builtins."):
-            if not can_subclass_builtin(cls.fullname):
-                # Note that if we try to subclass a C extension class that
-                # isn't in builtins, bad things will happen and we won't
-                # catch it here! But this should catch a lot of the most
-                # common pitfalls.
-                errors.error(
-                    "Inheriting from most builtin types is unimplemented", path, cdef.line
-                )
-
     if ir.builtin_base:
         ir.attributes.clear()
 
+
+def prepare_implicit_property_accessors(
+    info: TypeInfo, ir: ClassIR, module_name: str, mapper: Mapper
+) -> None:
+    for base in ir.base_mro:
+        for name, attr_rtype in base.attributes.items():
+            add_property_methods_for_attribute_if_needed(
+                info, ir, name, attr_rtype, module_name, mapper
+            )
+
+
+def add_property_methods_for_attribute_if_needed(
+    info: TypeInfo,
+    ir: ClassIR,
+    attr_name: str,
+    attr_rtype: RType,
+    module_name: str,
+    mapper: Mapper,
+) -> None:
+    """Add getter and/or setter for attribute if defined as property in a base class.
+
+    Only add declarations. The body IR will be synthesized later during irbuild.
+    """
+    for base in info.mro[1:]:
+        if base in mapper.type_to_ir:
+            n = base.names.get(attr_name)
+            if n is None:
+                continue
+            node = n.node
+            if isinstance(node, Decorator) and node.name not in ir.method_decls:
+                # Defined as a read-only property in base class/trait
+                add_getter_declaration(ir, attr_name, attr_rtype, module_name)
+            elif isinstance(node, OverloadedFuncDef) and is_valid_multipart_property_def(node):
+                # Defined as a read-write property in base class/trait
+                add_getter_declaration(ir, attr_name, attr_rtype, module_name)
+                add_setter_declaration(ir, attr_name, attr_rtype, module_name)
+
+
+def add_getter_declaration(
+    ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str
+) -> None:
+    self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+    sig = FuncSignature([self_arg], attr_rtype)
+    decl = FuncDecl(attr_name, ir.name, module_name, sig, FUNC_NORMAL)
+    decl.is_prop_getter = True
+    decl.implicit = True  # Triggers synthesization
+    ir.method_decls[attr_name] = decl
+    ir.property_types[attr_name] = attr_rtype  # TODO: Needed??
+
+
+def add_setter_declaration(
+    ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str
+) -> None:
+    self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+    value_arg = RuntimeArg("value", attr_rtype, pos_only=True)
+    sig = FuncSignature([self_arg, value_arg], none_rprimitive)
+    setter_name = PROPSET_PREFIX + attr_name
+    decl = FuncDecl(setter_name, ir.name, module_name, sig, FUNC_NORMAL)
+    decl.is_prop_setter = True
+    decl.implicit = True  # Triggers synthesization
+    ir.method_decls[setter_name] = decl
+
+
+def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
     if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
@@ -297,40 +416,6 @@ def prepare_class_def(
         ctor_sig = FuncSignature(init_sig.args[1:last_arg], RInstance(ir))
         ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
         mapper.func_to_decl[cdef.info] = ir.ctor
-
-    # Set up the parent class
-    bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]
-    if not all(c.is_trait for c in bases[1:]):
-        errors.error("Non-trait bases must appear first in parent list", path, cdef.line)
-    ir.traits = [c for c in bases if c.is_trait]
-
-    mro = []
-    base_mro = []
-    for cls in info.mro:
-        if cls not in mapper.type_to_ir:
-            if cls.fullname != "builtins.object":
-                ir.inherits_python = True
-            continue
-        base_ir = mapper.type_to_ir[cls]
-        if not base_ir.is_trait:
-            base_mro.append(base_ir)
-        mro.append(base_ir)
-
-        if cls.defn.removed_base_type_exprs or not base_ir.is_ext_class:
-            ir.inherits_python = True
-
-    base_idx = 1 if not ir.is_trait else 0
-    if len(base_mro) > base_idx:
-        ir.base = base_mro[base_idx]
-    ir.mro = mro
-    ir.base_mro = base_mro
-
-    for base in bases:
-        if base.children is not None:
-            base.children.append(ir)
-
-    if is_dataclass(cdef):
-        ir.is_augmented = True
 
 
 def prepare_non_ext_class_def(

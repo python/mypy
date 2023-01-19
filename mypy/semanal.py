@@ -947,7 +947,10 @@ class SemanticAnalyzer(
             if func.name in ["__init_subclass__", "__class_getitem__"]:
                 func.is_class = True
             if not func.arguments:
-                self.fail("Method must have at least one argument", func)
+                self.fail(
+                    'Method must have at least one argument. Did you forget the "self" argument?',
+                    func,
+                )
             elif isinstance(functype, CallableType):
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
@@ -1881,7 +1884,7 @@ class SemanticAnalyzer(
                 # It's bound by our type variable scope
                 return None
             return unbound.name, sym.node
-        if sym and sym.fullname == "typing_extensions.Unpack":
+        if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
             inner_t = unbound.args[0]
             if not isinstance(inner_t, UnboundType):
                 return None
@@ -2531,7 +2534,7 @@ class SemanticAnalyzer(
                 )
             else:
                 alternatives = set(module.names.keys()).difference({source_id})
-                matches = best_matches(source_id, alternatives)[:3]
+                matches = best_matches(source_id, alternatives, n=3)
                 if matches:
                     suggestion = f"; maybe {pretty_seq(matches, 'or')}?"
                     message += f"{suggestion}"
@@ -3019,13 +3022,13 @@ class SemanticAnalyzer(
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if not isinstance(s.rvalue, CallExpr):
             return
-        fname = None
+        fname = ""
         call = s.rvalue
         while True:
             if isinstance(call.callee, RefExpr):
                 fname = call.callee.fullname
             # check if method call
-            if fname is None and isinstance(call.callee, MemberExpr):
+            if not fname and isinstance(call.callee, MemberExpr):
                 callee_expr = call.callee.expr
                 if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
                     method_name = call.callee.name
@@ -4621,7 +4624,7 @@ class SemanticAnalyzer(
         else:
             expr.kind = sym.kind
             expr.node = sym.node
-            expr.fullname = sym.fullname
+            expr.fullname = sym.fullname or ""
 
     def visit_super_expr(self, expr: SuperExpr) -> None:
         if not self.type and not expr.call.args:
@@ -4846,7 +4849,7 @@ class SemanticAnalyzer(
                     self.process_placeholder(expr.name, "attribute", expr)
                     return
                 expr.kind = sym.kind
-                expr.fullname = sym.fullname
+                expr.fullname = sym.fullname or ""
                 expr.node = sym.node
         elif isinstance(base, RefExpr):
             # This branch handles the case C.bar (or cls.bar or self.bar inside
@@ -4878,7 +4881,7 @@ class SemanticAnalyzer(
                     if not n:
                         return
                     expr.kind = n.kind
-                    expr.fullname = n.fullname
+                    expr.fullname = n.fullname or ""
                     expr.node = n.node
 
     def visit_op_expr(self, expr: OpExpr) -> None:
@@ -5338,7 +5341,7 @@ class SemanticAnalyzer(
         return False
 
     def is_defined_in_current_module(self, fullname: str | None) -> bool:
-        if fullname is None:
+        if not fullname:
             return False
         return module_prefix(self.modules, fullname) == self.cur_mod_id
 

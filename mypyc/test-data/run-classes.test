@@ -1968,6 +1968,188 @@ import other_interpreted
 
 [out]
 
+[case testAttributeOverridesProperty]
+from typing import Any
+from mypy_extensions import trait
+
+@trait
+class T1:
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+
+class C1(T1):
+    x: int = 1
+    y: int = 4
+
+def test_read_only_property_in_trait_implemented_as_attribute() -> None:
+    c = C1()
+    c.x = 5
+    assert c.x == 5
+    assert c.y == 4
+    c.y = 6
+    assert c.y == 6
+    t: T1 = C1()
+    assert t.y == 4
+    t = c
+    assert t.x == 5
+    assert t.y == 6
+    a: Any = c
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
+class B2:
+    @property
+    def x(self) -> int:
+        return 11
+
+    @property
+    def y(self) -> int:
+        return 25
+
+class C2(B2):
+    x: int = 1
+    y: int = 4
+
+def test_read_only_property_in_class_implemented_as_attribute() -> None:
+    c = C2()
+    c.x = 5
+    assert c.x == 5
+    assert c.y == 4
+    c.y = 6
+    assert c.y == 6
+    b: B2 = C2()
+    assert b.y == 4
+    b = c
+    assert b.x == 5
+    assert b.y == 6
+    a: Any = c
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
+@trait
+class T3:
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+
+class B3:
+    x: int = 1
+    y: int = 4
+
+class C3(B3, T3):
+    pass
+
+def test_read_only_property_implemented_as_attribute_indirectly() -> None:
+    c = C3()
+    c.x = 5
+    assert c.x == 5
+    assert c.y == 4
+    c.y = 6
+    assert c.y == 6
+    t: T3 = C3()
+    assert t.y == 4
+    t = c
+    assert t.x == 5
+    assert t.y == 6
+    a: Any = c
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
+@trait
+class T4:
+    @property
+    def x(self) -> int: ...
+    @x.setter
+    def x(self, v1: int) -> None: ...
+
+    @property
+    def y(self) -> int: ...
+    @y.setter
+    def y(self, v2: int) -> None: ...
+
+class C4(T4):
+    x: int = 1
+    y: int = 4
+
+def test_read_write_property_implemented_as_attribute() -> None:
+    c = C4()
+    c.x = 5
+    assert c.x == 5
+    assert c.y == 4
+    c.y = 6
+    assert c.y == 6
+    t: T4 = C4()
+    assert t.y == 4
+    t.x = 5
+    assert t.x == 5
+    t.y = 6
+    assert t.y == 6
+    a: Any = c
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
+@trait
+class T5:
+    @property
+    def x(self) -> int: ...
+    @x.setter
+    def x(self, v1: int) -> None: ...
+
+    @property
+    def y(self) -> int: ...
+    @y.setter
+    def y(self, v2: int) -> None: ...
+
+class B5:
+    x: int = 1
+    y: int = 4
+
+class BB5(B5):
+    pass
+
+class C5(BB5, T5):
+    pass
+
+def test_read_write_property_indirectly_implemented_as_attribute() -> None:
+    c = C5()
+    c.x = 5
+    assert c.x == 5
+    assert c.y == 4
+    c.y = 6
+    assert c.y == 6
+    t: T5 = C5()
+    assert t.y == 4
+    t.x = 5
+    assert t.x == 5
+    t.y = 6
+    assert t.y == 6
+    a: Any = c
+    assert a.x == 5
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
 [case testSubclassAttributeAccess]
 from mypy_extensions import trait
 

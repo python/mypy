@@ -210,7 +210,7 @@ section of the command line docs.
     line.  Mypy *will* recursively type check any submodules of the provided
     package. This flag is identical to :confval:`modules` apart from this
     behavior.
-    
+
     This option may only be set in the global section (``[mypy]``).
 
 .. confval:: exclude
@@ -900,6 +900,12 @@ Report generation
 
 If these options are set, mypy will generate a report in the specified
 format into the specified directory.
+
+.. warning::
+
+  Generating reports disables incremental mode and can significantly slow down
+  your workflow. It is recommended to enable reporting only for specific runs
+  (e.g. in CI).
 
 .. confval:: any_exprs_report
 

@@ -105,7 +105,7 @@ f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "btt
 [case testKeywordMisspellingFloatInt]
 def f(atter: float, btter: int) -> None: pass # N: "f" defined here
 x: int = 5
-f(otter=x) # E: Unexpected keyword argument "otter" for "f"; did you mean "btter" or "atter"?
+f(otter=x) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "btter"?
 
 [case testKeywordMisspellingVarArgs]
 class A: pass

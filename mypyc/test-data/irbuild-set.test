@@ -655,3 +655,185 @@ L0:
     r12 = PySet_Add(r0, r11)
     r13 = r12 >= 0 :: signed
     return r0
+
+[case testOperatorInSetLiteral]
+from typing_extensions import Final
+
+CONST: Final = "daylily"
+non_const = 10
+
+def precomputed(i: object) -> bool:
+    return i in {1, 2.0, 1 +2, 4j, "foo", b"bar", CONST, (None, (27,)), (), False}
+def not_precomputed_non_final_name(i: int) -> bool:
+    return i in {non_const}
+def not_precomputed_nested_set(i: int) -> bool:
+    return i in {frozenset({1}), 2}
+[out]
+def precomputed(i):
+    i :: object
+    r0 :: set
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+L0:
+    r0 = frozenset({(), (None, (27,)), 1, 2.0, 3, 4j, False, b'bar', 'daylily', 'foo'})
+    r1 = PySet_Contains(r0, i)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    return r3
+def not_precomputed_non_final_name(i):
+    i :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: int
+    r4 :: set
+    r5 :: object
+    r6 :: int32
+    r7 :: bit
+    r8 :: object
+    r9 :: int32
+    r10 :: bit
+    r11 :: bool
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'non_const'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = unbox(int, r2)
+    r4 = PySet_New(0)
+    r5 = box(int, r3)
+    r6 = PySet_Add(r4, r5)
+    r7 = r6 >= 0 :: signed
+    r8 = box(int, i)
+    r9 = PySet_Contains(r4, r8)
+    r10 = r9 >= 0 :: signed
+    r11 = truncate r9: int32 to builtins.bool
+    return r11
+def not_precomputed_nested_set(i):
+    i :: int
+    r0 :: set
+    r1 :: object
+    r2 :: int32
+    r3 :: bit
+    r4 :: object
+    r5 :: set
+    r6 :: int32
+    r7 :: bit
+    r8 :: object
+    r9 :: int32
+    r10 :: bit
+    r11 :: object
+    r12 :: int32
+    r13 :: bit
+    r14 :: bool
+L0:
+    r0 = PySet_New(0)
+    r1 = object 1
+    r2 = PySet_Add(r0, r1)
+    r3 = r2 >= 0 :: signed
+    r4 = PyFrozenSet_New(r0)
+    r5 = PySet_New(0)
+    r6 = PySet_Add(r5, r4)
+    r7 = r6 >= 0 :: signed
+    r8 = object 2
+    r9 = PySet_Add(r5, r8)
+    r10 = r9 >= 0 :: signed
+    r11 = box(int, i)
+    r12 = PySet_Contains(r5, r11)
+    r13 = r12 >= 0 :: signed
+    r14 = truncate r12: int32 to builtins.bool
+    return r14
+
+[case testForSetLiteral]
+from typing_extensions import Final
+
+CONST: Final = 10
+non_const = 20
+
+def precomputed() -> None:
+    for _ in {"None", "True", "False"}:
+        pass
+
+def precomputed2() -> None:
+    for _ in {None, False, 1, 2.0, "4", b"5", (6,), 7j, CONST, CONST + 1}:
+        pass
+
+def not_precomputed() -> None:
+    for not_optimized in {non_const}:
+        pass
+
+[out]
+def precomputed():
+    r0 :: set
+    r1, r2 :: object
+    r3 :: str
+    _ :: object
+    r4 :: bit
+L0:
+    r0 = frozenset({'False', 'None', 'True'})
+    r1 = PyObject_GetIter(r0)
+L1:
+    r2 = PyIter_Next(r1)
+    if is_error(r2) goto L4 else goto L2
+L2:
+    r3 = cast(str, r2)
+    _ = r3
+L3:
+    goto L1
+L4:
+    r4 = CPy_NoErrOccured()
+L5:
+    return 1
+def precomputed2():
+    r0 :: set
+    r1, r2, _ :: object
+    r3 :: bit
+L0:
+    r0 = frozenset({(6,), 1, 10, 11, 2.0, '4', 7j, False, None, b'5'})
+    r1 = PyObject_GetIter(r0)
+L1:
+    r2 = PyIter_Next(r1)
+    if is_error(r2) goto L4 else goto L2
+L2:
+    _ = r2
+L3:
+    goto L1
+L4:
+    r3 = CPy_NoErrOccured()
+L5:
+    return 1
+def not_precomputed():
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: int
+    r4 :: set
+    r5 :: object
+    r6 :: int32
+    r7 :: bit
+    r8, r9 :: object
+    r10, not_optimized :: int
+    r11 :: bit
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'non_const'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = unbox(int, r2)
+    r4 = PySet_New(0)
+    r5 = box(int, r3)
+    r6 = PySet_Add(r4, r5)
+    r7 = r6 >= 0 :: signed
+    r8 = PyObject_GetIter(r4)
+L1:
+    r9 = PyIter_Next(r8)
+    if is_error(r9) goto L4 else goto L2
+L2:
+    r10 = unbox(int, r9)
+    not_optimized = r10
+L3:
+    goto L1
+L4:
+    r11 = CPy_NoErrOccured()
+L5:
+    return 1
+

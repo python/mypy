@@ -1586,11 +1586,11 @@ class A:
 [file b.py.3]
 2
 [out]
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testBaseClassDeleted]
 import m
@@ -2007,11 +2007,11 @@ class A:
 class A:
     def foo(self) -> int: pass
 [out]
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
 
 [case testPreviousErrorInMethodSemanal2]

@@ -68,6 +68,9 @@ _V_co = TypeVar("_V_co", covariant=True)
 
 @final
 class _Cell:
+    if sys.version_info >= (3, 8):
+        def __init__(self, __contents: object = ...) -> None: ...
+
     __hash__: ClassVar[None]  # type: ignore[assignment]
     cell_contents: Any
 

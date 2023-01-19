@@ -160,15 +160,11 @@ int_invert_op = int_unary_op("~", "CPyTagged_Invert")
 #   c_func_description: the C function to call when operands are tagged integers
 #   c_func_negated: whether to negate the C function call's result
 #   c_func_swap_operands: whether to swap lhs and rhs when call the function
-IntComparisonOpDescription = NamedTuple(
-    "IntComparisonOpDescription",
-    [
-        ("binary_op_variant", int),
-        ("c_func_description", CFunctionDescription),
-        ("c_func_negated", bool),
-        ("c_func_swap_operands", bool),
-    ],
-)
+class IntComparisonOpDescription(NamedTuple):
+    binary_op_variant: int
+    c_func_description: CFunctionDescription
+    c_func_negated: bool
+    c_func_swap_operands: bool
 
 
 # Equals operation on two boxed tagged integers

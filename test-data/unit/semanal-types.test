@@ -1560,4 +1560,29 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(TV* [__main__.TV])
     TypeVarTupleExpr:2()))
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleCallable]
+from typing_extensions import TypeVarTuple, Unpack
+from typing import Callable
+Ts = TypeVarTuple("Ts")
+
+def foo(x: Callable[[Unpack[Ts]], None]) -> None:
+    pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [TypeVarTuple, Unpack])
+  ImportFrom:2(typing, [Callable])
+  AssignmentStmt:3(
+    NameExpr(Ts* [__main__.Ts])
+    TypeVarTupleExpr:3())
+  FuncDef:5(
+    foo
+    Args(
+      Var(x))
+    def [Ts] (x: def (*Unpack[Ts`-1]))
+    Block:5(
+      PassStmt:6())))
+
 [builtins fixtures/tuple.pyi]

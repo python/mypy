@@ -164,6 +164,7 @@ from mypy.types import (
 )
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
+from mypy.typevartuples import find_unpack_in_list
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
 
@@ -215,8 +216,8 @@ def extract_refexpr_names(expr: RefExpr) -> set[str]:
     Note that currently, the only two subclasses of RefExpr are NameExpr and
     MemberExpr."""
     output: set[str] = set()
-    while isinstance(expr.node, MypyFile) or expr.fullname is not None:
-        if isinstance(expr.node, MypyFile) and expr.fullname is not None:
+    while isinstance(expr.node, MypyFile) or expr.fullname:
+        if isinstance(expr.node, MypyFile) and expr.fullname:
             # If it's None, something's wrong (perhaps due to an
             # import cycle or a suppressed error).  For now we just
             # skip it.
@@ -227,7 +228,7 @@ def extract_refexpr_names(expr: RefExpr) -> set[str]:
             if isinstance(expr.node, TypeInfo):
                 # Reference to a class or a nested class
                 output.update(split_module_names(expr.node.module_name))
-            elif expr.fullname is not None and "." in expr.fullname and not is_suppressed_import:
+            elif "." in expr.fullname and not is_suppressed_import:
                 # Everything else (that is not a silenced import within a class)
                 output.add(expr.fullname.rsplit(".", 1)[0])
             break
@@ -525,7 +526,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # There are two special cases where plugins might act:
             # * A "static" reference/alias to a class or function;
             #   get_function_hook() will be invoked for these.
-            fullname = e.callee.fullname
+            fullname = e.callee.fullname or None
             if isinstance(e.callee.node, TypeAlias):
                 target = get_proper_type(e.callee.node.target)
                 if isinstance(target, Instance):
@@ -535,7 +536,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #   get_method_hook() and get_method_signature_hook() will
             #   be invoked for these.
             if (
-                fullname is None
+                not fullname
                 and isinstance(e.callee, MemberExpr)
                 and self.chk.has_type(e.callee.expr)
             ):
@@ -604,7 +605,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(object_type, TupleType):
             type_name = tuple_fallback(object_type).type.fullname
 
-        if type_name is not None:
+        if type_name:
             return f"{type_name}.{method_name}"
         else:
             return None
@@ -2064,12 +2065,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 actual_kinds = [arg_kinds[a] for a in actuals]
                 if isinstance(orig_callee_arg_type, UnpackType):
                     unpacked_type = get_proper_type(orig_callee_arg_type.type)
-                    # Only case we know of thus far.
-                    assert isinstance(unpacked_type, TupleType)
-                    actual_types = [arg_types[a] for a in actuals]
-                    actual_kinds = [arg_kinds[a] for a in actuals]
-                    callee_arg_types = unpacked_type.items
-                    callee_arg_kinds = [ARG_POS] * len(actuals)
+                    if isinstance(unpacked_type, TupleType):
+                        inner_unpack_index = find_unpack_in_list(unpacked_type.items)
+                        if inner_unpack_index is None:
+                            callee_arg_types = unpacked_type.items
+                            callee_arg_kinds = [ARG_POS] * len(actuals)
+                        else:
+                            inner_unpack = get_proper_type(unpacked_type.items[inner_unpack_index])
+                            assert isinstance(inner_unpack, UnpackType)
+                            inner_unpacked_type = get_proper_type(inner_unpack.type)
+                            # We assume heterogenous tuples are desugared earlier
+                            assert isinstance(inner_unpacked_type, Instance)
+                            assert inner_unpacked_type.type.fullname == "builtins.tuple"
+                            callee_arg_types = (
+                                unpacked_type.items[:inner_unpack_index]
+                                + [inner_unpacked_type.args[0]]
+                                * (len(actuals) - len(unpacked_type.items) + 1)
+                                + unpacked_type.items[inner_unpack_index + 1 :]
+                            )
+                            callee_arg_kinds = [ARG_POS] * len(actuals)
+                    else:
+                        assert isinstance(unpacked_type, Instance)
+                        assert unpacked_type.type.fullname == "builtins.tuple"
+                        callee_arg_types = [unpacked_type.args[0]] * len(actuals)
+                        callee_arg_kinds = [ARG_POS] * len(actuals)
                 else:
                     callee_arg_types = [orig_callee_arg_type] * len(actuals)
                     callee_arg_kinds = [callee.arg_kinds[i]] * len(actuals)
@@ -5470,7 +5489,7 @@ def type_info_from_type(typ: Type) -> TypeInfo | None:
 
 
 def is_operator_method(fullname: str | None) -> bool:
-    if fullname is None:
+    if not fullname:
         return False
     short_name = fullname.split(".")[-1]
     return (

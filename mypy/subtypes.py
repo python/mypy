@@ -482,7 +482,18 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     t = erased
                 nominal = True
                 if right.type.has_type_var_tuple_type:
-                    split_result = fully_split_with_mapped_and_template(left, right)
+                    assert left.type.type_var_tuple_prefix is not None
+                    assert left.type.type_var_tuple_suffix is not None
+                    assert right.type.type_var_tuple_prefix is not None
+                    assert right.type.type_var_tuple_suffix is not None
+                    split_result = fully_split_with_mapped_and_template(
+                        left.args,
+                        left.type.type_var_tuple_prefix,
+                        left.type.type_var_tuple_suffix,
+                        right.args,
+                        right.type.type_var_tuple_prefix,
+                        right.type.type_var_tuple_suffix,
+                    )
                     if split_result is None:
                         return False
 
