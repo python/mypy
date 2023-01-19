@@ -87,7 +87,7 @@ f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "oth
 class A: pass
 class B: pass
 def f(thing : 'A', other: 'A', atter: 'A', btter: 'B') -> None: pass # N: "f" defined here
-f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other" or "atter"?
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "other"?
 
 [case testKeywordMisspellingDifferentType]
 class A: pass
@@ -100,7 +100,7 @@ class A: pass
 class B(A): pass
 class C: pass
 def f(atter: 'A', btter: 'B', ctter: 'C') -> None: pass # N: "f" defined here
-f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "btter" or "atter"?
+f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "btter"?
 
 [case testKeywordMisspellingFloatInt]
 def f(atter: float, btter: int) -> None: pass # N: "f" defined here
