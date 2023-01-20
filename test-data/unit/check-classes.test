@@ -5293,6 +5293,19 @@ class F(six.with_metaclass(t.M)): pass
 class G: pass
 [builtins fixtures/tuple.pyi]
 
+[case testSixMetaclassGenericBase]
+import six
+import abc
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class C(six.with_metaclass(abc.ABCMeta, Generic[T])):
+    pass
+class D(six.with_metaclass(abc.ABCMeta, C[T])):
+    pass
+[builtins fixtures/tuple.pyi]
+
 -- Special support for future.utils
 -- --------------------------------
 

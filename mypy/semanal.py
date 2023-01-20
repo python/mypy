@@ -2181,7 +2181,7 @@ class SemanticAnalyzer(
         if len(defn.base_type_exprs) == 1:
             base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
-                base_expr.accept(self)
+                self.analyze_type_expr(base_expr)
                 if (
                     base_expr.callee.fullname
                     in {
