@@ -71,3 +71,5 @@ class ContextManager(Generic[T]):
 class _SpecialForm: pass
 
 TYPE_CHECKING = 1
+
+def dataclass_transform() -> Callable[[T], T]: ...
