@@ -428,7 +428,7 @@ class C:
 [case testSelfTypeNew]
 from typing import TypeVar, Type
 
-T = TypeVar('T', bound=A)
+T = TypeVar('T', bound='A')
 class A:
     def __new__(cls: Type[T]) -> T:
         return cls()
@@ -998,7 +998,7 @@ reveal_type(ab.x)  # N: Revealed type is "builtins.int"
 from typing import Generic, List, Optional, TypeVar, Any
 
 Q = TypeVar("Q")
-T = TypeVar("T", bound=Super[Any])
+T = TypeVar("T", bound='Super[Any]')
 
 class Super(Generic[Q]):
     @classmethod
@@ -1157,7 +1157,7 @@ from typing import Optional, Type, TypeVar, overload, Union
 
 Id = int
 
-A = TypeVar("A", bound=AClass)
+A = TypeVar("A", bound='AClass')
 
 class AClass:
     @overload
@@ -1682,7 +1682,7 @@ class This: ...
 [case testTypingSelfAttrOldVsNewStyle]
 from typing import Self, TypeVar
 
-T = TypeVar("T", bound=C)
+T = TypeVar("T", bound='C')
 class C:
     x: Self
     def foo(self: T) -> T:

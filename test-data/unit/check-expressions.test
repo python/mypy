@@ -692,6 +692,7 @@ tmp/m.py:8: error: Invalid index type "int" for "A"; expected type "str"
 
 
 [case testDivmod]
+# flags: --disable-error-code=used-before-def
 from typing import Tuple, Union, SupportsInt
 _Decimal = Union[Decimal, int]
 class Decimal(SupportsInt):
@@ -991,6 +992,15 @@ assert_type(reduce_it(True), Scalar)
 
 
 [case testNoneReturnTypeBasics]
+def f() -> None:
+    pass
+
+class A:
+    def g(self, x: object) -> None:
+        pass
+    def __call__(self) -> None:
+        pass
+
 a, o = None, None # type: (A, object)
 if int():
     a = f()         # E: "f" does not return a value
@@ -1004,40 +1014,30 @@ A().g(f())      # E: "f" does not return a value
 x: A = f()      # E: "f" does not return a value
 f()
 A().g(a)
-
-def f() -> None:
-    pass
-
-class A:
-    def g(self, x: object) -> None:
-        pass
-    def __call__(self) -> None:
-        pass
 [builtins fixtures/tuple.pyi]
 
 [case testNoneReturnTypeWithStatements]
 import typing
-if f():   # Fail
+def f() -> None: pass
+
+if f():   # E: "f" does not return a value
     pass
-elif f(): # Fail
+elif f(): # E: "f" does not return a value
     pass
-while f(): # Fail
+while f(): # E: "f" does not return a value
     pass
 def g() -> object:
-    return f() # Fail
-raise f() # Fail
-
-def f() -> None: pass
+    return f() # E: "f" does not return a value
+raise f() # E: "f" does not return a value
 [builtins fixtures/exception.pyi]
-[out]
-main:2: error: "f" does not return a value
-main:4: error: "f" does not return a value
-main:6: error: "f" does not return a value
-main:9: error: "f" does not return a value
-main:10: error: "f" does not return a value
 
 [case testNoneReturnTypeWithExpressions]
 from typing import cast
+
+def f() -> None: pass
+class A:
+    def __add__(self, x: 'A') -> 'A': pass
+
 a = None # type: A
 [f()]       # E: "f" does not return a value
 f() + a     # E: "f" does not return a value
@@ -1046,14 +1046,15 @@ f() == a    # E: "f" does not return a value
 a != f()    # E: "f" does not return a value
 cast(A, f())
 f().foo     # E: "f" does not return a value
-
-def f() -> None: pass
-class A:
-    def __add__(self, x: 'A') -> 'A': pass
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
 import typing
+
+def f() -> None: pass
+class A:
+    def __add__(self, x: 'A') -> 'A':
+        pass
 
 a, b = None, None # type: (A, bool)
 f() in a   # E: "f" does not return a value  # E: Unsupported right operand type for in ("A")
@@ -1064,11 +1065,6 @@ a in f()   # E: "f" does not return a value
 not f()    # E: "f" does not return a value
 f() and b  # E: "f" does not return a value
 b or f()   # E: "f" does not return a value
-
-def f() -> None: pass
-class A:
-    def __add__(self, x: 'A') -> 'A':
-        pass
 [builtins fixtures/bool.pyi]
 
 
@@ -1424,19 +1420,13 @@ z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not retu
 from typing import cast
 class A:
     def __add__(self, a: 'A') -> 'A': pass
-a = None # type: A
-None + a   # Fail
-f + a      # Fail
-a + f      # Fail
-cast(A, f)
-
 def f() -> None:
     pass
-[out]
-main:5: error: Unsupported left operand type for + ("None")
-main:6: error: Unsupported left operand type for + ("Callable[[], None]")
-main:7: error: Unsupported operand types for + ("A" and "Callable[[], None]")
-
+a = None # type: A
+None + a   # E: Unsupported left operand type for + ("None")
+f + a      # E: Unsupported left operand type for + ("Callable[[], None]")
+a + f      # E: Unsupported operand types for + ("A" and "Callable[[], None]")
+cast(A, f)
 [case testOperatorMethodWithInvalidArgCount]
 
 a = None # type: A

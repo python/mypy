@@ -5525,11 +5525,13 @@ a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5542,25 +5544,27 @@ def T() -> None:
     pass
 [out]
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Function "a.T" is not valid as a type
-main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:6: error: Free type variable expected in Generic[...]
-main:7: error: Function "a.T" is not valid as a type
-main:7: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:10: error: Function "a.T" is not valid as a type
-main:10: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:6: error: Function "a.T" is not valid as a type
+main:6: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:9: error: "C" expects no type arguments, but 1 given
+main:9: error: Function "a.T" is not valid as a type
+main:9: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:12: error: Function "a.T" is not valid as a type
+main:12: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeVarToModule]
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5574,15 +5578,15 @@ import T
 [out]
 ==
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Module "T" is not valid as a type
-main:4: note: Perhaps you meant to use a protocol matching the module structure?
-main:6: error: Free type variable expected in Generic[...]
-main:7: error: Module "T" is not valid as a type
-main:7: note: Perhaps you meant to use a protocol matching the module structure?
-main:10: error: Module "T" is not valid as a type
-main:10: note: Perhaps you meant to use a protocol matching the module structure?
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:6: error: Module "T" is not valid as a type
+main:6: note: Perhaps you meant to use a protocol matching the module structure?
+main:9: error: "C" expects no type arguments, but 1 given
+main:9: error: Module "T" is not valid as a type
+main:9: note: Perhaps you meant to use a protocol matching the module structure?
+main:12: error: Module "T" is not valid as a type
+main:12: note: Perhaps you meant to use a protocol matching the module structure?
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeClassToModule]
 
@@ -5614,11 +5618,13 @@ main:8: note: Perhaps you meant to use a protocol matching the module structure?
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5630,9 +5636,9 @@ from typing import TypeVar
 T = int
 [out]
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:6: error: Free type variable expected in Generic[...]
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:9: error: "C" expects no type arguments, but 1 given
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeAliasToModule]
 
@@ -8201,6 +8207,7 @@ x = 1
 ==
 
 [case testIdLikeDecoForwardCrashAlias]
+# flags: --disable-error-code used-before-def
 import b
 [file b.py]
 from typing import Callable, Any, TypeVar

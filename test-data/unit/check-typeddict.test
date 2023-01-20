@@ -1494,7 +1494,7 @@ class G(Generic[T]):
 
 yb: G[int] # E: Type argument "int" of "G" must be a subtype of "M"
 yg: G[M]
-z: int = G[M]().x['x']
+z: int = G[M]().x['x']  # type: ignore[used-before-def]
 
 class M(TypedDict):
     x: int
@@ -2279,7 +2279,7 @@ reveal_type(foo['baz'])  # N: Revealed type is "builtins.list[Any]"
 from mypy_extensions import TypedDict
 from typing import Any, List
 
-Foo = TypedDict('Foo', {'bar': Bar, 'baz': Bar})
+Foo = TypedDict('Foo', {'bar': 'Bar', 'baz': 'Bar'})
 
 Bar = List[Any]
 

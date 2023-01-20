@@ -88,6 +88,7 @@ A = int | list[A]
 -- Tests duplicating some existing type alias tests with recursive aliases enabled
 
 [case testRecursiveAliasesMutual]
+# flags: --disable-error-code used-before-def
 from typing import Type, Callable, Union
 
 A = Union[B, int]
@@ -120,6 +121,7 @@ B = List[A]
 [builtins fixtures/list.pyi]
 
 [case testRecursiveAliasViaBaseClass]
+# flags: --disable-error-code used-before-def
 from typing import List
 
 x: B
@@ -131,6 +133,7 @@ reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
 [case testRecursiveAliasViaBaseClass2]
+# flags: --disable-error-code used-before-def
 from typing import NewType, List
 
 x: D
@@ -162,6 +165,7 @@ reveal_type(x)  # N: Revealed type is "__main__.G[Tuple[builtins.int, fallback=_
 [builtins fixtures/list.pyi]
 
 [case testRecursiveAliasViaBaseClassImported]
+# flags: --disable-error-code used-before-def
 import a
 [file a.py]
 from typing import List
@@ -376,6 +380,7 @@ x: A
 y: str = x[0]  # E: Incompatible types in assignment (expression has type "Optional[A]", variable has type "str")
 
 [case testRecursiveAliasesProhibitBadAliases]
+# flags: --disable-error-code used-before-def
 from typing import Union, Type, List, TypeVar
 
 NR = List[int]
@@ -502,6 +507,8 @@ reveal_type(bnt.y)  # N: Revealed type is "builtins.int"
 -- Tests duplicating some existing named tuple tests with recursive aliases enabled
 
 [case testMutuallyRecursiveNamedTuples]
+# flags: --disable-error-code used-before-def
+
 from typing import Tuple, NamedTuple, TypeVar, Union
 
 A = NamedTuple('A', [('x', str), ('y', Tuple[B, ...])])
@@ -565,6 +572,7 @@ t = m  # E: Incompatible types in assignment (expression has type "B", variable 
 [builtins fixtures/tuple.pyi]
 
 [case testMutuallyRecursiveNamedTuplesCalls]
+# flags: --disable-error-code used-before-def
 from typing import NamedTuple
 
 B = NamedTuple('B', [('x', A), ('y', int)])
@@ -862,6 +870,7 @@ reveal_type(Sub)  # N: Revealed type is "def [ValueT] (element: Union[ValueT`1, 
 reveal_type(Sub(x))  # N: Revealed type is "__main__.Sub[typing.Iterable[builtins.str]]"
 
 [case testNoRecursiveExpandInstanceUnionCrashInference]
+# flags: --disable-error-code used-before-def
 from typing import TypeVar, Union, Generic, List
 
 T = TypeVar("T")

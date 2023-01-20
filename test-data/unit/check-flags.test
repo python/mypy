@@ -1152,12 +1152,12 @@ from typing import Any
 def f(s):
     yield s
 
+def g(x) -> Any:
+    yield x  # E: Expression has type "Any"
+
 x = f(0)  # E: Expression has type "Any"
 for x in f(0):  # E: Expression has type "Any"
     g(x)  # E: Expression has type "Any"
-
-def g(x) -> Any:
-    yield x  # E: Expression has type "Any"
 
 l = [1, 2, 3]
 l[f(0)]  # E: Expression has type "Any"

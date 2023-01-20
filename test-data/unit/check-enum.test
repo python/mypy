@@ -549,7 +549,7 @@ reveal_type(list(Color))  # N: Revealed type is "builtins.list[__main__.Color]"
 
 [case testEnumWorkWithForward]
 from enum import Enum
-a: E = E.x
+a: E = E.x  # type: ignore[used-before-def]
 class E(Enum):
     x = 1
     y = 2
