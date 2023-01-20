@@ -103,11 +103,7 @@ class SubtypeContext:
         # Historically proper and non-proper subtypes were defined using different helpers
         # and different visitors. Check if flag values are such that we definitely support.
         if proper_subtype:
-            assert (
-                not self.ignore_type_params
-                and not self.ignore_pos_arg_names
-                and not self.ignore_declared_variance
-            )
+            assert not self.ignore_pos_arg_names and not self.ignore_declared_variance
         else:
             assert not self.erase_instances and not self.keep_erased_types
 
