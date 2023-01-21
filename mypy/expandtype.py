@@ -222,6 +222,10 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return args
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        # Normally upper bounds can't contain other type variables, the only exception is
+        # special type variable Self`0 <: C[T, S], where C is the class where Self is used.
+        if t.id.raw_id == 0:
+            t = t.copy_modified(upper_bound=t.upper_bound.accept(self))
         repl = self.variables.get(t.id, t)
         if isinstance(repl, ProperType) and isinstance(repl, Instance):
             # TODO: do we really need to do this?
