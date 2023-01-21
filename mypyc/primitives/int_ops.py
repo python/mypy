@@ -42,68 +42,33 @@ from mypyc.primitives.registry import (
 # For ordinary calls to int() we use a load_address to the type
 load_address_op(name="builtins.int", type=object_rprimitive, src="PyLong_Type")
 
-# int(float). We could do a bit better directly.
-function_op(
-    name="builtins.int",
-    arg_types=[float_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromFloat",
-    error_kind=ERR_MAGIC,
-)
+for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32"):
+    # int(float). We could do a bit better directly.
+    function_op(
+        name=int_name,
+        arg_types=[float_rprimitive],
+        return_type=object_rprimitive,
+        c_function_name="CPyLong_FromFloat",
+        error_kind=ERR_MAGIC,
+    )
 
-# i64(float). We could do a bit better directly.
-function_op(
-    name="mypy_extensions.i64",
-    arg_types=[float_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromFloat",
-    error_kind=ERR_MAGIC,
-)
+    # int(string)
+    function_op(
+        name=int_name,
+        arg_types=[str_rprimitive],
+        return_type=object_rprimitive,
+        c_function_name="CPyLong_FromStr",
+        error_kind=ERR_MAGIC,
+    )
 
-# i32(float). We could do a bit better directly.
-function_op(
-    name="mypy_extensions.i32",
-    arg_types=[float_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromFloat",
-    error_kind=ERR_MAGIC,
-)
-
-# int(string)
-function_op(
-    name="builtins.int",
-    arg_types=[str_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromStr",
-    error_kind=ERR_MAGIC,
-)
-
-# int(string, base)
-function_op(
-    name="builtins.int",
-    arg_types=[str_rprimitive, int_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromStrWithBase",
-    error_kind=ERR_MAGIC,
-)
-
-# i64(string)
-function_op(
-    name="mypy_extensions.i64",
-    arg_types=[str_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromStr",
-    error_kind=ERR_MAGIC,
-)
-
-# i32(string)
-function_op(
-    name="mypy_extensions.i32",
-    arg_types=[str_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromStr",
-    error_kind=ERR_MAGIC,
-)
+    # int(string, base)
+    function_op(
+        name=int_name,
+        arg_types=[str_rprimitive, int_rprimitive],
+        return_type=object_rprimitive,
+        c_function_name="CPyLong_FromStrWithBase",
+        error_kind=ERR_MAGIC,
+    )
 
 # str(int)
 int_to_str_op = function_op(

@@ -1781,6 +1781,9 @@ def bool_to_i64(b: bool) -> i64:
 def str_to_i64(s: str) -> i64:
     return i64(s)
 
+def str_to_i64_with_base(s: str) -> i64:
+    return i64(s, 2)
+
 class C:
     def __int__(self) -> i64:
         return 5
@@ -1803,6 +1806,14 @@ def str_to_i64(s):
     r1 :: int64
 L0:
     r0 = CPyLong_FromStr(s)
+    r1 = unbox(int64, r0)
+    return r1
+def str_to_i64_with_base(s):
+    s :: str
+    r0 :: object
+    r1 :: int64
+L0:
+    r0 = CPyLong_FromStrWithBase(s, 4)
     r1 = unbox(int64, r0)
     return r1
 def C.__int__(self):
