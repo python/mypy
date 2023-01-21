@@ -50,8 +50,6 @@ like this:
 ```
 python3 runtests.py
 ```
-*Please note that the python version used here is ``3.7``. This is due to the fact that we want to always type check in 3.7 mode to make sure we don't use any features from more recent Python versions.*
-*You can change this in the ``mypy_self_check.ini`` file.*
 
 You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
 ```
