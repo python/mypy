@@ -521,19 +521,19 @@ class B: pass
 a, b, aa = None, None, None # type: (A, B, List[A])
 
 if int():
-    a, b = f(*aa)    # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
+    a, b = f(*aa)       # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
-    b, b = f(*aa)    # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
+    b, b = f(*aa)       # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
-    a, a = f(b, *aa) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+    a, a = f(b, *aa)    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
-    b, b = f(b, *aa) # E: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
+    b, b = f(b, *aa)    # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
-    b, b = f(b, b, *aa) # E: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
+    b, b = f(b, b, *aa) # E: Incompatible types in assignment (expression has type "object", variable has type "B")
 if int():
-    a, b = f(a, *a)  # E: List or tuple expected as variadic arguments
+    a, b = f(a, *a)     # E: List or tuple expected as variadic arguments
 if int():
-    a, b = f(*a)     # E: List or tuple expected as variadic arguments
+    a, b = f(*a)        # E: List or tuple expected as variadic arguments
 
 if int():
     a, a = f(*aa)
@@ -556,13 +556,13 @@ class B: pass
 a, b = None, None # type: (A, B)
 
 if int():
-    a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[A, B]"; expected "A"
+    a, a = f(*(a, b))   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
-    b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+    b, b = f(a, *(b,))  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
-    a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[A, B]"; expected "A"
+    a, a = f(*(a, b))   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
-    b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+    b, b = f(a, *(b,))  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
     a, b = f(*(a, b, b)) # E: Too many arguments for "f"
 if int():
@@ -598,16 +598,18 @@ if int():
     aa, a = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "A")
 if int():
     ab, aa = G().f(*[a]) \
+      # E: Incompatible types in assignment (expression has type "List[A]", variable has type "List[B]") \
       # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
       # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
-      # N: Consider using "Sequence" instead, which is covariant \
-      # E: Argument 1 to "f" of "G" has incompatible type "*List[A]"; expected "B"
+      # N: Consider using "Sequence" instead, which is covariant
 
 if int():
     ao, ao = G().f(*[a]) \
-      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[object]") \
+      # E: Incompatible types in assignment (expression has type "List[A]", variable has type "List[object]") \
       # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
-      # N: Consider using "Sequence" instead, which is covariant
+      # N: Consider using "Sequence" instead, which is covariant \
+      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[object]")
+
 if int():
     aa, aa = G().f(*[a]) \
       # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
