@@ -5166,10 +5166,11 @@ class SemanticAnalyzer(
             e.expr.accept(self)
 
     def visit_await_expr(self, expr: AwaitExpr) -> None:
-        if not self.is_func_scope():
-            self.fail('"await" outside function', expr)
+        if not self.is_func_scope() or not self.function_stack:
+            # We check both because is_function_scope() returns True inside comprehensions.
+            self.fail('"await" outside function', expr, serious=True, blocker=True)
         elif not self.function_stack[-1].is_coroutine:
-            self.fail('"await" outside coroutine ("async def")', expr)
+            self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
         expr.expr.accept(self)
 
     #
