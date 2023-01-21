@@ -943,3 +943,15 @@ async def bar(x: Union[A, B]) -> None:
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testInvalidComprehensionNoCrash]
+async def foo(x: int) -> int: ...
+
+crasher = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside function
+
+def bad() -> None:
+    y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")
+async def good() -> None:
+    y = [await foo(x) for x in [1, 2, 3]]  # OK
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
