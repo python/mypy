@@ -3124,7 +3124,6 @@ whatever: int
 [out]
 ==
 b.py:2: error: Name "c.M" is not defined
-a.py:3: error: "Type[B]" has no attribute "x"
 
 [case testFixMissingMetaclass]
 import a
@@ -3143,7 +3142,6 @@ class M(type):
     x: int
 [out]
 b.py:2: error: Name "c.M" is not defined
-a.py:3: error: "Type[B]" has no attribute "x"
 ==
 
 [case testGoodMetaclassSpoiled]

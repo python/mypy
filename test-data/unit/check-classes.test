@@ -4439,7 +4439,7 @@ def f(TB: Type[B]):
     reveal_type(TB.x)  # N: Revealed type is "builtins.int"
 
 [case testMetaclassAsAny]
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Type
 
 MyAny: Any
 class WithMeta(metaclass=MyAny):
@@ -4451,13 +4451,15 @@ reveal_type(WithMeta.x)   # N: Revealed type is "builtins.int"
 reveal_type(WithMeta().x) # N: Revealed type is "builtins.int"
 WithMeta().m              # E: "WithMeta" has no attribute "m"
 WithMeta().a              # E: "WithMeta" has no attribute "a"
+t: Type[WithMeta]
+t.unknown  # OK
 
 [case testMetaclassAsAnyWithAFlag]
 # flags: --disallow-subclassing-any
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Type
 
 MyAny: Any
-class WithMeta(metaclass=MyAny):  # E: Class cannot use "__main__.MyAny" as a metaclass (has type "Any")
+class WithMeta(metaclass=MyAny):  # E: Class cannot use "MyAny" as a metaclass (has type "Any")
     x: ClassVar[int]
 
 reveal_type(WithMeta.a)   # N: Revealed type is "Any"
@@ -4466,6 +4468,8 @@ reveal_type(WithMeta.x)   # N: Revealed type is "builtins.int"
 reveal_type(WithMeta().x) # N: Revealed type is "builtins.int"
 WithMeta().m              # E: "WithMeta" has no attribute "m"
 WithMeta().a              # E: "WithMeta" has no attribute "a"
+t: Type[WithMeta]
+t.unknown  # OK
 
 [case testMetaclassIterable]
 from typing import Iterable, Iterator
