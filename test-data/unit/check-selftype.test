@@ -1785,3 +1785,23 @@ class C(B, Generic[T]):
         inst = super().copy()
         reveal_type(inst)  # N: Revealed type is "Self`0"
         return inst
+
+[case testTypingSelfWithValuesExpansion]
+from typing import Self, Generic, TypeVar
+
+class A: pass
+class B: pass
+T = TypeVar("T", A, B)
+
+class C(Generic[T]):
+    val: T
+    def foo(self, x: T) -> None: ...
+    def bar(self, x: T) -> Self:
+        reveal_type(self.foo)  # N: Revealed type is "def (x: __main__.A)" \
+                               # N: Revealed type is "def (x: __main__.B)"
+        self.foo(x)
+        return self
+    def baz(self: Self, x: T) -> None:
+        reveal_type(self.val)  # N: Revealed type is "__main__.A" \
+                               # N: Revealed type is "__main__.B"
+        self.val = x
