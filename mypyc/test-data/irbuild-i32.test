@@ -496,6 +496,9 @@ class C:
 
 def instance_to_i32(c: C) -> i32:
     return i32(c)
+
+def float_to_i32(x: float) -> i32:
+    return i32(x)
 [out]
 def bool_to_i32(b):
     b :: bool
@@ -521,3 +524,11 @@ def instance_to_i32(c):
 L0:
     r0 = c.__int__()
     return r0
+def float_to_i32(x):
+    x :: float
+    r0 :: object
+    r1 :: int32
+L0:
+    r0 = CPyLong_FromFloat(x)
+    r1 = unbox(int32, r0)
+    return r1

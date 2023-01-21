@@ -1787,6 +1787,9 @@ class C:
 
 def instance_to_i64(c: C) -> i64:
     return i64(c)
+
+def float_to_i64(x: float) -> i64:
+    return i64(x)
 [out]
 def bool_to_i64(b):
     b :: bool
@@ -1812,3 +1815,11 @@ def instance_to_i64(c):
 L0:
     r0 = c.__int__()
     return r0
+def float_to_i64(x):
+    x :: float
+    r0 :: object
+    r1 :: int64
+L0:
+    r0 = CPyLong_FromFloat(x)
+    r1 = unbox(int64, r0)
+    return r1

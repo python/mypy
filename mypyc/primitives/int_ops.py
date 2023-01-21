@@ -51,6 +51,24 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# i64(float). We could do a bit better directly.
+function_op(
+    name="mypy_extensions.i64",
+    arg_types=[float_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyLong_FromFloat",
+    error_kind=ERR_MAGIC,
+)
+
+# i32(float). We could do a bit better directly.
+function_op(
+    name="mypy_extensions.i32",
+    arg_types=[float_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyLong_FromFloat",
+    error_kind=ERR_MAGIC,
+)
+
 # int(string)
 function_op(
     name="builtins.int",
