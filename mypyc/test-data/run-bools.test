@@ -153,6 +153,26 @@ def test_comparisons() -> None:
             assert gt(x, y) == (x2 > y2)
             assert ge(x, y) == (x2 >= y2)
 
+def eq_mixed(x: bool, y: int) -> bool:
+    return x == y
+
+def neq_mixed(x: int, y: bool) -> bool:
+    return x != y
+
+def lt_mixed(x: bool, y: int) -> bool:
+    return x < y
+
+def gt_mixed(x: int, y: bool) -> bool:
+    return x > y
+
+def test_mixed_comparisons() -> None:
+    for x in True, False:
+        for n in -(1 << 70), -123, 0, 1, 1753, 1 << 70:
+            assert eq_mixed(x, n) == (int(x) == n)
+            assert neq_mixed(n, x) == (n != int(x))
+            assert lt_mixed(x, n) == (int(x) < n)
+            assert gt_mixed(n, x) == (n > int(x))
+
 def add(x: bool, y: bool) -> int:
     return x + y
 
@@ -181,3 +201,23 @@ def test_arithmetic_i64() -> None:
         for n in -(1 << 62), -123, 0, 1, 1753, 1 << 62:
             assert add_mixed_i64(x, n) == int(x) + n
             assert sub_mixed_i64(n, x) == n - int(x)
+
+def eq_mixed_i64(x: bool, y: i64) -> bool:
+    return x == y
+
+def neq_mixed_i64(x: i64, y: bool) -> bool:
+    return x != y
+
+def lt_mixed_i64(x: bool, y: i64) -> bool:
+    return x < y
+
+def gt_mixed_i64(x: i64, y: bool) -> bool:
+    return x > y
+
+def test_mixed_comparisons_i64() -> None:
+    for x in True, False:
+        for n in -(1 << 62), -123, 0, 1, 1753, 1 << 62:
+            assert eq_mixed_i64(x, n) == (int(x) == n)
+            assert neq_mixed_i64(n, x) == (n != int(x))
+            assert lt_mixed_i64(x, n) == (int(x) < n)
+            assert gt_mixed_i64(n, x) == (n > int(x))
