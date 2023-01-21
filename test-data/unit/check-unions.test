@@ -619,7 +619,7 @@ from typing import Union, Tuple
 a: Union[Tuple[int, int], Tuple[int, float]]
 a1: object
 a2: int
-(a1, a2) = a  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+(a1, a2) = a  # E: Incompatible types in assignment (expression has type "Union[int, float]", variable has type "int")
 
 b: Union[Tuple[float, int], Tuple[int, int]]
 b1: object
@@ -746,8 +746,10 @@ from typing import Union, Tuple
 bad: Union[Tuple[int, int, int], Tuple[str, str, str]]
 
 x, y = bad # E: Too many values to unpack (2 expected, 3 provided)
-reveal_type(x) # N: Revealed type is "Any"
-reveal_type(y) # N: Revealed type is "Any"
+reveal_type(x) # E: Cannot determine type of "x" \
+               # N: Revealed type is "Any"
+reveal_type(y) # E: Cannot determine type of "y" \
+               # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -756,10 +758,14 @@ from typing import Union, Tuple
 bad: Union[Tuple[int, int, int], Tuple[str, str, str]]
 
 x, y, z, w = bad # E: Need more than 3 values to unpack (4 expected)
-reveal_type(x) # N: Revealed type is "Any"
-reveal_type(y) # N: Revealed type is "Any"
-reveal_type(z) # N: Revealed type is "Any"
-reveal_type(w) # N: Revealed type is "Any"
+reveal_type(x) # E: Cannot determine type of "x" \
+               # N: Revealed type is "Any"
+reveal_type(y) # E: Cannot determine type of "y" \
+               # N: Revealed type is "Any"
+reveal_type(z) # E: Cannot determine type of "z" \
+               # N: Revealed type is "Any"
+reveal_type(w) # E: Cannot determine type of "w" \
+               # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -977,8 +983,9 @@ from typing import Dict, Tuple, List, Any
 
 a: Any
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
-x, _ = d.get(a, ([], []))
-reveal_type(x) # N: Revealed type is "Union[builtins.list[Tuple[builtins.str, builtins.str]], builtins.list[<nothing>]]"
+x, _ = d.get(a, ([], []))  # E: Need type annotation for "x" \
+                           # E: Need type annotation for "_"
+reveal_type(x) # N: Revealed type is "Union[builtins.list[Tuple[builtins.str, builtins.str]], builtins.list[Any]]"
 
 for y in x: pass
 [builtins fixtures/dict.pyi]

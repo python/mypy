@@ -213,6 +213,7 @@ from mypy.types import (
     is_named_instance,
     is_optional,
     remove_optional,
+    remove_trivial,
     store_argument_type,
     strip_type,
 )
@@ -3375,7 +3376,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         context: Context,
         infer_lvalue_type: bool = True,
         rv_type: Type | None = None,
-        undefined_rvalue: bool = False,
     ) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
 
@@ -3386,11 +3386,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(rvalue_type, TypeVarLikeType):
             rvalue_type = get_proper_type(rvalue_type.upper_bound)
 
-        if isinstance(rvalue_type, UnionType):
-            # If this is an Optional type in non-strict Optional code, unwrap it.
-            relevant_items = rvalue_type.relevant_items()
-            if len(relevant_items) == 1:
-                rvalue_type = get_proper_type(relevant_items[0])
+        rvalue_type = self.simplify_union_during_multi_assignment_checks(rvalue_type)
 
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
@@ -3402,7 +3398,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_assignment(lv, temp_node, infer_lvalue_type)
         elif isinstance(rvalue_type, TupleType):
             self.check_multi_assignment_from_tuple(
-                lvalues, rvalue, rvalue_type, context, undefined_rvalue, infer_lvalue_type
+                lvalues, rvalue, rvalue_type, context, infer_lvalue_type
             )
         elif isinstance(rvalue_type, UnionType):
             self.check_multi_assignment_from_union(
@@ -3414,6 +3410,44 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_multi_assignment_from_iterable(
                 lvalues, rvalue_type, context, infer_lvalue_type
             )
+
+    def simplify_union_during_multi_assignment_checks(self, rvalue_type: ProperType) -> ProperType:
+        """Two simplifications:
+
+        1. If `rvalue_type` is Optional type in non-strict Optional code, unwrap it.
+        2. If `rvalue_type` is a union of tuples and all tuples have the same number of items
+        (more than one), convert it to a tuple of (simplified) unions.
+
+        The second simplification is because the multi-assignment checks currently do not work
+        for unions of tuples in combination with partially initialised lvalues (issue 12915).
+        """
+        if not isinstance(rvalue_type, UnionType):
+            return rvalue_type
+
+        # try unwrapping:
+        relevant_items = rvalue_type.relevant_items()
+        if len(relevant_items) == 1:
+            return get_proper_type(relevant_items[0])
+
+        # try union to tuple conversion:
+        if len(rvalue_type.items) < 2:
+            return rvalue_type
+        tupletype = rvalue_type.items[0]
+        tupletype = get_proper_type(tupletype)
+        if not isinstance(tupletype, TupleType):
+            return rvalue_type
+        items = [tupletype.items]
+        nmb_subitems = len(items[0])
+        for tupletype in rvalue_type.items[1:]:
+            tupletype = get_proper_type(tupletype)
+            if not isinstance(tupletype, TupleType) or (len(tupletype.items) != nmb_subitems):
+                return rvalue_type
+            items.append(tupletype.items)
+        items_transposed = zip(*items)
+        return TupleType(
+            [UnionType.make_union(remove_trivial(subitems)) for subitems in items_transposed],
+            fallback=self.named_type("builtins.tuple"),
+        )
 
     def check_multi_assignment_from_union(
         self,
@@ -3443,12 +3477,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Type check the assignment separately for each union item and collect
                 # the inferred lvalue types for each union item.
                 self.check_multi_assignment(
-                    lvalues,
-                    rvalue,
-                    context,
-                    infer_lvalue_type=infer_lvalue_type,
-                    rv_type=item,
-                    undefined_rvalue=True,
+                    lvalues, rvalue, context, infer_lvalue_type=infer_lvalue_type, rv_type=item
                 )
                 for t, lv in zip(transposed, self.flatten_lvalues(lvalues)):
                     # We can access _type_maps directly since temporary type maps are
@@ -3500,7 +3529,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         rvalue: Expression,
         rvalue_type: TupleType,
         context: Context,
-        undefined_rvalue: bool,
         infer_lvalue_type: bool = True,
     ) -> None:
         if self.check_rvalue_count_in_assignment(lvalues, len(rvalue_type.items), context):
@@ -3511,34 +3539,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             left_lvs = lvalues[:star_index]
             star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
             right_lvs = lvalues[star_index + 1 :]
-
-            if not undefined_rvalue:
-                # Infer rvalue again, now in the correct type context.
-                lvalue_type = self.lvalue_type_for_inference(lvalues, rvalue_type)
-                reinferred_rvalue_type = get_proper_type(
-                    self.expr_checker.accept(rvalue, lvalue_type)
-                )
-
-                if isinstance(reinferred_rvalue_type, UnionType):
-                    # If this is an Optional type in non-strict Optional code, unwrap it.
-                    relevant_items = reinferred_rvalue_type.relevant_items()
-                    if len(relevant_items) == 1:
-                        reinferred_rvalue_type = get_proper_type(relevant_items[0])
-                if isinstance(reinferred_rvalue_type, UnionType):
-                    self.check_multi_assignment_from_union(
-                        lvalues, rvalue, reinferred_rvalue_type, context, infer_lvalue_type
-                    )
-                    return
-                if isinstance(reinferred_rvalue_type, AnyType):
-                    # We can get Any if the current node is
-                    # deferred. Doing more inference in deferred nodes
-                    # is hard, so give up for now.  We can also get
-                    # here if reinferring types above changes the
-                    # inferred return type for an overloaded function
-                    # to be ambiguous.
-                    return
-                assert isinstance(reinferred_rvalue_type, TupleType)
-                rvalue_type = reinferred_rvalue_type
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                 rvalue_type.items, star_index, len(lvalues)
@@ -3554,44 +3554,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
             for lv, rv_type in zip(right_lvs, right_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
-
-    def lvalue_type_for_inference(self, lvalues: list[Lvalue], rvalue_type: TupleType) -> Type:
-        star_index = next(
-            (i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues)
-        )
-        left_lvs = lvalues[:star_index]
-        star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
-        right_lvs = lvalues[star_index + 1 :]
-        left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
-            rvalue_type.items, star_index, len(lvalues)
-        )
-
-        type_parameters: list[Type] = []
-
-        def append_types_for_inference(lvs: list[Expression], rv_types: list[Type]) -> None:
-            for lv, rv_type in zip(lvs, rv_types):
-                sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
-                if sub_lvalue_type and not isinstance(sub_lvalue_type, PartialType):
-                    type_parameters.append(sub_lvalue_type)
-                else:  # index lvalue
-                    # TODO Figure out more precise type context, probably
-                    #      based on the type signature of the _set method.
-                    type_parameters.append(rv_type)
-
-        append_types_for_inference(left_lvs, left_rv_types)
-
-        if star_lv:
-            sub_lvalue_type, index_expr, inferred = self.check_lvalue(star_lv.expr)
-            if sub_lvalue_type and not isinstance(sub_lvalue_type, PartialType):
-                type_parameters.extend([sub_lvalue_type] * len(star_rv_types))
-            else:  # index lvalue
-                # TODO Figure out more precise type context, probably
-                #      based on the type signature of the _set method.
-                type_parameters.extend(star_rv_types)
-
-        append_types_for_inference(right_lvs, right_rv_types)
-
-        return TupleType(type_parameters, self.named_type("builtins.tuple"))
 
     def split_around_star(
         self, items: list[T], star_index: int, length: int

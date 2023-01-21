@@ -1916,6 +1916,54 @@ class C:
         a = 42
 [out]
 
+[case testDefinePartiallyInitialisedVariableDuringTupleUnpacking]
+# flags: --strict-optional
+from typing import Tuple, Union
+
+t1: Union[Tuple[None], Tuple[str]]
+x1 = None
+x1, = t1
+reveal_type(x1)  # N: Revealed type is "Union[None, builtins.str]"
+
+t2: Union[Tuple[str], Tuple[None]]
+x2 = None
+x2, = t2
+reveal_type(x2)  # N: Revealed type is "Union[builtins.str, None]"
+
+t3: Union[Tuple[int], Tuple[str]]
+x3 = None
+x3, = t3
+reveal_type(x3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def f() -> Union[
+    Tuple[None, None, None, int, int, int, int, int, int],
+    Tuple[None, None, None, int, int, int, str, str, str]
+    ]: ...
+a1 = None
+b1 = None
+c1 = None
+a2: object
+b2: object
+c2: object
+a1, a2, a3, b1, b2, b3, c1, c2, c3 = f()
+reveal_type(a1)  # N: Revealed type is "None"
+reveal_type(a2)  # N: Revealed type is "None"
+reveal_type(a3)  # N: Revealed type is "None"
+reveal_type(b1)  # N: Revealed type is "builtins.int"
+reveal_type(b2)  # N: Revealed type is "builtins.int"
+reveal_type(b3)  # N: Revealed type is "builtins.int"
+reveal_type(c1)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(c3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+tt: Tuple[Union[Tuple[None], Tuple[str], Tuple[int]]]
+z = None
+z, = tt[0]
+reveal_type(z)  # N: Revealed type is "Union[None, builtins.str, builtins.int]"
+
+[builtins fixtures/tuple.pyi]
+
+
 -- More partial type errors
 -- ------------------------
 
