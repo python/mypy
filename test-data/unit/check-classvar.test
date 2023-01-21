@@ -334,3 +334,44 @@ class C:
 c:C
 c.foo()  # E: Too few arguments \
          # N: "foo" is considered instance variable, to make it class variable use ClassVar[...]
+
+[case testClassVarVariableLengthTuple]
+from typing import ClassVar, Tuple
+class A:
+    x: ClassVar[Tuple[int, ...]]
+class B(A):
+    x = (1,)
+class C(B):
+    x = (2, 3)
+class D(B):
+    x = ("a",)  # E: Incompatible types in assignment (expression has type "Tuple[str]", base class "A" defined the type as "Tuple[int, ...]")
+[builtins fixtures/tuple.pyi]
+
+[case testClassVarVariableLengthTupleTwoBases]
+from typing import ClassVar, Tuple, Union
+class A:
+    x: ClassVar[Tuple[Union[int, str], ...]]
+class B:
+    x: ClassVar[Tuple[int, ...]]
+class C(A, B):
+    x = (1,)
+class D(C):
+    x = (2, 3)
+class E(A, B):
+    x = ("a",)  # E: Incompatible types in assignment (expression has type "Tuple[str]", base class "B" defined the type as "Tuple[int, ...]")
+[builtins fixtures/tuple.pyi]
+
+[case testClassVarVariableLengthTupleGeneric]
+from typing import ClassVar, Generic, Tuple, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    x: ClassVar[Tuple[T, ...]]  # E: ClassVar cannot contain type variables
+class B(A[int]):
+    pass
+class C(B):
+    x = (1,)
+class D(C):
+    x = (2, 3)
+class E(B):
+    x = ("a",)  # E: Incompatible types in assignment (expression has type "Tuple[str]", base class "A" defined the type as "Tuple[int, ...]")
+[builtins fixtures/tuple.pyi]
