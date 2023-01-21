@@ -344,6 +344,7 @@ L0:
     return r1
 
 [case testBoolBitwise]
+from mypy_extensions import i64
 def bitand(x: bool, y: bool) -> bool:
     b = x & y
     return b
@@ -355,6 +356,8 @@ def bitxor(x: bool, y: bool) -> bool:
     return b
 def invert(x: bool) -> int:
     return ~x
+def mixed_bitand(x: i64, y: bool) -> i64:
+    return x & y
 [out]
 def bitand(x, y):
     x, y, r0, b :: bool
@@ -382,6 +385,14 @@ L0:
     r1 = extend r0: builtins.bool to builtins.int
     r2 = CPyTagged_Invert(r1)
     return r2
+def mixed_bitand(x, y):
+    x :: int64
+    y :: bool
+    r0, r1 :: int64
+L0:
+    r0 = extend y: builtins.bool to int64
+    r1 = x & r0
+    return r1
 
 [case testBoolArithmetic]
 def add(x: bool, y: bool) -> int:
