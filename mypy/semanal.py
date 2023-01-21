@@ -2648,7 +2648,7 @@ class SemanticAnalyzer(
         # But we can't use a full visit because it may emit extra incomplete refs (namely
         # when analysing any type applications there) thus preventing the further analysis.
         # To break the tie, we first analyse rvalue partially, if it can be a type alias.
-        if self.can_possibly_be_index_alias(s):
+        if self.can_possibly_be_type_form(s):
             old_basic_type_applications = self.basic_type_applications
             self.basic_type_applications = True
             with self.allow_unbound_tvars_set():
@@ -2664,7 +2664,7 @@ class SemanticAnalyzer(
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
-        if self.can_possibly_be_index_alias(s):
+        if self.can_possibly_be_type_form(s):
             # Now re-visit those rvalues that were we skipped type applications above.
             # This should be safe as generally semantic analyzer is idempotent.
             with self.allow_unbound_tvars_set():
@@ -2807,16 +2807,19 @@ class SemanticAnalyzer(
                 return True
         return False
 
-    def can_possibly_be_index_alias(self, s: AssignmentStmt) -> bool:
-        """Like can_be_type_alias(), but simpler and doesn't require analyzed rvalue.
+    def can_possibly_be_type_form(self, s: AssignmentStmt) -> bool:
+        """Like can_be_type_alias(), but simpler and doesn't require fully analyzed rvalue.
 
-        Instead, use lvalues/annotations structure to figure out whether this can
-        potentially be a type alias definition. Another difference from above function
-        is that we are only interested IndexExpr and OpExpr rvalues, since only those
+        Instead, use lvalues/annotations structure to figure out whether this can potentially be
+        a type alias definition, NamedTuple, or TypedDict. Another difference from above function
+        is that we are only interested IndexExpr, CallExpr and OpExpr rvalues, since only those
         can be potentially recursive (things like `A = A` are never valid).
         """
         if len(s.lvalues) > 1:
             return False
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.callee, RefExpr):
+            ref = s.rvalue.callee.fullname
+            return ref in TPDICT_NAMES or ref in TYPED_NAMEDTUPLE_NAMES
         if not isinstance(s.lvalues[0], NameExpr):
             return False
         if s.unanalyzed_type is not None and not self.is_pep_613(s):
