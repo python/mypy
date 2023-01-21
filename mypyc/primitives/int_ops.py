@@ -35,14 +35,15 @@ from mypyc.primitives.registry import (
     unary_op,
 )
 
-# These int constructors produce object_rprimitives that then need to be unboxed
-# I guess unboxing ourselves would save a check and branch though?
-
-# Get the type object for 'builtins.int'.
-# For ordinary calls to int() we use a load_address to the type
-load_address_op(name="builtins.int", type=object_rprimitive, src="PyLong_Type")
-
 for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32"):
+    # These int constructors produce object_rprimitives that then need to be unboxed
+    # I guess unboxing ourselves would save a check and branch though?
+
+    # Get the type object for 'builtins.int' or a native int type.
+    # For ordinary calls to int() we use a load_address to the type.
+    # Native ints don't have a separate type object -- we just use 'builtins.int'.
+    load_address_op(name=int_name, type=object_rprimitive, src="PyLong_Type")
+
     # int(float). We could do a bit better directly.
     function_op(
         name=int_name,
