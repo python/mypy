@@ -328,9 +328,9 @@ class LowLevelIRBuilder:
             ):
                 # Equivalent types
                 return src
-            elif (
-                is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
-            ) and is_tagged(target_type):
+            elif (is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)) and is_tagged(
+                target_type
+            ):
                 shifted = self.int_op(
                     bool_rprimitive, src, Integer(1, bool_rprimitive), IntOp.LEFT_SHIFT
                 )
