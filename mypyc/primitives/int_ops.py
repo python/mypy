@@ -69,6 +69,24 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# i64(string)
+function_op(
+    name="mypy_extensions.i64",
+    arg_types=[str_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyLong_FromStr",
+    error_kind=ERR_MAGIC,
+)
+
+# i32(string)
+function_op(
+    name="mypy_extensions.i32",
+    arg_types=[str_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyLong_FromStr",
+    error_kind=ERR_MAGIC,
+)
+
 # str(int)
 int_to_str_op = function_op(
     name="builtins.str",
