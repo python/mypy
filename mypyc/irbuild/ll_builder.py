@@ -199,6 +199,7 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
     ">>=",
 }
 
+# Binary operations on bools that are specialized and don't just promote operands to int
 BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
 
 
