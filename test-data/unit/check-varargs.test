@@ -145,6 +145,56 @@ f(*it1, 1, *it2, 2)  # E: Argument 3 to "f" has incompatible type "*Tuple[str]";
 f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/for.pyi]
 
+[case testUnpackIterableClass]
+
+from typing import Iterator
+class X:
+    def __iter__(self) -> Iterator[str]: yield "x"
+
+reveal_type([*X()]) # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testUnpackIterableGenericClass]
+
+from typing import Generic, Iterator, TypeVar
+T = TypeVar("T")
+class X(Generic[T]):
+    value: T
+    def __iter__(self) -> Iterator[T]: yield self.value
+
+reveal_type([*X[str]()]) # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testCallVarargsFunctionWithUnpackedIterableClass]
+
+from typing import Iterator
+class Good:
+    def __iter__(self) -> Iterator[int]: yield 1
+
+class Bad:
+    def __iter__(self) -> Iterator[str]: yield "x"
+
+
+def func(*args: int) -> None: return None
+
+func(*Good())
+func(*Bad()) # E: Argument 1 to "func" has incompatible type "*Bad"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testCallVarargsFunctionWithUnpackedIterableGenericClass]
+
+from typing import Generic, Iterator, TypeVar
+T = TypeVar("T")
+class X(Generic[T]):
+    value: T
+    def __iter__(self) -> Iterator[T]: yield self.value
+
+
+def func(*args: int) -> None: return None
+
+func(*X[str]()) # E: Argument 1 to "func" has incompatible type "*X[str]"; expected "int"
+[builtins fixtures/list.pyi]
+
 
 -- Calling varargs function + type inference
 -- -----------------------------------------
