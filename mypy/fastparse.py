@@ -841,7 +841,7 @@ class ASTConverter:
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
         for ti in mod.type_ignores:
-            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
+            parsed = parse_type_ignore_tag(ti.tag)
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
@@ -1566,7 +1566,7 @@ class ASTConverter:
         # to allow mypyc to support f-strings with format specifiers and conversions.
         val_exp = self.visit(n.value)
         val_exp.set_line(n.lineno, n.col_offset)
-        conv_str = "" if n.conversion is None or n.conversion < 0 else "!" + chr(n.conversion)
+        conv_str = "" if n.conversion is None or n.conversion < 0 else "!" + chr(n.conversion)  # type: ignore[redundant-expr]
         format_string = StrExpr("{" + conv_str + ":{}}")
         format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr("")
         format_string.set_line(n.lineno, n.col_offset)
@@ -2010,10 +2010,10 @@ class TypeConverter:
             for s in dims:
                 if getattr(s, "col_offset", None) is None:
                     if isinstance(s, ast3.Index):
-                        s.col_offset = s.value.col_offset  # type: ignore[attr-defined]
+                        s.col_offset = s.value.col_offset
                     elif isinstance(s, ast3.Slice):
                         assert s.lower is not None
-                        s.col_offset = s.lower.col_offset  # type: ignore[attr-defined]
+                        s.col_offset = s.lower.col_offset
             sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
