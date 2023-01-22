@@ -10313,3 +10313,31 @@ a.py:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#varia
 a.py:4: note: Revealed type is "A?"
 ==
 a.py:4: note: Revealed type is "Union[builtins.str, builtins.int]"
+
+[case testUnionOfSimilarCallablesCrash]
+import b
+
+[file b.py]
+from a import x
+
+[file m.py]
+from typing import Union, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def foo(x: T, y: S) -> Union[T, S]: ...
+def f(x: int) -> int: ...
+def g(*x: int) -> int: ...
+
+[file a.py]
+from m import f, g, foo
+x = foo(f, g)
+
+[file a.py.2]
+from m import f, g, foo
+x = foo(f, g)
+reveal_type(x)
+[builtins fixtures/tuple.pyi]
+[out]
+==
+a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"

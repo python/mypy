@@ -151,7 +151,11 @@ from mypy.semanal_main import (
     semantic_analysis_for_scc,
     semantic_analysis_for_targets,
 )
-from mypy.server.astdiff import SnapshotItem, compare_symbol_table_snapshots, snapshot_symbol_table
+from mypy.server.astdiff import (
+    SymbolSnapshot,
+    compare_symbol_table_snapshots,
+    snapshot_symbol_table,
+)
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import SavedAttributes, strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
@@ -417,7 +421,7 @@ class FineGrainedBuildManager:
 
         t0 = time.time()
         # Record symbol table snapshot of old version the changed module.
-        old_snapshots: dict[str, dict[str, SnapshotItem]] = {}
+        old_snapshots: dict[str, dict[str, SymbolSnapshot]] = {}
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
             old_snapshots[module] = snapshot
@@ -751,7 +755,7 @@ def get_sources(
 
 def calculate_active_triggers(
     manager: BuildManager,
-    old_snapshots: dict[str, dict[str, SnapshotItem]],
+    old_snapshots: dict[str, dict[str, SymbolSnapshot]],
     new_modules: dict[str, MypyFile | None],
 ) -> set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
