@@ -1,5 +1,5 @@
 [case testI64BasicOps]
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Union
 
 MYPY = False
 if MYPY:
@@ -496,6 +496,22 @@ def test_for_loop() -> None:
         n += i
     assert n == 9
     assert sum([x * x for x in range(i64(4 + int()))]) == 1 + 4 + 9
+
+def narrow1(x: Union[str, i64]) -> i64:
+    if isinstance(x, i64):
+        return x
+    return len(x)
+
+def narrow2(x: Union[str, i64]) -> i64:
+    if isinstance(x, int):
+        return x
+    return len(x)
+
+def test_isinstance() -> None:
+    assert narrow1(123) == 123
+    assert narrow1("foobar") == 6
+    assert narrow2(123) == 123
+    assert narrow2("foobar") == 6
 
 [case testI64ErrorValuesAndUndefined]
 from typing import Any, Tuple

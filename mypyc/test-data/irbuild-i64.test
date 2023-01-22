@@ -1834,3 +1834,67 @@ L0:
     r0 = CPyLong_FromFloat(x)
     r1 = unbox(int64, r0)
     return r1
+
+[case testI64IsinstanceNarrowing]
+from typing import Union
+from mypy_extensions import i64
+
+class C:
+    a: i64
+
+def narrow1(x: Union[C, i64]) -> i64:
+    if isinstance(x, i64):
+        return x
+    return x.a
+
+def narrow2(x: Union[C, i64]) -> i64:
+    if isinstance(x, int):
+        return x
+    return x.a
+[out]
+def narrow1(x):
+    x :: union[__main__.C, int64]
+    r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: int64
+    r5 :: __main__.C
+    r6 :: int64
+L0:
+    r0 = load_address PyLong_Type
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = unbox(int64, x)
+    return r4
+L2:
+    r5 = borrow cast(__main__.C, x)
+    r6 = r5.a
+    keep_alive x
+    return r6
+def narrow2(x):
+    x :: union[__main__.C, int64]
+    r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: int64
+    r5 :: __main__.C
+    r6 :: int64
+L0:
+    r0 = load_address PyLong_Type
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = unbox(int64, x)
+    return r4
+L2:
+    r5 = borrow cast(__main__.C, x)
+    r6 = r5.a
+    keep_alive x
+    return r6
