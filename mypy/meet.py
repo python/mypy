@@ -475,6 +475,12 @@ def is_overlapping_types(
         ):
             return True
 
+        if right.type.fullname == "builtins.int" and left.type.fullname in (
+            "mypy_extensions.i64",
+            "mypy_extensions.i32",
+        ):
+            return True
+
         # Two unrelated types cannot be partially overlapping: they're disjoint.
         if left.type.has_base(right.type.fullname):
             left = map_instance_to_supertype(left, right.type)
