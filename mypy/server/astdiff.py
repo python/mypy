@@ -255,6 +255,7 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
             node.is_enum,
             node.is_protocol,
             node.fallback_to_any,
+            node.meta_fallback_to_any,
             node.is_named_tuple,
             node.is_newtype,
             # We need this to e.g. trigger metaclass calculation in subclasses.

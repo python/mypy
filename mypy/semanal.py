@@ -1579,7 +1579,9 @@ class SemanticAnalyzer(
             self.mark_incomplete(defn.name, defn)
             return
 
-        declared_metaclass, should_defer = self.get_declared_metaclass(defn.name, defn.metaclass)
+        declared_metaclass, should_defer, any_meta = self.get_declared_metaclass(
+            defn.name, defn.metaclass
+        )
         if should_defer or self.found_incomplete_ref(tag):
             # Metaclass was not ready. Defer current target.
             self.mark_incomplete(defn.name, defn)
@@ -1599,6 +1601,8 @@ class SemanticAnalyzer(
         self.setup_type_vars(defn, tvar_defs)
         if base_error:
             defn.info.fallback_to_any = True
+        if any_meta:
+            defn.info.meta_fallback_to_any = True
 
         with self.scope.class_scope(defn.info):
             self.configure_base_classes(defn, base_types)
@@ -2247,8 +2251,17 @@ class SemanticAnalyzer(
 
     def get_declared_metaclass(
         self, name: str, metaclass_expr: Expression | None
-    ) -> tuple[Instance | None, bool]:
-        """Returns either metaclass instance or boolean whether we should defer."""
+    ) -> tuple[Instance | None, bool, bool]:
+        """Get declared metaclass from metaclass expression.
+
+        Returns a tuple of three values:
+          * A metaclass instance or None
+          * A boolean indicating whether we should defer
+          * A boolean indicating whether we should set metaclass Any fallback
+            (either for Any metaclass or invalid/dynamic metaclass).
+
+        The two boolean flags can only be True if instance is None.
+        """
         declared_metaclass = None
         if metaclass_expr:
             metaclass_name = None
@@ -2258,25 +2271,20 @@ class SemanticAnalyzer(
                 metaclass_name = get_member_expr_fullname(metaclass_expr)
             if metaclass_name is None:
                 self.fail(f'Dynamic metaclass not supported for "{name}"', metaclass_expr)
-                return None, False
+                return None, False, True
             sym = self.lookup_qualified(metaclass_name, metaclass_expr)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
-                return None, False
+                return None, False, True
             if isinstance(sym.node, Var) and isinstance(get_proper_type(sym.node.type), AnyType):
-                # Create a fake TypeInfo that fallbacks to `Any`, basically allowing
-                # all the attributes. Same thing as we do for `Any` base class.
-                any_info = self.make_empty_type_info(ClassDef(sym.node.name, Block([])))
-                any_info.fallback_to_any = True
-                any_info._fullname = sym.node.fullname
                 if self.options.disallow_subclassing_any:
                     self.fail(
-                        f'Class cannot use "{any_info.fullname}" as a metaclass (has type "Any")',
+                        f'Class cannot use "{sym.node.name}" as a metaclass (has type "Any")',
                         metaclass_expr,
                     )
-                return Instance(any_info, []), False
+                return None, False, True
             if isinstance(sym.node, PlaceholderNode):
-                return None, True  # defer later in the caller
+                return None, True, False  # defer later in the caller
 
             # Support type aliases, like `_Meta: TypeAlias = type`
             if (
@@ -2291,16 +2299,16 @@ class SemanticAnalyzer(
 
             if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
                 self.fail(f'Invalid metaclass "{metaclass_name}"', metaclass_expr)
-                return None, False
+                return None, False, False
             if not metaclass_info.is_metaclass():
                 self.fail(
                     'Metaclasses not inheriting from "type" are not supported', metaclass_expr
                 )
-                return None, False
+                return None, False, False
             inst = fill_typevars(metaclass_info)
             assert isinstance(inst, Instance)
             declared_metaclass = inst
-        return declared_metaclass, False
+        return declared_metaclass, False, False
 
     def recalculate_metaclass(self, defn: ClassDef, declared_metaclass: Instance | None) -> None:
         defn.info.declared_metaclass = declared_metaclass
