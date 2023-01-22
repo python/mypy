@@ -29,6 +29,7 @@ from mypy.state import state
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
+    MYPYC_NATIVE_INT_NAMES,
     AnyType,
     CallableType,
     DeletedType,
@@ -1804,7 +1805,7 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
                 return True
         elif isinstance(item, Instance) and supertype.type.fullname == "builtins.int":
             # "int" covers all native int types
-            if item.type.fullname in ("mypy_extensions.i64", "mypy_extensions.i32"):
+            if item.type.fullname in MYPYC_NATIVE_INT_NAMES:
                 return True
     # TODO: Add more special cases.
     return False
