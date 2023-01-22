@@ -1705,7 +1705,9 @@ class MessageBuilder:
 
     def typeddict_context_ambiguous(self, types: list[TypedDictType], context: Context) -> None:
         formatted_types = ", ".join(list(format_type_distinctly(*types)))
-        self.fail(f"Type of TypedDict is ambiguous, could be any of ({formatted_types})", context)
+        self.fail(
+            f"Type of TypedDict is ambiguous, none of ({formatted_types}) matches cleanly", context
+        )
 
     def typeddict_key_cannot_be_deleted(
         self, typ: TypedDictType, item_name: str, context: Context
