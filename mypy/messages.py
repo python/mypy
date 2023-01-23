@@ -1655,7 +1655,7 @@ class MessageBuilder:
     def typeddict_key_not_found(
         self, typ: TypedDictType, item_name: str, context: Context, setitem: bool = False
     ) -> None:
-        """Handles error messages for TypedDicts that have unknown keys.
+        """Handle error messages for TypedDicts that have unknown keys.
 
         Note, that we differentiate in between reading a value and setting a
         value.
