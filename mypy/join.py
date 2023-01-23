@@ -9,6 +9,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.state import state
 from mypy.subtypes import (
+    SubtypeContext,
     find_member,
     is_equivalent,
     is_proper_subtype,
@@ -101,7 +102,9 @@ class InstanceJoiner:
                 assert new_type is not None
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
-        elif t.type.bases and is_subtype(t, s, ignore_type_params=True):
+        elif t.type.bases and is_proper_subtype(
+            t, s, subtype_context=SubtypeContext(ignore_type_params=True)
+        ):
             result = self.join_instances_via_supertype(t, s)
         else:
             # Now t is not a subtype of s, and t != s. Now s could be a subtype

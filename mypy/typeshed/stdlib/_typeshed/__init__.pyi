@@ -36,6 +36,9 @@ AnyStr_co = TypeVar("AnyStr_co", str, bytes, covariant=True)  # noqa: Y001
 # "Incomplete | None" instead of "Any | None".
 Incomplete: TypeAlias = Any
 
+# To describe a function parameter that is unused and will work with anything.
+Unused: TypeAlias = object
+
 # stable
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
@@ -205,6 +208,7 @@ class HasFileno(Protocol):
 
 FileDescriptor: TypeAlias = int  # stable
 FileDescriptorLike: TypeAlias = int | HasFileno  # stable
+FileDescriptorOrPath: TypeAlias = int | StrOrBytesPath
 
 # stable
 class SupportsRead(Protocol[_T_co]):
@@ -235,6 +239,29 @@ else:
 # Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
 ReadableBuffer: TypeAlias = ReadOnlyBuffer | WriteableBuffer  # stable
 _BufferWithLen: TypeAlias = ReadableBuffer  # not stable  # noqa: Y047
+
+# Anything that implements the read-write buffer interface, and can be sliced/indexed.
+SliceableBuffer: TypeAlias = bytes | bytearray | memoryview | array.array[Any] | mmap.mmap
+IndexableBuffer: TypeAlias = bytes | bytearray | memoryview | array.array[Any] | mmap.mmap
+# https://github.com/python/typeshed/pull/9115#issuecomment-1304905864
+# Post PEP 688, they should be rewritten as such:
+# from collections.abc import Sequence
+# from typing import Sized, overload
+# class SliceableBuffer(Protocol):
+#     def __buffer__(self, __flags: int) -> memoryview: ...
+#     def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+# class IndexableBuffer(Protocol):
+#     def __buffer__(self, __flags: int) -> memoryview: ...
+#     def __getitem__(self, __i: int) -> int: ...
+# class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
+#     def __buffer__(self, __flags: int) -> memoryview: ...
+#     def __contains__(self, __x: Any) -> bool: ...
+#     @overload
+#     def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+#     @overload
+#     def __getitem__(self, __i: int) -> int: ...
+# class SizedBuffer(Sized, Protocol):  # instead of _BufferWithLen
+#     def __buffer__(self, __flags: int) -> memoryview: ...
 
 ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo: TypeAlias = Union[ExcInfo, tuple[None, None, None]]
@@ -276,5 +303,4 @@ StrOrLiteralStr = TypeVar("StrOrLiteralStr", LiteralString, str)  # noqa: Y001
 ProfileFunction: TypeAlias = Callable[[FrameType, str, Any], object]
 
 # Objects suitable to be passed to sys.settrace, threading.settrace, and similar
-# TODO: Ideally this would be a recursive type alias
-TraceFunction: TypeAlias = Callable[[FrameType, str, Any], Callable[[FrameType, str, Any], Any] | None]
+TraceFunction: TypeAlias = Callable[[FrameType, str, Any], TraceFunction | None]

@@ -1570,3 +1570,29 @@ foo.py:1: error: "int" not callable
 1()
 [out]
 foo/m.py:1: error: "int" not callable
+
+[case testCmdlineCfgEnableErrorCodeTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+enable_error_code =
+  truthy-bool,
+  redundant-expr,
+[out]
+
+[case testCmdlineCfgDisableErrorCodeTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+disable_error_code =
+  misc,
+  override,
+[out]
+
+[case testCmdlineCfgAlwaysTrueTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+always_true =
+  MY_VAR,
+[out]

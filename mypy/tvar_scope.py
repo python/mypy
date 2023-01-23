@@ -115,6 +115,7 @@ class TypeVarLikeScope:
                 tvar_expr.fullname,
                 i,
                 upper_bound=tvar_expr.upper_bound,
+                tuple_fallback=tvar_expr.tuple_fallback,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
@@ -128,7 +129,7 @@ class TypeVarLikeScope:
 
     def get_binding(self, item: str | SymbolTableNode) -> TypeVarLikeType | None:
         fullname = item.fullname if isinstance(item, SymbolTableNode) else item
-        assert fullname is not None
+        assert fullname
         if fullname in self.scope:
             return self.scope[fullname]
         elif self.parent is not None:

@@ -1028,7 +1028,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
-        # We *should* emit an error with the module name itself,
+        # We *should* emit an error with the module name itself + __all__,
         # if the stub *does* define __all__,
         # but the stub's __all__ is inconsistent with the runtime's __all__
         yield Case(
@@ -1040,7 +1040,7 @@ class StubtestUnit(unittest.TestCase):
             __all__ = []
             foo = 'foo'
             """,
-            error="",
+            error="__all__",
         )
 
     @collect_cases
@@ -1082,6 +1082,9 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
         yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
+        yield Case(stub="", runtime="import re; constant = re.compile('foo')", error="constant")
+        yield Case(stub="", runtime="from json.scanner import NUMBER_RE", error=None)
+        yield Case(stub="", runtime="from string import ascii_letters", error=None)
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:

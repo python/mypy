@@ -151,13 +151,17 @@ from mypy.semanal_main import (
     semantic_analysis_for_scc,
     semantic_analysis_for_targets,
 )
-from mypy.server.astdiff import SnapshotItem, compare_symbol_table_snapshots, snapshot_symbol_table
+from mypy.server.astdiff import (
+    SymbolSnapshot,
+    compare_symbol_table_snapshots,
+    snapshot_symbol_table,
+)
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import SavedAttributes, strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import WILDCARD_TAG, make_trigger
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import module_prefix, split_target
 
 MAX_ITER: Final = 1000
@@ -417,7 +421,7 @@ class FineGrainedBuildManager:
 
         t0 = time.time()
         # Record symbol table snapshot of old version the changed module.
-        old_snapshots: dict[str, dict[str, SnapshotItem]] = {}
+        old_snapshots: dict[str, dict[str, SymbolSnapshot]] = {}
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
             old_snapshots[module] = snapshot
@@ -662,7 +666,7 @@ def update_module_isolated(
     state.type_checker().reset()
     state.type_check_first_pass()
     state.type_check_second_pass()
-    state.detect_partially_defined_vars(state.type_map())
+    state.detect_possibly_undefined_vars()
     t2 = time.time()
     state.finish_passes()
     t3 = time.time()
@@ -751,7 +755,7 @@ def get_sources(
 
 def calculate_active_triggers(
     manager: BuildManager,
-    old_snapshots: dict[str, dict[str, SnapshotItem]],
+    old_snapshots: dict[str, dict[str, SymbolSnapshot]],
     new_modules: dict[str, MypyFile | None],
 ) -> set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
@@ -869,7 +873,7 @@ def propagate_changes_using_dependencies(
         # We need to do this to avoid false negatives if the protocol itself is
         # unchanged, but was marked stale because its sub- (or super-) type changed.
         for info in stale_protos:
-            TypeState.reset_subtype_caches_for(info)
+            type_state.reset_subtype_caches_for(info)
         # Then fully reprocess all targets.
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
@@ -1081,7 +1085,7 @@ def update_deps(
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
     # Merge also the newly added protocol deps (if any).
-    TypeState.update_protocol_deps(deps)
+    type_state.update_protocol_deps(deps)
 
 
 def lookup_target(

@@ -9,6 +9,7 @@
 from abc import ABCMeta
 
 cast = 0
+assert_type = 0
 overload = 0
 Any = 0
 Union = 0

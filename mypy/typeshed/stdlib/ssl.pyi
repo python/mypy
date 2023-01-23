@@ -63,18 +63,34 @@ def create_default_context(
     capath: StrOrBytesPath | None = ...,
     cadata: str | ReadableBuffer | None = ...,
 ) -> SSLContext: ...
-def _create_unverified_context(
-    protocol: int = ...,
-    *,
-    cert_reqs: int = ...,
-    check_hostname: bool = ...,
-    purpose: Purpose = ...,
-    certfile: StrOrBytesPath | None = ...,
-    keyfile: StrOrBytesPath | None = ...,
-    cafile: StrOrBytesPath | None = ...,
-    capath: StrOrBytesPath | None = ...,
-    cadata: str | ReadableBuffer | None = ...,
-) -> SSLContext: ...
+
+if sys.version_info >= (3, 10):
+    def _create_unverified_context(
+        protocol: int | None = None,
+        *,
+        cert_reqs: int = ...,
+        check_hostname: bool = ...,
+        purpose: Purpose = ...,
+        certfile: StrOrBytesPath | None = ...,
+        keyfile: StrOrBytesPath | None = ...,
+        cafile: StrOrBytesPath | None = ...,
+        capath: StrOrBytesPath | None = ...,
+        cadata: str | ReadableBuffer | None = ...,
+    ) -> SSLContext: ...
+
+else:
+    def _create_unverified_context(
+        protocol: int = ...,
+        *,
+        cert_reqs: int = ...,
+        check_hostname: bool = ...,
+        purpose: Purpose = ...,
+        certfile: StrOrBytesPath | None = ...,
+        keyfile: StrOrBytesPath | None = ...,
+        cafile: StrOrBytesPath | None = ...,
+        capath: StrOrBytesPath | None = ...,
+        cadata: str | ReadableBuffer | None = ...,
+    ) -> SSLContext: ...
 
 _create_default_https_context: Callable[..., SSLContext]
 
@@ -180,6 +196,8 @@ class Options(enum.IntFlag):
     OP_NO_RENEGOTIATION: int
     if sys.version_info >= (3, 8):
         OP_ENABLE_MIDDLEBOX_COMPAT: int
+        if sys.platform == "linux":
+            OP_IGNORE_UNEXPECTED_EOF: int
 
 OP_ALL: Options
 OP_NO_SSLv2: Options
@@ -196,6 +214,8 @@ OP_NO_TICKET: Options
 OP_NO_RENEGOTIATION: Options
 if sys.version_info >= (3, 8):
     OP_ENABLE_MIDDLEBOX_COMPAT: Options
+    if sys.platform == "linux":
+        OP_IGNORE_UNEXPECTED_EOF: Options
 
 HAS_NEVER_CHECK_COMMON_NAME: bool
 HAS_SSLv2: bool

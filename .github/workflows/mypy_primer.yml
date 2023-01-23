@@ -62,6 +62,7 @@ jobs:
             --new $GITHUB_SHA --old base_commit \
             --num-shards 5 --shard-index ${{ matrix.shard-index }} \
             --debug \
+            --additional-flags="--debug-serialize" \
             --output concise \
             | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]
