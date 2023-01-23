@@ -1167,7 +1167,7 @@ def find_member(
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
                     return getattr_type
-        if itype.type.fallback_to_any:
+        if itype.type.fallback_to_any or class_obj and itype.type.meta_fallback_to_any:
             return AnyType(TypeOfAny.special_form)
         if isinstance(v, TypeInfo):
             # PEP 544 doesn't specify anything about such use cases. So we just try

@@ -2857,6 +2857,14 @@ class PlaceholderType(ProperType):
         assert isinstance(visitor, SyntheticTypeVisitor)
         return cast(T, visitor.visit_placeholder_type(self))
 
+    def __hash__(self) -> int:
+        return hash((self.fullname, tuple(self.args)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PlaceholderType):
+            return NotImplemented
+        return self.fullname == other.fullname and self.args == other.args
+
     def serialize(self) -> str:
         # We should never get here since all placeholders should be replaced
         # during semantic analysis.

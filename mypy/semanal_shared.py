@@ -232,6 +232,12 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     def is_typeshed_stub_file(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def process_placeholder(
+        self, name: str | None, kind: str, ctx: Context, force_progress: bool = False
+    ) -> None:
+        raise NotImplementedError
+
 
 def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
     sig = get_proper_type(sig)

@@ -17,3 +17,4 @@ pytest-cov>=2.10.0
 py>=1.5.2
 setuptools>=65.5.1
 six
+tomli>=1.1.0

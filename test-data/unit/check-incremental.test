@@ -6348,3 +6348,14 @@ class C(B):
         self.x = self.foo()
 [out]
 [out2]
+
+[case testNoCrashIncrementalMetaAny]
+import a
+[file a.py]
+from m import Foo
+[file a.py.2]
+from m import Foo
+# touch
+[file m.py]
+from missing_module import Meta  # type: ignore[import]
+class Foo(metaclass=Meta): ...

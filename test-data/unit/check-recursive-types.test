@@ -880,3 +880,20 @@ class InListRecurse(Generic[T], List[InList[T]]): ...
 def list_thing(transforming: InList[T]) -> T:
     ...
 reveal_type(list_thing([5]))  # N: Revealed type is "builtins.list[builtins.int]"
+
+[case testRecursiveTypedDictWithList]
+from typing import List
+from typing_extensions import TypedDict
+
+Example = TypedDict("Example", {"rec": List["Example"]})
+e: Example
+reveal_type(e)  # N: Revealed type is "TypedDict('__main__.Example', {'rec': builtins.list[...]})"
+[builtins fixtures/dict.pyi]
+
+[case testRecursiveNamedTupleWithList]
+from typing import List, NamedTuple
+
+Example = NamedTuple("Example", [("rec", List["Example"])])
+e: Example
+reveal_type(e)  # N: Revealed type is "Tuple[builtins.list[...], fallback=__main__.Example]"
+[builtins fixtures/tuple.pyi]
