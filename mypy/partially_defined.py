@@ -218,10 +218,10 @@ class DefinedVariableTracker:
 
     def enter_scope(self, scope_type: ScopeType) -> None:
         assert len(self._scope().branch_stmts) > 0
-        initial_state = self._scope().branch_stmts[-1].branches[-1]
-        if scope_type != ScopeType.Generator:
-            # Generators are special in that they inherit the outer scope.
-            initial_state = BranchState()
+        initial_state = None
+        if scope_type == ScopeType.Generator:
+            # Generators are special because they inherit the outer scope.
+            initial_state = self._scope().branch_stmts[-1].branches[-1]
         self.scopes.append(Scope([BranchStatement(initial_state)], scope_type))
 
     def exit_scope(self) -> None:
