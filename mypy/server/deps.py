@@ -289,13 +289,9 @@ class DependencyVisitor(TraverserVisitor):
             # all call sites, making them all `Any`.
             for d in o.decorators:
                 tname: str | None = None
-                if isinstance(d, RefExpr) and d.fullname is not None:
+                if isinstance(d, RefExpr) and d.fullname:
                     tname = d.fullname
-                if (
-                    isinstance(d, CallExpr)
-                    and isinstance(d.callee, RefExpr)
-                    and d.callee.fullname is not None
-                ):
+                if isinstance(d, CallExpr) and isinstance(d.callee, RefExpr) and d.callee.fullname:
                     tname = d.callee.fullname
                 if tname is not None:
                     self.add_dependency(make_trigger(tname), make_trigger(o.func.fullname))
@@ -500,7 +496,7 @@ class DependencyVisitor(TraverserVisitor):
             if (
                 isinstance(rvalue, CallExpr)
                 and isinstance(rvalue.callee, RefExpr)
-                and rvalue.callee.fullname is not None
+                and rvalue.callee.fullname
             ):
                 fname: str | None = None
                 if isinstance(rvalue.callee.node, TypeInfo):
@@ -510,7 +506,7 @@ class DependencyVisitor(TraverserVisitor):
                         fname = init.node.fullname
                 else:
                     fname = rvalue.callee.fullname
-                if fname is None:
+                if not fname:
                     return
                 for lv in o.lvalues:
                     if isinstance(lv, RefExpr) and lv.fullname and lv.is_new_def:
@@ -638,7 +634,7 @@ class DependencyVisitor(TraverserVisitor):
     # Expressions
 
     def process_global_ref_expr(self, o: RefExpr) -> None:
-        if o.fullname is not None:
+        if o.fullname:
             self.add_dependency(make_trigger(o.fullname))
 
         # If this is a reference to a type, generate a dependency to its

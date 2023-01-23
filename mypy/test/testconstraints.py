@@ -151,3 +151,11 @@ class ConstraintsSuite(Suite):
             Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.a),
             Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.d),
         }
+
+    def test_var_length_tuple_with_fixed_length_tuple(self) -> None:
+        fx = self.fx
+        assert not infer_constraints(
+            TupleType([fx.t, fx.s], fallback=Instance(fx.std_tuplei, [fx.o])),
+            Instance(fx.std_tuplei, [fx.a]),
+            SUPERTYPE_OF,
+        )

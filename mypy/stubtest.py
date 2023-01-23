@@ -1147,7 +1147,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
     ) -> nodes.FuncItem | None:
         if not isinstance(decorator, nodes.RefExpr):
             return None
-        if decorator.fullname is None:
+        if not decorator.fullname:
             # Happens with namedtuple
             return None
         if (

@@ -1,6 +1,6 @@
 import sys
 from _collections_abc import dict_keys
-from _typeshed import FileDescriptor, ReadableBuffer, StrOrBytesPath, SupportsRead, SupportsWrite
+from _typeshed import FileDescriptorOrPath, ReadableBuffer, SupportsRead, SupportsWrite
 from collections.abc import Callable, Generator, ItemsView, Iterable, Iterator, Mapping, Sequence
 from typing import Any, TypeVar, overload
 from typing_extensions import Literal, SupportsIndex, TypeAlias, TypeGuard
@@ -38,8 +38,8 @@ if sys.version_info >= (3, 9):
     __all__ += ["indent"]
 
 _T = TypeVar("_T")
-_FileRead: TypeAlias = StrOrBytesPath | FileDescriptor | SupportsRead[bytes] | SupportsRead[str]
-_FileWriteC14N: TypeAlias = StrOrBytesPath | FileDescriptor | SupportsWrite[bytes]
+_FileRead: TypeAlias = FileDescriptorOrPath | SupportsRead[bytes] | SupportsRead[str]
+_FileWriteC14N: TypeAlias = FileDescriptorOrPath | SupportsWrite[bytes]
 _FileWrite: TypeAlias = _FileWriteC14N | SupportsWrite[str]
 
 VERSION: str

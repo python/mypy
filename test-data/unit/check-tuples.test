@@ -164,10 +164,10 @@ class C(B): pass
 
 [case testVoidValueInTuple]
 import typing
+def f() -> None: pass
+
 (None, f()) # E: "f" does not return a value
 (f(), None) # E: "f" does not return a value
-
-def f() -> None: pass
 [builtins fixtures/tuple.pyi]
 
 
@@ -247,15 +247,16 @@ class B: pass
 
 [case testAssigningToTupleItems]
 from typing import Tuple
+
+class A: pass
+class B: pass
+
 t = None # type: Tuple[A, B]
 n = 0
 
 t[0] = A() # E: Unsupported target for indexed assignment ("Tuple[A, B]")
 t[2] = A() # E: Unsupported target for indexed assignment ("Tuple[A, B]")
 t[n] = A() # E: Unsupported target for indexed assignment ("Tuple[A, B]")
-
-class A: pass
-class B: pass
 [builtins fixtures/tuple.pyi]
 
 
@@ -532,13 +533,12 @@ if int():
 
 [case testAssignmentToStarFromAny]
 from typing import Any, cast
+class C: pass
+
 a, c = cast(Any, 1), C()
 p, *q = a
 c = a
 c = q
-
-class C: pass
-
 [case testAssignmentToComplexStar]
 from typing import List
 li = None # type: List[int]
@@ -572,6 +572,7 @@ class A: pass
 
 [case testAssignmentToStarFromTupleInference]
 from typing import List
+class A: pass
 li = None # type: List[int]
 la = None # type: List[A]
 a, *l = A(), A()
@@ -579,13 +580,14 @@ if int():
     l = li  # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[A]")
 if int():
     l = la
-
-class A: pass
 [builtins fixtures/list.pyi]
 [out]
 
 [case testAssignmentToStarFromListInference]
 from typing import List
+
+class A: pass
+
 li = None # type: List[int]
 la = None # type: List[A]
 a, *l = [A(), A()]
@@ -593,8 +595,6 @@ if int():
     l = li  # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[A]")
 if int():
     l = la
-
-class A: pass
 [builtins fixtures/list.pyi]
 [out]
 
@@ -710,6 +710,9 @@ class C: pass
 
 
 [case testTupleErrorMessages]
+class A:
+    def __add__(self, x: 'A') -> 'A': pass
+def f(x: 'A') -> None: pass
 
 a = None # type: A
 
@@ -717,11 +720,6 @@ a = None # type: A
 a + (a, a)  # E: Unsupported operand types for + ("A" and "Tuple[A, A]")
 f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"; expected "A"
 (a, a).foo  # E: "Tuple[A, A]" has no attribute "foo"
-
-def f(x: 'A') -> None: pass
-
-class A:
-    def __add__(self, x: 'A') -> 'A': pass
 [builtins fixtures/tuple.pyi]
 
 [case testLargeTuplesInErrorMessages]

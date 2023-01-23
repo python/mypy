@@ -367,7 +367,7 @@ class StrConv(NodeVisitor[str]):
             id = ""
         if isinstance(target_node, mypy.nodes.MypyFile) and name == fullname:
             n += id
-        elif kind == mypy.nodes.GDEF or (fullname != name and fullname is not None):
+        elif kind == mypy.nodes.GDEF or (fullname != name and fullname):
             # Append fully qualified name for global references.
             n += f" [{fullname}{id}]"
         elif kind == mypy.nodes.LDEF:
