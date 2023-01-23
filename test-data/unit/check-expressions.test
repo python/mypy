@@ -1985,6 +1985,24 @@ class B:
 A() == B()  # E: Unsupported operand types for == ("A" and "B")
 [builtins fixtures/bool.pyi]
 
+[case testStrictEqualitySequenceAndCustomEq]
+# flags: --strict-equality
+from typing import Tuple
+
+class C: pass
+class D:
+    def __eq__(self, other): return True
+
+a = [C()]
+b = [D()]
+a == b
+b == a
+t1: Tuple[C, ...]
+t2: Tuple[D, ...]
+t1 == t2
+t2 == t1
+[builtins fixtures/bool.pyi]
+
 [case testCustomEqCheckStrictEqualityOKInstance]
 # flags: --strict-equality
 class A:
