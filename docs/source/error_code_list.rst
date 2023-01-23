@@ -432,7 +432,7 @@ Example:
     p: Point = {'x': 1.2, 'y': 4}
     
 Check TypedDict Keys [typeddict-unknown-key]
---------------------------------------
+--------------------------------------------
 
 When constructing a ``TypedDict`` object, mypy checks whether the definition
 contains unknown keys.
