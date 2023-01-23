@@ -803,11 +803,14 @@ from typing_extensions import TypedDict
 
 Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
+
 [case testTruthyBool]
 # flags: --enable-error-code truthy-bool
-from typing import List, Union
+from typing import List, Union, Any
 
 class Foo:
+    pass
+class Bar:
     pass
 
 foo = Foo()
@@ -836,14 +839,29 @@ if good_union:
 if not good_union:
     pass
 
-bad_union: Union[Foo, object] = Foo()
-if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+bad_union: Union[Foo, Bar] = Foo()
+if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
-if not bad_union:  # E: "__main__.bad_union" has type "object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if not bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+# 'object' is special and is treated as potentially falsy
+obj: object = Foo()
+if obj:
+    pass
+if not obj:
     pass
 
 lst: List[int] = []
 if lst:
+    pass
+
+a: Any
+if a:
+    pass
+
+any_or_object: Union[object, Any]
+if any_or_object:
     pass
 [builtins fixtures/list.pyi]
 
