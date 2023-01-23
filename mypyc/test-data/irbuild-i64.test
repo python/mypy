@@ -1771,3 +1771,66 @@ L2:
     keep_alive x
 L3:
     return r3
+
+[case testI64ExplicitConversionFromVariousTypes]
+from mypy_extensions import i64
+
+def bool_to_i64(b: bool) -> i64:
+    return i64(b)
+
+def str_to_i64(s: str) -> i64:
+    return i64(s)
+
+def str_to_i64_with_base(s: str) -> i64:
+    return i64(s, 2)
+
+class C:
+    def __int__(self) -> i64:
+        return 5
+
+def instance_to_i64(c: C) -> i64:
+    return i64(c)
+
+def float_to_i64(x: float) -> i64:
+    return i64(x)
+[out]
+def bool_to_i64(b):
+    b :: bool
+    r0 :: int64
+L0:
+    r0 = extend b: builtins.bool to int64
+    return r0
+def str_to_i64(s):
+    s :: str
+    r0 :: object
+    r1 :: int64
+L0:
+    r0 = CPyLong_FromStr(s)
+    r1 = unbox(int64, r0)
+    return r1
+def str_to_i64_with_base(s):
+    s :: str
+    r0 :: object
+    r1 :: int64
+L0:
+    r0 = CPyLong_FromStrWithBase(s, 4)
+    r1 = unbox(int64, r0)
+    return r1
+def C.__int__(self):
+    self :: __main__.C
+L0:
+    return 5
+def instance_to_i64(c):
+    c :: __main__.C
+    r0 :: int64
+L0:
+    r0 = c.__int__()
+    return r0
+def float_to_i64(x):
+    x :: float
+    r0 :: object
+    r1 :: int64
+L0:
+    r0 = CPyLong_FromFloat(x)
+    r1 = unbox(int64, r0)
+    return r1

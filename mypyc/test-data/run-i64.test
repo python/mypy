@@ -310,6 +310,68 @@ def test_i64_from_large_small_literal() -> None:
     x = i64(-2**63)
     assert x == -2**63
 
+def from_float(x: float) -> i64:
+    return i64(x)
+
+def test_explicit_conversion_from_float() -> None:
+    assert from_float(0.0) == 0
+    assert from_float(1.456) == 1
+    assert from_float(-1234.567) == -1234
+    assert from_float(2**63 - 1) == 2**63 - 1
+    assert from_float(-2**63) == -2**63
+    # The error message could be better, but this is acceptable
+    with assertRaises(OverflowError, "int too large to convert to i64"):
+        assert from_float(float(2**63))
+    with assertRaises(OverflowError, "int too large to convert to i64"):
+        # One ulp below the lowest valid i64 value
+        from_float(float(-2**63 - 2048))
+
+def from_str(s: str) -> i64:
+    return i64(s)
+
+def test_explicit_conversion_from_str() -> None:
+    assert from_str("0") == 0
+    assert from_str("1") == 1
+    assert from_str("-1234") == -1234
+    with assertRaises(ValueError):
+        from_str("1.2")
+
+def from_str_with_base(s: str, base: int) -> i64:
+    return i64(s, base)
+
+def test_explicit_conversion_from_str_with_base() -> None:
+    assert from_str_with_base("101", 2) == 5
+    assert from_str_with_base("109", 10) == 109
+    assert from_str_with_base("-f0A", 16) == -3850
+    assert from_str_with_base("0x1a", 16) == 26
+    assert from_str_with_base("0X1A", 16) == 26
+    with assertRaises(ValueError):
+        from_str_with_base("1.2", 16)
+
+def from_bool(b: bool) -> i64:
+    return i64(b)
+
+def test_explicit_conversion_from_bool() -> None:
+    assert from_bool(True) == 1
+    assert from_bool(False) == 0
+
+class IntConv:
+    def __init__(self, x: i64) -> None:
+        self.x = x
+
+    def __int__(self) -> i64:
+        return self.x + 1
+
+def test_explicit_conversion_from_instance() -> None:
+    assert i64(IntConv(0)) == 1
+    assert i64(IntConv(12345)) == 12346
+    assert i64(IntConv(-23)) == -22
+
+def test_explicit_conversion_from_any() -> None:
+    # This can't be specialized
+    a: Any = "101"
+    assert i64(a, base=2) == 5
+
 def test_tuple_i64() -> None:
     a: i64 = 1
     b: i64 = 2
