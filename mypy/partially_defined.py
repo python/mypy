@@ -79,7 +79,9 @@ class BranchState:
 
 
 class BranchStatement:
-    def __init__(self, initial_state: BranchState) -> None:
+    def __init__(self, initial_state: BranchState | None = None) -> None:
+        if initial_state is None:
+            initial_state = BranchState()
         self.initial_state = initial_state
         self.branches: list[BranchState] = [
             BranchState(
@@ -171,7 +173,7 @@ class ScopeType(Enum):
     Global = 1
     Class = 2
     Func = 3
-    Generator = 3
+    Generator = 4
 
 
 class Scope:
@@ -199,7 +201,7 @@ class DefinedVariableTracker:
 
     def __init__(self) -> None:
         # There's always at least one scope. Within each scope, there's at least one "global" BranchingStatement.
-        self.scopes: list[Scope] = [Scope([BranchStatement(BranchState())], ScopeType.Global)]
+        self.scopes: list[Scope] = [Scope([BranchStatement()], ScopeType.Global)]
         # disable_branch_skip is used to disable skipping a branch due to a return/raise/etc. This is useful
         # in things like try/except/finally statements.
         self.disable_branch_skip = False
@@ -217,8 +219,8 @@ class DefinedVariableTracker:
     def enter_scope(self, scope_type: ScopeType) -> None:
         assert len(self._scope().branch_stmts) > 0
         initial_state = self._scope().branch_stmts[-1].branches[-1]
-        if scope_type == ScopeType.Func:
-            # Empty branch state.
+        if scope_type != ScopeType.Generator:
+            # Generators are special in that they inherit the outer scope.
             initial_state = BranchState()
         self.scopes.append(Scope([BranchStatement(initial_state)], scope_type))
 

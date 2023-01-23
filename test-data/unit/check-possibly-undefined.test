@@ -942,6 +942,9 @@ def f0() -> None:
     type = "abc"
     a = type
 
+def f1() -> None:
+    s = type(123)
+
 [case testUsedBeforeDefBuiltinsMultipass]
 # flags: --enable-error-code used-before-def
 
