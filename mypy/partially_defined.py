@@ -216,9 +216,11 @@ class DefinedVariableTracker:
 
     def enter_scope(self, scope_type: ScopeType) -> None:
         assert len(self._scope().branch_stmts) > 0
-        self.scopes.append(
-            Scope([BranchStatement(self._scope().branch_stmts[-1].branches[-1])], scope_type)
-        )
+        initial_state = self._scope().branch_stmts[-1].branches[-1]
+        if scope_type == ScopeType.Func:
+            # Empty branch state.
+            initial_state = BranchState()
+        self.scopes.append(Scope([BranchStatement(initial_state)], scope_type))
 
     def exit_scope(self) -> None:
         self.scopes.pop()
@@ -320,14 +322,14 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.msg = msg
         self.type_map = type_map
         self.options = options
-        self.builtins = SymbolTable()
-        builtins_mod = names.get("__builtins__", None)
-        if builtins_mod:
-            assert isinstance(builtins_mod.node, MypyFile)
-            self.builtins = builtins_mod.node.names
         self.loops: list[Loop] = []
         self.try_depth = 0
         self.tracker = DefinedVariableTracker()
+        builtins_mod = names.get("__builtins__", None)
+        if builtins_mod:
+            assert isinstance(builtins_mod.node, MypyFile)
+            for name in builtins_mod.node.names:
+                self.tracker.record_definition(name)
         for name in implicit_module_attrs:
             self.tracker.record_definition(name)
 
@@ -342,13 +344,15 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
     def process_definition(self, name: str) -> None:
         # Was this name previously used? If yes, it's a used-before-definition error.
         if not self.tracker.in_scope(ScopeType.Class):
-            # Errors in class scopes are caught by the semantic analyzer.
             refs = self.tracker.pop_undefined_ref(name)
             for ref in refs:
                 if self.loops:
                     self.variable_may_be_undefined(name, ref)
                 else:
                     self.var_used_before_def(name, ref)
+        else:
+            # Errors in class scopes are caught by the semantic analyzer.
+            pass
         self.tracker.record_definition(name)
 
     def visit_global_decl(self, o: GlobalDecl) -> None:
@@ -603,8 +607,6 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_starred_pattern(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
-        if o.name in self.builtins:
-            return
         if self.tracker.is_possibly_undefined(o.name):
             # A variable is only defined in some branches.
             self.variable_may_be_undefined(o.name, o)
