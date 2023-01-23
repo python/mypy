@@ -1049,7 +1049,12 @@ class SemanticAnalyzer(
         if info.self_type is not None:
             if has_placeholder(info.self_type.upper_bound):
                 # Similar to regular (user defined) type variables.
-                self.defer(force_progress=True)
+                self.process_placeholder(
+                    None,
+                    "Self upper bound",
+                    info,
+                    force_progress=info.self_type.upper_bound != fill_typevars(info),
+                )
             else:
                 return
         info.self_type = TypeVarType("Self", f"{info.fullname}.Self", 0, [], fill_typevars(info))
@@ -2132,7 +2137,9 @@ class SemanticAnalyzer(
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
         if info.special_alias and has_placeholder(info.special_alias.target):
-            self.defer(force_progress=True)
+            self.process_placeholder(
+                None, "tuple base", defn, force_progress=base != info.tuple_type
+            )
         info.update_tuple_type(base)
         self.setup_alias_type_vars(defn)
 
@@ -3913,12 +3920,16 @@ class SemanticAnalyzer(
             type_var = TypeVarExpr(name, self.qualified_name(name), values, upper_bound, variance)
             type_var.line = call.line
             call.analyzed = type_var
+            updated = True
         else:
             assert isinstance(call.analyzed, TypeVarExpr)
+            updated = values != call.analyzed.values or upper_bound != call.analyzed.upper_bound
             call.analyzed.upper_bound = upper_bound
             call.analyzed.values = values
         if any(has_placeholder(v) for v in values) or has_placeholder(upper_bound):
-            self.defer(force_progress=True)
+            self.process_placeholder(
+                None, f"TypeVar {'values' if values else 'upper bound'}", s, force_progress=updated
+            )
 
         self.add_symbol(name, call.analyzed, s)
         return True
@@ -5931,7 +5942,9 @@ class SemanticAnalyzer(
         """
         return fullname in self.incomplete_namespaces
 
-    def process_placeholder(self, name: str, kind: str, ctx: Context) -> None:
+    def process_placeholder(
+        self, name: str | None, kind: str, ctx: Context, force_progress: bool = False
+    ) -> None:
         """Process a reference targeting placeholder node.
 
         If this is not a final iteration, defer current node,
@@ -5943,10 +5956,11 @@ class SemanticAnalyzer(
         if self.final_iteration:
             self.cannot_resolve_name(name, kind, ctx)
         else:
-            self.defer(ctx)
+            self.defer(ctx, force_progress=force_progress)
 
-    def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
-        self.fail(f'Cannot resolve {kind} "{name}" (possible cyclic definition)', ctx)
+    def cannot_resolve_name(self, name: str | None, kind: str, ctx: Context) -> None:
+        name_format = f' "{name}"' if name else ""
+        self.fail(f"Cannot resolve {kind}{name_format} (possible cyclic definition)", ctx)
         if not self.options.disable_recursive_aliases and self.is_func_scope():
             self.note("Recursive types are not allowed at function scope", ctx)
 
