@@ -2240,6 +2240,13 @@ E1.X == E1.Y  # E: Non-overlapping equality check (left operand type: "Literal[E
 E2.X == E2.Y
 [builtins fixtures/bool.pyi]
 
+[case testStrictEqualityWithBytesContains]
+# flags: --strict-equality
+data = b"xy"
+b"x" in data
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
