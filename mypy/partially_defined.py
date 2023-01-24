@@ -27,12 +27,13 @@ from mypy.nodes import (
     ListExpr,
     Lvalue,
     MatchStmt,
+    MypyFile,
     NameExpr,
     NonlocalDecl,
     RaiseStmt,
-    RefExpr,
     ReturnStmt,
     StarExpr,
+    SymbolTable,
     TryStmt,
     TupleExpr,
     WhileStmt,
@@ -286,10 +287,6 @@ class DefinedVariableTracker:
         return self._scope().branch_stmts[-1].is_undefined(name)
 
 
-def refers_to_builtin(o: RefExpr) -> bool:
-    return o.fullname.startswith("builtins.")
-
-
 class Loop:
     def __init__(self) -> None:
         self.has_break = False
@@ -314,11 +311,20 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
     """
 
     def __init__(
-        self, msg: MessageBuilder, type_map: dict[Expression, Type], options: Options
+        self,
+        msg: MessageBuilder,
+        type_map: dict[Expression, Type],
+        options: Options,
+        names: SymbolTable,
     ) -> None:
         self.msg = msg
         self.type_map = type_map
         self.options = options
+        self.builtins = SymbolTable()
+        builtins_mod = names.get("__builtins__", None)
+        if builtins_mod:
+            assert isinstance(builtins_mod.node, MypyFile)
+            self.builtins = builtins_mod.node.names
         self.loops: list[Loop] = []
         self.try_depth = 0
         self.tracker = DefinedVariableTracker()
@@ -597,7 +603,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_starred_pattern(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
-        if refers_to_builtin(o):
+        if o.name in self.builtins:
             return
         if self.tracker.is_possibly_undefined(o.name):
             # A variable is only defined in some branches.
