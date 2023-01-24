@@ -23,6 +23,5 @@ class complex:
     def __init__(self, real: str = ...) -> None: ...
 
 class str: pass
-class unicode: pass
 class ellipsis: pass
 class tuple: pass

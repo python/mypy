@@ -41,7 +41,6 @@ class int: # for convenience
     imag: int
 
 class str: pass # for keyword argument key type
-class unicode: pass # needed for py2 docstrings
 class bytes: pass
 
 class list(Sequence[T]): # needed by some test cases

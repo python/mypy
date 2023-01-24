@@ -24,5 +24,4 @@ class function: pass
 class bool: pass
 class int: pass
 class str: pass
-class unicode: pass
 class ellipsis: pass
