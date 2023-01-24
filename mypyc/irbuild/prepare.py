@@ -305,7 +305,15 @@ def prepare_methods_and_attributes(
         if isinstance(node.node, Var):
             assert node.node.type, "Class member %s missing type" % name
             if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
-                ir.attributes[name] = mapper.type_to_rtype(node.node.type)
+                attr_rtype = mapper.type_to_rtype(node.node.type)
+                if ir.is_trait and attr_rtype.error_overlap:
+                    # Traits don't have attribute definedness bitmaps, so use
+                    # property accessor methods to access attributes that need them.
+                    # We will generate accessor implementations that use the class bitmap
+                    # for any concrete subclasses.
+                    add_getter_declaration(ir, name, attr_rtype, module_name)
+                    add_setter_declaration(ir, name, attr_rtype, module_name)
+                ir.attributes[name] = attr_rtype
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)
         elif isinstance(node.node, OverloadedFuncDef):
@@ -329,11 +337,20 @@ def prepare_methods_and_attributes(
 def prepare_implicit_property_accessors(
     info: TypeInfo, ir: ClassIR, module_name: str, mapper: Mapper
 ) -> None:
+    concrete_attributes = set()
     for base in ir.base_mro:
         for name, attr_rtype in base.attributes.items():
+            concrete_attributes.add(name)
             add_property_methods_for_attribute_if_needed(
                 info, ir, name, attr_rtype, module_name, mapper
             )
+    for base in ir.mro[1:]:
+        if base.is_trait:
+            for name, attr_rtype in base.attributes.items():
+                if name not in concrete_attributes:
+                    add_property_methods_for_attribute_if_needed(
+                        info, ir, name, attr_rtype, module_name, mapper
+                    )
 
 
 def add_property_methods_for_attribute_if_needed(
@@ -350,6 +367,7 @@ def add_property_methods_for_attribute_if_needed(
     """
     for base in info.mro[1:]:
         if base in mapper.type_to_ir:
+            base_ir = mapper.type_to_ir[base]
             n = base.names.get(attr_name)
             if n is None:
                 continue
@@ -359,6 +377,9 @@ def add_property_methods_for_attribute_if_needed(
                 add_getter_declaration(ir, attr_name, attr_rtype, module_name)
             elif isinstance(node, OverloadedFuncDef) and is_valid_multipart_property_def(node):
                 # Defined as a read-write property in base class/trait
+                add_getter_declaration(ir, attr_name, attr_rtype, module_name)
+                add_setter_declaration(ir, attr_name, attr_rtype, module_name)
+            elif base_ir.is_trait and attr_rtype.error_overlap:
                 add_getter_declaration(ir, attr_name, attr_rtype, module_name)
                 add_setter_declaration(ir, attr_name, attr_rtype, module_name)
 

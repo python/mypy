@@ -1433,3 +1433,65 @@ def test_read_only_property_in_trait_implemented_as_property() -> None:
     assert t.x == 6
     with assertRaises(TypeError):
         t.y
+
+@trait
+class T2:
+    x: i64
+    y: i64
+
+class C2(T2):
+    pass
+
+def test_inherit_trait_attribute() -> None:
+    c = C2()
+    c.x = 5
+    assert c.x == 5
+    c.x = MAGIC
+    assert c.x == MAGIC
+    with assertRaises(AttributeError):
+        c.y
+    c.y = 6
+    assert c.y == 6
+    t: T2 = C2()
+    with assertRaises(AttributeError):
+        t.y
+    t = c
+    assert t.x == MAGIC
+    c.x = 55
+    assert t.x == 55
+    assert t.y == 6
+    a: Any = c
+    assert a.x == 55
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
+class D2(T2):
+    x: i64
+    y: i64 = 4
+
+def test_implement_trait_attribute() -> None:
+    d = D2()
+    d.x = 5
+    assert d.x == 5
+    d.x = MAGIC
+    assert d.x == MAGIC
+    assert d.y == 4
+    d.y = 6
+    assert d.y == 6
+    t: T2 = D2()
+    assert t.y == 4
+    t = d
+    assert t.x == MAGIC
+    d.x = 55
+    assert t.x == 55
+    assert t.y == 6
+    a: Any = d
+    assert a.x == 55
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
