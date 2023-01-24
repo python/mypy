@@ -244,10 +244,8 @@ def f0() -> None:
     s = c()  # E: Name "c" is used before definition
     class c: pass
 
-
 def f1() -> None:
     s = c()  # No error.
-
 
 def f2() -> None:
     s = c()  # E: Name "c" is used before definition
