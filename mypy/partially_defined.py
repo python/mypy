@@ -324,6 +324,11 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.msg = msg
         self.type_map = type_map
         self.options = options
+        self.builtins = SymbolTable()
+        builtins_mod = names.get("__builtins__", None)
+        if builtins_mod:
+            assert isinstance(builtins_mod.node, MypyFile)
+            self.builtins = builtins_mod.node.names
         self.loops: list[Loop] = []
         self.try_depth = 0
         self.tracker = DefinedVariableTracker()
