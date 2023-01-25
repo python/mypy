@@ -236,6 +236,7 @@ from mypy.typeanal import (
 from mypy.typeops import function_type, get_type_vars
 from mypy.types import (
     ASSERT_TYPE_NAMES,
+    DATACLASS_TRANSFORM_NAMES,
     FINAL_DECORATOR_NAMES,
     FINAL_TYPE_NAMES,
     NEVER_NAMES,
@@ -1504,7 +1505,7 @@ class SemanticAnalyzer(
                 else:
                     self.fail("@final cannot be used with non-method functions", d)
             elif isinstance(d, CallExpr) and refers_to_fullname(
-                d.callee, "typing.dataclass_transform"
+                d.callee, DATACLASS_TRANSFORM_NAMES
             ):
                 dec.func.is_dataclass_transform = True
             elif not dec.var.is_property:
