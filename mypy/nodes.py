@@ -512,7 +512,7 @@ class FuncBase(Node):
         "is_static",  # Uses "@staticmethod"
         "is_final",  # Uses "@final"
         "_fullname",
-        "is_dataclass_transform",
+        "is_dataclass_transform", # Is decorated with "@typing.dataclass_transform" or similar
     )
 
     def __init__(self) -> None:
