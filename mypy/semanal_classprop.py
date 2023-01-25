@@ -22,7 +22,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.types import Instance, ProperType, MYPYC_NATIVE_INT_NAMES
+from mypy.types import MYPYC_NATIVE_INT_NAMES, Instance, ProperType
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,

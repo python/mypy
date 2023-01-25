@@ -27,9 +27,9 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.state import state
 from mypy.types import (
+    MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
-    MYPYC_NATIVE_INT_NAMES,
     AnyType,
     CallableType,
     DeletedType,

@@ -178,8 +178,8 @@ from mypy.typeops import (
 )
 from mypy.types import (
     ANY_STRATEGY,
-    OVERLOAD_NAMES,
     MYPYC_NATIVE_INT_NAMES,
+    OVERLOAD_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableType,
