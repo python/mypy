@@ -353,6 +353,9 @@ def is_true(x: int) -> bool:
     else:
         return False
 
+def is_true2(x: int) -> bool:
+    return bool(x)
+
 def is_false(x: int) -> bool:
     if not x:
         return True
@@ -361,10 +364,31 @@ def is_false(x: int) -> bool:
 
 def test_int_as_bool() -> None:
     assert not is_true(0)
+    assert not is_true2(0)
     assert is_false(0)
     for x in 1, 55, -1, -7, 1 << 50, 1 << 101, -(1 << 50), -(1 << 101):
         assert is_true(x)
+        assert is_true2(x)
         assert not is_false(x)
+
+def bool_as_int(b: bool) -> int:
+    return b
+
+def bool_as_int2(b: bool) -> int:
+    return int(b)
+
+def test_bool_as_int() -> None:
+    assert bool_as_int(False) == 0
+    assert bool_as_int(True) == 1
+    assert bool_as_int2(False) == 0
+    assert bool_as_int2(True) == 1
+
+def no_op_conversion(n: int) -> int:
+    return int(n)
+
+def test_no_op_conversion() -> None:
+    for x in 1, 55, -1, -7, 1 << 50, 1 << 101, -(1 << 50), -(1 << 101):
+        assert no_op_conversion(x) == x
 
 def test_divide() -> None:
     for x in range(-100, 100):

@@ -272,8 +272,9 @@ def report_missing_attribute(
     override_info: TypeInfo | None = None,
 ) -> Type:
     res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
-    if may_be_awaitable_attribute(name, typ, mx, override_info):
-        mx.msg.possible_missing_await(mx.context)
+    if not mx.msg.prefer_simple_messages():
+        if may_be_awaitable_attribute(name, typ, mx, override_info):
+            mx.msg.possible_missing_await(mx.context)
     return res_type
 
 
@@ -900,7 +901,7 @@ def analyze_class_attribute_access(
             # For modules use direct symbol table lookup.
             if not itype.extra_attrs.mod_name:
                 return itype.extra_attrs.attrs[name]
-        if info.fallback_to_any:
+        if info.fallback_to_any or info.meta_fallback_to_any:
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         return None
 
@@ -911,6 +912,10 @@ def analyze_class_attribute_access(
             mx.msg.cant_assign_to_method(mx.context)
         if isinstance(node.node, TypeInfo):
             mx.msg.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, mx.context)
+
+    # Refuse class attribute access if slot defined
+    if info.slots and name in info.slots:
+        mx.msg.fail(message_registry.CLASS_VAR_CONFLICTS_SLOTS.format(name), mx.context)
 
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.

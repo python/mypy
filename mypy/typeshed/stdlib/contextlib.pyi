@@ -1,6 +1,6 @@
 import abc
 import sys
-from _typeshed import Self, StrOrBytesPath
+from _typeshed import FileDescriptorOrPath, Self
 from abc import abstractmethod
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterator
 from types import TracebackType
@@ -193,7 +193,7 @@ else:
         def __exit__(self, *exctype: object) -> None: ...
 
 if sys.version_info >= (3, 11):
-    _T_fd_or_any_path = TypeVar("_T_fd_or_any_path", bound=int | StrOrBytesPath)
+    _T_fd_or_any_path = TypeVar("_T_fd_or_any_path", bound=FileDescriptorOrPath)
 
     class chdir(AbstractContextManager[None], Generic[_T_fd_or_any_path]):
         path: _T_fd_or_any_path

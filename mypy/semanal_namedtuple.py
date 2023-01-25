@@ -501,7 +501,9 @@ class NamedTupleAnalyzer:
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
         if info.special_alias and has_placeholder(info.special_alias.target):
-            self.api.defer(force_progress=True)
+            self.api.process_placeholder(
+                None, "NamedTuple item", info, force_progress=tuple_base != info.tuple_type
+            )
         info.update_tuple_type(tuple_base)
         info.line = line
         # For use by mypyc.

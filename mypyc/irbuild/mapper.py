@@ -116,7 +116,7 @@ class Mapper:
         elif isinstance(typ, NoneTyp):
             return none_rprimitive
         elif isinstance(typ, UnionType):
-            return RUnion([self.type_to_rtype(item) for item in typ.items])
+            return RUnion.make_simplified_union([self.type_to_rtype(item) for item in typ.items])
         elif isinstance(typ, AnyType):
             return object_rprimitive
         elif isinstance(typ, TypeType):

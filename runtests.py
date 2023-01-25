@@ -50,7 +50,7 @@ cmds = {
     # Self type check
     "self": [executable, "-m", "mypy", "--config-file", "mypy_self_check.ini", "-p", "mypy"],
     # Lint
-    "lint": ["flake8", "-j0"],
+    "lint": ["flake8", "-j3"],
     "format-black": ["black", "."],
     "format-isort": ["isort", "."],
     # Fast test cases only (this is the bulk of the test suite)

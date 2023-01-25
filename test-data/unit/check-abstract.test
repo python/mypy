@@ -102,15 +102,15 @@ class B(A, I): pass
 
 from abc import abstractmethod, ABCMeta
 
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+
 o = None # type: object
 t = None # type: type
 
 o = I
 t = I
-
-class I(metaclass=ABCMeta):
-  @abstractmethod
-  def f(self): pass
 
 [case testAbstractClassInCasts]
 from typing import cast

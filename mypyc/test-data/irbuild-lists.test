@@ -428,3 +428,104 @@ L4:
 L5:
     res = r8
     return 1
+
+[case testSimplifyListUnion]
+from typing import List, Union, Optional
+
+def narrow(a: Union[List[str], List[bytes], int]) -> int:
+    if isinstance(a, list):
+        return len(a)
+    return a
+def loop(a: Union[List[str], List[bytes]]) -> None:
+    for x in a:
+         pass
+def nested_union(a: Union[List[str], List[Optional[str]]]) -> None:
+    for x in a:
+        pass
+[out]
+def narrow(a):
+    a :: union[list, int]
+    r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: list
+    r5 :: ptr
+    r6 :: native_int
+    r7 :: short_int
+    r8 :: int
+L0:
+    r0 = load_address PyList_Type
+    r1 = PyObject_IsInstance(a, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = borrow cast(list, a)
+    r5 = get_element_ptr r4 ob_size :: PyVarObject
+    r6 = load_mem r5 :: native_int*
+    keep_alive r4
+    r7 = r6 << 1
+    keep_alive a
+    return r7
+L2:
+    r8 = unbox(int, a)
+    return r8
+def loop(a):
+    a :: list
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bit
+    r5 :: object
+    r6, x :: union[str, bytes]
+    r7 :: short_int
+L0:
+    r0 = 0
+L1:
+    r1 = get_element_ptr a ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    keep_alive a
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = CPyList_GetItemUnsafe(a, r0)
+    r6 = cast(union[str, bytes], r5)
+    x = r6
+L3:
+    r7 = r0 + 2
+    r0 = r7
+    goto L1
+L4:
+    return 1
+def nested_union(a):
+    a :: list
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bit
+    r5 :: object
+    r6, x :: union[str, None]
+    r7 :: short_int
+L0:
+    r0 = 0
+L1:
+    r1 = get_element_ptr a ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    keep_alive a
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = CPyList_GetItemUnsafe(a, r0)
+    r6 = cast(union[str, None], r5)
+    x = r6
+L3:
+    r7 = r0 + 2
+    r0 = r7
+    goto L1
+L4:
+    return 1

@@ -205,23 +205,13 @@ Y: Final = 2 + 4
 
 def f() -> None:
     a = X + 1
-    # TODO: Constant fold this as well
     a = Y + 1
 [out]
 def f():
-    a, r0 :: int
-    r1 :: bool
-    r2 :: int
+    a :: int
 L0:
     a = 12
-    r0 = __main__.Y :: static
-    if is_error(r0) goto L1 else goto L2
-L1:
-    r1 = raise NameError('value for final name "Y" was not set')
-    unreachable
-L2:
-    r2 = CPyTagged_Add(r0, 2)
-    a = r2
+    a = 14
     return 1
 
 [case testIntConstantFoldingClassFinal]

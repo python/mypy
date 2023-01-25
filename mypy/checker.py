@@ -177,8 +177,10 @@ from mypy.typeops import (
     tuple_fallback,
 )
 from mypy.types import (
+    ANY_STRATEGY,
     OVERLOAD_NAMES,
     AnyType,
+    BoolTypeQuery,
     CallableType,
     DeletedType,
     ErasedType,
@@ -196,7 +198,6 @@ from mypy.types import (
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
-    TypeQuery,
     TypeTranslator,
     TypeType,
     TypeVarId,
@@ -377,10 +378,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.path = path
         self.msg = MessageBuilder(errors, modules)
         self.plugin = plugin
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(
-            self, self.msg, self.plugin, per_line_checking_time_ns
-        )
-        self.pattern_checker = PatternChecker(self, self.msg, self.plugin)
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder()
@@ -417,6 +414,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # although this is technically unsafe, this is desirable in some context, for
         # example when type-checking class decorators.
         self.allow_abstract_call = False
+
+        # Child checker objects for specific AST node types
+        self.expr_checker = mypy.checkexpr.ExpressionChecker(
+            self, self.msg, self.plugin, per_line_checking_time_ns
+        )
+        self.pattern_checker = PatternChecker(self, self.msg, self.plugin)
 
     @property
     def type_context(self) -> list[Type | None]:
@@ -2175,7 +2178,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     temp = self.temp_node(sig, context=decorator)
                     fullname = None
                     if isinstance(decorator, RefExpr):
-                        fullname = decorator.fullname
+                        fullname = decorator.fullname or None
 
                     # TODO: Figure out how to have clearer error messages.
                     # (e.g. "class decorator must be a function that accepts a type."
@@ -2495,8 +2498,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ok = is_equivalent(first_type, second_type)
             if not ok:
                 second_node = base2[name].node
-                if isinstance(second_node, Decorator) and second_node.func.is_property:
-                    ok = is_subtype(first_type, cast(CallableType, second_type).ret_type)
+                if (
+                    isinstance(second_type, FunctionLike)
+                    and second_node is not None
+                    and is_property(second_node)
+                ):
+                    second_type = get_property_type(second_type)
+                    ok = is_subtype(first_type, second_type)
         else:
             if first_type is None:
                 self.msg.cannot_determine_type_in_base(name, base1.name, ctx)
@@ -4590,7 +4598,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             temp = self.temp_node(sig, context=e)
             fullname = None
             if isinstance(d, RefExpr):
-                fullname = d.fullname
+                fullname = d.fullname or None
             # if this is a expression like @b.a where b is an object, get the type of b
             # so we can pass it the method hook in the plugins
             object_type: Type | None = None
@@ -5097,6 +5105,45 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return None, {}
 
+    def conditional_types_for_iterable(
+        self, item_type: Type, iterable_type: Type
+    ) -> tuple[Type | None, Type | None]:
+        """
+        Narrows the type of `iterable_type` based on the type of `item_type`.
+        For now, we only support narrowing unions of TypedDicts based on left operand being literal string(s).
+        """
+        if_types: list[Type] = []
+        else_types: list[Type] = []
+
+        iterable_type = get_proper_type(iterable_type)
+        if isinstance(iterable_type, UnionType):
+            possible_iterable_types = get_proper_types(iterable_type.relevant_items())
+        else:
+            possible_iterable_types = [iterable_type]
+
+        item_str_literals = try_getting_str_literals_from_type(item_type)
+
+        for possible_iterable_type in possible_iterable_types:
+            if item_str_literals and isinstance(possible_iterable_type, TypedDictType):
+                for key in item_str_literals:
+                    if key in possible_iterable_type.required_keys:
+                        if_types.append(possible_iterable_type)
+                    elif (
+                        key in possible_iterable_type.items or not possible_iterable_type.is_final
+                    ):
+                        if_types.append(possible_iterable_type)
+                        else_types.append(possible_iterable_type)
+                    else:
+                        else_types.append(possible_iterable_type)
+            else:
+                if_types.append(possible_iterable_type)
+                else_types.append(possible_iterable_type)
+
+        return (
+            UnionType.make_union(if_types) if if_types else None,
+            UnionType.make_union(else_types) if else_types else None,
+        )
+
     def _is_truthy_type(self, t: ProperType) -> bool:
         return (
             (
@@ -5104,6 +5151,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and bool(t.type)
                 and not t.type.has_readable_member("__bool__")
                 and not t.type.has_readable_member("__len__")
+                and t.type.fullname != "builtins.object"
             )
             or isinstance(t, FunctionLike)
             or (
@@ -5412,28 +5460,42 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 elif operator in {"in", "not in"}:
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices
-                    if left_index not in narrowable_operand_index_to_hash:
-                        continue
-
                     item_type = operand_types[left_index]
-                    collection_type = operand_types[right_index]
+                    iterable_type = operand_types[right_index]
 
-                    # We only try and narrow away 'None' for now
-                    if not is_optional(item_type):
-                        continue
+                    if_map, else_map = {}, {}
 
-                    collection_item_type = get_proper_type(builtin_item_type(collection_type))
-                    if collection_item_type is None or is_optional(collection_item_type):
-                        continue
-                    if (
-                        isinstance(collection_item_type, Instance)
-                        and collection_item_type.type.fullname == "builtins.object"
-                    ):
-                        continue
-                    if is_overlapping_erased_types(item_type, collection_item_type):
-                        if_map, else_map = {operands[left_index]: remove_optional(item_type)}, {}
-                    else:
-                        continue
+                    if left_index in narrowable_operand_index_to_hash:
+                        # We only try and narrow away 'None' for now
+                        if is_optional(item_type):
+                            collection_item_type = get_proper_type(
+                                builtin_item_type(iterable_type)
+                            )
+                            if (
+                                collection_item_type is not None
+                                and not is_optional(collection_item_type)
+                                and not (
+                                    isinstance(collection_item_type, Instance)
+                                    and collection_item_type.type.fullname == "builtins.object"
+                                )
+                                and is_overlapping_erased_types(item_type, collection_item_type)
+                            ):
+                                if_map[operands[left_index]] = remove_optional(item_type)
+
+                    if right_index in narrowable_operand_index_to_hash:
+                        if_type, else_type = self.conditional_types_for_iterable(
+                            item_type, iterable_type
+                        )
+                        expr = operands[right_index]
+                        if if_type is None:
+                            if_map = None
+                        else:
+                            if_map[expr] = if_type
+                        if else_type is None:
+                            else_map = None
+                        else:
+                            else_map[expr] = else_type
+
                 else:
                     if_map = {}
                     else_map = {}
@@ -5881,6 +5943,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(msg, str):
             msg = ErrorMessage(msg, code=code)
+
+        if self.msg.prefer_simple_messages():
+            self.fail(msg, context)  # Fast path -- skip all fancy logic
+            return False
 
         orig_subtype = subtype
         subtype = get_proper_type(subtype)
@@ -7081,7 +7147,7 @@ def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
     return not typ.accept(InvalidInferredTypes())
 
 
-class InvalidInferredTypes(TypeQuery[bool]):
+class InvalidInferredTypes(BoolTypeQuery):
     """Find type components that are not valid for an inferred type.
 
     These include <Erased> type, and any <nothing> types resulting from failed
@@ -7089,7 +7155,7 @@ class InvalidInferredTypes(TypeQuery[bool]):
     """
 
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return t.ambiguous

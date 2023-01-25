@@ -365,7 +365,7 @@ class A:
     def f(self) -> None: pass
 
 class B(A):
-    def g() -> None: # E: Method must have at least one argument
+    def g() -> None: # E: Method must have at least one argument. Did you forget the "self" argument?
         super().f() # E: super() requires one or more positional arguments in enclosing function
     def h(self) -> None:
         def a() -> None:

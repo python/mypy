@@ -28,7 +28,6 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     is_bit_rprimitive,
     is_bool_rprimitive,
-    is_fixed_width_rtype,
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
@@ -40,6 +39,7 @@ from mypyc.ir.rtypes import (
 )
 
 if TYPE_CHECKING:
+    from mypyc.codegen.literals import LiteralValue
     from mypyc.ir.class_ir import ClassIR
     from mypyc.ir.func_ir import FuncDecl, FuncIR
 
@@ -589,7 +589,7 @@ class LoadLiteral(RegisterOp):
     This is used to load a static PyObject * value corresponding to
     a literal of one of the supported types.
 
-    Tuple literals must contain only valid literal values as items.
+    Tuple / frozenset literals must contain only valid literal values as items.
 
     NOTE: You can use this to load boxed (Python) int objects. Use
           Integer to load unboxed, tagged integers or fixed-width,
@@ -604,11 +604,7 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(
-        self,
-        value: None | str | bytes | bool | int | float | complex | tuple[object, ...],
-        rtype: RType,
-    ) -> None:
+    def __init__(self, value: LiteralValue, rtype: RType) -> None:
         self.value = value
         self.type = rtype
 
@@ -632,7 +628,7 @@ class GetAttr(RegisterOp):
         self.class_type = obj.type
         attr_type = obj.type.attr_type(attr)
         self.type = attr_type
-        if is_fixed_width_rtype(attr_type):
+        if attr_type.error_overlap:
             self.error_kind = ERR_MAGIC_OVERLAPPING
         self.is_borrowed = borrow and attr_type.is_refcounted
 
@@ -785,7 +781,7 @@ class TupleGet(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value, index: int, line: int) -> None:
+    def __init__(self, src: Value, index: int, line: int = -1) -> None:
         super().__init__(line)
         self.src = src
         self.index = index
@@ -1454,6 +1450,6 @@ class OpVisitor(Generic[T]):
 #
 # (Serialization and deserialization *will* be used for incremental
 # compilation but so far it is not hooked up to anything.)
-DeserMaps = NamedTuple(
-    "DeserMaps", [("classes", Dict[str, "ClassIR"]), ("functions", Dict[str, "FuncIR"])]
-)
+class DeserMaps(NamedTuple):
+    classes: Dict[str, "ClassIR"]
+    functions: Dict[str, "FuncIR"]

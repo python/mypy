@@ -971,14 +971,14 @@ if x:
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testUnpackUnionNoCrashOnPartialNoneList]
+[case testUnpackUnionNoCrashOnPartialList]
 # flags: --strict-optional
 from typing import Dict, Tuple, List, Any
 
 a: Any
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
-x, _ = d.get(a, ([], []))
-reveal_type(x) # N: Revealed type is "Union[builtins.list[Tuple[builtins.str, builtins.str]], builtins.list[<nothing>]]"
+x, _ = d.get(a, ([], ""))
+reveal_type(x) # N: Revealed type is "builtins.list[Tuple[builtins.str, builtins.str]]"
 
 for y in x: pass
 [builtins fixtures/dict.pyi]
@@ -1170,6 +1170,25 @@ def foo(
         yield i
 foo([1])
 [builtins fixtures/list.pyi]
+
+[case testGenericUnionMemberWithTypeVarConstraints]
+
+from typing import Generic, TypeVar, Union
+
+T = TypeVar('T', str, int)
+
+class C(Generic[T]): ...
+
+def f(s: Union[T, C[T]]) -> T:  ...
+
+ci: C[int]
+cs: C[str]
+
+reveal_type(f(1))  # N: Revealed type is "builtins.int"
+reveal_type(f(''))  # N: Revealed type is "builtins.str"
+reveal_type(f(ci))  # N: Revealed type is "builtins.int"
+reveal_type(f(cs))  # N: Revealed type is "builtins.str"
+
 
 [case testNestedInstanceTypeAliasUnsimplifiedUnion]
 from typing import TypeVar, Union, Iterator, List, Any

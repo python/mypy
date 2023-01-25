@@ -306,6 +306,22 @@ def test_i32_truncate_from_i64() -> None:
     x = i32(small2)
     assert x == 2**31 - 1
 
+def from_float(x: float) -> i32:
+    return i32(x)
+
+def test_explicit_conversion_from_float() -> None:
+    assert from_float(0.0) == 0
+    assert from_float(1.456) == 1
+    assert from_float(-1234.567) == -1234
+    assert from_float(2**31 - 1) == 2**31 - 1
+    assert from_float(-2**31) == -2**31
+    # The error message could be better, but this is acceptable
+    with assertRaises(OverflowError, "int too large to convert to i32"):
+        assert from_float(float(2**31))
+    with assertRaises(OverflowError, "int too large to convert to i32"):
+        # One ulp below the lowest valid i64 value
+        from_float(float(-2**31 - 2048))
+
 def test_tuple_i32() -> None:
     a: i32 = 1
     b: i32 = 2

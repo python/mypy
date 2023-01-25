@@ -50,7 +50,7 @@ from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable, TypeInfo
-from mypy.partially_defined import PartiallyDefinedVariableVisitor
+from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
@@ -100,7 +100,7 @@ from mypy.stubinfo import (
     stub_package_name,
 )
 from mypy.types import Type
-from mypy.typestate import TypeState, reset_global_state
+from mypy.typestate import reset_global_state, type_state
 from mypy.version import __version__
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -276,7 +276,7 @@ def _build(
     try:
         graph = dispatch(sources, manager, stdout)
         if not options.fine_grained_incremental:
-            TypeState.reset_all_subtype_caches()
+            type_state.reset_all_subtype_caches()
         if options.timing_stats is not None:
             dump_timing_stats(options.timing_stats, graph)
         if options.line_checking_stats is not None:
@@ -2349,19 +2349,22 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return result
 
-    def detect_partially_defined_vars(self, type_map: dict[Expression, Type]) -> None:
+    def detect_possibly_undefined_vars(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         if self.tree.is_stub:
             # We skip stub files because they aren't actually executed.
             return
         manager = self.manager
+        manager.errors.set_file(self.xpath, self.tree.fullname, options=self.options)
         if manager.errors.is_error_code_enabled(
-            codes.PARTIALLY_DEFINED
-        ) or manager.errors.is_error_code_enabled(codes.USE_BEFORE_DEF):
-            manager.errors.set_file(self.xpath, self.tree.fullname, options=manager.options)
+            codes.POSSIBLY_UNDEFINED
+        ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
             self.tree.accept(
-                PartiallyDefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules), type_map, manager.options
+                PossiblyUndefinedVariableVisitor(
+                    MessageBuilder(manager.errors, manager.modules),
+                    self.type_map(),
+                    self.options,
+                    self.tree.names,
                 )
             )
 
@@ -2461,7 +2464,7 @@ class State:
             from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
 
             merge_dependencies(self.compute_fine_grained_deps(), deps)
-            TypeState.update_protocol_deps(deps)
+            type_state.update_protocol_deps(deps)
 
     def valid_references(self) -> set[str]:
         assert self.ancestors is not None
@@ -2481,6 +2484,12 @@ class State:
             or self.options.cache_dir == os.devnull
             or self.options.fine_grained_incremental
         ):
+            if self.options.debug_serialize:
+                try:
+                    self.tree.serialize()
+                except Exception:
+                    print(f"Error serializing {self.id}", file=self.manager.stdout)
+                    raise  # Propagate to display traceback
             return
         is_errors = self.transitive_error
         if is_errors:
@@ -2922,7 +2931,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            TypeState.add_all_protocol_deps(manager.fg_deps)
+            type_state.add_all_protocol_deps(manager.fg_deps)
             if not manager.options.fine_grained_incremental:
                 rdeps = generate_deps_for_cache(manager, graph)
                 write_deps_cache(rdeps, manager, graph)
@@ -3414,7 +3423,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         graph[id].type_check_first_pass()
         if not graph[id].type_checker().deferred_nodes:
             unfinished_modules.discard(id)
-            graph[id].detect_partially_defined_vars(graph[id].type_map())
+            graph[id].detect_possibly_undefined_vars()
             graph[id].finish_passes()
 
     while unfinished_modules:
@@ -3423,7 +3432,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
                 continue
             if not graph[id].type_check_second_pass():
                 unfinished_modules.discard(id)
-                graph[id].detect_partially_defined_vars(graph[id].type_map())
+                graph[id].detect_possibly_undefined_vars()
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()

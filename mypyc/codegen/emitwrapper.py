@@ -32,7 +32,6 @@ from mypyc.ir.rtypes import (
     RInstance,
     RType,
     is_bool_rprimitive,
-    is_fixed_width_rtype,
     is_int_rprimitive,
     is_object_rprimitive,
     object_rprimitive,
@@ -718,9 +717,10 @@ def generate_arg_check(
     """
     error = error or AssignHandler()
     if typ.is_unboxed:
-        if is_fixed_width_rtype(typ) and optional:
+        if typ.error_overlap and optional:
             # Update bitmap is value is provided.
-            emitter.emit_line(f"{emitter.ctype(typ)} arg_{name} = 0;")
+            init = emitter.c_undefined_value(typ)
+            emitter.emit_line(f"{emitter.ctype(typ)} arg_{name} = {init};")
             emitter.emit_line(f"if (obj_{name} != NULL) {{")
             bitmap = bitmap_name(bitmap_arg_index // BITMAP_BITS)
             emitter.emit_line(f"{bitmap} |= 1 << {bitmap_arg_index & (BITMAP_BITS - 1)};")
@@ -835,7 +835,7 @@ class WrapperGenerator:
                 optional=optional,
                 bitmap_arg_index=bitmap_arg_index,
             )
-            if optional and is_fixed_width_rtype(typ):
+            if optional and typ.error_overlap:
                 bitmap_arg_index += 1
 
     def emit_call(self, not_implemented_handler: str = "") -> None:
