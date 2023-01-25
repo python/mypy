@@ -454,7 +454,6 @@ def apply_hooks_to_class(
         with self.file_context(file_node, options, info):
             hook = None
 
-            decorator.accept(self)
             decorator_name = self.get_fullname_for_hook(decorator)
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook_2(decorator_name)
