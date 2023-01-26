@@ -37,9 +37,11 @@ from mypy.errors import Errors
 from mypy.nodes import Decorator, FuncDef, MypyFile, OverloadedFuncDef, TypeInfo, Var
 from mypy.options import Options
 from mypy.plugin import ClassDefContext
+from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.semanal import (
     SemanticAnalyzer,
     apply_semantic_analyzer_patches,
+    is_dataclass_transform_decorator,
     remove_imported_names_from_symtable,
 )
 from mypy.semanal_classprop import (
@@ -457,11 +459,19 @@ def apply_hooks_to_class(
     ok = True
     for decorator in defn.decorators:
         with self.file_context(file_node, options, info):
+            hook = None
+
             decorator_name = self.get_fullname_for_hook(decorator)
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook_2(decorator_name)
-                if hook:
-                    ok = ok and hook(ClassDefContext(defn, decorator, self))
+            # Special case: if the decorator is itself decorated with
+            # typing.dataclass_transform, apply the hook for the dataclasses plugin
+            # TODO: remove special casing here
+            if hook is None and is_dataclass_transform_decorator(decorator):
+                hook = dataclasses_plugin.dataclass_class_maker_callback
+
+            if hook:
+                ok = ok and hook(ClassDefContext(defn, decorator, self))
     return ok
 
 

@@ -194,6 +194,7 @@ from mypy.plugin import (
     Plugin,
     SemanticAnalyzerPluginInterface,
 )
+from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.reachability import (
     ALWAYS_FALSE,
     ALWAYS_TRUE,
@@ -208,6 +209,7 @@ from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.semanal_shared import (
+    ALLOW_INCOMPATIBLE_OVERRIDE,
     PRIORITY_FALLBACKS,
     SemanticAnalyzerInterface,
     calculate_tuple_fallback,
@@ -234,6 +236,7 @@ from mypy.typeanal import (
 from mypy.typeops import function_type, get_type_vars
 from mypy.types import (
     ASSERT_TYPE_NAMES,
+    DATACLASS_TRANSFORM_NAMES,
     FINAL_DECORATOR_NAMES,
     FINAL_TYPE_NAMES,
     NEVER_NAMES,
@@ -303,10 +306,6 @@ FUTURE_IMPORTS: Final = {
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
 CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
-
-# Subclasses can override these Var attributes with incompatible types. This can also be
-# set for individual attributes using 'allow_incompatible_override' of Var.
-ALLOW_INCOMPATIBLE_OVERRIDE: Final = ("__slots__", "__deletable__", "__match_args__")
 
 
 # Used for tracking incomplete references
@@ -1508,6 +1507,10 @@ class SemanticAnalyzer(
                     removed.append(i)
                 else:
                     self.fail("@final cannot be used with non-method functions", d)
+            elif isinstance(d, CallExpr) and refers_to_fullname(
+                d.callee, DATACLASS_TRANSFORM_NAMES
+            ):
+                dec.func.is_dataclass_transform = True
             elif not dec.var.is_property:
                 # We have seen a "non-trivial" decorator before seeing @property, if
                 # we will see a @property later, give an error, as we don't support this.
@@ -1709,6 +1712,11 @@ class SemanticAnalyzer(
             decorator_name = self.get_fullname_for_hook(decorator)
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook(decorator_name)
+                # Special case: if the decorator is itself decorated with
+                # typing.dataclass_transform, apply the hook for the dataclasses plugin
+                # TODO: remove special casing here
+                if hook is None and is_dataclass_transform_decorator(decorator):
+                    hook = dataclasses_plugin.dataclass_tag_callback
                 if hook:
                     hook(ClassDefContext(defn, decorator, self))
 
@@ -6599,3 +6607,10 @@ def is_trivial_body(block: Block) -> bool:
     return isinstance(stmt, PassStmt) or (
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
     )
+
+
+def is_dataclass_transform_decorator(node: Node | None) -> bool:
+    if isinstance(node, RefExpr):
+        return is_dataclass_transform_decorator(node.node)
+
+    return isinstance(node, Decorator) and node.func.is_dataclass_transform
