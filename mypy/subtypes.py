@@ -103,11 +103,7 @@ class SubtypeContext:
         # Historically proper and non-proper subtypes were defined using different helpers
         # and different visitors. Check if flag values are such that we definitely support.
         if proper_subtype:
-            assert (
-                not self.ignore_type_params
-                and not self.ignore_pos_arg_names
-                and not self.ignore_declared_variance
-            )
+            assert not self.ignore_pos_arg_names and not self.ignore_declared_variance
         else:
             assert not self.erase_instances and not self.keep_erased_types
 
@@ -1171,7 +1167,7 @@ def find_member(
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
                     return getattr_type
-        if itype.type.fallback_to_any:
+        if itype.type.fallback_to_any or class_obj and itype.type.meta_fallback_to_any:
             return AnyType(TypeOfAny.special_form)
         if isinstance(v, TypeInfo):
             # PEP 544 doesn't specify anything about such use cases. So we just try

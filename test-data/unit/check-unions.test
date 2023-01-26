@@ -971,14 +971,14 @@ if x:
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testUnpackUnionNoCrashOnPartialNoneList]
+[case testUnpackUnionNoCrashOnPartialList]
 # flags: --strict-optional
 from typing import Dict, Tuple, List, Any
 
 a: Any
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
-x, _ = d.get(a, ([], []))
-reveal_type(x) # N: Revealed type is "Union[builtins.list[Tuple[builtins.str, builtins.str]], builtins.list[<nothing>]]"
+x, _ = d.get(a, ([], ""))
+reveal_type(x) # N: Revealed type is "builtins.list[Tuple[builtins.str, builtins.str]]"
 
 for y in x: pass
 [builtins fixtures/dict.pyi]

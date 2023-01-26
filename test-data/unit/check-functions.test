@@ -337,6 +337,11 @@ class A: pass
 [out]
 
 [case testCompatibilityOfSimpleTypeObjectWithStdType]
+class A:
+    def __init__(self, a: 'A') -> None: pass
+
+def f() -> None: pass
+
 t = None # type: type
 a = None # type: A
 
@@ -346,11 +351,6 @@ if int():
     t = f # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
 if int():
     t = A
-
-class A:
-    def __init__(self, a: 'A') -> None: pass
-
-def f() -> None: pass
 
 [case testFunctionTypesWithOverloads]
 from foo import *
@@ -466,6 +466,11 @@ if int():
 
 [case testCallingFunctionsWithDefaultArgumentValues]
 # flags: --implicit-optional --no-strict-optional
+class A: pass
+class AA(A): pass
+class B: pass
+
+def f(x: 'A'  =  None) -> 'B': pass
 
 a, b = None, None # type: (A, B)
 if int():
@@ -482,11 +487,6 @@ if int():
 if int():
     b = f(AA())
 
-def f(x: 'A'  =  None) -> 'B': pass
-
-class A: pass
-class AA(A): pass
-class B: pass
 [builtins fixtures/tuple.pyi]
 
 [case testDefaultArgumentExpressions]
@@ -1133,6 +1133,7 @@ def dec(f: T) -> T:
 [out]
 
 [case testForwardReferenceToFunctionWithMultipleDecorators]
+# flags: --disable-error-code=used-before-def
 def f(self) -> None:
     g()
     g(1)
@@ -1167,6 +1168,7 @@ def dec(f): return f
 [builtins fixtures/staticmethod.pyi]
 
 [case testForwardRefereceToDecoratedFunctionWithCallExpressionDecorator]
+# flags: --disable-error-code=used-before-def
 def f(self) -> None:
     g()
     g(1)
@@ -2608,9 +2610,9 @@ import p
 def f() -> int: ...
 
 [case testLambdaDefaultTypeErrors]
-lambda a=nonsense: a  # E: Name "nonsense" is not defined
 lambda a=(1 + 'asdf'): a  # E: Unsupported operand types for + ("int" and "str")
-def f(x: int = i):  # E: Name "i" is not defined
+lambda a=nonsense: a  # E: Name "nonsense" is not defined
+def f(x: int = i):  # E: Name "i" is not defined  # E: Name "i" is used before definition
     i = 42
 
 [case testRevealTypeOfCallExpressionReturningNoneWorks]

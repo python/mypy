@@ -2359,7 +2359,10 @@ class State:
         ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
             self.tree.accept(
                 PossiblyUndefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules), self.type_map(), self.options
+                    MessageBuilder(manager.errors, manager.modules),
+                    self.type_map(),
+                    self.options,
+                    self.tree.names,
                 )
             )
 

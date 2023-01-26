@@ -909,6 +909,16 @@ def f0() -> None:
     type = "abc"
     a = type
 
+[case testUsedBeforeDefBuiltinsMultipass]
+# flags: --enable-error-code used-before-def
+
+# When doing multiple passes, mypy resolves references slightly differently.
+# In this case, it would refer the earlier `type` call to the range class defined below.
+_type = type  # No error
+_C = C  # E: Name "C" is used before definition
+class type: pass
+class C: pass
+
 [case testUsedBeforeDefImplicitModuleAttrs]
 # flags: --enable-error-code used-before-def
 a = __name__  # No error.

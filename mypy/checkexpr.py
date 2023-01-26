@@ -2970,7 +2970,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     not local_errors.has_new_errors()
                     and cont_type
                     and self.dangerous_comparison(
-                        left_type, cont_type, original_container=right_type
+                        left_type, cont_type, original_container=right_type, prefer_literal=False
                     )
                 ):
                     self.msg.dangerous_comparison(left_type, cont_type, "container", e)
@@ -2988,27 +2988,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # testCustomEqCheckStrictEquality for an example.
                 if not w.has_new_errors() and operator in ("==", "!="):
                     right_type = self.accept(right)
-                    # We suppress the error if there is a custom __eq__() method on either
-                    # side. User defined (or even standard library) classes can define this
-                    # to return True for comparisons between non-overlapping types.
-                    if not custom_special_method(
-                        left_type, "__eq__"
-                    ) and not custom_special_method(right_type, "__eq__"):
-                        # Also flag non-overlapping literals in situations like:
-                        #    x: Literal['a', 'b']
-                        #    if x == 'c':
-                        #        ...
+                    if self.dangerous_comparison(left_type, right_type):
+                        # Show the most specific literal types possible
                         left_type = try_getting_literal(left_type)
                         right_type = try_getting_literal(right_type)
-                        if self.dangerous_comparison(left_type, right_type):
-                            self.msg.dangerous_comparison(left_type, right_type, "equality", e)
+                        self.msg.dangerous_comparison(left_type, right_type, "equality", e)
 
             elif operator == "is" or operator == "is not":
                 right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
-                left_type = try_getting_literal(left_type)
-                right_type = try_getting_literal(right_type)
                 if self.dangerous_comparison(left_type, right_type):
+                    # Show the most specific literal types possible
+                    left_type = try_getting_literal(left_type)
+                    right_type = try_getting_literal(right_type)
                     self.msg.dangerous_comparison(left_type, right_type, "identity", e)
                 method_type = None
             else:
@@ -3042,7 +3034,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return None
 
     def dangerous_comparison(
-        self, left: Type, right: Type, original_container: Type | None = None
+        self,
+        left: Type,
+        right: Type,
+        original_container: Type | None = None,
+        *,
+        prefer_literal: bool = True,
     ) -> bool:
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
 
@@ -3063,6 +3060,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
 
         left, right = get_proper_types((left, right))
+
+        # We suppress the error if there is a custom __eq__() method on either
+        # side. User defined (or even standard library) classes can define this
+        # to return True for comparisons between non-overlapping types.
+        if custom_special_method(left, "__eq__") or custom_special_method(right, "__eq__"):
+            return False
+
+        if prefer_literal:
+            # Also flag non-overlapping literals in situations like:
+            #    x: Literal['a', 'b']
+            #    if x == 'c':
+            #        ...
+            left = try_getting_literal(left)
+            right = try_getting_literal(right)
 
         if self.chk.binder.is_unreachable_warning_suppressed():
             # We are inside a function that contains type variables with value restrictions in
@@ -3094,14 +3105,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
         if isinstance(left, Instance) and isinstance(right, Instance):
             # Special case some builtin implementations of AbstractSet.
+            left_name = left.type.fullname
+            right_name = right.type.fullname
             if (
-                left.type.fullname in OVERLAPPING_TYPES_ALLOWLIST
-                and right.type.fullname in OVERLAPPING_TYPES_ALLOWLIST
+                left_name in OVERLAPPING_TYPES_ALLOWLIST
+                and right_name in OVERLAPPING_TYPES_ALLOWLIST
             ):
                 abstract_set = self.chk.lookup_typeinfo("typing.AbstractSet")
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
-                return not is_overlapping_types(left.args[0], right.args[0])
+                return self.dangerous_comparison(left.args[0], right.args[0])
+            elif left_name in ("builtins.list", "builtins.tuple") and right_name == left_name:
+                return self.dangerous_comparison(left.args[0], right.args[0])
         if isinstance(left, LiteralType) and isinstance(right, LiteralType):
             if isinstance(left.value, bool) and isinstance(right.value, bool):
                 # Comparing different booleans is not dangerous.
@@ -4188,6 +4203,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.resolved_type[e] = dt
         return dt
 
+    def check_typeddict_literal_in_context(
+        self, e: DictExpr, typeddict_context: TypedDictType
+    ) -> Type:
+        orig_ret_type = self.check_typeddict_call_with_dict(
+            callee=typeddict_context, kwargs=e, context=e, orig_callee=None
+        )
+        ret_type = get_proper_type(orig_ret_type)
+        if isinstance(ret_type, TypedDictType):
+            return ret_type.copy_modified()
+        return typeddict_context.copy_modified()
+
     def visit_dict_expr(self, e: DictExpr) -> Type:
         """Type check a dict expression.
 
@@ -4197,15 +4223,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # an error, but returns the TypedDict type that matches the literal it found
         # that would cause a second error when that TypedDict type is returned upstream
         # to avoid the second error, we always return TypedDict type that was requested
-        typeddict_context = self.find_typeddict_context(self.type_context[-1], e)
-        if typeddict_context:
-            orig_ret_type = self.check_typeddict_call_with_dict(
-                callee=typeddict_context, kwargs=e, context=e, orig_callee=None
-            )
-            ret_type = get_proper_type(orig_ret_type)
-            if isinstance(ret_type, TypedDictType):
-                return ret_type.copy_modified()
-            return typeddict_context.copy_modified()
+        typeddict_contexts = self.find_typeddict_context(self.type_context[-1], e)
+        if typeddict_contexts:
+            if len(typeddict_contexts) == 1:
+                return self.check_typeddict_literal_in_context(e, typeddict_contexts[0])
+            # Multiple items union, check if at least one of them matches cleanly.
+            for typeddict_context in typeddict_contexts:
+                with self.msg.filter_errors() as err, self.chk.local_type_map() as tmap:
+                    ret_type = self.check_typeddict_literal_in_context(e, typeddict_context)
+                if err.has_new_errors():
+                    continue
+                self.chk.store_types(tmap)
+                return ret_type
+            # No item matched without an error, so we can't unambiguously choose the item.
+            self.msg.typeddict_context_ambiguous(typeddict_contexts, e)
 
         # fast path attempt
         dt = self.fast_dict_type(e)
@@ -4271,26 +4302,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def find_typeddict_context(
         self, context: Type | None, dict_expr: DictExpr
-    ) -> TypedDictType | None:
+    ) -> list[TypedDictType]:
         context = get_proper_type(context)
         if isinstance(context, TypedDictType):
-            return context
+            return [context]
         elif isinstance(context, UnionType):
             items = []
             for item in context.items:
-                item_context = self.find_typeddict_context(item, dict_expr)
-                if item_context is not None and self.match_typeddict_call_with_dict(
-                    item_context, dict_expr, dict_expr
-                ):
-                    items.append(item_context)
-            if len(items) == 1:
-                # Only one union item is valid TypedDict for the given dict_expr, so use the
-                # context as it's unambiguous.
-                return items[0]
-            if len(items) > 1:
-                self.msg.typeddict_context_ambiguous(items, dict_expr)
+                item_contexts = self.find_typeddict_context(item, dict_expr)
+                for item_context in item_contexts:
+                    if self.match_typeddict_call_with_dict(item_context, dict_expr, dict_expr):
+                        items.append(item_context)
+            return items
         # No TypedDict type in context.
-        return None
+        return []
 
     def visit_lambda_expr(self, e: LambdaExpr) -> Type:
         """Type check lambda expression."""

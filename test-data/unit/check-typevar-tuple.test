@@ -466,14 +466,49 @@ from typing_extensions import Unpack, TypeVarTuple
 Ts = TypeVarTuple("Ts")
 
 def call(
-    target: Callable[[ Unpack[Ts]], None],
+    target: Callable[[Unpack[Ts]], None],
     args: Tuple[Unpack[Ts]],
 ) -> None:
     pass
 
 def func(arg1: int, arg2: str) -> None: ...
+def func2(arg1: int, arg2: int) -> None: ...
+def func3(*args: int) -> None: ...
 
-call(target=func, args=(0, 'foo'))  # Valid
-#call(target=func, args=(True, 'foo', 0))  # Error
-#call(target=func, args=(0, 0, 'foo'))  # Error
+vargs: Tuple[int, ...]
+vargs_str: Tuple[str, ...]
+
+call(target=func, args=(0, 'foo'))
+call(target=func, args=('bar', 'foo'))  # E: Argument "target" to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[object, str], None]"
+call(target=func, args=(True, 'foo', 0))  # E: Argument "target" to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[VarArg(object)], None]"
+call(target=func, args=(0, 0, 'foo'))  # E: Argument "target" to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[VarArg(object)], None]"
+call(target=func, args=vargs)  # E: Argument "target" to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[VarArg(object)], None]"
+
+# NOTE: This behavior may be a bit contentious, it is maybe inconsistent with our handling of
+# PEP646 but consistent with our handling of callable constraints.
+call(target=func2, args=vargs)  # E: Argument "target" to "call" has incompatible type "Callable[[int, int], None]"; expected "Callable[[VarArg(int)], None]"
+call(target=func3, args=vargs)
+call(target=func3, args=(0,1))
+call(target=func3, args=(0,'foo'))  # E: Argument "target" to "call" has incompatible type "Callable[[VarArg(int)], None]"; expected "Callable[[VarArg(object)], None]"
+call(target=func3, args=vargs_str)  # E: Argument "target" to "call" has incompatible type "Callable[[VarArg(int)], None]"; expected "Callable[[VarArg(object)], None]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTuplePep646CallableWithPrefixSuffix]
+from typing import Tuple, Callable
+from typing_extensions import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def call_prefix(
+    target: Callable[[bytes, Unpack[Ts]], None],
+    args: Tuple[Unpack[Ts]],
+) -> None:
+    pass
+
+def func_prefix(arg0: bytes, arg1: int, arg2: str) -> None: ...
+def func2_prefix(arg0: str, arg1: int, arg2: str) -> None: ...
+
+call_prefix(target=func_prefix, args=(0, 'foo'))
+call_prefix(target=func2_prefix, args=(0, 'foo'))  # E: Argument "target" to "call_prefix" has incompatible type "Callable[[str, int, str], None]"; expected "Callable[[bytes, int, str], None]"
+[builtins fixtures/tuple.pyi]
+

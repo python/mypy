@@ -63,18 +63,34 @@ def create_default_context(
     capath: StrOrBytesPath | None = ...,
     cadata: str | ReadableBuffer | None = ...,
 ) -> SSLContext: ...
-def _create_unverified_context(
-    protocol: int = ...,
-    *,
-    cert_reqs: int = ...,
-    check_hostname: bool = ...,
-    purpose: Purpose = ...,
-    certfile: StrOrBytesPath | None = ...,
-    keyfile: StrOrBytesPath | None = ...,
-    cafile: StrOrBytesPath | None = ...,
-    capath: StrOrBytesPath | None = ...,
-    cadata: str | ReadableBuffer | None = ...,
-) -> SSLContext: ...
+
+if sys.version_info >= (3, 10):
+    def _create_unverified_context(
+        protocol: int | None = None,
+        *,
+        cert_reqs: int = ...,
+        check_hostname: bool = ...,
+        purpose: Purpose = ...,
+        certfile: StrOrBytesPath | None = ...,
+        keyfile: StrOrBytesPath | None = ...,
+        cafile: StrOrBytesPath | None = ...,
+        capath: StrOrBytesPath | None = ...,
+        cadata: str | ReadableBuffer | None = ...,
+    ) -> SSLContext: ...
+
+else:
+    def _create_unverified_context(
+        protocol: int = ...,
+        *,
+        cert_reqs: int = ...,
+        check_hostname: bool = ...,
+        purpose: Purpose = ...,
+        certfile: StrOrBytesPath | None = ...,
+        keyfile: StrOrBytesPath | None = ...,
+        cafile: StrOrBytesPath | None = ...,
+        capath: StrOrBytesPath | None = ...,
+        cadata: str | ReadableBuffer | None = ...,
+    ) -> SSLContext: ...
 
 _create_default_https_context: Callable[..., SSLContext]
 

@@ -11,7 +11,6 @@ class tuple(Generic[T]):
 class function: pass
 class int: pass
 class str: pass
-class unicode: pass
 class bool: pass
 class ellipsis: pass
 

@@ -480,3 +480,55 @@ L0:
     y = 11
     z = -3
     return 1
+
+[case testI32ExplicitConversionFromVariousTypes]
+from mypy_extensions import i32
+
+def bool_to_i32(b: bool) -> i32:
+    return i32(b)
+
+def str_to_i32(s: str) -> i32:
+    return i32(s)
+
+class C:
+    def __int__(self) -> i32:
+        return 5
+
+def instance_to_i32(c: C) -> i32:
+    return i32(c)
+
+def float_to_i32(x: float) -> i32:
+    return i32(x)
+[out]
+def bool_to_i32(b):
+    b :: bool
+    r0 :: int32
+L0:
+    r0 = extend b: builtins.bool to int32
+    return r0
+def str_to_i32(s):
+    s :: str
+    r0 :: object
+    r1 :: int32
+L0:
+    r0 = CPyLong_FromStr(s)
+    r1 = unbox(int32, r0)
+    return r1
+def C.__int__(self):
+    self :: __main__.C
+L0:
+    return 5
+def instance_to_i32(c):
+    c :: __main__.C
+    r0 :: int32
+L0:
+    r0 = c.__int__()
+    return r0
+def float_to_i32(x):
+    x :: float
+    r0 :: object
+    r1 :: int32
+L0:
+    r0 = CPyLong_FromFloat(x)
+    r1 = unbox(int32, r0)
+    return r1

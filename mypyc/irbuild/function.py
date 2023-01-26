@@ -1028,7 +1028,9 @@ def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> dic
     return {impl: i for i, (typ, impl) in enumerate(impls) if not is_decorated(builder, impl)}
 
 
-def gen_property_getter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef) -> FuncIR:
+def gen_property_getter_ir(
+    builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef, is_trait: bool
+) -> FuncIR:
     """Generate an implicit trivial property getter for an attribute.
 
     These are used if an attribute can also be accessed as a property.
@@ -1036,13 +1038,18 @@ def gen_property_getter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassD
     name = func_decl.name
     builder.enter(name)
     self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
-    value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, -1)
-    builder.add(Return(value))
+    if not is_trait:
+        value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, -1)
+        builder.add(Return(value))
+    else:
+        builder.add(Unreachable())
     args, _, blocks, ret_type, fn_info = builder.leave()
     return FuncIR(func_decl, args, blocks)
 
 
-def gen_property_setter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef) -> FuncIR:
+def gen_property_setter_ir(
+    builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef, is_trait: bool
+) -> FuncIR:
     """Generate an implicit trivial property setter for an attribute.
 
     These are used if an attribute can also be accessed as a property.
@@ -1053,7 +1060,8 @@ def gen_property_setter_ir(builder: IRBuilder, func_decl: FuncDecl, cdef: ClassD
     value_reg = builder.add_argument("value", func_decl.sig.args[1].type)
     assert name.startswith(PROPSET_PREFIX)
     attr_name = name[len(PROPSET_PREFIX) :]
-    builder.add(SetAttr(self_reg, attr_name, value_reg, -1))
+    if not is_trait:
+        builder.add(SetAttr(self_reg, attr_name, value_reg, -1))
     builder.add(Return(builder.none()))
     args, _, blocks, ret_type, fn_info = builder.leave()
     return FuncIR(func_decl, args, blocks)

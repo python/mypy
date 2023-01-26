@@ -1049,7 +1049,12 @@ class SemanticAnalyzer(
         if info.self_type is not None:
             if has_placeholder(info.self_type.upper_bound):
                 # Similar to regular (user defined) type variables.
-                self.defer(force_progress=True)
+                self.process_placeholder(
+                    None,
+                    "Self upper bound",
+                    info,
+                    force_progress=info.self_type.upper_bound != fill_typevars(info),
+                )
             else:
                 return
         info.self_type = TypeVarType("Self", f"{info.fullname}.Self", 0, [], fill_typevars(info))
@@ -1579,7 +1584,9 @@ class SemanticAnalyzer(
             self.mark_incomplete(defn.name, defn)
             return
 
-        declared_metaclass, should_defer = self.get_declared_metaclass(defn.name, defn.metaclass)
+        declared_metaclass, should_defer, any_meta = self.get_declared_metaclass(
+            defn.name, defn.metaclass
+        )
         if should_defer or self.found_incomplete_ref(tag):
             # Metaclass was not ready. Defer current target.
             self.mark_incomplete(defn.name, defn)
@@ -1599,6 +1606,8 @@ class SemanticAnalyzer(
         self.setup_type_vars(defn, tvar_defs)
         if base_error:
             defn.info.fallback_to_any = True
+        if any_meta:
+            defn.info.meta_fallback_to_any = True
 
         with self.scope.class_scope(defn.info):
             self.configure_base_classes(defn, base_types)
@@ -2128,7 +2137,9 @@ class SemanticAnalyzer(
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
         if info.special_alias and has_placeholder(info.special_alias.target):
-            self.defer(force_progress=True)
+            self.process_placeholder(
+                None, "tuple base", defn, force_progress=base != info.tuple_type
+            )
         info.update_tuple_type(base)
         self.setup_alias_type_vars(defn)
 
@@ -2181,7 +2192,7 @@ class SemanticAnalyzer(
         if len(defn.base_type_exprs) == 1:
             base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
-                base_expr.accept(self)
+                self.analyze_type_expr(base_expr)
                 if (
                     base_expr.callee.fullname
                     in {
@@ -2247,8 +2258,17 @@ class SemanticAnalyzer(
 
     def get_declared_metaclass(
         self, name: str, metaclass_expr: Expression | None
-    ) -> tuple[Instance | None, bool]:
-        """Returns either metaclass instance or boolean whether we should defer."""
+    ) -> tuple[Instance | None, bool, bool]:
+        """Get declared metaclass from metaclass expression.
+
+        Returns a tuple of three values:
+          * A metaclass instance or None
+          * A boolean indicating whether we should defer
+          * A boolean indicating whether we should set metaclass Any fallback
+            (either for Any metaclass or invalid/dynamic metaclass).
+
+        The two boolean flags can only be True if instance is None.
+        """
         declared_metaclass = None
         if metaclass_expr:
             metaclass_name = None
@@ -2258,25 +2278,20 @@ class SemanticAnalyzer(
                 metaclass_name = get_member_expr_fullname(metaclass_expr)
             if metaclass_name is None:
                 self.fail(f'Dynamic metaclass not supported for "{name}"', metaclass_expr)
-                return None, False
+                return None, False, True
             sym = self.lookup_qualified(metaclass_name, metaclass_expr)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
-                return None, False
+                return None, False, True
             if isinstance(sym.node, Var) and isinstance(get_proper_type(sym.node.type), AnyType):
-                # Create a fake TypeInfo that fallbacks to `Any`, basically allowing
-                # all the attributes. Same thing as we do for `Any` base class.
-                any_info = self.make_empty_type_info(ClassDef(sym.node.name, Block([])))
-                any_info.fallback_to_any = True
-                any_info._fullname = sym.node.fullname
                 if self.options.disallow_subclassing_any:
                     self.fail(
-                        f'Class cannot use "{any_info.fullname}" as a metaclass (has type "Any")',
+                        f'Class cannot use "{sym.node.name}" as a metaclass (has type "Any")',
                         metaclass_expr,
                     )
-                return Instance(any_info, []), False
+                return None, False, True
             if isinstance(sym.node, PlaceholderNode):
-                return None, True  # defer later in the caller
+                return None, True, False  # defer later in the caller
 
             # Support type aliases, like `_Meta: TypeAlias = type`
             if (
@@ -2291,16 +2306,16 @@ class SemanticAnalyzer(
 
             if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
                 self.fail(f'Invalid metaclass "{metaclass_name}"', metaclass_expr)
-                return None, False
+                return None, False, False
             if not metaclass_info.is_metaclass():
                 self.fail(
                     'Metaclasses not inheriting from "type" are not supported', metaclass_expr
                 )
-                return None, False
+                return None, False, False
             inst = fill_typevars(metaclass_info)
             assert isinstance(inst, Instance)
             declared_metaclass = inst
-        return declared_metaclass, False
+        return declared_metaclass, False, False
 
     def recalculate_metaclass(self, defn: ClassDef, declared_metaclass: Instance | None) -> None:
         defn.info.declared_metaclass = declared_metaclass
@@ -2648,7 +2663,7 @@ class SemanticAnalyzer(
         # But we can't use a full visit because it may emit extra incomplete refs (namely
         # when analysing any type applications there) thus preventing the further analysis.
         # To break the tie, we first analyse rvalue partially, if it can be a type alias.
-        if self.can_possibly_be_index_alias(s):
+        if self.can_possibly_be_type_form(s):
             old_basic_type_applications = self.basic_type_applications
             self.basic_type_applications = True
             with self.allow_unbound_tvars_set():
@@ -2664,7 +2679,7 @@ class SemanticAnalyzer(
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
-        if self.can_possibly_be_index_alias(s):
+        if self.can_possibly_be_type_form(s):
             # Now re-visit those rvalues that were we skipped type applications above.
             # This should be safe as generally semantic analyzer is idempotent.
             with self.allow_unbound_tvars_set():
@@ -2807,16 +2822,19 @@ class SemanticAnalyzer(
                 return True
         return False
 
-    def can_possibly_be_index_alias(self, s: AssignmentStmt) -> bool:
-        """Like can_be_type_alias(), but simpler and doesn't require analyzed rvalue.
+    def can_possibly_be_type_form(self, s: AssignmentStmt) -> bool:
+        """Like can_be_type_alias(), but simpler and doesn't require fully analyzed rvalue.
 
-        Instead, use lvalues/annotations structure to figure out whether this can
-        potentially be a type alias definition. Another difference from above function
-        is that we are only interested IndexExpr and OpExpr rvalues, since only those
+        Instead, use lvalues/annotations structure to figure out whether this can potentially be
+        a type alias definition, NamedTuple, or TypedDict. Another difference from above function
+        is that we are only interested IndexExpr, CallExpr and OpExpr rvalues, since only those
         can be potentially recursive (things like `A = A` are never valid).
         """
         if len(s.lvalues) > 1:
             return False
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.callee, RefExpr):
+            ref = s.rvalue.callee.fullname
+            return ref in TPDICT_NAMES or ref in TYPED_NAMEDTUPLE_NAMES
         if not isinstance(s.lvalues[0], NameExpr):
             return False
         if s.unanalyzed_type is not None and not self.is_pep_613(s):
@@ -3902,12 +3920,16 @@ class SemanticAnalyzer(
             type_var = TypeVarExpr(name, self.qualified_name(name), values, upper_bound, variance)
             type_var.line = call.line
             call.analyzed = type_var
+            updated = True
         else:
             assert isinstance(call.analyzed, TypeVarExpr)
+            updated = values != call.analyzed.values or upper_bound != call.analyzed.upper_bound
             call.analyzed.upper_bound = upper_bound
             call.analyzed.values = values
         if any(has_placeholder(v) for v in values) or has_placeholder(upper_bound):
-            self.defer(force_progress=True)
+            self.process_placeholder(
+                None, f"TypeVar {'values' if values else 'upper bound'}", s, force_progress=updated
+            )
 
         self.add_symbol(name, call.analyzed, s)
         return True
@@ -5163,10 +5185,11 @@ class SemanticAnalyzer(
             e.expr.accept(self)
 
     def visit_await_expr(self, expr: AwaitExpr) -> None:
-        if not self.is_func_scope():
-            self.fail('"await" outside function', expr)
+        if not self.is_func_scope() or not self.function_stack:
+            # We check both because is_function_scope() returns True inside comprehensions.
+            self.fail('"await" outside function', expr, serious=True, blocker=True)
         elif not self.function_stack[-1].is_coroutine:
-            self.fail('"await" outside coroutine ("async def")', expr)
+            self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
         expr.expr.accept(self)
 
     #
@@ -5919,7 +5942,9 @@ class SemanticAnalyzer(
         """
         return fullname in self.incomplete_namespaces
 
-    def process_placeholder(self, name: str, kind: str, ctx: Context) -> None:
+    def process_placeholder(
+        self, name: str | None, kind: str, ctx: Context, force_progress: bool = False
+    ) -> None:
         """Process a reference targeting placeholder node.
 
         If this is not a final iteration, defer current node,
@@ -5931,10 +5956,11 @@ class SemanticAnalyzer(
         if self.final_iteration:
             self.cannot_resolve_name(name, kind, ctx)
         else:
-            self.defer(ctx)
+            self.defer(ctx, force_progress=force_progress)
 
-    def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
-        self.fail(f'Cannot resolve {kind} "{name}" (possible cyclic definition)', ctx)
+    def cannot_resolve_name(self, name: str | None, kind: str, ctx: Context) -> None:
+        name_format = f' "{name}"' if name else ""
+        self.fail(f"Cannot resolve {kind}{name_format} (possible cyclic definition)", ctx)
         if not self.options.disable_recursive_aliases and self.is_func_scope():
             self.note("Recursive types are not allowed at function scope", ctx)
 

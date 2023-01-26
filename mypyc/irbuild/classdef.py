@@ -161,14 +161,16 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # Generate implicit property setters/getters
     for name, decl in ir.method_decls.items():
         if decl.implicit and decl.is_prop_getter:
-            getter_ir = gen_property_getter_ir(builder, decl, cdef)
+            getter_ir = gen_property_getter_ir(builder, decl, cdef, ir.is_trait)
             builder.functions.append(getter_ir)
             ir.methods[getter_ir.decl.name] = getter_ir
 
             setter_ir = None
             setter_name = PROPSET_PREFIX + name
             if setter_name in ir.method_decls:
-                setter_ir = gen_property_setter_ir(builder, ir.method_decls[setter_name], cdef)
+                setter_ir = gen_property_setter_ir(
+                    builder, ir.method_decls[setter_name], cdef, ir.is_trait
+                )
                 builder.functions.append(setter_ir)
                 ir.methods[setter_name] = setter_ir
 

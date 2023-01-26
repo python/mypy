@@ -995,58 +995,53 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return infer_constraints(template, item, self.direction)
 
     def visit_tuple_type(self, template: TupleType) -> list[Constraint]:
+
         actual = self.actual
-        # TODO: Support subclasses of Tuple
+        unpack_index = find_unpack_in_list(template.items)
         is_varlength_tuple = (
             isinstance(actual, Instance) and actual.type.fullname == "builtins.tuple"
         )
-        unpack_index = find_unpack_in_list(template.items)
 
-        if unpack_index is not None:
-            unpack_item = get_proper_type(template.items[unpack_index])
-            assert isinstance(unpack_item, UnpackType)
-
-            unpacked_type = get_proper_type(unpack_item.type)
-            if isinstance(unpacked_type, TypeVarTupleType):
-                if is_varlength_tuple:
-                    # This case is only valid when the unpack is the only
-                    # item in the tuple.
-                    #
-                    # TODO: We should support this in the case that all the items
-                    # in the tuple besides the unpack have the same type as the
-                    # varlength tuple's type. E.g. Tuple[int, ...] should be valid
-                    # where we expect Tuple[int, Unpack[Ts]], but not for Tuple[str, Unpack[Ts]].
-                    assert len(template.items) == 1
-
-                if isinstance(actual, (TupleType, AnyType)) or is_varlength_tuple:
-                    modified_actual = actual
-                    if isinstance(actual, TupleType):
-                        # Exclude the items from before and after the unpack index.
-                        # TODO: Support including constraints from the prefix/suffix.
-                        _, actual_items, _ = split_with_prefix_and_suffix(
-                            tuple(actual.items),
-                            unpack_index,
-                            len(template.items) - unpack_index - 1,
-                        )
-                        modified_actual = actual.copy_modified(items=list(actual_items))
-                    return [
-                        Constraint(
-                            type_var=unpacked_type, op=self.direction, target=modified_actual
-                        )
-                    ]
-
-        if isinstance(actual, TupleType) and len(actual.items) == len(template.items):
-            if (
-                actual.partial_fallback.type.is_named_tuple
-                and template.partial_fallback.type.is_named_tuple
-            ):
-                # For named tuples using just the fallbacks usually gives better results.
-                return infer_constraints(
-                    template.partial_fallback, actual.partial_fallback, self.direction
-                )
+        if isinstance(actual, TupleType) or is_varlength_tuple:
             res: list[Constraint] = []
-            for i in range(len(template.items)):
-                res.extend(infer_constraints(template.items[i], actual.items[i], self.direction))
+            if unpack_index is not None:
+                if is_varlength_tuple:
+                    unpack_type = template.items[unpack_index]
+                    assert isinstance(unpack_type, UnpackType)
+                    unpacked_type = unpack_type.type
+                    assert isinstance(unpacked_type, TypeVarTupleType)
+                    return [Constraint(type_var=unpacked_type, op=self.direction, target=actual)]
+                else:
+                    assert isinstance(actual, TupleType)
+                    (
+                        unpack_constraints,
+                        actual_items,
+                        template_items,
+                    ) = find_and_build_constraints_for_unpack(
+                        tuple(actual.items), tuple(template.items), self.direction
+                    )
+                    res.extend(unpack_constraints)
+            elif isinstance(actual, TupleType):
+                actual_items = tuple(actual.items)
+                template_items = tuple(template.items)
+            else:
+                return res
+
+            # Cases above will return if actual wasn't a TupleType.
+            assert isinstance(actual, TupleType)
+            if len(actual_items) == len(template_items):
+                if (
+                    actual.partial_fallback.type.is_named_tuple
+                    and template.partial_fallback.type.is_named_tuple
+                ):
+                    # For named tuples using just the fallbacks usually gives better results.
+                    return res + infer_constraints(
+                        template.partial_fallback, actual.partial_fallback, self.direction
+                    )
+                for i in range(len(template_items)):
+                    res.extend(
+                        infer_constraints(template_items[i], actual_items[i], self.direction)
+                    )
             return res
         elif isinstance(actual, AnyType):
             return self.infer_against_any(template.items, actual)
@@ -1079,10 +1074,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> list[Constraint]:
         res: list[Constraint] = []
         for t in types:
-            # Note that we ignore variance and simply always use the
-            # original direction. This is because for Any targets direction is
-            # irrelevant in most cases, see e.g. is_same_constraint().
-            res.extend(infer_constraints(t, any_type, self.direction))
+            if isinstance(t, UnpackType) and isinstance(t.type, TypeVarTupleType):
+                res.append(Constraint(t.type, self.direction, any_type))
+            else:
+                # Note that we ignore variance and simply always use the
+                # original direction. This is because for Any targets direction is
+                # irrelevant in most cases, see e.g. is_same_constraint().
+                res.extend(infer_constraints(t, any_type, self.direction))
         return res
 
     def visit_overloaded(self, template: Overloaded) -> list[Constraint]:
@@ -1187,6 +1185,11 @@ def build_constraints_for_unpack(
     template_suffix_len: int,
     direction: int,
 ) -> tuple[list[Constraint], tuple[Type, ...], tuple[Type, ...]]:
+    if mapped_prefix_len is None:
+        mapped_prefix_len = template_prefix_len
+    if mapped_suffix_len is None:
+        mapped_suffix_len = template_suffix_len
+
     split_result = split_with_mapped_and_template(
         mapped,
         mapped_prefix_len,

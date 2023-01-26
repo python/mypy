@@ -789,6 +789,7 @@ MypyFile:1(
           Args())))))
 
 [case testTryExceptWithMultipleHandlers]
+class Err(BaseException): pass
 try:
     pass
 except BaseException as e:
@@ -796,36 +797,34 @@ except BaseException as e:
 except Err as f:
     f = BaseException() # Fail
     f = Err()
-class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
 [out]
 MypyFile:1(
-  TryStmt:1(
-    Block:1(
-      PassStmt:2())
-    NameExpr(BaseException [builtins.BaseException])
-    NameExpr(e* [__main__.e])
-    Block:3(
-      PassStmt:4())
-    NameExpr(Err [__main__.Err])
-    NameExpr(f* [__main__.f])
-    Block:5(
-      AssignmentStmt:6(
-        NameExpr(f [__main__.f])
-        CallExpr:6(
-          NameExpr(BaseException [builtins.BaseException])
-          Args()))
-      AssignmentStmt:7(
-        NameExpr(f [__main__.f])
-        CallExpr:7(
-          NameExpr(Err [__main__.Err])
-          Args()))))
-  ClassDef:8(
+  ClassDef:1(
     Err
     BaseType(
       builtins.BaseException)
-    PassStmt:8()))
-
+    PassStmt:1())
+  TryStmt:2(
+    Block:2(
+      PassStmt:3())
+    NameExpr(BaseException [builtins.BaseException])
+    NameExpr(e* [__main__.e])
+    Block:4(
+      PassStmt:5())
+    NameExpr(Err [__main__.Err])
+    NameExpr(f* [__main__.f])
+    Block:6(
+      AssignmentStmt:7(
+        NameExpr(f [__main__.f])
+        CallExpr:7(
+          NameExpr(BaseException [builtins.BaseException])
+          Args()))
+      AssignmentStmt:8(
+        NameExpr(f [__main__.f])
+        CallExpr:8(
+          NameExpr(Err [__main__.Err])
+          Args())))))
 [case testMultipleAssignmentWithPartialNewDef]
 # flags: --allow-redefinition
 o = None
