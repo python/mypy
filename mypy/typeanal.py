@@ -690,8 +690,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             instance.args = tuple(self.pack_paramspec_args(instance.args))
 
         if info.has_type_var_tuple_type:
-            # - 1 to allow for the empty type var tuple case.
-            valid_arg_length = len(instance.args) >= len(info.type_vars) - 1
+            if instance.args:
+                # -1 to account for empty tuple
+                valid_arg_length = len(instance.args) >= len(info.type_vars) - 1
+            # Empty case is special cased and we want to infer a Tuple[Any, ...]
+            # instead of the empty tuple, so no - 1 here.
+            else:
+                valid_arg_length = False
         else:
             valid_arg_length = len(instance.args) == len(info.type_vars)
 
@@ -1649,6 +1654,20 @@ def get_omitted_any(
     return any_type
 
 
+def fix_type_var_tuple_argument(any_type: Type, t: Instance) -> None:
+    if t.type.has_type_var_tuple_type:
+        args = list(t.args)
+        assert t.type.type_var_tuple_prefix is not None
+        tvt = t.type.defn.type_vars[t.type.type_var_tuple_prefix]
+        assert isinstance(tvt, TypeVarTupleType)
+        args[t.type.type_var_tuple_prefix] = UnpackType(
+            Instance(
+                tvt.tuple_fallback.type, [any_type]
+            )
+        )
+        t.args = tuple(args)
+
+
 def fix_instance(
     t: Instance,
     fail: MsgCallback,
@@ -1671,6 +1690,8 @@ def fix_instance(
             disallow_any, fail, note, t, python_version, fullname, unexpanded_type
         )
         t.args = (any_type,) * len(t.type.type_vars)
+        fix_type_var_tuple_argument(any_type, t)
+
         return
     # Invalid number of type parameters.
     fail(
@@ -1682,6 +1703,7 @@ def fix_instance(
     # otherwise the type checker may crash as it expects
     # things to be right.
     t.args = tuple(AnyType(TypeOfAny.from_error) for _ in t.type.type_vars)
+    fix_type_var_tuple_argument(AnyType(TypeOfAny.from_error), t)
     t.invalid = True
 
 
