@@ -13,6 +13,7 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     JsonDict,
+    Node,
     PassStmt,
     RefExpr,
     SymbolTableNode,
@@ -68,19 +69,7 @@ def _get_argument(call: CallExpr, name: str) -> Expression | None:
     #
     # Note: I'm not hard-coding the index so that in the future we can support other
     # attrib and class makers.
-    if not isinstance(call.callee, RefExpr):
-        return None
-
-    callee_type = None
-    callee_node = call.callee.node
-    if isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES)) and callee_node.type:
-        callee_node_type = get_proper_type(callee_node.type)
-        if isinstance(callee_node_type, Overloaded):
-            # We take the last overload.
-            callee_type = callee_node_type.items[-1]
-        elif isinstance(callee_node_type, CallableType):
-            callee_type = callee_node_type
-
+    callee_type = _get_callee_type(call)
     if not callee_type:
         return None
 
@@ -94,6 +83,31 @@ def _get_argument(call: CallExpr, name: str) -> Expression | None:
             return attr_value
         if attr_name == argument.name:
             return attr_value
+
+    return None
+
+
+def _get_callee_type(call: CallExpr) -> CallableType | None:
+    """Return the type of the callee, regardless of its syntatic form."""
+
+    callee_node: Node | None = call.callee
+
+    if isinstance(callee_node, RefExpr):
+        callee_node = callee_node.node
+
+    # Some decorators may be using typing.dataclass_transform, which is itself a decorator, so we
+    # need to unwrap them to get at the true callee
+    if isinstance(callee_node, Decorator):
+        callee_node = callee_node.func
+
+    if isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES)) and callee_node.type:
+        callee_node_type = get_proper_type(callee_node.type)
+        if isinstance(callee_node_type, Overloaded):
+            # We take the last overload.
+            return callee_node_type.items[-1]
+        elif isinstance(callee_node_type, CallableType):
+            return callee_node_type
+
     return None
 
 

@@ -44,3 +44,20 @@ Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformParametersAreApplied]
+# flags: --python-version 3.7
+from typing import dataclass_transform, Callable, Type
+
+@dataclass_transform()
+def my_dataclass(*, eq: bool, order: bool) -> Callable[[Type], Type]:
+    def transform(cls: Type) -> Type:
+        return cls
+    return transform
+
+@my_dataclass(eq=False, order=True)
+class Application:  # E: eq must be True if order is True
+   ...
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/dataclasses.pyi]
