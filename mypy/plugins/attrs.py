@@ -890,7 +890,12 @@ def evolve_callback(ctx: mypy.plugin.FunctionSigContext) -> FunctionLike:
     if len(ctx.args[0]) < 1:
         return ctx.default_signature
 
-    node = ctx.args[0][0].node
+    expr = ctx.args[0][0]
+    if not isinstance(expr, RefExpr):
+        # TODO: can't rely on expressions having a type!
+        return ctx.default_signature
+
+    node = expr.node
     if node is None:
         return ctx.default_signature
 

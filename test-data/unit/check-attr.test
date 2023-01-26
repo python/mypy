@@ -1875,12 +1875,15 @@ import attr
 class C:
     name: str
 
+def q() -> C:
+    return C(name='foo')
+
 c = C(name='foo')
 attr.evolve()  # E: Missing positional argument "inst" in call to "evolve"
 attr.evolve(c)
 attr.evolve(c, name='bar')
 attr.evolve(
-    c,
+    q(),
     name=42,  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
 )
 attr.evolve(
