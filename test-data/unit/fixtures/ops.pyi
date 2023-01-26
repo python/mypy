@@ -33,8 +33,6 @@ class str:
     def startswith(self, x: 'str') -> bool: pass
     def strip(self) -> 'str': pass
 
-class unicode: pass
-
 class int:
     def __add__(self, x: 'int') -> 'int': pass
     def __radd__(self, x: 'int') -> 'int': pass

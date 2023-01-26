@@ -382,7 +382,7 @@ def f2() -> None:
             x = 2
         w = x  # No error.
 
-[case testDefinedDifferentBranchPossiblyUndefined]
+[case testPossiblyUndefinedLoop]
 # flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 
 def f0() -> None:
@@ -422,6 +422,11 @@ def f3() -> None:
         x = 1
     else:
         y = x  # E: Name "x" may be undefined
+
+def f4() -> None:
+    while int():
+        y = x  # E: Name "x" may be undefined
+        x: int = 1
 
 [case testAssert]
 # flags: --enable-error-code possibly-undefined
@@ -525,6 +530,190 @@ def f3() -> None:
         y = x
     z = x  # E: Name "x" may be undefined
 
+[case testTryBasic]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
+def f1() -> int:
+    try:
+        x = 1
+    except:
+        pass
+    return x  # E: Name "x" may be undefined
+
+def f2() -> int:
+    try:
+        pass
+    except:
+        x = 1
+    return x  # E: Name "x" may be undefined
+
+def f3() -> int:
+    try:
+        x = 1
+    except:
+        y = x  # E: Name "x" may be undefined
+    return x  # E: Name "x" may be undefined
+
+def f4() -> int:
+    try:
+        x = 1
+    except:
+        return 0
+    return x
+
+def f5() -> int:
+    try:
+        x = 1
+    except:
+        raise
+    return x
+
+def f6() -> None:
+    try:
+        pass
+    except BaseException as exc:
+        x = exc  # No error.
+        exc = BaseException()
+    # This case is covered by the other check, not by possibly undefined check.
+    y = exc # E: Trying to read deleted variable "exc"
+
+def f7() -> int:
+    try:
+        if int():
+            x = 1
+        assert False
+    except:
+        pass
+    return x  # E: Name "x" may be undefined
+[builtins fixtures/exception.pyi]
+
+[case testTryMultiExcept]
+# flags: --enable-error-code possibly-undefined
+def f1() -> int:
+    try:
+        x = 1
+    except BaseException:
+        x = 2
+    except:
+        x = 3
+    return x
+
+def f2() -> int:
+    try:
+        x = 1
+    except BaseException:
+        pass
+    except:
+        x = 3
+    return x  # E: Name "x" may be undefined
+[builtins fixtures/exception.pyi]
+
+[case testTryFinally]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
+def f1() -> int:
+    try:
+        x = 1
+    finally:
+        x = 2
+    return x
+
+def f2() -> int:
+    try:
+        pass
+    except:
+        pass
+    finally:
+        x = 2
+    return x
+
+def f3() -> int:
+    try:
+        x = 1
+    except:
+        pass
+    finally:
+        y = x  # E: Name "x" may be undefined
+    return x
+
+def f4() -> int:
+    try:
+        x = 0
+    except BaseException:
+        raise
+    finally:
+        y = x  # E: Name "x" may be undefined
+    return y
+
+def f5() -> int:
+    try:
+        if int():
+            x = 1
+        else:
+            return 0
+    finally:
+        pass
+    return x  # No error.
+
+def f6() -> int:
+    try:
+        if int():
+            x = 1
+        else:
+            return 0
+    finally:
+        a = x  # E: Name "x" may be undefined
+    return a
+[builtins fixtures/exception.pyi]
+
+[case testTryElse]
+# flags: --enable-error-code possibly-undefined
+def f1() -> int:
+    try:
+        return 0
+    except BaseException:
+        x = 1
+    else:
+        x = 2
+    finally:
+        y = x
+    return y
+
+def f2() -> int:
+    try:
+        pass
+    except:
+        x = 1
+    else:
+        x = 2
+    return x
+
+def f3() -> int:
+    try:
+        pass
+    except:
+        x = 1
+    else:
+        pass
+    return x  # E: Name "x" may be undefined
+
+def f4() -> int:
+    try:
+        x = 1
+    except:
+        x = 2
+    else:
+        pass
+    return x
+
+def f5() -> int:
+    try:
+        pass
+    except:
+        x = 1
+    else:
+        return 1
+    return x
+[builtins fixtures/exception.pyi]
+
 [case testNoReturn]
 # flags: --enable-error-code possibly-undefined
 
@@ -582,22 +771,30 @@ def f() -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachable]
-# flags: --enable-error-code possibly-undefined
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 import typing
 
-if typing.TYPE_CHECKING:
-    x = 1
-elif int():
-    y = 1
-else:
-    y = 2
-a = x
+def f0() -> None:
+    if typing.TYPE_CHECKING:
+        x = 1
+    elif int():
+        y = 1
+    else:
+        y = 2
+    a = x
 
-if not typing.TYPE_CHECKING:
-    pass
-else:
-    z = 1
-a = z
+def f1() -> None:
+    if not typing.TYPE_CHECKING:
+        pass
+    else:
+        z = 1
+    a = z
+
+def f2() -> None:
+    if typing.TYPE_CHECKING:
+        x = 1
+    else:
+        y = x
 [typing fixtures/typing-medium.pyi]
 
 [case testUsedBeforeDef]
@@ -712,6 +909,16 @@ def f0() -> None:
     type = "abc"
     a = type
 
+[case testUsedBeforeDefBuiltinsMultipass]
+# flags: --enable-error-code used-before-def
+
+# When doing multiple passes, mypy resolves references slightly differently.
+# In this case, it would refer the earlier `type` call to the range class defined below.
+_type = type  # No error
+_C = C  # E: Name "C" is used before definition
+class type: pass
+class C: pass
+
 [case testUsedBeforeDefImplicitModuleAttrs]
 # flags: --enable-error-code used-before-def
 a = __name__  # No error.
@@ -734,3 +941,30 @@ def f():
         x = 0
     z = y  # E: Name "y" is used before definition
     y: int = x  # E: Name "x" may be undefined
+
+[case testClassBody]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
+
+class A:
+    # The following should not only trigger an error from semantic analyzer, but not the used-before-def check.
+    y = x + 1  # E: Name "x" is not defined
+    x = 0
+    # Same as above but in a loop, which should trigger a possibly-undefined error.
+    for _ in [1, 2, 3]:
+        b = a + 1  # E: Name "a" is not defined
+        a = 0
+
+
+class B:
+    if int():
+        x = 0
+    else:
+        # This type of check is not caught by the semantic analyzer. If we ever update it to catch such issues,
+        # we should make sure that errors are not double-reported.
+        y = x  # E: Name "x" is used before definition
+    for _ in [1, 2, 3]:
+        if int():
+            a = 0
+        else:
+            # Same as above but in a loop.
+            b = a  # E: Name "a" may be undefined

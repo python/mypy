@@ -140,20 +140,15 @@ main:5: error: Incompatible types in assignment (expression has type "bool", var
 main:7: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testForStatement]
+class A: pass
 
 a = None # type: A
 b = None # type: object
 for a in [A()]:
-    a = b    # Fail
+    a = b  # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 else:
-    a = b    # Fail
-
-class A: pass
+    a = b  # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [builtins fixtures/list.pyi]
-[out]
-main:5: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-main:7: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-
 [case testBreakStatement]
 import typing
 while None:
@@ -520,15 +515,15 @@ class B: pass
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
 [case testTypeErrorInBlock]
+class A: pass
+class B: pass
 while object:
     x = None # type: A
     if int():
         x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
         x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-class A: pass
-class B: pass
-
 [case testTypeErrorInvolvingBaseException]
+class A: pass
 
 x, a = None, None # type: (BaseException, A)
 if int():
@@ -541,7 +536,6 @@ if int():
     x = A()              # E: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
 if int():
     x = BaseException()
-class A: pass
 [builtins fixtures/exception.pyi]
 
 [case testSimpleTryExcept2]
@@ -557,49 +551,38 @@ main:5: error: Incompatible types in assignment (expression has type "object", v
 
 [case testBaseClassAsExceptionTypeInExcept]
 import typing
+class Err(BaseException): pass
 try:
   pass
 except Err as e:
-  e = BaseException() # Fail
+  e = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
   e = Err()
-class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
-[out]
-main:5: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testMultipleExceptHandlers]
 import typing
+class Err(BaseException): pass
 try:
     pass
 except BaseException as e:
     pass
 except Err as f:
-    f = BaseException() # Fail
+    f = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
     f = Err()
-class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
-[out]
-main:7: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testTryExceptStatement]
 import typing
-try:
-    a = B() # type: A       # Fail
-except BaseException as e:
-    e = A()             # Fail
-    e = Err()
-except Err as f:
-    f = BaseException() # Fail
-    f = Err()
 class A: pass
 class B: pass
 class Err(BaseException): pass
+try:
+    a = B() # type: A  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+except BaseException as e:
+    e = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
+    e = Err()
+except Err as f:
+    f = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
+    f = Err()
 [builtins fixtures/exception.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:5: error: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
-main:8: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testTryExceptWithinFunction]
 import typing
 def f() -> None:
@@ -823,7 +806,7 @@ try: pass
 except E1 as e: pass
 try: pass
 except E2 as e: pass
-e + 1 # E: Trying to read deleted variable "e"
+e + 1 # E: Trying to read deleted variable "e"  # E: Name "e" is used before definition
 e = E1() # E: Assignment to variable "e" outside except: block
 [builtins fixtures/exception.pyi]
 
@@ -2052,16 +2035,12 @@ foo = int
 
 [case testTypeOfGlobalUsed]
 import typing
+class A(): pass
+class B(): pass
 g = A()
 def f() -> None:
     global g
-    g = B()
-
-class A(): pass
-class B(): pass
-[out]
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-
+    g = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [case testTypeOfNonlocalUsed]
 import typing
 def f() -> None:

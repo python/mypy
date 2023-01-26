@@ -1,3 +1,4 @@
+import _socket
 import email.message
 import io
 import socketserver
@@ -52,25 +53,15 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     extensions_map: dict[str, str]
     if sys.version_info >= (3, 12):
-        def __init__(
-            self,
-            request: socketserver._RequestType,
-            client_address: socketserver._AddressType,
-            server: socketserver.BaseServer,
-            *,
-            directory: str | None = ...,
-            index_pages: Sequence[str] | None = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            request: socketserver._RequestType,
-            client_address: socketserver._AddressType,
-            server: socketserver.BaseServer,
-            *,
-            directory: str | None = ...,
-        ) -> None: ...
-
+        index_pages: ClassVar[tuple[str, ...]]
+    def __init__(
+        self,
+        request: socketserver._RequestType,
+        client_address: _socket._RetAddress,
+        server: socketserver.BaseServer,
+        *,
+        directory: str | None = ...,
+    ) -> None: ...
     def do_GET(self) -> None: ...
     def do_HEAD(self) -> None: ...
     def send_head(self) -> io.BytesIO | BinaryIO | None: ...  # undocumented

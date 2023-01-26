@@ -249,6 +249,9 @@ class Options:
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
 
+        # Run tree.serialize() even if cache generation is disabled
+        self.debug_serialize = False
+
         # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
         # in modules being compiled. Not in the config file or command line.
         self.mypyc = False

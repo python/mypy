@@ -47,6 +47,10 @@ class B: pass
 
 [case testCallingFunctionWithDynamicArgumentTypes]
 from typing import Any
+
+def f(x: Any) -> 'A':
+    pass
+
 a, b = None, None # type: (A, B)
 
 if int():
@@ -61,24 +65,22 @@ if int():
 if int():
     a = f(f)
 
-def f(x: Any) -> 'A':
-    pass
-
 class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
 
 [case testCallingWithDynamicReturnType]
 from typing import Any
+
+def f(x: 'A') -> Any:
+    pass
+
 a, b = None, None # type: (A, B)
 
 a = f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 
 a = f(a)
 b = f(a)
-
-def f(x: 'A') -> Any:
-    pass
 
 class A: pass
 class B: pass
@@ -283,6 +285,8 @@ class A: pass
 from typing import Any, cast
 class A: pass
 class B: pass
+def f() -> None: pass
+
 d = None # type: Any
 a = None # type: A
 b = None # type: B
@@ -294,10 +298,15 @@ if int():
     b = cast(Any, d)
 if int():
     a = cast(Any, f())
-def f() -> None: pass
-
 [case testCompatibilityOfDynamicWithOtherTypes]
 from typing import Any, Tuple
+
+def g(a: 'A') -> None:
+    pass
+
+class A: pass
+class B: pass
+
 d = None # type: Any
 t = None # type: Tuple[A, A]
 # TODO: callable types, overloaded functions
@@ -308,12 +317,6 @@ d = g
 d = A
 t = d
 f = d
-
-def g(a: 'A') -> None:
-    pass
-
-class A: pass
-class B: pass
 [builtins fixtures/tuple.pyi]
 
 
@@ -362,6 +365,8 @@ a = None # type: A
 g = None # type: Callable[[], None]
 h = None # type: Callable[[A], None]
 
+def f(x): pass
+
 f()     # E: Missing positional argument "x" in call to "f"
 f(x, x) # E: Too many arguments for "f"
 if int():
@@ -373,8 +378,6 @@ if int():
 if int():
     h = f
 
-def f(x): pass
-
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDifferentArgCounts]
@@ -383,6 +386,9 @@ g0 = None # type: Callable[[], None]
 g1 = None # type: Callable[[A], None]
 g2 = None # type: Callable[[A, A], None]
 a = None # type: A
+
+def f0(): pass
+def f2(x, y): pass
 
 if int():
     g1 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A], None]")
@@ -400,15 +406,17 @@ if int():
 f0()
 f2(a, a)
 
-def f0(): pass
-
-def f2(x, y): pass
-
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDefaultArgs]
 from typing import Callable
+class A: pass
+class B: pass
+
 a, b = None, None # type: (A, B)
+
+def f01(x = b): pass
+def f13(x, y = b, z = b): pass
 
 g0 = None # type: Callable[[], None]
 g1 = None # type: Callable[[A], None]
@@ -443,11 +451,6 @@ if int():
 if int():
     g3 = f13
 
-def f01(x = b): pass
-def f13(x, y = b, z = b): pass
-
-class A: pass
-class B: pass
 [builtins fixtures/tuple.pyi]
 
 [case testSkipTypeCheckingWithImplicitSignature]
@@ -550,6 +553,10 @@ f(o, o, o)
 
 [case testInitMethodWithImplicitSignature]
 from typing import Callable
+
+class A:
+  def __init__(self, a, b): pass
+
 f1 = None # type: Callable[[A], A]
 f2 = None # type: Callable[[A, A], A]
 a = None # type: A
@@ -562,20 +569,14 @@ A(a, a)
 if int():
     f2 = A
 
-class A:
-  def __init__(self, a, b): pass
-
 [case testUsingImplicitTypeObjectWithIs]
-
-t = None # type: type
-t = A
-t = B
-
 class A: pass
 class B:
     def __init__(self): pass
 
-
+t = None # type: type
+t = A
+t = B
 -- Type compatibility
 -- ------------------
 

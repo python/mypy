@@ -535,7 +535,9 @@ class TypedDictAnalyzer:
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         typeddict_type = TypedDictType(dict(zip(items, types)), required_keys, fallback)
         if info.special_alias and has_placeholder(info.special_alias.target):
-            self.api.defer(force_progress=True)
+            self.api.process_placeholder(
+                None, "TypedDict item", info, force_progress=typeddict_type != info.typeddict_type
+            )
         info.update_typeddict_type(typeddict_type)
         return info
 

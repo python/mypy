@@ -597,7 +597,8 @@ int CPyStatics_Initialize(PyObject **statics,
                           const char * const *ints,
                           const double *floats,
                           const double *complex_numbers,
-                          const int *tuples);
+                          const int *tuples,
+                          const int *frozensets);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
                                   _Py_Identifier *method);

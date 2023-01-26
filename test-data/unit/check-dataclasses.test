@@ -1929,9 +1929,9 @@ reveal_type(D)  # N: Revealed type is "def (x: builtins.list[b.C]) -> a.D"
 [file b.py]
 from typing import List
 import a
-B = List[C]
-class C(CC): ...
 class CC: ...
+class C(CC): ...
+B = List[C]
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassSelfType]

@@ -561,6 +561,7 @@ A  # E: Name "A" is not defined
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleForwardAsUpperBound]
+# flags: --disable-error-code=used-before-def
 from typing import NamedTuple, TypeVar, Generic
 T = TypeVar('T', bound='M')
 class G(Generic[T]):
@@ -723,7 +724,7 @@ reveal_type(n.y[0]) # N: Revealed type is "Any"
 from typing import NamedTuple
 
 B = NamedTuple('B', [
-        ('x', A), # E: Cannot resolve name "A" (possible cyclic definition)
+        ('x', A), # E: Cannot resolve name "A" (possible cyclic definition)  # E: Name "A" is used before definition
         ('y', int),
     ])
 A = NamedTuple('A', [
@@ -904,6 +905,7 @@ if not b:
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleDoubleForward]
+# flags: --disable-error-code=used-before-def
 from typing import Union, Mapping, NamedTuple
 
 class MyBaseTuple(NamedTuple):

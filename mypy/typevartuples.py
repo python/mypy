@@ -46,7 +46,12 @@ def split_with_instance(
 
 
 def split_with_mapped_and_template(
-    mapped: Instance, template: Instance
+    mapped: tuple[Type, ...],
+    mapped_prefix_len: int | None,
+    mapped_suffix_len: int | None,
+    template: tuple[Type, ...],
+    template_prefix_len: int,
+    template_suffix_len: int,
 ) -> tuple[
     tuple[Type, ...],
     tuple[Type, ...],
@@ -55,7 +60,14 @@ def split_with_mapped_and_template(
     tuple[Type, ...],
     tuple[Type, ...],
 ] | None:
-    split_result = fully_split_with_mapped_and_template(mapped, template)
+    split_result = fully_split_with_mapped_and_template(
+        mapped,
+        mapped_prefix_len,
+        mapped_suffix_len,
+        template,
+        template_prefix_len,
+        template_suffix_len,
+    )
     if split_result is None:
         return None
 
@@ -83,7 +95,12 @@ def split_with_mapped_and_template(
 
 
 def fully_split_with_mapped_and_template(
-    mapped: Instance, template: Instance
+    mapped: tuple[Type, ...],
+    mapped_prefix_len: int | None,
+    mapped_suffix_len: int | None,
+    template: tuple[Type, ...],
+    template_prefix_len: int,
+    template_suffix_len: int,
 ) -> tuple[
     tuple[Type, ...],
     tuple[Type, ...],
@@ -96,8 +113,19 @@ def fully_split_with_mapped_and_template(
     tuple[Type, ...],
     tuple[Type, ...],
 ] | None:
-    mapped_prefix, mapped_middle, mapped_suffix = split_with_instance(mapped)
-    template_prefix, template_middle, template_suffix = split_with_instance(template)
+    if mapped_prefix_len is not None:
+        assert mapped_suffix_len is not None
+        mapped_prefix, mapped_middle, mapped_suffix = split_with_prefix_and_suffix(
+            tuple(mapped), mapped_prefix_len, mapped_suffix_len
+        )
+    else:
+        mapped_prefix = tuple()
+        mapped_suffix = tuple()
+        mapped_middle = mapped
+
+    template_prefix, template_middle, template_suffix = split_with_prefix_and_suffix(
+        tuple(template), template_prefix_len, template_suffix_len
+    )
 
     unpack_prefix = find_unpack_in_list(template_middle)
     if unpack_prefix is None:

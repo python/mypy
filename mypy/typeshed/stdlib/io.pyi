@@ -2,7 +2,7 @@ import abc
 import builtins
 import codecs
 import sys
-from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
+from _typeshed import FileDescriptorOrPath, ReadableBuffer, Self, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator
 from os import _Opener
 from types import TracebackType
@@ -92,9 +92,9 @@ class BufferedIOBase(IOBase):
 
 class FileIO(RawIOBase, BinaryIO):
     mode: str
-    name: StrOrBytesPath | int  # type: ignore[assignment]
+    name: FileDescriptorOrPath  # type: ignore[assignment]
     def __init__(
-        self, file: StrOrBytesPath | int, mode: str = ..., closefd: bool = ..., opener: _Opener | None = ...
+        self, file: FileDescriptorOrPath, mode: str = ..., closefd: bool = ..., opener: _Opener | None = ...
     ) -> None: ...
     @property
     def closefd(self) -> bool: ...
