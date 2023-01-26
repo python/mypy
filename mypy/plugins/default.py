@@ -9,6 +9,7 @@ from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
     FunctionContext,
+    FunctionSigContext,
     MethodContext,
     MethodSigContext,
     Plugin,
@@ -43,6 +44,15 @@ class DefaultPlugin(Plugin):
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+        return None
+
+    def get_function_signature_hook(
+        self, fullname: str
+    ) -> Callable[[FunctionSigContext], FunctionLike] | None:
+        from mypy.plugins import attrs
+
+        if fullname in ("attr.evolve", "attr.assoc"):
+            return attrs.evolve_callback
         return None
 
     def get_method_signature_hook(

@@ -1867,3 +1867,37 @@ D(1, "").a = 2 # E: Cannot assign to final attribute "a"
 D(1, "").b = "2" # E: Cannot assign to final attribute "b"
 
 [builtins fixtures/property.pyi]
+
+[case testEvolve]
+import attr
+
+@attr.s(auto_attribs=True)
+class C:
+    name: str
+
+c = C(name='foo')
+attr.evolve()  # E: Missing positional argument "inst" in call to "evolve"
+attr.evolve(c)
+attr.evolve(c, name='bar')
+attr.evolve(
+    c,
+    name=42,  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
+)
+attr.evolve(
+    c,
+    age=42,  # type: ignore[call-arg]
+)
+
+# 'assoc' is the deprecated one:
+
+attr.assoc(
+    c,
+    name=42,  # E: Argument "name" to "assoc" has incompatible type "int"; expected "str"
+)
+attr.assoc(
+    c,
+    age=42,  # type: ignore[call-arg]
+)
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-medium.pyi]

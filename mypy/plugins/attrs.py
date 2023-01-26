@@ -883,3 +883,22 @@ class MethodAdder:
         """
         self_type = self_type if self_type is not None else self.self_type
         add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
+
+
+def evolve_callback(ctx: mypy.plugin.FunctionSigContext) -> FunctionLike:
+    """Callback to provide an accurate signature for attrs.evolve."""
+    if len(ctx.args[0]) < 1:
+        return ctx.default_signature
+
+    metadata = ctx.args[0][0].node.type.type.metadata
+
+    args = {
+        md_attribute['name']: ctx.api.named_generic_type(md_attribute['init_type'], args=[])
+        for md_attribute in metadata.get('attrs', {}).get('attributes', [])
+    }
+
+    return ctx.default_signature.copy_modified(
+        arg_kinds=ctx.default_signature.arg_kinds[:1] + [ARG_NAMED_OPT] * len(args),
+        arg_names=ctx.default_signature.arg_names[:1] + list(args.keys()),
+        arg_types=ctx.default_signature.arg_types[:1] + list(args.values()),
+    )
