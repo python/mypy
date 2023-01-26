@@ -1888,7 +1888,7 @@ attr.evolve(
     age=42,  # type: ignore[call-arg]
 )
 
-# 'assoc' is the deprecated one:
+# 'assoc' is deprecated equivalent of 'evolve'
 
 attr.assoc(
     c,

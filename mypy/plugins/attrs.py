@@ -890,11 +890,15 @@ def evolve_callback(ctx: mypy.plugin.FunctionSigContext) -> FunctionLike:
     if len(ctx.args[0]) < 1:
         return ctx.default_signature
 
-    metadata = ctx.args[0][0].node.type.type.metadata
+    node = ctx.args[0][0].node
+    if node is None:
+        return ctx.default_signature
+
+    metadata = node.type.type.metadata
 
     args = {
-        md_attribute['name']: ctx.api.named_generic_type(md_attribute['init_type'], args=[])
-        for md_attribute in metadata.get('attrs', {}).get('attributes', [])
+        md_attribute["name"]: ctx.api.named_generic_type(md_attribute["init_type"], args=[])
+        for md_attribute in metadata.get("attrs", {}).get("attributes", [])
     }
 
     return ctx.default_signature.copy_modified(
