@@ -2894,14 +2894,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_type = self.accept(left)
 
             if operator == "in" or operator == "not in":
-                """
-                This case covers both iterables and containers, which have different meanings.
-                For a container, the in operator calls the __contains__ method.
-                For an iterable, the in operator iterates over the iterable, and compares each item one-by-one.
-                We allow `in` for a union of containers and iterables as long as at least one of them matches the
-                type of the left operand, as the operation will simply return False if the union's container/iterator
-                type doesn't match the left operand.
-                """
+                # This case covers both iterables and containers, which have different meanings.
+                # For a container, the in operator calls the __contains__ method.
+                # For an iterable, the in operator iterates over the iterable, and compares each item one-by-one.
+                # We allow `in` for a union of containers and iterables as long as at least one of them matches the
+                # type of the left operand, as the operation will simply return False if the union's container/iterator
+                # type doesn't match the left operand.
 
                 # If the right operand has partial type, look it up without triggering
                 # a "Need type annotation ..." message, as it would be noise.
