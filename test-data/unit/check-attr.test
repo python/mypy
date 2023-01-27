@@ -1888,10 +1888,11 @@ class C:
 
 c = C(name='foo', b=Derived())
 c = attr.evolve(c)
+c = attr.evolve(c, name='foo')
+c = attr.evolve(c, 'foo')  # E: Too many positional arguments for "evolve"
 c = attr.evolve(c, b=Derived())
 c = attr.evolve(c, b=Base())
 c = attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" has incompatible type "Other"; expected "Base"
-c = attr.evolve(c, name='foo')
 c = attr.evolve(c, name=42)  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
 c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "evolve"
 

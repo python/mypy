@@ -890,13 +890,14 @@ def _get_attrs_init_type(typ: Type) -> CallableType | None:
     """
     If `typ` refers to an attrs class, gets the type of its initializer method.
     """
+    typ = get_proper_type(typ)
     if not isinstance(typ, Instance):
         return None
     magic_attr = typ.type.get(MAGIC_ATTR_NAME)
     if magic_attr is None or not magic_attr.plugin_generated:
         return None
     init_method = typ.type.get_method("__init__") or typ.type.get_method("__attrs_init__")
-    if not isinstance(init_method, FuncDef):
+    if not isinstance(init_method, FuncDef) or not isinstance(init_method.type, CallableType):
         return None
     return init_method.type
 
@@ -920,6 +921,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     inst_type = ctx.api.expr_checker.accept(inst_arg)
     # </hack>
 
+    inst_type = get_proper_type(inst_type)
     if isinstance(inst_type, AnyType):
         return ctx.default_signature
 
@@ -933,8 +935,10 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         )
         return ctx.default_signature
 
+    arg_names = attrs_init_type.arg_names.copy()
+    arg_names[0] = "inst"
     return attrs_init_type.copy_modified(
-        arg_names=["inst"] + attrs_init_type.arg_names[1:],
+        arg_names=arg_names,
         arg_kinds=[ARG_POS] + [ARG_NAMED_OPT] * (len(attrs_init_type.arg_kinds) - 1),
         ret_type=inst_type,
         name=ctx.default_signature.name,
