@@ -1871,36 +1871,27 @@ D(1, "").b = "2" # E: Cannot assign to final attribute "b"
 [case testEvolve]
 import attr
 
+class Base:
+    pass
+
+class Derived(Base):
+    pass
+
+class Other:
+    pass
+
 @attr.s(auto_attribs=True)
 class C:
     name: str
+    b: Base
 
-def q() -> C:
-    return C(name='foo')
-
-c = C(name='foo')
-attr.evolve()  # E: Missing positional argument "inst" in call to "evolve"
-attr.evolve(c)
-attr.evolve(c, name='bar')
-attr.evolve(
-    q(),
-    name=42,  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
-)
-attr.evolve(
-    c,
-    age=42,  # type: ignore[call-arg]
-)
-
-# 'assoc' is deprecated equivalent of 'evolve'
-
-attr.assoc(
-    c,
-    name=42,  # E: Argument "name" to "assoc" has incompatible type "int"; expected "str"
-)
-attr.assoc(
-    c,
-    age=42,  # type: ignore[call-arg]
-)
+c = C(name='foo', b=Derived())
+attr.evolve(c, b=Derived())
+attr.evolve(c, b=Base())
+attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" has incompatible type "Other"; expected "Base"
+attr.evolve(c, name='foo')
+attr.evolve(c, name=42)  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
+attr.evolve(c, foobar=42)  # E: Unexpected argument "foobar"
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]

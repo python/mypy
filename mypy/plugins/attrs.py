@@ -6,7 +6,10 @@ from typing import Iterable, List, cast
 from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
+from mypy import subtypes
+from mypy.errorcodes import ARG_TYPE, CALL_ARG
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.messages import format_type_distinctly
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -885,29 +888,47 @@ class MethodAdder:
         add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
 
 
-def evolve_callback(ctx: mypy.plugin.FunctionSigContext) -> FunctionLike:
+def evolve_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     """Callback to provide an accurate signature for attrs.evolve."""
-    if len(ctx.args[0]) < 1:
-        return ctx.default_signature
+    inst_type: TypeInfo | None = None
+    changes_types = {}
+    for arg_kinds, arg_names, arg_types in zip(ctx.arg_kinds, ctx.arg_names, ctx.arg_types):
+        for arg_kind, arg_name, arg_type in zip(arg_kinds, arg_names, arg_types):
+            if arg_kind == ARG_POS:
+                if isinstance(arg_type, Instance):
+                    inst_type = arg_type.type
+            elif arg_kind == ARG_NAMED:
+                changes_types[arg_name] = arg_type
 
-    expr = ctx.args[0][0]
-    if not isinstance(expr, RefExpr):
-        # TODO: can't rely on expressions having a type!
-        return ctx.default_signature
+    if not inst_type:
+        return ctx.default_return_type
 
-    node = expr.node
-    if node is None:
-        return ctx.default_signature
+    init_method = inst_type.get_method("__init__") or inst_type.get_method("__attrs_init__")
+    if not init_method:
+        return ctx.default_return_type
+    init_method_t = init_method.type
+    assert isinstance(init_method_t, CallableType)
 
-    metadata = node.type.type.metadata
+    init_arg_types = {}
+    for arg_kind, arg_name, arg_type in zip(
+        init_method_t.arg_kinds, init_method_t.arg_names, init_method_t.arg_types
+    ):
+        if not (arg_kind == ARG_POS and arg_name == "self"):
+            init_arg_types[arg_name] = arg_type
 
-    args = {
-        md_attribute["name"]: ctx.api.named_generic_type(md_attribute["init_type"], args=[])
-        for md_attribute in metadata.get("attrs", {}).get("attributes", [])
-    }
+    # TODO: we're reinventing the wheel here -- perhaps we can:
+    #  - use ExpressionChecker.check_callable_call against a synthetic CallableType?
+    #  - add an @override to `attr.evolve` for specific class and specific args?
+    for name, typ in changes_types.items():
+        expected_type = init_arg_types.get(name)
+        if not expected_type:
+            ctx.api.fail(f'Unexpected argument "{name}"', ctx.context, code=ARG_TYPE)
+        elif not subtypes.is_subtype(typ, expected_type):
+            actual, expected = format_type_distinctly(typ, expected_type)
+            ctx.api.fail(
+                f'Argument "{name}" to "evolve" has incompatible type {actual}; expected {expected}',
+                ctx.context,
+                code=CALL_ARG,
+            )
 
-    return ctx.default_signature.copy_modified(
-        arg_kinds=ctx.default_signature.arg_kinds[:1] + [ARG_NAMED_OPT] * len(args),
-        arg_names=ctx.default_signature.arg_names[:1] + list(args.keys()),
-        arg_types=ctx.default_signature.arg_types[:1] + list(args.values()),
-    )
+    return ctx.default_return_type
