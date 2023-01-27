@@ -937,11 +937,9 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         )
         return ctx.default_signature
 
-    arg_names = attrs_init_type.arg_names.copy()
-    arg_names[0] = "inst"
     return attrs_init_type.copy_modified(
-        arg_names=arg_names,
-        arg_kinds=[ARG_POS] + [ARG_NAMED_OPT] * (len(attrs_init_type.arg_kinds) - 1),
+        arg_names=["inst"] + attrs_init_type.arg_names[1:],
+        arg_kinds=[ARG_POS] + [ARG_NAMED_OPT for _ in attrs_init_type.arg_kinds[1:]],
         ret_type=inst_type,
         name=ctx.default_signature.name,
     )
