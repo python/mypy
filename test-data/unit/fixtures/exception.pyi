@@ -13,6 +13,7 @@ class int: pass
 class str: pass
 class bool: pass
 class ellipsis: pass
+class dict: pass
 
 class BaseException:
     def __init__(self, *args: object) -> None: ...

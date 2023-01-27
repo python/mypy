@@ -37,6 +37,7 @@ class bool(int): pass
 class str: pass # For convenience
 class bytes: pass
 class bytearray: pass
+class dict: pass
 
 class list(Sequence[T], Generic[T]):
     @overload

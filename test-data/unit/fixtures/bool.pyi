@@ -15,5 +15,6 @@ class bool(int): pass
 class float: pass
 class str: pass
 class ellipsis: pass
+class dict: pass
 class list(Generic[T]): pass
 class property: pass
