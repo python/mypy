@@ -2030,7 +2030,8 @@ v = {union: 2} # E: Expected TypedDict key to be string literal
 num2: Literal['num']
 v = {num2: 2}
 bad2: Literal['bad']
-v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
+v = {bad2: 2}  # E: Missing key "num" for TypedDict "Value" \
+               # E: Extra key "bad" for TypedDict "Value"
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

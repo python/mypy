@@ -455,11 +455,15 @@ class E(TypedDict):
     y: int
 
 a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
-b: D = {'y': ''}  # E: Extra key "y" for TypedDict "D"  [typeddict-item]
+b: D = {'y': ''}  # E: Missing key "x" for TypedDict "D"  [typeddict-item] \
+                  # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key]
 c = D(x=0) if int() else E(x=0, y=0)
 c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
+d: D = {'x': '', 'y': 1}  # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key] \
+                          # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
 
-a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-item]
+
+a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-unknown-key]
 a['x'] = 'x'  # E: Value of "x" has incompatible type "str"; expected "int"  [typeddict-item]
 a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [builtins fixtures/dict.pyi]
@@ -472,7 +476,8 @@ class A(TypedDict):
     two_commonparts: int
 
 a: A = {'one_commonpart': 1, 'two_commonparts': 2}
-a['other_commonpart'] = 3  # type: ignore[typeddict-item]
+a['other_commonpart'] = 3  # type: ignore[typeddict-unknown-key]
+not_exist = a['not_exist'] # type: ignore[typeddict-item]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
