@@ -1898,6 +1898,7 @@ c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "ev
 
 # test passing instance as 'inst' kw
 c = attr.evolve(inst=c, name='foo')
+c = attr.evolve(not_inst=c, name='foo')  # E: Missing positional argument "inst" in call to "evolve"
 
 # test determining type of first argument's expression from something that's not NameExpr
 def f() -> C:
