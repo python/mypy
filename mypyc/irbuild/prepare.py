@@ -122,6 +122,7 @@ def build_type_map(
                 if attr in base_ir.attributes:
                     if not is_same_type(class_ir.attributes[attr], base_ir.attributes[attr]):
                         node = cdef.info.names[attr].node
+                        assert node is not None
                         kind = "trait" if base_ir.is_trait else "class"
                         errors.error(
                             f'Type of "{attr}" is incompatible with '
