@@ -77,6 +77,7 @@ attr_optional_converters: Final = {"attr.converters.optional", "attrs.converters
 SELF_TVAR_NAME: Final = "_AT"
 MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
 MAGIC_ATTR_CLS_NAME_TEMPLATE: Final = "__{}_AttrsAttributes__"  # The tuple subclass pattern.
+ATTRS_INIT_NAME: Final = "__attrs_init__"
 
 
 class Converter:
@@ -326,7 +327,7 @@ def attr_class_maker_callback(
 
     adder = MethodAdder(ctx)
     # If  __init__ is not being generated, attrs still generates it as __attrs_init__ instead.
-    _add_init(ctx, attributes, adder, "__init__" if init else "__attrs_init__")
+    _add_init(ctx, attributes, adder, "__init__" if init else ATTRS_INIT_NAME)
     if order:
         _add_order(ctx, adder)
     if frozen:
@@ -896,7 +897,7 @@ def _get_attrs_init_type(typ: Type) -> CallableType | None:
     magic_attr = typ.type.get(MAGIC_ATTR_NAME)
     if magic_attr is None or not magic_attr.plugin_generated:
         return None
-    init_method = typ.type.get_method("__init__") or typ.type.get_method("__attrs_init__")
+    init_method = typ.type.get_method("__init__") or typ.type.get_method(ATTRS_INIT_NAME)
     if not isinstance(init_method, FuncDef) or not isinstance(init_method.type, CallableType):
         return None
     return init_method.type
@@ -908,11 +909,12 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     and dependent on the type of the first argument.
     """
     if len(ctx.args) != 2:
-        ctx.api.fail('Unexpected type annotation for "evolve"', ctx.context)
+        # Ideally the name and context should be callee's, but we don't have it in FunctionSigContext.
+        ctx.api.fail(f'"{ctx.default_signature.name}" has unexpected type annotation', ctx.context)
         return ctx.default_signature
 
     if len(ctx.args[0]) != 1:
-        return ctx.default_signature  # type checker would already complain
+        return ctx.default_signature  # leave it to the type checker to complain
 
     inst_arg = ctx.args[0][0]
 
