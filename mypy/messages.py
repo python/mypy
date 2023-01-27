@@ -1637,9 +1637,9 @@ class MessageBuilder:
         expected_set = set(expected_keys)
         if not typ.is_anonymous():
             # Generate simpler messages for some common special cases.
-            if actual_set < expected_set:
-                # Use list comprehension instead of set operations to preserve order.
-                missing = [key for key in expected_keys if key not in actual_set]
+            # Use list comprehension instead of set operations to preserve order.
+            missing = [key for key in expected_keys if key not in actual_set]
+            if missing:
                 self.fail(
                     "Missing {} for TypedDict {}".format(
                         format_key_list(missing, short=True), format_type(typ)
@@ -1647,20 +1647,18 @@ class MessageBuilder:
                     context,
                     code=codes.TYPEDDICT_ITEM,
                 )
+            extra = [key for key in actual_keys if key not in expected_set]
+            if extra:
+                self.fail(
+                    "Extra {} for TypedDict {}".format(
+                        format_key_list(extra, short=True), format_type(typ)
+                    ),
+                    context,
+                    code=codes.TYPPEDICT_UNKNOWN_KEY,
+                )
+            if missing or extra:
+                # No need to check for further errors
                 return
-            else:
-                extra = [key for key in actual_keys if key not in expected_set]
-                if extra:
-                    # If there are both extra and missing keys, only report extra ones for
-                    # simplicity.
-                    self.fail(
-                        "Extra {} for TypedDict {}".format(
-                            format_key_list(extra, short=True), format_type(typ)
-                        ),
-                        context,
-                        code=codes.TYPEDDICT_ITEM,
-                    )
-                    return
         found = format_key_list(actual_keys, short=True)
         if not expected_keys:
             self.fail(f"Unexpected TypedDict {found}", context)
@@ -1680,8 +1678,15 @@ class MessageBuilder:
         )
 
     def typeddict_key_not_found(
-        self, typ: TypedDictType, item_name: str, context: Context
+        self, typ: TypedDictType, item_name: str, context: Context, setitem: bool = False
     ) -> None:
+        """Handle error messages for TypedDicts that have unknown keys.
+
+        Note, that we differentiate in between reading a value and setting a
+        value.
+        Setting a value on a TypedDict is an 'unknown-key' error, whereas
+        reading it is the more serious/general 'item' error.
+        """
         if typ.is_anonymous():
             self.fail(
                 '"{}" is not a valid TypedDict key; expected one of {}'.format(
@@ -1690,17 +1695,14 @@ class MessageBuilder:
                 context,
             )
         else:
+            err_code = codes.TYPPEDICT_UNKNOWN_KEY if setitem else codes.TYPEDDICT_ITEM
             self.fail(
-                f'TypedDict {format_type(typ)} has no key "{item_name}"',
-                context,
-                code=codes.TYPEDDICT_ITEM,
+                f'TypedDict {format_type(typ)} has no key "{item_name}"', context, code=err_code
             )
             matches = best_matches(item_name, typ.items.keys(), n=3)
             if matches:
                 self.note(
-                    "Did you mean {}?".format(pretty_seq(matches, "or")),
-                    context,
-                    code=codes.TYPEDDICT_ITEM,
+                    "Did you mean {}?".format(pretty_seq(matches, "or")), context, code=err_code
                 )
 
     def typeddict_context_ambiguous(self, types: list[TypedDictType], context: Context) -> None:

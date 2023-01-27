@@ -790,17 +790,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         context: Context,
         orig_callee: Type | None,
     ) -> Type:
-        if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
+        actual_keys = kwargs.keys()
+        if not (callee.required_keys <= actual_keys <= callee.items.keys()):
             expected_keys = [
                 key
                 for key in callee.items.keys()
-                if key in callee.required_keys or key in kwargs.keys()
+                if key in callee.required_keys or key in actual_keys
             ]
-            actual_keys = kwargs.keys()
             self.msg.unexpected_typeddict_keys(
                 callee, expected_keys=expected_keys, actual_keys=list(actual_keys), context=context
             )
-            return AnyType(TypeOfAny.from_error)
+            if callee.required_keys > actual_keys:
+                # found_set is a sub-set of the required_keys
+                # This means we're missing some keys and as such, we can't
+                # properly type the object
+                return AnyType(TypeOfAny.from_error)
 
         orig_callee = get_proper_type(orig_callee)
         if isinstance(orig_callee, CallableType):
@@ -3777,7 +3781,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.chk.named_generic_type("builtins.tuple", [union])
         return union
 
-    def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
+    def visit_typeddict_index_expr(
+        self, td_type: TypedDictType, index: Expression, setitem: bool = False
+    ) -> Type:
         if isinstance(index, StrExpr):
             key_names = [index.value]
         else:
@@ -3806,7 +3812,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for key_name in key_names:
             value_type = td_type.items.get(key_name)
             if value_type is None:
-                self.msg.typeddict_key_not_found(td_type, key_name, index)
+                self.msg.typeddict_key_not_found(td_type, key_name, index, setitem)
                 return AnyType(TypeOfAny.from_error)
             else:
                 value_types.append(value_type)

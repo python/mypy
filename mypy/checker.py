@@ -178,6 +178,7 @@ from mypy.typeops import (
 )
 from mypy.types import (
     ANY_STRATEGY,
+    MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
     AnyType,
     BoolTypeQuery,
@@ -4517,10 +4518,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ok = True
             for arg in expr.args:
                 argt = get_proper_type(self.lookup_type(arg))
-                if isinstance(argt, Instance) and argt.type.fullname in (
-                    "mypy_extensions.i64",
-                    "mypy_extensions.i32",
-                ):
+                if isinstance(argt, Instance) and argt.type.fullname in MYPYC_NATIVE_INT_NAMES:
                     if native_int is None:
                         native_int = argt
                     elif argt != native_int:

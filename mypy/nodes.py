@@ -480,7 +480,13 @@ class ImportAll(ImportBase):
         return visitor.visit_import_all(self)
 
 
-FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
+FUNCBASE_FLAGS: Final = [
+    "is_property",
+    "is_class",
+    "is_static",
+    "is_final",
+    "is_dataclass_transform",
+]
 
 
 class FuncBase(Node):
@@ -506,6 +512,7 @@ class FuncBase(Node):
         "is_static",  # Uses "@staticmethod"
         "is_final",  # Uses "@final"
         "_fullname",
+        "is_dataclass_transform",  # Is decorated with "@typing.dataclass_transform" or similar
     )
 
     def __init__(self) -> None:
@@ -524,6 +531,7 @@ class FuncBase(Node):
         self.is_final = False
         # Name with module prefix
         self._fullname = ""
+        self.is_dataclass_transform = False
 
     @property
     @abstractmethod
