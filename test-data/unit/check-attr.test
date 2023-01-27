@@ -1869,6 +1869,7 @@ D(1, "").b = "2" # E: Cannot assign to final attribute "b"
 [builtins fixtures/property.pyi]
 
 [case testEvolve]
+from typing import Any
 import attr
 
 class Base:
@@ -1893,6 +1894,22 @@ c = attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" has incompatible ty
 c = attr.evolve(c, name='foo')
 c = attr.evolve(c, name=42)  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
 c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "evolve"
+
+def f() -> C:
+    return c
+
+
+# Determining type of first argument's expression
+c = attr.evolve(f(), name='foo')
+
+# First argument type check
+attr.evolve(42, name='foo')  # E: Argument 1 to "evolve" has incompatible type "Literal[42]?"; expected an attrs class
+attr.evolve(None, name='foo')  # E: Argument 1 to "evolve" has incompatible type "None"; expected an attrs class
+
+# All bets are off for 'Any'
+any: Any
+ret = attr.evolve(any, name='foo')
+reveal_type(ret)  # N: Revealed type is "Any"
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
