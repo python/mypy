@@ -1886,12 +1886,13 @@ class C:
     b: Base
 
 c = C(name='foo', b=Derived())
-attr.evolve(c, b=Derived())
-attr.evolve(c, b=Base())
-attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" has incompatible type "Other"; expected "Base"
-attr.evolve(c, name='foo')
-attr.evolve(c, name=42)  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
-attr.evolve(c, foobar=42)  # E: Unexpected argument "foobar"
+c = attr.evolve(c)
+c = attr.evolve(c, b=Derived())
+c = attr.evolve(c, b=Base())
+c = attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" has incompatible type "Other"; expected "Base"
+c = attr.evolve(c, name='foo')
+c = attr.evolve(c, name=42)  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
+c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "evolve"
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
