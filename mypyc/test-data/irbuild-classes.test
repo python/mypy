@@ -1245,3 +1245,45 @@ L2:
     y = 4
 L3:
     return 1
+
+[case testIncompatibleDefinitionOfAttributeInSubclass]
+from mypy_extensions import trait
+
+class Base:
+    x: int
+
+class Bad1(Base):
+    x: bool  # E: Type of "x" is incompatible with definition in class "Base"
+
+class Good1(Base):
+    x: int
+
+class Good2(Base):
+    x: int = 0
+
+class Good3(Base):
+    x = 0
+
+class Good4(Base):
+    def __init__(self) -> None:
+        self.x = 0
+
+class Good5(Base):
+    def __init__(self) -> None:
+        self.x: int = 0
+
+class Base2(Base):
+    pass
+
+class Bad2(Base2):
+    x: bool = False  # E: Type of "x" is incompatible with definition in class "Base"
+
+class Bad3(Base):
+    x = False  # E: Type of "x" is incompatible with definition in class "Base"
+
+@trait
+class T:
+    y: object
+
+class E(T):
+    y: str  # E: Type of "y" is incompatible with definition in trait "T"
