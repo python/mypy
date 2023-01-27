@@ -1889,12 +1889,12 @@ class C:
 c = C(name='foo', b=Derived())
 c = attr.evolve(c)
 c = attr.evolve(c, name='foo')
-c = attr.evolve(c, 'foo')  # E: Too many positional arguments for "evolve"
+c = attr.evolve(c, 'foo')  # E: Too many positional arguments for "evolve" of "C"
 c = attr.evolve(c, b=Derived())
 c = attr.evolve(c, b=Base())
-c = attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" has incompatible type "Other"; expected "Base"
-c = attr.evolve(c, name=42)  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
-c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "evolve"
+c = attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" of "C" has incompatible type "Other"; expected "Base"
+c = attr.evolve(c, name=42)  # E: Argument "name" to "evolve" of "C" has incompatible type "int"; expected "str"
+c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "evolve" of "C"
 
 # test passing instance as 'inst' kw
 c = attr.evolve(inst=c, name='foo')
@@ -1907,7 +1907,7 @@ def f() -> C:
 c = attr.evolve(f(), name='foo')
 
 # test 'inst' arg type check
-attr.evolve(42, name='foo')  # E: Argument 1 to "evolve" has incompatible type "Literal[42]?"; expected an attrs class
+attr.evolve(42, name='foo')  # E: Argument 1 to "evolve" has incompatible type "int"; expected an attrs class
 attr.evolve(None, name='foo')  # E: Argument 1 to "evolve" has incompatible type "None"; expected an attrs class
 
 # test that all bets are off for 'Any'
@@ -1931,13 +1931,13 @@ class C:
 c = C(name='foo')
 
 c = attr.assoc(c, name='test')
-c = attr.assoc(c, name=42)  # E: Argument "name" to "assoc" has incompatible type "int"; expected "str"
+c = attr.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompatible type "int"; expected "str"
 
 c = attrs.evolve(c, name='test')
-c = attrs.evolve(c, name=42)  # E: Argument "name" to "evolve" has incompatible type "int"; expected "str"
+c = attrs.evolve(c, name=42)  # E: Argument "name" to "evolve" of "C" has incompatible type "int"; expected "str"
 
 c = attrs.assoc(c, name='test')
-c = attrs.assoc(c, name=42)  # E: Argument "name" to "assoc" has incompatible type "int"; expected "str"
+c = attrs.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompatible type "int"; expected "str"
 
 [builtins fixtures/attr.pyi]
 [typing fixtures/typing-medium.pyi]
