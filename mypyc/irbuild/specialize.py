@@ -55,6 +55,7 @@ from mypyc.ir.rtypes import (
     is_bool_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
+    is_float_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -62,7 +63,6 @@ from mypyc.ir.rtypes import (
     list_rprimitive,
     set_rprimitive,
     str_rprimitive,
-    is_float_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (

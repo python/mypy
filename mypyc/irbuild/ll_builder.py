@@ -93,6 +93,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     dict_rprimitive,
+    float_rprimitive,
     int_rprimitive,
     is_bit_rprimitive,
     is_bool_rprimitive,
@@ -118,7 +119,6 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
-    float_rprimitive,
 )
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import concrete_arg_kind
@@ -131,7 +131,7 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op,
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.float_ops import int_to_float_op, copysign_op
+from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     generic_len_op,
     generic_ssize_t_len_op,

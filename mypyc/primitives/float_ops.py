@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER, ERR_MAGIC_OVERLAPPING
+from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
+    bool_rprimitive,
     float_rprimitive,
     int_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    bool_rprimitive,
 )
-from mypyc.primitives.registry import function_op, load_address_op, binary_op
+from mypyc.primitives.registry import binary_op, function_op, load_address_op
 
 # Get the 'builtins.float' type object.
 load_address_op(name="builtins.float", type=object_rprimitive, src="PyFloat_Type")

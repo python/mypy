@@ -46,6 +46,7 @@ from mypyc.ir.ops import (
     TupleSet,
     Unbox,
     Unreachable,
+    Value,
 )
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
@@ -57,13 +58,13 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_float_rprimitive,
     is_object_rprimitive,
     list_rprimitive,
     range_rprimitive,
     set_rprimitive,
     str_rprimitive,
     tuple_rprimitive,
-    is_float_rprimitive,
 )
 
 
@@ -231,7 +232,7 @@ class OpChecker(OpVisitor[None]):
 
     def expect_non_float(self, op: Op, v: Value) -> None:
         if is_float_rprimitive(v.type):
-            self.fail(op, f"Float not expected")
+            self.fail(op, "Float not expected")
 
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
