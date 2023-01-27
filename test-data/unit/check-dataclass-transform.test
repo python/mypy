@@ -1,0 +1,46 @@
+[case testDataclassTransformReusesDataclassLogic]
+# flags: --python-version 3.7
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+@my_dataclass
+class Person:
+    name: str
+    age: int
+
+    def summary(self):
+        return "%s is %d years old." % (self.name, self.age)
+
+reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('John', 32)
+Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformIsFoundInTypingExtensions]
+# flags: --python-version 3.7
+from typing import Type
+from typing_extensions import dataclass_transform
+
+@dataclass_transform()
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+@my_dataclass
+class Person:
+    name: str
+    age: int
+
+    def summary(self):
+        return "%s is %d years old." % (self.name, self.age)
+
+reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('John', 32)
+Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
