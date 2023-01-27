@@ -66,7 +66,14 @@ MAX_ITERATIONS: Final = 20
 
 # Number of passes over core modules before going on to the rest of the builtin SCC.
 CORE_WARMUP: Final = 2
-core_modules: Final = ["typing", "builtins", "abc", "collections"]
+core_modules: Final = [
+    "typing",
+    "_collections_abc",
+    "builtins",
+    "abc",
+    "collections",
+    "collections.abc",
+]
 
 
 def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -> None:

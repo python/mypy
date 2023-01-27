@@ -615,9 +615,12 @@ class SemanticAnalyzer(
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
         """Manually add implicit definitions of module '__name__' etc."""
+        str_type: Type | None = self.named_type_or_none("builtins.str")
+        if str_type is None:
+            str_type = UnboundType("builtins.str")
         for name, t in implicit_module_attrs.items():
             if name == "__doc__":
-                typ: Type = UnboundType("__builtins__.str")
+                typ: Type = str_type
             elif name == "__path__":
                 if not file_node.is_package_init_file():
                     continue
@@ -630,7 +633,7 @@ class SemanticAnalyzer(
                 if not isinstance(node, TypeInfo):
                     self.defer(node)
                     return
-                typ = Instance(node, [self.str_type()])
+                typ = Instance(node, [str_type])
             elif name == "__annotations__":
                 sym = self.lookup_qualified("__builtins__.dict", Context(), suppress_errors=True)
                 if not sym:
@@ -639,7 +642,7 @@ class SemanticAnalyzer(
                 if not isinstance(node, TypeInfo):
                     self.defer(node)
                     return
-                typ = Instance(node, [self.str_type(), AnyType(TypeOfAny.special_form)])
+                typ = Instance(node, [str_type, AnyType(TypeOfAny.special_form)])
             else:
                 assert t is not None, f"type should be specified for {name}"
                 typ = UnboundType(t)
