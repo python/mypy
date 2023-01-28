@@ -330,3 +330,171 @@ def test_undefined_local_var() -> None:
         y2 = -1.0
     with assertRaises(UnboundLocalError, 'local variable "y2" referenced before assignment'):
         print(y2)
+
+[case testFloatGlueMethodsAndInheritance]
+from typing import Any
+from typing_extensions import Final
+
+from mypy_extensions import trait
+
+from testutil import assertRaises
+
+MAGIC: Final = -113.0
+
+class Base:
+    def foo(self) -> float:
+        return 5.0
+
+    def bar(self, x: float = 2.0) -> float:
+        return x + 1
+
+    def hoho(self, x: float) -> float:
+        return x - 1
+
+class Derived(Base):
+    def foo(self, x: float = 5.0) -> float:
+        return x + 10
+
+    def bar(self, x: float = 3, y: float = 20) -> float:
+        return x + y + 2
+
+    def hoho(self, x: float = 7) -> float:
+        return x - 2
+
+def test_derived_adds_bitmap() -> None:
+    b: Base = Derived()
+    assert b.foo() == 15
+
+def test_derived_adds_another_default_arg() -> None:
+    b: Base = Derived()
+    assert b.bar() == 25
+    assert b.bar(1) == 23
+    assert b.bar(MAGIC) == MAGIC + 22
+
+def test_derived_switches_arg_to_have_default() -> None:
+    b: Base = Derived()
+    assert b.hoho(5) == 3
+    assert b.hoho(MAGIC) == MAGIC - 2
+
+@trait
+class T:
+    @property
+    def x(self) -> float: ...
+    @property
+    def y(self) -> float: ...
+
+class C(T):
+    x: float = 1.0
+    y: float = 4
+
+def test_read_only_property_in_trait_implemented_as_attribute() -> None:
+    c = C()
+    c.x = 5.5
+    assert c.x == 5.5
+    c.x = MAGIC
+    assert c.x == MAGIC
+    assert c.y == 4
+    c.y = 6.5
+    assert c.y == 6.5
+    t: T = C()
+    assert t.y == 4
+    t = c
+    assert t.x == MAGIC
+    c.x = 55.5
+    assert t.x == 55.5
+    assert t.y == 6.5
+    a: Any = c
+    assert a.x == 55.5
+    assert a.y == 6.5
+    a.x = 7.0
+    a.y = 8.0
+    assert a.x == 7
+    assert a.y == 8
+
+class D(T):
+    xx: float
+
+    @property
+    def x(self) -> float:
+        return self.xx
+
+    @property
+    def y(self) -> float:
+        raise TypeError
+
+def test_read_only_property_in_trait_implemented_as_property() -> None:
+    d = D()
+    d.xx = 5
+    assert d.x == 5
+    d.xx = MAGIC
+    assert d.x == MAGIC
+    with assertRaises(TypeError):
+        d.y
+    t: T = d
+    assert t.x == MAGIC
+    d.xx = 6
+    assert t.x == 6
+    with assertRaises(TypeError):
+        t.y
+
+@trait
+class T2:
+    x: float
+    y: float
+
+class C2(T2):
+    pass
+
+def test_inherit_trait_attribute() -> None:
+    c = C2()
+    c.x = 5.0
+    assert c.x == 5
+    c.x = MAGIC
+    assert c.x == MAGIC
+    with assertRaises(AttributeError):
+        c.y
+    c.y = 6.0
+    assert c.y == 6.0
+    t: T2 = C2()
+    with assertRaises(AttributeError):
+        t.y
+    t = c
+    assert t.x == MAGIC
+    c.x = 55
+    assert t.x == 55
+    assert t.y == 6
+    a: Any = c
+    assert a.x == 55
+    assert a.y == 6
+    a.x = 7.0
+    a.y = 8.0
+    assert a.x == 7
+    assert a.y == 8
+
+class D2(T2):
+    x: float
+    y: float = 4
+
+def test_implement_trait_attribute() -> None:
+    d = D2()
+    d.x = 5.0
+    assert d.x == 5
+    d.x = MAGIC
+    assert d.x == MAGIC
+    assert d.y == 4
+    d.y = 6.0
+    assert d.y == 6
+    t: T2 = D2()
+    assert t.y == 4
+    t = d
+    assert t.x == MAGIC
+    d.x = 55
+    assert t.x == 55
+    assert t.y == 6
+    a: Any = d
+    assert a.x == 55
+    assert a.y == 6
+    a.x = 7.0
+    a.y = 8.0
+    assert a.x == 7
+    assert a.y == 8
