@@ -118,6 +118,11 @@ def test_boxing_and_unboxing() -> None:
         yy: float = bb
         assert repr(xx) == repr(bb)
         assert repr(xx) == repr(yy)
+    for b in True, False:
+        boxed_bool: Any = b
+        assert type(boxed_bool) is bool
+        zz: float = boxed_bool
+        assert zz == int(b)
 
 def test_unboxing_failure() -> None:
     boxed: Any = '1.5'
