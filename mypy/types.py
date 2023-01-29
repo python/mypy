@@ -150,6 +150,11 @@ NEVER_NAMES: Final = (
     "typing_extensions.Never",
 )
 
+DATACLASS_TRANSFORM_NAMES: Final = (
+    "typing.dataclass_transform",
+    "typing_extensions.dataclass_transform",
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
