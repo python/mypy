@@ -1940,6 +1940,12 @@ class A:
 [out]
 main:4: error: "None" has no attribute "__iter__" (not iterable)
 
+[case testPartialTypeErrorSpecialCase4]
+# This used to crash.
+arr = []
+arr.append(arr.append(1))
+[out]
+main:3: error: "List[int]" has no attribute "append"
 
 -- Multipass
 -- ---------
