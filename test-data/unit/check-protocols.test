@@ -3977,3 +3977,24 @@ class C:
     DEFAULT: ClassVar[C]
 
 x: P = C()
+
+[case testInferenceViaTypeTypeMetaclass]
+from typing import Iterator, Iterable, TypeVar, Type
+
+M = TypeVar("M")
+
+class Meta(type):
+    def __iter__(self: Type[M]) -> Iterator[M]: ...
+class Foo(metaclass=Meta): ...
+
+T = TypeVar("T")
+def test(x: Iterable[T]) -> T: ...
+
+reveal_type(test(Foo))  # N: Revealed type is "__main__.Foo"
+t_foo: Type[Foo]
+reveal_type(test(t_foo))  # N: Revealed type is "__main__.Foo"
+
+TF = TypeVar("TF", bound=Foo)
+def outer(cls: Type[TF]) -> TF:
+    reveal_type(test(cls))  # N: Revealed type is "TF`-1"
+    return cls()
