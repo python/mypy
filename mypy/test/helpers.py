@@ -51,8 +51,6 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
 
     Display any differences in a human-readable form.
     """
-    __tracebackhide__ = True
-
     actual = clean_up(actual)
     actual = [line.replace("can't", "cannot") for line in actual]
     expected = [line.replace("can't", "cannot") for line in expected]
@@ -117,7 +115,7 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
 
-        raise AssertionError(msg)
+        pytest.fail(msg, pytrace=False)
 
 
 def assert_module_equivalence(name: str, expected: Iterable[str], actual: Iterable[str]) -> None:
