@@ -625,21 +625,23 @@ class SemanticAnalyzer(
                     continue
                 # Need to construct the type ourselves, to avoid issues with __builtins__.list
                 # not being subscriptable or typing.List not getting bound
-                typ = self.named_type_or_none("builtins.list", [str_type])
-                if typ is None:
+                inst = self.named_type_or_none("builtins.list", [str_type])
+                if inst is None:
                     assert not self.final_iteration, "Cannot find builtins.list to add __path__"
                     self.defer()
                     return
+                typ = inst
             elif name == "__annotations__":
-                typ = self.named_type_or_none(
+                inst = self.named_type_or_none(
                     "builtins.dict", [str_type, AnyType(TypeOfAny.special_form)]
                 )
-                if typ is None:
+                if inst is None:
                     assert (
                         not self.final_iteration
                     ), "Cannot find builtins.dict to add __annotations__"
                     self.defer()
                     return
+                typ = inst
             else:
                 assert t is not None, f"type should be specified for {name}"
                 typ = UnboundType(t)
