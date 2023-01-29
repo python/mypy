@@ -625,23 +625,21 @@ class SemanticAnalyzer(
                     continue
                 # Need to construct the type ourselves, to avoid issues with __builtins__.list
                 # not being subscriptable or typing.List not getting bound
-                sym = self.lookup_qualified("__builtins__.list", Context())
-                if not sym:
-                    continue
-                node = sym.node
-                if not isinstance(node, TypeInfo):
-                    self.defer(node)
+                typ = self.named_type_or_none("builtins.list", [str_type])
+                if typ is None:
+                    assert not self.final_iteration, "Cannot find builtins.list to add __path__"
+                    self.defer()
                     return
-                typ = Instance(node, [str_type])
             elif name == "__annotations__":
-                sym = self.lookup_qualified("__builtins__.dict", Context(), suppress_errors=True)
-                if not sym:
-                    continue
-                node = sym.node
-                if not isinstance(node, TypeInfo):
-                    self.defer(node)
+                typ = self.named_type_or_none(
+                    "builtins.dict", [str_type, AnyType(TypeOfAny.special_form)]
+                )
+                if typ is None:
+                    assert (
+                        not self.final_iteration
+                    ), "Cannot find builtins.dict to add __annotations__"
+                    self.defer()
                     return
-                typ = Instance(node, [str_type, AnyType(TypeOfAny.special_form)])
             else:
                 assert t is not None, f"type should be specified for {name}"
                 typ = UnboundType(t)

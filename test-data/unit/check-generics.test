@@ -1331,6 +1331,7 @@ class type: pass
 class tuple: pass
 class function: pass
 class str: pass
+class dict: pass
 
 [case testMultipleAssignmentWithIterable]
 from typing import Iterable, TypeVar

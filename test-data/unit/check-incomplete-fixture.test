@@ -16,9 +16,7 @@ m.x # E: "object" has no attribute "x"
 from typing import Dict
 def f(x: Dict[int]) -> None: pass
 [out]
-main:1: error: Module "typing" has no attribute "Dict"
-main:1: note: Maybe your test fixture does not define "builtins.dict"?
-main:1: note: Consider adding [builtins fixtures/dict.pyi] to your test description
+main:2: error: "dict" expects no type arguments, but 1 given
 
 [case testSetMissingFromStubs]
 from typing import Set
