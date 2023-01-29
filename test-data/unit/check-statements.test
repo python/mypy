@@ -140,20 +140,15 @@ main:5: error: Incompatible types in assignment (expression has type "bool", var
 main:7: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testForStatement]
+class A: pass
 
 a = None # type: A
 b = None # type: object
 for a in [A()]:
-    a = b    # Fail
+    a = b  # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 else:
-    a = b    # Fail
-
-class A: pass
+    a = b  # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [builtins fixtures/list.pyi]
-[out]
-main:5: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-main:7: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-
 [case testBreakStatement]
 import typing
 while None:
@@ -520,15 +515,15 @@ class B: pass
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
 [case testTypeErrorInBlock]
+class A: pass
+class B: pass
 while object:
     x = None # type: A
     if int():
         x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
         x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-class A: pass
-class B: pass
-
 [case testTypeErrorInvolvingBaseException]
+class A: pass
 
 x, a = None, None # type: (BaseException, A)
 if int():
@@ -541,7 +536,6 @@ if int():
     x = A()              # E: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
 if int():
     x = BaseException()
-class A: pass
 [builtins fixtures/exception.pyi]
 
 [case testSimpleTryExcept2]
@@ -557,49 +551,38 @@ main:5: error: Incompatible types in assignment (expression has type "object", v
 
 [case testBaseClassAsExceptionTypeInExcept]
 import typing
+class Err(BaseException): pass
 try:
   pass
 except Err as e:
-  e = BaseException() # Fail
+  e = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
   e = Err()
-class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
-[out]
-main:5: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testMultipleExceptHandlers]
 import typing
+class Err(BaseException): pass
 try:
     pass
 except BaseException as e:
     pass
 except Err as f:
-    f = BaseException() # Fail
+    f = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
     f = Err()
-class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
-[out]
-main:7: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testTryExceptStatement]
 import typing
-try:
-    a = B() # type: A       # Fail
-except BaseException as e:
-    e = A()             # Fail
-    e = Err()
-except Err as f:
-    f = BaseException() # Fail
-    f = Err()
 class A: pass
 class B: pass
 class Err(BaseException): pass
+try:
+    a = B() # type: A  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+except BaseException as e:
+    e = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
+    e = Err()
+except Err as f:
+    f = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
+    f = Err()
 [builtins fixtures/exception.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:5: error: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
-main:8: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testTryExceptWithinFunction]
 import typing
 def f() -> None:
@@ -823,7 +806,7 @@ try: pass
 except E1 as e: pass
 try: pass
 except E2 as e: pass
-e + 1 # E: Trying to read deleted variable "e"
+e + 1 # E: Trying to read deleted variable "e"  # E: Name "e" is used before definition
 e = E1() # E: Assignment to variable "e" outside except: block
 [builtins fixtures/exception.pyi]
 
@@ -944,6 +927,18 @@ x = f()
 [out]
 main:10: note: Revealed type is "builtins.int"
 main:15: note: Revealed type is "builtins.str"
+
+[case testExceptionVariableWithDisallowAnyExprInDeferredNode]
+# flags: --disallow-any-expr
+def f() -> int:
+    x
+    try:
+        pass
+    except Exception as ex:
+        pass
+    return 0
+x = f()
+[builtins fixtures/exception.pyi]
 
 [case testArbitraryExpressionAsExceptionType]
 import typing
@@ -1073,6 +1068,10 @@ a = A()
 del a.x, a.y # E: "A" has no attribute "y"
 [builtins fixtures/tuple.pyi]
 
+[case testDelStmtWithTypeInfo]
+class Foo: ...
+del Foo
+Foo + 1  # E: Trying to read deleted variable "Foo"
 
 [case testDelStatementWithAssignmentSimple]
 a = 1
@@ -1298,7 +1297,7 @@ T = TypeVar('T')
 def f(a: T) -> Generator[int, str, T]: pass
 def g() -> Generator[int, str, float]:
     r = yield from f('')
-    reveal_type(r)  # N: Revealed type is "builtins.str*"
+    reveal_type(r)  # N: Revealed type is "builtins.str"
     return 3.14
 
 [case testYieldFromTupleStatement]
@@ -1555,7 +1554,6 @@ class LiteralReturn:
         return False
 [builtins fixtures/bool.pyi]
 
-
 [case testWithStmtBoolExitReturnInStub]
 import stub
 
@@ -1571,6 +1569,370 @@ class C2:
 class C3:
     def __exit__(self, x, y, z) -> Optional[bool]: pass
 [builtins fixtures/bool.pyi]
+
+[case testWithStmtScopeBasics]
+from m import A, B
+
+def f1() -> None:
+    with A() as x:
+        reveal_type(x)  # N: Revealed type is "m.A"
+    with B() as x:
+        reveal_type(x)  # N: Revealed type is "m.B"
+
+def f2() -> None:
+    with A() as x:
+        reveal_type(x)  # N: Revealed type is "m.A"
+    y = x  # Use outside with makes the scope function-level
+    with B() as x: \
+        # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndFuncDef]
+from m import A, B
+
+with A() as x:
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+def f() -> None:
+    pass  # Don't support function definition in the middle
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndFuncDef2]
+from m import A, B
+
+def f() -> None:
+    pass  # function before with is unsupported
+
+with A() as x:
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndFuncDef3]
+from m import A, B
+
+with A() as x:
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+def f() -> None:
+    pass  # function after with is unsupported
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndFuncDef4]
+from m import A, B
+
+with A() as x:
+    def f() -> None:
+        pass  # Function within with is unsupported
+
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndImport1]
+from m import A, B, x
+
+with A() as x: \
+    # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    reveal_type(x)  # N: Revealed type is "m.B"
+
+with B() as x:
+    reveal_type(x)  # N: Revealed type is "m.B"
+
+[file m.pyi]
+x: B
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndImport2]
+from m import A, B
+import m as x
+
+with A() as x: \
+     # E: Incompatible types in assignment (expression has type "A", variable has type Module)
+    pass
+
+with B() as x: \
+     # E: Incompatible types in assignment (expression has type "B", variable has type Module)
+    pass
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+[builtins fixtures/module.pyi]
+
+[case testWithStmtScopeAndImportStar]
+from m import A, B
+from m import *
+
+with A() as x:
+    pass
+
+with B() as x: \
+     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeNestedWith1]
+from m import A, B
+
+with A() as x:
+    with B() as x: \
+        # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x:
+    with A() as x: \
+        # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        reveal_type(x)  # N: Revealed type is "m.B"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeNestedWith2]
+from m import A, B
+
+with A() as x:
+    with A() as y:
+        reveal_type(y)  # N: Revealed type is "m.A"
+    with B() as y:
+        reveal_type(y)  # N: Revealed type is "m.B"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeInnerAndOuterScopes]
+from m import A, B
+
+x = A()  # Outer scope should have no impact
+
+with A() as x:
+    pass
+
+def f() -> None:
+    with A() as x:
+        reveal_type(x)  # N: Revealed type is "m.A"
+    with B() as x:
+        reveal_type(x)  # N: Revealed type is "m.B"
+
+y = x
+
+with A() as x:
+    pass
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeMultipleContextManagers]
+from m import A, B
+
+with A() as x, B() as y:
+    reveal_type(x)  # N: Revealed type is "m.A"
+    reveal_type(y)  # N: Revealed type is "m.B"
+with B() as x, A() as y:
+    reveal_type(x)  # N: Revealed type is "m.B"
+    reveal_type(y)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeMultipleAssignment]
+from m import A, B
+
+with A() as (x, y):
+    reveal_type(x)  # N: Revealed type is "m.A"
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+with B() as [x, y]:
+    reveal_type(x)  # N: Revealed type is "m.B"
+    reveal_type(y)  # N: Revealed type is "builtins.str"
+
+[file m.pyi]
+from typing import Tuple
+
+class A:
+    def __enter__(self) -> Tuple[A, int]: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> Tuple[B, str]: ...
+    def __exit__(self, x, y, z) -> None: ...
+[builtins fixtures/tuple.pyi]
+
+[case testWithStmtScopeComplexAssignments]
+from m import A, B, f
+
+with A() as x:
+    pass
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+with B() as f(x).x:
+    pass
+
+with A() as y:
+    pass
+with B() as y: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+with B() as f(y)[0]:
+    pass
+
+[file m.pyi]
+def f(x): ...
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndClass]
+from m import A, B
+
+with A() as x:
+    pass
+
+class C:
+    with A() as y:
+        pass
+    with B() as y:
+        pass
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeInnerScopeReference]
+from m import A, B
+
+with A() as x:
+    def f() -> A:
+        return x
+    f()
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndLambda]
+from m import A, B
+
+# This is technically not correct, since the lambda can outlive the with
+# statement, but this behavior seems more intuitive.
+
+with A() as x:
+    lambda: reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x:
+    pass
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
 
 
 -- Chained assignment
@@ -1673,16 +2035,12 @@ foo = int
 
 [case testTypeOfGlobalUsed]
 import typing
+class A(): pass
+class B(): pass
 g = A()
 def f() -> None:
     global g
-    g = B()
-
-class A(): pass
-class B(): pass
-[out]
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-
+    g = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [case testTypeOfNonlocalUsed]
 import typing
 def f() -> None:
@@ -1744,14 +2102,14 @@ class A:
 [case testAugmentedAssignmentIntFloatDict]
 from typing import Dict
 d = {'weight0': 65.5}
-reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float"
 d['weight0'] = 65
-reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float"
 d['weight0'] *= 'a'  # E: Unsupported operand types for * ("float" and "str")
 d['weight0'] *= 0.5
-reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float"
 d['weight0'] *= object()  # E: Unsupported operand types for * ("float" and "object")
-reveal_type(d['weight0']) # N: Revealed type is "builtins.float*"
+reveal_type(d['weight0']) # N: Revealed type is "builtins.float"
 
 [builtins fixtures/floatdict.pyi]
 
@@ -1807,7 +2165,7 @@ N = TypedDict('N', {'x': int})
 [out]
 
 [case testGlobalWithoutInitialization]
-
+# flags: --disable-error-code=annotation-unchecked
 from typing import List
 
 def foo() -> None:
@@ -1821,3 +2179,18 @@ def foo2():
     bar2 = []  # type: List[str]
     bar2
 [builtins fixtures/list.pyi]
+
+[case testNoteUncheckedAnnotation]
+def foo():
+    x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    y = "no"  # type: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    z: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case testGeneratorUnion]
+from typing import Generator, Union
+
+class A: pass
+class B: pass
+
+def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
+    yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")

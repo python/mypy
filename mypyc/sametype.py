@@ -1,9 +1,19 @@
 """Same type check for RTypes."""
 
-from mypyc.ir.rtypes import (
-    RType, RTypeVisitor, RInstance, RPrimitive, RTuple, RVoid, RUnion, RStruct, RArray
-)
+from __future__ import annotations
+
 from mypyc.ir.func_ir import FuncSignature
+from mypyc.ir.rtypes import (
+    RArray,
+    RInstance,
+    RPrimitive,
+    RStruct,
+    RTuple,
+    RType,
+    RTypeVisitor,
+    RUnion,
+    RVoid,
+)
 
 
 def is_same_type(a: RType, b: RType) -> bool:
@@ -11,17 +21,26 @@ def is_same_type(a: RType, b: RType) -> bool:
 
 
 def is_same_signature(a: FuncSignature, b: FuncSignature) -> bool:
-    return (len(a.args) == len(b.args)
-            and is_same_type(a.ret_type, b.ret_type)
-            and all(is_same_type(t1.type, t2.type) and t1.name == t2.name
-                    for t1, t2 in zip(a.args, b.args)))
+    return (
+        len(a.args) == len(b.args)
+        and is_same_type(a.ret_type, b.ret_type)
+        and all(
+            is_same_type(t1.type, t2.type) and t1.name == t2.name for t1, t2 in zip(a.args, b.args)
+        )
+    )
 
 
 def is_same_method_signature(a: FuncSignature, b: FuncSignature) -> bool:
-    return (len(a.args) == len(b.args)
-            and is_same_type(a.ret_type, b.ret_type)
-            and all(is_same_type(t1.type, t2.type) and t1.name == t2.name
-                    for t1, t2 in zip(a.args[1:], b.args[1:])))
+    return (
+        len(a.args) == len(b.args)
+        and is_same_type(a.ret_type, b.ret_type)
+        and all(
+            is_same_type(t1.type, t2.type)
+            and ((t1.pos_only and t2.pos_only) or t1.name == t2.name)
+            and t1.optional == t2.optional
+            for t1, t2 in zip(a.args[1:], b.args[1:])
+        )
+    )
 
 
 class SameTypeVisitor(RTypeVisitor[bool]):
@@ -48,9 +67,11 @@ class SameTypeVisitor(RTypeVisitor[bool]):
         return left is self.right
 
     def visit_rtuple(self, left: RTuple) -> bool:
-        return (isinstance(self.right, RTuple)
+        return (
+            isinstance(self.right, RTuple)
             and len(self.right.types) == len(left.types)
-            and all(is_same_type(t1, t2) for t1, t2 in zip(left.types, self.right.types)))
+            and all(is_same_type(t1, t2) for t1, t2 in zip(left.types, self.right.types))
+        )
 
     def visit_rstruct(self, left: RStruct) -> bool:
         return isinstance(self.right, RStruct) and self.right.name == left.name

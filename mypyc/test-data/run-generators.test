@@ -516,3 +516,149 @@ class E:
 
 [file driver.py]
 # really I only care it builds
+
+[case testCloseStopIterationRaised]
+def g() -> object:
+    try:
+        yield 1
+    except GeneratorExit:
+        raise
+
+[file driver.py]
+from native import g
+
+gen = g()
+next(gen)
+gen.close()
+
+[case testCloseGeneratorExitRaised]
+def g() -> object:
+    yield 1
+
+[file driver.py]
+from native import g
+
+gen = g()
+next(gen)
+gen.close()
+
+[case testCloseGeneratorExitIgnored]
+def g() -> object:
+    try:
+        yield 1
+    except GeneratorExit:
+        pass
+
+    yield 2
+
+[file driver.py]
+from native import g
+
+gen = g()
+next(gen)
+try:
+    gen.close()
+except RuntimeError as e:
+    assert str(e) == 'generator ignored GeneratorExit'
+else:
+    assert False
+
+[case testCloseGeneratorRaisesAnotherException]
+def g() -> object:
+    try:
+        yield 1
+    except GeneratorExit:
+        raise RuntimeError("error")
+
+[file driver.py]
+from native import g
+
+gen = g()
+next(gen)
+try:
+    gen.close()
+except RuntimeError as e:
+    assert str(e) == 'error'
+else:
+    assert False
+
+[case testBorrowingInGeneratorNearYield]
+from typing import Iterator
+
+class Foo:
+    flag: bool
+
+class C:
+    foo: Foo
+
+    def genf(self) -> Iterator[None]:
+        self.foo.flag = True
+        yield
+        self.foo.flag = False
+
+[case testGeneratorEarlyReturnWithBorrows]
+from typing import Iterator
+class Bar:
+    bar = 0
+class Foo:
+    bar = Bar()
+    def f(self) -> Iterator[int]:
+        if self:
+            self.bar.bar += 1
+            return
+        yield 0
+
+[case testBorrowingInGeneratorInTupleAssignment]
+from typing import Iterator
+
+class Foo:
+    flag1: bool
+    flag2: bool
+
+class C:
+    foo: Foo
+
+    def genf(self) -> Iterator[None]:
+        self.foo.flag1, self.foo.flag2 = True, True
+        yield
+        self.foo.flag1, self.foo.flag2 = False, False
+
+def test_generator() -> None:
+    c = C()
+    c.foo = Foo()
+    gen = c.genf()
+    next(gen)
+    assert c.foo.flag1 == c.foo.flag2 == True
+    assert list(gen) == []
+    assert c.foo.flag1 == c.foo.flag2 == False
+
+
+[case testYieldInFinally]
+from typing import Generator
+
+def finally_yield() -> Generator[str, None, str]:
+    try:
+        return 'test'
+    finally:
+        yield 'x'
+
+
+[file driver.py]
+from native import finally_yield
+from testutil import run_generator
+
+yields, val = run_generator(finally_yield())
+assert yields == ('x',)
+assert val == 'test', val
+
+[case testUnreachableComprehensionNoCrash]
+from typing import List
+
+def list_comp() -> List[int]:
+    if True:
+        return [5]
+    return [i for i in [5]]
+
+[file driver.py]
+from native import list_comp
+assert list_comp() == [5]

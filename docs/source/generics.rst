@@ -159,7 +159,7 @@ non-generic. For example:
 
    class StrDict(dict[str, str]):  # This is a non-generic subclass of dict
        def __str__(self) -> str:
-           return 'StrDict({})'.format(super().__str__())
+           return f'StrDict({super().__str__()})'
 
    data: StrDict[int, int]  # Error! StrDict is not generic
    data2: StrDict  # OK
@@ -264,15 +264,8 @@ Generic methods and generic self
 You can also define generic methods — just use a type variable in the
 method signature that is different from class type variables. In particular,
 ``self`` may also be generic, allowing a method to return the most precise
-type known at the point of access.
-
-.. note::
-
-   This feature is experimental. Checking code with type annotations for self
-   arguments is still not fully implemented. Mypy may disallow valid code or
-   allow unsafe code.
-
-In this way, for example, you can typecheck chaining of setter methods:
+type known at the point of access. In this way, for example, you can typecheck
+chaining of setter methods:
 
 .. code-block:: python
 
@@ -295,8 +288,8 @@ In this way, for example, you can typecheck chaining of setter methods:
            self.width = w
            return self
 
-   circle = Circle().set_scale(0.5).set_radius(2.7)  # type: Circle
-   square = Square().set_scale(0.5).set_width(3.2)  # type: Square
+   circle: Circle = Circle().set_scale(0.5).set_radius(2.7)
+   square: Square = Square().set_scale(0.5).set_width(3.2)
 
 Without using generic ``self``, the last two lines could not be type-checked properly.
 
@@ -310,7 +303,7 @@ For class methods, you can also define generic ``cls``, using :py:class:`Type[T]
    T = TypeVar('T', bound='Friend')
 
    class Friend:
-       other = None  # type: Friend
+       other: "Friend" = None
 
        @classmethod
        def make_pair(cls: Type[T]) -> tuple[T, T]:
@@ -333,7 +326,68 @@ or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type.
 
+Note that this feature may accept some unsafe code for the purpose of
+*practicality*. For example:
+
+.. code-block:: python
+
+   from typing import TypeVar
+
+   T = TypeVar("T")
+   class Base:
+       def compare(self: T, other: T) -> bool:
+           return False
+
+   class Sub(Base):
+       def __init__(self, x: int) -> None:
+           self.x = x
+
+       # This is unsafe (see below), but allowed because it is
+       # a common pattern, and rarely causes issues in practice.
+       def compare(self, other: Sub) -> bool:
+           return self.x > other.x
+
+   b: Base = Sub(42)
+   b.compare(Base())  # Runtime error here: 'Base' object has no attribute 'x'
+
 For some advanced uses of self-types see :ref:`additional examples <advanced_self>`.
+
+Automatic self types using typing.Self
+**************************************
+
+The patterns described above are quite common, so there is a syntactic sugar
+for them introduced in :pep:`673`. Instead of defining a type variable and
+using an explicit ``self`` annotation, you can import a magic type ``typing.Self``
+that is automatically transformed into a type variable with an upper bound of
+current class, and you don't need an annotation for ``self`` (or ``cls`` for
+class methods). The above example can thus be rewritten as:
+
+.. code-block:: python
+
+   from typing import Self
+
+   class Friend:
+       other: Self | None = None
+
+       @classmethod
+       def make_pair(cls) -> tuple[Self, Self]:
+           a, b = cls(), cls()
+           a.other = b
+           b.other = a
+           return a, b
+
+   class SuperFriend(Friend):
+       pass
+
+   a, b = SuperFriend.make_pair()
+
+This is more compact than using explicit type variables, plus additionally
+you can use ``Self`` in attribute annotations, not just in methods.
+
+.. note::
+
+   To use this feature on versions of Python before 3.11, you will need to
+   import ``Self`` from ``typing_extensions`` version 4.0 or newer.
 
 .. _variance-of-generics:
 
@@ -541,15 +595,43 @@ A type variable may not have both a value restriction (see
 Declaring decorators
 ********************
 
-One common application of type variable upper bounds is in declaring a
-decorator that preserves the signature of the function it decorates,
-regardless of that signature.
+One common application of type variables along with parameter specifications
+is in declaring a decorator that preserves the signature of the function it decorates.
 
 Note that class decorators are handled differently than function decorators in
 mypy: decorating a class does not erase its type, even if the decorator has
 incomplete type annotations.
 
-Here's a complete example of a function decorator:
+Suppose we have the following decorator, not type annotated yet,
+that preserves the original function's signature and merely prints the decorated function's name:
+
+.. code-block:: python
+
+   def my_decorator(func):
+       def wrapper(*args, **kwds):
+           print("Calling", func)
+           return func(*args, **kwds)
+       return wrapper
+
+and we use it to decorate function ``add_forty_two``:
+
+.. code-block:: python
+
+   # A decorated function.
+   @my_decorator
+   def add_forty_two(value: int) -> int:
+       return value + 42
+
+   a = add_forty_two(3)
+
+Since ``my_decorator`` is not type-annotated, the following won't get type-checked:
+
+.. code-block:: python
+
+   reveal_type(a)  # revealed type: Any
+   add_forty_two('foo')  # no type-checker error :(
+
+Before parameter specifications, here's how one might have annotated the decorator:
 
 .. code-block:: python
 
@@ -564,26 +646,57 @@ Here's a complete example of a function decorator:
            return func(*args, **kwds)
        return cast(F, wrapper)
 
-   # A decorated function.
-   @my_decorator
-   def foo(a: int) -> str:
-       return str(a)
+and that would enable the following type checks:
 
-   a = foo(12)
-   reveal_type(a)  # str
-   foo('x')    # Type check error: incompatible type "str"; expected "int"
+.. code-block:: python
 
-From the final block we see that the signatures of the decorated
-functions ``foo()`` and ``bar()`` are the same as those of the original
-functions (before the decorator is applied).
+   reveal_type(a)  # Revealed type is "builtins.int"
+   add_forty_two('x')  # Argument 1 to "add_forty_two" has incompatible type "str"; expected "int"
 
-The bound on ``F`` is used so that calling the decorator on a
-non-function (e.g. ``my_decorator(1)``) will be rejected.
 
-Also note that the ``wrapper()`` function is not type-checked. Wrapper
+Note that the ``wrapper()`` function is not type-checked. Wrapper
 functions are typically small enough that this is not a big
 problem. This is also the reason for the :py:func:`~typing.cast` call in the
-``return`` statement in ``my_decorator()``. See :ref:`casts <casts>`.
+``return`` statement in ``my_decorator()``. See :ref:`casts <casts>`.  However,
+with the introduction of parameter specifications in mypy 0.940, we can now
+have a more faithful type annotation:
+
+.. code-block:: python
+
+   from typing import Callable, ParamSpec, TypeVar
+
+   P = ParamSpec('P')
+   T = TypeVar('T')
+
+   def my_decorator(func: Callable[P, T]) -> Callable[P, T]:
+       def wrapper(*args: P.args, **kwds: P.kwargs) -> T:
+           print("Calling", func)
+           return func(*args, **kwds)
+       return wrapper
+
+When the decorator alters the signature, parameter specifications truly show their potential:
+
+.. code-block:: python
+
+   from typing import Callable, ParamSpec, TypeVar
+
+   P = ParamSpec('P')
+   T = TypeVar('T')
+
+    # Note: We reuse 'P' in the return type, but replace 'T' with 'str'
+   def stringify(func: Callable[P, T]) -> Callable[P, str]:
+       def wrapper(*args: P.args, **kwds: P.kwargs) -> str:
+           return str(func(*args, **kwds))
+       return wrapper
+
+    @stringify
+    def add_forty_two(value: int) -> int:
+        return value + 42
+
+    a = add_forty_two(3)
+    reveal_type(a)  # str
+    foo('x')    # Type check error: incompatible type "str"; expected "int"
+
 
 .. _decorator-factories:
 
@@ -611,7 +724,7 @@ achieved by combining with :py:func:`@overload <typing.overload>`:
 
 .. code-block:: python
 
-    from typing import Any, Callable, TypeVar, overload
+    from typing import Any, Callable, Optional, TypeVar, overload
 
     F = TypeVar('F', bound=Callable[..., Any])
 
@@ -623,7 +736,7 @@ achieved by combining with :py:func:`@overload <typing.overload>`:
     def atomic(*, savepoint: bool = True) -> Callable[[F], F]: ...
 
     # Implementation
-    def atomic(__func: Callable[..., Any] = None, *, savepoint: bool = True):
+    def atomic(__func: Optional[Callable[..., Any]] = None, *, savepoint: bool = True):
         def decorator(func: Callable[..., Any]):
             ...  # Code goes here
         if __func is not None:
@@ -672,6 +785,10 @@ protocols mostly follow the normal rules for generic classes. Example:
    x: Box[float] = ...
    y: Box[int] = ...
    x = y  # Error -- Box is invariant
+
+Per :pep:`PEP 544: Generic protocols <544#generic-protocols>`, ``class
+ClassName(Protocol[T])`` is allowed as a shorthand for ``class
+ClassName(Protocol, Generic[T])``.
 
 The main difference between generic protocols and ordinary generic
 classes is that mypy checks that the declared variances of generic
@@ -799,9 +916,5 @@ defeating the purpose of using aliases.  Example:
 
     OIntVec = Optional[Vec[int]]
 
-.. note::
-
-    A type alias does not define a new type. For generic type aliases
-    this means that variance of type variables used for alias definition does not
-    apply to aliases. A parameterized generic alias is treated simply as an original
-    type with the corresponding type variables substituted.
+Using type variable bounds or values in generic aliases, has the same effect
+as in generic classes/functions.

@@ -1,8 +1,4 @@
 import types
-from _typeshed import StrPath
-from os import PathLike
-from typing import IO, Any, Protocol, TypeVar
-
 from _imp import (
     acquire_lock as acquire_lock,
     create_dynamic as create_dynamic,
@@ -14,8 +10,10 @@ from _imp import (
     lock_held as lock_held,
     release_lock as release_lock,
 )
-
-_T = TypeVar("_T")
+from _typeshed import StrPath
+from os import PathLike
+from types import TracebackType
+from typing import IO, Any, Protocol
 
 SEARCH_ERROR: int
 PY_SOURCE: int
@@ -47,7 +45,7 @@ class _FileLike(Protocol):
     def read(self) -> str | bytes: ...
     def close(self) -> Any: ...
     def __enter__(self) -> Any: ...
-    def __exit__(self, *args: Any) -> Any: ...
+    def __exit__(self, typ: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> Any: ...
 
 # PathLike doesn't work for the pathname argument here
 def load_source(name: str, pathname: str, file: _FileLike | None = ...) -> types.ModuleType: ...

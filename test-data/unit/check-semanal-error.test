@@ -77,10 +77,47 @@ continue # E: "continue" outside loop
 
 [case testYieldOutsideFunction]
 yield # E: "yield" outside function
-
-[case testYieldFromOutsideFunction]
 x = 1
 yield from x # E: "yield from" outside function
+[(yield 1) for _ in x] # E: "yield" inside comprehension or generator expression
+{(yield 1) for _ in x} # E: "yield" inside comprehension or generator expression
+{i: (yield 1) for i in x} # E: "yield" inside comprehension or generator expression
+((yield 1) for _ in x) # E: "yield" inside comprehension or generator expression
+y = 1
+[(yield from x) for _ in y] # E: "yield from" inside comprehension or generator expression
+{(yield from x) for _ in y} # E: "yield from" inside comprehension or generator expression
+{i: (yield from x) for i in y} # E: "yield from" inside comprehension or generator expression
+((yield from x) for _ in y) # E: "yield from" inside comprehension or generator expression
+def f(y):
+    [x for x in (yield y)]
+    {x for x in (yield y)}
+    {x: x for x in (yield y)}
+    (x for x in (yield y))
+    [x for x in (yield from y)]
+    {x for x in (yield from y)}
+    {x: x for x in (yield from y)}
+    (x for x in (yield from y))
+def g(y):
+    [(yield 1) for _ in y] # E: "yield" inside comprehension or generator expression
+    {(yield 1) for _ in y} # E: "yield" inside comprehension or generator expression
+    {i: (yield 1) for i in y} # E: "yield" inside comprehension or generator expression
+    ((yield 1) for _ in y) # E: "yield" inside comprehension or generator expression
+    lst = 1
+    [(yield from lst) for _ in y] # E: "yield from" inside comprehension or generator expression
+    {(yield from lst) for _ in y} # E: "yield from" inside comprehension or generator expression
+    {i: (yield from lst) for i in y} # E: "yield from" inside comprehension or generator expression
+    ((yield from lst) for _ in y) # E: "yield from" inside comprehension or generator expression
+def h(y):
+    lst = 1
+    [x for x in lst if (yield y)] # E: "yield" inside comprehension or generator expression
+    {x for x in lst if (yield y)} # E: "yield" inside comprehension or generator expression
+    {x: x for x in lst if (yield y)} # E: "yield" inside comprehension or generator expression
+    (x for x in lst if (yield y)) # E: "yield" inside comprehension or generator expression
+    lst = 1
+    [x for x in lst if (yield from y)] # E: "yield from" inside comprehension or generator expression
+    {x for x in lst if (yield from y)} # E: "yield from" inside comprehension or generator expression
+    {x: x for x in lst if (yield from y)} # E: "yield from" inside comprehension or generator expression
+    (x for x in lst if (yield from y)) # E: "yield from" inside comprehension or generator expression
 
 [case testImportFuncDup]
 

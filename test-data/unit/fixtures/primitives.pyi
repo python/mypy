@@ -1,5 +1,6 @@
 # builtins stub with non-generic primitive types
-from typing import Generic, TypeVar, Sequence, Iterator, Mapping
+from typing import Generic, TypeVar, Sequence, Iterator, Mapping, Iterable, Tuple, Union
+
 T = TypeVar('T')
 V = TypeVar('V')
 
@@ -19,7 +20,9 @@ class int:
     def __rmul__(self, x: int) -> int: pass
 class float:
     def __float__(self) -> float: pass
-class complex: pass
+    def __add__(self, x: float) -> float: pass
+class complex:
+    def __add__(self, x: complex) -> complex: pass
 class bool(int): pass
 class str(Sequence[str]):
     def __add__(self, s: str) -> str: pass
@@ -48,5 +51,19 @@ class list(Sequence[T]):
     def __getitem__(self, item: int) -> T: pass
 class dict(Mapping[T, V]):
     def __iter__(self) -> Iterator[T]: pass
+class set(Iterable[T]):
+    def __iter__(self) -> Iterator[T]: pass
+class frozenset(Iterable[T]):
+    def __iter__(self) -> Iterator[T]: pass
 class function: pass
 class ellipsis: pass
+
+class range(Sequence[int]):
+    def __init__(self, __x: int, __y: int = ..., __z: int = ...) -> None: pass
+    def count(self, value: int) -> int: pass
+    def index(self, value: int) -> int: pass
+    def __getitem__(self, i: int) -> int: pass
+    def __iter__(self) -> Iterator[int]: pass
+    def __contains__(self, other: object) -> bool: pass
+
+def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass

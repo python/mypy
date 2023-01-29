@@ -1,15 +1,16 @@
+from collections.abc import Callable
+from email import _ParamsType
 from email.mime.nonmultipart import MIMENonMultipart
 from email.policy import Policy
-from typing import Callable, Optional, Tuple, Union
 
-_ParamsType = Union[str, None, Tuple[str, Optional[str], str]]
+__all__ = ["MIMEAudio"]
 
 class MIMEAudio(MIMENonMultipart):
     def __init__(
         self,
-        _audiodata: str | bytes,
+        _audiodata: str | bytes | bytearray,
         _subtype: str | None = ...,
-        _encoder: Callable[[MIMEAudio], None] = ...,
+        _encoder: Callable[[MIMEAudio], object] = ...,
         *,
         policy: Policy | None = ...,
         **_params: _ParamsType,

@@ -1,10 +1,11 @@
 import sys
+from _typeshed import Self
+from collections.abc import Iterable, Iterator
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
-from typing import Any, Iterable, Iterator, List, Pattern, Type, TypeVar, Union
+from re import Pattern
+from typing import Any
 from typing_extensions import Final
-
-_T = TypeVar("_T")
 
 WSP: Final[set[str]]
 CFWS_LEADER: Final[set[str]]
@@ -20,10 +21,9 @@ EXTENDED_ATTRIBUTE_ENDS: Final[set[str]]
 
 def quote_string(value: Any) -> str: ...
 
-if sys.version_info >= (3, 7):
-    rfc2047_matcher: Pattern[str]
+rfc2047_matcher: Pattern[str]
 
-class TokenList(List[Union[TokenList, Terminal]]):
+class TokenList(list[TokenList | Terminal]):
     token_type: str | None
     syntactic_break: bool
     ew_combine_allowed: bool
@@ -42,11 +42,7 @@ class TokenList(List[Union[TokenList, Terminal]]):
     def pprint(self, indent: str = ...) -> None: ...
     def ppstr(self, indent: str = ...) -> str: ...
 
-class WhiteSpaceTokenList(TokenList):
-    @property
-    def value(self) -> str: ...
-    @property
-    def comments(self) -> list[str]: ...
+class WhiteSpaceTokenList(TokenList): ...
 
 class UnstructuredTokenList(TokenList):
     token_type: str
@@ -84,16 +80,12 @@ class QuotedString(TokenList):
 
 class BareQuotedString(QuotedString):
     token_type: str
-    @property
-    def value(self) -> str: ...
 
 class Comment(WhiteSpaceTokenList):
     token_type: str
     def quote(self, value: Any) -> str: ...
     @property
     def content(self) -> str: ...
-    @property
-    def comments(self) -> list[str]: ...
 
 class AddressList(TokenList):
     token_type: str
@@ -182,10 +174,14 @@ class InvalidMailbox(TokenList):
     token_type: str
     @property
     def display_name(self) -> None: ...
-    local_part: None
-    domain: None
-    route: None
-    addr_spec: None
+    @property
+    def local_part(self) -> None: ...
+    @property
+    def domain(self) -> None: ...
+    @property
+    def route(self) -> None: ...
+    @property
+    def addr_spec(self) -> None: ...
 
 class Domain(TokenList):
     token_type: str
@@ -213,8 +209,6 @@ class AddrSpec(TokenList):
     @property
     def domain(self) -> str: ...
     @property
-    def value(self) -> str: ...
-    @property
     def addr_spec(self) -> str: ...
 
 class ObsLocalPart(TokenList):
@@ -223,17 +217,12 @@ class ObsLocalPart(TokenList):
 
 class DisplayName(Phrase):
     token_type: str
-    ew_combine_allowed: bool
     @property
     def display_name(self) -> str: ...
-    @property
-    def value(self) -> str: ...
 
 class LocalPart(TokenList):
     token_type: str
     as_ew_allowed: bool
-    @property
-    def value(self) -> str: ...
     @property
     def local_part(self) -> str: ...
 
@@ -313,8 +302,10 @@ if sys.version_info >= (3, 8):
         token_type: str
         as_ew_allowed: bool
         def fold(self, policy: Policy) -> str: ...
+
     class MessageID(MsgID):
         token_type: str
+
     class InvalidMessageID(MessageID):
         token_type: str
 
@@ -327,14 +318,14 @@ class Terminal(str):
     syntactic_break: bool
     token_type: str
     defects: list[MessageDefect]
-    def __new__(cls: Type[_T], value: str, token_type: str) -> _T: ...
+    def __new__(cls: type[Self], value: str, token_type: str) -> Self: ...
     def pprint(self) -> None: ...
     @property
     def all_defects(self) -> list[MessageDefect]: ...
     def pop_trailing_ws(self) -> None: ...
     @property
     def comments(self) -> list[str]: ...
-    def __getnewargs__(self) -> tuple[str, str]: ...  # type: ignore
+    def __getnewargs__(self) -> tuple[str, str]: ...  # type: ignore[override]
 
 class WhiteSpaceTerminal(Terminal):
     @property
@@ -346,10 +337,7 @@ class ValueTerminal(Terminal):
     def value(self) -> ValueTerminal: ...
     def startswith_fws(self) -> bool: ...
 
-class EWWhiteSpaceTerminal(WhiteSpaceTerminal):
-    @property
-    def value(self) -> str: ...
-
+class EWWhiteSpaceTerminal(WhiteSpaceTerminal): ...
 class _InvalidEwError(HeaderParseError): ...
 
 DOT: Final[ValueTerminal]

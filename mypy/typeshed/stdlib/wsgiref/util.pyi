@@ -1,13 +1,18 @@
-from typing import IO, Any, Callable
+import sys
+from _typeshed.wsgi import WSGIEnvironment
+from collections.abc import Callable
+from typing import IO, Any
 
-from .types import WSGIEnvironment
+__all__ = ["FileWrapper", "guess_scheme", "application_uri", "request_uri", "shift_path_info", "setup_testing_defaults"]
 
 class FileWrapper:
     filelike: IO[bytes]
     blksize: int
     close: Callable[[], None]  # only exists if filelike.close exists
     def __init__(self, filelike: IO[bytes], blksize: int = ...) -> None: ...
-    def __getitem__(self, key: Any) -> bytes: ...
+    if sys.version_info < (3, 11):
+        def __getitem__(self, key: Any) -> bytes: ...
+
     def __iter__(self) -> FileWrapper: ...
     def __next__(self) -> bytes: ...
 

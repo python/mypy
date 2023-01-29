@@ -1,10 +1,28 @@
 import sys
-from _typeshed import SupportsGetItem, SupportsItemAccess
-from builtins import type as _type
+from _typeshed import Self, SupportsGetItem, SupportsItemAccess
+from builtins import list as _list, type as _type
 from collections.abc import Iterable, Iterator, Mapping
-from typing import IO, Any, Protocol, TypeVar
+from email.message import Message
+from types import TracebackType
+from typing import IO, Any, Protocol
 
-_T = TypeVar("_T", bound=FieldStorage)
+__all__ = [
+    "MiniFieldStorage",
+    "FieldStorage",
+    "parse",
+    "parse_multipart",
+    "parse_header",
+    "test",
+    "print_exception",
+    "print_environ",
+    "print_form",
+    "print_directory",
+    "print_arguments",
+    "print_environ_usage",
+]
+
+if sys.version_info < (3, 8):
+    __all__ += ["parse_qs", "parse_qsl", "escape"]
 
 def parse(
     fp: IO[Any] | None = ...,
@@ -18,13 +36,9 @@ if sys.version_info < (3, 8):
     def parse_qs(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> dict[str, list[str]]: ...
     def parse_qsl(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> list[tuple[str, str]]: ...
 
-if sys.version_info >= (3, 7):
-    def parse_multipart(
-        fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = ..., errors: str = ..., separator: str = ...
-    ) -> dict[str, list[Any]]: ...
-
-else:
-    def parse_multipart(fp: IO[Any], pdict: SupportsGetItem[str, bytes]) -> dict[str, list[bytes]]: ...
+def parse_multipart(
+    fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = ..., errors: str = ..., separator: str = ...
+) -> dict[str, list[Any]]: ...
 
 class _Environ(Protocol):
     def __getitem__(self, __k: str) -> str: ...
@@ -53,16 +67,13 @@ class MiniFieldStorage:
     name: Any
     value: Any
     def __init__(self, name: Any, value: Any) -> None: ...
-    def __repr__(self) -> str: ...
 
-_list = list
-
-class FieldStorage(object):
+class FieldStorage:
     FieldStorageClass: _type | None
     keep_blank_values: int
     strict_parsing: int
     qs_on_post: str | None
-    headers: Mapping[str, str]
+    headers: Mapping[str, str] | Message
     fp: IO[bytes]
     encoding: str
     errors: str
@@ -83,7 +94,7 @@ class FieldStorage(object):
     def __init__(
         self,
         fp: IO[Any] | None = ...,
-        headers: Mapping[str, str] | None = ...,
+        headers: Mapping[str, str] | Message | None = ...,
         outerboundary: bytes = ...,
         environ: SupportsGetItem[str, str] = ...,
         keep_blank_values: int = ...,
@@ -94,9 +105,8 @@ class FieldStorage(object):
         max_num_fields: int | None = ...,
         separator: str = ...,
     ) -> None: ...
-    def __enter__(self: _T) -> _T: ...
-    def __exit__(self, *args: Any) -> None: ...
-    def __repr__(self) -> str: ...
+    def __enter__(self: Self) -> Self: ...
+    def __exit__(self, *args: object) -> None: ...
     def __iter__(self) -> Iterator[str]: ...
     def __getitem__(self, key: str) -> Any: ...
     def getvalue(self, key: str, default: Any = ...) -> Any: ...
@@ -108,3 +118,11 @@ class FieldStorage(object):
     def __bool__(self) -> bool: ...
     # In Python 3 it returns bytes or str IO depending on an internal flag
     def make_file(self) -> IO[Any]: ...
+
+def print_exception(
+    type: type[BaseException] | None = ...,
+    value: BaseException | None = ...,
+    tb: TracebackType | None = ...,
+    limit: int | None = ...,
+) -> None: ...
+def print_arguments() -> None: ...

@@ -82,6 +82,25 @@ Example:
         # Error: Redundant cast to "int"  [redundant-cast]
         return cast(int, x)
 
+Check that methods do not have redundant Self annotations [redundant-self]
+--------------------------------------------------------------------------
+
+Such annotations are allowed by :pep:`673` but are redundant, so if you want
+warnings about them, enable this error code.
+
+Example:
+
+.. code-block:: python
+
+   # mypy: enable-error-code="redundant-self"
+
+   from typing import Self
+
+   class C:
+       # Error: Redundant Self annotation on method first argument
+       def copy(self: Self) -> Self:
+           return type(self)()
+
 Check that comparisons are overlapping [comparison-overlap]
 -----------------------------------------------------------
 
@@ -200,7 +219,7 @@ mypy generates an error if it thinks that an expression is redundant.
 
 .. code-block:: python
 
-    # mypy: enable-error-code redundant-expr
+    # Use "mypy --enable-error-code redundant-expr ..."
 
     def example(x: int) -> None:
         # Error: Left operand of "and" is always true  [redundant-expr]
@@ -222,7 +241,7 @@ since unless implemented by a sub-type, the expression will always evaluate to t
 
 .. code-block:: python
 
-    # mypy: enable-error-code truthy-bool
+    # Use "mypy --enable-error-code truthy-bool ..."
 
     class Foo:
       pass
@@ -231,27 +250,88 @@ since unless implemented by a sub-type, the expression will always evaluate to t
     if foo:
        ...
 
+The check is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
+except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
+while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
 
-This check might falsely imply an error. For example, ``Iterable`` does not implement
-``__len__`` and so this code will be flagged:
+
+Check that iterable is not implicitly true in boolean context [truthy-iterable]
+-------------------------------------------------------------------------------
+
+``Iterable`` does not implement ``__len__`` and so this code will be flagged:
 
 .. code-block:: python
 
-    # mypy: enable-error-code truthy-bool
     from typing import Iterable
 
-    def transform(items: Iterable[int]) -> Iterable[int]:
-        # Error: "items" has type "Iterable[int]" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    def transform(items: Iterable[int]) -> list[int]:
+        # Error: "items" has type "Iterable[int]" which can always be true in boolean context. Consider using "Collection[int]" instead.  [truthy-iterable]
         if not items:
             return [42]
         return [x + 1 for x in items]
 
+If called with a ``Generator`` like ``int(x) for x in []``, this function would not return ``[42]`` unlike
+what the author might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects,
+and so there is no error in practice. In such case, it is recommended to annotate ``items: Collection[int]``.
 
 
-If called as ``transform((int(s) for s in []))``, this function would not return ``[42]`` unlike what the author
-might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects, and so there is
-no error in practice. In such case, it might be prudent to annotate ``items: Sequence[int]``.
+.. _ignore-without-code:
 
-This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
-except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
-while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
+Check that ``# type: ignore`` include an error code [ignore-without-code]
+-------------------------------------------------------------------------
+
+Warn when a ``# type: ignore`` comment does not specify any error codes.
+This clarifies the intent of the ignore and ensures that only the
+expected errors are silenced.
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code ignore-without-code ..."
+
+    class Foo:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    f = Foo('foo')
+
+    # This line has a typo that mypy can't help with as both:
+    # - the expected error 'assignment', and
+    # - the unexpected error 'attr-defined'
+    # are silenced.
+    # Error: "type: ignore" comment without error code (consider "type: ignore[attr-defined]" instead)
+    f.nme = 42  # type: ignore
+
+    # This line warns correctly about the typo in the attribute name
+    # Error: "Foo" has no attribute "nme"; maybe "name"?
+    f.nme = 42  # type: ignore[assignment]
+
+Check that awaitable return value is used [unused-awaitable]
+------------------------------------------------------------
+
+If you use :option:`--enable-error-code unused-awaitable <mypy --enable-error-code>`,
+mypy generates an error if you don't use a returned value that defines ``__await__``.
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code unused-awaitable ..."
+
+    import asyncio
+
+    async def f() -> int: ...
+
+    async def g() -> None:
+        # Error: Value of type "Task[int]" must be used
+        #        Are you missing an await?
+        asyncio.create_task(f())
+
+You can assign the value to a temporary, otherwise unused to variable to
+silence the error:
+
+.. code-block:: python
+
+    async def g() -> None:
+        _ = asyncio.create_task(f())  # No error

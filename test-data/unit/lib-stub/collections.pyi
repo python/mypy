@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Union, Optional, Dict, TypeVar, overload, Optional, Callable, Sized
+from typing import Any, Iterable, Union, Dict, TypeVar, Optional, Callable, Generic, Sequence, MutableMapping
 
 def namedtuple(
     typename: str,
@@ -20,6 +20,6 @@ class defaultdict(Dict[KT, VT]):
 
 class Counter(Dict[KT, int], Generic[KT]): ...
 
-class deque(Sized, Iterable[KT], Reversible[KT], Generic[KT]): ...
+class deque(Sequence[KT], Generic[KT]): ...
 
 class ChainMap(MutableMapping[KT, VT], Generic[KT, VT]): ...

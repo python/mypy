@@ -1,30 +1,31 @@
-# Rename typing to _typing, as not to conflict with typing imported
-# from _ast below when loaded in an unorthodox way by the Dropbox
-# internal Bazel integration.
-
-# The same unorthodox Bazel integration causes issues with sys, which
-# is imported in both modules. unfortunately we can't just rename sys,
-# since mypy only supports version checks with a sys that is named
-# sys.
+import os
 import sys
-import typing as _typing
-from _ast import *  # type: ignore
-from typing import Any, Iterator, TypeVar, overload
+from _ast import *
+from _typeshed import ReadableBuffer
+from collections.abc import Iterator
+from typing import Any, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
-    class Num(Constant):
-        value: complex
-    class Str(Constant):
+    class _ABC(type):
+        if sys.version_info >= (3, 9):
+            def __init__(cls, *args: object) -> None: ...
+
+    class Num(Constant, metaclass=_ABC):
+        value: int | float | complex
+
+    class Str(Constant, metaclass=_ABC):
         value: str
         # Aliases for value, for backwards compatibility
         s: str
-    class Bytes(Constant):
+
+    class Bytes(Constant, metaclass=_ABC):
         value: bytes
         # Aliases for value, for backwards compatibility
         s: bytes
-    class NameConstant(Constant): ...
-    class Ellipsis(Constant): ...
+
+    class NameConstant(Constant, metaclass=_ABC): ...
+    class Ellipsis(Constant, metaclass=_ABC): ...
 
 if sys.version_info >= (3, 9):
     class slice(AST): ...
@@ -88,6 +89,8 @@ class NodeVisitor:
     def visit_Constant(self, node: Constant) -> Any: ...
     if sys.version_info >= (3, 8):
         def visit_NamedExpr(self, node: NamedExpr) -> Any: ...
+        def visit_TypeIgnore(self, node: TypeIgnore) -> Any: ...
+
     def visit_Attribute(self, node: Attribute) -> Any: ...
     def visit_Subscript(self, node: Subscript) -> Any: ...
     def visit_Starred(self, node: Starred) -> Any: ...
@@ -133,6 +136,19 @@ class NodeVisitor:
     def visit_keyword(self, node: keyword) -> Any: ...
     def visit_alias(self, node: alias) -> Any: ...
     def visit_withitem(self, node: withitem) -> Any: ...
+    if sys.version_info >= (3, 10):
+        def visit_Match(self, node: Match) -> Any: ...
+        def visit_MatchValue(self, node: MatchValue) -> Any: ...
+        def visit_MatchSequence(self, node: MatchSequence) -> Any: ...
+        def visit_MatchStar(self, node: MatchStar) -> Any: ...
+        def visit_MatchMapping(self, node: MatchMapping) -> Any: ...
+        def visit_MatchClass(self, node: MatchClass) -> Any: ...
+        def visit_MatchAs(self, node: MatchAs) -> Any: ...
+        def visit_MatchOr(self, node: MatchOr) -> Any: ...
+
+    if sys.version_info >= (3, 11):
+        def visit_TryStar(self, node: TryStar) -> Any: ...
+
     # visit methods for deprecated nodes
     def visit_ExtSlice(self, node: ExtSlice) -> Any: ...
     def visit_Index(self, node: Index) -> Any: ...
@@ -157,28 +173,93 @@ _T = TypeVar("_T", bound=AST)
 if sys.version_info >= (3, 8):
     @overload
     def parse(
-        source: str | bytes,
-        filename: str | bytes = ...,
+        source: str | ReadableBuffer,
+        filename: str | ReadableBuffer | os.PathLike[Any] = ...,
         mode: Literal["exec"] = ...,
         *,
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> Module: ...
     @overload
     def parse(
-        source: str | bytes,
-        filename: str | bytes = ...,
+        source: str | ReadableBuffer,
+        filename: str | ReadableBuffer | os.PathLike[Any],
+        mode: Literal["eval"],
+        *,
+        type_comments: bool = ...,
+        feature_version: None | int | tuple[int, int] = ...,
+    ) -> Expression: ...
+    @overload
+    def parse(
+        source: str | ReadableBuffer,
+        filename: str | ReadableBuffer | os.PathLike[Any],
+        mode: Literal["func_type"],
+        *,
+        type_comments: bool = ...,
+        feature_version: None | int | tuple[int, int] = ...,
+    ) -> FunctionType: ...
+    @overload
+    def parse(
+        source: str | ReadableBuffer,
+        filename: str | ReadableBuffer | os.PathLike[Any],
+        mode: Literal["single"],
+        *,
+        type_comments: bool = ...,
+        feature_version: None | int | tuple[int, int] = ...,
+    ) -> Interactive: ...
+    @overload
+    def parse(
+        source: str | ReadableBuffer,
+        *,
+        mode: Literal["eval"],
+        type_comments: bool = ...,
+        feature_version: None | int | tuple[int, int] = ...,
+    ) -> Expression: ...
+    @overload
+    def parse(
+        source: str | ReadableBuffer,
+        *,
+        mode: Literal["func_type"],
+        type_comments: bool = ...,
+        feature_version: None | int | tuple[int, int] = ...,
+    ) -> FunctionType: ...
+    @overload
+    def parse(
+        source: str | ReadableBuffer,
+        *,
+        mode: Literal["single"],
+        type_comments: bool = ...,
+        feature_version: None | int | tuple[int, int] = ...,
+    ) -> Interactive: ...
+    @overload
+    def parse(
+        source: str | ReadableBuffer,
+        filename: str | ReadableBuffer | os.PathLike[Any] = ...,
         mode: str = ...,
         *,
         type_comments: bool = ...,
-        feature_version: None | int | _typing.Tuple[int, int] = ...,
+        feature_version: None | int | tuple[int, int] = ...,
     ) -> AST: ...
 
 else:
     @overload
-    def parse(source: str | bytes, filename: str | bytes = ..., mode: Literal["exec"] = ...) -> Module: ...
+    def parse(
+        source: str | ReadableBuffer, filename: str | ReadableBuffer | os.PathLike[Any] = ..., mode: Literal["exec"] = ...
+    ) -> Module: ...
     @overload
-    def parse(source: str | bytes, filename: str | bytes = ..., mode: str = ...) -> AST: ...
+    def parse(
+        source: str | ReadableBuffer, filename: str | ReadableBuffer | os.PathLike[Any], mode: Literal["eval"]
+    ) -> Expression: ...
+    @overload
+    def parse(
+        source: str | ReadableBuffer, filename: str | ReadableBuffer | os.PathLike[Any], mode: Literal["single"]
+    ) -> Interactive: ...
+    @overload
+    def parse(source: str | ReadableBuffer, *, mode: Literal["eval"]) -> Expression: ...
+    @overload
+    def parse(source: str | ReadableBuffer, *, mode: Literal["single"]) -> Interactive: ...
+    @overload
+    def parse(source: str | ReadableBuffer, filename: str | ReadableBuffer | os.PathLike[Any] = ..., mode: str = ...) -> AST: ...
 
 if sys.version_info >= (3, 9):
     def unparse(ast_obj: AST) -> str: ...
@@ -194,13 +275,16 @@ else:
     def dump(node: AST, annotate_fields: bool = ..., include_attributes: bool = ...) -> str: ...
 
 def fix_missing_locations(node: _T) -> _T: ...
-def get_docstring(node: AST, clean: bool = ...) -> str | None: ...
+def get_docstring(node: AsyncFunctionDef | FunctionDef | ClassDef | Module, clean: bool = ...) -> str | None: ...
 def increment_lineno(node: _T, n: int = ...) -> _T: ...
 def iter_child_nodes(node: AST) -> Iterator[AST]: ...
-def iter_fields(node: AST) -> Iterator[_typing.Tuple[str, Any]]: ...
+def iter_fields(node: AST) -> Iterator[tuple[str, Any]]: ...
 def literal_eval(node_or_string: str | AST) -> Any: ...
 
 if sys.version_info >= (3, 8):
     def get_source_segment(source: str, node: AST, *, padded: bool = ...) -> str | None: ...
 
 def walk(node: AST) -> Iterator[AST]: ...
+
+if sys.version_info >= (3, 9):
+    def main() -> None: ...

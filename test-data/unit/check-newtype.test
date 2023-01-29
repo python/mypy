@@ -68,7 +68,7 @@ bar = IdList([UserId(2)])
 baz = foo + bar
 reveal_type(foo)  # N: Revealed type is "__main__.IdList"
 reveal_type(bar)  # N: Revealed type is "__main__.IdList"
-reveal_type(baz)  # N: Revealed type is "builtins.list[__main__.UserId*]"
+reveal_type(baz)  # N: Revealed type is "builtins.list[__main__.UserId]"
 
 [builtins fixtures/list.pyi]
 [out]
@@ -96,7 +96,7 @@ Derived2(Base('a'))
 Derived3(Base(1))
 Derived3(Base('a'))
 
-reveal_type(Derived1(Base('a')).getter())  # N: Revealed type is "builtins.str*"
+reveal_type(Derived1(Base('a')).getter())  # N: Revealed type is "builtins.str"
 reveal_type(Derived3(Base('a')).getter())  # N: Revealed type is "Any"
 [out]
 
@@ -272,10 +272,11 @@ from typing import NewType
 a = NewType('b', int)  # E: String argument 1 "b" to NewType(...) does not match variable name "a"
 b = NewType('b', 3)    # E: Argument 2 to NewType(...) must be a valid type
 c = NewType(2, int)    # E: Argument 1 to NewType(...) must be a string literal
+d = NewType(b'f', int) # E: Argument 1 to NewType(...) must be a string literal
 foo = "d"
-d = NewType(foo, int)  # E: Argument 1 to NewType(...) must be a string literal
-e = NewType(name='e', tp=int)   # E: NewType(...) expects exactly two positional arguments
-f = NewType('f', tp=int)        # E: NewType(...) expects exactly two positional arguments
+e = NewType(foo, int)  # E: Argument 1 to NewType(...) must be a string literal
+f = NewType(name='e', tp=int)   # E: NewType(...) expects exactly two positional arguments
+g = NewType('f', tp=int)        # E: NewType(...) expects exactly two positional arguments
 [out]
 
 [case testNewTypeWithAnyFails]

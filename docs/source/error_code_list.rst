@@ -430,6 +430,56 @@ Example:
     # Error: Incompatible types (expression has type "float",
     #        TypedDict item "x" has type "int")  [typeddict-item]
     p: Point = {'x': 1.2, 'y': 4}
+    
+Check TypedDict Keys [typeddict-unknown-key]
+--------------------------------------------
+
+When constructing a ``TypedDict`` object, mypy checks whether the definition
+contains unknown keys. For convenience's sake, mypy will not generate an error
+when a ``TypedDict`` has extra keys if it's passed to a function as an argument.
+However, it will generate an error when these are created. Example:
+
+.. code-block:: python
+
+    from typing_extensions import TypedDict
+
+    class Point(TypedDict):
+        x: int
+        y: int
+
+    class Point3D(Point):
+        z: int
+
+    def add_x_coordinates(a: Point, b: Point) -> int:
+        return a["x"] + b["x"]
+
+    a: Point = {"x": 1, "y": 4}
+    b: Point3D = {"x": 2, "y": 5, "z": 6}
+
+    # OK
+    add_x_coordinates(a, b)
+    # Error: Extra key "z" for TypedDict "Point"  [typeddict-unknown-key]
+    add_x_coordinates(a, {"x": 1, "y": 4, "z": 5})
+
+
+Setting an unknown value on a ``TypedDict`` will also generate this error:
+
+.. code-block:: python
+
+    a: Point = {"x": 1, "y": 2}
+    # Error: Extra key "z" for TypedDict "Point"  [typeddict-unknown-key]
+    a["z"] = 3
+
+
+Whereas reading an unknown value will generate the more generic/serious
+``typeddict-item``:
+
+.. code-block:: python
+
+    a: Point = {"x": 1, "y": 2}
+    # Error: TypedDict "Point" has no key "z"  [typeddict-item]
+    _ = a["z"]
+
 
 Check that type of target is known [has-type]
 ---------------------------------------------
@@ -564,6 +614,54 @@ Example:
     # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
+Safe handling of abstract type object types [type-abstract]
+-----------------------------------------------------------
+
+Mypy always allows instantiating (calling) type objects typed as ``Type[t]``,
+even if it is not known that ``t`` is non-abstract, since it is a common
+pattern to create functions that act as object factories (custom constructors).
+Therefore, to prevent issues described in the above section, when an abstract
+type object is passed where ``Type[t]`` is expected, mypy will give an error.
+Example:
+
+.. code-block:: python
+
+   from abc import ABCMeta, abstractmethod
+   from typing import List, Type, TypeVar
+
+   class Config(metaclass=ABCMeta):
+       @abstractmethod
+       def get_value(self, attr: str) -> str: ...
+
+   T = TypeVar("T")
+   def make_many(typ: Type[T], n: int) -> List[T]:
+       return [typ() for _ in range(n)]  # This will raise if typ is abstract
+
+   # Error: Only concrete class can be given where "Type[Config]" is expected [type-abstract]
+   make_many(Config, 5)
+
+Check that call to an abstract method via super is valid [safe-super]
+---------------------------------------------------------------------
+
+Abstract methods often don't have any default implementation, i.e. their
+bodies are just empty. Calling such methods in subclasses via ``super()``
+will cause runtime errors, so mypy prevents you from doing so:
+
+.. code-block:: python
+
+   from abc import abstractmethod
+   class Base:
+       @abstractmethod
+       def foo(self) -> int: ...
+   class Sub(Base):
+       def foo(self) -> int:
+           return super().foo() + 1  # error: Call to abstract method "foo" of "Base" with
+                                     # trivial body via super() is unsafe  [safe-super]
+   Sub().foo()  # This will crash at runtime.
+
+Mypy considers the following as trivial bodies: a ``pass`` statement, a literal
+ellipsis ``...``, a docstring, and a ``raise NotImplementedError`` statement.
+
 Check the target of NewType [valid-newtype]
 -------------------------------------------
 
@@ -656,6 +754,78 @@ consistently when using the call-based syntax. Example:
 
     # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
+
+Check that overloaded functions have an implementation [no-overload-impl]
+-------------------------------------------------------------------------
+
+Overloaded functions outside of stub files must be followed by a non overloaded
+implementation.
+
+.. code-block:: python
+
+   from typing import overload
+
+   @overload
+   def func(value: int) -> int:
+       ...
+
+   @overload
+   def func(value: str) -> str:
+       ...
+
+   # presence of required function below is checked
+   def func(value):
+       pass  # actual implementation
+
+Check that coroutine return value is used [unused-coroutine]
+------------------------------------------------------------
+
+Mypy ensures that return values of async def functions are not
+ignored, as this is usually a programming error, as the coroutine
+won't be executed at the call site.
+
+.. code-block:: python
+
+   async def f() -> None:
+       ...
+
+   async def g() -> None:
+       f()  # Error: missing await
+       await f()  # OK
+
+You can work around this error by assigning the result to a temporary,
+otherwise unused variable:
+
+.. code-block:: python
+
+       _ = f()  # No error
+
+Check types in assert_type [assert-type]
+----------------------------------------
+
+The inferred type for an expression passed to ``assert_type`` must match
+the provided type.
+
+.. code-block:: python
+
+   from typing_extensions import assert_type
+
+   assert_type([1], list[int])  # OK
+
+   assert_type([1], list[str])  # Error
+
+Check that function isn't used in boolean context [truthy-function]
+-------------------------------------------------------------------
+
+Functions will always evaluate to true in boolean contexts.
+
+.. code-block:: python
+
+    def f():
+        ...
+
+    if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+        pass
 
 Report syntax errors [syntax]
 -----------------------------

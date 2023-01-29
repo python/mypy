@@ -1,14 +1,34 @@
-from _typeshed import Self
+import sys
+from _socket import _Address as _SourceAddress
+from _typeshed import ReadableBuffer, Self, _BufferWithLen
+from collections.abc import Sequence
 from email.message import Message as _Message
+from re import Pattern
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Dict, Pattern, Protocol, Sequence, Tuple, Type, Union, overload
+from typing import Any, Protocol, overload
+from typing_extensions import TypeAlias
 
-_Reply = Tuple[int, bytes]
-_SendErrs = Dict[str, _Reply]
-# Should match source_address for socket.create_connection
-_SourceAddress = Tuple[Union[bytearray, bytes, str], int]
+__all__ = [
+    "SMTPException",
+    "SMTPServerDisconnected",
+    "SMTPResponseException",
+    "SMTPSenderRefused",
+    "SMTPRecipientsRefused",
+    "SMTPDataError",
+    "SMTPConnectError",
+    "SMTPHeloError",
+    "SMTPAuthenticationError",
+    "quoteaddr",
+    "quotedata",
+    "SMTP",
+    "SMTP_SSL",
+    "SMTPNotSupportedError",
+]
+
+_Reply: TypeAlias = tuple[int, bytes]
+_SendErrs: TypeAlias = dict[str, _Reply]
 
 SMTP_PORT: int
 SMTP_SSL_PORT: int
@@ -28,7 +48,6 @@ class SMTPResponseException(SMTPException):
     def __init__(self, code: int, msg: bytes | str) -> None: ...
 
 class SMTPSenderRefused(SMTPResponseException):
-    smtp_code: int
     smtp_error: bytes
     sender: str
     args: tuple[int, bytes, str]
@@ -78,11 +97,11 @@ class SMTP:
     ) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
     ) -> None: ...
     def set_debuglevel(self, debuglevel: int) -> None: ...
     def connect(self, host: str = ..., port: int = ..., source_address: _SourceAddress | None = ...) -> _Reply: ...
-    def send(self, s: bytes | str) -> None: ...
+    def send(self, s: ReadableBuffer | str) -> None: ...
     def putcmd(self, cmd: str, args: str = ...) -> None: ...
     def getreply(self) -> _Reply: ...
     def docmd(self, cmd: str, args: str = ...) -> _Reply: ...
@@ -94,7 +113,7 @@ class SMTP:
     def noop(self) -> _Reply: ...
     def mail(self, sender: str, options: Sequence[str] = ...) -> _Reply: ...
     def rcpt(self, recip: str, options: Sequence[str] = ...) -> _Reply: ...
-    def data(self, msg: bytes | str) -> _Reply: ...
+    def data(self, msg: ReadableBuffer | str) -> _Reply: ...
     def verify(self, address: str) -> _Reply: ...
     vrfy = verify
     def expn(self, address: str) -> _Reply: ...
@@ -105,16 +124,16 @@ class SMTP:
     @overload
     def auth_cram_md5(self, challenge: None = ...) -> None: ...
     @overload
-    def auth_cram_md5(self, challenge: bytes) -> str: ...
-    def auth_plain(self, challenge: bytes | None = ...) -> str: ...
-    def auth_login(self, challenge: bytes | None = ...) -> str: ...
+    def auth_cram_md5(self, challenge: ReadableBuffer) -> str: ...
+    def auth_plain(self, challenge: ReadableBuffer | None = ...) -> str: ...
+    def auth_login(self, challenge: ReadableBuffer | None = ...) -> str: ...
     def login(self, user: str, password: str, *, initial_response_ok: bool = ...) -> _Reply: ...
     def starttls(self, keyfile: str | None = ..., certfile: str | None = ..., context: SSLContext | None = ...) -> _Reply: ...
     def sendmail(
         self,
         from_addr: str,
         to_addrs: str | Sequence[str],
-        msg: bytes | str,
+        msg: _BufferWithLen | str,
         mail_options: Sequence[str] = ...,
         rcpt_options: Sequence[str] = ...,
     ) -> _SendErrs: ...
@@ -130,7 +149,6 @@ class SMTP:
     def quit(self) -> _Reply: ...
 
 class SMTP_SSL(SMTP):
-    default_port: int
     keyfile: str | None
     certfile: str | None
     context: SSLContext
@@ -149,6 +167,16 @@ class SMTP_SSL(SMTP):
 LMTP_PORT: int
 
 class LMTP(SMTP):
-    def __init__(
-        self, host: str = ..., port: int = ..., local_hostname: str | None = ..., source_address: _SourceAddress | None = ...
-    ) -> None: ...
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            host: str = ...,
+            port: int = ...,
+            local_hostname: str | None = ...,
+            source_address: _SourceAddress | None = ...,
+            timeout: float = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, host: str = ..., port: int = ..., local_hostname: str | None = ..., source_address: _SourceAddress | None = ...
+        ) -> None: ...

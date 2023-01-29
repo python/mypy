@@ -1,15 +1,16 @@
+from collections.abc import Callable
+from email import _ParamsType
 from email.mime.nonmultipart import MIMENonMultipart
 from email.policy import Policy
-from typing import Callable, Optional, Tuple, Union
 
-_ParamsType = Union[str, None, Tuple[str, Optional[str], str]]
+__all__ = ["MIMEImage"]
 
 class MIMEImage(MIMENonMultipart):
     def __init__(
         self,
-        _imagedata: str | bytes,
+        _imagedata: str | bytes | bytearray,
         _subtype: str | None = ...,
-        _encoder: Callable[[MIMEImage], None] = ...,
+        _encoder: Callable[[MIMEImage], object] = ...,
         *,
         policy: Policy | None = ...,
         **_params: _ParamsType,

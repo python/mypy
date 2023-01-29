@@ -9,6 +9,7 @@
 # the stubs under fixtures/.
 
 cast = 0
+assert_type = 0
 overload = 0
 Any = 0
 Union = 0
@@ -23,8 +24,13 @@ Type = 0
 ClassVar = 0
 Final = 0
 NoReturn = 0
+Never = 0
 NewType = 0
 ParamSpec = 0
+TypeVarTuple = 0
+Unpack = 0
+Self = 0
+TYPE_CHECKING = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -46,4 +52,11 @@ class Sequence(Iterable[T_co]):
 # Mapping type is oversimplified intentionally.
 class Mapping(Iterable[T], Generic[T, T_co]): pass
 
+class Awaitable(Protocol[T]):
+    def __await__(self) -> Generator[Any, Any, T]: pass
+
+class Coroutine(Awaitable[V], Generic[T, U, V]): pass
+
 def final(meth: T) -> T: pass
+
+def reveal_type(__obj: T) -> T: pass

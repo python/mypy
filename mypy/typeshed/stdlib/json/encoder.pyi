@@ -1,4 +1,12 @@
-from typing import Any, Callable, Iterator
+from collections.abc import Callable, Iterator
+from re import Pattern
+from typing import Any
+
+ESCAPE: Pattern[str]
+ESCAPE_ASCII: Pattern[str]
+HAS_UTF8: Pattern[bytes]
+ESCAPE_DCT: dict[str, str]
+INFINITY: float
 
 def py_encode_basestring(s: str) -> str: ...  # undocumented
 def py_encode_basestring_ascii(s: str) -> str: ...  # undocumented
@@ -12,7 +20,7 @@ class JSONEncoder:
     check_circular: bool
     allow_nan: bool
     sort_keys: bool
-    indent: int
+    indent: int | str
     def __init__(
         self,
         *,
@@ -21,7 +29,7 @@ class JSONEncoder:
         check_circular: bool = ...,
         allow_nan: bool = ...,
         sort_keys: bool = ...,
-        indent: int | None = ...,
+        indent: int | str | None = ...,
         separators: tuple[str, str] | None = ...,
         default: Callable[..., Any] | None = ...,
     ) -> None: ...

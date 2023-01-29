@@ -18,7 +18,6 @@ class int: pass
 class float: pass
 
 class str: pass
-class unicode: pass
 
 class tuple(Generic[_T]): pass
 class function: pass

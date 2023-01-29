@@ -1,29 +1,34 @@
-from array import array
-from typing import Any
+import sys
+from _typeshed import ReadableBuffer
+from typing_extensions import Literal
 
-DEFLATED: int
-DEF_MEM_LEVEL: int
+DEFLATED: Literal[8]
+DEF_MEM_LEVEL: int  # can change
+DEF_BUF_SIZE: Literal[16384]
 MAX_WBITS: int
-ZLIB_VERSION: str
-Z_BEST_COMPRESSION: int
-Z_BEST_SPEED: int
-Z_DEFAULT_COMPRESSION: int
-Z_DEFAULT_STRATEGY: int
-Z_FILTERED: int
-Z_FINISH: int
-Z_FIXED: int
-Z_FULL_FLUSH: int
-Z_HUFFMAN_ONLY: int
-Z_NO_FLUSH: int
-Z_RLE: int
-Z_SYNC_FLUSH: int
-DEF_BUF_SIZE: int
-ZLIB_RUNTIME_VERSION: str
+ZLIB_VERSION: str  # can change
+ZLIB_RUNTIME_VERSION: str  # can change
+Z_NO_COMPRESSION: Literal[0]
+Z_PARTIAL_FLUSH: Literal[1]
+Z_BEST_COMPRESSION: Literal[9]
+Z_BEST_SPEED: Literal[1]
+Z_BLOCK: Literal[5]
+Z_DEFAULT_COMPRESSION: Literal[-1]
+Z_DEFAULT_STRATEGY: Literal[0]
+Z_FILTERED: Literal[1]
+Z_FINISH: Literal[4]
+Z_FIXED: Literal[4]
+Z_FULL_FLUSH: Literal[3]
+Z_HUFFMAN_ONLY: Literal[2]
+Z_NO_FLUSH: Literal[0]
+Z_RLE: Literal[3]
+Z_SYNC_FLUSH: Literal[2]
+Z_TREES: Literal[6]
 
 class error(Exception): ...
 
 class _Compress:
-    def compress(self, data: bytes) -> bytes: ...
+    def compress(self, data: ReadableBuffer) -> bytes: ...
     def flush(self, mode: int = ...) -> bytes: ...
     def copy(self) -> _Compress: ...
 
@@ -31,15 +36,26 @@ class _Decompress:
     unused_data: bytes
     unconsumed_tail: bytes
     eof: bool
-    def decompress(self, data: bytes, max_length: int = ...) -> bytes: ...
+    def decompress(self, data: ReadableBuffer, max_length: int = ...) -> bytes: ...
     def flush(self, length: int = ...) -> bytes: ...
     def copy(self) -> _Decompress: ...
 
-def adler32(__data: bytes, __value: int = ...) -> int: ...
-def compress(__data: bytes, level: int = ...) -> bytes: ...
+def adler32(__data: ReadableBuffer, __value: int = ...) -> int: ...
+
+if sys.version_info >= (3, 11):
+    def compress(__data: ReadableBuffer, level: int = ..., wbits: int = ...) -> bytes: ...
+
+else:
+    def compress(__data: ReadableBuffer, level: int = ...) -> bytes: ...
+
 def compressobj(
-    level: int = ..., method: int = ..., wbits: int = ..., memLevel: int = ..., strategy: int = ..., zdict: bytes | None = ...
+    level: int = ...,
+    method: int = ...,
+    wbits: int = ...,
+    memLevel: int = ...,
+    strategy: int = ...,
+    zdict: ReadableBuffer | None = ...,
 ) -> _Compress: ...
-def crc32(__data: array[Any] | bytes, __value: int = ...) -> int: ...
-def decompress(__data: bytes, wbits: int = ..., bufsize: int = ...) -> bytes: ...
-def decompressobj(wbits: int = ..., zdict: bytes = ...) -> _Decompress: ...
+def crc32(__data: ReadableBuffer, __value: int = ...) -> int: ...
+def decompress(__data: ReadableBuffer, wbits: int = ..., bufsize: int = ...) -> bytes: ...
+def decompressobj(wbits: int = ..., zdict: ReadableBuffer = ...) -> _Decompress: ...

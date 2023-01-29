@@ -1,6 +1,7 @@
 from abc import abstractmethod
+from collections.abc import Callable, Iterable
 from distutils.dist import Distribution
-from typing import Any, Callable, Iterable
+from typing import Any
 
 class Command:
     sub_commands: list[tuple[str, Callable[[Command], bool] | None]]
@@ -24,7 +25,7 @@ class Command:
     def run_command(self, command: str) -> None: ...
     def get_sub_commands(self) -> list[str]: ...
     def warn(self, msg: str) -> None: ...
-    def execute(self, func: Callable[..., Any], args: Iterable[Any], msg: str | None = ..., level: int = ...) -> None: ...
+    def execute(self, func: Callable[..., object], args: Iterable[Any], msg: str | None = ..., level: int = ...) -> None: ...
     def mkpath(self, name: str, mode: int = ...) -> None: ...
     def copy_file(
         self,
@@ -57,9 +58,9 @@ class Command:
     ) -> str: ...
     def make_file(
         self,
-        infiles: str | list[str] | tuple[str],
+        infiles: str | list[str] | tuple[str, ...],
         outfile: str,
-        func: Callable[..., Any],
+        func: Callable[..., object],
         args: list[Any],
         exec_msg: str | None = ...,
         skip_msg: str | None = ...,

@@ -2,16 +2,13 @@ import datetime
 import http.client
 import ssl
 import sys
-from _typeshed import StrPath
+from _typeshed import ReadableBuffer, StrPath
 from collections.abc import Callable
 from logging import FileHandler, Handler, LogRecord
+from queue import Queue, SimpleQueue
+from re import Pattern
 from socket import SocketKind, socket
-from typing import Any, ClassVar, Pattern
-
-if sys.version_info >= (3, 7):
-    from queue import Queue, SimpleQueue
-else:
-    from queue import Queue
+from typing import Any, ClassVar
 
 DEFAULT_TCP_LOGGING_PORT: int
 DEFAULT_UDP_LOGGING_PORT: int
@@ -29,6 +26,7 @@ class WatchedFileHandler(FileHandler):
         ) -> None: ...
     else:
         def __init__(self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ...) -> None: ...
+
     def _statstream(self) -> None: ...  # undocumented
     def reopenIfNeeded(self) -> None: ...
 
@@ -41,6 +39,7 @@ class BaseRotatingHandler(FileHandler):
         ) -> None: ...
     else:
         def __init__(self, filename: StrPath, mode: str, encoding: str | None = ..., delay: bool = ...) -> None: ...
+
     def rotation_filename(self, default_name: str) -> str: ...
     def rotate(self, source: str, dest: str) -> None: ...
 
@@ -68,6 +67,7 @@ class RotatingFileHandler(BaseRotatingHandler):
             encoding: str | None = ...,
             delay: bool = ...,
         ) -> None: ...
+
     def doRollover(self) -> None: ...
     def shouldRollover(self, record: LogRecord) -> int: ...  # undocumented
 
@@ -75,7 +75,7 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
     when: str  # undocumented
     backupCount: int  # undocumented
     utc: bool  # undocumented
-    atTime: datetime.datetime | None  # undocumented
+    atTime: datetime.time | None  # undocumented
     interval: int  # undocumented
     suffix: str  # undocumented
     dayOfWeek: int  # undocumented
@@ -91,7 +91,7 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
             encoding: str | None = ...,
             delay: bool = ...,
             utc: bool = ...,
-            atTime: datetime.datetime | None = ...,
+            atTime: datetime.time | None = ...,
             errors: str | None = ...,
         ) -> None: ...
     else:
@@ -104,8 +104,9 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
             encoding: str | None = ...,
             delay: bool = ...,
             utc: bool = ...,
-            atTime: datetime.datetime | None = ...,
+            atTime: datetime.time | None = ...,
         ) -> None: ...
+
     def doRollover(self) -> None: ...
     def shouldRollover(self, record: LogRecord) -> int: ...  # undocumented
     def computeRollover(self, currentTime: int) -> int: ...  # undocumented
@@ -124,11 +125,11 @@ class SocketHandler(Handler):
     def __init__(self, host: str, port: int | None) -> None: ...
     def makeSocket(self, timeout: float = ...) -> socket: ...  # timeout is undocumented
     def makePickle(self, record: LogRecord) -> bytes: ...
-    def send(self, s: bytes) -> None: ...
+    def send(self, s: ReadableBuffer) -> None: ...
     def createSocket(self) -> None: ...
 
 class DatagramHandler(SocketHandler):
-    def makeSocket(self) -> socket: ...  # type: ignore
+    def makeSocket(self) -> socket: ...  # type: ignore[override]
 
 class SysLogHandler(Handler):
     LOG_EMERG: int
@@ -177,6 +178,9 @@ class SysLogHandler(Handler):
     facility_names: ClassVar[dict[str, int]]  # undocumented
     priority_map: ClassVar[dict[str, str]]  # undocumented
     def __init__(self, address: tuple[str, int] | str = ..., facility: int = ..., socktype: SocketKind | None = ...) -> None: ...
+    if sys.version_info >= (3, 11):
+        def createSocket(self) -> None: ...
+
     def encodePriority(self, facility: int | str, priority: int | str) -> int: ...
     def mapPriority(self, levelName: str) -> str: ...
 
@@ -244,26 +248,16 @@ class HTTPHandler(Handler):
         def getConnection(self, host: str, secure: bool) -> http.client.HTTPConnection: ...  # undocumented
 
 class QueueHandler(Handler):
-    if sys.version_info >= (3, 7):
-        queue: SimpleQueue[Any] | Queue[Any]  # undocumented
-        def __init__(self, queue: SimpleQueue[Any] | Queue[Any]) -> None: ...
-    else:
-        queue: Queue[Any]  # undocumented
-        def __init__(self, queue: Queue[Any]) -> None: ...
+    queue: SimpleQueue[Any] | Queue[Any]  # undocumented
+    def __init__(self, queue: SimpleQueue[Any] | Queue[Any]) -> None: ...
     def prepare(self, record: LogRecord) -> Any: ...
     def enqueue(self, record: LogRecord) -> None: ...
 
 class QueueListener:
-    handlers: tuple[Handler]  # undocumented
+    handlers: tuple[Handler, ...]  # undocumented
     respect_handler_level: bool  # undocumented
-    if sys.version_info >= (3, 7):
-        queue: SimpleQueue[Any] | Queue[Any]  # undocumented
-        def __init__(
-            self, queue: SimpleQueue[Any] | Queue[Any], *handlers: Handler, respect_handler_level: bool = ...
-        ) -> None: ...
-    else:
-        queue: Queue[Any]  # undocumented
-        def __init__(self, queue: Queue[Any], *handlers: Handler, respect_handler_level: bool = ...) -> None: ...
+    queue: SimpleQueue[Any] | Queue[Any]  # undocumented
+    def __init__(self, queue: SimpleQueue[Any] | Queue[Any], *handlers: Handler, respect_handler_level: bool = ...) -> None: ...
     def dequeue(self, block: bool) -> LogRecord: ...
     def prepare(self, record: LogRecord) -> Any: ...
     def start(self) -> None: ...

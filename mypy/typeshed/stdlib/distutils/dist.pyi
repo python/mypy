@@ -1,9 +1,10 @@
-from _typeshed import StrOrBytesPath, SupportsWrite
+from _typeshed import FileDescriptorOrPath, SupportsWrite
+from collections.abc import Iterable, Mapping
 from distutils.cmd import Command
-from typing import IO, Any, Iterable, Mapping, Type
+from typing import IO, Any
 
 class DistributionMetadata:
-    def __init__(self, path: int | StrOrBytesPath | None = ...) -> None: ...
+    def __init__(self, path: FileDescriptorOrPath | None = ...) -> None: ...
     name: str | None
     version: str | None
     author: str | None
@@ -50,7 +51,7 @@ class DistributionMetadata:
     def set_obsoletes(self, value: Iterable[str]) -> None: ...
 
 class Distribution:
-    cmdclass: dict[str, Type[Command]]
+    cmdclass: dict[str, type[Command]]
     metadata: DistributionMetadata
     def __init__(self, attrs: Mapping[str, Any] | None = ...) -> None: ...
     def get_option_dict(self, command: str) -> dict[str, tuple[str, str]]: ...

@@ -390,6 +390,17 @@ MypyFile:1(
       IntExpr(1)
       builtins.int)))
 
+[case testAssertType]
+from typing import assert_type
+assert_type(1, int)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [assert_type])
+  ExpressionStmt:2(
+    AssertTypeExpr:2(
+      IntExpr(1)
+      builtins.int)))
+
 [case testFunctionTypeVariable]
 from typing import TypeVar
 t = TypeVar('t')
@@ -779,6 +790,7 @@ def f(x: int) -> None: pass
 def f(*args) -> None: pass
 
 x = f
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [overload])
@@ -1021,6 +1033,7 @@ MypyFile:1(
 
 [case testVarArgsAndKeywordArgs]
 def g(*x: int, y: str = ''): pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -1410,7 +1423,7 @@ MypyFile:1(
   ImportFrom:1(typing, [_promote])
   ClassDef:3(
     S
-    Promote(builtins.str)
+    Promote([builtins.str])
     Decorators(
       PromoteExpr:2(builtins.str))
     PassStmt:3()))
@@ -1537,3 +1550,39 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(P* [__main__.P])
     ParamSpecExpr:2()))
+
+[case testTypeVarTuple]
+from typing_extensions import TypeVarTuple
+TV = TypeVarTuple("TV")
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [TypeVarTuple])
+  AssignmentStmt:2(
+    NameExpr(TV* [__main__.TV])
+    TypeVarTupleExpr:2()))
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleCallable]
+from typing_extensions import TypeVarTuple, Unpack
+from typing import Callable
+Ts = TypeVarTuple("Ts")
+
+def foo(x: Callable[[Unpack[Ts]], None]) -> None:
+    pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [TypeVarTuple, Unpack])
+  ImportFrom:2(typing, [Callable])
+  AssignmentStmt:3(
+    NameExpr(Ts* [__main__.Ts])
+    TypeVarTupleExpr:3())
+  FuncDef:5(
+    foo
+    Args(
+      Var(x))
+    def [Ts] (x: def (*Unpack[Ts`-1]))
+    Block:5(
+      PassStmt:6())))
+
+[builtins fixtures/tuple.pyi]

@@ -1,6 +1,8 @@
-from typing import List, Pattern, Tuple, overload
+from re import Pattern
+from typing import overload
+from typing_extensions import TypeAlias
 
-_HeaderList = List[Tuple[str, str]]
+_HeaderList: TypeAlias = list[tuple[str, str]]
 
 tspecials: Pattern[str]  # undocumented
 

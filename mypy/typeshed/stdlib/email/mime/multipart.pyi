@@ -1,9 +1,10 @@
+from collections.abc import Sequence
+from email import _ParamsType
 from email.message import Message
 from email.mime.base import MIMEBase
 from email.policy import Policy
-from typing import Optional, Sequence, Tuple, Union
 
-_ParamsType = Union[str, None, Tuple[str, Optional[str], str]]
+__all__ = ["MIMEMultipart"]
 
 class MIMEMultipart(MIMEBase):
     def __init__(

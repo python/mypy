@@ -469,53 +469,7 @@ class B:
     def __gt__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.pyi]
 
-[case testCmp_python2]
-
-a, b, c, bo = None, None, None, None # type: (A, B, C, bool)
-bo = a == a  # E: Unsupported operand types for == ("A" and "A")
-bo = a != a  # E: Unsupported operand types for comparison ("A" and "A")
-bo = a < b
-bo = a > b
-bo = b <= b
-bo = b <= c
-bo = b >= c  # E: Unsupported operand types for comparison ("C" and "B")
-bo = a >= b
-bo = c >= b
-bo = c <= b  # E: Unsupported operand types for comparison ("B" and "C")
-bo = a == c
-bo = b == c  # E: Unsupported operand types for == ("C" and "B")
-
-class A:
-    def __cmp__(self, o):
-      # type: ('B') -> bool
-      pass
-    def __eq__(self, o):
-      # type: ('int') -> bool
-      pass
-class B:
-    def __cmp__(self, o):
-        # type: ('B') -> bool
-        pass
-    def __le__(self, o):
-        # type: ('C') -> bool
-        pass
-class C:
-    def __cmp__(self, o):
-      # type: ('A') -> bool
-      pass
-    def __eq__(self, o):
-      # type: ('int') -> bool
-      pass
-
-[builtins_py2 fixtures/bool_py2.pyi]
-
-[case testDiv_python2]
-10 / 'no'  # E: Unsupported operand types for / ("int" and "str")
-'no' / 10  # E: Unsupported operand types for / ("str" and "int")
-[builtins_py2 fixtures/ops.pyi]
-
 [case cmpIgnoredPy3]
-
 a, b, bo = None, None, None # type: (A, B, bool)
 bo = a <= b # E: Unsupported left operand type for <= ("A")
 
@@ -523,7 +477,6 @@ class A:
     def __cmp__(self, o: 'B') -> bool: pass
 class B:
     pass
-
 [builtins fixtures/bool.pyi]
 
 [case testLeAndGe]
@@ -739,6 +692,7 @@ tmp/m.py:8: error: Invalid index type "int" for "A"; expected type "str"
 
 
 [case testDivmod]
+# flags: --disable-error-code=used-before-def
 from typing import Tuple, Union, SupportsInt
 _Decimal = Union[Decimal, int]
 class Decimal(SupportsInt):
@@ -904,8 +858,8 @@ a[b]
 a[c]
 a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "int" \
       # N: Possible overload variants: \
-      # N:     def __getitem__(self, B) -> int \
-      # N:     def __getitem__(self, C) -> str
+      # N:     def __getitem__(self, B, /) -> int \
+      # N:     def __getitem__(self, C, /) -> str
 
 i, s = None, None  # type: (int, str)
 if int():
@@ -972,12 +926,81 @@ class B: pass
 [out]
 main:3: error: "A" not callable
 
+-- assert_type()
+
+[case testAssertType]
+from typing import assert_type, Any
+from typing_extensions import Literal
+a: int = 1
+returned = assert_type(a, int)
+reveal_type(returned)  # N: Revealed type is "builtins.int"
+assert_type(a, str)  # E: Expression is of type "int", not "str"
+assert_type(a, Any)  # E: Expression is of type "int", not "Any"
+assert_type(a, Literal[1])  # E: Expression is of type "int", not "Literal[1]"
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeGeneric]
+from typing import assert_type, TypeVar, Generic
+from typing_extensions import Literal
+T = TypeVar("T")
+def f(x: T) -> T: return x
+assert_type(f(1), int)
+class Gen(Generic[T]):
+    def __new__(cls, obj: T) -> Gen[T]: ...
+assert_type(Gen(1), Gen[int])
+# With type context, it infers Gen[Literal[1]] instead.
+y: Gen[Literal[1]] = assert_type(Gen(1), Gen[Literal[1]])
+
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeUncheckedFunction]
+from typing import assert_type
+from typing_extensions import Literal
+def f():
+    x = 42
+    assert_type(x, Literal[42])
+[out]
+main:5: error: Expression is of type "Any", not "Literal[42]"
+main:5: note: "assert_type" expects everything to be "Any" in unchecked functions
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeUncheckedFunctionWithUntypedCheck]
+# flags: --check-untyped-defs
+from typing import assert_type
+from typing_extensions import Literal
+def f():
+    x = 42
+    assert_type(x, Literal[42])
+[out]
+main:6: error: Expression is of type "int", not "Literal[42]"
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeNoPromoteUnion]
+from typing import Union, assert_type
+
+Scalar = Union[int, bool, bytes, bytearray]
+
+
+def reduce_it(s: Scalar) -> Scalar:
+    return s
+
+assert_type(reduce_it(True), Scalar)
+[builtins fixtures/tuple.pyi]
 
 -- None return type
 -- ----------------
 
 
 [case testNoneReturnTypeBasics]
+def f() -> None:
+    pass
+
+class A:
+    def g(self, x: object) -> None:
+        pass
+    def __call__(self) -> None:
+        pass
+
 a, o = None, None # type: (A, object)
 if int():
     a = f()         # E: "f" does not return a value
@@ -991,40 +1014,30 @@ A().g(f())      # E: "f" does not return a value
 x: A = f()      # E: "f" does not return a value
 f()
 A().g(a)
-
-def f() -> None:
-    pass
-
-class A:
-    def g(self, x: object) -> None:
-        pass
-    def __call__(self) -> None:
-        pass
 [builtins fixtures/tuple.pyi]
 
 [case testNoneReturnTypeWithStatements]
 import typing
-if f():   # Fail
+def f() -> None: pass
+
+if f():   # E: "f" does not return a value
     pass
-elif f(): # Fail
+elif f(): # E: "f" does not return a value
     pass
-while f(): # Fail
+while f(): # E: "f" does not return a value
     pass
 def g() -> object:
-    return f() # Fail
-raise f() # Fail
-
-def f() -> None: pass
+    return f() # E: "f" does not return a value
+raise f() # E: "f" does not return a value
 [builtins fixtures/exception.pyi]
-[out]
-main:2: error: "f" does not return a value
-main:4: error: "f" does not return a value
-main:6: error: "f" does not return a value
-main:9: error: "f" does not return a value
-main:10: error: "f" does not return a value
 
 [case testNoneReturnTypeWithExpressions]
 from typing import cast
+
+def f() -> None: pass
+class A:
+    def __add__(self, x: 'A') -> 'A': pass
+
 a = None # type: A
 [f()]       # E: "f" does not return a value
 f() + a     # E: "f" does not return a value
@@ -1033,14 +1046,15 @@ f() == a    # E: "f" does not return a value
 a != f()    # E: "f" does not return a value
 cast(A, f())
 f().foo     # E: "f" does not return a value
-
-def f() -> None: pass
-class A:
-    def __add__(self, x: 'A') -> 'A': pass
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
 import typing
+
+def f() -> None: pass
+class A:
+    def __add__(self, x: 'A') -> 'A':
+        pass
 
 a, b = None, None # type: (A, bool)
 f() in a   # E: "f" does not return a value  # E: Unsupported right operand type for in ("A")
@@ -1051,11 +1065,6 @@ a in f()   # E: "f" does not return a value
 not f()    # E: "f" does not return a value
 f() and b  # E: "f" does not return a value
 b or f()   # E: "f" does not return a value
-
-def f() -> None: pass
-class A:
-    def __add__(self, x: 'A') -> 'A':
-        pass
 [builtins fixtures/bool.pyi]
 
 
@@ -1411,19 +1420,13 @@ z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not retu
 from typing import cast
 class A:
     def __add__(self, a: 'A') -> 'A': pass
-a = None # type: A
-None + a   # Fail
-f + a      # Fail
-a + f      # Fail
-cast(A, f)
-
 def f() -> None:
     pass
-[out]
-main:5: error: Unsupported left operand type for + ("None")
-main:6: error: Unsupported left operand type for + ("Callable[[], None]")
-main:7: error: Unsupported operand types for + ("A" and "Callable[[], None]")
-
+a = None # type: A
+None + a   # E: Unsupported left operand type for + ("None")
+f + a      # E: Unsupported left operand type for + ("Callable[[], None]")
+a + f      # E: Unsupported operand types for + ("A" and "Callable[[], None]")
+cast(A, f)
 [case testOperatorMethodWithInvalidArgCount]
 
 a = None # type: A
@@ -1688,6 +1691,22 @@ main:1: note: Revealed type is "Any"
 def reveal_type(x: int) -> None: pass
 reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str"; expected "int"
 
+[case testTypingRevealType]
+from typing import reveal_type
+from typing import reveal_type as show_me_the_type
+
+reveal_type(1) # N: Revealed type is "Literal[1]?"
+show_me_the_type(1) # N: Revealed type is "Literal[1]?"
+
+[case testTypingExtensionsRevealType]
+from typing_extensions import reveal_type
+from typing_extensions import reveal_type as show_me_the_type
+
+reveal_type(1) # N: Revealed type is "Literal[1]?"
+show_me_the_type(1) # N: Revealed type is "Literal[1]?"
+
+[builtins fixtures/tuple.pyi]
+
 [case testRevealTypeVar]
 reveal_type = 1
 1 + "foo" # E: Unsupported operand types for + ("int" and "str")
@@ -1695,7 +1714,7 @@ reveal_type = 1
 [case testRevealForward]
 def f() -> None:
     reveal_type(x)
-x = 1 + 1
+x = 1 + int()
 [out]
 main:2: note: Revealed type is "builtins.int"
 
@@ -1894,12 +1913,6 @@ bytearray(b'abc') in b'abcde'  # OK on Python 3
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
-[case testBytesVsByteArray_python2]
-# flags: --strict-equality --py2
-b'hi' in bytearray(b'hi')
-[builtins_py2 fixtures/python2.pyi]
-[typing fixtures/typing-medium.pyi]
-
 [case testStrictEqualityNoPromotePy3]
 # flags: --strict-equality
 'a' == b'a'  # E: Non-overlapping equality check (left operand type: "Literal['a']", right operand type: "Literal[b'a']")
@@ -1970,6 +1983,24 @@ class B:
 
 # Don't report non-overlapping check if there is already and error.
 A() == B()  # E: Unsupported operand types for == ("A" and "B")
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualitySequenceAndCustomEq]
+# flags: --strict-equality
+from typing import Tuple
+
+class C: pass
+class D:
+    def __eq__(self, other): return True
+
+a = [C()]
+b = [D()]
+a == b
+b == a
+t1: Tuple[C, ...]
+t2: Tuple[D, ...]
+t1 == t2
+t2 == t1
 [builtins fixtures/bool.pyi]
 
 [case testCustomEqCheckStrictEqualityOKInstance]
@@ -2137,9 +2168,9 @@ def returns_1_or_2() -> Literal[1, 2]:
     ...
 THREE: Final = 3
 
-if returns_a_or_b() == 'c':  # E: Non-overlapping equality check (left operand type: "Union[Literal['a'], Literal['b']]", right operand type: "Literal['c']")
+if returns_a_or_b() == 'c':  # E: Non-overlapping equality check (left operand type: "Literal['a', 'b']", right operand type: "Literal['c']")
     ...
-if returns_1_or_2() is THREE:  # E: Non-overlapping identity check (left operand type: "Union[Literal[1], Literal[2]]", right operand type: "Literal[3]")
+if returns_1_or_2() is THREE:  # E: Non-overlapping identity check (left operand type: "Literal[1, 2]", right operand type: "Literal[3]")
     ...
 [builtins fixtures/bool.pyi]
 
@@ -2159,18 +2190,6 @@ if f == 0:  # E: Non-overlapping equality check (left operand type: "FileId", ri
     ...
 [builtins fixtures/bool.pyi]
 
-[case testStrictEqualityPromotionsLiterals]
-# flags: --strict-equality --py2
-from typing import Final
-
-U_FOO = u'foo'  # type: Final
-
-if str() == U_FOO:
-    pass
-assert u'foo' == 'foo'
-assert u'foo' == u'bar'  # E: Non-overlapping equality check (left operand type: "Literal[u'foo']", right operand type: "Literal[u'bar']")
-[builtins_py2 fixtures/python2.pyi]
-
 [case testStrictEqualityWithFixedLengthTupleInCheck]
 # flags: --strict-equality
 if 1 in ('x', 'y'):  # E: Non-overlapping container check (element type: "int", container item type: "str")
@@ -2187,6 +2206,45 @@ x: Optional[Any]
 if x in (1, 2):
     pass
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testOverlappingClassCallables]
+# flags: --strict-equality
+from typing import Any, Callable, Type
+
+x: Type[int]
+y: Callable[[], Any]
+x == y
+y == x
+int == y
+y == int
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityAndEnumWithCustomEq]
+# flags: --strict-equality
+from enum import Enum
+
+class E1(Enum):
+    X = 0
+    Y = 1
+
+class E2(Enum):
+    X = 0
+    Y = 1
+
+    def __eq__(self, other: object) -> bool:
+        return bool()
+
+E1.X == E1.Y  # E: Non-overlapping equality check (left operand type: "Literal[E1.X]", right operand type: "Literal[E1.Y]")
+E2.X == E2.Y
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityWithBytesContains]
+# flags: --strict-equality
+data = b"xy"
+b"x" in data
+[builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testUnimportedHintAny]

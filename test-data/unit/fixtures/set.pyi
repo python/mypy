@@ -6,6 +6,7 @@ T = TypeVar('T')
 
 class object:
     def __init__(self) -> None: pass
+    def __eq__(self, other): pass
 
 class type: pass
 class tuple(Generic[T]): pass

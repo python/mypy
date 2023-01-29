@@ -1,8 +1,13 @@
 import sys
 from _typeshed import Self
 from types import TracebackType
-from typing import IO, Any, NamedTuple, Tuple, Type, Union, overload
-from typing_extensions import Literal
+from typing import IO, Any, NamedTuple, overload
+from typing_extensions import Literal, TypeAlias
+
+if sys.version_info >= (3, 9):
+    __all__ = ["Error", "open"]
+else:
+    __all__ = ["Error", "open", "openfp"]
 
 class Error(Exception): ...
 
@@ -14,14 +19,14 @@ class _aifc_params(NamedTuple):
     comptype: bytes
     compname: bytes
 
-_File = Union[str, IO[bytes]]
-_Marker = Tuple[int, int, bytes]
+_File: TypeAlias = str | IO[bytes]
+_Marker: TypeAlias = tuple[int, int, bytes]
 
 class Aifc_read:
     def __init__(self, f: _File) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     def initfp(self, file: IO[bytes]) -> None: ...
     def getfp(self) -> IO[bytes]: ...
@@ -45,7 +50,7 @@ class Aifc_write:
     def __del__(self) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     def initfp(self, file: IO[bytes]) -> None: ...
     def aiff(self) -> None: ...
