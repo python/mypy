@@ -1,4 +1,19 @@
-from typing import TypeVar, overload, Callable, Any, Type, Optional, Union, Sequence, Mapping, Generic
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Mapping,
+    Optional,
+    Protocol,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
+
+from ._typing_compat import AttrsInstance_
 
 _T = TypeVar('_T')
 _C = TypeVar('_C', bound=type)
@@ -7,6 +22,9 @@ _ValidatorType = Callable[[Any, Any, _T], Any]
 _ConverterType = Callable[[Any], _T]
 _FilterType = Callable[[Any, Any], bool]
 _ValidatorArgType = Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]]
+
+class AttrsInstance(AttrsInstance_, Protocol):
+    pass
 
 # This form catches explicit None or no default but with no other arguments returns Any.
 @overload
@@ -244,3 +262,15 @@ def field(
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
 ) -> Any: ...
+
+def asdict(
+    inst: AttrsInstance,
+    recurse: bool = ...,
+    filter: Optional[_FilterType] = ...,
+    dict_factory: Type[Mapping[Any, Any]] = ...,
+    retain_collection_types: bool = ...,
+    value_serializer: Optional[
+        Callable[[type, Attribute[Any], Any], Any]
+    ] = ...,
+    tuple_keys: Optional[bool] = ...,
+) -> Dict[str, Any]: ...

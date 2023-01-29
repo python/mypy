@@ -46,3 +46,32 @@ A.__attrs_attrs__.b
 
 [out]
 ==
+
+[case magicAttributeConsistency2]
+import m
+
+[file c.py]
+import attr
+
+@attr.s
+class Entry:
+    var: int
+[builtins fixtures/attr.pyi]
+
+[file m.py]
+import attr
+from c import Entry
+
+def func(e: Entry) -> None:
+    attr.asdict(e)
+
+[file m.py.2]
+import attr
+from c import Entry
+
+def func(e: Entry) -> int:
+    attr.asdict(e)
+    return 2
+
+[out]
+==
