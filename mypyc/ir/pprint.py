@@ -106,7 +106,18 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         # it explicit that this is a Python object.
         if isinstance(op.value, int):
             prefix = "object "
-        return self.format("%r = %s%s", op, prefix, repr(op.value))
+
+        rvalue = repr(op.value)
+        if isinstance(op.value, frozenset):
+            # We need to generate a string representation that won't vary
+            # run-to-run because sets are unordered, otherwise we may get
+            # spurious irbuild test failures.
+            #
+            # Sorting by the item's string representation is a bit of a
+            # hack, but it's stable and won't cause TypeErrors.
+            formatted_items = [repr(i) for i in sorted(op.value, key=str)]
+            rvalue = "frozenset({" + ", ".join(formatted_items) + "})"
+        return self.format("%r = %s%s", op, prefix, rvalue)
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format("%r = %s%r.%s", op, self.borrow_prefix(op), op.obj, op.attr)

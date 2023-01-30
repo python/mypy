@@ -12,6 +12,7 @@ from typing import (
     Callable,
     Dict,
     Iterator,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -24,7 +25,6 @@ from typing_extensions import Final, TypeAlias as _TypeAlias
 from mypy_extensions import trait
 
 import mypy.strconv
-from mypy.bogus_type import Bogus
 from mypy.util import short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
@@ -70,14 +70,6 @@ class Context:
 
         if end_column is not None:
             self.end_column = end_column
-
-    def get_line(self) -> int:
-        """Don't use. Use x.line."""
-        return self.line
-
-    def get_column(self) -> int:
-        """Don't use. Use x.column."""
-        return self.column
 
 
 if TYPE_CHECKING:
@@ -254,12 +246,10 @@ class SymbolNode(Node):
     def name(self) -> str:
         pass
 
-    # fullname can often be None even though the type system
-    # disagrees. We mark this with Bogus to let mypyc know not to
-    # worry about it.
+    # Fully qualified name
     @property
     @abstractmethod
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         pass
 
     @abstractmethod
@@ -298,8 +288,10 @@ class MypyFile(SymbolNode):
         "future_import_flags",
     )
 
+    __match_args__ = ("name", "path", "defs")
+
     # Fully qualified module name
-    _fullname: Bogus[str]
+    _fullname: str
     # Path to the file (empty string if not known)
     path: str
     # Top-level definitions and statements
@@ -366,7 +358,7 @@ class MypyFile(SymbolNode):
         return "" if not self._fullname else self._fullname.split(".")[-1]
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -433,6 +425,8 @@ class Import(ImportBase):
 
     __slots__ = ("ids",)
 
+    __match_args__ = ("ids",)
+
     ids: list[tuple[str, str | None]]  # (module id, as id)
 
     def __init__(self, ids: list[tuple[str, str | None]]) -> None:
@@ -447,6 +441,8 @@ class ImportFrom(ImportBase):
     """from m import x [as y], ..."""
 
     __slots__ = ("id", "names", "relative")
+
+    __match_args__ = ("id", "names", "relative")
 
     id: str
     relative: int
@@ -467,6 +463,8 @@ class ImportAll(ImportBase):
 
     __slots__ = ("id", "relative", "imported_names")
 
+    __match_args__ = ("id", "relative")
+
     id: str
     relative: int
     # NOTE: Only filled and used by old semantic analyzer.
@@ -482,44 +480,13 @@ class ImportAll(ImportBase):
         return visitor.visit_import_all(self)
 
 
-class ImportedName(SymbolNode):
-    """Indirect reference to a fullname stored in symbol table.
-
-    This node is not present in the original program as such. This is
-    just a temporary artifact in binding imported names. After semantic
-    analysis pass 2, these references should be replaced with direct
-    reference to a real AST node.
-
-    Note that this is neither a Statement nor an Expression so this
-    can't be visited.
-    """
-
-    __slots__ = ("target_fullname",)
-
-    def __init__(self, target_fullname: str) -> None:
-        super().__init__()
-        self.target_fullname = target_fullname
-
-    @property
-    def name(self) -> str:
-        return self.target_fullname.split(".")[-1]
-
-    @property
-    def fullname(self) -> str:
-        return self.target_fullname
-
-    def serialize(self) -> JsonDict:
-        assert False, "ImportedName leaked from semantic analysis"
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> ImportedName:
-        assert False, "ImportedName should never be serialized"
-
-    def __str__(self) -> str:
-        return f"ImportedName({self.target_fullname})"
-
-
-FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
+FUNCBASE_FLAGS: Final = [
+    "is_property",
+    "is_class",
+    "is_static",
+    "is_final",
+    "is_dataclass_transform",
+]
 
 
 class FuncBase(Node):
@@ -545,6 +512,7 @@ class FuncBase(Node):
         "is_static",  # Uses "@staticmethod"
         "is_final",  # Uses "@final"
         "_fullname",
+        "is_dataclass_transform",  # Is decorated with "@typing.dataclass_transform" or similar
     )
 
     def __init__(self) -> None:
@@ -562,8 +530,8 @@ class FuncBase(Node):
         self.is_static = False
         self.is_final = False
         # Name with module prefix
-        # TODO: Type should be Optional[str]
-        self._fullname = cast(Bogus[str], None)
+        self._fullname = ""
+        self.is_dataclass_transform = False
 
     @property
     @abstractmethod
@@ -571,7 +539,7 @@ class FuncBase(Node):
         pass
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
 
@@ -651,6 +619,8 @@ class Argument(Node):
     """A single argument in a FuncItem."""
 
     __slots__ = ("variable", "type_annotation", "initializer", "kind", "pos_only")
+
+    __match_args__ = ("variable", "type_annotation", "initializer", "kind", "pos_only")
 
     def __init__(
         self,
@@ -791,6 +761,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "docstring",
     )
 
+    __match_args__ = ("name", "arguments", "type", "body")
+
     # Note that all __init__ args must have default values
     def __init__(
         self,
@@ -882,6 +854,8 @@ class Decorator(SymbolNode, Statement):
 
     __slots__ = ("func", "decorators", "original_decorators", "var", "is_overload")
 
+    __match_args__ = ("decorators", "var", "func")
+
     func: FuncDef  # Decorated function
     decorators: list[Expression]  # Decorators (may be empty)
     # Some decorators are removed by semanal, keep the original here.
@@ -903,7 +877,7 @@ class Decorator(SymbolNode, Statement):
         return self.func.name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self.func.fullname
 
     @property
@@ -993,11 +967,13 @@ class Var(SymbolNode):
         "invalid_partial_type",
     )
 
+    __match_args__ = ("name", "type", "final_value")
+
     def __init__(self, name: str, type: mypy.types.Type | None = None) -> None:
         super().__init__()
         self._name = name  # Name without module prefix
         # TODO: Should be Optional[str]
-        self._fullname = cast("Bogus[str]", None)  # Name with module prefix
+        self._fullname = ""  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
@@ -1049,7 +1025,7 @@ class Var(SymbolNode):
         return self._name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -1087,7 +1063,7 @@ class ClassDef(Statement):
 
     __slots__ = (
         "name",
-        "fullname",
+        "_fullname",
         "defs",
         "type_vars",
         "base_type_exprs",
@@ -1100,10 +1076,13 @@ class ClassDef(Statement):
         "has_incompatible_baseclass",
         "deco_line",
         "docstring",
+        "removed_statements",
     )
 
+    __match_args__ = ("name", "defs")
+
     name: str  # Name of the class without module prefix
-    fullname: Bogus[str]  # Fully qualified name of the class
+    _fullname: str  # Fully qualified name of the class
     defs: Block
     type_vars: list[mypy.types.TypeVarLikeType]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
@@ -1116,6 +1095,8 @@ class ClassDef(Statement):
     keywords: dict[str, Expression]
     analyzed: Expression | None
     has_incompatible_baseclass: bool
+    # Used by special forms like NamedTuple and TypedDict to store invalid statements
+    removed_statements: list[Statement]
 
     def __init__(
         self,
@@ -1128,7 +1109,7 @@ class ClassDef(Statement):
     ) -> None:
         super().__init__()
         self.name = name
-        self.fullname = None  # type: ignore[assignment]
+        self._fullname = ""
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
@@ -1142,6 +1123,15 @@ class ClassDef(Statement):
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: int | None = None
         self.docstring: str | None = None
+        self.removed_statements = []
+
+    @property
+    def fullname(self) -> str:
+        return self._fullname
+
+    @fullname.setter
+    def fullname(self, v: str) -> None:
+        self._fullname = v
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
@@ -1180,6 +1170,8 @@ class GlobalDecl(Statement):
 
     __slots__ = ("names",)
 
+    __match_args__ = ("names",)
+
     names: list[str]
 
     def __init__(self, names: list[str]) -> None:
@@ -1195,6 +1187,8 @@ class NonlocalDecl(Statement):
 
     __slots__ = ("names",)
 
+    __match_args__ = ("names",)
+
     names: list[str]
 
     def __init__(self, names: list[str]) -> None:
@@ -1207,6 +1201,8 @@ class NonlocalDecl(Statement):
 
 class Block(Statement):
     __slots__ = ("body", "is_unreachable")
+
+    __match_args__ = ("body", "is_unreachable")
 
     def __init__(self, body: list[Statement]) -> None:
         super().__init__()
@@ -1229,6 +1225,8 @@ class ExpressionStmt(Statement):
     """An expression as a statement, such as print(s)."""
 
     __slots__ = ("expr",)
+
+    __match_args__ = ("expr",)
 
     expr: Expression
 
@@ -1261,6 +1259,8 @@ class AssignmentStmt(Statement):
         "is_final_def",
         "invalid_recursive_alias",
     )
+
+    __match_args__ = ("lvalues", "rvalues", "type")
 
     lvalues: list[Lvalue]
     # This is a TempNode if and only if no rvalue (x: t).
@@ -1310,6 +1310,8 @@ class OperatorAssignmentStmt(Statement):
 
     __slots__ = ("op", "lvalue", "rvalue")
 
+    __match_args__ = ("lvalue", "op", "rvalue")
+
     op: str  # TODO: Enum?
     lvalue: Lvalue
     rvalue: Expression
@@ -1326,6 +1328,8 @@ class OperatorAssignmentStmt(Statement):
 
 class WhileStmt(Statement):
     __slots__ = ("expr", "body", "else_body")
+
+    __match_args__ = ("expr", "body", "else_body")
 
     expr: Expression
     body: Block
@@ -1353,6 +1357,8 @@ class ForStmt(Statement):
         "else_body",
         "is_async",
     )
+
+    __match_args__ = ("index", "index_type", "expr", "body", "else_body")
 
     # Index variables
     index: Lvalue
@@ -1396,6 +1402,8 @@ class ForStmt(Statement):
 class ReturnStmt(Statement):
     __slots__ = ("expr",)
 
+    __match_args__ = ("expr",)
+
     expr: Expression | None
 
     def __init__(self, expr: Expression | None) -> None:
@@ -1408,6 +1416,8 @@ class ReturnStmt(Statement):
 
 class AssertStmt(Statement):
     __slots__ = ("expr", "msg")
+
+    __match_args__ = ("expr", "msg")
 
     expr: Expression
     msg: Expression | None
@@ -1423,6 +1433,8 @@ class AssertStmt(Statement):
 
 class DelStmt(Statement):
     __slots__ = ("expr",)
+
+    __match_args__ = ("expr",)
 
     expr: Lvalue
 
@@ -1458,6 +1470,8 @@ class PassStmt(Statement):
 class IfStmt(Statement):
     __slots__ = ("expr", "body", "else_body")
 
+    __match_args__ = ("expr", "body", "else_body")
+
     expr: list[Expression]
     body: list[Block]
     else_body: Block | None
@@ -1475,6 +1489,8 @@ class IfStmt(Statement):
 class RaiseStmt(Statement):
     __slots__ = ("expr", "from_expr")
 
+    __match_args__ = ("expr", "from_expr")
+
     # Plain 'raise' is a valid statement.
     expr: Expression | None
     from_expr: Expression | None
@@ -1489,7 +1505,9 @@ class RaiseStmt(Statement):
 
 
 class TryStmt(Statement):
-    __slots__ = ("body", "types", "vars", "handlers", "else_body", "finally_body")
+    __slots__ = ("body", "types", "vars", "handlers", "else_body", "finally_body", "is_star")
+
+    __match_args__ = ("body", "types", "vars", "handlers", "else_body", "finally_body", "is_star")
 
     body: Block  # Try body
     # Plain 'except:' also possible
@@ -1498,6 +1516,8 @@ class TryStmt(Statement):
     handlers: list[Block]  # Except bodies
     else_body: Block | None
     finally_body: Block | None
+    # Whether this is try ... except* (added in Python 3.11)
+    is_star: bool
 
     def __init__(
         self,
@@ -1515,6 +1535,7 @@ class TryStmt(Statement):
         self.handlers = handlers
         self.else_body = else_body
         self.finally_body = finally_body
+        self.is_star = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)
@@ -1522,6 +1543,8 @@ class TryStmt(Statement):
 
 class WithStmt(Statement):
     __slots__ = ("expr", "target", "unanalyzed_type", "analyzed_types", "body", "is_async")
+
+    __match_args__ = ("expr", "target", "body")
 
     expr: list[Expression]
     target: list[Lvalue | None]
@@ -1552,6 +1575,10 @@ class WithStmt(Statement):
 
 
 class MatchStmt(Statement):
+    __slots__ = ("subject", "patterns", "guards", "bodies")
+
+    __match_args__ = ("subject", "patterns", "guards", "bodies")
+
     subject: Expression
     patterns: list[Pattern]
     guards: list[Expression | None]
@@ -1583,6 +1610,8 @@ class IntExpr(Expression):
 
     __slots__ = ("value",)
 
+    __match_args__ = ("value",)
+
     value: int  # 0 by default
 
     def __init__(self, value: int) -> None:
@@ -1604,6 +1633,8 @@ class StrExpr(Expression):
 
     __slots__ = ("value",)
 
+    __match_args__ = ("value",)
+
     value: str  # '' by default
 
     def __init__(self, value: str) -> None:
@@ -1618,6 +1649,8 @@ class BytesExpr(Expression):
     """Bytes literal"""
 
     __slots__ = ("value",)
+
+    __match_args__ = ("value",)
 
     # Note: we deliberately do NOT use bytes here because it ends up
     # unnecessarily complicating a lot of the result logic. For example,
@@ -1643,6 +1676,8 @@ class FloatExpr(Expression):
 
     __slots__ = ("value",)
 
+    __match_args__ = ("value",)
+
     value: float  # 0.0 by default
 
     def __init__(self, value: float) -> None:
@@ -1657,6 +1692,8 @@ class ComplexExpr(Expression):
     """Complex literal"""
 
     __slots__ = ("value",)
+
+    __match_args__ = ("value",)
 
     value: complex
 
@@ -1682,6 +1719,8 @@ class StarExpr(Expression):
 
     __slots__ = ("expr", "valid")
 
+    __match_args__ = ("expr", "valid")
+
     expr: Expression
     valid: bool
 
@@ -1702,7 +1741,7 @@ class RefExpr(Expression):
     __slots__ = (
         "kind",
         "node",
-        "fullname",
+        "_fullname",
         "is_new_def",
         "is_inferred_def",
         "is_alias_rvalue",
@@ -1716,7 +1755,7 @@ class RefExpr(Expression):
         # Var, FuncDef or TypeInfo that describes this
         self.node: SymbolNode | None = None
         # Fully qualified name (or name if not global)
-        self.fullname: str | None = None
+        self._fullname = ""
         # Does this define a new name?
         self.is_new_def = False
         # Does this define a new name with inferred type?
@@ -1729,6 +1768,14 @@ class RefExpr(Expression):
         # Cache type guard from callable_type.type_guard
         self.type_guard: mypy.types.Type | None = None
 
+    @property
+    def fullname(self) -> str:
+        return self._fullname
+
+    @fullname.setter
+    def fullname(self, v: str) -> None:
+        self._fullname = v
+
 
 class NameExpr(RefExpr):
     """Name expression
@@ -1738,9 +1785,11 @@ class NameExpr(RefExpr):
 
     __slots__ = ("name", "is_special_form")
 
+    __match_args__ = ("name", "node")
+
     def __init__(self, name: str) -> None:
         super().__init__()
-        self.name = name  # Name referred to (may be qualified)
+        self.name = name  # Name referred to
         # Is this a l.h.s. of a special form assignment like typed dict or type variable?
         self.is_special_form = False
 
@@ -1755,6 +1804,8 @@ class MemberExpr(RefExpr):
     """Member access expression x.y"""
 
     __slots__ = ("expr", "name", "def_var")
+
+    __match_args__ = ("expr", "name", "node")
 
     def __init__(self, expr: Expression, name: str) -> None:
         super().__init__()
@@ -1817,6 +1868,8 @@ class CallExpr(Expression):
 
     __slots__ = ("callee", "args", "arg_kinds", "arg_names", "analyzed")
 
+    __match_args__ = ("callee", "args", "arg_kinds", "arg_names")
+
     def __init__(
         self,
         callee: Expression,
@@ -1845,6 +1898,8 @@ class CallExpr(Expression):
 class YieldFromExpr(Expression):
     __slots__ = ("expr",)
 
+    __match_args__ = ("expr",)
+
     expr: Expression
 
     def __init__(self, expr: Expression) -> None:
@@ -1857,6 +1912,8 @@ class YieldFromExpr(Expression):
 
 class YieldExpr(Expression):
     __slots__ = ("expr",)
+
+    __match_args__ = ("expr",)
 
     expr: Expression | None
 
@@ -1875,6 +1932,8 @@ class IndexExpr(Expression):
     """
 
     __slots__ = ("base", "index", "method_type", "analyzed")
+
+    __match_args__ = ("base", "index")
 
     base: Expression
     index: Expression
@@ -1900,6 +1959,8 @@ class UnaryExpr(Expression):
 
     __slots__ = ("op", "expr", "method_type")
 
+    __match_args__ = ("op", "expr")
+
     op: str  # TODO: Enum?
     expr: Expression
     # Inferred operator method type
@@ -1920,6 +1981,8 @@ class AssignmentExpr(Expression):
 
     __slots__ = ("target", "value")
 
+    __match_args__ = ("target", "value")
+
     def __init__(self, target: Expression, value: Expression) -> None:
         super().__init__()
         self.target = target
@@ -1930,10 +1993,22 @@ class AssignmentExpr(Expression):
 
 
 class OpExpr(Expression):
-    """Binary operation (other than . or [] or comparison operators,
-    which have specific nodes)."""
+    """Binary operation.
 
-    __slots__ = ("op", "left", "right", "method_type", "right_always", "right_unreachable")
+    The dot (.), [] and comparison operators have more specific nodes.
+    """
+
+    __slots__ = (
+        "op",
+        "left",
+        "right",
+        "method_type",
+        "right_always",
+        "right_unreachable",
+        "analyzed",
+    )
+
+    __match_args__ = ("left", "op", "right")
 
     op: str  # TODO: Enum?
     left: Expression
@@ -1944,8 +2019,12 @@ class OpExpr(Expression):
     right_always: bool
     # Per static analysis only: Is the right side unreachable?
     right_unreachable: bool
+    # Used for expressions that represent a type "X | Y" in some contexts
+    analyzed: TypeAliasExpr | None
 
-    def __init__(self, op: str, left: Expression, right: Expression) -> None:
+    def __init__(
+        self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
+    ) -> None:
         super().__init__()
         self.op = op
         self.left = left
@@ -1953,6 +2032,7 @@ class OpExpr(Expression):
         self.method_type = None
         self.right_always = False
         self.right_unreachable = False
+        self.analyzed = analyzed
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
@@ -1962,6 +2042,8 @@ class ComparisonExpr(Expression):
     """Comparison expression (e.g. a < b > c < d)."""
 
     __slots__ = ("operators", "operands", "method_types")
+
+    __match_args__ = ("operands", "operators")
 
     operators: list[str]
     operands: list[Expression]
@@ -1993,6 +2075,8 @@ class SliceExpr(Expression):
 
     __slots__ = ("begin_index", "end_index", "stride")
 
+    __match_args__ = ("begin_index", "end_index", "stride")
+
     begin_index: Expression | None
     end_index: Expression | None
     stride: Expression | None
@@ -2017,6 +2101,8 @@ class CastExpr(Expression):
 
     __slots__ = ("expr", "type")
 
+    __match_args__ = ("expr", "type")
+
     expr: Expression
     type: mypy.types.Type
 
@@ -2034,6 +2120,8 @@ class AssertTypeExpr(Expression):
 
     __slots__ = ("expr", "type")
 
+    __match_args__ = ("expr", "type")
+
     expr: Expression
     type: mypy.types.Type
 
@@ -2050,6 +2138,8 @@ class RevealExpr(Expression):
     """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 
     __slots__ = ("expr", "kind", "local_nodes")
+
+    __match_args__ = ("expr", "kind", "local_nodes")
 
     expr: Expression | None
     kind: int
@@ -2072,6 +2162,8 @@ class SuperExpr(Expression):
 
     __slots__ = ("name", "info", "call")
 
+    __match_args__ = ("name", "call", "info")
+
     name: str
     info: TypeInfo | None  # Type that contains this super expression
     call: CallExpr  # The expression super(...)
@@ -2088,6 +2180,8 @@ class SuperExpr(Expression):
 
 class LambdaExpr(FuncItem, Expression):
     """Lambda expression"""
+
+    __match_args__ = ("arguments", "arg_names", "arg_kinds", "body")
 
     @property
     def name(self) -> str:
@@ -2112,6 +2206,8 @@ class ListExpr(Expression):
 
     __slots__ = ("items",)
 
+    __match_args__ = ("items",)
+
     items: list[Expression]
 
     def __init__(self, items: list[Expression]) -> None:
@@ -2126,6 +2222,8 @@ class DictExpr(Expression):
     """Dictionary literal expression {key: value, ...}."""
 
     __slots__ = ("items",)
+
+    __match_args__ = ("items",)
 
     items: list[tuple[Expression | None, Expression]]
 
@@ -2144,6 +2242,8 @@ class TupleExpr(Expression):
 
     __slots__ = ("items",)
 
+    __match_args__ = ("items",)
+
     items: list[Expression]
 
     def __init__(self, items: list[Expression]) -> None:
@@ -2159,6 +2259,8 @@ class SetExpr(Expression):
 
     __slots__ = ("items",)
 
+    __match_args__ = ("items",)
+
     items: list[Expression]
 
     def __init__(self, items: list[Expression]) -> None:
@@ -2173,6 +2275,8 @@ class GeneratorExpr(Expression):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
 
     __slots__ = ("left_expr", "sequences", "condlists", "is_async", "indices")
+
+    __match_args__ = ("left_expr", "indices", "sequences", "condlists")
 
     left_expr: Expression
     sequences: list[Expression]
@@ -2204,6 +2308,8 @@ class ListComprehension(Expression):
 
     __slots__ = ("generator",)
 
+    __match_args__ = ("generator",)
+
     generator: GeneratorExpr
 
     def __init__(self, generator: GeneratorExpr) -> None:
@@ -2219,6 +2325,8 @@ class SetComprehension(Expression):
 
     __slots__ = ("generator",)
 
+    __match_args__ = ("generator",)
+
     generator: GeneratorExpr
 
     def __init__(self, generator: GeneratorExpr) -> None:
@@ -2233,6 +2341,8 @@ class DictionaryComprehension(Expression):
     """Dictionary comprehension (e.g. {k: v for k, v in a}"""
 
     __slots__ = ("key", "value", "sequences", "condlists", "is_async", "indices")
+
+    __match_args__ = ("key", "value", "indices", "sequences", "condlists")
 
     key: Expression
     value: Expression
@@ -2267,6 +2377,8 @@ class ConditionalExpr(Expression):
 
     __slots__ = ("cond", "if_expr", "else_expr")
 
+    __match_args__ = ("if_expr", "cond", "else_expr")
+
     cond: Expression
     if_expr: Expression
     else_expr: Expression
@@ -2285,6 +2397,8 @@ class TypeApplication(Expression):
     """Type application expr[type, ...]"""
 
     __slots__ = ("expr", "types")
+
+    __match_args__ = ("expr", "types")
 
     expr: Expression
     types: list[mypy.types.Type]
@@ -2363,6 +2477,8 @@ class TypeVarExpr(TypeVarLikeExpr):
 
     __slots__ = ("values",)
 
+    __match_args__ = ("name", "values", "upper_bound")
+
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
     values: list[mypy.types.Type]
@@ -2406,6 +2522,8 @@ class TypeVarExpr(TypeVarLikeExpr):
 class ParamSpecExpr(TypeVarLikeExpr):
     __slots__ = ()
 
+    __match_args__ = ("name", "upper_bound")
+
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_paramspec_expr(self)
 
@@ -2432,7 +2550,22 @@ class ParamSpecExpr(TypeVarLikeExpr):
 class TypeVarTupleExpr(TypeVarLikeExpr):
     """Type variable tuple expression TypeVarTuple(...)."""
 
-    __slots__ = ()
+    __slots__ = "tuple_fallback"
+
+    tuple_fallback: mypy.types.Instance
+
+    __match_args__ = ("name", "upper_bound")
+
+    def __init__(
+        self,
+        name: str,
+        fullname: str,
+        upper_bound: mypy.types.Type,
+        tuple_fallback: mypy.types.Instance,
+        variance: int = INVARIANT,
+    ) -> None:
+        super().__init__(name, fullname, upper_bound, variance)
+        self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_tuple_expr(self)
@@ -2443,6 +2576,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             "name": self._name,
             "fullname": self._fullname,
             "upper_bound": self.upper_bound.serialize(),
+            "tuple_fallback": self.tuple_fallback.serialize(),
             "variance": self.variance,
         }
 
@@ -2453,6 +2587,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             data["name"],
             data["fullname"],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.Instance.deserialize(data["tuple_fallback"]),
             data["variance"],
         )
 
@@ -2462,9 +2597,11 @@ class TypeAliasExpr(Expression):
 
     __slots__ = ("type", "tvars", "no_args", "node")
 
+    __match_args__ = ("type", "tvars", "no_args", "node")
+
     # The target type.
     type: mypy.types.Type
-    # Names of unbound type variables used to define the alias
+    # Names of type variables used to define the alias
     tvars: list[str]
     # Whether this alias was defined in bare form. Used to distinguish
     # between
@@ -2477,7 +2614,7 @@ class TypeAliasExpr(Expression):
     def __init__(self, node: TypeAlias) -> None:
         super().__init__()
         self.type = node.target
-        self.tvars = node.alias_tvars
+        self.tvars = [v.name for v in node.alias_tvars]
         self.no_args = node.no_args
         self.node = node
 
@@ -2489,6 +2626,8 @@ class NamedTupleExpr(Expression):
     """Named tuple expression namedtuple(...) or NamedTuple(...)."""
 
     __slots__ = ("info", "is_typed")
+
+    __match_args__ = ("info",)
 
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
@@ -2509,6 +2648,8 @@ class TypedDictExpr(Expression):
 
     __slots__ = ("info",)
 
+    __match_args__ = ("info",)
+
     # The class representation of this typed dict
     info: TypeInfo
 
@@ -2524,6 +2665,8 @@ class EnumCallExpr(Expression):
     """Named tuple expression Enum('name', 'val1 val2 ...')."""
 
     __slots__ = ("info", "items", "values")
+
+    __match_args__ = ("info", "items", "values")
 
     # The class representation of this enumerated type
     info: TypeInfo
@@ -2561,6 +2704,8 @@ class NewTypeExpr(Expression):
 
     __slots__ = ("name", "old_type", "info")
 
+    __match_args__ = ("name", "old_type", "info")
+
     name: str
     # The base type (the second argument to NewType)
     old_type: mypy.types.Type | None
@@ -2583,6 +2728,8 @@ class AwaitExpr(Expression):
     """Await expression (await ...)."""
 
     __slots__ = ("expr",)
+
+    __match_args__ = ("expr",)
 
     expr: Expression
 
@@ -2665,6 +2812,7 @@ class TypeInfo(SymbolNode):
         "inferring",
         "is_enum",
         "fallback_to_any",
+        "meta_fallback_to_any",
         "type_vars",
         "has_param_spec_type",
         "bases",
@@ -2680,9 +2828,10 @@ class TypeInfo(SymbolNode):
         "has_type_var_tuple_type",
         "type_var_tuple_prefix",
         "type_var_tuple_suffix",
+        "self_type",
     )
 
-    _fullname: Bogus[str]  # Fully qualified name
+    _fullname: str  # Fully qualified name
     # Fully qualified name for the module this type was defined in. This
     # information is also in the fullname, but is harder to extract in the
     # case of nested class definitions.
@@ -2758,6 +2907,10 @@ class TypeInfo(SymbolNode):
     # (and __setattr__), but without the __getattr__ method.
     fallback_to_any: bool
 
+    # Same as above but for cases where metaclass has type Any. This will suppress
+    # all attribute errors only for *class object* access.
+    meta_fallback_to_any: bool
+
     # Information related to type annotations.
 
     # Generic type variable names (full names)
@@ -2820,10 +2973,14 @@ class TypeInfo(SymbolNode):
     # in case we are doing multiple semantic analysis passes.
     special_alias: TypeAlias | None
 
+    # Shared type variable for typing.Self in this class (if used, otherwise None).
+    self_type: mypy.types.TypeVarType | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
         "fallback_to_any",
+        "meta_fallback_to_any",
         "is_named_tuple",
         "is_newtype",
         "is_protocol",
@@ -2863,6 +3020,7 @@ class TypeInfo(SymbolNode):
         self.is_final = False
         self.is_enum = False
         self.fallback_to_any = False
+        self.meta_fallback_to_any = False
         self._promote = []
         self.alt_promote = None
         self.tuple_type = None
@@ -2872,6 +3030,7 @@ class TypeInfo(SymbolNode):
         self.is_newtype = False
         self.is_intersection = False
         self.metadata = {}
+        self.self_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -2895,7 +3054,7 @@ class TypeInfo(SymbolNode):
         return self.defn.name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def is_generic(self) -> bool:
@@ -3089,6 +3248,7 @@ class TypeInfo(SymbolNode):
             "metadata": self.metadata,
             "slots": list(sorted(self.slots)) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
+            "self_type": self.self_type.serialize() if self.self_type is not None else None,
         }
         return data
 
@@ -3145,6 +3305,8 @@ class TypeInfo(SymbolNode):
         ti.slots = set(data["slots"]) if data["slots"] is not None else None
         ti.deletable_attributes = data["deletable_attributes"]
         set_flags(ti, data["flags"])
+        st = data["self_type"]
+        ti.self_type = mypy.types.TypeVarType.deserialize(st) if st is not None else None
         return ti
 
 
@@ -3209,10 +3371,9 @@ class TypeAlias(SymbolNode):
     class-valued attributes. See SemanticAnalyzerPass2.check_and_set_up_type_alias
     for details.
 
-    Aliases can be generic. Currently, mypy uses unbound type variables for
-    generic aliases and identifies them by name. Essentially, type aliases
-    work as macros that expand textually. The definition and expansion rules are
-    following:
+    Aliases can be generic. We use bound type variables for generic aliases, similar
+    to classes. Essentially, type aliases work as macros that expand textually.
+    The definition and expansion rules are following:
 
         1. An alias targeting a generic class without explicit variables act as
         the given class (this doesn't apply to TypedDict, Tuple and Callable, which
@@ -3263,11 +3424,11 @@ class TypeAlias(SymbolNode):
 
     Meaning of other fields:
 
-    target: The target type. For generic aliases contains unbound type variables
-        as nested types.
+    target: The target type. For generic aliases contains bound type variables
+        as nested types (currently TypeVar and ParamSpec are supported).
     _fullname: Qualified name of this type alias. This is used in particular
         to track fine grained dependencies from aliases.
-    alias_tvars: Names of unbound type variables used to define this alias.
+    alias_tvars: Type variables used to define this alias.
     normalized: Used to distinguish between `A = List`, and `A = list`. Both
         are internally stored using `builtins.list` (because `typing.List` is
         itself an alias), while the second cannot be subscripted because of
@@ -3287,6 +3448,8 @@ class TypeAlias(SymbolNode):
         "eager",
     )
 
+    __match_args__ = ("name", "target", "alias_tvars", "no_args")
+
     def __init__(
         self,
         target: mypy.types.Type,
@@ -3294,7 +3457,7 @@ class TypeAlias(SymbolNode):
         line: int,
         column: int,
         *,
-        alias_tvars: list[str] | None = None,
+        alias_tvars: list[mypy.types.TypeVarLikeType] | None = None,
         no_args: bool = False,
         normalized: bool = False,
         eager: bool = False,
@@ -3344,12 +3507,16 @@ class TypeAlias(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    @property
+    def has_param_spec_type(self) -> bool:
+        return any(isinstance(v, mypy.types.ParamSpecType) for v in self.alias_tvars)
+
     def serialize(self) -> JsonDict:
         data: JsonDict = {
             ".class": "TypeAlias",
             "fullname": self._fullname,
             "target": self.target.serialize(),
-            "alias_tvars": self.alias_tvars,
+            "alias_tvars": [v.serialize() for v in self.alias_tvars],
             "no_args": self.no_args,
             "normalized": self.normalized,
             "line": self.line,
@@ -3364,7 +3531,8 @@ class TypeAlias(SymbolNode):
     def deserialize(cls, data: JsonDict) -> TypeAlias:
         assert data[".class"] == "TypeAlias"
         fullname = data["fullname"]
-        alias_tvars = data["alias_tvars"]
+        alias_tvars = [mypy.types.deserialize_type(v) for v in data["alias_tvars"]]
+        assert all(isinstance(t, mypy.types.TypeVarLikeType) for t in alias_tvars)
         target = mypy.types.deserialize_type(data["target"])
         no_args = data["no_args"]
         normalized = data["normalized"]
@@ -3375,7 +3543,7 @@ class TypeAlias(SymbolNode):
             fullname,
             line,
             column,
-            alias_tvars=alias_tvars,
+            alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
         )
@@ -3602,11 +3770,7 @@ class SymbolTableNode:
             if prefix is not None:
                 fullname = self.node.fullname
                 if (
-                    # See the comment above SymbolNode.fullname -- fullname can often be None,
-                    # but for complex reasons it's annotated as being `Bogus[str]` instead of `str | None`,
-                    # meaning mypy erroneously thinks the `fullname is not None` check here is redundant
-                    fullname is not None  # type: ignore[redundant-expr]
-                    and "." in fullname
+                    "." in fullname
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):

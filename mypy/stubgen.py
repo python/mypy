@@ -95,6 +95,7 @@ from mypy.nodes import (
     MemberExpr,
     MypyFile,
     NameExpr,
+    OpExpr,
     OverloadedFuncDef,
     Statement,
     StrExpr,
@@ -403,6 +404,9 @@ class AliasPrinter(NodeVisitor[str]):
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
+
+    def visit_op_expr(self, o: OpExpr) -> str:
+        return f"{o.left.accept(self)} {o.op} {o.right.accept(self)}"
 
 
 class ImportTracker:
@@ -1323,10 +1327,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def is_private_member(self, fullname: str) -> bool:
         parts = fullname.split(".")
-        for part in parts:
-            if self.is_private_name(part):
-                return True
-        return False
+        return any(self.is_private_name(part) for part in parts)
 
     def get_str_type_of_node(
         self, rvalue: Expression, can_infer_optional: bool = False, can_be_any: bool = True

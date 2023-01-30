@@ -10,3 +10,4 @@ class int: pass
 class float: pass
 class complex: pass
 class str: pass
+class dict: pass

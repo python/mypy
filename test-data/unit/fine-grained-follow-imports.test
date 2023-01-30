@@ -769,3 +769,80 @@ from . import mod3
 ==
 main.py:1: error: Cannot find implementation or library stub for module named "pkg"
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testNewImportCycleTypeVarBound]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+# cmd2: mypy other.py
+
+[file main.py]
+# empty
+
+[file other.py.2]
+import trio
+
+[file trio/__init__.py.2]
+from typing import TypeVar
+import trio
+from . import abc as abc
+
+T = TypeVar("T", bound=trio.abc.A)
+
+[file trio/abc.py.2]
+import trio
+class A: ...
+[out]
+==
+
+[case testNewImportCycleTupleBase]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+# cmd2: mypy other.py
+
+[file main.py]
+# empty
+
+[file other.py.2]
+import trio
+
+[file trio/__init__.py.2]
+from typing import TypeVar, Tuple
+import trio
+from . import abc as abc
+
+class C(Tuple[trio.abc.A, trio.abc.A]): ...
+
+[file trio/abc.py.2]
+import trio
+class A: ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+
+[case testNewImportCycleTypedDict]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+# cmd2: mypy other.py
+
+[file main.py]
+# empty
+
+[file other.py.2]
+import trio
+
+[file trio/__init__.py.2]
+from typing import TypeVar
+from typing_extensions import TypedDict
+import trio
+from . import abc as abc
+
+class C(TypedDict):
+    x: trio.abc.A
+    y: trio.abc.A
+
+[file trio/abc.py.2]
+import trio
+class A: ...
+[builtins fixtures/dict.pyi]
+[out]
+==

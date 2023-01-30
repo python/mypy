@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Optional
 from typing_extensions import Final
 
+from mypy.expandtype import expand_type
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -50,6 +52,7 @@ from mypy.types import (
     TypeVarType,
     get_proper_type,
 )
+from mypy.typevars import fill_typevars
 
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
@@ -83,7 +86,7 @@ class DataclassAttribute:
         self.info = info
         self.kw_only = kw_only
 
-    def to_argument(self) -> Argument:
+    def to_argument(self, current_info: TypeInfo) -> Argument:
         arg_kind = ARG_POS
         if self.kw_only and self.has_default:
             arg_kind = ARG_NAMED_OPT
@@ -92,11 +95,23 @@ class DataclassAttribute:
         elif not self.kw_only and self.has_default:
             arg_kind = ARG_OPT
         return Argument(
-            variable=self.to_var(), type_annotation=self.type, initializer=None, kind=arg_kind
+            variable=self.to_var(current_info),
+            type_annotation=self.expand_type(current_info),
+            initializer=None,
+            kind=arg_kind,
         )
 
-    def to_var(self) -> Var:
-        return Var(self.name, self.type)
+    def expand_type(self, current_info: TypeInfo) -> Optional[Type]:
+        if self.type is not None and self.info.self_type is not None:
+            # In general, it is not safe to call `expand_type()` during semantic analyzis,
+            # however this plugin is called very late, so all types should be fully ready.
+            # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
+            # we serialize attributes).
+            return expand_type(self.type, {self.info.self_type.id: fill_typevars(current_info)})
+        return self.type
+
+    def to_var(self, current_info: TypeInfo) -> Var:
+        return Var(self.name, self.expand_type(current_info))
 
     def serialize(self) -> JsonDict:
         assert self.type
@@ -175,11 +190,12 @@ class DataclassTransformer:
             and attributes
         ):
 
-            args = [
-                attr.to_argument()
-                for attr in attributes
-                if attr.is_in_init and not self._is_kw_only_type(attr.type)
-            ]
+            with state.strict_optional_set(ctx.api.options.strict_optional):
+                args = [
+                    attr.to_argument(info)
+                    for attr in attributes
+                    if attr.is_in_init and not self._is_kw_only_type(attr.type)
+                ]
 
             if info.fallback_to_any:
                 # Make positional args optional since we don't know their order.
@@ -548,7 +564,7 @@ class DataclassTransformer:
                 if isinstance(var, Var):
                     var.is_property = True
             else:
-                var = attr.to_var()
+                var = attr.to_var(info)
                 var.info = info
                 var.is_property = True
                 var._fullname = info.fullname + "." + var.name
@@ -567,7 +583,7 @@ class DataclassTransformer:
         info = self._ctx.cls.info
         for attr in attributes:
             if isinstance(get_proper_type(attr.type), CallableType):
-                var = attr.to_var()
+                var = attr.to_var(info)
                 var.info = info
                 var.is_property = True
                 var.is_settable_property = settable

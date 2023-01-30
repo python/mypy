@@ -44,6 +44,9 @@ RETURN_VALUE_EXPECTED: Final = ErrorMessage("Return value expected", codes.RETUR
 NO_RETURN_EXPECTED: Final = ErrorMessage("Return statement in function which does not return")
 INVALID_EXCEPTION: Final = ErrorMessage("Exception must be derived from BaseException")
 INVALID_EXCEPTION_TYPE: Final = ErrorMessage("Exception type must be derived from BaseException")
+INVALID_EXCEPTION_GROUP: Final = ErrorMessage(
+    "Exception type in except* cannot derive from BaseExceptionGroup"
+)
 RETURN_IN_ASYNC_GENERATOR: Final = ErrorMessage(
     '"return" with value in async generator is not allowed'
 )
@@ -134,6 +137,7 @@ DESCRIPTOR_GET_NOT_CALLABLE: Final = "{}.__get__ is not callable"
 MODULE_LEVEL_GETATTRIBUTE: Final = ErrorMessage(
     "__getattribute__ is not valid at the module level"
 )
+CLASS_VAR_CONFLICTS_SLOTS: Final = '"{}" in __slots__ conflicts with class variable access'
 NAME_NOT_IN_SLOTS: Final = ErrorMessage(
     'Trying to assign name "{}" that is not in "__slots__" of type "{}"'
 )
@@ -149,6 +153,10 @@ TYPE_ALWAYS_TRUE_UNIONTYPE: Final = ErrorMessage(
 )
 FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     "Function {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
+)
+ITERABLE_ALWAYS_TRUE: Final = ErrorMessage(
+    "{} which can always be true in boolean context. Consider using {} instead.",
+    code=codes.TRUTHY_ITERABLE,
 )
 NOT_CALLABLE: Final = "{} not callable"
 TYPE_MUST_BE_USED: Final = "Value of type {} must be used"
@@ -231,6 +239,7 @@ CANNOT_OVERRIDE_CLASS_VAR: Final = ErrorMessage(
     "variable"
 )
 CLASS_VAR_WITH_TYPEVARS: Final = "ClassVar cannot contain type variables"
+CLASS_VAR_WITH_GENERIC_SELF: Final = "ClassVar cannot contain Self type in generic classes"
 CLASS_VAR_OUTSIDE_OF_CLASS: Final = "ClassVar can only be used for assignments in class body"
 
 # Protocol

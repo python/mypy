@@ -28,6 +28,7 @@ from mypy.nodes import (
     ImportFrom,
     ListExpr,
     Lvalue,
+    MatchStmt,
     OperatorAssignmentStmt,
     RaiseStmt,
     ReturnStmt,
@@ -49,6 +50,7 @@ from mypyc.ir.ops import (
     Integer,
     LoadAddress,
     LoadErrorValue,
+    MethodCall,
     RaiseStandardError,
     Register,
     Return,
@@ -60,6 +62,7 @@ from mypyc.ir.rtypes import (
     RInstance,
     exc_rtuple,
     is_tagged,
+    none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
 )
@@ -98,6 +101,8 @@ from mypyc.primitives.misc_ops import (
     type_op,
     yield_from_except_op,
 )
+
+from .match import MatchVisitor
 
 GenFunc = Callable[[], None]
 ValueGenFunc = Callable[[], Value]
@@ -616,6 +621,8 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
     # constructs that we compile separately. When we have a
     # try/except/else/finally, we treat the try/except/else as the
     # body of a try/finally block.
+    if t.is_star:
+        builder.error("Exception groups and except* cannot be compiled yet", t.line)
     if t.finally_body:
 
         def transform_try_body() -> None:
@@ -652,13 +659,44 @@ def transform_with(
     al = "a" if is_async else ""
 
     mgr_v = builder.accept(expr)
-    typ = builder.call_c(type_op, [mgr_v], line)
-    exit_ = builder.maybe_spill(builder.py_get_attr(typ, f"__{al}exit__", line))
-    value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
+    is_native = isinstance(mgr_v.type, RInstance)
+    if is_native:
+        value = builder.add(MethodCall(mgr_v, f"__{al}enter__", args=[], line=line))
+        exit_ = None
+    else:
+        typ = builder.call_c(type_op, [mgr_v], line)
+        exit_ = builder.maybe_spill(builder.py_get_attr(typ, f"__{al}exit__", line))
+        value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
+
     mgr = builder.maybe_spill(mgr_v)
     exc = builder.maybe_spill_assignable(builder.true())
     if is_async:
         value = emit_await(builder, value, line)
+
+    def maybe_natively_call_exit(exc_info: bool) -> Value:
+        if exc_info:
+            args = get_sys_exc_info(builder)
+        else:
+            none = builder.none_object()
+            args = [none, none, none]
+
+        if is_native:
+            assert isinstance(mgr_v.type, RInstance)
+            exit_val = builder.gen_method_call(
+                builder.read(mgr),
+                f"__{al}exit__",
+                arg_values=args,
+                line=line,
+                result_type=none_rprimitive,
+            )
+        else:
+            assert exit_ is not None
+            exit_val = builder.py_call(builder.read(exit_), [builder.read(mgr)] + args, line)
+
+        if is_async:
+            return emit_await(builder, exit_val, line)
+        else:
+            return exit_val
 
     def try_body() -> None:
         if target:
@@ -668,13 +706,7 @@ def transform_with(
     def except_body() -> None:
         builder.assign(exc, builder.false(), line)
         out_block, reraise_block = BasicBlock(), BasicBlock()
-        exit_val = builder.py_call(
-            builder.read(exit_), [builder.read(mgr)] + get_sys_exc_info(builder), line
-        )
-        if is_async:
-            exit_val = emit_await(builder, exit_val, line)
-
-        builder.add_bool_branch(exit_val, out_block, reraise_block)
+        builder.add_bool_branch(maybe_natively_call_exit(exc_info=True), out_block, reraise_block)
         builder.activate_block(reraise_block)
         builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
@@ -684,13 +716,8 @@ def transform_with(
         out_block, exit_block = BasicBlock(), BasicBlock()
         builder.add(Branch(builder.read(exc), exit_block, out_block, Branch.BOOL))
         builder.activate_block(exit_block)
-        none = builder.none_object()
-        exit_val = builder.py_call(
-            builder.read(exit_), [builder.read(mgr), none, none, none], line
-        )
-        if is_async:
-            emit_await(builder, exit_val, line)
 
+        maybe_natively_call_exit(exc_info=False)
         builder.goto_and_activate(out_block)
 
     transform_try_finally_stmt(
@@ -896,3 +923,7 @@ def transform_yield_from_expr(builder: IRBuilder, o: YieldFromExpr) -> Value:
 
 def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
     return emit_yield_from_or_await(builder, builder.accept(o.expr), o.line, is_await=True)
+
+
+def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
+    m.accept(MatchVisitor(builder, m))

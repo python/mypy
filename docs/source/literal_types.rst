@@ -495,13 +495,13 @@ the same way Python's runtime does:
     ...     right = 'right'
     Traceback (most recent call last):
       ...
-    TypeError: Other: cannot extend enumeration 'Some'
+    TypeError: AllDirection: cannot extend enumeration 'Direction'
 
   Mypy also catches this error:
 
   .. code-block:: python
 
-    class AllDirection(Direction):  # E: Cannot inherit from final class "Some"
+    class AllDirection(Direction):  # E: Cannot inherit from final class "Direction"
         left = 'left'
         right = 'right'
 

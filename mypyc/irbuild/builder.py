@@ -53,6 +53,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     UninhabitedType,
+    UnionType,
     get_proper_type,
 )
 from mypy.util import split_target
@@ -85,12 +86,12 @@ from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
     RType,
+    RUnion,
     bitmap_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
-    is_fixed_width_rtype,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
@@ -117,7 +118,7 @@ from mypyc.irbuild.targets import (
     AssignmentTargetRegister,
     AssignmentTargetTuple,
 )
-from mypyc.irbuild.util import is_constant
+from mypyc.irbuild.util import bytes_from_str, is_constant
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
@@ -295,8 +296,7 @@ class IRBuilder:
         are stored in BytesExpr.value, whose type is 'str' not 'bytes'.
         Thus we perform a special conversion here.
         """
-        bytes_value = bytes(value, "utf8").decode("unicode-escape").encode("raw-unicode-escape")
-        return self.builder.load_bytes(bytes_value)
+        return self.builder.load_bytes(bytes_from_str(value))
 
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
@@ -865,8 +865,15 @@ class IRBuilder:
             return None
 
     def get_sequence_type(self, expr: Expression) -> RType:
-        target_type = get_proper_type(self.types[expr])
-        assert isinstance(target_type, Instance)
+        return self.get_sequence_type_from_type(self.types[expr])
+
+    def get_sequence_type_from_type(self, target_type: Type) -> RType:
+        target_type = get_proper_type(target_type)
+        if isinstance(target_type, UnionType):
+            return RUnion.make_simplified_union(
+                [self.get_sequence_type_from_type(item) for item in target_type.items]
+            )
+        assert isinstance(target_type, Instance), target_type
         if target_type.type.fullname == "builtins.str":
             return str_rprimitive
         else:
@@ -878,7 +885,7 @@ class IRBuilder:
         This is useful for dict subclasses like SymbolTable.
         """
         target_type = get_proper_type(self.types[expr])
-        assert isinstance(target_type, Instance)
+        assert isinstance(target_type, Instance), target_type
         dict_base = next(base for base in target_type.type.mro if base.fullname == "builtins.dict")
         return map_instance_to_supertype(target_type, dict_base)
 
@@ -994,7 +1001,7 @@ class IRBuilder:
     ) -> Value:
 
         # Handle data-driven special-cased primitive call ops.
-        if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
+        if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
             call_c_ops_candidates = function_ops.get(callee.fullname, [])
             target = self.builder.matching_call_c(
                 call_c_ops_candidates, arg_values, expr.line, self.node_type(expr)
@@ -1019,7 +1026,7 @@ class IRBuilder:
             callee_node = callee_node.func
         if (
             callee_node is not None
-            and callee.fullname is not None
+            and callee.fullname
             and callee_node in self.mapper.func_to_decl
             and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
         ):
@@ -1233,7 +1240,7 @@ class IRBuilder:
             and isinstance(expr.node, TypeInfo)
             and not self.is_synthetic_type(expr.node)
         ):
-            assert expr.fullname is not None
+            assert expr.fullname
             return self.load_native_type_object(expr.fullname)
         return self.load_global_str(expr.name, expr.line)
 
@@ -1308,7 +1315,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
 
             assert isinstance(target, AssignmentTargetRegister)
             reg = target.register
-            if not is_fixed_width_rtype(reg.type):
+            if not reg.type.error_overlap:
                 builder.assign_if_null(target.register, get_default, arg.initializer.line)
             else:
                 builder.assign_if_bitmap_unset(

@@ -67,6 +67,9 @@ DICT_ITEM: Final = ErrorCode(
 TYPEDDICT_ITEM: Final = ErrorCode(
     "typeddict-item", "Check items when constructing TypedDict", "General"
 )
+TYPPEDICT_UNKNOWN_KEY: Final = ErrorCode(
+    "typeddict-unknown-key", "Check unknown keys when constructing TypedDict", "General"
+)
 HAS_TYPE: Final = ErrorCode(
     "has-type", "Check that type of reference can be determined", "General"
 )
@@ -140,8 +143,8 @@ UNREACHABLE: Final = ErrorCode(
 ANNOTATION_UNCHECKED = ErrorCode(
     "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
 )
-PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
-    "partially-defined",
+POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
+    "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",
     "General",
     default_enabled=False,
@@ -159,6 +162,12 @@ TRUTHY_FUNCTION: Final[ErrorCode] = ErrorCode(
     "truthy-function",
     "Warn about function that always evaluate to true in boolean contexts",
     "General",
+)
+TRUTHY_ITERABLE: Final[ErrorCode] = ErrorCode(
+    "truthy-iterable",
+    "Warn about Iterable expressions that could always evaluate to true in boolean contexts",
+    "General",
+    default_enabled=False,
 )
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
@@ -179,6 +188,15 @@ UNUSED_AWAITABLE: Final = ErrorCode(
     "Ensure that all awaitable values are used",
     "General",
     default_enabled=False,
+)
+REDUNDANT_SELF_TYPE = ErrorCode(
+    "redundant-self",
+    "Warn about redundant Self type annotations on method first argument",
+    "General",
+    default_enabled=False,
+)
+USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
+    "used-before-def", "Warn about variables that are used before they are defined", "General"
 )
 
 

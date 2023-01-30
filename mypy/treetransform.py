@@ -373,7 +373,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return RaiseStmt(self.optional_expr(node.expr), self.optional_expr(node.from_expr))
 
     def visit_try_stmt(self, node: TryStmt) -> TryStmt:
-        return TryStmt(
+        new = TryStmt(
             self.block(node.body),
             self.optional_names(node.vars),
             self.optional_expressions(node.types),
@@ -381,6 +381,8 @@ class TransformVisitor(NodeVisitor[Node]):
             self.optional_block(node.else_body),
             self.optional_block(node.finally_body),
         )
+        new.is_star = node.is_star
+        return new
 
     def visit_with_stmt(self, node: WithStmt) -> WithStmt:
         new = WithStmt(
@@ -517,7 +519,12 @@ class TransformVisitor(NodeVisitor[Node]):
         )
 
     def visit_op_expr(self, node: OpExpr) -> OpExpr:
-        new = OpExpr(node.op, self.expr(node.left), self.expr(node.right))
+        new = OpExpr(
+            node.op,
+            self.expr(node.left),
+            self.expr(node.right),
+            cast(Optional[TypeAliasExpr], self.optional_expr(node.analyzed)),
+        )
         new.method_type = self.optional_type(node.method_type)
         return new
 
@@ -548,7 +555,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
-        return AssignmentExpr(node.target, node.value)
+        return AssignmentExpr(self.expr(node.target), self.expr(node.value))
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))
@@ -646,7 +653,11 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_type_var_tuple_expr(self, node: TypeVarTupleExpr) -> TypeVarTupleExpr:
         return TypeVarTupleExpr(
-            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+            node.name,
+            node.fullname,
+            self.type(node.upper_bound),
+            node.tuple_fallback,
+            variance=node.variance,
         )
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:

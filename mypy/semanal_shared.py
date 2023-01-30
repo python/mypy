@@ -21,7 +21,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.type_visitor import TypeQuery
+from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TPDICT_FB_NAMES,
     FunctionLike,
@@ -37,6 +37,11 @@ from mypy.types import (
     TypeVarLikeType,
     get_proper_type,
 )
+
+# Subclasses can override these Var attributes with incompatible types. This can also be
+# set for individual attributes using 'allow_incompatible_override' of Var.
+ALLOW_INCOMPATIBLE_OVERRIDE: Final = ("__slots__", "__deletable__", "__match_args__")
+
 
 # Priorities for ordering of patches within the "patch" phase of semantic analysis
 # (after the main pass):
@@ -119,6 +124,11 @@ class SemanticAnalyzerCoreInterface:
     def is_func_scope(self) -> bool:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def type(self) -> TypeInfo | None:
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
@@ -162,6 +172,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         allow_required: bool = False,
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
+        prohibit_self_type: str | None = None,
     ) -> Type | None:
         raise NotImplementedError
 
@@ -224,6 +235,12 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @property
     @abstractmethod
     def is_typeshed_stub_file(self) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def process_placeholder(
+        self, name: str | None, kind: str, ctx: Context, force_progress: bool = False
+    ) -> None:
         raise NotImplementedError
 
 
@@ -313,9 +330,9 @@ def paramspec_kwargs(
     )
 
 
-class HasPlaceholders(TypeQuery[bool]):
+class HasPlaceholders(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> bool:
         return True

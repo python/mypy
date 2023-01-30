@@ -19,7 +19,7 @@ import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
-from mypy.typeops import make_simplified_union
+from mypy.typeops import fixup_partial_type, make_simplified_union
 from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
@@ -77,6 +77,7 @@ def _infer_value_type_with_auto_fallback(
     """
     if proper_type is None:
         return None
+    proper_type = get_proper_type(fixup_partial_type(proper_type))
     if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
         return proper_type
     assert isinstance(ctx.type, Instance), "An incorrect ctx.type was passed."

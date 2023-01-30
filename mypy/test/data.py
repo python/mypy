@@ -81,13 +81,12 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                 output_files.append((file_entry[0], re.compile(file_entry[1].rstrip(), re.S)))
             else:
                 output_files.append(file_entry)
-        elif item.id in ("builtins", "builtins_py2"):
+        elif item.id == "builtins":
             # Use an alternative stub file for the builtins module.
             assert item.arg is not None
             mpath = join(os.path.dirname(case.file), item.arg)
-            fnam = "builtins.pyi" if item.id == "builtins" else "__builtin__.pyi"
             with open(mpath, encoding="utf8") as f:
-                files.append((join(base_path, fnam), f.read()))
+                files.append((join(base_path, "builtins.pyi"), f.read()))
         elif item.id == "typing":
             # Use an alternative stub file for the typing module.
             assert item.arg is not None

@@ -110,7 +110,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import get_prefix, replace_object_state
 
 
@@ -213,8 +213,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_mypy_file(node)
 
     def visit_block(self, node: Block) -> None:
-        super().visit_block(node)
         node.body = self.replace_statements(node.body)
+        super().visit_block(node)
 
     def visit_func_def(self, node: FuncDef) -> None:
         node = self.fixup(node)
@@ -331,6 +331,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_type_alias(self, node: TypeAlias) -> None:
         self.fixup_type(node.target)
+        for v in node.alias_tvars:
+            self.fixup_type(v)
         super().visit_type_alias(node)
 
     # Helpers
@@ -358,7 +360,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             # The subclass relationships may change, so reset all caches relevant to the
             # old MRO.
             new = cast(TypeInfo, self.replacements[node])
-            TypeState.reset_all_subtype_caches_for(new)
+            type_state.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 
     def fixup_type(self, typ: Type | None) -> None:

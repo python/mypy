@@ -302,7 +302,7 @@ class StubtestUnit(unittest.TestCase):
             )
 
     @collect_cases
-    def test_default_value(self) -> Iterator[Case]:
+    def test_default_presence(self) -> Iterator[Case]:
         yield Case(
             stub="def f1(text: str = ...) -> None: ...",
             runtime="def f1(text = 'asdf'): pass",
@@ -334,6 +334,59 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="def f6(text = None): pass",
             error="f6",
+        )
+
+    @collect_cases
+    def test_default_value(self) -> Iterator[Case]:
+        yield Case(
+            stub="def f1(text: str = 'x') -> None: ...",
+            runtime="def f1(text = 'y'): pass",
+            error="f1",
+        )
+        yield Case(
+            stub='def f2(text: bytes = b"x\'") -> None: ...',
+            runtime='def f2(text = b"x\'"): pass',
+            error=None,
+        )
+        yield Case(
+            stub='def f3(text: bytes = b"y\'") -> None: ...',
+            runtime='def f3(text = b"x\'"): pass',
+            error="f3",
+        )
+        yield Case(
+            stub="def f4(text: object = 1) -> None: ...",
+            runtime="def f4(text = 1.0): pass",
+            error="f4",
+        )
+        yield Case(
+            stub="def f5(text: object = True) -> None: ...",
+            runtime="def f5(text = 1): pass",
+            error="f5",
+        )
+        yield Case(
+            stub="def f6(text: object = True) -> None: ...",
+            runtime="def f6(text = True): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f7(text: object = not True) -> None: ...",
+            runtime="def f7(text = False): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f8(text: object = not True) -> None: ...",
+            runtime="def f8(text = True): pass",
+            error="f8",
+        )
+        yield Case(
+            stub="def f9(text: object = {1: 2}) -> None: ...",
+            runtime="def f9(text = {1: 3}): pass",
+            error="f9",
+        )
+        yield Case(
+            stub="def f10(text: object = [1, 2]) -> None: ...",
+            runtime="def f10(text = [1, 2]): pass",
+            error=None,
         )
 
     @collect_cases
@@ -975,7 +1028,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
-        # We *should* emit an error with the module name itself,
+        # We *should* emit an error with the module name itself + __all__,
         # if the stub *does* define __all__,
         # but the stub's __all__ is inconsistent with the runtime's __all__
         yield Case(
@@ -987,7 +1040,7 @@ class StubtestUnit(unittest.TestCase):
             __all__ = []
             foo = 'foo'
             """,
-            error="",
+            error="__all__",
         )
 
     @collect_cases
@@ -1029,6 +1082,9 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
         yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
+        yield Case(stub="", runtime="import re; constant = re.compile('foo')", error="constant")
+        yield Case(stub="", runtime="from json.scanner import NUMBER_RE", error=None)
+        yield Case(stub="", runtime="from string import ascii_letters", error=None)
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:

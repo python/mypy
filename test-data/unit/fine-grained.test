@@ -1586,11 +1586,11 @@ class A:
 [file b.py.3]
 2
 [out]
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testBaseClassDeleted]
 import m
@@ -1809,8 +1809,8 @@ def f() -> Iterator[None]:
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b>, __main__
-3: <b>, __main__, a
+2: <b>, <b[wildcard]>, __main__
+3: <b>, <b[wildcard]>, __main__, a
 [out]
 main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
@@ -2007,11 +2007,11 @@ class A:
 class A:
     def foo(self) -> int: pass
 [out]
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
 
 [case testPreviousErrorInMethodSemanal2]
@@ -3124,7 +3124,6 @@ whatever: int
 [out]
 ==
 b.py:2: error: Name "c.M" is not defined
-a.py:3: error: "Type[B]" has no attribute "x"
 
 [case testFixMissingMetaclass]
 import a
@@ -3143,7 +3142,6 @@ class M(type):
     x: int
 [out]
 b.py:2: error: Name "c.M" is not defined
-a.py:3: error: "Type[B]" has no attribute "x"
 ==
 
 [case testGoodMetaclassSpoiled]
@@ -5525,11 +5523,13 @@ a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5542,25 +5542,27 @@ def T() -> None:
     pass
 [out]
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Function "a.T" is not valid as a type
-main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:6: error: Free type variable expected in Generic[...]
-main:7: error: Function "a.T" is not valid as a type
-main:7: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:10: error: Function "a.T" is not valid as a type
-main:10: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:6: error: Function "a.T" is not valid as a type
+main:6: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:9: error: "C" expects no type arguments, but 1 given
+main:9: error: Function "a.T" is not valid as a type
+main:9: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:12: error: Function "a.T" is not valid as a type
+main:12: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeVarToModule]
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5574,15 +5576,15 @@ import T
 [out]
 ==
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Module "T" is not valid as a type
-main:4: note: Perhaps you meant to use a protocol matching the module structure?
-main:6: error: Free type variable expected in Generic[...]
-main:7: error: Module "T" is not valid as a type
-main:7: note: Perhaps you meant to use a protocol matching the module structure?
-main:10: error: Module "T" is not valid as a type
-main:10: note: Perhaps you meant to use a protocol matching the module structure?
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:6: error: Module "T" is not valid as a type
+main:6: note: Perhaps you meant to use a protocol matching the module structure?
+main:9: error: "C" expects no type arguments, but 1 given
+main:9: error: Module "T" is not valid as a type
+main:9: note: Perhaps you meant to use a protocol matching the module structure?
+main:12: error: Module "T" is not valid as a type
+main:12: note: Perhaps you meant to use a protocol matching the module structure?
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeClassToModule]
 
@@ -5614,11 +5616,13 @@ main:8: note: Perhaps you meant to use a protocol matching the module structure?
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5630,9 +5634,9 @@ from typing import TypeVar
 T = int
 [out]
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:6: error: Free type variable expected in Generic[...]
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:9: error: "C" expects no type arguments, but 1 given
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeAliasToModule]
 
@@ -8201,6 +8205,7 @@ x = 1
 ==
 
 [case testIdLikeDecoForwardCrashAlias]
+# flags: --disable-error-code used-before-def
 import b
 [file b.py]
 from typing import Callable, Any, TypeVar
@@ -10130,3 +10135,209 @@ b.py:2: error: "int" not callable
 a.py:1: error: Unsupported operand types for + ("int" and "str")
     1 + ''
         ^~
+
+[case testTypingSelfFine]
+import m
+[file lib.py]
+from typing import Any
+
+class C:
+    def meth(self, other: Any) -> C: ...
+[file lib.py.2]
+from typing import Self
+
+class C:
+    def meth(self, other: Self) -> Self: ...
+
+[file n.py]
+import lib
+class D(lib.C): ...
+[file m.py]
+from n import D
+d = D()
+def test() -> None:
+    d.meth(42)
+[out]
+==
+m.py:4: error: Argument 1 to "meth" of "C" has incompatible type "int"; expected "D"
+
+[case testNoNestedDefinitionCrash]
+import m
+[file m.py]
+from typing import Any, TYPE_CHECKING
+
+class C:
+    if TYPE_CHECKING:
+        def __init__(self, **kw: Any): ...
+
+C
+[file m.py.2]
+from typing import Any, TYPE_CHECKING
+
+class C:
+    if TYPE_CHECKING:
+        def __init__(self, **kw: Any): ...
+
+C
+# change
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testNoNestedDefinitionCrash2]
+import m
+[file m.py]
+from typing import Any
+
+class C:
+    try:
+        def __init__(self, **kw: Any): ...
+    except:
+        pass
+
+C
+[file m.py.2]
+from typing import Any
+
+class C:
+    try:
+        def __init__(self, **kw: Any): ...
+    except:
+        pass
+
+C
+# change
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testNamedTupleNestedCrash]
+import m
+[file m.py]
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: int
+
+[file m.py.2]
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: int
+# change
+[builtins fixtures/tuple.pyi]
+[out]
+m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+==
+m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+
+[case testNamedTupleNestedClassRecheck]
+import n
+[file n.py]
+import m
+x: m.NT
+[file m.py]
+from typing import NamedTuple
+from f import A
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: A
+
+[file f.py]
+A = int
+[file f.py.2]
+A = str
+[builtins fixtures/tuple.pyi]
+[out]
+m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+==
+m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+
+[case testTypedDictNestedClassRecheck]
+import n
+[file n.py]
+import m
+x: m.TD
+[file m.py]
+from typing_extensions import TypedDict
+from f import A
+
+class TD(TypedDict):
+    class C: ...
+    x: int
+    y: A
+
+[file f.py]
+A = int
+[file f.py.2]
+A = str
+[builtins fixtures/dict.pyi]
+[out]
+m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
+==
+m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
+
+[case testTypeAliasWithNewStyleUnionChangedToVariable]
+# flags: --python-version 3.10
+import a
+
+[file a.py]
+from b import C, D
+A = C | D
+a: A
+reveal_type(a)
+
+[file b.py]
+C = int
+D = str
+
+[file b.py.2]
+C = "x"
+D = "y"
+
+[file b.py.3]
+C = str
+D = int
+[out]
+a.py:4: note: Revealed type is "Union[builtins.int, builtins.str]"
+==
+a.py:2: error: Unsupported left operand type for | ("str")
+a.py:3: error: Variable "a.A" is not valid as a type
+a.py:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a.py:4: note: Revealed type is "A?"
+==
+a.py:4: note: Revealed type is "Union[builtins.str, builtins.int]"
+
+[case testUnionOfSimilarCallablesCrash]
+import b
+
+[file b.py]
+from a import x
+
+[file m.py]
+from typing import Union, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def foo(x: T, y: S) -> Union[T, S]: ...
+def f(x: int) -> int: ...
+def g(*x: int) -> int: ...
+
+[file a.py]
+from m import f, g, foo
+x = foo(f, g)
+
+[file a.py.2]
+from m import f, g, foo
+x = foo(f, g)
+reveal_type(x)
+[builtins fixtures/tuple.pyi]
+[out]
+==
+a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"

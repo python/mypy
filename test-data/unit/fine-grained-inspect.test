@@ -52,8 +52,8 @@ class Meta(type):
 ==
 {"C": ["meth", "x"]}
 {"C": ["meth", "x"], "Meta": ["y"], "type": ["__init__"]}
-{}
-{"object": ["__init__"]}
+{"function": ["__name__"]}
+{"function": ["__name__"], "object": ["__init__"]}
 
 [case testInspectDefBasic]
 # inspect2: --show=definition foo.py:5:5

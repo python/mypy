@@ -1,10 +1,11 @@
-from typing import TypeVar, Any, Mapping, Iterator, NoReturn as NoReturn, Dict, Type
+import typing
+from typing import Any, Mapping, Iterator, NoReturn as NoReturn, Dict, Type
 from typing import TYPE_CHECKING as TYPE_CHECKING
 from typing import NewType as NewType, overload as overload
 
 import sys
 
-_T = TypeVar('_T')
+_T = typing.TypeVar('_T')
 
 class _SpecialForm:
     def __getitem__(self, typeargs: Any) -> Any:
@@ -24,6 +25,8 @@ def final(x: _T) -> _T: pass
 Literal: _SpecialForm = ...
 
 Annotated: _SpecialForm = ...
+
+TypeVar: _SpecialForm
 
 ParamSpec: _SpecialForm
 Concatenate: _SpecialForm
@@ -54,3 +57,5 @@ class _TypedDict(Mapping[str, object]):
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
 
 def reveal_type(__obj: T) -> T: pass
+
+def dataclass_transform() -> Callable[[T], T]: ...

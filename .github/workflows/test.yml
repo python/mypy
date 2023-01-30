@@ -64,7 +64,7 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2"
         - name: Test suite with py311-ubuntu, mypyc-compiled
-          python: '3.11-dev'
+          python: '3.11'
           arch: x64
           os: ubuntu-latest
           toxenv: py
@@ -102,6 +102,16 @@ jobs:
     name: ${{ matrix.name }}
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
+      # Rich (pip)
+      FORCE_COLOR: 1
+      # Tox
+      PY_COLORS: 1
+      # Mypy (see https://github.com/python/mypy/issues/7771)
+      TERM: xterm-color
+      MYPY_FORCE_COLOR: 1
+      MYPY_FORCE_TERMINAL_WIDTH: 200
+      # Pytest
+      PYTEST_ADDOPTS: --color=yes
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v4
@@ -127,3 +137,21 @@ jobs:
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: Test
       run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
+
+  python-nightly:
+    runs-on: ubuntu-latest
+    name: Test suite with Python nightly
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12-dev'
+      - name: Install tox
+        run: pip install --upgrade 'setuptools!=50' tox==3.24.5
+      - name: Setup tox environment
+        run: tox -e py --notest
+      - name: Test
+        run: tox -e py --skip-pkg-install -- "-n 2"
+        continue-on-error: true
+      - name: Mark as a success
+        run: exit 0

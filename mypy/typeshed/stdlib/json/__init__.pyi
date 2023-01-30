@@ -1,6 +1,6 @@
-from _typeshed import SupportsRead
+from _typeshed import SupportsRead, SupportsWrite
 from collections.abc import Callable
-from typing import IO, Any
+from typing import Any
 
 from .decoder import JSONDecodeError as JSONDecodeError, JSONDecoder as JSONDecoder
 from .encoder import JSONEncoder as JSONEncoder
@@ -23,7 +23,7 @@ def dumps(
 ) -> str: ...
 def dump(
     obj: Any,
-    fp: IO[str],
+    fp: SupportsWrite[str],
     *,
     skipkeys: bool = ...,
     ensure_ascii: bool = ...,
@@ -37,7 +37,7 @@ def dump(
     **kwds: Any,
 ) -> None: ...
 def loads(
-    s: str | bytes,
+    s: str | bytes | bytearray,
     *,
     cls: type[JSONDecoder] | None = ...,
     object_hook: Callable[[dict[Any, Any]], Any] | None = ...,
@@ -58,4 +58,4 @@ def load(
     object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = ...,
     **kwds: Any,
 ) -> Any: ...
-def detect_encoding(b: bytes) -> str: ...  # undocumented
+def detect_encoding(b: bytes | bytearray) -> str: ...  # undocumented

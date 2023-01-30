@@ -1008,7 +1008,10 @@ def process_options(
         help="When encountering SOURCE_FILE, read and type check "
         "the contents of SHADOW_FILE instead.",
     )
-    add_invertible_flag("--fast-exit", default=True, help=argparse.SUPPRESS, group=internals_group)
+    internals_group.add_argument("--fast-exit", action="store_true", help=argparse.SUPPRESS)
+    internals_group.add_argument(
+        "--no-fast-exit", action="store_false", dest="fast_exit", help=argparse.SUPPRESS
+    )
     # This flag is useful for mypy tests, where function bodies may be omitted. Plugin developers
     # may want to use this as well in their tests.
     add_invertible_flag(
@@ -1082,8 +1085,14 @@ def process_options(
         "--inferstats", action="store_true", dest="dump_inference_stats", help=argparse.SUPPRESS
     )
     parser.add_argument("--dump-build-stats", action="store_true", help=argparse.SUPPRESS)
-    # dump timing  stats for each processed file into the given output file
+    # Dump timing stats for each processed file into the given output file
     parser.add_argument("--timing-stats", dest="timing_stats", help=argparse.SUPPRESS)
+    # Dump per line type checking timing stats for each processed file into the given
+    # output file. Only total time spent in each top level expression will be shown.
+    # Times are show in microseconds.
+    parser.add_argument(
+        "--line-checking-stats", dest="line_checking_stats", help=argparse.SUPPRESS
+    )
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
@@ -1117,9 +1126,18 @@ def process_options(
     parser.add_argument(
         "--cache-map", nargs="+", dest="special-opts:cache_map", help=argparse.SUPPRESS
     )
+    # --debug-serialize will run tree.serialize() even if cache generation is disabled.
+    # Useful for mypy_primer to detect serialize errors earlier.
+    parser.add_argument("--debug-serialize", action="store_true", help=argparse.SUPPRESS)
     # This one is deprecated, but we will keep it for few releases.
     parser.add_argument(
         "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--disable-bytearray-promotion", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
     )
 
     # options specifying code to check

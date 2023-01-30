@@ -9,6 +9,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.state import state
 from mypy.subtypes import (
+    SubtypeContext,
     find_member,
     is_equivalent,
     is_proper_subtype,
@@ -101,7 +102,9 @@ class InstanceJoiner:
                 assert new_type is not None
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
-        elif t.type.bases and is_subtype(t, s, ignore_type_params=True):
+        elif t.type.bases and is_proper_subtype(
+            t, s, subtype_context=SubtypeContext(ignore_type_params=True)
+        ):
             result = self.join_instances_via_supertype(t, s)
         else:
             # Now t is not a subtype of s, and t != s. Now s could be a subtype
@@ -141,8 +144,11 @@ class InstanceJoiner:
 
 
 def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
-    """Return a simple least upper bound given the declared type."""
-    # TODO: check infinite recursion for aliases here?
+    """Return a simple least upper bound given the declared type.
+
+    This function should be only used by binder, and should not recurse.
+    For all other uses, use `join_types()`.
+    """
     declaration = get_proper_type(declaration)
     s = get_proper_type(s)
     t = get_proper_type(t)
@@ -158,10 +164,10 @@ def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
     if isinstance(s, ErasedType):
         return t
 
-    if is_proper_subtype(s, t):
+    if is_proper_subtype(s, t, ignore_promotions=True):
         return t
 
-    if is_proper_subtype(t, s):
+    if is_proper_subtype(t, s, ignore_promotions=True):
         return s
 
     if isinstance(declaration, UnionType):
@@ -175,6 +181,9 @@ def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
 
     # Meets/joins require callable type normalization.
     s, t = normalize_callables(s, t)
+
+    if isinstance(s, UnionType) and not isinstance(t, UnionType):
+        s, t = t, s
 
     value = t.accept(TypeJoinVisitor(s))
     if declaration is None or is_subtype(value, declaration):

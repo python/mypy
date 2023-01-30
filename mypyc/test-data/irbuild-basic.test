@@ -1108,7 +1108,9 @@ L0:
     return 1
 
 [case testCallableTypes]
-from typing import Callable
+from typing import Callable, Any
+from m import f
+
 def absolute_value(x: int) -> int:
     return x if x > 0 else -x
 
@@ -1116,7 +1118,7 @@ def call_native_function(x: int) -> int:
     return absolute_value(x)
 
 def call_python_function(x: int) -> int:
-    return int(x)
+    return f(x)
 
 def return_float() -> float:
     return 5.0
@@ -1127,6 +1129,9 @@ def return_callable_type() -> Callable[[], float]:
 def call_callable_type() -> float:
     f = return_callable_type()
     return f()
+[file m.py]
+def f(x: int) -> int:
+    return x
 [out]
 def absolute_value(x):
     x :: int
@@ -1158,14 +1163,18 @@ L0:
     return r0
 def call_python_function(x):
     x :: int
-    r0, r1, r2 :: object
-    r3 :: int
+    r0 :: dict
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: int
 L0:
-    r0 = load_address PyLong_Type
-    r1 = box(int, x)
-    r2 = PyObject_CallFunctionObjArgs(r0, r1, 0)
-    r3 = unbox(int, r2)
-    return r3
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = box(int, x)
+    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
+    r5 = unbox(int, r4)
+    return r5
 def return_float():
     r0 :: float
 L0:
@@ -2228,243 +2237,6 @@ L0:
     r1 = CPyTagged_Multiply(4, r0)
     return r1
 
-[case testPropertyDerivedGen]
-from typing import Callable
-class BaseProperty:
-    @property
-    def value(self) -> object:
-        return self._incrementer
-
-    @property
-    def bad_value(self) -> object:
-        return self._incrementer
-
-    @property
-    def next(self) -> BaseProperty:
-        return BaseProperty(self._incrementer + 1)
-
-    def __init__(self, value: int) -> None:
-        self._incrementer = value
-
-class DerivedProperty(BaseProperty):
-    @property
-    def value(self) -> int:
-        return self._incrementer
-
-    @property
-    def bad_value(self) -> object:
-        return self._incrementer
-
-    @property
-    def next(self) -> DerivedProperty:
-        return DerivedProperty(self._incr_func, self._incr_func(self.value))
-
-    def __init__(self, incr_func: Callable[[int], int], value: int) -> None:
-        BaseProperty.__init__(self, value)
-        self._incr_func = incr_func
-
-
-class AgainProperty(DerivedProperty):
-    @property
-    def next(self) -> AgainProperty:
-        return AgainProperty(self._incr_func, self._incr_func(self._incr_func(self.value)))
-
-    @property
-    def bad_value(self) -> int:
-        return self._incrementer
-[out]
-def BaseProperty.value(self):
-    self :: __main__.BaseProperty
-    r0 :: int
-    r1 :: object
-L0:
-    r0 = self._incrementer
-    r1 = box(int, r0)
-    return r1
-def BaseProperty.bad_value(self):
-    self :: __main__.BaseProperty
-    r0 :: int
-    r1 :: object
-L0:
-    r0 = self._incrementer
-    r1 = box(int, r0)
-    return r1
-def BaseProperty.next(self):
-    self :: __main__.BaseProperty
-    r0, r1 :: int
-    r2 :: __main__.BaseProperty
-L0:
-    r0 = borrow self._incrementer
-    r1 = CPyTagged_Add(r0, 2)
-    keep_alive self
-    r2 = BaseProperty(r1)
-    return r2
-def BaseProperty.__init__(self, value):
-    self :: __main__.BaseProperty
-    value :: int
-L0:
-    self._incrementer = value
-    return 1
-def DerivedProperty.value(self):
-    self :: __main__.DerivedProperty
-    r0 :: int
-L0:
-    r0 = self._incrementer
-    return r0
-def DerivedProperty.value__BaseProperty_glue(__mypyc_self__):
-    __mypyc_self__ :: __main__.DerivedProperty
-    r0 :: int
-    r1 :: object
-L0:
-    r0 = __mypyc_self__.value
-    r1 = box(int, r0)
-    return r1
-def DerivedProperty.bad_value(self):
-    self :: __main__.DerivedProperty
-    r0 :: int
-    r1 :: object
-L0:
-    r0 = self._incrementer
-    r1 = box(int, r0)
-    return r1
-def DerivedProperty.next(self):
-    self :: __main__.DerivedProperty
-    r0 :: object
-    r1 :: int
-    r2, r3, r4 :: object
-    r5 :: int
-    r6 :: __main__.DerivedProperty
-L0:
-    r0 = self._incr_func
-    r1 = self.value
-    r2 = self._incr_func
-    r3 = box(int, r1)
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
-    r5 = unbox(int, r4)
-    r6 = DerivedProperty(r0, r5)
-    return r6
-def DerivedProperty.next__BaseProperty_glue(__mypyc_self__):
-    __mypyc_self__, r0 :: __main__.DerivedProperty
-L0:
-    r0 = __mypyc_self__.next
-    return r0
-def DerivedProperty.__init__(self, incr_func, value):
-    self :: __main__.DerivedProperty
-    incr_func :: object
-    value :: int
-    r0 :: None
-L0:
-    r0 = BaseProperty.__init__(self, value)
-    self._incr_func = incr_func
-    return 1
-def AgainProperty.next(self):
-    self :: __main__.AgainProperty
-    r0 :: object
-    r1 :: int
-    r2, r3, r4 :: object
-    r5 :: int
-    r6, r7, r8 :: object
-    r9 :: int
-    r10 :: __main__.AgainProperty
-L0:
-    r0 = self._incr_func
-    r1 = self.value
-    r2 = self._incr_func
-    r3 = box(int, r1)
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
-    r5 = unbox(int, r4)
-    r6 = self._incr_func
-    r7 = box(int, r5)
-    r8 = PyObject_CallFunctionObjArgs(r6, r7, 0)
-    r9 = unbox(int, r8)
-    r10 = AgainProperty(r0, r9)
-    return r10
-def AgainProperty.next__DerivedProperty_glue(__mypyc_self__):
-    __mypyc_self__, r0 :: __main__.AgainProperty
-L0:
-    r0 = __mypyc_self__.next
-    return r0
-def AgainProperty.next__BaseProperty_glue(__mypyc_self__):
-    __mypyc_self__, r0 :: __main__.AgainProperty
-L0:
-    r0 = __mypyc_self__.next
-    return r0
-def AgainProperty.bad_value(self):
-    self :: __main__.AgainProperty
-    r0 :: int
-L0:
-    r0 = self._incrementer
-    return r0
-def AgainProperty.bad_value__DerivedProperty_glue(__mypyc_self__):
-    __mypyc_self__ :: __main__.AgainProperty
-    r0 :: int
-    r1 :: object
-L0:
-    r0 = __mypyc_self__.bad_value
-    r1 = box(int, r0)
-    return r1
-def AgainProperty.bad_value__BaseProperty_glue(__mypyc_self__):
-    __mypyc_self__ :: __main__.AgainProperty
-    r0 :: int
-    r1 :: object
-L0:
-    r0 = __mypyc_self__.bad_value
-    r1 = box(int, r0)
-    return r1
-
-[case testPropertyTraitSubclassing]
-from mypy_extensions import trait
-@trait
-class SubclassedTrait:
-    @property
-    def this(self) -> SubclassedTrait:
-        return self
-
-    @property
-    def boxed(self) -> object:
-        return 3
-
-class DerivingObject(SubclassedTrait):
-    @property
-    def this(self) -> DerivingObject:
-        return self
-
-    @property
-    def boxed(self) -> int:
-        return 5
-[out]
-def SubclassedTrait.this(self):
-    self :: __main__.SubclassedTrait
-L0:
-    return self
-def SubclassedTrait.boxed(self):
-    self :: __main__.SubclassedTrait
-    r0 :: object
-L0:
-    r0 = object 3
-    return r0
-def DerivingObject.this(self):
-    self :: __main__.DerivingObject
-L0:
-    return self
-def DerivingObject.this__SubclassedTrait_glue(__mypyc_self__):
-    __mypyc_self__, r0 :: __main__.DerivingObject
-L0:
-    r0 = __mypyc_self__.this
-    return r0
-def DerivingObject.boxed(self):
-    self :: __main__.DerivingObject
-L0:
-    return 10
-def DerivingObject.boxed__SubclassedTrait_glue(__mypyc_self__):
-    __mypyc_self__ :: __main__.DerivingObject
-    r0 :: int
-    r1 :: object
-L0:
-    r0 = __mypyc_self__.boxed
-    r1 = box(int, r0)
-    return r1
-
 [case testNativeIndex]
 from typing import List
 class A:
@@ -2575,11 +2347,8 @@ def __top_level__():
     r92, r93, r94, r95 :: ptr
     r96 :: dict
     r97 :: str
-    r98, r99 :: object
-    r100 :: dict
-    r101 :: str
-    r102 :: int32
-    r103 :: bit
+    r98 :: int32
+    r99 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2691,13 +2460,9 @@ L2:
     set_mem r95, r91 :: builtins.object*
     keep_alive r88
     r96 = __main__.globals :: static
-    r97 = 'Bar'
-    r98 = CPyDict_GetItem(r96, r97)
-    r99 = PyObject_CallFunctionObjArgs(r98, r88, 0)
-    r100 = __main__.globals :: static
-    r101 = 'y'
-    r102 = CPyDict_SetItem(r100, r101, r99)
-    r103 = r102 >= 0 :: signed
+    r97 = 'y'
+    r98 = CPyDict_SetItem(r96, r97, r88)
+    r99 = r98 >= 0 :: signed
     return 1
 
 [case testChainedConditional]
@@ -3312,8 +3077,7 @@ def call_sum(l, comparison):
     r1, r2 :: object
     r3, x :: int
     r4, r5 :: object
-    r6 :: bool
-    r7 :: object
+    r6, r7 :: bool
     r8, r9 :: int
     r10 :: bit
 L0:
@@ -3328,8 +3092,8 @@ L2:
     r4 = box(int, x)
     r5 = PyObject_CallFunctionObjArgs(comparison, r4, 0)
     r6 = unbox(bool, r5)
-    r7 = box(bool, r6)
-    r8 = unbox(int, r7)
+    r7 = r6 << 1
+    r8 = extend r7: builtins.bool to builtins.int
     r9 = CPyTagged_Add(r0, r8)
     r0 = r9
 L3:
@@ -3510,7 +3274,7 @@ L2:
 [case testFinalStaticInt]
 from typing import Final
 
-x: Final = 1 + 1
+x: Final = 1 + int()
 
 def f() -> int:
     return x - 1
@@ -3821,3 +3585,18 @@ L0:
     r3 = 0.0
     i__redef____redef__ = r3
     return 1
+
+[case testNewType]
+from typing import NewType
+
+class A: pass
+
+N = NewType("N", A)
+
+def f(arg: A) -> N:
+    return N(arg)
+[out]
+def f(arg):
+    arg :: __main__.A
+L0:
+    return arg

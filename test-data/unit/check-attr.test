@@ -1788,3 +1788,82 @@ class C:
 c = C(x=[C.D()])
 reveal_type(c.x)  # N: Revealed type is "builtins.list[__main__.C.D]"
 [builtins fixtures/list.pyi]
+
+[case testRedefinitionInFrozenClassNoCrash]
+import attr
+
+@attr.s
+class MyData:
+    is_foo: bool = attr.ib()
+
+    @staticmethod  # E: Name "is_foo" already defined on line 5
+    def is_foo(string: str) -> bool: ...
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideWithPropertyInFrozenClassNoCrash]
+from attrs import frozen
+
+@frozen(kw_only=True)
+class Base:
+    name: str
+
+@frozen(kw_only=True)
+class Sub(Base):
+    first_name: str
+    last_name: str
+
+    @property
+    def name(self) -> str: ...
+[builtins fixtures/property.pyi]
+
+[case testOverrideWithPropertyInFrozenClassChecked]
+from attrs import frozen
+
+@frozen(kw_only=True)
+class Base:
+    name: str
+
+@frozen(kw_only=True)
+class Sub(Base):
+    first_name: str
+    last_name: str
+
+    @property
+    def name(self) -> int: ...  # E: Signature of "name" incompatible with supertype "Base"
+
+# This matches runtime semantics
+reveal_type(Sub)  # N: Revealed type is "def (*, name: builtins.str, first_name: builtins.str, last_name: builtins.str) -> __main__.Sub"
+[builtins fixtures/property.pyi]
+
+[case testFinalInstanceAttribute]
+from attrs import define
+from typing import Final
+
+@define
+class C:
+    a: Final[int]
+
+reveal_type(C) # N: Revealed type is "def (a: builtins.int) -> __main__.C"
+
+C(1).a = 2 # E: Cannot assign to final attribute "a"
+
+[builtins fixtures/property.pyi]
+
+[case testFinalInstanceAttributeInheritance]
+from attrs import define
+from typing import Final
+
+@define
+class C:
+    a: Final[int]
+
+@define
+class D(C):
+    b: Final[str]
+
+reveal_type(D) # N: Revealed type is "def (a: builtins.int, b: builtins.str) -> __main__.D"
+
+D(1, "").a = 2 # E: Cannot assign to final attribute "a"
+D(1, "").b = "2" # E: Cannot assign to final attribute "b"
+
+[builtins fixtures/property.pyi]

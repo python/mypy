@@ -1025,10 +1025,7 @@ import a.b
 
 [file a/b.py]
 
-[rechecked b]
-[stale]
-[out2]
-tmp/b.py:4: error: Name "a" already defined on line 3
+[stale b]
 
 [case testIncrementalSilentImportsAndImportsInClass]
 # flags: --ignore-missing-imports
@@ -2510,7 +2507,7 @@ A = Tuple[int]
 [case testNewTypeFromForwardNamedTupleIncremental]
 from typing import NewType, NamedTuple, Tuple
 
-NT = NewType('NT', N)
+NT = NewType('NT', 'N')
 class N(NamedTuple):
     x: int
 
@@ -2594,8 +2591,8 @@ class C(NamedTuple): # type: ignore
 from typing import TypeVar, Generic
 T = TypeVar('T')
 S = TypeVar('S')
-IntNode = Node[int, S]
-AnyNode = Node[S, T]
+IntNode = Node[int, S]  # type: ignore[used-before-def]
+AnyNode = Node[S, T]  # type: ignore[used-before-def]
 
 class Node(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
@@ -2645,8 +2642,8 @@ class G(Generic[T]):
     x: T
 
 yg: G[M]
-z: int = G[M]().x.x
-z = G[M]().x[0]
+z: int = G[M]().x.x  # type: ignore[used-before-def]
+z = G[M]().x[0]  # type: ignore[used-before-def]
 M = NamedTuple('M', [('x', int)])
 [builtins fixtures/tuple.pyi]
 [out]
@@ -6289,3 +6286,76 @@ class C: ...
 [out]
 [out2]
 [out3]
+
+[case testNoCrashOnPartialLambdaInference]
+import m
+[file m.py]
+from typing import TypeVar, Callable
+
+V = TypeVar("V")
+def apply(val: V, func: Callable[[V], None]) -> None:
+    return func(val)
+
+xs = []
+apply(0, lambda a: xs.append(a))
+[file m.py.2]
+from typing import TypeVar, Callable
+
+V = TypeVar("V")
+def apply(val: V, func: Callable[[V], None]) -> None:
+    return func(val)
+
+xs = []
+apply(0, lambda a: xs.append(a))
+reveal_type(xs)
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+tmp/m.py:9: note: Revealed type is "builtins.list[builtins.int]"
+
+[case testTypingSelfCoarse]
+import m
+[file lib.py]
+from typing import Self
+
+class C:
+    def meth(self, other: Self) -> Self: ...
+
+[file m.py]
+import lib
+class D: ...
+[file m.py.2]
+import lib
+class D(lib.C): ...
+
+reveal_type(D.meth)
+reveal_type(D().meth)
+[out]
+[out2]
+tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`0, other: Self`0) -> Self`0"
+tmp/m.py:5: note: Revealed type is "def (other: m.D) -> m.D"
+
+[case testIncrementalNestedGenericCallableCrash]
+from typing import TypeVar, Callable
+
+T = TypeVar("T")
+
+class B:
+    def foo(self) -> Callable[[T], T]: ...
+
+class C(B):
+    def __init__(self) -> None:
+        self.x = self.foo()
+[out]
+[out2]
+
+[case testNoCrashIncrementalMetaAny]
+import a
+[file a.py]
+from m import Foo
+[file a.py.2]
+from m import Foo
+# touch
+[file m.py]
+from missing_module import Meta  # type: ignore[import]
+class Foo(metaclass=Meta): ...

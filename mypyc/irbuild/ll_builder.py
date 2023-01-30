@@ -326,6 +326,17 @@ class LowLevelIRBuilder:
             ):
                 # Equivalent types
                 return src
+            elif (
+                is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
+            ) and is_int_rprimitive(target_type):
+                shifted = self.int_op(
+                    bool_rprimitive, src, Integer(1, bool_rprimitive), IntOp.LEFT_SHIFT
+                )
+                return self.add(Extend(shifted, int_rprimitive, signed=False))
+            elif (
+                is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
+            ) and is_fixed_width_rtype(target_type):
+                return self.add(Extend(src, target_type, signed=False))
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -935,10 +946,19 @@ class LowLevelIRBuilder:
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None],
         line: int,
+        *,
+        bitmap_args: list[Register] | None = None,
     ) -> Value:
-        """Call a native function."""
+        """Call a native function.
+
+        If bitmap_args is given, they override the values of (some) of the bitmap
+        arguments used to track the presence of values for certain arguments. By
+        default, the values of the bitmap arguments are inferred from args.
+        """
         # Normalize args to positionals.
-        args = self.native_args_to_positional(args, arg_kinds, arg_names, decl.sig, line)
+        args = self.native_args_to_positional(
+            args, arg_kinds, arg_names, decl.sig, line, bitmap_args=bitmap_args
+        )
         return self.add(Call(decl, args, line))
 
     def native_args_to_positional(
@@ -948,6 +968,8 @@ class LowLevelIRBuilder:
         arg_names: Sequence[str | None],
         sig: FuncSignature,
         line: int,
+        *,
+        bitmap_args: list[Register] | None = None,
     ) -> list[Value]:
         """Prepare arguments for a native call.
 
@@ -1015,10 +1037,15 @@ class LowLevelIRBuilder:
             output_args.append(output_arg)
 
         for i in reversed(range(n)):
+            if bitmap_args and i < len(bitmap_args):
+                # Use override provided by caller
+                output_args.append(bitmap_args[i])
+                continue
+            # Infer values of bitmap args
             bitmap = 0
             c = 0
             for lst, arg in zip(formal_to_actual, sig_args):
-                if arg.kind.is_optional() and is_fixed_width_rtype(arg.type):
+                if arg.kind.is_optional() and arg.type.error_overlap:
                     if i * BITMAP_BITS <= c < (i + 1) * BITMAP_BITS:
                         if lst:
                             bitmap |= 1 << (c & (BITMAP_BITS - 1))
@@ -1626,35 +1653,38 @@ class LowLevelIRBuilder:
         self.activate_block(next_block)
         return target
 
-    def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
-        if is_runtime_subtype(value.type, int_rprimitive):
+    def bool_value(self, value: Value) -> Value:
+        """Return bool(value).
+
+        The result type can be bit_rprimitive or bool_rprimitive.
+        """
+        if is_bool_rprimitive(value.type) or is_bit_rprimitive(value.type):
+            result = value
+        elif is_runtime_subtype(value.type, int_rprimitive):
             zero = Integer(0, short_int_rprimitive)
-            self.compare_tagged_condition(value, zero, "!=", true, false, value.line)
-            return
+            result = self.comparison_op(value, zero, ComparisonOp.NEQ, value.line)
         elif is_fixed_width_rtype(value.type):
             zero = Integer(0, value.type)
-            value = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
+            result = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
         elif is_same_type(value.type, str_rprimitive):
-            value = self.call_c(str_check_if_true, [value], value.line)
+            result = self.call_c(str_check_if_true, [value], value.line)
         elif is_same_type(value.type, list_rprimitive) or is_same_type(
             value.type, dict_rprimitive
         ):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
-            value = self.binary_op(length, zero, "!=", value.line)
+            result = self.binary_op(length, zero, "!=", value.line)
         elif (
             isinstance(value.type, RInstance)
             and value.type.class_ir.is_ext_class
             and value.type.class_ir.has_method("__bool__")
         ):
             # Directly call the __bool__ method on classes that have it.
-            value = self.gen_method_call(value, "__bool__", [], bool_rprimitive, value.line)
+            result = self.gen_method_call(value, "__bool__", [], bool_rprimitive, value.line)
         else:
             value_type = optional_value_type(value.type)
             if value_type is not None:
-                is_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
-                branch = Branch(is_none, true, false, Branch.BOOL)
-                self.add(branch)
+                not_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
                 always_truthy = False
                 if isinstance(value_type, RInstance):
                     # check whether X.__bool__ is always just the default (object.__bool__)
@@ -1663,18 +1693,55 @@ class LowLevelIRBuilder:
                     ) and value_type.class_ir.is_method_final("__bool__"):
                         always_truthy = True
 
-                if not always_truthy:
-                    # Optional[X] where X may be falsey and requires a check
-                    branch.true = BasicBlock()
-                    self.activate_block(branch.true)
+                if always_truthy:
+                    result = not_none
+                else:
+                    # "X | None" where X may be falsey and requires a check
+                    result = Register(bit_rprimitive)
+                    true, false, end = BasicBlock(), BasicBlock(), BasicBlock()
+                    branch = Branch(not_none, true, false, Branch.BOOL)
+                    self.add(branch)
+                    self.activate_block(true)
                     # unbox_or_cast instead of coerce because we want the
                     # type to change even if it is a subtype.
                     remaining = self.unbox_or_cast(value, value_type, value.line)
-                    self.add_bool_branch(remaining, true, false)
-                return
-            elif not is_bool_rprimitive(value.type) and not is_bit_rprimitive(value.type):
-                value = self.call_c(bool_op, [value], value.line)
-        self.add(Branch(value, true, false, Branch.BOOL))
+                    as_bool = self.bool_value(remaining)
+                    self.add(Assign(result, as_bool))
+                    self.goto(end)
+                    self.activate_block(false)
+                    self.add(Assign(result, Integer(0, bit_rprimitive)))
+                    self.goto(end)
+                    self.activate_block(end)
+            else:
+                result = self.call_c(bool_op, [value], value.line)
+        return result
+
+    def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
+        opt_value_type = optional_value_type(value.type)
+        if opt_value_type is None:
+            bool_value = self.bool_value(value)
+            self.add(Branch(bool_value, true, false, Branch.BOOL))
+        else:
+            # Special-case optional types
+            is_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
+            branch = Branch(is_none, true, false, Branch.BOOL)
+            self.add(branch)
+            always_truthy = False
+            if isinstance(opt_value_type, RInstance):
+                # check whether X.__bool__ is always just the default (object.__bool__)
+                if not opt_value_type.class_ir.has_method(
+                    "__bool__"
+                ) and opt_value_type.class_ir.is_method_final("__bool__"):
+                    always_truthy = True
+
+            if not always_truthy:
+                # Optional[X] where X may be falsey and requires a check
+                branch.true = BasicBlock()
+                self.activate_block(branch.true)
+                # unbox_or_cast instead of coerce because we want the
+                # type to change even if it is a subtype.
+                remaining = self.unbox_or_cast(value, opt_value_type, value.line)
+                self.add_bool_branch(remaining, true, false)
 
     def call_c(
         self,
@@ -1779,7 +1846,7 @@ class LowLevelIRBuilder:
             return target
         return None
 
-    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:
         """Generate a native integer binary op.
 
         Use native/C semantics, which sometimes differ from Python

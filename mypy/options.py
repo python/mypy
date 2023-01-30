@@ -56,9 +56,16 @@ PER_MODULE_OPTIONS: Final = {
     "warn_unused_ignores",
 }
 
-OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "plugins"}) - {
-    "debug_cache"
-}
+OPTIONS_AFFECTING_CACHE: Final = (
+    PER_MODULE_OPTIONS
+    | {
+        "platform",
+        "bazel",
+        "plugins",
+        "disable_bytearray_promotion",
+        "disable_memoryview_promotion",
+    }
+) - {"debug_cache"}
 
 # Features that are currently incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
@@ -242,6 +249,9 @@ class Options:
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
 
+        # Run tree.serialize() even if cache generation is disabled
+        self.debug_serialize = False
+
         # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
         # in modules being compiled. Not in the config file or command line.
         self.mypyc = False
@@ -282,6 +292,7 @@ class Options:
         self.enable_incomplete_features = False  # deprecated
         self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
+        self.line_checking_stats: str | None = None
 
         # -- test options --
         # Stop after the semantic analysis phase
@@ -334,6 +345,9 @@ class Options:
         self.disable_recursive_aliases = False
         # Deprecated reverse version of the above, do not use.
         self.enable_recursive_aliases = False
+
+        self.disable_bytearray_promotion = False
+        self.disable_memoryview_promotion = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
