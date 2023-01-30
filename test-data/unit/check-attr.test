@@ -1869,7 +1869,6 @@ D(1, "").b = "2" # E: Cannot assign to final attribute "b"
 [builtins fixtures/property.pyi]
 
 [case testEvolve]
-from typing import Any
 import attr
 
 class Base:
@@ -1906,16 +1905,21 @@ def f() -> C:
 
 c = attr.evolve(f(), name='foo')
 
-# test 'inst' arg type check
+[builtins fixtures/attr.pyi]
+
+[case testEvolveFromNonAttrs]
+import attr
+
 attr.evolve(42, name='foo')  # E: Argument 1 to "evolve" has incompatible type "int"; expected an attrs class
 attr.evolve(None, name='foo')  # E: Argument 1 to "evolve" has incompatible type "None"; expected an attrs class
+[case testEvolveFromAny]
+from typing import Any
+import attr
 
-# test that all bets are off for 'Any'
-any: Any
+any: Any = 42
 ret = attr.evolve(any, name='foo')
 reveal_type(ret)  # N: Revealed type is "Any"
 
-[builtins fixtures/attr.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testEvolveVariants]
