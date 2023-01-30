@@ -977,7 +977,7 @@ class A:
         self.self_var = arg
 
     def meth(self) -> None:
-        pass
+        func_value = int_value
 
     alias_meth = meth
     alias_func = func
