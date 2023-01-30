@@ -947,16 +947,6 @@ from typing import Any
 
 alias = Container[Any]
 
-[case testAliasOnlyToplevel]
-class Foo:
-    alias = str
-
-[out]
-from _typeshed import Incomplete
-
-class Foo:
-    alias: Incomplete
-
 [case testAliasExceptions]
 noalias1 = None
 noalias2 = ...
@@ -968,6 +958,56 @@ from _typeshed import Incomplete
 noalias1: Incomplete
 noalias2: Incomplete
 noalias3: bool
+
+[case testComplexAlias]
+# modules: main a
+
+from a import valid
+
+def func() -> int:
+    return 2
+
+aliased_func = func
+int_value = 1
+
+class A:
+    cls_var = valid
+
+    def __init__(self, arg: str) -> None:
+        self.self_var = arg
+
+    def meth(self) -> None:
+        func_value = int_value
+
+    alias_meth = meth
+    alias_func = func
+    alias_alias_func = aliased_func
+    int_value = int_value
+
+[file a.py]
+valid : list[int] = [1, 2, 3]
+
+
+[out]
+# main.pyi
+from _typeshed import Incomplete
+from a import valid
+
+def func() -> int: ...
+aliased_func = func
+int_value: int
+
+class A:
+    cls_var = valid
+    self_var: Incomplete
+    def __init__(self, arg: str) -> None: ...
+    def meth(self) -> None: ...
+    alias_meth = meth
+    alias_func = func
+    alias_alias_func = aliased_func
+    int_value = int_value
+# a.pyi
+valid: list[int]
 
 -- More features/fixes:
 --   do not export deleted names
