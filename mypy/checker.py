@@ -4500,6 +4500,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Non-tuple iterable.
             return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
 
+    def analyze_iterable_item_type_without_expression(
+        self, type: Type, context: Context
+    ) -> tuple[Type, Type]:
+        """Analyse iterable type and return iterator and iterator item types."""
+        echk = self.expr_checker
+        iterable = get_proper_type(type)
+        iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
+
+        if isinstance(iterable, TupleType):
+            joined: Type = UninhabitedType()
+            for item in iterable.items:
+                joined = join_types(joined, item)
+            return iterator, joined
+        else:
+            # Non-tuple iterable.
+            return (
+                iterator,
+                echk.check_method_call_by_name("__next__", iterator, [], [], context)[0],
+            )
+
     def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
         """Try to infer native int item type from arguments to range(...).
 
