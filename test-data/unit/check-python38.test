@@ -734,3 +734,8 @@ class C(Generic[T]):
 [out]
 main:10: note: Revealed type is "builtins.int"
 main:10: note: Revealed type is "builtins.str"
+
+[case testNoCrashOnAssignmentExprClass]
+class C:
+    [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body
+[builtins fixtures/list.pyi]

@@ -1858,3 +1858,22 @@ _testTupleWithDifferentArgsPy310.py:20: note: Revealed type is "builtins.list[Tu
 _testTupleWithDifferentArgsPy310.py:26: error: Invalid type: try using Literal[1] instead?
 _testTupleWithDifferentArgsPy310.py:27: error: Unexpected "..."
 _testTupleWithDifferentArgsPy310.py:30: note: Revealed type is "builtins.tuple[builtins.object, ...]"
+
+[case testEnumIterMetaInference]
+import socket
+from enum import Enum
+from typing import Iterable, Iterator, Type, TypeVar
+
+_E = TypeVar("_E", bound=Enum)
+
+def enum_iter(cls: Type[_E]) -> Iterable[_E]:
+    reveal_type(iter(cls))
+    reveal_type(next(iter(cls)))
+    return iter(cls)
+
+for value in enum_iter(socket.SocketKind):
+    reveal_type(value)
+[out]
+_testEnumIterMetaInference.py:8: note: Revealed type is "typing.Iterator[_E`-1]"
+_testEnumIterMetaInference.py:9: note: Revealed type is "_E`-1"
+_testEnumIterMetaInference.py:13: note: Revealed type is "socket.SocketKind"
