@@ -17,3 +17,4 @@ class str: pass
 class ellipsis: pass
 class list(Generic[T]): pass
 class property: pass
+class dict: pass

@@ -18,3 +18,4 @@ class int:
 class str: pass
 class bytes: pass
 class ellipsis: pass
+class dict: pass

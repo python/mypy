@@ -1809,8 +1809,8 @@ def f() -> Iterator[None]:
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b>, __main__
-3: <b>, __main__, a
+2: <b>, <b[wildcard]>, __main__
+3: <b>, <b[wildcard]>, __main__, a
 [out]
 main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==

@@ -25,3 +25,5 @@ class complex:
 class str: pass
 class ellipsis: pass
 class tuple: pass
+class list: pass
+class dict: pass
