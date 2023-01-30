@@ -899,7 +899,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return
             var, partial_types = ret
             typ = self.try_infer_partial_value_type_from_call(e, callee.name, var)
-            if typ is not None:
+            # Var may be deleted from partial_types in try_infer_partial_value_type_from_call
+            if typ is not None and var in partial_types:
                 var.type = typ
                 del partial_types[var]
         elif isinstance(callee.expr, IndexExpr) and isinstance(callee.expr.base, RefExpr):

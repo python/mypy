@@ -147,6 +147,7 @@ class int: pass
 class type: pass
 class function: pass
 class str: pass
+class dict: pass
 
 [case testBinaryOperationsWithDynamicAsRightOperand]
 from typing import Any
@@ -219,6 +220,7 @@ class int: pass
 class type: pass
 class function: pass
 class str: pass
+class dict: pass
 
 [case testDynamicWithUnaryExpressions]
 from typing import Any

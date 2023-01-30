@@ -95,6 +95,7 @@ from mypy.nodes import (
     MemberExpr,
     MypyFile,
     NameExpr,
+    OpExpr,
     OverloadedFuncDef,
     Statement,
     StrExpr,
@@ -401,6 +402,9 @@ class AliasPrinter(NodeVisitor[str]):
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
+
+    def visit_op_expr(self, o: OpExpr) -> str:
+        return f"{o.left.accept(self)} {o.op} {o.right.accept(self)}"
 
 
 class ImportTracker:

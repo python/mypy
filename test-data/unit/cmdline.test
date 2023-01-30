@@ -1516,6 +1516,8 @@ a.py:2: note: By default the bodies of untyped functions are not checked, consid
 class object: pass
 class str(object): pass
 class int(object): pass
+class list: pass
+class dict: pass
 [file dir/stdlib/sys.pyi]
 [file dir/stdlib/types.pyi]
 [file dir/stdlib/typing.pyi]

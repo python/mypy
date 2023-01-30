@@ -122,8 +122,6 @@ ARG_CONSTRUCTOR_NAMES: Final = {
 # test-data/unit/fixtures/) that provides the definition. This is used for
 # generating better error messages when running mypy tests only.
 SUGGESTED_TEST_FIXTURES: Final = {
-    "builtins.list": "list.pyi",
-    "builtins.dict": "dict.pyi",
     "builtins.set": "set.pyi",
     "builtins.tuple": "tuple.pyi",
     "builtins.bool": "bool.pyi",

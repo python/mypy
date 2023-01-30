@@ -34,6 +34,7 @@ class float:
 class str:
     def __len__(self) -> bool: pass
 class bool(int): pass
-class dict: pass
 
 property = object() # Dummy definition.
+
+class dict: pass
