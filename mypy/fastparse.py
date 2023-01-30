@@ -1082,7 +1082,12 @@ class ASTConverter:
             pos_only = True
 
         argument = Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
-        argument.set_line(arg.lineno, arg.col_offset, arg.end_lineno, arg.end_col_offset)
+        argument.set_line(
+            arg.lineno,
+            arg.col_offset,
+            getattr(arg, "end_lineno", None),
+            getattr(arg, "end_col_offset", None),
+        )
         return argument
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
