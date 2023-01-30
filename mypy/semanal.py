@@ -99,6 +99,7 @@ from mypy.nodes import (
     ConditionalExpr,
     Context,
     ContinueStmt,
+    DataclassTransformSpec,
     Decorator,
     DelStmt,
     DictExpr,
@@ -306,6 +307,13 @@ FUTURE_IMPORTS: Final = {
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
 CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
+
+KNOWN_DATACLASS_TRANSFORM_PARAMETERS: Final = (
+    "eq_default",
+    "order_default",
+    "kw_only_default",
+    "field_specifiers",
+)
 
 
 # Used for tracking incomplete references
@@ -1524,7 +1532,7 @@ class SemanticAnalyzer(
             elif isinstance(d, CallExpr) and refers_to_fullname(
                 d.callee, DATACLASS_TRANSFORM_NAMES
             ):
-                dec.func.is_dataclass_transform = True
+                dec.func.dataclass_transform_spec = self.parse_dataclass_transform_spec(d)
             elif not dec.var.is_property:
                 # We have seen a "non-trivial" decorator before seeing @property, if
                 # we will see a @property later, give an error, as we don't support this.
@@ -6452,6 +6460,34 @@ class SemanticAnalyzer(
     def is_future_flag_set(self, flag: str) -> bool:
         return self.modules[self.cur_mod_id].is_future_flag_set(flag)
 
+    def parse_dataclass_transform_spec(self, call: CallExpr) -> DataclassTransformSpec:
+        """Build a DataclassTransformSpec from the arguments passed to the given call to
+        typing.dataclass_transform."""
+        parameters = DataclassTransformSpec()
+        for name, value in zip(call.arg_names, call.args):
+            if name not in KNOWN_DATACLASS_TRANSFORM_PARAMETERS:
+                self.fail(f"unrecognized dataclass_transform parameter '{name}'", call)
+
+            # field_specifiers is currently the only non-boolean argument; check for it first so
+            # so the rest of the block can fail through to handling booleans
+            if name == "field_specifiers":
+                self.fail("field_specifiers support is currently unimplemented", call)
+                continue
+
+            boolean = self.parse_bool(value)
+            if boolean is None:
+                self.fail(f"{name} argument must be True or False.", call)
+                continue
+
+            if name == "eq_default":
+                parameters.eq_default = boolean
+            elif name == "order_default":
+                parameters.order_default = boolean
+            elif name == "kw_only_default":
+                parameters.kw_only_default = boolean
+
+        return parameters
+
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
@@ -6658,4 +6694,7 @@ def is_dataclass_transform_decorator(node: Node | None) -> bool:
         # We need to unwrap the call for the second variant.
         return is_dataclass_transform_decorator(node.callee)
 
-    return isinstance(node, Decorator) and node.func.is_dataclass_transform
+    if isinstance(node, Decorator) and node.func.dataclass_transform_spec is not None:
+        return True
+
+    return False

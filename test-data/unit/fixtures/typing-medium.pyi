@@ -72,4 +72,11 @@ class _SpecialForm: pass
 
 TYPE_CHECKING = 1
 
-def dataclass_transform() -> Callable[[T], T]: ...
+def dataclass_transform(
+    *,
+    eq_default: bool = ...,
+    order_default: bool = ...,
+    kw_only_default: bool = ...,
+    #field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: Any,
+) -> Callable[[T], T]: ...

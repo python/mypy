@@ -480,13 +480,7 @@ class ImportAll(ImportBase):
         return visitor.visit_import_all(self)
 
 
-FUNCBASE_FLAGS: Final = [
-    "is_property",
-    "is_class",
-    "is_static",
-    "is_final",
-    "is_dataclass_transform",
-]
+FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
 
 
 class FuncBase(Node):
@@ -512,7 +506,9 @@ class FuncBase(Node):
         "is_static",  # Uses "@staticmethod"
         "is_final",  # Uses "@final"
         "_fullname",
-        "is_dataclass_transform",  # Is decorated with "@typing.dataclass_transform" or similar
+        # Present when a function is decorated with "@typing.dataclass_transform" or similar, and
+        # records the parameters passed to typing.dataclass_transform for later use
+        "dataclass_transform_spec",
     )
 
     def __init__(self) -> None:
@@ -531,7 +527,7 @@ class FuncBase(Node):
         self.is_final = False
         # Name with module prefix
         self._fullname = ""
-        self.is_dataclass_transform = False
+        self.dataclass_transform_spec: DataclassTransformSpec | None = None
 
     @property
     @abstractmethod
@@ -592,6 +588,11 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             "fullname": self._fullname,
             "impl": None if self.impl is None else self.impl.serialize(),
             "flags": get_flags(self, FUNCBASE_FLAGS),
+            "dataclass_transform_spec": (
+                None
+                if self.dataclass_transform_spec is None
+                else self.dataclass_transform_spec.serialize()
+            ),
         }
 
     @classmethod
@@ -610,6 +611,11 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             assert isinstance(typ, mypy.types.ProperType)
             res.type = typ
         res._fullname = data["fullname"]
+        res.dataclass_transform_spec = (
+            DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
+            if data["dataclass_transform_spec"] is not None
+            else None
+        )
         set_flags(res, data["flags"])
         # NOTE: res.info will be set in the fixup phase.
         return res
@@ -810,6 +816,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             "flags": get_flags(self, FUNCDEF_FLAGS),
             "abstract_status": self.abstract_status,
             # TODO: Do we need expanded, original_def?
+            "dataclass_transform_spec": (
+                None
+                if self.dataclass_transform_spec is None
+                else self.dataclass_transform_spec.serialize()
+            ),
         }
 
     @classmethod
@@ -832,6 +843,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         ret.arg_names = data["arg_names"]
         ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
+        ret.dataclass_transform_spec = (
+            DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
+            if data["dataclass_transform_spec"] is not None
+            else None
+        )
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -3849,6 +3865,43 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             if key != ".class":
                 st[key] = SymbolTableNode.deserialize(value)
         return st
+
+
+class DataclassTransformSpec:
+    """Specifies how a dataclass-like transform should be applied. The fields here are based on the
+    parameters accepted by `typing.dataclass_transform`."""
+
+    __slots__ = ("eq_default", "order_default", "kw_only_default", "field_specifiers")
+
+    def __init__(
+        self,
+        *,
+        eq_default: bool | None = None,
+        order_default: bool | None = None,
+        kw_only_default: bool | None = None,
+        field_specifiers: tuple[str, ...] | None = None,
+    ):
+        self.eq_default = eq_default if eq_default is not None else True
+        self.order_default = order_default if order_default is not None else False
+        self.kw_only_default = kw_only_default if kw_only_default is not None else False
+        self.field_specifiers = field_specifiers if field_specifiers is not None else ()
+
+    def serialize(self) -> JsonDict:
+        return {
+            "eq_default": self.eq_default,
+            "order_default": self.order_default,
+            "kw_only_default": self.kw_only_default,
+            "field_specifiers": self.field_specifiers,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> DataclassTransformSpec:
+        return DataclassTransformSpec(
+            eq_default=data.get("eq_default"),
+            order_default=data.get("order_default"),
+            kw_only_default=data.get("kw_only_default"),
+            field_specifiers=data.get("field_specifiers"),
+        )
 
 
 def get_flags(node: Node, names: list[str]) -> list[str]:
