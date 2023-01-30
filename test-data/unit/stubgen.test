@@ -2734,3 +2734,12 @@ class Some:
     def __int__(self) -> int: ...
     def __float__(self) -> float: ...
     def __index__(self) -> int: ...
+
+
+[case testTypeVarPEP604Bound]
+from typing import TypeVar
+T = TypeVar("T", bound=str | None)
+[out]
+from typing import TypeVar
+
+T = TypeVar('T', bound=str | None)
