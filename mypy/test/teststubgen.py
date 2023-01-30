@@ -799,7 +799,7 @@ class StubgencSuite(unittest.TestCase):
         ):
             assert_equal(infer_method_args(f"__{op}__"), [self_arg, ArgSig(name="other")])
 
-    def test_infer_equality_op_sig(self):
+    def test_infer_equality_op_sig(self) -> None:
         for op in ("eq", "ne", "lt", "le", "gt", "ge", "contains"):
             assert_equal(infer_method_ret_type(f"__{op}__"), "bool")
 
@@ -807,7 +807,7 @@ class StubgencSuite(unittest.TestCase):
         for op in ("neg", "pos"):
             assert_equal(infer_method_args(f"__{op}__"), [self_arg])
 
-    def test_infer_cast_sig(self):
+    def test_infer_cast_sig(self) -> None:
         for op in ("float", "bool", "bytes", "int"):
             assert_equal(infer_method_ret_type(f"__{op}__"), op)
 
