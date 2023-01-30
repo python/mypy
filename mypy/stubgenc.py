@@ -168,7 +168,7 @@ class FallbackSignatureGenerator(SignatureGenerator):
 def generate_stub_for_c_module(
     module_name: str,
     target: str,
-    known_modules: Iterable[str],
+    known_modules: list[str],
     sig_generators: Iterable[SignatureGenerator],
 ) -> None:
     """Generate stub for C module.
@@ -314,7 +314,7 @@ def generate_c_function_stub(
     module: ModuleType,
     name: str,
     obj: object,
-    known_modules: Iterable[str],
+    known_modules: list[str],
     sig_generators: Iterable[SignatureGenerator],
     output: list[str],
     imports: list[str],
@@ -391,7 +391,7 @@ def generate_c_function_stub(
 
 
 def strip_or_import(
-    typ: str, module: ModuleType, known_modules: Iterable[str], imports: list[str]
+    typ: str, module: ModuleType, known_modules: list[str], imports: list[str]
 ) -> str:
     """Strips unnecessary module names from typ.
 
@@ -446,7 +446,7 @@ def generate_c_property_stub(
     ro_properties: list[str],
     readonly: bool,
     module: ModuleType | None = None,
-    known_modules: Iterable[str] | None = None,
+    known_modules: list[str] | None = None,
     imports: list[str] | None = None,
 ) -> None:
     """Generate property stub using introspection of 'obj'.
@@ -492,7 +492,7 @@ def generate_c_type_stub(
     class_name: str,
     obj: type,
     output: list[str],
-    known_modules: Iterable[str],
+    known_modules: list[str],
     imports: list[str],
     sig_generators: Iterable[SignatureGenerator],
 ) -> None:
