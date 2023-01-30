@@ -257,7 +257,7 @@ def add_typing_import(output: list[str]) -> list[str]:
         return output[:]
 
 
-def get_members(obj: type) -> list[tuple[str, Any]]:
+def get_members(obj: object) -> list[tuple[str, Any]]:
     obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa: B009
     results = []
     for name in obj_dict:
