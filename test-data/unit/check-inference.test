@@ -1951,6 +1951,13 @@ class A:
 [out]
 main:4: error: "None" has no attribute "__iter__" (not iterable)
 
+[case testPartialTypeErrorSpecialCase4]
+# This used to crash.
+arr = []
+arr.append(arr.append(1))
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: "append" of "list" does not return a value
 
 -- Multipass
 -- ---------
