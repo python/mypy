@@ -225,7 +225,7 @@ def generate_c(
     if compiler_options.verbose:
         print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
-    errors = Errors()
+    errors = Errors(options)
     modules, ctext = emitmodule.compile_modules_to_c(
         result, compiler_options=compiler_options, errors=errors, groups=groups
     )

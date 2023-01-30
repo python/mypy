@@ -258,28 +258,26 @@ class Errors:
 
     def __init__(
         self,
-        show_error_context: bool = False,
-        show_column_numbers: bool = False,
-        hide_error_codes: bool = False,
-        pretty: bool = False,
-        show_error_end: bool = False,
+        options: Options,
+        *,
         read_source: Callable[[str], list[str] | None] | None = None,
-        show_absolute_path: bool = False,
-        many_errors_threshold: int = -1,
-        options: Options | None = None,
+        many_errors_threshold: int | None = None,
     ) -> None:
-        self.show_error_context = show_error_context
-        self.show_column_numbers = show_column_numbers
-        self.hide_error_codes = hide_error_codes
-        self.show_absolute_path = show_absolute_path
-        self.pretty = pretty
-        self.show_error_end = show_error_end
-        if show_error_end:
-            assert show_column_numbers, "Inconsistent formatting, must be prevented by argparse"
+
+        self.options = options
+        self.show_error_context = options.show_error_context
+        self.show_column_numbers = options.show_column_numbers
+        self.hide_error_codes = options.hide_error_codes
+        self.show_absolute_path = options.show_absolute_path
+        self.pretty = options.pretty
+        self.show_error_end = options.show_error_end
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.many_errors_threshold = many_errors_threshold
-        self.options = options
+        self.many_errors_threshold = (
+            many_errors_threshold
+            if many_errors_threshold is not None
+            else options.many_errors_threshold
+        )
         self.initialize()
 
     def initialize(self) -> None:

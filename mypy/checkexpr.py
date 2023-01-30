@@ -1244,6 +1244,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     chk=self.chk,
                     in_literal_context=self.is_literal_context(),
                     self_type=typ,
+                    options=self.chk.options,
                 )
             narrowed = self.narrow_type_from_binder(e.callee, item, skip_non_overlapping=True)
             if narrowed is None:
@@ -1319,6 +1320,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 original_type=callee,
                 chk=self.chk,
                 in_literal_context=self.is_literal_context(),
+                options=self.chk.options,
             )
             callable_name = callee.type.fullname + ".__call__"
             # Apply method signature hook, if one exists
@@ -2802,6 +2804,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table,
                 is_self=is_self,
+                options=self.chk.options,
             )
 
             return member_type
@@ -2824,6 +2827,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             original_type=base_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
+            options=self.chk.options,
         )
 
     def is_literal_context(self) -> bool:
@@ -3213,6 +3217,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             original_type=original_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
+            options=self.chk.options,
         )
         return self.check_method_call(method, base_type, method_type, args, arg_kinds, context)
 
@@ -3306,6 +3311,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     msg=self.msg,
                     chk=self.chk,
                     in_literal_context=self.is_literal_context(),
+                    options=self.chk.options,
                 )
                 return None if w.has_new_errors() else member
 
@@ -3967,7 +3973,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.
             item = expand_type_alias(
-                tapp.expr.node, tapp.types, self.chk.fail, tapp.expr.node.no_args, tapp
+                tapp.expr.node,
+                tapp.types,
+                self.chk.fail,
+                tapp.expr.node.no_args,
+                tapp,
+                self.chk.options,
             )
             item = get_proper_type(item)
             if isinstance(item, Instance):
@@ -4032,7 +4043,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         disallow_any = self.chk.options.disallow_any_generics and self.is_callee
         item = get_proper_type(
             set_any_tvars(
-                alias, ctx.line, ctx.column, disallow_any=disallow_any, fail=self.msg.fail
+                alias,
+                ctx.line,
+                ctx.column,
+                self.chk.options,
+                disallow_any=disallow_any,
+                fail=self.msg.fail,
             )
         )
         if isinstance(item, Instance):
@@ -4556,6 +4572,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     msg=self.msg,
                     chk=self.chk,
                     in_literal_context=self.is_literal_context(),
+                    options=self.chk.options,
                 )
 
         assert False, "unreachable"

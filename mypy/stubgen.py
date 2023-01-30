@@ -307,7 +307,7 @@ class AnnotationPrinter(TypeStrVisitor):
     # TODO: Generate valid string representation for callable types.
     # TODO: Use short names for Instances.
     def __init__(self, stubgen: StubGenerator) -> None:
-        super().__init__()
+        super().__init__(options=mypy.options.Options())
         self.stubgen = stubgen
 
     def visit_any(self, t: AnyType) -> str:
@@ -1601,7 +1601,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     with open(mod.path, "rb") as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data)
-    errors = Errors()
+    errors = Errors(mypy_options)
     mod.ast = mypy.parse.parse(
         source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options
     )

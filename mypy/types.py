@@ -33,6 +33,7 @@ from mypy.nodes import (
     FuncItem,
     SymbolNode,
 )
+from mypy.options import Options
 from mypy.state import state
 from mypy.util import IdMapper
 
@@ -256,7 +257,10 @@ class Type(mypy.nodes.Context):
         raise RuntimeError("Not implemented")
 
     def __repr__(self) -> str:
-        return self.accept(TypeStrVisitor())
+        return self.accept(TypeStrVisitor(options=Options()))
+
+    def str_with_options(self, options: Options) -> str:
+        return self.accept(TypeStrVisitor(options=options))
 
     def serialize(self) -> JsonDict | str:
         raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
@@ -2944,9 +2948,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
      - Represent the NoneType type as None.
     """
 
-    def __init__(self, id_mapper: IdMapper | None = None) -> None:
+    def __init__(self, id_mapper: IdMapper | None = None, *, options: Options) -> None:
         self.id_mapper = id_mapper
         self.any_as_dots = False
+        self.options = options
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + "?"
@@ -2988,7 +2993,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
-            s = f"{t.last_known_value}?"
+            s = f"{t.last_known_value.accept(self)}?"
         else:
             s = t.type.fullname or t.type.name or "<???>"
 
@@ -3136,11 +3141,12 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_tuple_type(self, t: TupleType) -> str:
         s = self.list_str(t.items)
+        tuple_name = "tuple" if self.options.use_lowercase_names() else "Tuple"
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname
             if fallback_name != "builtins.tuple":
-                return f"Tuple[{s}, fallback={t.partial_fallback.accept(self)}]"
-        return f"Tuple[{s}]"
+                return f"{tuple_name}[{s}, fallback={t.partial_fallback.accept(self)}]"
+        return f"{tuple_name}[{s}]"
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:
         def item_str(name: str, typ: str) -> str:

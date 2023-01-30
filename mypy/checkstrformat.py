@@ -588,7 +588,7 @@ class StringFormatterChecker:
             return repl
         assert spec.field
 
-        temp_errors = Errors()
+        temp_errors = Errors(self.chk.options)
         dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key) :]
         temp_ast: Node = parse(
             dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors

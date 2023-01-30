@@ -41,9 +41,9 @@ class GraphSuite(Suite):
         assert_equal(sccs, {frozenset({"A"}), frozenset({"B", "C"}), frozenset({"D"})})
 
     def _make_manager(self) -> BuildManager:
-        errors = Errors()
         options = Options()
         options.use_builtins_fixtures = True
+        errors = Errors(options)
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(

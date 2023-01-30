@@ -25,6 +25,7 @@ from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
 from mypy_extensions import trait
 
 import mypy.strconv
+from mypy.options import Options
 from mypy.util import short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
@@ -173,7 +174,7 @@ del _nongen_builtins["builtins.str"]
 
 
 def get_nongen_builtins(python_version: tuple[int, int]) -> dict[str, str]:
-    # After 3.9 with pep585 generic builtins are allowed.
+    # After 3.9 with pep585 generic builtins are allowed
     return _nongen_builtins if python_version < (3, 9) else {}
 
 
@@ -190,9 +191,14 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv())
+        ans = self.accept(mypy.strconv.StrConv(options=Options()))
         if ans is None:
             return repr(self)
+        return ans
+
+    def str_with_options(self, options: Options) -> str:
+        ans = self.accept(mypy.strconv.StrConv(options=options))
+        assert ans
         return ans
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -3183,22 +3189,21 @@ class TypeInfo(SymbolNode):
 
         This includes the most important information about the type.
         """
-        return self.dump()
+        options = Options()
+        return self.dump(
+            str_conv=mypy.strconv.StrConv(options=options),
+            type_str_conv=mypy.types.TypeStrVisitor(options=options),
+        )
 
     def dump(
-        self,
-        str_conv: mypy.strconv.StrConv | None = None,
-        type_str_conv: mypy.types.TypeStrVisitor | None = None,
+        self, str_conv: mypy.strconv.StrConv, type_str_conv: mypy.types.TypeStrVisitor
     ) -> str:
         """Return a string dump of the contents of the TypeInfo."""
-        if not str_conv:
-            str_conv = mypy.strconv.StrConv()
+
         base: str = ""
 
         def type_str(typ: mypy.types.Type) -> str:
-            if type_str_conv:
-                return typ.accept(type_str_conv)
-            return str(typ)
+            return typ.accept(type_str_conv)
 
         head = "TypeInfo" + str_conv.format_id(self)
         if self.bases:
