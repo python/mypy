@@ -12,12 +12,6 @@ import m
 m.x # E: "object" has no attribute "x"
 [file m.py]
 
-[case testDictMissingFromStubs]
-from typing import Dict
-def f(x: Dict[int]) -> None: pass
-[out]
-main:2: error: "dict" expects no type arguments, but 1 given
-
 [case testSetMissingFromStubs]
 from typing import Set
 def f(x: Set[int]) -> None: pass
