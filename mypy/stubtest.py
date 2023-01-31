@@ -1030,6 +1030,8 @@ def verify_var(
         stub_type_matches_runtime_type
         and stub.is_final
         and stub.has_explicit_value
+        and stub.final_value is not None
+        and not isinstance(runtime, enum.Enum)
         and not _stub_default_matches_runtime(stub.final_value, runtime)
     ):
         msg = f"default value for variable differs from runtime {runtime!r}"

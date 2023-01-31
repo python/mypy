@@ -810,6 +810,18 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="final7",
         )
+        yield Case(
+            stub="""
+            from typing_extensions import Final
+            class MatchMaker:
+                __match_args__: Final = ("foo",)
+            """,
+            runtime="""
+            class MatchMaker:
+                __match_args__ = ("foo",)
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_type_alias(self) -> Iterator[Case]:
