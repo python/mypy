@@ -51,6 +51,9 @@ RETURN_VALUE: Final[ErrorCode] = ErrorCode(
 ASSIGNMENT: Final[ErrorCode] = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
 )
+METHOD_ASSIGN: Final[ErrorCode] = ErrorCode(
+    "method-assign", "Check that assignment target is not a method", "General"
+)
 TYPE_ARG: Final = ErrorCode("type-arg", "Check that generic type arguments are present", "General")
 TYPE_VAR: Final = ErrorCode("type-var", "Check that type variable values are valid", "General")
 UNION_ATTR: Final = ErrorCode(
