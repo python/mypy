@@ -31,9 +31,7 @@ def getsitepackages() -> list[str]:
         if hasattr(site, "getusersitepackages") and site.ENABLE_USER_SITE:
             res.insert(0, site.getusersitepackages())
     else:
-        from distutils.sysconfig import get_python_lib
-
-        res = [get_python_lib()]
+        res = [sysconfig.get_paths()["purelib"]]
     return res
 
 
