@@ -735,6 +735,34 @@ class C(Generic[T]):
 main:10: note: Revealed type is "builtins.int"
 main:10: note: Revealed type is "builtins.str"
 
+[case testTypeGuardWithPositionalOnlyArg]
+# flags: --python-version 3.8
+from typing_extensions import TypeGuard
+
+def typeguard(x: object, /) -> TypeGuard[int]:
+    ...
+
+n: object
+if typeguard(n):
+    reveal_type(n)
+[builtins fixtures/tuple.pyi]
+[out]
+main:9: note: Revealed type is "builtins.int"
+
+[case testTypeGuardKeywordFollowingWalrus]
+# flags: --python-version 3.8
+from typing import cast
+from typing_extensions import TypeGuard
+
+def typeguard(x: object) -> TypeGuard[int]:
+    ...
+
+if typeguard(x=(n := cast(object, "hi"))):
+    reveal_type(n)
+[builtins fixtures/tuple.pyi]
+[out]
+main:9: note: Revealed type is "builtins.int"
+
 [case testNoCrashOnAssignmentExprClass]
 class C:
     [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body

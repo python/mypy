@@ -5350,10 +5350,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return self.hasattr_type_maps(expr, self.lookup_type(expr), attr[0])
             elif isinstance(node.callee, RefExpr):
                 if node.callee.type_guard is not None:
-                    # TODO: Follow keyword args or *args, **kwargs
+                    # TODO: Follow *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
-                        self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
-                        return {}, {}
+                        # the first argument might be used as a kwarg
+                        called_type = get_proper_type(self.lookup_type(node.callee))
+                        assert isinstance(called_type, (CallableType, Overloaded))
+
+                        # *assuming* the overloaded function is correct, there's a couple cases:
+                        #  1) The first argument has different names, but is pos-only. We don't
+                        #     care about this case, the argument must be passed positionally.
+                        #  2) The first argument allows keyword reference, therefore must be the
+                        #     same between overloads.
+                        name = called_type.items[0].arg_names[0]
+
+                        if name in node.arg_names:
+                            idx = node.arg_names.index(name)
+                            # we want the idx-th variable to be narrowed
+                            expr = collapse_walrus(node.args[idx])
+                        else:
+                            self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
+                            return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         # Note: we wrap the target type, so that we can special case later.
                         # Namely, for isinstance() we use a normal meet, while TypeGuard is
