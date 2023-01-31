@@ -9975,7 +9975,7 @@ def update() -> str: ...
 [out]
 ==
 m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
-m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+m.py:9: note: Following member(s) of Module "default_config" have conflicts:
 m.py:9: note:     Expected:
 m.py:9: note:         def update() -> bool
 m.py:9: note:     Got:
