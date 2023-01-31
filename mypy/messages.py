@@ -2209,6 +2209,7 @@ def quote_type_string(type_string: str) -> str:
     no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
         type_string in ["Module", "overloaded function", "<nothing>", "<deleted>"]
+        or type_string.startswith("Module ")
         or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
     ):
@@ -2285,7 +2286,7 @@ def format_type_inner(
             # Make some common error messages simpler and tidier.
             base_str = "Module"
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
-                return f"{base_str} {itype.extra_attrs.mod_name}"
+                return f'{base_str} "{itype.extra_attrs.mod_name}"'
             return base_str
         if itype.type.fullname == "typing._SpecialForm":
             # This is not a real type but used for some typing-related constructs.

@@ -3720,10 +3720,10 @@ setup(bad_config_1)  # E: Argument 1 to "setup" has incompatible type Module; ex
                      # N: "ModuleType" is missing following "Options" protocol member: \
                      # N:     timeout
 setup(bad_config_2)  # E: Argument 1 to "setup" has incompatible type Module; expected "Options" \
-                     # N: Following member(s) of "Module bad_config_2" have conflicts: \
+                     # N: Following member(s) of Module "bad_config_2" have conflicts: \
                      # N:     one_flag: expected "bool", got "int"
 setup(bad_config_3)  # E: Argument 1 to "setup" has incompatible type Module; expected "Options" \
-                     # N: Following member(s) of "Module bad_config_3" have conflicts: \
+                     # N: Following member(s) of Module "bad_config_3" have conflicts: \
                      # N:     Expected: \
                      # N:         def update() -> bool \
                      # N:     Got: \
@@ -3789,7 +3789,7 @@ class Result(Protocol):
 def run(x: Runner) -> None: ...
 run(runner)  # OK
 run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected "Runner" \
-                 # N: Following member(s) of "Module bad_runner" have conflicts: \
+                 # N: Following member(s) of Module "bad_runner" have conflicts: \
                  # N:     Expected: \
                  # N:         def (int, /) -> Result \
                  # N:     Got: \
@@ -3821,7 +3821,7 @@ class Result(Protocol):
 def run(x: Runner) -> None: ...
 run(runner)  # OK
 run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected "Runner" \
-                 # N: Following member(s) of "Module bad_runner" have conflicts: \
+                 # N: Following member(s) of Module "bad_runner" have conflicts: \
                  # N:     Expected: \
                  # N:         def (int, /) -> Result \
                  # N:     Got: \
