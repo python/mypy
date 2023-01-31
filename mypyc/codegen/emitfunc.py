@@ -330,7 +330,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
-        if cl.get_method(op.attr):
+        prefer_method = cl.is_trait and attr_rtype.error_overlap
+        if cl.get_method(op.attr, prefer_method=prefer_method):
             # Properties are essentially methods, so use vtable access for them.
             version = "_TRAIT" if cl.is_trait else ""
             self.emit_line(

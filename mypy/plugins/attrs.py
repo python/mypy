@@ -828,7 +828,7 @@ def _add_attrs_magic_attribute(
         ctx.cls,
         MAGIC_ATTR_NAME,
         TupleType(attributes_types, fallback=attributes_type),
-        fullname=f"{ctx.cls.fullname}.{attr_name}",
+        fullname=f"{ctx.cls.fullname}.{MAGIC_ATTR_NAME}",
         override_allow_incompatible=True,
         is_classvar=True,
     )

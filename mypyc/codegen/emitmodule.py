@@ -669,6 +669,9 @@ class GroupGenerator:
         # Descriptions of tuple literals
         init_tuple = c_array_initializer(literals.encoded_tuple_values())
         self.declare_global("const int []", "CPyLit_Tuple", initializer=init_tuple)
+        # Descriptions of frozenset literals
+        init_frozenset = c_array_initializer(literals.encoded_frozenset_values())
+        self.declare_global("const int []", "CPyLit_FrozenSet", initializer=init_frozenset)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -839,7 +842,7 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line(f"{symbol} = {fixup};")
 
-        values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple"
+        values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple, CPyLit_FrozenSet"
         emitter.emit_lines(
             f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"
         )

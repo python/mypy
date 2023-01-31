@@ -252,6 +252,15 @@ class OpChecker(OpVisitor[None]):
             if isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
 
+    def check_frozenset_items_valid_literals(self, op: LoadLiteral, s: frozenset[object]) -> None:
+        for x in s:
+            if x is None or isinstance(x, (str, bytes, bool, int, float, complex)):
+                pass
+            elif isinstance(x, tuple):
+                self.check_tuple_items_valid_literals(op, x)
+            else:
+                self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
+
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None
         if op.value is None:
@@ -271,6 +280,11 @@ class OpChecker(OpVisitor[None]):
         elif isinstance(op.value, tuple):
             expected_type = "builtins.tuple"
             self.check_tuple_items_valid_literals(op, op.value)
+        elif isinstance(op.value, frozenset):
+            # There's no frozenset_rprimitive type since it'd be pretty useless so we just pretend
+            # it's a set (when it's really a frozenset).
+            expected_type = "builtins.set"
+            self.check_frozenset_items_valid_literals(op, op.value)
 
         assert expected_type is not None, "Missed a case for LoadLiteral check"
 

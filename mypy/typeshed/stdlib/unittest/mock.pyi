@@ -1,6 +1,6 @@
 import sys
 from _typeshed import Self
-from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Coroutine, Iterable, Mapping, Sequence
 from contextlib import _GeneratorContextManager
 from types import TracebackType
 from typing import Any, Generic, TypeVar, overload
@@ -9,6 +9,8 @@ from typing_extensions import Literal, TypeAlias
 _T = TypeVar("_T")
 _TT = TypeVar("_TT", bound=type[Any])
 _R = TypeVar("_R")
+_F = TypeVar("_F", bound=Callable[..., Any])
+_AF = TypeVar("_AF", bound=Callable[..., Coroutine[Any, Any, Any]])
 
 if sys.version_info >= (3, 8):
     __all__ = (
@@ -258,6 +260,10 @@ class _patch_dict:
     clear: Any
     def __init__(self, in_dict: Any, values: Any = ..., clear: Any = ..., **kwargs: Any) -> None: ...
     def __call__(self, f: Any) -> Any: ...
+    if sys.version_info >= (3, 10):
+        def decorate_callable(self, f: _F) -> _F: ...
+        def decorate_async_callable(self, f: _AF) -> _AF: ...
+
     def decorate_class(self, klass: Any) -> Any: ...
     def __enter__(self) -> Any: ...
     def __exit__(self, *args: object) -> Any: ...

@@ -35,39 +35,43 @@ from mypyc.primitives.registry import (
     unary_op,
 )
 
-# These int constructors produce object_rprimitives that then need to be unboxed
-# I guess unboxing ourselves would save a check and branch though?
+# Constructors for builtins.int and native int types have the same behavior. In
+# interpreted mode, native int types are just aliases to 'int'.
+for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32"):
+    # These int constructors produce object_rprimitives that then need to be unboxed
+    # I guess unboxing ourselves would save a check and branch though?
 
-# Get the type object for 'builtins.int'.
-# For ordinary calls to int() we use a load_address to the type
-load_address_op(name="builtins.int", type=object_rprimitive, src="PyLong_Type")
+    # Get the type object for 'builtins.int' or a native int type.
+    # For ordinary calls to int() we use a load_address to the type.
+    # Native ints don't have a separate type object -- we just use 'builtins.int'.
+    load_address_op(name=int_name, type=object_rprimitive, src="PyLong_Type")
 
-# int(float). We could do a bit better directly.
-function_op(
-    name="builtins.int",
-    arg_types=[float_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromFloat",
-    error_kind=ERR_MAGIC,
-)
+    # int(float). We could do a bit better directly.
+    function_op(
+        name=int_name,
+        arg_types=[float_rprimitive],
+        return_type=object_rprimitive,
+        c_function_name="CPyLong_FromFloat",
+        error_kind=ERR_MAGIC,
+    )
 
-# int(string)
-function_op(
-    name="builtins.int",
-    arg_types=[str_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromStr",
-    error_kind=ERR_MAGIC,
-)
+    # int(string)
+    function_op(
+        name=int_name,
+        arg_types=[str_rprimitive],
+        return_type=object_rprimitive,
+        c_function_name="CPyLong_FromStr",
+        error_kind=ERR_MAGIC,
+    )
 
-# int(string, base)
-function_op(
-    name="builtins.int",
-    arg_types=[str_rprimitive, int_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyLong_FromStrWithBase",
-    error_kind=ERR_MAGIC,
-)
+    # int(string, base)
+    function_op(
+        name=int_name,
+        arg_types=[str_rprimitive, int_rprimitive],
+        return_type=object_rprimitive,
+        c_function_name="CPyLong_FromStrWithBase",
+        error_kind=ERR_MAGIC,
+    )
 
 # str(int)
 int_to_str_op = function_op(
@@ -160,15 +164,11 @@ int_invert_op = int_unary_op("~", "CPyTagged_Invert")
 #   c_func_description: the C function to call when operands are tagged integers
 #   c_func_negated: whether to negate the C function call's result
 #   c_func_swap_operands: whether to swap lhs and rhs when call the function
-IntComparisonOpDescription = NamedTuple(
-    "IntComparisonOpDescription",
-    [
-        ("binary_op_variant", int),
-        ("c_func_description", CFunctionDescription),
-        ("c_func_negated", bool),
-        ("c_func_swap_operands", bool),
-    ],
-)
+class IntComparisonOpDescription(NamedTuple):
+    binary_op_variant: int
+    c_func_description: CFunctionDescription
+    c_func_negated: bool
+    c_func_swap_operands: bool
 
 
 # Equals operation on two boxed tagged integers

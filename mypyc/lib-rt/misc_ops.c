@@ -535,7 +535,8 @@ int CPyStatics_Initialize(PyObject **statics,
                           const char * const *ints,
                           const double *floats,
                           const double *complex_numbers,
-                          const int *tuples) {
+                          const int *tuples,
+                          const int *frozensets) {
     PyObject **result = statics;
     // Start with some hard-coded values
     *result++ = Py_None;
@@ -631,6 +632,24 @@ int CPyStatics_Initialize(PyObject **statics,
                 PyObject *item = statics[*tuples++];
                 Py_INCREF(item);
                 PyTuple_SET_ITEM(obj, i, item);
+            }
+            *result++ = obj;
+        }
+    }
+    if (frozensets) {
+        int num = *frozensets++;
+        while (num-- > 0) {
+            int num_items = *frozensets++;
+            PyObject *obj = PyFrozenSet_New(NULL);
+            if (obj == NULL) {
+                return -1;
+            }
+            for (int i = 0; i < num_items; i++) {
+                PyObject *item = statics[*frozensets++];
+                Py_INCREF(item);
+                if (PySet_Add(obj, item) == -1) {
+                    return -1;
+                }
             }
             *result++ = obj;
         }

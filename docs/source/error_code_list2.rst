@@ -275,19 +275,6 @@ what the author might have intended. Of course it's possible that ``transform`` 
 and so there is no error in practice. In such case, it is recommended to annotate ``items: Collection[int]``.
 
 
-Check that function isn't used in boolean context [truthy-function]
--------------------------------------------------------------------
-
-Functions will always evaluate to true in boolean contexts.
-
-.. code-block:: python
-
-    def f():
-        ...
-
-    if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
-        pass
-
 .. _ignore-without-code:
 
 Check that ``# type: ignore`` include an error code [ignore-without-code]

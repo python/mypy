@@ -85,6 +85,15 @@ def fail(message: str) -> NoReturn:
     sys.exit(message)
 
 
+def emit_messages(options: Options, messages: list[str], dt: float, serious: bool = False) -> None:
+    # ... you know, just in case.
+    if options.junit_xml:
+        py_version = f"{options.python_version[0]}_{options.python_version[1]}"
+        write_junit_xml(dt, serious, messages, options.junit_xml, py_version, options.platform)
+    if messages:
+        print("\n".join(messages))
+
+
 def get_mypy_config(
     mypy_options: list[str],
     only_compile_paths: Iterable[str] | None,
@@ -191,46 +200,34 @@ def generate_c(
     """
     t0 = time.time()
 
-    # Do the actual work now
-    serious = False
-    result = None
     try:
         result = emitmodule.parse_and_typecheck(
             sources, options, compiler_options, groups, fscache
         )
-        messages = result.errors
     except CompileError as e:
-        messages = e.messages
-        if not e.use_stdout:
-            serious = True
+        emit_messages(options, e.messages, time.time() - t0, serious=(not e.use_stdout))
+        sys.exit(1)
 
     t1 = time.time()
+    if result.errors:
+        emit_messages(options, result.errors, t1 - t0)
+        sys.exit(1)
+
     if compiler_options.verbose:
         print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
-    if not messages and result:
-        errors = Errors()
-        modules, ctext = emitmodule.compile_modules_to_c(
-            result, compiler_options=compiler_options, errors=errors, groups=groups
-        )
-
-        if errors.num_errors:
-            messages.extend(errors.new_messages())
-
+    errors = Errors()
+    modules, ctext = emitmodule.compile_modules_to_c(
+        result, compiler_options=compiler_options, errors=errors, groups=groups
+    )
     t2 = time.time()
+    emit_messages(options, errors.new_messages(), t2 - t1)
+    if errors.num_errors:
+        # No need to stop the build if only warnings were emitted.
+        sys.exit(1)
+
     if compiler_options.verbose:
         print(f"Compiled to C in {t2 - t1:.3f}s")
-
-    # ... you know, just in case.
-    if options.junit_xml:
-        py_version = f"{options.python_version[0]}_{options.python_version[1]}"
-        write_junit_xml(
-            t2 - t0, serious, messages, options.junit_xml, py_version, options.platform
-        )
-
-    if messages:
-        print("\n".join(messages))
-        sys.exit(1)
 
     return ctext, "\n".join(format_modules(modules))
 

@@ -707,8 +707,8 @@ def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
     ...
 [builtins fixtures/dict.pyi]
 
-[case testPartiallyDefinedWithAssignmentExpr]
-# flags: --python-version 3.8 --enable-error-code partially-defined
+[case testPossiblyUndefinedWithAssignmentExpr]
+# flags: --python-version 3.8 --enable-error-code possibly-undefined
 def f1() -> None:
     d = {0: 1}
     if int():
@@ -762,3 +762,8 @@ if typeguard(x=(n := cast(object, "hi"))):
 [builtins fixtures/tuple.pyi]
 [out]
 main:9: note: Revealed type is "builtins.int"
+
+[case testNoCrashOnAssignmentExprClass]
+class C:
+    [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body
+[builtins fixtures/list.pyi]

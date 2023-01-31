@@ -77,8 +77,8 @@ a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not de
     # N: Error code "name-defined" not covered by "type: ignore" comment
 
 [case testErrorCodeIgnoreMultiple2]
-a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
-b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
+a = 'x'.foobar(c) # type: int # type: ignore[name-defined, attr-defined]
+b = 'x'.foobar(c) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
     # N: Error code "attr-defined" not covered by "type: ignore" comment
 
 [case testErrorCodeWarnUnusedIgnores1]
@@ -455,11 +455,15 @@ class E(TypedDict):
     y: int
 
 a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
-b: D = {'y': ''}  # E: Extra key "y" for TypedDict "D"  [typeddict-item]
+b: D = {'y': ''}  # E: Missing key "x" for TypedDict "D"  [typeddict-item] \
+                  # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key]
 c = D(x=0) if int() else E(x=0, y=0)
 c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
+d: D = {'x': '', 'y': 1}  # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key] \
+                          # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
 
-a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-item]
+
+a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-unknown-key]
 a['x'] = 'x'  # E: Value of "x" has incompatible type "str"; expected "int"  [typeddict-item]
 a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [builtins fixtures/dict.pyi]
@@ -472,12 +476,13 @@ class A(TypedDict):
     two_commonparts: int
 
 a: A = {'one_commonpart': 1, 'two_commonparts': 2}
-a['other_commonpart'] = 3  # type: ignore[typeddict-item]
+a['other_commonpart'] = 3  # type: ignore[typeddict-unknown-key]
+not_exist = a['not_exist'] # type: ignore[typeddict-item]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-y = x  # E: Cannot determine type of "x"  [has-type]
+y = x  # E: Cannot determine type of "x"  [has-type]  # E: Name "x" is used before definition  [used-before-def]
 reveal_type(y)  # N: Revealed type is "Any"
 x = None
 
@@ -803,11 +808,14 @@ from typing_extensions import TypedDict
 
 Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
+
 [case testTruthyBool]
 # flags: --enable-error-code truthy-bool
-from typing import List, Union
+from typing import List, Union, Any
 
 class Foo:
+    pass
+class Bar:
     pass
 
 foo = Foo()
@@ -836,14 +844,29 @@ if good_union:
 if not good_union:
     pass
 
-bad_union: Union[Foo, object] = Foo()
-if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+bad_union: Union[Foo, Bar] = Foo()
+if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
-if not bad_union:  # E: "__main__.bad_union" has type "object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if not bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+# 'object' is special and is treated as potentially falsy
+obj: object = Foo()
+if obj:
+    pass
+if not obj:
     pass
 
 lst: List[int] = []
 if lst:
+    pass
+
+a: Any
+if a:
+    pass
+
+any_or_object: Union[object, Any]
+if any_or_object:
     pass
 [builtins fixtures/list.pyi]
 

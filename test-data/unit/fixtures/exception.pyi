@@ -8,10 +8,11 @@ class object:
 class type: pass
 class tuple(Generic[T]):
     def __ge__(self, other: object) -> bool: ...
+class list: pass
+class dict: pass
 class function: pass
 class int: pass
 class str: pass
-class unicode: pass
 class bool: pass
 class ellipsis: pass
 

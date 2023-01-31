@@ -67,7 +67,10 @@ JsonDict: _TypeAlias = Dict[str, Any]
 # Note: Although "Literal[None]" is a valid type, we internally always convert
 # such a type directly into "None". So, "None" is not a valid parameter of
 # LiteralType and is omitted from this list.
-LiteralValue: _TypeAlias = Union[int, str, bool]
+#
+# Note: Float values are only used internally. They are not accepted within
+# Literal[...].
+LiteralValue: _TypeAlias = Union[int, str, bool, float]
 
 
 # If we only import type_visitor in the middle of the file, mypy
@@ -147,8 +150,19 @@ NEVER_NAMES: Final = (
     "typing_extensions.Never",
 )
 
+# Mypyc fixed-width native int types (compatible with builtins.int)
+MYPYC_NATIVE_INT_NAMES: Final = ("mypy_extensions.i64", "mypy_extensions.i32")
+
+DATACLASS_TRANSFORM_NAMES: Final = (
+    "typing.dataclass_transform",
+    "typing_extensions.dataclass_transform",
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
+
+# A placeholder for int parameters
+_dummy_int: Final = -999999
 
 
 class TypeOfAny:
@@ -195,7 +209,7 @@ def deserialize_type(data: JsonDict | str) -> Type:
 class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
-    __slots__ = ("can_be_true", "can_be_false")
+    __slots__ = ("_can_be_true", "_can_be_false")
     # 'can_be_true' and 'can_be_false' mean whether the value of the
     # expression can be true or false in a boolean context. They are useful
     # when inferring the type of logic expressions like `x and y`.
@@ -208,8 +222,29 @@ class Type(mypy.nodes.Context):
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.can_be_true = self.can_be_true_default()
-        self.can_be_false = self.can_be_false_default()
+        # Value of these can be -1 (use the default, lazy init), 0 (false) or 1 (true)
+        self._can_be_true = -1
+        self._can_be_false = -1
+
+    @property
+    def can_be_true(self) -> bool:
+        if self._can_be_true == -1:  # Lazy init helps mypyc
+            self._can_be_true = self.can_be_true_default()
+        return bool(self._can_be_true)
+
+    @can_be_true.setter
+    def can_be_true(self, v: bool) -> None:
+        self._can_be_true = v
+
+    @property
+    def can_be_false(self) -> bool:
+        if self._can_be_false == -1:  # Lazy init helps mypyc
+            self._can_be_false = self.can_be_false_default()
+        return bool(self._can_be_false)
+
+    @can_be_false.setter
+    def can_be_false(self, v: bool) -> None:
+        self._can_be_false = v
 
     def can_be_true_default(self) -> bool:
         return True
@@ -258,10 +293,10 @@ class TypeAliasType(Type):
         line: int = -1,
         column: int = -1,
     ) -> None:
+        super().__init__(line, column)
         self.alias = alias
         self.args = args
         self.type_ref: str | None = None
-        super().__init__(line, column)
 
     def _expand_once(self) -> Type:
         """Expand to the target type exactly once.
@@ -537,8 +572,8 @@ class TypeVarType(TypeVarLikeType):
         values: Bogus[list[Type]] = _dummy,
         upper_bound: Bogus[Type] = _dummy,
         id: Bogus[TypeVarId | int] = _dummy,
-        line: Bogus[int] = _dummy,
-        column: Bogus[int] = _dummy,
+        line: int = _dummy_int,
+        column: int = _dummy_int,
     ) -> TypeVarType:
         return TypeVarType(
             self.name,
@@ -547,8 +582,8 @@ class TypeVarType(TypeVarLikeType):
             self.values if values is _dummy else values,
             self.upper_bound if upper_bound is _dummy else upper_bound,
             self.variance,
-            self.line if line is _dummy else line,
-            self.column if column is _dummy else column,
+            self.line if line == _dummy_int else line,
+            self.column if column == _dummy_int else column,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -655,14 +690,14 @@ class ParamSpecType(TypeVarLikeType):
         self,
         *,
         id: Bogus[TypeVarId | int] = _dummy,
-        flavor: Bogus[int] = _dummy,
+        flavor: int = _dummy_int,
         prefix: Bogus[Parameters] = _dummy,
     ) -> ParamSpecType:
         return ParamSpecType(
             self.name,
             self.fullname,
             id if id is not _dummy else self.id,
-            flavor if flavor is not _dummy else self.flavor,
+            flavor if flavor != _dummy_int else self.flavor,
             self.upper_bound,
             line=self.line,
             column=self.column,
@@ -1021,10 +1056,10 @@ class AnyType(ProperType):
     def copy_modified(
         self,
         # Mark with Bogus because _dummy is just an object (with type Any)
-        type_of_any: Bogus[int] = _dummy,
+        type_of_any: int = _dummy_int,
         original_any: Bogus[AnyType | None] = _dummy,
     ) -> AnyType:
-        if type_of_any is _dummy:
+        if type_of_any == _dummy_int:
             type_of_any = self.type_of_any
         if original_any is _dummy:
             original_any = self.source_any
@@ -1418,7 +1453,7 @@ class FunctionLike(ProperType):
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.can_be_false = False
+        self._can_be_false = False
 
     @abstractmethod
     def is_type_obj(self) -> bool:
@@ -1742,8 +1777,8 @@ class CallableType(FunctionLike):
         name: Bogus[str | None] = _dummy,
         definition: Bogus[SymbolNode] = _dummy,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
-        line: Bogus[int] = _dummy,
-        column: Bogus[int] = _dummy,
+        line: int = _dummy_int,
+        column: int = _dummy_int,
         is_ellipsis_args: Bogus[bool] = _dummy,
         implicit: Bogus[bool] = _dummy,
         special_sig: Bogus[str | None] = _dummy,
@@ -1754,7 +1789,7 @@ class CallableType(FunctionLike):
         from_concatenate: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
     ) -> CT:
-        return type(self)(
+        modified = CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
@@ -1763,8 +1798,8 @@ class CallableType(FunctionLike):
             name=name if name is not _dummy else self.name,
             definition=definition if definition is not _dummy else self.definition,
             variables=variables if variables is not _dummy else self.variables,
-            line=line if line is not _dummy else self.line,
-            column=column if column is not _dummy else self.column,
+            line=line if line != _dummy_int else self.line,
+            column=column if column != _dummy_int else self.column,
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args
             ),
@@ -1779,6 +1814,9 @@ class CallableType(FunctionLike):
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
         )
+        # Optimization: Only NewTypes are supported as subtypes since
+        # the class is effectively final, so we can use a cast safely.
+        return cast(CT, modified)
 
     def var_arg(self) -> FormalArgument | None:
         """The formal argument for *args."""
@@ -1973,7 +2011,7 @@ class CallableType(FunctionLike):
 
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
-            return NormalizedCallableType(self.copy_modified())
+            return cast(NormalizedCallableType, self)
         last_type = get_proper_type(self.arg_types[-1])
         assert isinstance(last_type, TypedDictType)
         extra_kinds = [
@@ -2123,7 +2161,9 @@ class Overloaded(FunctionLike):
         return self._items[0].name
 
     def with_unpacked_kwargs(self) -> Overloaded:
-        return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+        if any(i.unpack_kwargs for i in self.items):
+            return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+        return self
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_overloaded(self)
@@ -2172,10 +2212,10 @@ class TupleType(ProperType):
         column: int = -1,
         implicit: bool = False,
     ) -> None:
+        super().__init__(line, column)
         self.partial_fallback = fallback
         self.items = items
         self.implicit = implicit
-        super().__init__(line, column)
 
     def can_be_true_default(self) -> bool:
         if self.can_be_any_bool():
@@ -2325,6 +2365,10 @@ class TypedDictType(ProperType):
             set(data["required_keys"]),
             Instance.deserialize(data["fallback"]),
         )
+
+    @property
+    def is_final(self) -> bool:
+        return self.fallback.type.is_final
 
     def is_anonymous(self) -> bool:
         return self.fallback.type.fullname in TPDICT_FB_NAMES
@@ -2480,8 +2524,8 @@ class LiteralType(ProperType):
     def __init__(
         self, value: LiteralValue, fallback: Instance, line: int = -1, column: int = -1
     ) -> None:
-        self.value = value
         super().__init__(line, column)
+        self.value = value
         self.fallback = fallback
         self._hash = -1  # Cached hash value
 
@@ -2587,12 +2631,16 @@ class UnionType(ProperType):
         # We must keep this false to avoid crashes during semantic analysis.
         # TODO: maybe switch this to True during type-checking pass?
         self.items = flatten_nested_unions(items, handle_type_alias_type=False)
-        self.can_be_true = any(item.can_be_true for item in items)
-        self.can_be_false = any(item.can_be_false for item in items)
         # is_evaluated should be set to false for type comments and string literals
         self.is_evaluated = is_evaluated
         # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
         self.uses_pep604_syntax = uses_pep604_syntax
+
+    def can_be_true_default(self) -> bool:
+        return any(item.can_be_true for item in self.items)
+
+    def can_be_false_default(self) -> bool:
+        return any(item.can_be_false for item in self.items)
 
     def __hash__(self) -> int:
         return hash(frozenset(self.items))
@@ -2817,6 +2865,14 @@ class PlaceholderType(ProperType):
         assert isinstance(visitor, SyntheticTypeVisitor)
         return cast(T, visitor.visit_placeholder_type(self))
 
+    def __hash__(self) -> int:
+        return hash((self.fullname, tuple(self.args)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PlaceholderType):
+            return NotImplemented
+        return self.fullname == other.fullname and self.args == other.args
+
     def serialize(self) -> str:
         # We should never get here since all placeholders should be replaced
         # during semantic analysis.
@@ -2848,30 +2904,45 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
         typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
-    assert isinstance(typ, ProperType), typ
     # TODO: store the name of original type alias on this type, so we can show it in errors.
-    return typ
+    return cast(ProperType, typ)
 
 
 @overload
-def get_proper_types(it: Iterable[Type]) -> list[ProperType]:  # type: ignore[misc]
+def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]:  # type: ignore[misc]
     ...
 
 
 @overload
-def get_proper_types(it: Iterable[Type | None]) -> list[ProperType | None]:
+def get_proper_types(
+    types: list[Type | None] | tuple[Type | None, ...]
+) -> list[ProperType | None]:
     ...
 
 
-def get_proper_types(it: Iterable[Type | None]) -> list[ProperType] | list[ProperType | None]:
-    return [get_proper_type(t) for t in it]
+def get_proper_types(
+    types: list[Type] | list[Type | None] | tuple[Type | None, ...]
+) -> list[ProperType] | list[ProperType | None]:
+    if isinstance(types, list):
+        typelist = types
+        # Optimize for the common case so that we don't need to allocate anything
+        if not any(
+            isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist  # type: ignore[misc]
+        ):
+            return cast("list[ProperType]", typelist)
+        return [get_proper_type(t) for t in typelist]
+    else:
+        return [get_proper_type(t) for t in types]
 
 
 # We split off the type visitor base classes to another module
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811
+from mypy.type_visitor import (  # noqa: F811,F401
+    ALL_STRATEGY as ALL_STRATEGY,
+    ANY_STRATEGY as ANY_STRATEGY,
+    BoolTypeQuery as BoolTypeQuery,
     SyntheticTypeVisitor as SyntheticTypeVisitor,
     TypeQuery as TypeQuery,
     TypeTranslator as TypeTranslator,
@@ -3290,9 +3361,9 @@ def replace_alias_tvars(
     return new_tp
 
 
-class HasTypeVars(TypeQuery[bool]):
+class HasTypeVars(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
         self.skip_alias_target = True
 
     def visit_type_var(self, t: TypeVarType) -> bool:
@@ -3310,26 +3381,48 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
-class HasRecursiveType(TypeQuery[bool]):
+class HasRecursiveType(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> bool:
         return t.is_recursive or self.query_types(t.args)
 
 
+# Use singleton since this is hot (note: call reset() before using)
+_has_recursive_type: Final = HasRecursiveType()
+
+
 def has_recursive_types(typ: Type) -> bool:
     """Check if a type contains any recursive aliases (recursively)."""
-    return typ.accept(HasRecursiveType())
+    _has_recursive_type.reset()
+    return typ.accept(_has_recursive_type)
+
+
+def _flattened(types: Iterable[Type]) -> Iterable[Type]:
+    for t in types:
+        tp = get_proper_type(t)
+        if isinstance(tp, UnionType):
+            yield from _flattened(tp.items)
+        else:
+            yield t
 
 
 def flatten_nested_unions(
-    types: Iterable[Type], handle_type_alias_type: bool = True
+    types: Sequence[Type], handle_type_alias_type: bool = True
 ) -> list[Type]:
     """Flatten nested unions in a type list."""
+    if not isinstance(types, list):
+        typelist = list(types)
+    else:
+        typelist = cast("list[Type]", types)
+
+    # Fast path: most of the time there is nothing to flatten
+    if not any(isinstance(t, (TypeAliasType, UnionType)) for t in typelist):  # type: ignore[misc]
+        return typelist
+
     flat_items: list[Type] = []
-    # TODO: avoid duplicate types in unions (e.g. using hash)
-    for t in types:
+    for t in typelist:
         tp = get_proper_type(t) if handle_type_alias_type else t
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(
@@ -3491,10 +3584,16 @@ def store_argument_type(
         if isinstance(arg_type, ParamSpecType):
             pass
         elif isinstance(arg_type, UnpackType):
-            if isinstance(get_proper_type(arg_type.type), TupleType):
+            unpacked_type = get_proper_type(arg_type.type)
+            if isinstance(unpacked_type, TupleType):
                 # Instead of using Tuple[Unpack[Tuple[...]]], just use
                 # Tuple[...]
-                arg_type = arg_type.type
+                arg_type = unpacked_type
+            elif (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                arg_type = unpacked_type
             else:
                 arg_type = TupleType(
                     [arg_type],

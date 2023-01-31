@@ -15,6 +15,7 @@ import inspect
 import os
 import pkgutil
 import re
+import symtable
 import sys
 import traceback
 import types
@@ -205,7 +206,9 @@ def test_module(module_name: str) -> Iterator[Error]:
 
     try:
         runtime = silent_import_module(module_name)
-    except Exception as e:
+    except KeyboardInterrupt:
+        raise
+    except BaseException as e:
         yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
 
@@ -264,7 +267,7 @@ def _verify_exported_names(
         object_path + ["__all__"],
         (
             "names exported from the stub do not correspond to the names exported at runtime. "
-            "This is probably due to things being missing from the stub, or if present, an inaccurate `__all__` in the stub"
+            "This is probably due to things being missing from the stub or an inaccurate `__all__` in the stub"
         ),
         # Pass in MISSING instead of the stub and runtime objects, as the line numbers aren't very
         # relevant here, and it makes for a prettier error message
@@ -279,6 +282,36 @@ def _verify_exported_names(
             f"Names exported at runtime but not in the stub: " f"{names_in_runtime_not_stub}"
         ),
     )
+
+
+def _get_imported_symbol_names(runtime: types.ModuleType) -> frozenset[str] | None:
+    """Retrieve the names in the global namespace which are known to be imported.
+
+    1). Use inspect to retrieve the source code of the module
+    2). Use symtable to parse the source and retrieve names that are known to be imported
+        from other modules.
+
+    If either of the above steps fails, return `None`.
+
+    Note that if a set of names is returned,
+    it won't include names imported via `from foo import *` imports.
+    """
+    try:
+        source = inspect.getsource(runtime)
+    except (OSError, TypeError, SyntaxError):
+        return None
+
+    if not source.strip():
+        # The source code for the module was an empty file,
+        # no point in parsing it with symtable
+        return frozenset()
+
+    try:
+        module_symtable = symtable.symtable(source, runtime.__name__, "exec")
+    except SyntaxError:
+        return None
+
+    return frozenset(sym.get_name() for sym in module_symtable.get_symbols() if sym.is_imported())
 
 
 @verify.register(nodes.MypyFile)
@@ -310,15 +343,26 @@ def verify_mypyfile(
         if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
     }
 
+    imported_symbols = _get_imported_symbol_names(runtime)
+
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
+        """Heuristics to determine whether a name originates from another module."""
         obj = getattr(r, attr)
-        try:
-            obj_mod = getattr(obj, "__module__", None)
-        except Exception:
+        if isinstance(obj, types.ModuleType):
             return False
-        if obj_mod is not None:
-            return bool(obj_mod == r.__name__)
-        return not isinstance(obj, types.ModuleType)
+        if callable(obj):
+            # It's highly likely to be a class or a function if it's callable,
+            # so the __module__ attribute will give a good indication of which module it comes from
+            try:
+                obj_mod = obj.__module__
+            except Exception:
+                pass
+            else:
+                if isinstance(obj_mod, str):
+                    return bool(obj_mod == r.__name__)
+        if imported_symbols is not None:
+            return attr not in imported_symbols
+        return True
 
     runtime_public_contents = (
         runtime_all_as_set
@@ -327,8 +371,9 @@ def verify_mypyfile(
             m
             for m in dir(runtime)
             if not is_probably_private(m)
-            # Ensure that the object's module is `runtime`, since in the absence of __all__ we
-            # don't have a good way to detect re-exports at runtime.
+            # Filter out objects that originate from other modules (best effort). Note that in the
+            # absence of __all__, we don't have a way to detect explicit / intentional re-exports
+            # at runtime
             and _belongs_to_runtime(runtime, m)
         }
     )
@@ -1102,7 +1147,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
     ) -> nodes.FuncItem | None:
         if not isinstance(decorator, nodes.RefExpr):
             return None
-        if decorator.fullname is None:
+        if not decorator.fullname:
             # Happens with namedtuple
             return None
         if (
@@ -1500,7 +1545,9 @@ def build_stubs(modules: list[str], options: Options, find_submodules: bool = Fa
                     for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
                     if m.name not in all_modules
                 )
-            except Exception:
+            except KeyboardInterrupt:
+                raise
+            except BaseException:
                 pass
 
     if sources:
@@ -1529,9 +1576,6 @@ def get_typeshed_stdlib_modules(
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
         version_info = sys.version_info[0:2]
-    # Typeshed's minimum supported Python 3 is Python 3.7
-    if sys.version_info < (3, 7):
-        version_info = (3, 7)
 
     def exists_in_version(module: str) -> bool:
         assert version_info is not None

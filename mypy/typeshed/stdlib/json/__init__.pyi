@@ -1,6 +1,6 @@
-from _typeshed import SupportsRead
+from _typeshed import SupportsRead, SupportsWrite
 from collections.abc import Callable
-from typing import IO, Any
+from typing import Any
 
 from .decoder import JSONDecodeError as JSONDecodeError, JSONDecoder as JSONDecoder
 from .encoder import JSONEncoder as JSONEncoder
@@ -23,7 +23,7 @@ def dumps(
 ) -> str: ...
 def dump(
     obj: Any,
-    fp: IO[str],
+    fp: SupportsWrite[str],
     *,
     skipkeys: bool = ...,
     ensure_ascii: bool = ...,

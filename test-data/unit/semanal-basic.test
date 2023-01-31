@@ -8,8 +8,9 @@ x
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   ExpressionStmt:2(
     NameExpr(x [__main__.x])))
 
@@ -25,8 +26,9 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     IntExpr(2))
   AssignmentStmt:2(
-    NameExpr(z* [__main__.z])
-    IntExpr(3))
+    NameExpr(z [__main__.z])
+    IntExpr(3)
+    builtins.int)
   ExpressionStmt:3(
     TupleExpr:3(
       NameExpr(x [__main__.x])
@@ -48,25 +50,27 @@ MypyFile:1(
       Args())))
 
 [case testAccessingGlobalNameBeforeDefinition]
+# flags: --disable-error-code used-before-def
 x
 f()
 x = 1
 def f(): pass
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
-    NameExpr(x [__main__.x]))
   ExpressionStmt:2(
-    CallExpr:2(
+    NameExpr(x [__main__.x]))
+  ExpressionStmt:3(
+    CallExpr:3(
       NameExpr(f [__main__.f])
       Args()))
-  AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
-  FuncDef:4(
+  AssignmentStmt:4(
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
+  FuncDef:5(
     f
-    Block:4(
-      PassStmt:4())))
+    Block:5(
+      PassStmt:5())))
 
 [case testFunctionArgs]
 def f(x, y):
@@ -117,8 +121,9 @@ MypyFile:1(
           NameExpr(g [__main__.g])
           Args()))))
   AssignmentStmt:4(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   FuncDef:5(
     g
     Block:5(
@@ -134,8 +139,9 @@ def f(y):
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     IntExpr(2))
@@ -163,8 +169,9 @@ x
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   FuncDef:2(
     f
     Block:2(
@@ -498,17 +505,21 @@ MypyFile:1(
       ExpressionStmt:3(
         Ellipsis)))
   AssignmentStmt:4(
-    NameExpr(x* [__main__.x] = 1)
-    IntExpr(1))
+    NameExpr(x [__main__.x] = 1)
+    IntExpr(1)
+    Literal[1]?)
   AssignmentStmt:5(
-    NameExpr(y* [__main__.y] = 1.0)
-    FloatExpr(1.0))
+    NameExpr(y [__main__.y] = 1.0)
+    FloatExpr(1.0)
+    Literal[1.0]?)
   AssignmentStmt:6(
-    NameExpr(s* [__main__.s] = hi)
-    StrExpr(hi))
+    NameExpr(s [__main__.s] = hi)
+    StrExpr(hi)
+    Literal['hi']?)
   AssignmentStmt:7(
-    NameExpr(t* [__main__.t] = True)
-    NameExpr(True [builtins.True]))
+    NameExpr(t [__main__.t] = True)
+    NameExpr(True [builtins.True])
+    Literal[True]?)
   AssignmentStmt:8(
     NameExpr(n* [__main__.n] = None)
     CallExpr:8(
