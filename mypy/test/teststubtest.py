@@ -762,6 +762,54 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            from typing_extensions import Final
+            final1: Final = 1
+            final2: Final = 1
+            """,
+            runtime="""
+            final1 = 2
+            final2 = 1
+            """,
+            error="final1",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Final
+            final3: Final = 1.5
+            final4: Final = 1.5
+            """,
+            runtime="""
+            final3 = 2.5
+            final4 = 1.5
+            """,
+            error="final3",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Final
+            final5: Final = "foo"
+            final6: Final = "foo"
+            """,
+            runtime="""
+            final5 = "bar"
+            final6 = "foo"
+            """,
+            error="final5",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Final
+            final7: Final = True
+            final8: Final = True
+            """,
+            runtime="""
+            final7 = False
+            final8 = True
+            """,
+            error="final7",
+        )
 
     @collect_cases
     def test_type_alias(self) -> Iterator[Case]:
