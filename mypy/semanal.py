@@ -3373,7 +3373,7 @@ class SemanticAnalyzer(
                 tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
                 tvar_defs.append(tvar_def)
 
-            res = analyze_type_alias(
+            analyzed, depends_on = analyze_type_alias(
                 typ,
                 self,
                 self.tvar_scope,
@@ -3385,13 +3385,8 @@ class SemanticAnalyzer(
                 global_scope=global_scope,
                 allowed_alias_tvars=tvar_defs,
             )
-        analyzed: Type | None = None
-        if res:
-            analyzed, depends_on = res
-            qualified_tvars = [node.fullname for (name, node) in found_type_vars]
-        else:
-            depends_on = set()
-            qualified_tvars = []
+
+        qualified_tvars = [node.fullname for _name, node in found_type_vars]
         return analyzed, tvar_defs, depends_on, qualified_tvars
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
