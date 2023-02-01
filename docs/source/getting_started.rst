@@ -44,6 +44,8 @@ easy to adopt mypy incrementally.
 In order to get useful diagnostics from mypy, you must add *type annotations*
 to your code. See the section below for details.
 
+.. _getting-started-dynamic-vs-static:
+
 Dynamic vs static typing
 ************************
 
