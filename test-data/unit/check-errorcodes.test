@@ -672,7 +672,7 @@ class A:
 
 def g(self: A) -> None: pass
 
-A.f = g  # E: Cannot assign to a method  [assignment]
+A.f = g  # E: Cannot assign to a method  [method-assign]
 
 [case testErrorCodeDefinedHereNoteIgnore]
 import m
