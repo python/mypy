@@ -52,8 +52,8 @@ Contents
    :caption: First steps
 
    getting_started
-   existing_code
    cheat_sheet_py3
+   existing_code
 
 .. _overview-type-system-reference:
 
