@@ -986,7 +986,7 @@ class SemanticAnalyzer(
                             # This error is off by default, since it is explicitly allowed
                             # by the PEP 673.
                             self.fail(
-                                "Redundant Self annotation on method first argument",
+                                'Redundant "Self" annotation for the first method argument',
                                 func,
                                 code=codes.REDUNDANT_SELF_TYPE,
                             )

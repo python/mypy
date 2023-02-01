@@ -262,10 +262,11 @@ Generic methods and generic self
 ********************************
 
 You can also define generic methods — just use a type variable in the
-method signature that is different from class type variables. In particular,
-``self`` may also be generic, allowing a method to return the most precise
-type known at the point of access. In this way, for example, you can typecheck
-chaining of setter methods:
+method signature that is different from class type variables. In
+particular, the ``self`` argument may also be generic, allowing a
+method to return the most precise type known at the point of access.
+In this way, for example, you can type check a chain of setter
+methods:
 
 .. code-block:: python
 
@@ -291,7 +292,9 @@ chaining of setter methods:
    circle: Circle = Circle().set_scale(0.5).set_radius(2.7)
    square: Square = Square().set_scale(0.5).set_width(3.2)
 
-Without using generic ``self``, the last two lines could not be type-checked properly.
+Without using generic ``self``, the last two lines could not be type
+checked properly, since the return type of ``set_scale`` would be
+``Shape``, which doesn't define ``set_radius`` or ``set_width``.
 
 Other uses are factory methods, such as copy and deserialization.
 For class methods, you can also define generic ``cls``, using :py:class:`Type[T] <typing.Type>`:
@@ -324,16 +327,18 @@ In the latter case, you must implement this method in all future subclasses.
 Note also that mypy cannot always verify that the implementation of a copy
 or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
-possibly by making use of the ``Any`` type.
+possibly by making use of the ``Any`` type or a ``# type: ignore`` comment.
 
-Note that this feature may accept some unsafe code for the purpose of
-*practicality*. For example:
+Note that mypy lets you use generic self types in certain unsafe ways
+in order to support common idioms. For example, using a generic
+self type in an argument type is accepted even though it's unsafe:
 
 .. code-block:: python
 
    from typing import TypeVar
 
    T = TypeVar("T")
+
    class Base:
        def compare(self: T, other: T) -> bool:
            return False
@@ -342,25 +347,27 @@ Note that this feature may accept some unsafe code for the purpose of
        def __init__(self, x: int) -> None:
            self.x = x
 
-       # This is unsafe (see below), but allowed because it is
-       # a common pattern, and rarely causes issues in practice.
+       # This is unsafe (see below) but allowed because it's
+       # a common pattern and rarely causes issues in practice.
        def compare(self, other: Sub) -> bool:
            return self.x > other.x
 
    b: Base = Sub(42)
    b.compare(Base())  # Runtime error here: 'Base' object has no attribute 'x'
 
-For some advanced uses of self-types see :ref:`additional examples <advanced_self>`.
+For some advanced uses of self types, see :ref:`additional examples <advanced_self>`.
 
 Automatic self types using typing.Self
 **************************************
 
-The patterns described above are quite common, so there is a syntactic sugar
-for them introduced in :pep:`673`. Instead of defining a type variable and
-using an explicit ``self`` annotation, you can import a magic type ``typing.Self``
-that is automatically transformed into a type variable with an upper bound of
-current class, and you don't need an annotation for ``self`` (or ``cls`` for
-class methods). The above example can thus be rewritten as:
+Since the patterns described above are quite common, mypy supports a
+simpler syntax, introduced in :pep:`673`, to make them easier to use.
+Instead of defining a type variable and using an explicit annotation
+for ``self``, you can import the special type ``typing.Self`` that is
+automatically transformed into a type variable with the current class
+as the upper bound, and you don't need an annotation for ``self`` (or
+``cls`` in class methods). The example from the previous section can
+be made simpler by using ``Self``:
 
 .. code-block:: python
 
@@ -381,13 +388,13 @@ class methods). The above example can thus be rewritten as:
 
    a, b = SuperFriend.make_pair()
 
-This is more compact than using explicit type variables, plus additionally
-you can use ``Self`` in attribute annotations, not just in methods.
+This is more compact than using explicit type variables. Also, you can
+use ``Self`` in attribute annotations in addition to methods.
 
 .. note::
 
-   To use this feature on versions of Python before 3.11, you will need to
-   import ``Self`` from ``typing_extensions`` version 4.0 or newer.
+   To use this feature on Python versions earlier than 3.11, you will need to
+   import ``Self`` from ``typing_extensions`` (version 4.0 or newer).
 
 .. _variance-of-generics:
 
@@ -916,5 +923,5 @@ defeating the purpose of using aliases.  Example:
 
     OIntVec = Optional[Vec[int]]
 
-Using type variable bounds or values in generic aliases, has the same effect
+Using type variable bounds or values in generic aliases has the same effect
 as in generic classes/functions.
