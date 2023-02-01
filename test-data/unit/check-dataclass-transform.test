@@ -18,7 +18,7 @@ reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builti
 Person('John', 32)
 Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformIsFoundInTypingExtensions]
@@ -64,7 +64,7 @@ reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builti
 Person('John', 32)
 Person('John', 21, None)  # E: Too many arguments for "Person"
 
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformParametersMustBeBoolLiterals]
@@ -83,7 +83,7 @@ class A: ...
 @my_dataclass(order=not False)  # E: "order" argument must be True or False.
 class B: ...
 
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformDefaultParamsMustBeLiterals]
@@ -99,7 +99,7 @@ def foo(cls: Type) -> Type:
 def bar(cls: Type) -> Type:
     return cls
 
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformUnrecognizedParamsAreErrors]
@@ -112,7 +112,7 @@ BOOLEAN_CONSTANT = True
 def foo(cls: Type) -> Type:
     return cls
 
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
 
@@ -146,7 +146,7 @@ class A:
     x: int
 A(1) > A(2)
 
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformFieldSpecifiersDefaultsToEmpty]
@@ -166,5 +166,5 @@ class Foo:
 # default
 Foo(5)
 
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
