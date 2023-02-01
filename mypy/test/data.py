@@ -65,9 +65,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     rechecked_modules: dict[int, set[str]] = {}  # from run number module names
     triggered: list[str] = []  # Active triggers (one line per incremental step)
     targets: dict[int, list[str]] = {}  # Fine-grained targets (per fine-grained update)
-    test_paths: list[
-        str
-    ] = []  # Paths to code which is to be considered "test" rather than "fixture"
+    test_paths: list[str] = []  # Paths to code which is deemed "test" (vs "fixture")
 
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
