@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os.path
 import sys
 from typing import Dict
 
@@ -77,27 +76,10 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
             raise CompileError(a)
         # Include string representations of the source files in the actual
         # output.
-        for fnam in sorted(result.files.keys()):
-            f = result.files[fnam]
-            # Omit the builtins module and files with a special marker in the
-            # path.
-            # TODO the test is not reliable
-            if (
-                not f.path.endswith(
-                    (
-                        os.sep + "builtins.pyi",
-                        "typing.pyi",
-                        "mypy_extensions.pyi",
-                        "typing_extensions.pyi",
-                        "abc.pyi",
-                        "collections.pyi",
-                        "sys.pyi",
-                    )
-                )
-                and not os.path.basename(f.path).startswith("_")
-                and not os.path.splitext(os.path.basename(f.path))[0].endswith("_")
-            ):
-                a += str(f).split("\n")
+        for module in sorted(result.files.keys()):
+            file = result.files[module]
+            if module == "__main__" or file.path in testcase.test_paths:
+                a += str(file).split("\n")
     except CompileError as e:
         a = e.messages
     if testcase.normalize_output:

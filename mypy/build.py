@@ -705,8 +705,8 @@ class BuildManager:
         self.quickstart_state = read_quickstart_file(options, self.stdout)
         # Fine grained targets (module top levels and top level functions) processed by
         # the semantic analyzer, used only for testing. Currently used only by the new
-        # semantic analyzer.
-        self.processed_targets: list[str] = []
+        # semantic analyzer. Tuple of module and target name.
+        self.processed_targets: list[tuple[str, str]] = []
         # Missing stub packages encountered.
         self.missing_stub_packages: set[str] = set()
         # Cache for mypy ASTs that have completed semantic analysis
