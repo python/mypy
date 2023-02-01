@@ -34,9 +34,9 @@ Useful built-in types
 
 .. code-block:: python
 
-   # For most types, just use the name of the type
+   # For most types, just use the name of the type.
    # Note that mypy can usually infer the type of a variable from its value,
-   # so technically these annotations are redundant.
+   # so technically these annotations are redundant
    x: int = 1
    x: float = 1.0
    x: bool = True
