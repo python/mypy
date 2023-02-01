@@ -716,13 +716,13 @@ class ParamSpecType(TypeVarLikeType):
         return n
 
     def __hash__(self) -> int:
-        return hash((self.id, self.flavor))
+        return hash((self.id, self.flavor, self.prefix))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ParamSpecType):
             return NotImplemented
         # Upper bound can be ignored, since it's determined by flavor.
-        return self.id == other.id and self.flavor == other.flavor
+        return self.id == other.id and self.flavor == other.flavor and self.prefix == other.prefix
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
