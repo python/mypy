@@ -293,7 +293,7 @@ methods:
    square: Square = Square().set_scale(0.5).set_width(3.2)
 
 Without using generic ``self``, the last two lines could not be type
-checked properly, since the return type of `set_scale` would be
+checked properly, since the return type of ``set_scale`` would be
 ``Shape``, which doesn't define ``set_radius`` or ``set_width``.
 
 Other uses are factory methods, such as copy and deserialization.
