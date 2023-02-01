@@ -298,7 +298,7 @@ package.
 For more discussion on strategies for handling errors about libraries without
 type information, refer to :ref:`fix-missing-imports`.
 
-For more information about stubs, see :ref:`stubs`.
+For more information about stubs, see :ref:`stub-files`.
 
 Next steps
 **********
