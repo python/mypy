@@ -239,9 +239,10 @@ mypy generates an error if it thinks that an expression is redundant.
 Check that expression is not implicitly true in boolean context [truthy-bool]
 -----------------------------------------------------------------------------
 
-Warn when the value of a boolean condition does not implement
-``__bool__`` or ``__len__``. Unless one of these is implemented by a
-subtype, the expression will always be considered true.
+Warn when the type of an expression in a boolean context does not
+implement ``__bool__`` or ``__len__``. Unless one of these is
+implemented by a subtype, the expression will always be considered
+true, and there may be a bug in the condition.
 
 As an exception, the ``object`` type is allowed in a boolean context.
 Using an iterable value in a boolean context has a separate error code
@@ -252,18 +253,11 @@ Using an iterable value in a boolean context has a separate error code
     # Use "mypy --enable-error-code truthy-bool ..."
 
     class Foo:
-      pass
+        pass
     foo = Foo()
     # Error: "foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
     if foo:
-       ...
-
-The check is similar in concept to ensuring that the type of an
-expression implements an expected interface (e.g. ``Sized``), except
-that attempting to invoke an undefined method (e.g. ``__len__``)
-results in an error, while attempting to evaluate an object in a boolean
-context without a concrete implementation always results in a truthy
-value, which is a common programming error.
+         ...
 
 
 Check that iterable is not implicitly true in boolean context [truthy-iterable]
