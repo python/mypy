@@ -6646,5 +6646,16 @@ def is_trivial_body(block: Block) -> bool:
 def is_dataclass_transform_decorator(node: Node | None) -> bool:
     if isinstance(node, RefExpr):
         return is_dataclass_transform_decorator(node.node)
+    if isinstance(node, CallExpr):
+        # Like dataclasses.dataclass, transform-based decorators can be applied either with or
+        # without parameters; ie, both of these forms are accepted:
+        #
+        # @typing.dataclass_transform
+        # class Foo: ...
+        # @typing.dataclass_transform(eq=True, order=True, ...)
+        # class Bar: ...
+        #
+        # We need to unwrap the call for the second variant.
+        return is_dataclass_transform_decorator(node.callee)
 
     return isinstance(node, Decorator) and node.func.is_dataclass_transform

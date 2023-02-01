@@ -44,3 +44,44 @@ Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformParametersAreApplied]
+# flags: --python-version 3.7
+from typing import dataclass_transform, Callable, Type
+
+@dataclass_transform()
+def my_dataclass(*, eq: bool, order: bool) -> Callable[[Type], Type]:
+    def transform(cls: Type) -> Type:
+        return cls
+    return transform
+
+@my_dataclass(eq=False, order=True)
+class Person:  # E: eq must be True if order is True
+    name: str
+    age: int
+
+reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('John', 32)
+Person('John', 21, None)  # E: Too many arguments for "Person"
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformParametersMustBeBoolLiterals]
+# flags: --python-version 3.7
+from typing import dataclass_transform, Callable, Type
+
+@dataclass_transform()
+def my_dataclass(*, eq: bool = True, order: bool = False) -> Callable[[Type], Type]:
+    def transform(cls: Type) -> Type:
+        return cls
+    return transform
+
+BOOL_CONSTANT = True
+@my_dataclass(eq=BOOL_CONSTANT)  # E: "eq" argument must be True or False.
+class A: ...
+@my_dataclass(order=not False)  # E: "order" argument must be True or False.
+class B: ...
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/dataclasses.pyi]
