@@ -281,8 +281,9 @@ will continue to be of type ``Any``.
     line containing the import.
 
 2.  To suppress *all* missing import errors from a single library, add
-    a section to your :ref:`mypy config file <config-file>` for that library setting
-    :confval:`ignore_missing_imports` to True. For example, suppose your codebase
+    a per-module section to your :ref:`mypy config file <config-file>` setting
+    :confval:`ignore_missing_imports` to True for that library. For example,
+    suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
     all import errors associated with that library and that library alone by
     adding the following section to your config file::
