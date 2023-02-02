@@ -1008,7 +1008,6 @@ def verify_var(
         and stub.type is not None
         and not is_subtype_helper(runtime_type, stub.type)
     ):
-        stub_type_matches_runtime_type = False
         should_error = True
         # Avoid errors when defining enums, since runtime_type is the enum itself, but we'd
         # annotate it with the type of runtime.value
@@ -1021,21 +1020,37 @@ def verify_var(
             yield Error(
                 object_path, f"variable differs from runtime type {runtime_type}", stub, runtime
             )
-    else:
-        stub_type_matches_runtime_type = True
+            return
 
-    # TODO: It would be nice if we could verify default values for non-Final variables in stubs,
-    # but mypy doesn't store the value of assignments for non-Final variables
-    if (
-        stub_type_matches_runtime_type
-        and stub.is_final
-        and stub.has_explicit_value
-        and stub.final_value is not None
-        and not isinstance(runtime, enum.Enum)
-        and not _stub_default_matches_runtime(stub.final_value, runtime)
-    ):
+    # If the stub has a default value and it's not an enum,
+    # attempt to verify that the default value matches the runtime=
+    if isinstance(runtime, enum.Enum) or not stub.has_explicit_value:
+        return
+    stub_type = mypy.types.get_proper_type(stub.type)
+    if not isinstance(stub_type, mypy.types.Instance):
+        return
+
+    node_for_stub_value = stub_type.last_known_value
+    if node_for_stub_value is None:
+        return
+
+    stub_value: object
+    if isinstance(node_for_stub_value.value, (int, bool, float)):
+        stub_value = node_for_stub_value.value
+    elif isinstance(node_for_stub_value.value, str):
+        fallback = node_for_stub_value.fallback.type
+        if fallback.fullname == "builtins.str":
+            stub_value = node_for_stub_value.value
+        elif fallback.fullname == "builtins.bytes":
+            stub_value = bytes(node_for_stub_value.value, "utf-8")
+        else:
+            return
+    else:
+        return
+
+    if not _stub_default_matches_runtime(stub_value, runtime):
         msg = f"default value for variable differs from runtime {runtime!r}"
-        yield Error(object_path, msg, stub, runtime)
+        yield Error(object_path, msg, stub, runtime, stub_desc=repr(stub_value))
 
 
 @verify.register(nodes.OverloadedFuncDef)

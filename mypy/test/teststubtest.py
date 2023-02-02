@@ -813,6 +813,18 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             from typing_extensions import Final
+            final9: Final = b"foo"
+            final10: Final = b"bar"
+            """,
+            runtime="""
+            final9 = b"bar"
+            final10 = b"bar"
+            """,
+            error="final9",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Final
             class MatchMaker:
                 __match_args__: Final = ("foo",)
             """,
