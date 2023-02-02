@@ -378,7 +378,7 @@ Let us illustrate this by few simple examples:
 * :py:data:`~typing.Callable` is an example of type that behaves contravariant
   in types of arguments. That is, ``Callable[[Shape], int]`` is a subtype of
   ``Callable[[Triangle], int]``, despite ``Shape`` being a supertype of
-  ``Triangle``. To understand this, consider a function:
+  ``Triangle``. To understand this, consider:
 
   .. code-block:: python
 
@@ -388,13 +388,17 @@ Let us illustrate this by few simple examples:
     ) -> float:
         return area_calculator(triangle) * DOLLAR_PER_SQ_FT
 
-    def area_of_any_shape(shape: Shape) -> float: ...
+    # This straightforwardly works
+    def area_of_triangle(triangle: Triangle) -> float: ...
+    cost_of_paint_required(triangle, area_of_triangle)  # OK
 
+    # But this works as well!
+    def area_of_any_shape(shape: Shape) -> float: ...
     cost_of_paint_required(triangle, area_of_any_shape)  # OK
 
   ``cost_of_paint_required`` needs a callable that can calculate the area of a
-  triangle. If we give it a callable that can calculate a salary for an
-  arbitrary shape, it's still safe.
+  triangle. If we give it a callable that can calculate the area of an
+  arbitrary shape (not just triangles), everything still works.
 
 * :py:class:`~typing.List` is an invariant generic type. Naively, one would think
   that it is covariant, like :py:class:`~typing.Sequence` above, but consider this code:
@@ -410,7 +414,7 @@ Let us illustrate this by few simple examples:
 
      my_circles: list[Circle] = []
      add_one(my_circles)     # This may appear safe, but...
-     my_circles[0].rotate()  # ...this will fail, since my_circles[0] is a Shape
+     my_circles[-1].rotate()  # ...this will fail, since my_circles[0] is now a Shape, not a Circle
 
   Another example of invariant type is :py:class:`~typing.Dict`. Most mutable containers
   are invariant.
