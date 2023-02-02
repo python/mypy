@@ -103,7 +103,7 @@ As mentioned in :ref:`fix-missing-imports`, setting ``ignore_missing_imports=Tru
 on a per-module basis will make bad surprises less likely and is highly encouraged.
 
 Use of the :option:`--follow-imports=skip <mypy --follow-imports>` flags can also
-cause problems. Use of these flags is strongly discouraged and are only required in
+cause problems. Use of these flags is strongly discouraged and only required in
 relatively niche situations. See :ref:`follow-imports` for more information.
 
 **mypy considers some of your code unreachable**.
