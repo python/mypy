@@ -36,18 +36,6 @@ TYPES = "TYPES"
 AST = "AST"
 
 
-NOT_DUMPED_MODULES = (
-    "builtins",
-    "typing",
-    "abc",
-    "contextlib",
-    "sys",
-    "mypy_extensions",
-    "typing_extensions",
-    "enum",
-)
-
-
 class ASTMergeSuite(DataSuite):
     files = ["merge.test"]
 
