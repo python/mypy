@@ -14,7 +14,7 @@ and produces clear and concise error messages, and since it matches
 how the native :py:func:`isinstance <isinstance>` check works -- based on class
 hierarchy.
 
-*Structural* subtyping can also be useful. Class ``D`` is
+*Structural* subtyping is based on the operations that can be performed with an object. Class ``D`` is
 a structural subtype of class ``C`` if the former has all attributes
 and methods of the latter, and with compatible types.
 
