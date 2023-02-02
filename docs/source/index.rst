@@ -74,6 +74,7 @@ Contents
    generics
    more_types
    literal_types
+   typed_dict
    final_attrs
    metaclasses
 
