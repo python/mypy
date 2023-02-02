@@ -186,9 +186,9 @@ Ignoring a whole file
 
 * To only ignore errors, use a top-level ``# mypy: ignore-errors`` comment instead.
 * To only ignore errors with a specific error code, use a top-level
-``# mypy: disable-error-code=...`` comment.
+  ``# mypy: disable-error-code=...`` comment.
 * To replace the contents of a module with ``Any``, use a per-module ``follow_imports = skip``.
-See :ref:`Following imports <follow-imports>` for details.
+  See :ref:`Following imports <follow-imports>` for details.
 
 Note that a ``# type: ignore`` comment at the top of a module (before any statements,
 including imports or docstrings) has the effect of ignoring the entire contents of the module.
