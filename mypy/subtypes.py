@@ -388,8 +388,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_proper_subtype(left, right, subtype_context=self.subtype_context)
         return is_subtype(left, right, subtype_context=self.subtype_context)
 
-    # visit_x(left) means: is left (which is an instance of X) a subtype of
-    # right?
+    # visit_x(left) means: is left (which is an instance of X) a subtype of right?
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         # This can be called if there is a bad type annotation. The result probably
@@ -643,6 +642,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
             isinstance(right, ParamSpecType)
             and right.id == left.id
             and right.flavor == left.flavor
+            and is_subtype(
+                left.as_parameters(), right.as_parameters(), subtype_context=self.subtype_context
+            )
         ):
             return True
         if isinstance(right, Parameters) and are_trivial_parameters(right):
@@ -665,11 +667,22 @@ class SubtypeVisitor(TypeVisitor[bool]):
             right = self.right
             if isinstance(right, CallableType):
                 right = right.with_unpacked_kwargs()
+            # TODO: This heuristic sucks. We need it to make sure we normally do the strict thing.
+            #       I wish we could just always do the strict thing....
+            # This takes into advantage that these Parameters probably just came from ParamSpecType#to_parameters()
+            anyt = AnyType(TypeOfAny.implementation_artifact)
+            concat_heuristic = all(
+                t.arg_kinds[-2:] == [ARG_STAR, ARG_STAR2] and t.arg_names[-2:] == [None, None] and t.arg_types[-2:] == [anyt, anyt] for t in (left, right)
+            )
             return are_parameters_compatible(
                 left,
                 right,
                 is_compat=self._is_subtype,
+                subtype_context=self.subtype_context,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
+                strict_concatenate_check=self.options.strict_concatenate
+                if self.options and concat_heuristic
+                else True,
             )
         else:
             return False
@@ -688,6 +701,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 left,
                 right,
                 is_compat=self._is_subtype,
+                subtype_context=self.subtype_context,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                 strict_concatenate=self.options.strict_concatenate if self.options else True,
             )
@@ -722,6 +736,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 left.with_unpacked_kwargs(),
                 right,
                 is_compat=self._is_subtype,
+                subtype_context=self.subtype_context,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
             )
         else:
@@ -857,6 +872,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 left_item,
                                 right_item,
                                 is_compat=self._is_subtype,
+                                subtype_context=self.subtype_context,
                                 ignore_return=True,
                                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                                 strict_concatenate=strict_concat,
@@ -865,6 +881,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 right_item,
                                 left_item,
                                 is_compat=self._is_subtype,
+                                subtype_context=self.subtype_context,
                                 ignore_return=True,
                                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                                 strict_concatenate=strict_concat,
@@ -1299,6 +1316,8 @@ def is_callable_compatible(
     right: CallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
+    # TODO: should this be used more (instead of `ignore_pos_arg_names`, for instance)?
+    subtype_context: SubtypeContext | None = None,
     is_compat_return: Callable[[Type, Type], bool] | None = None,
     ignore_return: bool = False,
     ignore_pos_arg_names: bool = False,
@@ -1453,6 +1472,7 @@ def is_callable_compatible(
         left,
         right,
         is_compat=is_compat,
+        subtype_context=subtype_context,
         ignore_pos_arg_names=ignore_pos_arg_names,
         check_args_covariantly=check_args_covariantly,
         allow_partial_overlap=allow_partial_overlap,
@@ -1472,11 +1492,23 @@ def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
     )
 
 
+def are_seperated_paramspecs(param: Parameters | NormalizedCallableType) -> bool:
+    # TODO: based on my tests, param.arg_types will always be of length 2. This is a potential
+    # optimization, however Callable#param_spec() does not assume this. If this is done, update that too.
+    return (
+        len(param.arg_types) >= 2
+        and isinstance(param.arg_types[-2], ParamSpecType)
+        and isinstance(param.arg_types[-1], ParamSpecType)
+    )
+
+
 def are_parameters_compatible(
     left: Parameters | NormalizedCallableType,
     right: Parameters | NormalizedCallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
+    # TODO: should this be used more (instead of `ignore_pos_arg_names`, for instance)?
+    subtype_context: SubtypeContext | None = None,
     ignore_pos_arg_names: bool = False,
     check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
@@ -1494,6 +1526,19 @@ def are_parameters_compatible(
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
     if are_trivial_parameters(right):
         return True
+
+    # sometimes we need to compare Callable[Concatenate[prefix, P], ...] and
+    # (prefix, *args: P.args, **kwargs: P.kwargs) -> ...
+    if (isinstance(left, CallableType) and isinstance(right, CallableType)) and (
+        are_seperated_paramspecs(left) or are_seperated_paramspecs(right)
+    ):
+        # note: this doesn't lose parameters. I think. Otherwise, it would be unsafe.
+        left_ps = left.param_spec()
+        right_ps = right.param_spec()
+        if not right_ps or not left_ps:
+            return False
+
+        return is_subtype(left_ps, right_ps, subtype_context=subtype_context)
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must

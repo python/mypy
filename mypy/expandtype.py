@@ -234,7 +234,15 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
-        repl = get_proper_type(self.variables.get(t.id, t))
+        repl_ = self.variables.get(t.id)
+        if not repl_:
+            # in this case, we are trying to expand it into... nothing?
+            # if we continue, we will get e.g.:
+            #    repl = t = [int, str, **P]
+            # at which point, expand_param_spec will duplicate the arguments.
+            return t
+
+        repl = get_proper_type(repl_)
         if isinstance(repl, Instance):
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.

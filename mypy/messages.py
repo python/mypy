@@ -2399,13 +2399,15 @@ def format_type_inner(
                 return_type = format(func.ret_type)
             if func.is_ellipsis_args:
                 return f"Callable[..., {return_type}]"
+
             param_spec = func.param_spec()
             if param_spec is not None:
                 return f"Callable[{format(param_spec)}, {return_type}]"
-            args = format_callable_args(
-                func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
-            )
-            return f"Callable[[{args}], {return_type}]"
+            else:
+                args = format_callable_args(
+                    func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
+                )
+                return f"Callable[[{args}], {return_type}]"
         else:
             # Use a simple representation for function types; proper
             # function types may result in long and difficult-to-read

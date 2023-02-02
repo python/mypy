@@ -1471,3 +1471,18 @@ def test(f: Concat[T, ...]) -> None: ...
 
 class Defer: ...
 [builtins fixtures/paramspec.pyi]
+
+[case testNoParamSpecDoubling]
+# https://github.com/python/mypy/issues/12734
+from typing import Callable, ParamSpec
+from typing_extensions import Concatenate
+
+P = ParamSpec("P")
+Q = ParamSpec("Q")
+
+def foo(f: Callable[P, int]) -> Callable[P, int]:
+    return f
+
+def bar(f: Callable[Concatenate[str, Q], int]) -> Callable[Concatenate[str, Q], int]:
+    return foo(f)
+[builtins fixtures/paramspec.pyi]
