@@ -41,9 +41,9 @@ class DeleteFile(NamedTuple):
 FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
 
 
-def _filename_to_module(filename: str) -> str:
+def _file_arg_to_module(filename: str) -> str:
     filename, _ = os.path.splitext(filename)
-    parts = filename.split(os.sep)
+    parts = filename.split("/")  # not os.sep since it comes from test data
     if parts[-1] == "__init__":
         parts.pop()
     return ".".join(parts)
@@ -86,7 +86,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             contents = expand_variables("\n".join(item.data))
             path = join(base_path, item.arg)
             if item.id != "fixture":
-                test_modules.append(_filename_to_module(item.arg))
+                test_modules.append(_file_arg_to_module(item.arg))
             if item.id in {"file", "fixture"}:
                 files.append((path, contents))
             elif item.id == "outfile-re":
