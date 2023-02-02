@@ -190,7 +190,7 @@ class TypeCheckSuite(DataSuite):
             actual = [
                 target
                 for module, target in res.manager.processed_targets
-                if module == "__main__" or res.manager.modules[module].path in testcase.test_paths
+                if module in testcase.test_modules
             ]
             if expected is not None:
                 assert_target_equivalence(name, expected, actual)

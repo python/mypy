@@ -72,13 +72,13 @@ class ASTMergeSuite(DataSuite):
         target_path = os.path.join(test_temp_dir, "target.py")
         shutil.copy(os.path.join(test_temp_dir, "target.py.next"), target_path)
 
-        a.extend(self.dump(fine_grained_manager, kind, testcase.test_paths))
+        a.extend(self.dump(fine_grained_manager, kind, testcase.test_modules))
         old_subexpr = get_subexpressions(result.manager.modules["target"])
 
         a.append("==>")
 
         new_file, new_types = self.build_increment(fine_grained_manager, "target", target_path)
-        a.extend(self.dump(fine_grained_manager, kind, testcase.test_paths))
+        a.extend(self.dump(fine_grained_manager, kind, testcase.test_modules))
 
         for expr in old_subexpr:
             if isinstance(expr, TypeVarExpr):
@@ -126,12 +126,10 @@ class ASTMergeSuite(DataSuite):
         return module, type_map
 
     def dump(
-        self, manager: FineGrainedBuildManager, kind: str, test_paths: list[str]
+        self, manager: FineGrainedBuildManager, kind: str, test_modules: list[str]
     ) -> list[str]:
         modules = {
-            name: file
-            for name, file in manager.manager.modules.items()
-            if name == "__main__" or file.path in test_paths
+            name: file for name, file in manager.manager.modules.items() if name in test_modules
         }
         if kind == AST:
             return self.dump_asts(modules)

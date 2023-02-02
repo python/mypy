@@ -42,9 +42,7 @@ class GetDependenciesSuite(DataSuite):
         else:
             deps: defaultdict[str, set[str]] = defaultdict(set)
             for module, file in files.items():
-                if (module in dumped_modules or dump_all) and (
-                    file.name == "__main__" or file.path in testcase.test_paths
-                ):
+                if (module in dumped_modules or dump_all) and (module in testcase.test_modules):
                     new_deps = get_dependencies(file, type_map, options.python_version, options)
                     for source in new_deps:
                         deps[source].update(new_deps[source])

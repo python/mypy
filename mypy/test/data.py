@@ -41,6 +41,14 @@ class DeleteFile(NamedTuple):
 FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
 
 
+def _filename_to_module(filename: str) -> str:
+    filename, _ = os.path.splitext(filename)
+    parts = filename.split(os.sep)
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts)
+
+
 def parse_test_case(case: DataDrivenTestCase) -> None:
     """Parse and prepare a single case from suite with test case descriptions.
 
@@ -65,11 +73,12 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     rechecked_modules: dict[int, set[str]] = {}  # from run number module names
     triggered: list[str] = []  # Active triggers (one line per incremental step)
     targets: dict[int, list[str]] = {}  # Fine-grained targets (per fine-grained update)
-    test_paths: list[str] = []  # Paths to code which is deemed "test" (vs "fixture")
+    test_modules: list[str] = []  # Modules which are deemed "test" (vs "fixture")
 
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
     item = first_item = test_items[0]
+    test_modules.append("__main__")
     for item in test_items[1:]:
         if item.id in {"file", "fixture", "outfile", "outfile-re"}:
             # Record an extra file needed for the test case.
@@ -77,7 +86,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             contents = expand_variables("\n".join(item.data))
             path = join(base_path, item.arg)
             if item.id != "fixture":
-                test_paths.append(path)
+                test_modules.append(_filename_to_module(item.arg))
             if item.id in {"file", "fixture"}:
                 files.append((path, contents))
             elif item.id == "outfile-re":
@@ -212,7 +221,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     case.triggered = triggered or []
     case.normalize_output = normalize_output
     case.expected_fine_grained_targets = targets
-    case.test_paths = test_paths
+    case.test_modules = test_modules
 
 
 class DataDrivenTestCase(pytest.Item):
@@ -231,8 +240,8 @@ class DataDrivenTestCase(pytest.Item):
 
     # (file path, file content) tuples
     files: list[tuple[str, str]]
-    # Paths to code which is to be considered "test" rather than "fixture"
-    test_paths: list[str]
+    # Modules which is to be considered "test" rather than "fixture"
+    test_modules: list[str]
     expected_stale_modules: dict[int, set[str]]
     expected_rechecked_modules: dict[int, set[str]]
     expected_fine_grained_targets: dict[int, list[str]]

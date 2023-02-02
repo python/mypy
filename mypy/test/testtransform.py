@@ -49,11 +49,10 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
         # Include string representations of the source files in the actual
         # output.
         for module in sorted(result.files.keys()):
-            file = result.files[module]
-            if module == "__main__" or file.path in testcase.test_paths:
+            if module in testcase.test_modules:
                 t = TypeAssertTransformVisitor()
                 t.test_only = True
-                file = t.mypyfile(file)
+                file = t.mypyfile(result.files[module])
                 a += str(file).split("\n")
     except CompileError as e:
         a = e.messages
