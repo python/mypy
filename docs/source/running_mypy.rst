@@ -357,6 +357,9 @@ other than the one mypy is running in, you can use :option:`--python-executable
 <mypy --python-executable>` flag to point to the Python executable for that
 environment, and mypy will find packages installed for that Python executable.
 
+If you've installed the relevant stub packages and are still getting this error,
+see the :ref:`section below <missing-type-hints-for-third-party-library>`.
+
 .. _missing-type-hints-for-third-party-library:
 
 Cannot find implementation or library stub
@@ -378,6 +381,11 @@ this error, try:
     :option:`--python-executable <mypy --python-executable>` command
     line flag to point the Python interpreter containing your installed
     third party packages.
+
+    You can confirm that you are running mypy from the environment you expect
+    by running it like ``python -m mypy ...``. You can confirm that you are
+    installing into the environment you expect by running pip like
+    ``python -m pip ...``.
 
 2.  Reading the :ref:`finding-imports` section below to make sure you
     understand how exactly mypy searches for and finds modules and modify
