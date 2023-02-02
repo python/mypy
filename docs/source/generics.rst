@@ -375,9 +375,10 @@ Let us illustrate this by few simple examples:
   Covariance should feel relatively intuitive, but contravariance and invariance
   can be harder to reason about.
 
-* :py:data:`~typing.Callable` is an example of type that behaves contravariant in types of
-  arguments, namely ``Callable[[Shape], int]`` is a subtype of
-  ``Callable[[Triangle], int]``. To understand this, consider a function:
+* :py:data:`~typing.Callable` is an example of type that behaves contravariant
+  in types of arguments. That is, ``Callable[[Shape], int]`` is a subtype of
+  ``Callable[[Triangle], int]``, despite ``Shape`` being a supertype of
+  ``Triangle``. To understand this, consider a function:
 
   .. code-block:: python
 
