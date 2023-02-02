@@ -280,7 +280,8 @@ in :py:mod:`typing` such as :py:class:`~typing.Iterable`.
    :py:func:`isinstance` with protocols is not completely safe at runtime.
    For example, signatures of methods are not checked. The runtime
    implementation only checks that all protocol members exist,
-   not that they have the correct type.
+   not that they have the correct type. :py:func:`issubclass` with protocols
+   will only check for the existence of methods.
 
 .. note::
    :py:func:`isinstance` with protocols can also be surprisingly slow.
