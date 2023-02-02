@@ -220,14 +220,14 @@ class EnumCallAnalyzer:
                     items.append(field)
             else:
                 return self.fail_enum_call_arg(
-                    "%s() expects a string, tuple, list or dict literal as the second argument"
+                    "Non-literal string, tuple, list or dict as the second argument of %s() is not supported"
                     % class_name,
                     call,
                 )
         else:
             # TODO: Allow dict(x=1, y=2) as a substitute for {'x': 1, 'y': 2}?
             return self.fail_enum_call_arg(
-                "%s() expects a string, tuple, list or dict literal as the second argument"
+                "Non-literal string, tuple, list or dict as the second argument of %s() is not supported"
                 % class_name,
                 call,
             )
