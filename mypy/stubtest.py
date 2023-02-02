@@ -1023,7 +1023,7 @@ def verify_var(
             return
 
     # If the stub has a default value and it's not an enum,
-    # attempt to verify that the default value matches the runtime=
+    # attempt to verify that the default value matches the runtime
     if isinstance(runtime, enum.Enum) or not stub.has_explicit_value:
         return
     stub_type = mypy.types.get_proper_type(stub.type)
