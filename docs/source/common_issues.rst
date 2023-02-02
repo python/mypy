@@ -264,8 +264,8 @@ multiple variables (or maybe declare the variable with an ``Any`` type).
 
 .. note::
 
-   Using the :ref:`--allow-redefinition` flag can
-   suppress this error in several cases.
+   Using the :option:`--allow-redefinition <mypy --allow-redefinition>`
+   flag can suppress this error in several cases.
 
 Note that you can redefine a variable with a more *precise* or a more
 concrete type. For example, you can redefine a sequence (which does
