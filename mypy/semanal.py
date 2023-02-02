@@ -2597,6 +2597,16 @@ class SemanticAnalyzer(
             ):
                 # Yes. Generate a helpful note.
                 self.msg.add_fixture_note(fullname, context)
+            else:
+                typing_extensions = self.modules.get("typing_extensions")
+                if typing_extensions and source_id in typing_extensions.names:
+                    self.msg.note(
+                        f"Use `from typing_extensions import {source_id}` instead", context
+                    )
+                    self.msg.note(
+                        "See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module",
+                        context,
+                    )
 
     def process_import_over_existing_name(
         self,
