@@ -350,7 +350,7 @@ other than the one mypy is running in, you can use :option:`--python-executable
 <mypy --python-executable>` flag to point to the Python executable for that
 environment, and mypy will find packages installed for that Python executable.
 
-If you've installed the relevant stub pacakges and are still getting this error,
+If you've installed the relevant stub packages and are still getting this error,
 see the :ref:`section below <missing-type-hints-for-third-party-library>`.
 
 .. _missing-type-hints-for-third-party-library:
