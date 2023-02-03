@@ -586,7 +586,11 @@ class Errors:
             # Empty list means that we ignore all errors
             return True
         if info.code and self.is_error_code_enabled(info.code):
-            return info.code.code in ignores[line]
+            return (
+                info.code.code in ignores[line]
+                or info.code.sub_code_of is not None
+                and info.code.sub_code_of.code in ignores[line]
+            )
         return False
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
@@ -601,6 +605,8 @@ class Errors:
             return False
         elif error_code in current_mod_enabled:
             return True
+        elif error_code.sub_code_of is not None and error_code.sub_code_of in current_mod_disabled:
+            return False
         else:
             return error_code.default_enabled
 

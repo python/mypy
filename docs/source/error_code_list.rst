@@ -347,6 +347,10 @@ To prevent the ambiguity, mypy will flag both assignments by default. If this
 error code is disabled, mypy will treat all method assignments r.h.s. as unbound,
 so the second assignment will still generate an error.
 
+.. note::
+
+    This error code is a sub-error code of a wider ``[assignment]`` code.
+
 Check type variable values [type-var]
 -------------------------------------
 
