@@ -91,7 +91,7 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
 
 Check that a variable is not used before it's defined [used-before-def]
------------------------------------------------
+-----------------------------------------------------------------------
 
 Mypy will generate an error if a name is used before it's defined.
 While the name-defined check will catch issues with names that are undefined,
