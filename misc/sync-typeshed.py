@@ -24,7 +24,7 @@ import requests
 
 
 def check_state() -> None:
-    if not os.path.isfile("pyproject.toml") and not os.path.isdir("mypy"):
+    if not os.path.isfile("pyproject.toml") or not os.path.isdir("mypy"):
         sys.exit("error: The current working directory must be the mypy repository root")
     out = subprocess.check_output(["git", "status", "-s", os.path.join("mypy", "typeshed")])
     if out:
