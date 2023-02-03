@@ -51,7 +51,7 @@ A simple CI script could look something like this:
     python3 -m pip install mypy==0.971
     # Run your standardised mypy invocation, e.g.
     mypy my_project
-    # This could also look like `scripts/run_mypy.sh`, `tox -e mypy`, `make mypy`, etc
+    # This could also look like `scripts/run_mypy.sh`, `tox run -e mypy`, `make mypy`, etc
 
 Ignoring errors from certain modules
 ------------------------------------

@@ -89,6 +89,23 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
     x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
+
+Check that a variable is not used before it's defined [used-before-def]
+-----------------------------------------------------------------------
+
+Mypy will generate an error if a name is used before it's defined.
+While the name-defined check will catch issues with names that are undefined,
+it will not flag if a variable is used and then defined later in the scope.
+used-before-def check will catch such cases.
+
+Example:
+
+.. code-block:: python
+
+    print(x)  # Error: Name "x" is used before definition [used-before-def]
+    x = 123
+
+
 Check arguments in calls [call-arg]
 -----------------------------------
 
@@ -430,7 +447,7 @@ Example:
     # Error: Incompatible types (expression has type "float",
     #        TypedDict item "x" has type "int")  [typeddict-item]
     p: Point = {'x': 1.2, 'y': 4}
-    
+
 Check TypedDict Keys [typeddict-unknown-key]
 --------------------------------------------
 

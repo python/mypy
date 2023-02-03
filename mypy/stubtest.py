@@ -493,7 +493,7 @@ def verify_typeinfo(
     for entry in sorted(to_check):
         mangled_entry = entry
         if entry.startswith("__") and not entry.endswith("__"):
-            mangled_entry = f"_{stub.name}{entry}"
+            mangled_entry = f"_{stub.name.lstrip('_')}{entry}"
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
         try:

@@ -66,3 +66,5 @@ def dataclass_transform(
     field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
     **kwargs: Any,
 ) -> Callable[[T], T]: ...
+
+_FutureFeatureFixture = 0
