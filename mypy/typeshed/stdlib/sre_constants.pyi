@@ -12,7 +12,7 @@ class error(Exception):
     pos: int | None
     lineno: int
     colno: int
-    def __init__(self, msg: str, pattern: str | bytes | None = ..., pos: int | None = ...) -> None: ...
+    def __init__(self, msg: str, pattern: str | bytes | None = None, pos: int | None = None) -> None: ...
 
 class _NamedIntConstant(int):
     name: Any
@@ -79,6 +79,10 @@ REPEAT: _NamedIntConstant
 REPEAT_ONE: _NamedIntConstant
 SUBPATTERN: _NamedIntConstant
 MIN_REPEAT_ONE: _NamedIntConstant
+if sys.version_info >= (3, 11):
+    ATOMIC_GROUP: _NamedIntConstant
+    POSSESSIVE_REPEAT: _NamedIntConstant
+    POSSESSIVE_REPEAT_ONE: _NamedIntConstant
 RANGE_UNI_IGNORE: _NamedIntConstant
 GROUPREF_LOC_IGNORE: _NamedIntConstant
 GROUPREF_UNI_IGNORE: _NamedIntConstant

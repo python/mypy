@@ -6,6 +6,6 @@ def gnu_getopt(args: list[str], shortopts: str, longopts: list[str] = ...) -> tu
 class GetoptError(Exception):
     msg: str
     opt: str
-    def __init__(self, msg: str, opt: str = ...) -> None: ...
+    def __init__(self, msg: str, opt: str = "") -> None: ...
 
 error = GetoptError

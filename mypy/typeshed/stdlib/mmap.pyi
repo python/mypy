@@ -1,5 +1,5 @@
 import sys
-from _typeshed import ReadableBuffer, Self
+from _typeshed import ReadableBuffer, Self, Unused
 from collections.abc import Iterable, Iterator, Sized
 from typing import NoReturn, overload
 
@@ -74,7 +74,7 @@ class mmap(Iterable[int], Sized):
     # so we claim that there is also an __iter__ to help type checkers.
     def __iter__(self) -> Iterator[int]: ...
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, *args: object) -> None: ...
+    def __exit__(self, *args: Unused) -> None: ...
 
 if sys.version_info >= (3, 8) and sys.platform != "win32":
     MADV_NORMAL: int
