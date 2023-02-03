@@ -1154,6 +1154,49 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="X.__mangle_bad",
         )
+        yield Case(
+            stub="""
+            class Klass:
+                class __Mangled1:
+                    class __Mangled2:
+                        def __mangle_good(self, text: str) -> None: ...
+                        def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class Klass:
+                class __Mangled1:
+                    class __Mangled2:
+                        def __mangle_good(self, text): pass
+                        def __mangle_bad(self, text): pass
+            """,
+            error="Klass.__Mangled1.__Mangled2.__mangle_bad",
+        )
+        yield Case(
+            stub="""
+            class __Dunder__:
+                def __mangle_good(self, text: str) -> None: ...
+                def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class __Dunder__:
+                def __mangle_good(self, text): pass
+                def __mangle_bad(self, text): pass
+            """,
+            error="__Dunder__.__mangle_bad",
+        )
+        yield Case(
+            stub="""
+            class _Private:
+                def __mangle_good(self, text: str) -> None: ...
+                def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class _Private:
+                def __mangle_good(self, text): pass
+                def __mangle_bad(self, text): pass
+            """,
+            error="_Private.__mangle_bad",
+        )
 
     @collect_cases
     def test_mro(self) -> Iterator[Case]:
