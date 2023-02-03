@@ -52,7 +52,7 @@ class BaseServer:
     def RequestHandlerClass(self: Self, val: Callable[[Any, _RetAddress, Self], BaseRequestHandler]) -> None: ...
     def fileno(self) -> int: ...
     def handle_request(self) -> None: ...
-    def serve_forever(self, poll_interval: float = ...) -> None: ...
+    def serve_forever(self, poll_interval: float = 0.5) -> None: ...
     def shutdown(self) -> None: ...
     def server_close(self) -> None: ...
     def finish_request(self, request: _RequestType, client_address: _RetAddress) -> None: ...
@@ -79,7 +79,7 @@ class TCPServer(BaseServer):
         self: Self,
         server_address: _AfInetAddress,
         RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler],
-        bind_and_activate: bool = ...,
+        bind_and_activate: bool = True,
     ) -> None: ...
     def get_request(self) -> tuple[_socket, _RetAddress]: ...
 
@@ -94,7 +94,7 @@ if sys.platform != "win32":
             self: Self,
             server_address: _AfUnixAddress,
             RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler],
-            bind_and_activate: bool = ...,
+            bind_and_activate: bool = True,
         ) -> None: ...
 
     class UnixDatagramServer(BaseServer):
@@ -103,7 +103,7 @@ if sys.platform != "win32":
             self: Self,
             server_address: _AfUnixAddress,
             RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler],
-            bind_and_activate: bool = ...,
+            bind_and_activate: bool = True,
         ) -> None: ...
 
 if sys.platform != "win32":
@@ -112,7 +112,7 @@ if sys.platform != "win32":
         active_children: set[int] | None  # undocumented
         max_children: int  # undocumented
         block_on_close: bool
-        def collect_children(self, *, blocking: bool = ...) -> None: ...  # undocumented
+        def collect_children(self, *, blocking: bool = False) -> None: ...  # undocumented
         def handle_timeout(self) -> None: ...  # undocumented
         def service_actions(self) -> None: ...  # undocumented
         def process_request(self, request: _RequestType, client_address: _RetAddress) -> None: ...

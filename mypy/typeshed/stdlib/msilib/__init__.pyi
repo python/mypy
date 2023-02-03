@@ -24,7 +24,6 @@ if sys.platform == "win32":
     knownbits: Literal[0x3FFF]
 
     class Table:
-
         name: str
         fields: list[tuple[int, str, int]]
         def __init__(self, name: str) -> None: ...
@@ -50,7 +49,6 @@ if sys.platform == "win32":
     def gen_uuid() -> str: ...
 
     class CAB:
-
         name: str
         files: list[tuple[str, str]]
         filenames: set[str]
@@ -62,7 +60,6 @@ if sys.platform == "win32":
     _directories: set[str]
 
     class Directory:
-
         db: _Database
         cab: CAB
         basedir: str
@@ -82,28 +79,26 @@ if sys.platform == "win32":
             physical: str,
             _logical: str,
             default: str,
-            componentflags: int | None = ...,
+            componentflags: int | None = None,
         ) -> None: ...
         def start_component(
             self,
-            component: str | None = ...,
-            feature: Feature | None = ...,
-            flags: int | None = ...,
-            keyfile: str | None = ...,
-            uuid: str | None = ...,
+            component: str | None = None,
+            feature: Feature | None = None,
+            flags: int | None = None,
+            keyfile: str | None = None,
+            uuid: str | None = None,
         ) -> None: ...
         def make_short(self, file: str) -> str: ...
-        def add_file(self, file: str, src: str | None = ..., version: str | None = ..., language: str | None = ...) -> str: ...
-        def glob(self, pattern: str, exclude: Container[str] | None = ...) -> list[str]: ...
+        def add_file(self, file: str, src: str | None = None, version: str | None = None, language: str | None = None) -> str: ...
+        def glob(self, pattern: str, exclude: Container[str] | None = None) -> list[str]: ...
         def remove_pyc(self) -> None: ...
 
     class Binary:
-
         name: str
         def __init__(self, fname: str) -> None: ...
 
     class Feature:
-
         id: str
         def __init__(
             self,
@@ -112,31 +107,28 @@ if sys.platform == "win32":
             title: str,
             desc: str,
             display: int,
-            level: int = ...,
-            parent: Feature | None = ...,
-            directory: str | None = ...,
-            attributes: int = ...,
+            level: int = 1,
+            parent: Feature | None = None,
+            directory: str | None = None,
+            attributes: int = 0,
         ) -> None: ...
         def set_current(self) -> None: ...
 
     class Control:
-
         dlg: Dialog
         name: str
         def __init__(self, dlg: Dialog, name: str) -> None: ...
-        def event(self, event: str, argument: str, condition: str = ..., ordering: int | None = ...) -> None: ...
+        def event(self, event: str, argument: str, condition: str = "1", ordering: int | None = None) -> None: ...
         def mapping(self, event: str, attribute: str) -> None: ...
         def condition(self, action: str, condition: str) -> None: ...
 
     class RadioButtonGroup(Control):
-
         property: str
         index: int
         def __init__(self, dlg: Dialog, name: str, property: str) -> None: ...
-        def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = ...) -> None: ...
+        def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = None) -> None: ...
 
     class Dialog:
-
         db: _Database
         name: str
         x: int

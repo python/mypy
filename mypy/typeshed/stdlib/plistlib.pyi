@@ -47,24 +47,24 @@ FMT_XML = PlistFormat.FMT_XML
 FMT_BINARY = PlistFormat.FMT_BINARY
 
 if sys.version_info >= (3, 9):
-    def load(fp: IO[bytes], *, fmt: PlistFormat | None = ..., dict_type: type[MutableMapping[str, Any]] = ...) -> Any: ...
+    def load(fp: IO[bytes], *, fmt: PlistFormat | None = None, dict_type: type[MutableMapping[str, Any]] = ...) -> Any: ...
     def loads(
-        value: ReadableBuffer, *, fmt: PlistFormat | None = ..., dict_type: type[MutableMapping[str, Any]] = ...
+        value: ReadableBuffer, *, fmt: PlistFormat | None = None, dict_type: type[MutableMapping[str, Any]] = ...
     ) -> Any: ...
 
 else:
     def load(
         fp: IO[bytes],
         *,
-        fmt: PlistFormat | None = ...,
-        use_builtin_types: bool = ...,
+        fmt: PlistFormat | None = None,
+        use_builtin_types: bool = True,
         dict_type: type[MutableMapping[str, Any]] = ...,
     ) -> Any: ...
     def loads(
         value: ReadableBuffer,
         *,
-        fmt: PlistFormat | None = ...,
-        use_builtin_types: bool = ...,
+        fmt: PlistFormat | None = None,
+        use_builtin_types: bool = True,
         dict_type: type[MutableMapping[str, Any]] = ...,
     ) -> Any: ...
 
@@ -73,15 +73,15 @@ def dump(
     fp: IO[bytes],
     *,
     fmt: PlistFormat = ...,
-    sort_keys: bool = ...,
-    skipkeys: bool = ...,
+    sort_keys: bool = True,
+    skipkeys: bool = False,
 ) -> None: ...
 def dumps(
     value: Mapping[str, Any] | list[Any] | tuple[Any, ...] | str | bool | float | bytes | bytearray | datetime,
     *,
     fmt: PlistFormat = ...,
-    skipkeys: bool = ...,
-    sort_keys: bool = ...,
+    skipkeys: bool = False,
+    sort_keys: bool = True,
 ) -> bytes: ...
 
 if sys.version_info < (3, 9):
@@ -104,4 +104,4 @@ if sys.version_info >= (3, 8):
         def __eq__(self, other: object) -> bool: ...
 
 class InvalidFileException(ValueError):
-    def __init__(self, message: str = ...) -> None: ...
+    def __init__(self, message: str = "Invalid file") -> None: ...

@@ -85,7 +85,6 @@ if sys.platform != "win32":
     DefaultEventLoopPolicy = _UnixDefaultEventLoopPolicy
 
     if sys.version_info >= (3, 8):
-
         from typing import Protocol
 
         class _Warn(Protocol):
