@@ -647,6 +647,10 @@ class Errors:
             if len(ignored_codes) > 1 and len(unused_ignored_codes) > 0:
                 unused_codes_message = f"[{', '.join(sorted(unused_ignored_codes))}]"
             message = f'Unused "type: ignore{unused_codes_message}" comment'
+            for unused in unused_ignored_codes:
+                narrower = set(used_ignored_codes) & codes.sub_code_map[unused]
+                if narrower:
+                    message += f", use narrower [{', '.join(narrower)}] instead of [{unused}]"
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(
                 self.import_context(),

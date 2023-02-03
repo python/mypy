@@ -1031,3 +1031,10 @@ class A:
     def f(self) -> None: pass
 def h(self: A) -> None: pass
 A.f = h  # OK
+
+[case testMethodAssignCoveredByAssignmentUnused]
+# flags: --warn-unused-ignores
+class A:
+    def f(self) -> None: pass
+def h(self: A) -> None: pass
+A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use narrower [method-assign] instead of [assignment]

@@ -5,9 +5,11 @@ These can be used for filtering specific errors.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing_extensions import Final
 
 error_codes: dict[str, ErrorCode] = {}
+sub_code_map: dict[str, set[str]] = defaultdict(set)
 
 
 class ErrorCode:
@@ -26,6 +28,7 @@ class ErrorCode:
         self.sub_code_of = sub_code_of
         if sub_code_of is not None:
             assert sub_code_of.sub_code_of is None, "Nested subcategories are not supported"
+            sub_code_map[sub_code_of.code].add(code)
         error_codes[code] = self
 
     def __str__(self) -> str:
