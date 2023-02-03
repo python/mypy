@@ -134,6 +134,7 @@ from mypy.types import (
     TypeList,
     TypeStrVisitor,
     UnboundType,
+    UnionType,
     get_proper_type,
 )
 from mypy.visitor import NodeVisitor
@@ -325,6 +326,9 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_type_list(self, t: TypeList) -> str:
         return f"[{self.list_str(t.items)}]"
+
+    def visit_union_type(self, t: UnionType) -> str:
+        return " | ".join([item.accept(self) for item in t.items])
 
     def args_str(self, args: Iterable[Type]) -> str:
         """Convert an array of arguments to strings and join the results with commas.
