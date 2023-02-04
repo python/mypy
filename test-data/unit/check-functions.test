@@ -2724,3 +2724,157 @@ TS = TypeVar("TS", bound=str)
 f: Callable[[Sequence[TI]], None]
 g: Callable[[Union[Sequence[TI], Sequence[TS]]], None]
 f = g
+
+[case explicitOverride]
+from typing import override
+
+class A:
+    def f(self, x: int) -> str: pass
+    @override
+    def g(self, x: int) -> str: pass  # E: Method "g" is marked as an override, but no base method with this name was found
+
+class B(A):
+    @override
+    def f(self, x: int) -> str: pass
+    @override
+    def g(self, x: int) -> str: pass
+
+class C(A):
+    @override
+    def f(self, x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                                      # N: This violates the Liskov substitution principle \
+                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+    def g(self, x: int) -> str: pass
+
+class D(A): pass
+class E(D): pass
+class F(E):
+    @override
+    def f(self, x: int) -> str: pass
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case explicitOverrideStaticmethod]
+from typing import override
+
+class A:
+    @staticmethod
+    def f(x: int) -> str: pass
+
+class B(A):
+    @staticmethod
+    @override
+    def f(x: int) -> str: pass
+    @override
+    @staticmethod
+    def g(x: int) -> str: pass  # E: Method "g" is marked as an override, but no base method with this name was found
+
+class C(A):  # inverted order of decorators
+    @override
+    @staticmethod
+    def f(x: int) -> str: pass
+    @override
+    @staticmethod
+    def g(x: int) -> str: pass  # E: Method "g" is marked as an override, but no base method with this name was found
+
+class D(A):
+    @staticmethod
+    @override
+    def f(x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                                # N: This violates the Liskov substitution principle \
+                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/callable.pyi]
+
+[case explicitOverrideClassmethod]
+from typing import override
+
+class A:
+    @classmethod
+    def f(cls, x: int) -> str: pass
+
+class B(A):
+    @classmethod
+    @override
+    def f(cls, x: int) -> str: pass
+    @override
+    @classmethod
+    def g(cls, x: int) -> str: pass  # E: Method "g" is marked as an override, but no base method with this name was found
+
+class C(A):  # inverted order of decorators
+    @override
+    @classmethod
+    def f(cls, x: int) -> str: pass
+    @override
+    @classmethod
+    def g(cls, x: int) -> str: pass  # E: Method "g" is marked as an override, but no base method with this name was found
+
+class D(A):
+    @classmethod
+    @override
+    def f(cls, x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                                     # N: This violates the Liskov substitution principle \
+                                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/callable.pyi]
+
+[case explicitOverrideProperty]
+from typing import override
+
+class A:
+    @property
+    def f(self) -> str: pass
+
+class B(A):
+    @property
+    @override
+    def f(self) -> str: pass
+    @override
+    @property
+    def g(self) -> str: pass  # E: Method "g" is marked as an override, but no base method with this name was found
+
+class C(A):  # inverted order of decorators
+    @override
+    @property
+    def f(self) -> str: pass
+    @override
+    @property
+    def g(self) -> str: pass  # E: Method "g" is marked as an override, but no base method with this name was found
+
+class D(A):
+    @property
+    @override
+    def f(self) -> int: pass  # E: Signature of "f" incompatible with supertype "A"
+[builtins fixtures/property.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case invalidExplicitOverride]
+from typing import override
+
+@override  # E: "override" used with a non-method
+def f(x: int) -> str: pass
+
+@override  # this should probably throw an error but the signature from typeshed should ensure this already
+class A: pass
+
+def g() -> None:
+    @override  # E: "override" used with a non-method
+    def h(b: bool) -> int: pass
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case explicitOverrideSpecialMethods]
+from typing import override
+
+class A:
+    def __init__(self, a: int) -> None: pass
+
+class B(A):
+    @override
+    def __init__(self, b: str) -> None: pass
+
+class C:
+    @override
+    def __init__(self, a: int) -> None: pass
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]

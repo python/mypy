@@ -747,6 +747,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "is_mypy_only",
         # Present only when a function is decorated with @typing.datasclass_transform or similar
         "dataclass_transform_spec",
+        "is_explicit_override",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -775,6 +776,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
+        # Decorated with @override
+        self.is_explicit_override = False
 
     @property
     def name(self) -> str:
