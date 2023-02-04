@@ -72,6 +72,10 @@ def mypyc_attr(*attrs: str, **kwattrs: object) -> IdentityFunction: ...
 
 class FlexibleAlias(Generic[_T, _U]): ...
 
+# Native int types such as i64 are magical and support implicit
+# coercions to/from int using special logic in mypy. We generally only
+# include operations here for which we have specialized primitives.
+
 class i64:
     @overload
     def __new__(cls, __x: str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc = ...) -> i64: ...
