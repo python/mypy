@@ -6,8 +6,9 @@ import sys
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import IdentityFunction, Self
 from collections.abc import Mapping
-from typing import Any, ClassVar, Generic, TypeVar, overload, type_check_only
-from typing_extensions import Never
+from typing import Any, ClassVar, Generic, SupportsInt, TypeVar, overload, type_check_only
+from typing_extensions import Never, SupportsIndex
+from _typeshed import ReadableBuffer, SupportsTrunc
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
@@ -82,7 +83,6 @@ class i64:
     @overload
     def __new__(cls, __x: str | bytes | bytearray, base: SupportsIndex) -> i64: ...
 
-    def __init__(self, x: _Int) -> None: ...
     def __add__(self, x: i64) -> i64: ...
     def __radd__(self, x: i64) -> i64: ...
     def __sub__(self, x: i64) -> i64: ...
