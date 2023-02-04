@@ -6359,3 +6359,16 @@ from m import Foo
 [file m.py]
 from missing_module import Meta  # type: ignore[import]
 class Foo(metaclass=Meta): ...
+
+[case testIncrementalNativeInt]
+import a
+[file a.py]
+from mypy_extensions import i64
+x: i64 = 0
+[file a.py.2]
+from mypy_extensions import i64
+x: i64 = 0
+y: int = x
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
