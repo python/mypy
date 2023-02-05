@@ -60,6 +60,7 @@ from mypyc.irbuild.util import (
     is_trait,
 )
 from mypyc.options import CompilerOptions
+from mypyc.sametype import is_same_type
 
 
 def build_type_map(
@@ -111,6 +112,24 @@ def build_type_map(
         for func in get_module_func_defs(module):
             prepare_func_def(module.fullname, None, func, mapper)
             # TODO: what else?
+
+    # Check for incompatible attribute definitions that were not
+    # flagged by mypy but can't be supported when compiling.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        for attr in class_ir.attributes:
+            for base_ir in class_ir.mro[1:]:
+                if attr in base_ir.attributes:
+                    if not is_same_type(class_ir.attributes[attr], base_ir.attributes[attr]):
+                        node = cdef.info.names[attr].node
+                        assert node is not None
+                        kind = "trait" if base_ir.is_trait else "class"
+                        errors.error(
+                            f'Type of "{attr}" is incompatible with '
+                            f'definition in {kind} "{base_ir.name}"',
+                            module.path,
+                            node.line,
+                        )
 
 
 def is_from_module(node: SymbolNode, module: MypyFile) -> bool:
