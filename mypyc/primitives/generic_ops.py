@@ -75,6 +75,17 @@ for op, funcname in [
         priority=0,
     )
 
+
+function_op(
+    name="builtins.divmod",
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyNumber_Divmod",
+    error_kind=ERR_MAGIC,
+    priority=0,
+)
+
+
 for op, funcname in [
     ("+=", "PyNumber_InPlaceAdd"),
     ("-=", "PyNumber_InPlaceSubtract"),
