@@ -1,6 +1,6 @@
 import sys
 import types
-from _typeshed import Self, SupportsKeysAndGetItem
+from _typeshed import Self, SupportsKeysAndGetItem, Unused
 from abc import ABCMeta
 from builtins import property as _builtins_property
 from collections.abc import Iterable, Iterator, Mapping
@@ -85,8 +85,8 @@ class EnumMeta(ABCMeta):
             bases: tuple[type, ...],
             classdict: _EnumDict,
             *,
-            boundary: FlagBoundary | None = ...,
-            _simple: bool = ...,
+            boundary: FlagBoundary | None = None,
+            _simple: bool = False,
             **kwds: Any,
         ) -> Self: ...
     elif sys.version_info >= (3, 9):
@@ -112,7 +112,7 @@ class EnumMeta(ABCMeta):
     def __dir__(self) -> list[str]: ...
     # Simple value lookup
     @overload  # type: ignore[override]
-    def __call__(cls: type[_EnumMemberT], value: Any, names: None = ...) -> _EnumMemberT: ...
+    def __call__(cls: type[_EnumMemberT], value: Any, names: None = None) -> _EnumMemberT: ...
     # Functional Enum API
     if sys.version_info >= (3, 11):
         @overload
@@ -121,11 +121,11 @@ class EnumMeta(ABCMeta):
             value: str,
             names: _EnumNames,
             *,
-            module: str | None = ...,
-            qualname: str | None = ...,
-            type: type | None = ...,
-            start: int = ...,
-            boundary: FlagBoundary | None = ...,
+            module: str | None = None,
+            qualname: str | None = None,
+            type: type | None = None,
+            start: int = 1,
+            boundary: FlagBoundary | None = None,
         ) -> type[Enum]: ...
     else:
         @overload
@@ -134,10 +134,10 @@ class EnumMeta(ABCMeta):
             value: str,
             names: _EnumNames,
             *,
-            module: str | None = ...,
-            qualname: str | None = ...,
-            type: type | None = ...,
-            start: int = ...,
+            module: str | None = None,
+            qualname: str | None = None,
+            type: type | None = None,
+            start: int = 1,
         ) -> type[Enum]: ...
     _member_names_: list[str]  # undocumented
     _member_map_: dict[str, Enum]  # undocumented
@@ -177,7 +177,7 @@ class Enum(metaclass=EnumMeta):
     def __new__(cls: type[Self], value: object) -> Self: ...
     def __dir__(self) -> list[str]: ...
     def __format__(self, format_spec: str) -> str: ...
-    def __reduce_ex__(self, proto: object) -> tuple[Any, ...]: ...
+    def __reduce_ex__(self, proto: Unused) -> tuple[Any, ...]: ...
 
 if sys.version_info >= (3, 11):
     class ReprEnum(Enum): ...
@@ -275,6 +275,6 @@ if sys.version_info >= (3, 11):
     KEEP = FlagBoundary.KEEP
 
     def global_str(self: Enum) -> str: ...
-    def global_enum(cls: _EnumerationT, update_str: bool = ...) -> _EnumerationT: ...
+    def global_enum(cls: _EnumerationT, update_str: bool = False) -> _EnumerationT: ...
     def global_enum_repr(self: Enum) -> str: ...
     def global_flag_repr(self: Flag) -> str: ...

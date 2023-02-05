@@ -14,3 +14,4 @@ class str: pass
 
 class slice: pass
 class ellipsis: pass
+class dict: pass

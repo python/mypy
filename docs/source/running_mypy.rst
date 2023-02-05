@@ -228,6 +228,11 @@ attribute of the module will automatically succeed:
     # But this type checks, and x will have type 'Any'
     x = does_not_exist.foobar()
 
+This can result in mypy failing to warn you about errors in your code. Since
+operations on ``Any`` result in ``Any``, these dynamic types can propagate
+through your code, making type checking less effective. See
+:ref:`dynamic-typing` for more information.
+
 The next sections describe what each of these errors means and recommended next steps; scroll to
 the section that matches your error.
 
@@ -245,7 +250,7 @@ unless they either have declared themselves to be
 themselves on `typeshed <https://github.com/python/typeshed>`_, the repository
 of types for the standard library and some 3rd party libraries.
 
-If you are getting this error, try:
+If you are getting this error, try to obtain type hints for the library you're using:
 
 1.  Upgrading the version of the library you're using, in case a newer version
     has started to include type hints.
@@ -264,7 +269,7 @@ If you are getting this error, try:
     adding the location to the ``MYPYPATH`` environment variable.
 
     These stub files do not need to be complete! A good strategy is to use
-    stubgen, a program that comes bundled with mypy, to generate a first
+    :ref:`stubgen <stubgen>`, a program that comes bundled with mypy, to generate a first
     rough draft of the stubs. You can then iterate on just the parts of the
     library you need.
 
@@ -273,16 +278,19 @@ If you are getting this error, try:
     :ref:`PEP 561 compliant packages <installed-packages>`.
 
 If you are unable to find any existing type hints nor have time to write your
-own, you can instead *suppress* the errors. All this will do is make mypy stop
-reporting an error on the line containing the import: the imported module
-will continue to be of type ``Any``.
+own, you can instead *suppress* the errors.
+
+All this will do is make mypy stop reporting an error on the line containing the
+import: the imported module will continue to be of type ``Any``, and mypy may
+not catch errors in its use.
 
 1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
 2.  To suppress *all* missing import errors from a single library, add
-    a section to your :ref:`mypy config file <config-file>` for that library setting
-    :confval:`ignore_missing_imports` to True. For example, suppose your codebase
+    a per-module section to your :ref:`mypy config file <config-file>` setting
+    :confval:`ignore_missing_imports` to True for that library. For example,
+    suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
     all import errors associated with that library and that library alone by
     adding the following section to your config file::
@@ -349,6 +357,9 @@ other than the one mypy is running in, you can use :option:`--python-executable
 <mypy --python-executable>` flag to point to the Python executable for that
 environment, and mypy will find packages installed for that Python executable.
 
+If you've installed the relevant stub packages and are still getting this error,
+see the :ref:`section below <missing-type-hints-for-third-party-library>`.
+
 .. _missing-type-hints-for-third-party-library:
 
 Cannot find implementation or library stub
@@ -370,6 +381,11 @@ this error, try:
     :option:`--python-executable <mypy --python-executable>` command
     line flag to point the Python interpreter containing your installed
     third party packages.
+
+    You can confirm that you are running mypy from the environment you expect
+    by running it like ``python -m mypy ...``. You can confirm that you are
+    installing into the environment you expect by running pip like
+    ``python -m pip ...``.
 
 2.  Reading the :ref:`finding-imports` section below to make sure you
     understand how exactly mypy searches for and finds modules and modify

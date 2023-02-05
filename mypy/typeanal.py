@@ -132,12 +132,12 @@ def analyze_type_alias(
     in_dynamic_func: bool = False,
     global_scope: bool = True,
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
-) -> tuple[Type, set[str]] | None:
+) -> tuple[Type, set[str]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
     If `node` is valid as a type alias rvalue, return the resulting type and a set of
     full names of type aliases it depends on (directly or indirectly).
-    Return None otherwise. 'node' must have been semantically analyzed.
+    'node' must have been semantically analyzed.
     """
     analyzer = TypeAnalyser(
         api,

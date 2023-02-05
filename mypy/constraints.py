@@ -619,6 +619,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         actual.item, template, subtype, template, class_obj=True
                     )
                 )
+            if self.direction == SUPERTYPE_OF:
+                # Infer constraints for Type[T] via metaclass of T when it makes sense.
+                a_item = actual.item
+                if isinstance(a_item, TypeVarType):
+                    a_item = get_proper_type(a_item.upper_bound)
+                if isinstance(a_item, Instance) and a_item.type.metaclass_type:
+                    res.extend(
+                        self.infer_constraints_from_protocol_members(
+                            a_item.type.metaclass_type, template, actual, template
+                        )
+                    )
 
         if isinstance(actual, Overloaded) and actual.fallback is not None:
             actual = actual.fallback

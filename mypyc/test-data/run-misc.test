@@ -1116,3 +1116,33 @@ i = b"foo"
 
 def test_redefinition() -> None:
     assert i == b"foo"
+
+[case testWithNative]
+class DummyContext:
+    def __init__(self):
+        self.c = 0
+    def __enter__(self) -> None:
+        self.c += 1
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.c -= 1
+
+def test_dummy_context() -> None:
+    c = DummyContext()
+    with c:
+        assert c.c == 1
+    assert c.c == 0
+
+[case testWithNativeVarArgs]
+class DummyContext:
+    def __init__(self):
+        self.c = 0
+    def __enter__(self) -> None:
+        self.c += 1
+    def __exit__(self, *args: object) -> None:
+        self.c -= 1
+
+def test_dummy_context() -> None:
+    c = DummyContext()
+    with c:
+        assert c.c == 1
+    assert c.c == 0

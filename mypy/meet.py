@@ -15,6 +15,7 @@ from mypy.subtypes import (
 )
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
+    MYPYC_NATIVE_INT_NAMES,
     AnyType,
     CallableType,
     DeletedType,
@@ -473,6 +474,9 @@ def is_overlapping_types(
         ) or is_subtype(
             right, left, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
         ):
+            return True
+
+        if right.type.fullname == "builtins.int" and left.type.fullname in MYPYC_NATIVE_INT_NAMES:
             return True
 
         # Two unrelated types cannot be partially overlapping: they're disjoint.

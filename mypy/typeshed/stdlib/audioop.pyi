@@ -32,8 +32,8 @@ def ratecv(
     __inrate: int,
     __outrate: int,
     __state: _RatecvState | None,
-    __weightA: int = ...,
-    __weightB: int = ...,
+    __weightA: int = 1,
+    __weightB: int = 0,
 ) -> tuple[bytes, _RatecvState]: ...
 def reverse(__fragment: bytes, __width: int) -> bytes: ...
 def rms(__fragment: bytes, __width: int) -> int: ...

@@ -139,6 +139,8 @@ class float:
     def __sub__(self, x: int) -> float: pass
 class type: pass
 class str: pass
+class list: pass
+class dict: pass
 [out]
 OpExpr(3) : builtins.int
 OpExpr(4) : builtins.float
@@ -165,6 +167,8 @@ class bool: pass
 class type: pass
 class function: pass
 class str: pass
+class list: pass
+class dict: pass
 [out]
 ComparisonExpr(3) : builtins.bool
 ComparisonExpr(4) : builtins.bool

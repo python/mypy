@@ -402,6 +402,9 @@ class C:
     def __floordiv__(self, y: int) -> int:
         return self.x + y + 30
 
+    def __divmod__(self, y: int) -> int:
+        return self.x + y + 40
+
 def test_generic() -> None:
     a: Any = C()
     assert a + 3 == 8
@@ -417,11 +420,13 @@ def test_generic() -> None:
     assert a @ 3 == 18
     assert a / 2 == 27
     assert a // 2 == 37
+    assert divmod(a, 2) == 47
 
 def test_native() -> None:
     c = C()
     assert c + 3 == 8
     assert c - 3 == 2
+    assert divmod(c, 3) == 48
 
 def test_error() -> None:
     a: Any = C()

@@ -89,6 +89,23 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
     x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
+
+Check that a variable is not used before it's defined [used-before-def]
+-----------------------------------------------------------------------
+
+Mypy will generate an error if a name is used before it's defined.
+While the name-defined check will catch issues with names that are undefined,
+it will not flag if a variable is used and then defined later in the scope.
+used-before-def check will catch such cases.
+
+Example:
+
+.. code-block:: python
+
+    print(x)  # Error: Name "x" is used before definition [used-before-def]
+    x = 123
+
+
 Check arguments in calls [call-arg]
 -----------------------------------
 
@@ -430,6 +447,56 @@ Example:
     # Error: Incompatible types (expression has type "float",
     #        TypedDict item "x" has type "int")  [typeddict-item]
     p: Point = {'x': 1.2, 'y': 4}
+
+Check TypedDict Keys [typeddict-unknown-key]
+--------------------------------------------
+
+When constructing a ``TypedDict`` object, mypy checks whether the definition
+contains unknown keys. For convenience's sake, mypy will not generate an error
+when a ``TypedDict`` has extra keys if it's passed to a function as an argument.
+However, it will generate an error when these are created. Example:
+
+.. code-block:: python
+
+    from typing_extensions import TypedDict
+
+    class Point(TypedDict):
+        x: int
+        y: int
+
+    class Point3D(Point):
+        z: int
+
+    def add_x_coordinates(a: Point, b: Point) -> int:
+        return a["x"] + b["x"]
+
+    a: Point = {"x": 1, "y": 4}
+    b: Point3D = {"x": 2, "y": 5, "z": 6}
+
+    # OK
+    add_x_coordinates(a, b)
+    # Error: Extra key "z" for TypedDict "Point"  [typeddict-unknown-key]
+    add_x_coordinates(a, {"x": 1, "y": 4, "z": 5})
+
+
+Setting an unknown value on a ``TypedDict`` will also generate this error:
+
+.. code-block:: python
+
+    a: Point = {"x": 1, "y": 2}
+    # Error: Extra key "z" for TypedDict "Point"  [typeddict-unknown-key]
+    a["z"] = 3
+
+
+Whereas reading an unknown value will generate the more generic/serious
+``typeddict-item``:
+
+.. code-block:: python
+
+    a: Point = {"x": 1, "y": 2}
+    # Error: TypedDict "Point" has no key "z"  [typeddict-item]
+    _ = a["z"]
+
 
 Check that type of target is known [has-type]
 ---------------------------------------------

@@ -30,7 +30,7 @@ punctuation: LiteralString
 printable: LiteralString
 whitespace: LiteralString
 
-def capwords(s: StrOrLiteralStr, sep: StrOrLiteralStr | None = ...) -> StrOrLiteralStr: ...
+def capwords(s: StrOrLiteralStr, sep: StrOrLiteralStr | None = None) -> StrOrLiteralStr: ...
 
 if sys.version_info >= (3, 9):
     _TemplateMetaclass: TypeAlias = type
@@ -71,7 +71,7 @@ class Formatter:
         kwargs: Mapping[str, Any],
         used_args: set[int | str],
         recursion_depth: int,
-        auto_arg_index: int = ...,
+        auto_arg_index: int = 0,
     ) -> tuple[str, int]: ...
     def parse(
         self, format_string: StrOrLiteralStr
