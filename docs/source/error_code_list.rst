@@ -339,6 +339,35 @@ Example:
     #        variable has type "str")  [assignment]
     r.name = 5
 
+Check that assignment target is not a method [method-assign]
+------------------------------------------------------------
+
+In general, assigning to a method on class object or instance (a.k.a.
+monkey-patching) is ambiguous in terms of types, since Python's static type
+system cannot express difference between bound and unbound callable types.
+Consider this example:
+
+.. code-block:: python
+
+   class A:
+       def f(self) -> None: pass
+       def g(self) -> None: pass
+
+   def h(self: A) -> None: pass
+
+   A.f = h  # type of h is Callable[[A], None]
+   A().f()  # this works
+   A.f = A().g  # type of A().g is Callable[[], None]
+   A().f()  # but this also works at runtime
+
+To prevent the ambiguity, mypy will flag both assignments by default. If this
+error code is disabled, mypy will treat all method assignments r.h.s. as unbound,
+so the second assignment will still generate an error.
+
+.. note::
+
+    This error code is a sub-error code of a wider ``[assignment]`` code.
+
 Check type variable values [type-var]
 -------------------------------------
 

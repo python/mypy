@@ -5,19 +5,30 @@ These can be used for filtering specific errors.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing_extensions import Final
 
 error_codes: dict[str, ErrorCode] = {}
+sub_code_map: dict[str, set[str]] = defaultdict(set)
 
 
 class ErrorCode:
     def __init__(
-        self, code: str, description: str, category: str, default_enabled: bool = True
+        self,
+        code: str,
+        description: str,
+        category: str,
+        default_enabled: bool = True,
+        sub_code_of: ErrorCode | None = None,
     ) -> None:
         self.code = code
         self.description = description
         self.category = category
         self.default_enabled = default_enabled
+        self.sub_code_of = sub_code_of
+        if sub_code_of is not None:
+            assert sub_code_of.sub_code_of is None, "Nested subcategories are not supported"
+            sub_code_map[sub_code_of.code].add(code)
         error_codes[code] = self
 
     def __str__(self) -> str:
@@ -50,6 +61,12 @@ RETURN_VALUE: Final[ErrorCode] = ErrorCode(
 )
 ASSIGNMENT: Final[ErrorCode] = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
+)
+METHOD_ASSIGN: Final[ErrorCode] = ErrorCode(
+    "method-assign",
+    "Check that assignment target is not a method",
+    "General",
+    sub_code_of=ASSIGNMENT,
 )
 TYPE_ARG: Final = ErrorCode("type-arg", "Check that generic type arguments are present", "General")
 TYPE_VAR: Final = ErrorCode("type-var", "Check that type variable values are valid", "General")
