@@ -275,8 +275,12 @@ def prepare_class_def(
 
     # Set up the parent class
     bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]
-    if not all(c.is_trait for c in bases[1:]):
-        errors.error("Non-trait bases must appear first in parent list", path, cdef.line)
+    if len(bases) > 1 and any(not c.is_trait for c in bases) and bases[0].is_trait:
+        # If the first base is a non-trait, don't ever error here. While it is correct
+        # to error if a trait comes before the next non-trait base (e.g. non-trait, trait,
+        # non-trait), it's pointless, confusing noise from the bigger issue: multiple
+        # inheritance is *not* supported.
+        errors.error("Non-trait base must appear first in parent list", path, cdef.line)
     ir.traits = [c for c in bases if c.is_trait]
 
     mro = []  # All mypyc base classes
