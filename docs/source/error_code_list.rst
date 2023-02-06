@@ -526,6 +526,9 @@ Whereas reading an unknown value will generate the more generic/serious
     # Error: TypedDict "Point" has no key "z"  [typeddict-item]
     _ = a["z"]
 
+.. note::
+
+    This error code is a sub-error code of a wider ``[typeddict-item]`` code.
 
 Check that type of target is known [has-type]
 ---------------------------------------------
