@@ -3354,7 +3354,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             is_subtype(right_type, left_type)
             and isinstance(left_type, Instance)
             and isinstance(right_type, Instance)
-            and left_type.type.alt_promote is not right_type.type
+            and not (
+                left_type.type.alt_promote is not None
+                and left_type.type.alt_promote.type is right_type.type
+            )
             and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling

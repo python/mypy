@@ -87,6 +87,13 @@ class NodeFixer(NodeVisitor[None]):
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
+            if info.alt_promote:
+                info.alt_promote.accept(self.type_fixer)
+                instance = Instance(info, [])
+                # Hack: We may also need to add a backwards promotion (from int to native int),
+                # since it might not be serialized.
+                if instance not in info.alt_promote.type._promote:
+                    info.alt_promote.type._promote.append(instance)
             if info._mro_refs:
                 info.mro = [
                     lookup_fully_qualified_typeinfo(
