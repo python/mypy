@@ -2198,3 +2198,17 @@ def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: Can use starred expression only as assignment target
 [builtins fixtures/tuple.pyi]
+
+
+[case testTypingExtensionsSuggestion]
+from typing import _FutureFeatureFixture
+
+# This import is only needed in tests. In real life, mypy will always have typing_extensions in its
+# build due to its pervasive use in typeshed. This assumption may one day prove False, but when
+# that day comes this suggestion will also be less helpful than it is today.
+import typing_extensions
+[out]
+main:1: error: Module "typing" has no attribute "_FutureFeatureFixture"
+main:1: note: Use `from typing_extensions import _FutureFeatureFixture` instead
+main:1: note: See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module
+[builtins fixtures/tuple.pyi]

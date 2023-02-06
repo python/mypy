@@ -53,13 +53,13 @@ python3 runtests.py
 
 You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
 ```
-tox -e py
+tox run -e py
 
 # Or some specific python version:
-tox -e py39
+tox run -e py39
 
 # Or some specific command:
-tox -e lint
+tox run -e lint
 ```
 
 Some useful commands for running specific tests include:

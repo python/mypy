@@ -82,6 +82,8 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rtruediv__": ("nb_true_divide", generate_bin_op_wrapper),
     "__floordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
     "__rfloordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
+    "__divmod__": ("nb_divmod", generate_bin_op_wrapper),
+    "__rdivmod__": ("nb_divmod", generate_bin_op_wrapper),
     "__lshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rlshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rshift__": ("nb_rshift", generate_bin_op_wrapper),

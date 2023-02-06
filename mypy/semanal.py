@@ -986,7 +986,7 @@ class SemanticAnalyzer(
                             # This error is off by default, since it is explicitly allowed
                             # by the PEP 673.
                             self.fail(
-                                "Redundant Self annotation on method first argument",
+                                'Redundant "Self" annotation for the first method argument',
                                 func,
                                 code=codes.REDUNDANT_SELF_TYPE,
                             )
@@ -2597,6 +2597,16 @@ class SemanticAnalyzer(
             ):
                 # Yes. Generate a helpful note.
                 self.msg.add_fixture_note(fullname, context)
+            else:
+                typing_extensions = self.modules.get("typing_extensions")
+                if typing_extensions and source_id in typing_extensions.names:
+                    self.msg.note(
+                        f"Use `from typing_extensions import {source_id}` instead", context
+                    )
+                    self.msg.note(
+                        "See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module",
+                        context,
+                    )
 
     def process_import_over_existing_name(
         self,
@@ -6646,5 +6656,16 @@ def is_trivial_body(block: Block) -> bool:
 def is_dataclass_transform_decorator(node: Node | None) -> bool:
     if isinstance(node, RefExpr):
         return is_dataclass_transform_decorator(node.node)
+    if isinstance(node, CallExpr):
+        # Like dataclasses.dataclass, transform-based decorators can be applied either with or
+        # without parameters; ie, both of these forms are accepted:
+        #
+        # @typing.dataclass_transform
+        # class Foo: ...
+        # @typing.dataclass_transform(eq=True, order=True, ...)
+        # class Bar: ...
+        #
+        # We need to unwrap the call for the second variant.
+        return is_dataclass_transform_decorator(node.callee)
 
     return isinstance(node, Decorator) and node.func.is_dataclass_transform

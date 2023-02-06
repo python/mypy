@@ -112,7 +112,7 @@ from _socket import (
     setdefaulttimeout as setdefaulttimeout,
     timeout as timeout,
 )
-from _typeshed import ReadableBuffer, Self, WriteableBuffer
+from _typeshed import ReadableBuffer, Self, Unused, WriteableBuffer
 from collections.abc import Iterable
 from enum import IntEnum, IntFlag
 from io import BufferedReader, BufferedRWPair, BufferedWriter, IOBase, RawIOBase, TextIOWrapper
@@ -655,10 +655,10 @@ class _SendableFile(Protocol):
 
 class socket(_socket.socket):
     def __init__(
-        self, family: AddressFamily | int = ..., type: SocketKind | int = ..., proto: int = ..., fileno: int | None = ...
+        self, family: AddressFamily | int = -1, type: SocketKind | int = -1, proto: int = -1, fileno: int | None = None
     ) -> None: ...
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, *args: object) -> None: ...
+    def __exit__(self, *args: Unused) -> None: ...
     def dup(self: Self) -> Self: ...  # noqa: F811
     def accept(self) -> tuple[socket, _RetAddress]: ...
     # Note that the makefile's documented windows-specific behavior is not represented
@@ -669,39 +669,39 @@ class socket(_socket.socket):
         mode: Literal["b", "rb", "br", "wb", "bw", "rwb", "rbw", "wrb", "wbr", "brw", "bwr"],
         buffering: Literal[0],
         *,
-        encoding: str | None = ...,
-        errors: str | None = ...,
-        newline: str | None = ...,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ) -> SocketIO: ...
     @overload
     def makefile(
         self,
         mode: Literal["rwb", "rbw", "wrb", "wbr", "brw", "bwr"],
-        buffering: Literal[-1, 1] | None = ...,
+        buffering: Literal[-1, 1] | None = None,
         *,
-        encoding: str | None = ...,
-        errors: str | None = ...,
-        newline: str | None = ...,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ) -> BufferedRWPair: ...
     @overload
     def makefile(
         self,
         mode: Literal["rb", "br"],
-        buffering: Literal[-1, 1] | None = ...,
+        buffering: Literal[-1, 1] | None = None,
         *,
-        encoding: str | None = ...,
-        errors: str | None = ...,
-        newline: str | None = ...,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ) -> BufferedReader: ...
     @overload
     def makefile(
         self,
         mode: Literal["wb", "bw"],
-        buffering: Literal[-1, 1] | None = ...,
+        buffering: Literal[-1, 1] | None = None,
         *,
-        encoding: str | None = ...,
-        errors: str | None = ...,
-        newline: str | None = ...,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ) -> BufferedWriter: ...
     @overload
     def makefile(
@@ -709,21 +709,21 @@ class socket(_socket.socket):
         mode: Literal["b", "rb", "br", "wb", "bw", "rwb", "rbw", "wrb", "wbr", "brw", "bwr"],
         buffering: int,
         *,
-        encoding: str | None = ...,
-        errors: str | None = ...,
-        newline: str | None = ...,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ) -> IOBase: ...
     @overload
     def makefile(
         self,
-        mode: Literal["r", "w", "rw", "wr", ""] = ...,
-        buffering: int | None = ...,
+        mode: Literal["r", "w", "rw", "wr", ""] = "r",
+        buffering: int | None = None,
         *,
-        encoding: str | None = ...,
-        errors: str | None = ...,
-        newline: str | None = ...,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ) -> TextIOWrapper: ...
-    def sendfile(self, file: _SendableFile, offset: int = ..., count: int | None = ...) -> int: ...
+    def sendfile(self, file: _SendableFile, offset: int = 0, count: int | None = None) -> int: ...
     @property
     def family(self) -> AddressFamily: ...  # type: ignore[override]
     @property
@@ -731,25 +731,24 @@ class socket(_socket.socket):
     def get_inheritable(self) -> bool: ...
     def set_inheritable(self, inheritable: bool) -> None: ...
 
-def fromfd(fd: _FD, family: AddressFamily | int, type: SocketKind | int, proto: int = ...) -> socket: ...
+def fromfd(fd: _FD, family: AddressFamily | int, type: SocketKind | int, proto: int = 0) -> socket: ...
 
 if sys.platform != "win32":
     if sys.version_info >= (3, 9):
-        # flags and address appear to be unused in send_fds and recv_fds
         def send_fds(
-            sock: socket, buffers: Iterable[ReadableBuffer], fds: Iterable[int], flags: int = ..., address: None = ...
+            sock: socket, buffers: Iterable[ReadableBuffer], fds: Iterable[int], flags: Unused = 0, address: Unused = None
         ) -> int: ...
-        def recv_fds(sock: socket, bufsize: int, maxfds: int, flags: int = ...) -> tuple[bytes, list[int], int, Any]: ...
+        def recv_fds(sock: socket, bufsize: int, maxfds: int, flags: int = 0) -> tuple[bytes, list[int], int, Any]: ...
 
 if sys.platform == "win32":
     def fromshare(info: bytes) -> socket: ...
 
 if sys.platform == "win32":
-    def socketpair(family: int = ..., type: int = ..., proto: int = ...) -> tuple[socket, socket]: ...
+    def socketpair(family: int = ..., type: int = ..., proto: int = 0) -> tuple[socket, socket]: ...
 
 else:
     def socketpair(
-        family: int | AddressFamily | None = ..., type: SocketType | int = ..., proto: int = ...
+        family: int | AddressFamily | None = None, type: SocketType | int = ..., proto: int = 0
     ) -> tuple[socket, socket]: ...
 
 class SocketIO(RawIOBase):
@@ -761,34 +760,34 @@ class SocketIO(RawIOBase):
     @property
     def mode(self) -> Literal["rb", "wb", "rwb"]: ...
 
-def getfqdn(name: str = ...) -> str: ...
+def getfqdn(name: str = "") -> str: ...
 
 if sys.version_info >= (3, 11):
     def create_connection(
         address: tuple[str | None, int],
         timeout: float | None = ...,  # noqa: F811
-        source_address: _Address | None = ...,
+        source_address: _Address | None = None,
         *,
-        all_errors: bool = ...,
+        all_errors: bool = False,
     ) -> socket: ...
 
 else:
     def create_connection(
-        address: tuple[str | None, int], timeout: float | None = ..., source_address: _Address | None = ...  # noqa: F811
+        address: tuple[str | None, int], timeout: float | None = ..., source_address: _Address | None = None  # noqa: F811
     ) -> socket: ...
 
 if sys.version_info >= (3, 8):
     def has_dualstack_ipv6() -> bool: ...
     def create_server(
-        address: _Address, *, family: int = ..., backlog: int | None = ..., reuse_port: bool = ..., dualstack_ipv6: bool = ...
+        address: _Address,
+        *,
+        family: int = ...,
+        backlog: int | None = None,
+        reuse_port: bool = False,
+        dualstack_ipv6: bool = False,
     ) -> socket: ...
 
 # the 5th tuple item is an address
 def getaddrinfo(
-    host: bytes | str | None,
-    port: bytes | str | int | None,
-    family: int = ...,
-    type: int = ...,
-    proto: int = ...,
-    flags: int = ...,
+    host: bytes | str | None, port: bytes | str | int | None, family: int = 0, type: int = 0, proto: int = 0, flags: int = 0
 ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...

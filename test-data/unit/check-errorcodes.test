@@ -672,7 +672,7 @@ class A:
 
 def g(self: A) -> None: pass
 
-A.f = g  # E: Cannot assign to a method  [assignment]
+A.f = g  # E: Cannot assign to a method  [method-assign]
 
 [case testErrorCodeDefinedHereNoteIgnore]
 import m
@@ -1006,3 +1006,35 @@ def f():
 # flags: --disable-error-code=annotation-unchecked
 def f():
     x: int = "no"  # No warning here
+
+[case testMethodAssignmentSuppressed]
+# flags: --disable-error-code=method-assign
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+
+def h(self: A) -> None: pass
+
+A.f = h
+# This actually works at runtime, but there is no way to express this in current type system
+A.f = A().g  # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "Callable[[A], None]")  [assignment]
+
+[case testMethodAssignCoveredByAssignmentIgnore]
+class A:
+    def f(self) -> None: pass
+def h(self: A) -> None: pass
+A.f = h  # type: ignore[assignment]
+
+[case testMethodAssignCoveredByAssignmentFlag]
+# flags: --disable-error-code=assignment
+class A:
+    def f(self) -> None: pass
+def h(self: A) -> None: pass
+A.f = h  # OK
+
+[case testMethodAssignCoveredByAssignmentUnused]
+# flags: --warn-unused-ignores
+class A:
+    def f(self) -> None: pass
+def h(self: A) -> None: pass
+A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use narrower [method-assign] instead of [assignment]

@@ -24,7 +24,7 @@ import requests
 
 
 def check_state() -> None:
-    if not os.path.isfile("README.md") and not os.path.isdir("mypy"):
+    if not os.path.isfile("pyproject.toml") or not os.path.isdir("mypy"):
         sys.exit("error: The current working directory must be the mypy repository root")
     out = subprocess.check_output(["git", "status", "-s", os.path.join("mypy", "typeshed")])
     if out:
@@ -185,9 +185,9 @@ def main() -> None:
     print("Created typeshed sync commit.")
 
     commits_to_cherry_pick = [
-        "780534b13722b7b0422178c049a1cbbf4ea4255b",  # LiteralString reverts
-        "5319fa34a8004c1568bb6f032a07b8b14cc95bed",  # sum reverts
-        "0062994228fb62975c6cef4d2c80d00c7aa1c545",  # ctypes reverts
+        "820c46a4d75ec5f6dc95c09845a317ff59c4b4bf",  # LiteralString reverts
+        "af7604de58c4c4952fd51a7556a6c56466113010",  # sum reverts
+        "fe40f814387fc671ba0cc679453b01eabeb7c112",  # ctypes reverts
     ]
     for commit in commits_to_cherry_pick:
         subprocess.run(["git", "cherry-pick", commit], check=True)

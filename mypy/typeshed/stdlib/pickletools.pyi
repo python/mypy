@@ -40,7 +40,7 @@ def read_uint8(f: IO[bytes]) -> int: ...
 
 uint8: ArgumentDescriptor
 
-def read_stringnl(f: IO[bytes], decode: bool = ..., stripquotes: bool = ...) -> bytes | str: ...
+def read_stringnl(f: IO[bytes], decode: bool = True, stripquotes: bool = True) -> bytes | str: ...
 
 stringnl: ArgumentDescriptor
 
@@ -160,8 +160,8 @@ def genops(pickle: bytes | bytearray | IO[bytes]) -> Iterator[tuple[OpcodeInfo, 
 def optimize(p: bytes | bytearray | IO[bytes]) -> bytes: ...
 def dis(
     pickle: bytes | bytearray | IO[bytes],
-    out: IO[str] | None = ...,
-    memo: MutableMapping[int, Any] | None = ...,
-    indentlevel: int = ...,
-    annotate: int = ...,
+    out: IO[str] | None = None,
+    memo: MutableMapping[int, Any] | None = None,
+    indentlevel: int = 4,
+    annotate: int = 0,
 ) -> None: ...
