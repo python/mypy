@@ -2932,7 +2932,7 @@ class TypeInfo(SymbolNode):
     # This results in some unintuitive results, such as that even
     # though i64 is compatible with int and int is compatible with
     # float, i64 is *not* compatible with float.
-    alt_promote: TypeInfo | None
+    alt_promote: mypy.types.Instance | None
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
@@ -3230,6 +3230,7 @@ class TypeInfo(SymbolNode):
             "bases": [b.serialize() for b in self.bases],
             "mro": [c.fullname for c in self.mro],
             "_promote": [p.serialize() for p in self._promote],
+            "alt_promote": None if self.alt_promote is None else self.alt_promote.serialize(),
             "declared_metaclass": (
                 None if self.declared_metaclass is None else self.declared_metaclass.serialize()
             ),
@@ -3266,6 +3267,11 @@ class TypeInfo(SymbolNode):
             assert isinstance(t, mypy.types.ProperType)
             _promote.append(t)
         ti._promote = _promote
+        ti.alt_promote = (
+            None
+            if data["alt_promote"] is None
+            else mypy.types.Instance.deserialize(data["alt_promote"])
+        )
         ti.declared_metaclass = (
             None
             if data["declared_metaclass"] is None
