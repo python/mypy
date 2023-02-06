@@ -192,7 +192,6 @@ from mypy.types import (
     Overloaded,
     PartialType,
     ProperType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,

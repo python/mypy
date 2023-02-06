@@ -140,7 +140,6 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,
