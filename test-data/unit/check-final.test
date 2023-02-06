@@ -210,9 +210,9 @@ class C:
     y: Final[int]  # E: Final name must be initialized with a value
     def __init__(self) -> None:
         self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer
-reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(x)  # N: Revealed type is "Any" 
 reveal_type(y)  # N: Revealed type is "builtins.int"
-reveal_type(C().x)  # N: Revealed type is "Any"
+reveal_type(C().x)  # N: Revealed type is "Any" 
 reveal_type(C().y)  # N: Revealed type is "builtins.int"
 reveal_type(C().z)  # N: Revealed type is "Any"
 [out]
