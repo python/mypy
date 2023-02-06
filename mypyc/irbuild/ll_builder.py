@@ -1363,7 +1363,7 @@ class LowLevelIRBuilder:
     ) -> None:
         """Compare two tagged integers using given operator (conditional context).
 
-        Assume lhs and and rhs are tagged integers.
+        Assume lhs and rhs are tagged integers.
 
         Args:
             lhs: Left operand

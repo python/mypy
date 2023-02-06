@@ -56,7 +56,7 @@ MIN_SHORT_INT: Final = -(MAX_SHORT_INT) - 1
 MAX_LITERAL_SHORT_INT: Final = MAX_SHORT_INT
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
-# Decription of the C type used to track the definedness of attributes and
+# Description of the C type used to track the definedness of attributes and
 # the presence of argument default values that have types with overlapping
 # error values. Each tracked attribute/argument has a dedicated bit in the
 # relevant bitmap.
