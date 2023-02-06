@@ -82,6 +82,8 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rtruediv__": ("nb_true_divide", generate_bin_op_wrapper),
     "__floordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
     "__rfloordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
+    "__divmod__": ("nb_divmod", generate_bin_op_wrapper),
+    "__rdivmod__": ("nb_divmod", generate_bin_op_wrapper),
     "__lshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rlshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rshift__": ("nb_rshift", generate_bin_op_wrapper),
@@ -331,7 +333,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         flags.append("_Py_TPFLAGS_HAVE_VECTORCALL")
         if not fields.get("tp_vectorcall"):
             # This is just a placeholder to please CPython. It will be
-            # overriden during setup.
+            # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
     fields["tp_flags"] = " | ".join(flags)
 

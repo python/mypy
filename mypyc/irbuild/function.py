@@ -123,7 +123,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     # if this is a registered singledispatch implementation with no other decorators), we should
     # treat this function as a regular function, not a decorated function
     elif dec.func in builder.fdefs_to_decorators:
-        # Obtain the the function name in order to construct the name of the helper function.
+        # Obtain the function name in order to construct the name of the helper function.
         name = dec.func.fullname.split(".")[-1]
 
         # Load the callable object representing the non-decorated function, and decorate it.
@@ -397,7 +397,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):
-        # Obtain the the function name in order to construct the name of the helper function.
+        # Obtain the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition(".")
         # Read the PyTypeObject representing the class, get the callable object
         # representing the non-decorated method

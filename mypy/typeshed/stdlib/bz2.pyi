@@ -19,7 +19,7 @@ class _WritableFileobj(Protocol):
     # def fileno(self) -> int: ...
     # def close(self) -> object: ...
 
-def compress(data: ReadableBuffer, compresslevel: int = ...) -> bytes: ...
+def compress(data: ReadableBuffer, compresslevel: int = 9) -> bytes: ...
 def decompress(data: ReadableBuffer) -> bytes: ...
 
 _ReadBinaryMode: TypeAlias = Literal["", "r", "rb"]
@@ -30,102 +30,102 @@ _WriteTextMode: TypeAlias = Literal["wt", "xt", "at"]
 @overload
 def open(
     filename: _ReadableFileobj,
-    mode: _ReadBinaryMode = ...,
-    compresslevel: int = ...,
-    encoding: None = ...,
-    errors: None = ...,
-    newline: None = ...,
+    mode: _ReadBinaryMode = "rb",
+    compresslevel: int = 9,
+    encoding: None = None,
+    errors: None = None,
+    newline: None = None,
 ) -> BZ2File: ...
 @overload
 def open(
     filename: _ReadableFileobj,
     mode: _ReadTextMode,
-    compresslevel: int = ...,
-    encoding: str | None = ...,
-    errors: str | None = ...,
-    newline: str | None = ...,
+    compresslevel: int = 9,
+    encoding: str | None = None,
+    errors: str | None = None,
+    newline: str | None = None,
 ) -> TextIO: ...
 @overload
 def open(
     filename: _WritableFileobj,
     mode: _WriteBinaryMode,
-    compresslevel: int = ...,
-    encoding: None = ...,
-    errors: None = ...,
-    newline: None = ...,
+    compresslevel: int = 9,
+    encoding: None = None,
+    errors: None = None,
+    newline: None = None,
 ) -> BZ2File: ...
 @overload
 def open(
     filename: _WritableFileobj,
     mode: _WriteTextMode,
-    compresslevel: int = ...,
-    encoding: str | None = ...,
-    errors: str | None = ...,
-    newline: str | None = ...,
+    compresslevel: int = 9,
+    encoding: str | None = None,
+    errors: str | None = None,
+    newline: str | None = None,
 ) -> TextIO: ...
 @overload
 def open(
     filename: StrOrBytesPath,
-    mode: _ReadBinaryMode | _WriteBinaryMode = ...,
-    compresslevel: int = ...,
-    encoding: None = ...,
-    errors: None = ...,
-    newline: None = ...,
+    mode: _ReadBinaryMode | _WriteBinaryMode = "rb",
+    compresslevel: int = 9,
+    encoding: None = None,
+    errors: None = None,
+    newline: None = None,
 ) -> BZ2File: ...
 @overload
 def open(
     filename: StrOrBytesPath,
     mode: _ReadTextMode | _WriteTextMode,
-    compresslevel: int = ...,
-    encoding: str | None = ...,
-    errors: str | None = ...,
-    newline: str | None = ...,
+    compresslevel: int = 9,
+    encoding: str | None = None,
+    errors: str | None = None,
+    newline: str | None = None,
 ) -> TextIO: ...
 @overload
 def open(
     filename: StrOrBytesPath | _ReadableFileobj | _WritableFileobj,
     mode: str,
-    compresslevel: int = ...,
-    encoding: str | None = ...,
-    errors: str | None = ...,
-    newline: str | None = ...,
+    compresslevel: int = 9,
+    encoding: str | None = None,
+    errors: str | None = None,
+    newline: str | None = None,
 ) -> BZ2File | TextIO: ...
 
 class BZ2File(BaseStream, IO[bytes]):
     def __enter__(self: Self) -> Self: ...
     if sys.version_info >= (3, 9):
         @overload
-        def __init__(self, filename: _WritableFileobj, mode: _WriteBinaryMode, *, compresslevel: int = ...) -> None: ...
+        def __init__(self, filename: _WritableFileobj, mode: _WriteBinaryMode, *, compresslevel: int = 9) -> None: ...
         @overload
-        def __init__(self, filename: _ReadableFileobj, mode: _ReadBinaryMode = ..., *, compresslevel: int = ...) -> None: ...
+        def __init__(self, filename: _ReadableFileobj, mode: _ReadBinaryMode = "r", *, compresslevel: int = 9) -> None: ...
         @overload
         def __init__(
-            self, filename: StrOrBytesPath, mode: _ReadBinaryMode | _WriteBinaryMode = ..., *, compresslevel: int = ...
+            self, filename: StrOrBytesPath, mode: _ReadBinaryMode | _WriteBinaryMode = "r", *, compresslevel: int = 9
         ) -> None: ...
     else:
         @overload
         def __init__(
-            self, filename: _WritableFileobj, mode: _WriteBinaryMode, buffering: Any | None = ..., compresslevel: int = ...
+            self, filename: _WritableFileobj, mode: _WriteBinaryMode, buffering: Any | None = None, compresslevel: int = 9
         ) -> None: ...
         @overload
         def __init__(
-            self, filename: _ReadableFileobj, mode: _ReadBinaryMode = ..., buffering: Any | None = ..., compresslevel: int = ...
+            self, filename: _ReadableFileobj, mode: _ReadBinaryMode = "r", buffering: Any | None = None, compresslevel: int = 9
         ) -> None: ...
         @overload
         def __init__(
             self,
             filename: StrOrBytesPath,
-            mode: _ReadBinaryMode | _WriteBinaryMode = ...,
-            buffering: Any | None = ...,
-            compresslevel: int = ...,
+            mode: _ReadBinaryMode | _WriteBinaryMode = "r",
+            buffering: Any | None = None,
+            compresslevel: int = 9,
         ) -> None: ...
 
-    def read(self, size: int | None = ...) -> bytes: ...
-    def read1(self, size: int = ...) -> bytes: ...
-    def readline(self, size: SupportsIndex = ...) -> bytes: ...  # type: ignore[override]
+    def read(self, size: int | None = -1) -> bytes: ...
+    def read1(self, size: int = -1) -> bytes: ...
+    def readline(self, size: SupportsIndex = -1) -> bytes: ...  # type: ignore[override]
     def readinto(self, b: WriteableBuffer) -> int: ...
-    def readlines(self, size: SupportsIndex = ...) -> list[bytes]: ...
-    def seek(self, offset: int, whence: int = ...) -> int: ...
+    def readlines(self, size: SupportsIndex = -1) -> list[bytes]: ...
+    def seek(self, offset: int, whence: int = 0) -> int: ...
     def write(self, data: ReadableBuffer) -> int: ...
     def writelines(self, seq: Iterable[ReadableBuffer]) -> None: ...
 
@@ -137,7 +137,7 @@ class BZ2Compressor:
 
 @final
 class BZ2Decompressor:
-    def decompress(self, data: ReadableBuffer, max_length: int = ...) -> bytes: ...
+    def decompress(self, data: ReadableBuffer, max_length: int = -1) -> bytes: ...
     @property
     def eof(self) -> bool: ...
     @property

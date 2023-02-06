@@ -107,36 +107,36 @@ if sys.version_info >= (3, 8):
     def dump(
         obj: Any,
         file: SupportsWrite[bytes],
-        protocol: int | None = ...,
+        protocol: int | None = None,
         *,
-        fix_imports: bool = ...,
-        buffer_callback: _BufferCallback = ...,
+        fix_imports: bool = True,
+        buffer_callback: _BufferCallback = None,
     ) -> None: ...
     def dumps(
-        obj: Any, protocol: int | None = ..., *, fix_imports: bool = ..., buffer_callback: _BufferCallback = ...
+        obj: Any, protocol: int | None = None, *, fix_imports: bool = True, buffer_callback: _BufferCallback = None
     ) -> bytes: ...
     def load(
         file: _ReadableFileobj,
         *,
-        fix_imports: bool = ...,
-        encoding: str = ...,
-        errors: str = ...,
+        fix_imports: bool = True,
+        encoding: str = "ASCII",
+        errors: str = "strict",
         buffers: Iterable[Any] | None = ...,
     ) -> Any: ...
     def loads(
         __data: ReadableBuffer,
         *,
-        fix_imports: bool = ...,
-        encoding: str = ...,
-        errors: str = ...,
+        fix_imports: bool = True,
+        encoding: str = "ASCII",
+        errors: str = "strict",
         buffers: Iterable[Any] | None = ...,
     ) -> Any: ...
 
 else:
-    def dump(obj: Any, file: SupportsWrite[bytes], protocol: int | None = ..., *, fix_imports: bool = ...) -> None: ...
-    def dumps(obj: Any, protocol: int | None = ..., *, fix_imports: bool = ...) -> bytes: ...
-    def load(file: _ReadableFileobj, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
-    def loads(data: ReadableBuffer, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
+    def dump(obj: Any, file: SupportsWrite[bytes], protocol: int | None = None, *, fix_imports: bool = True) -> None: ...
+    def dumps(obj: Any, protocol: int | None = None, *, fix_imports: bool = True) -> bytes: ...
+    def load(file: _ReadableFileobj, *, fix_imports: bool = True, encoding: str = "ASCII", errors: str = "strict") -> Any: ...
+    def loads(data: ReadableBuffer, *, fix_imports: bool = True, encoding: str = "ASCII", errors: str = "strict") -> Any: ...
 
 class PickleError(Exception): ...
 class PicklingError(PickleError): ...

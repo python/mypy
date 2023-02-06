@@ -1731,6 +1731,45 @@ def f5():
 L0:
     return 4
 
+[case testI64OperationsWithBools]
+from mypy_extensions import i64
+
+# TODO: Other mixed operations
+
+def add_bool_to_int(n: i64, b: bool) -> i64:
+    return n + b
+
+def compare_bool_to_i64(n: i64, b: bool) -> bool:
+    if n == b:
+        return b != n
+    return True
+[out]
+def add_bool_to_int(n, b):
+    n :: int64
+    b :: bool
+    r0, r1 :: int64
+L0:
+    r0 = extend b: builtins.bool to int64
+    r1 = n + r0
+    return r1
+def compare_bool_to_i64(n, b):
+    n :: int64
+    b :: bool
+    r0 :: int64
+    r1 :: bit
+    r2 :: int64
+    r3 :: bit
+L0:
+    r0 = extend b: builtins.bool to int64
+    r1 = n == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = extend b: builtins.bool to int64
+    r3 = r2 != n
+    return r3
+L2:
+    return 1
+
 [case testI64Cast]
 from typing import cast
 from mypy_extensions import i64

@@ -432,7 +432,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if not op.is_init and attr_rtype.is_refcounted:
-                # This is not an initalization (where we know that the attribute was
+                # This is not an initialization (where we know that the attribute was
                 # previously undefined), so decref the old value.
                 always_defined = cl.is_always_defined(op.attr)
                 if not always_defined:
