@@ -214,6 +214,7 @@ from mypy.semanal_shared import (
     PRIORITY_FALLBACKS,
     SemanticAnalyzerInterface,
     calculate_tuple_fallback,
+    find_dataclass_transform_spec,
     has_placeholder,
     set_callable_name as set_callable_name,
 )
@@ -1737,7 +1738,7 @@ class SemanticAnalyzer(
                 # Special case: if the decorator is itself decorated with
                 # typing.dataclass_transform, apply the hook for the dataclasses plugin
                 # TODO: remove special casing here
-                if hook is None and is_dataclass_transform_decorator(decorator):
+                if hook is None and find_dataclass_transform_spec(decorator):
                     hook = dataclasses_plugin.dataclass_tag_callback
                 if hook:
                     hook(ClassDefContext(defn, decorator, self))
@@ -6687,24 +6688,3 @@ def is_trivial_body(block: Block) -> bool:
     return isinstance(stmt, PassStmt) or (
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
     )
-
-
-def is_dataclass_transform_decorator(node: Node | None) -> bool:
-    if isinstance(node, RefExpr):
-        return is_dataclass_transform_decorator(node.node)
-    if isinstance(node, CallExpr):
-        # Like dataclasses.dataclass, transform-based decorators can be applied either with or
-        # without parameters; ie, both of these forms are accepted:
-        #
-        # @typing.dataclass_transform
-        # class Foo: ...
-        # @typing.dataclass_transform(eq=True, order=True, ...)
-        # class Bar: ...
-        #
-        # We need to unwrap the call for the second variant.
-        return is_dataclass_transform_decorator(node.callee)
-
-    if isinstance(node, Decorator) and node.func.dataclass_transform_spec is not None:
-        return True
-
-    return False

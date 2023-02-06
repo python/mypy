@@ -14,13 +14,11 @@ from mypy.nodes import (
     ARG_STAR,
     ARG_STAR2,
     MDEF,
-    SYMBOL_FUNCBASE_TYPES,
     Argument,
     AssignmentStmt,
     CallExpr,
     Context,
     DataclassTransformSpec,
-    Decorator,
     Expression,
     JsonDict,
     NameExpr,
@@ -41,6 +39,7 @@ from mypy.plugins.common import (
     add_method,
     deserialize_and_fixup_type,
 )
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
 from mypy.typeops import map_type_from_supertype
@@ -679,26 +678,20 @@ def _get_transform_spec(reason: Expression) -> DataclassTransformSpec:
     In those cases, we return a default spec rather than one based on a call to
     `typing.dataclass_transform`.
     """
-    node: Node | None = reason
+    if _is_dataclasses_decorator(reason):
+        return _TRANSFORM_SPEC_FOR_DATACLASSES
 
-    # The spec only lives on the function/class definition itself, so we need to unwrap down to that
-    # point
-    if isinstance(node, CallExpr):
-        # Decorators may take the form of either @decorator or @decorator(...); unwrap the latter
-        node = node.callee
-    if isinstance(node, RefExpr):
-        # If we see dataclasses.dataclass here, we know that we're not going to find a transform
-        # spec, so return early.
-        if node.fullname in dataclass_makers:
-            return _TRANSFORM_SPEC_FOR_DATACLASSES
-        node = node.node
-    if isinstance(node, Decorator):
-        node = node.func
-
-    if isinstance(node, SYMBOL_FUNCBASE_TYPES) and node.dataclass_transform_spec is not None:
-        return node.dataclass_transform_spec
-
-    raise AssertionError(
+    spec = find_dataclass_transform_spec(reason)
+    assert spec is not None, (
         "trying to find dataclass transform spec, but reason is neither dataclasses.dataclass nor "
         "decorated with typing.dataclass_transform"
     )
+    return spec
+
+
+def _is_dataclasses_decorator(node: Node) -> bool:
+    if isinstance(node, CallExpr):
+        node = node.callee
+    if isinstance(node, RefExpr):
+        return node.fullname in dataclass_makers
+    return False
