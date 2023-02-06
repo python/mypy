@@ -255,7 +255,7 @@ class TestRun(MypycDataSuite):
             assert False, "Compile error"
 
         # Check that serialization works on this IR. (Only on the first
-        # step because the the returned ir only includes updated code.)
+        # step because the returned ir only includes updated code.)
         if incremental_step == 1:
             check_serialization_roundtrip(ir)
 
