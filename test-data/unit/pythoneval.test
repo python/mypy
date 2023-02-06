@@ -1877,3 +1877,23 @@ for value in enum_iter(socket.SocketKind):
 _testEnumIterMetaInference.py:8: note: Revealed type is "typing.Iterator[_E`-1]"
 _testEnumIterMetaInference.py:9: note: Revealed type is "_E`-1"
 _testEnumIterMetaInference.py:13: note: Revealed type is "socket.SocketKind"
+
+[case testStarUnpackNestedUnderscore]
+from typing import Tuple, Dict
+
+def crash() -> None:
+    d: Dict[int, Tuple[str, int, str]] = {}
+    k, (v1, *_) = next(iter(d.items()))
+
+def test1() -> None:
+    d: Dict[int, Tuple[str, int, int]] = {}
+    k, (v1, *vs) = next(iter(d.items()))
+    reveal_type(vs)
+
+def test2() -> None:
+    d: Dict[int, Tuple[str, int, str]] = {}
+    k, (v1, *vs) = next(iter(d.items()))
+    reveal_type(vs)
+[out]
+_testStarUnpackNestedUnderscore.py:10: note: Revealed type is "builtins.list[builtins.int]"
+_testStarUnpackNestedUnderscore.py:15: note: Revealed type is "builtins.list[builtins.object]"
