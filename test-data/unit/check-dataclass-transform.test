@@ -1,5 +1,5 @@
 [case testDataclassTransformReusesDataclassLogic]
-# flags: --python-version 3.7
+# flags: --python-version 3.11
 from typing import dataclass_transform, Type
 
 @dataclass_transform()
@@ -46,7 +46,7 @@ Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformParametersAreApplied]
-# flags: --python-version 3.7
+# flags: --python-version 3.11
 from typing import dataclass_transform, Callable, Type
 
 @dataclass_transform()
@@ -68,7 +68,7 @@ Person('John', 21, None)  # E: Too many arguments for "Person"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformParametersMustBeBoolLiterals]
-# flags: --python-version 3.7
+# flags: --python-version 3.11
 from typing import dataclass_transform, Callable, Type
 
 @dataclass_transform()
@@ -87,7 +87,7 @@ class B: ...
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformDefaultParamsMustBeLiterals]
-# flags: --python-version 3.7
+# flags: --python-version 3.11
 from typing import dataclass_transform, Type
 
 BOOLEAN_CONSTANT = True
@@ -103,7 +103,7 @@ def bar(cls: Type) -> Type:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformUnrecognizedParamsAreErrors]
-# flags: --python-version 3.7
+# flags: --python-version 3.11
 from typing import dataclass_transform, Type
 
 BOOLEAN_CONSTANT = True
@@ -117,7 +117,7 @@ def foo(cls: Type) -> Type:
 
 
 [case testDataclassTransformDefaultParams]
-# flags: --python-version 3.7
+# flags: --python-version 3.11
 from typing import dataclass_transform, Type, Callable
 
 @dataclass_transform(eq_default=False)
@@ -159,7 +159,7 @@ b.x = 2  # E: Property "x" defined in "B" is read-only
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformFieldSpecifiersDefaultsToEmpty]
-# flags: --python-version 3.7
+# flags: --python-version 3.11
 from dataclasses import field, dataclass
 from typing import dataclass_transform, Type
 
