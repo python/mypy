@@ -24,7 +24,7 @@ allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
 
 # Keep track of the original error code when the error code of a message is changed.
 # This is used to give notes about out-of-date "type: ignore" comments.
-original_error_codes: Final = {codes.LITERAL_REQ: codes.MISC}
+original_error_codes: Final = {codes.LITERAL_REQ: codes.MISC, codes.TYPE_ABSTRACT: codes.MISC}
 
 
 class ErrorInfo:

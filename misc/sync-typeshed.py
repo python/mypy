@@ -35,10 +35,13 @@ def check_state() -> None:
 def update_typeshed(typeshed_dir: str, commit: str | None) -> str:
     """Update contents of local typeshed copy.
 
+    We maintain our own separate mypy_extensions stubs, since it's
+    treated specially by mypy and we make assumptions about what's there.
+    We don't sync mypy_extensions stubs here -- this is done manually.
+
     Return the normalized typeshed commit hash.
     """
     assert os.path.isdir(os.path.join(typeshed_dir, "stdlib"))
-    assert os.path.isdir(os.path.join(typeshed_dir, "stubs"))
     if commit:
         subprocess.run(["git", "checkout", commit], check=True, cwd=typeshed_dir)
     commit = git_head_commit(typeshed_dir)
@@ -48,15 +51,6 @@ def update_typeshed(typeshed_dir: str, commit: str | None) -> str:
     shutil.rmtree(stdlib_dir)
     # Copy new stdlib stubs.
     shutil.copytree(os.path.join(typeshed_dir, "stdlib"), stdlib_dir)
-    # Copy mypy_extensions stubs. We don't want to use a stub package, since it's
-    # treated specially by mypy and we make assumptions about what's there.
-    stubs_dir = os.path.join("mypy", "typeshed", "stubs")
-    shutil.rmtree(stubs_dir)
-    os.makedirs(stubs_dir)
-    shutil.copytree(
-        os.path.join(typeshed_dir, "stubs", "mypy-extensions"),
-        os.path.join(stubs_dir, "mypy-extensions"),
-    )
     shutil.copy(os.path.join(typeshed_dir, "LICENSE"), os.path.join("mypy", "typeshed"))
     return commit
 

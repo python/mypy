@@ -55,8 +55,8 @@ def my_dataclass(*, eq: bool, order: bool) -> Callable[[Type], Type]:
         return cls
     return transform
 
-@my_dataclass(eq=False, order=True)
-class Person:  # E: eq must be True if order is True
+@my_dataclass(eq=False, order=True)  # E: "eq" must be True if "order" is True
+class Person:
     name: str
     age: int
 

@@ -1877,3 +1877,27 @@ for value in enum_iter(socket.SocketKind):
 _testEnumIterMetaInference.py:8: note: Revealed type is "typing.Iterator[_E`-1]"
 _testEnumIterMetaInference.py:9: note: Revealed type is "_E`-1"
 _testEnumIterMetaInference.py:13: note: Revealed type is "socket.SocketKind"
+
+[case testNativeIntTypes]
+# Spot check various native int operations with full stubs.
+from mypy_extensions import i64, i32
+
+x: i64 = 0
+y: int = x
+x = i64(0)
+y = int(x)
+i64()
+i64("12")
+i64("ab", 16)
+i64(1.2)
+float(i64(1))
+
+i64(1) + i32(2)  # Error
+reveal_type(x + y)
+reveal_type(y + x)
+a = [0]
+a[x]
+[out]
+_testNativeIntTypes.py:14: error: Unsupported operand types for + ("i64" and "i32")
+_testNativeIntTypes.py:15: note: Revealed type is "mypy_extensions.i64"
+_testNativeIntTypes.py:16: note: Revealed type is "mypy_extensions.i64"

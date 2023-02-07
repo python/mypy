@@ -672,8 +672,8 @@ app1 >= app3
 # flags: --python-version 3.7
 from dataclasses import dataclass
 
-@dataclass(eq=False, order=True)
-class Application:  # E: eq must be True if order is True
+@dataclass(eq=False, order=True)  # E: "eq" must be True if "order" is True
+class Application:
    ...
 
 [builtins fixtures/dataclasses.pyi]
@@ -684,7 +684,7 @@ from dataclasses import dataclass
 
 @dataclass(order=True)
 class Application:
-  def __lt__(self, other: 'Application') -> bool: # E: You may not have a custom __lt__ method when order=True
+  def __lt__(self, other: 'Application') -> bool: # E: You may not have a custom "__lt__" method when "order" is True
     ...
 
 [builtins fixtures/dataclasses.pyi]

@@ -455,7 +455,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # Special case: Low-level integer types are compatible with 'int'. We can't
                 # use promotions, since 'int' is already promoted to low-level integer types,
                 # and we can't have circular promotions.
-                if left.type.alt_promote is right.type:
+                if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
             # Always try a nominal check if possible,
