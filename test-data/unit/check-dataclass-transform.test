@@ -93,13 +93,13 @@ from typing import dataclass_transform, Type, Final
 BOOLEAN_CONSTANT = True
 FINAL_BOOLEAN: Final = True
 
-@dataclass_transform(eq_default=BOOLEAN_CONSTANT) # E: eq_default argument must be True or False
+@dataclass_transform(eq_default=BOOLEAN_CONSTANT) # E: "eq_default" argument must be a True or False literal
 def foo(cls: Type) -> Type:
     return cls
-@dataclass_transform(eq_default=(not True)) # E: eq_default argument must be True or False
+@dataclass_transform(eq_default=(not True)) # E: "eq_default" argument must be a True or False literal
 def bar(cls: Type) -> Type:
     return cls
-@dataclass_transform(eq_default=FINAL_BOOLEAN) # E: eq_default argument must be True or False
+@dataclass_transform(eq_default=FINAL_BOOLEAN) # E: "eq_default" argument must be a True or False literal
 def baz(cls: Type) -> Type:
     return cls
 
@@ -112,7 +112,7 @@ from typing import dataclass_transform, Type
 
 BOOLEAN_CONSTANT = True
 
-@dataclass_transform(nonexistant=True) # E: unrecognized dataclass_transform parameter 'nonexistant'
+@dataclass_transform(nonexistant=True) # E: Unrecognized dataclass_transform parameter "nonexistant"
 def foo(cls: Type) -> Type:
     return cls
 

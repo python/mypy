@@ -6472,12 +6472,12 @@ class SemanticAnalyzer(
             # field_specifiers is currently the only non-boolean argument; check for it first so
             # so the rest of the block can fail through to handling booleans
             if name == "field_specifiers":
-                self.fail("field_specifiers support is currently unimplemented", call)
+                self.fail('"field_specifiers" support is currently unimplemented', call)
                 continue
 
             boolean = self.parse_bool(value)
             if boolean is None:
-                self.fail(f"{name} argument must be True or False", call)
+                self.fail(f'"{name}" argument must be a True or False literal', call)
                 continue
 
             if name == "eq_default":
@@ -6489,7 +6489,7 @@ class SemanticAnalyzer(
             elif name == "frozen_default":
                 parameters.frozen_default = boolean
             else:
-                self.fail(f"unrecognized dataclass_transform parameter '{name}'", call)
+                self.fail(f'Unrecognized dataclass_transform parameter "{name}"', call)
 
         return parameters
 
