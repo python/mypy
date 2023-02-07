@@ -162,6 +162,27 @@ b.x = 2  # E: Property "x" defined in "B" is read-only
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassTransformDefaultsCanBeOverridden]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Callable, Type
+
+@dataclass_transform(kw_only_default=True)
+def my_dataclass(*, kw_only: bool = True) -> Callable[[Type], Type]:
+    return lambda cls: cls
+
+@my_dataclass()
+class KwOnly:
+    x: int
+@my_dataclass(kw_only=False)
+class KwOptional:
+    x: int
+
+KwOnly(5)  # E: Too many positional arguments for "KwOnly"
+KwOptional(5)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassTransformFieldSpecifiersDefaultsToEmpty]
 # flags: --python-version 3.11
 from dataclasses import field, dataclass
