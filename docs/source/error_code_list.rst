@@ -805,7 +805,7 @@ Check that literal is used where expected [literal-required]
 ------------------------------------------------------------
 
 There are some places where only a (string) literal value is expected for
-the purposes of statis type checking, for example a ``TypedDict`` key, or
+the purposes of static type checking, for example a ``TypedDict`` key, or
 a ``__match_args__`` item. Providing a ``str``-valued variable in such contexts
 will result in an error. Note however, in many cases you can use ``Final``,
 or ``Literal`` variables, for example:
