@@ -724,7 +724,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     literal_value = values[0]
             if literal_value is None:
                 key_context = item_name_expr or item_arg
-                self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
+                self.chk.fail(
+                    message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                    key_context,
+                    code=codes.LITERAL_REQ,
+                )
                 return None
             else:
                 item_names.append(literal_value)
