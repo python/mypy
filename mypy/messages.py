@@ -1787,7 +1787,9 @@ class MessageBuilder:
 
     def concrete_only_assign(self, typ: Type, context: Context) -> None:
         self.fail(
-            f"Can only assign concrete classes to a variable of type {format_type(typ)}", context
+            f"Can only assign concrete classes to a variable of type {format_type(typ)}",
+            context,
+            code=codes.TYPE_ABSTRACT,
         )
 
     def concrete_only_call(self, typ: Type, context: Context) -> None:
