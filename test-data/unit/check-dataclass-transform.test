@@ -146,6 +146,15 @@ class A:
     x: int
 A(1) > A(2)
 
+@dataclass_transform(frozen_default=True)
+def frozen(cls: Type) -> Type:
+    return cls
+@frozen
+class B:
+    x: int
+b = B(x=1)
+b.x = 2  # E: Property "x" defined in "B" is read-only
+
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 

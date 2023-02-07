@@ -66,6 +66,7 @@ _TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
     eq_default=True,
     order_default=False,
     kw_only_default=False,
+    frozen_default=False,
     field_specifiers=("dataclasses.Field", "dataclasses.field"),
 )
 
@@ -182,7 +183,7 @@ class DataclassTransformer:
             "init": _get_decorator_bool_argument(self._ctx, "init", True),
             "eq": _get_decorator_bool_argument(self._ctx, "eq", self._spec.eq_default),
             "order": _get_decorator_bool_argument(self._ctx, "order", self._spec.order_default),
-            "frozen": _get_decorator_bool_argument(self._ctx, "frozen", False),
+            "frozen": _get_decorator_bool_argument(self._ctx, "frozen", self._spec.frozen_default),
             "slots": _get_decorator_bool_argument(self._ctx, "slots", False),
             "match_args": _get_decorator_bool_argument(self._ctx, "match_args", True),
         }

@@ -309,13 +309,6 @@ FUTURE_IMPORTS: Final = {
 # available very early on.
 CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
 
-KNOWN_DATACLASS_TRANSFORM_PARAMETERS: Final = (
-    "eq_default",
-    "order_default",
-    "kw_only_default",
-    "field_specifiers",
-)
-
 
 # Used for tracking incomplete references
 Tag: _TypeAlias = int
@@ -6476,9 +6469,6 @@ class SemanticAnalyzer(
         typing.dataclass_transform."""
         parameters = DataclassTransformSpec()
         for name, value in zip(call.arg_names, call.args):
-            if name not in KNOWN_DATACLASS_TRANSFORM_PARAMETERS:
-                self.fail(f"unrecognized dataclass_transform parameter '{name}'", call)
-
             # field_specifiers is currently the only non-boolean argument; check for it first so
             # so the rest of the block can fail through to handling booleans
             if name == "field_specifiers":
@@ -6487,7 +6477,7 @@ class SemanticAnalyzer(
 
             boolean = self.parse_bool(value)
             if boolean is None:
-                self.fail(f"{name} argument must be True or False.", call)
+                self.fail(f"{name} argument must be True or False", call)
                 continue
 
             if name == "eq_default":
@@ -6496,6 +6486,10 @@ class SemanticAnalyzer(
                 parameters.order_default = boolean
             elif name == "kw_only_default":
                 parameters.kw_only_default = boolean
+            elif name == "frozen_default":
+                parameters.frozen_default = boolean
+            else:
+                self.fail(f"unrecognized dataclass_transform parameter '{name}'", call)
 
         return parameters
 

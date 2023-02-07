@@ -3871,7 +3871,13 @@ class DataclassTransformSpec:
     """Specifies how a dataclass-like transform should be applied. The fields here are based on the
     parameters accepted by `typing.dataclass_transform`."""
 
-    __slots__ = ("eq_default", "order_default", "kw_only_default", "field_specifiers")
+    __slots__ = (
+        "eq_default",
+        "order_default",
+        "kw_only_default",
+        "frozen_default",
+        "field_specifiers",
+    )
 
     def __init__(
         self,
@@ -3880,10 +3886,15 @@ class DataclassTransformSpec:
         order_default: bool | None = None,
         kw_only_default: bool | None = None,
         field_specifiers: tuple[str, ...] | None = None,
+        # Specified outside of PEP 681:
+        # frozen_default was added to CPythonin https://github.com/python/cpython/pull/99958 citing
+        # positive discussion in typing-sig
+        frozen_default: bool | None = None,
     ):
         self.eq_default = eq_default if eq_default is not None else True
         self.order_default = order_default if order_default is not None else False
         self.kw_only_default = kw_only_default if kw_only_default is not None else False
+        self.frozen_default = frozen_default if frozen_default is not None else False
         self.field_specifiers = field_specifiers if field_specifiers is not None else ()
 
     def serialize(self) -> JsonDict:
@@ -3891,6 +3902,7 @@ class DataclassTransformSpec:
             "eq_default": self.eq_default,
             "order_default": self.order_default,
             "kw_only_default": self.kw_only_default,
+            "frozen_only_default": self.frozen_default,
             "field_specifiers": self.field_specifiers,
         }
 
@@ -3900,6 +3912,7 @@ class DataclassTransformSpec:
             eq_default=data.get("eq_default"),
             order_default=data.get("order_default"),
             kw_only_default=data.get("kw_only_default"),
+            frozen_default=data.get("frozen_default"),
             field_specifiers=data.get("field_specifiers"),
         )
 
