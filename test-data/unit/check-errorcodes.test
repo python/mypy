@@ -481,6 +481,14 @@ not_exist = a['not_exist'] # type: ignore[typeddict-item]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testErrorCodeTypedDictSubCodeIgnore]
+from typing_extensions import TypedDict
+class D(TypedDict):
+    x: int
+d: D = {'x': 1, 'y': 2}  # type: ignore[typeddict-item]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testErrorCodeCannotDetermineType]
 y = x  # E: Cannot determine type of "x"  [has-type]  # E: Name "x" is used before definition  [used-before-def]
 reveal_type(y)  # N: Revealed type is "Any"
