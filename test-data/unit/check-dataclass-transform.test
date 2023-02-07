@@ -92,10 +92,10 @@ from typing import dataclass_transform, Type
 
 BOOLEAN_CONSTANT = True
 
-@dataclass_transform(eq_default=BOOLEAN_CONSTANT) # E: eq_default argument must be True or False.
+@dataclass_transform(eq_default=BOOLEAN_CONSTANT) # E: eq_default argument must be True or False
 def foo(cls: Type) -> Type:
     return cls
-@dataclass_transform(eq_default=(not True)) # E: eq_default argument must be True or False.
+@dataclass_transform(eq_default=(not True)) # E: eq_default argument must be True or False
 def bar(cls: Type) -> Type:
     return cls
 
