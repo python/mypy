@@ -129,8 +129,8 @@ def no_eq(*, order: bool = False) -> Callable[[Type], Type]:
     return lambda cls: cls
 @no_eq()
 class Foo: ...
-@no_eq(order=True)
-class Bar: ...  # E: eq must be True if order is True
+@no_eq(order=True)  # E: "eq" must be True if "order" is True
+class Bar: ...
 
 
 @dataclass_transform(kw_only_default=True)
