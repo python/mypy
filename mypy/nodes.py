@@ -506,9 +506,6 @@ class FuncBase(Node):
         "is_static",  # Uses "@staticmethod"
         "is_final",  # Uses "@final"
         "_fullname",
-        # Present when a function is decorated with "@typing.dataclass_transform" or similar, and
-        # records the parameters passed to typing.dataclass_transform for later use
-        "dataclass_transform_spec",
     )
 
     def __init__(self) -> None:
@@ -527,7 +524,6 @@ class FuncBase(Node):
         self.is_final = False
         # Name with module prefix
         self._fullname = ""
-        self.dataclass_transform_spec: DataclassTransformSpec | None = None
 
     @property
     @abstractmethod
@@ -588,11 +584,6 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             "fullname": self._fullname,
             "impl": None if self.impl is None else self.impl.serialize(),
             "flags": get_flags(self, FUNCBASE_FLAGS),
-            "dataclass_transform_spec": (
-                None
-                if self.dataclass_transform_spec is None
-                else self.dataclass_transform_spec.serialize()
-            ),
         }
 
     @classmethod
@@ -611,11 +602,6 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             assert isinstance(typ, mypy.types.ProperType)
             res.type = typ
         res._fullname = data["fullname"]
-        res.dataclass_transform_spec = (
-            DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
-            if data["dataclass_transform_spec"] is not None
-            else None
-        )
         set_flags(res, data["flags"])
         # NOTE: res.info will be set in the fixup phase.
         return res
@@ -764,6 +750,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "deco_line",
         "is_trivial_body",
         "is_mypy_only",
+        # Present only when a function is decorated with @typing.datasclass_transform or similar
+        "dataclass_transform_spec",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -791,6 +779,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.deco_line: int | None = None
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
+        self.dataclass_transform_spec: DataclassTransformSpec | None = None
 
     @property
     def name(self) -> str:

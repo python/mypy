@@ -11,7 +11,6 @@ from mypy_extensions import trait
 from mypy import join
 from mypy.errorcodes import ErrorCode
 from mypy.nodes import (
-    SYMBOL_FUNCBASE_TYPES,
     CallExpr,
     Context,
     DataclassTransformSpec,
@@ -379,7 +378,7 @@ def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec |
         # `@dataclass_transform(...)` syntax and never `@dataclass_transform`
         node = node.func
 
-    if isinstance(node, SYMBOL_FUNCBASE_TYPES):
+    if isinstance(node, FuncDef):
         return node.dataclass_transform_spec
 
     return None
