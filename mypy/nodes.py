@@ -1079,6 +1079,7 @@ class ClassDef(Statement):
         "has_incompatible_baseclass",
         "deco_line",
         "removed_statements",
+        "dataclass_transform_spec",
     )
 
     __match_args__ = ("name", "defs")
@@ -1125,6 +1126,7 @@ class ClassDef(Statement):
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: int | None = None
         self.removed_statements = []
+        self.dataclass_transform_spec: DataclassTransformSpec | None = None
 
     @property
     def fullname(self) -> str:
@@ -1148,6 +1150,11 @@ class ClassDef(Statement):
             "name": self.name,
             "fullname": self.fullname,
             "type_vars": [v.serialize() for v in self.type_vars],
+            "dataclass_transform_spec": (
+                self.dataclass_transform_spec.serialize()
+                if self.dataclass_transform_spec is not None
+                else None
+            ),
         }
 
     @classmethod
@@ -1163,6 +1170,10 @@ class ClassDef(Statement):
             ],
         )
         res.fullname = data["fullname"]
+        if data.get("dataclass_transform_spec") is not None:
+            res.dataclass_transform_spec = DataclassTransformSpec.deserialize(
+                data["dataclass_transform_spec"]
+            )
         return res
 
 

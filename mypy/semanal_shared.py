@@ -12,6 +12,7 @@ from mypy import join
 from mypy.errorcodes import ErrorCode
 from mypy.nodes import (
     CallExpr,
+    ClassDef,
     Context,
     DataclassTransformSpec,
     Decorator,
@@ -378,7 +379,24 @@ def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec |
         # `@dataclass_transform(...)` syntax and never `@dataclass_transform`
         node = node.func
 
+    # For functions, we can directly consult the AST field for the spec
     if isinstance(node, FuncDef):
         return node.dataclass_transform_spec
+
+    if isinstance(node, ClassDef):
+        node = node.info
+    if isinstance(node, TypeInfo):
+        # Search all parent classes to see if any are decorated with `typing.dataclass_transform`
+        for base in node.mro[1:]:
+            if base.defn.dataclass_transform_spec is not None:
+                return base.defn.dataclass_transform_spec
+
+        # Check if there is a metaclass that is decorated with `typing.dataclass_transform`
+        metaclass_type = node.metaclass_type
+        if (
+            metaclass_type is not None
+            and metaclass_type.type.defn.dataclass_transform_spec is not None
+        ):
+            return metaclass_type.type.defn.dataclass_transform_spec
 
     return None
