@@ -127,16 +127,16 @@ jobs:
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
         source $VENV/bin/activate
     - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' tox==3.24.5
+      run: pip install --upgrade 'setuptools!=50' tox==4.4.4
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
       run: |
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
     - name: Setup tox environment
-      run: tox -e ${{ matrix.toxenv }} --notest
+      run: tox run -e ${{ matrix.toxenv }} --notest
     - name: Test
-      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
+      run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
 
   python-nightly:
     runs-on: ubuntu-latest
@@ -147,11 +147,11 @@ jobs:
         with:
           python-version: '3.12-dev'
       - name: Install tox
-        run: pip install --upgrade 'setuptools!=50' tox==3.24.5
+        run: pip install --upgrade 'setuptools!=50' tox==4.4.4
       - name: Setup tox environment
-        run: tox -e py --notest
+        run: tox run -e py --notest
       - name: Test
-        run: tox -e py --skip-pkg-install -- "-n 2"
+        run: tox run -e py --skip-pkg-install -- "-n 2"
         continue-on-error: true
       - name: Mark as a success
         run: exit 0

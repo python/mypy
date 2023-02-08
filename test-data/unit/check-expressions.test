@@ -2221,6 +2221,32 @@ int == y
 y == int
 [builtins fixtures/bool.pyi]
 
+[case testStrictEqualityAndEnumWithCustomEq]
+# flags: --strict-equality
+from enum import Enum
+
+class E1(Enum):
+    X = 0
+    Y = 1
+
+class E2(Enum):
+    X = 0
+    Y = 1
+
+    def __eq__(self, other: object) -> bool:
+        return bool()
+
+E1.X == E1.Y  # E: Non-overlapping equality check (left operand type: "Literal[E1.X]", right operand type: "Literal[E1.Y]")
+E2.X == E2.Y
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityWithBytesContains]
+# flags: --strict-equality
+data = b"xy"
+b"x" in data
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")

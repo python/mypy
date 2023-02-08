@@ -150,6 +150,14 @@ NEVER_NAMES: Final = (
     "typing_extensions.Never",
 )
 
+# Mypyc fixed-width native int types (compatible with builtins.int)
+MYPYC_NATIVE_INT_NAMES: Final = ("mypy_extensions.i64", "mypy_extensions.i32")
+
+DATACLASS_TRANSFORM_NAMES: Final = (
+    "typing.dataclass_transform",
+    "typing_extensions.dataclass_transform",
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
@@ -708,13 +716,13 @@ class ParamSpecType(TypeVarLikeType):
         return n
 
     def __hash__(self) -> int:
-        return hash((self.id, self.flavor))
+        return hash((self.id, self.flavor, self.prefix))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ParamSpecType):
             return NotImplemented
         # Upper bound can be ignored, since it's determined by flavor.
-        return self.id == other.id and self.flavor == other.flavor
+        return self.id == other.id and self.flavor == other.flavor and self.prefix == other.prefix
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -2584,28 +2592,6 @@ class LiteralType(ProperType):
         return self.is_enum_literal() or isinstance(self.value, bool)
 
 
-class StarType(ProperType):
-    """The star type *type_parameter.
-
-    This is not a real type but a syntactic AST construct.
-    """
-
-    __slots__ = ("type",)
-
-    type: Type
-
-    def __init__(self, type: Type, line: int = -1, column: int = -1) -> None:
-        super().__init__(line, column)
-        self.type = type
-
-    def accept(self, visitor: TypeVisitor[T]) -> T:
-        assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_star_type(self))
-
-    def serialize(self) -> JsonDict:
-        assert False, "Synthetic types don't serialize"
-
-
 class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
@@ -3177,10 +3163,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_literal_type(self, t: LiteralType) -> str:
         return f"Literal[{t.value_repr()}]"
 
-    def visit_star_type(self, t: StarType) -> str:
-        s = t.type.accept(self)
-        return f"*{s}"
-
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
         return f"Union[{s}]"
@@ -3235,9 +3217,6 @@ class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type])
         return t
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
-        return t
-
-    def visit_star_type(self, t: StarType) -> Type:
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:

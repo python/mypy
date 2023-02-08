@@ -27,6 +27,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.state import state
 from mypy.types import (
+    MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
@@ -454,7 +455,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # Special case: Low-level integer types are compatible with 'int'. We can't
                 # use promotions, since 'int' is already promoted to low-level integer types,
                 # and we can't have circular promotions.
-                if left.type.alt_promote is right.type:
+                if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
             # Always try a nominal check if possible,
@@ -1793,14 +1794,19 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
         erase_type(item), supertype, ignore_promotions=True, erase_instances=True
     ):
         return True
-    if isinstance(supertype, Instance) and supertype.type.is_protocol:
-        # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
-        if is_proper_subtype(item, supertype, ignore_promotions=True):
-            return True
-    if isinstance(item, TypedDictType) and isinstance(supertype, Instance):
-        # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
-        if supertype.type.fullname == "builtins.dict":
-            return True
+    if isinstance(supertype, Instance):
+        if supertype.type.is_protocol:
+            # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
+            if is_proper_subtype(item, supertype, ignore_promotions=True):
+                return True
+        if isinstance(item, TypedDictType):
+            # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
+            if supertype.type.fullname == "builtins.dict":
+                return True
+        elif isinstance(item, Instance) and supertype.type.fullname == "builtins.int":
+            # "int" covers all native int types
+            if item.type.fullname in MYPYC_NATIVE_INT_NAMES:
+                return True
     # TODO: Add more special cases.
     return False
 

@@ -57,3 +57,14 @@ class _TypedDict(Mapping[str, object]):
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
 
 def reveal_type(__obj: T) -> T: pass
+
+def dataclass_transform(
+    *,
+    eq_default: bool = ...,
+    order_default: bool = ...,
+    kw_only_default: bool = ...,
+    field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: Any,
+) -> Callable[[T], T]: ...
+
+_FutureFeatureFixture = 0

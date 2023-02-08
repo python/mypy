@@ -178,6 +178,7 @@ from mypy.typeops import (
 )
 from mypy.types import (
     ANY_STRATEGY,
+    MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
     AnyType,
     BoolTypeQuery,
@@ -191,7 +192,6 @@ from mypy.types import (
     Overloaded,
     PartialType,
     ProperType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,
@@ -3287,7 +3287,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             last_idx: int | None = None
             for idx_rval, rval in enumerate(rvalue.items):
                 if isinstance(rval, StarExpr):
-                    typs = get_proper_type(self.expr_checker.visit_star_expr(rval).type)
+                    typs = get_proper_type(self.expr_checker.accept(rval.expr))
                     if isinstance(typs, TupleType):
                         rvalues.extend([TempNode(typ) for typ in typs.items])
                     elif self.type_is_iterable(typs) and isinstance(typs, Instance):
@@ -3310,7 +3310,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             iterable_end: int | None = None
             for i, rval in enumerate(rvalues):
                 if isinstance(rval, StarExpr):
-                    typs = get_proper_type(self.expr_checker.visit_star_expr(rval).type)
+                    typs = get_proper_type(self.expr_checker.accept(rval.expr))
                     if self.type_is_iterable(typs) and isinstance(typs, Instance):
                         if iterable_start is None:
                             iterable_start = i
@@ -3673,8 +3673,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ]
             lvalue_type = TupleType(types, self.named_type("builtins.tuple"))
         elif isinstance(lvalue, StarExpr):
-            typ, _, _ = self.check_lvalue(lvalue.expr)
-            lvalue_type = StarType(typ) if typ else None
+            lvalue_type, _, _ = self.check_lvalue(lvalue.expr)
         else:
             lvalue_type = self.expr_checker.accept(lvalue)
 
@@ -4499,6 +4498,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Non-tuple iterable.
             return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
 
+    def analyze_iterable_item_type_without_expression(
+        self, type: Type, context: Context
+    ) -> tuple[Type, Type]:
+        """Analyse iterable type and return iterator and iterator item types."""
+        echk = self.expr_checker
+        iterable = get_proper_type(type)
+        iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
+
+        if isinstance(iterable, TupleType):
+            joined: Type = UninhabitedType()
+            for item in iterable.items:
+                joined = join_types(joined, item)
+            return iterator, joined
+        else:
+            # Non-tuple iterable.
+            return (
+                iterator,
+                echk.check_method_call_by_name("__next__", iterator, [], [], context)[0],
+            )
+
     def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
         """Try to infer native int item type from arguments to range(...).
 
@@ -4517,10 +4536,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ok = True
             for arg in expr.args:
                 argt = get_proper_type(self.lookup_type(arg))
-                if isinstance(argt, Instance) and argt.type.fullname in (
-                    "mypy_extensions.i64",
-                    "mypy_extensions.i32",
-                ):
+                if isinstance(argt, Instance) and argt.type.fullname in MYPYC_NATIVE_INT_NAMES:
                     if native_int is None:
                         native_int = argt
                     elif argt != native_int:
@@ -5332,10 +5348,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return self.hasattr_type_maps(expr, self.lookup_type(expr), attr[0])
             elif isinstance(node.callee, RefExpr):
                 if node.callee.type_guard is not None:
-                    # TODO: Follow keyword args or *args, **kwargs
+                    # TODO: Follow *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
-                        self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
-                        return {}, {}
+                        # the first argument might be used as a kwarg
+                        called_type = get_proper_type(self.lookup_type(node.callee))
+                        assert isinstance(called_type, (CallableType, Overloaded))
+
+                        # *assuming* the overloaded function is correct, there's a couple cases:
+                        #  1) The first argument has different names, but is pos-only. We don't
+                        #     care about this case, the argument must be passed positionally.
+                        #  2) The first argument allows keyword reference, therefore must be the
+                        #     same between overloads.
+                        name = called_type.items[0].arg_names[0]
+
+                        if name in node.arg_names:
+                            idx = node.arg_names.index(name)
+                            # we want the idx-th variable to be narrowed
+                            expr = collapse_walrus(node.args[idx])
+                        else:
+                            self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
+                            return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         # Note: we wrap the target type, so that we can special case later.
                         # Namely, for isinstance() we use a normal meet, while TypeGuard is

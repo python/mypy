@@ -1,9 +1,7 @@
 [case testI32BasicOps]
 from typing import Any, Tuple
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i32, i64
+from mypy_extensions import i32, i64
 
 from testutil import assertRaises
 

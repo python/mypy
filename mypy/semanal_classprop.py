@@ -22,7 +22,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.types import Instance, ProperType
+from mypy.types import MYPYC_NATIVE_INT_NAMES, Instance, ProperType
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
@@ -177,10 +177,10 @@ def add_type_promotion(
     # Special case the promotions between 'int' and native integer types.
     # These have promotions going both ways, such as from 'int' to 'i64'
     # and 'i64' to 'int', for convenience.
-    if defn.fullname == "mypy_extensions.i64" or defn.fullname == "mypy_extensions.i32":
+    if defn.fullname in MYPYC_NATIVE_INT_NAMES:
         int_sym = builtin_names["int"]
         assert isinstance(int_sym.node, TypeInfo)
         int_sym.node._promote.append(Instance(defn.info, []))
-        defn.info.alt_promote = int_sym.node
+        defn.info.alt_promote = Instance(int_sym.node, [])
     if promote_targets:
         defn.info._promote.extend(promote_targets)

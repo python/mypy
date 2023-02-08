@@ -72,3 +72,5 @@ def __print(a1: object = None, a2: object = None, a3: object = None,
             a4: object = None) -> None: pass
 
 class ellipsis: pass
+
+class dict: pass

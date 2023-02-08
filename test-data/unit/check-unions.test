@@ -1202,3 +1202,20 @@ def foo(
         yield i
 foo([1])
 [builtins fixtures/list.pyi]
+
+[case testUnionIterableContainer]
+from typing import Iterable, Container, Union
+
+i: Iterable[str]
+c: Container[str]
+u: Union[Iterable[str], Container[str]]
+ni: Union[Iterable[str], int]
+nc: Union[Container[str], int]
+
+'x' in i
+'x' in c
+'x' in u
+'x' in ni  # E: Unsupported right operand type for in ("Union[Iterable[str], int]")
+'x' in nc  # E: Unsupported right operand type for in ("Union[Container[str], int]")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
