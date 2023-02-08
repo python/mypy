@@ -1901,3 +1901,26 @@ a[x]
 _testNativeIntTypes.py:14: error: Unsupported operand types for + ("i64" and "i32")
 _testNativeIntTypes.py:15: note: Revealed type is "mypy_extensions.i64"
 _testNativeIntTypes.py:16: note: Revealed type is "mypy_extensions.i64"
+
+[case testStarUnpackNestedUnderscore]
+from typing import Tuple, Dict, List
+
+def crash() -> None:
+    d: Dict[int, Tuple[str, int, str]] = {}
+    k, (v1, *_) = next(iter(d.items()))
+
+def test1() -> None:
+    vs: List[str]
+    d: Dict[int, Tuple[str, int, int]] = {}
+    k, (v1, *vs) = next(iter(d.items()))
+    reveal_type(vs)
+
+def test2() -> None:
+    d: Dict[int, Tuple[str, int, str]] = {}
+    k, (v1, *vs) = next(iter(d.items()))
+    reveal_type(vs)
+[out]
+_testStarUnpackNestedUnderscore.py:10: error: List item 0 has incompatible type "int"; expected "str"
+_testStarUnpackNestedUnderscore.py:10: error: List item 1 has incompatible type "int"; expected "str"
+_testStarUnpackNestedUnderscore.py:11: note: Revealed type is "builtins.list[builtins.str]"
+_testStarUnpackNestedUnderscore.py:16: note: Revealed type is "builtins.list[builtins.object]"

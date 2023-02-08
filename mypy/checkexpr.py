@@ -140,7 +140,6 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,
@@ -5160,8 +5159,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit__promote_expr(self, e: PromoteExpr) -> Type:
         return e.type
 
-    def visit_star_expr(self, e: StarExpr) -> StarType:
-        return StarType(self.accept(e.expr))
+    def visit_star_expr(self, e: StarExpr) -> Type:
+        # TODO: should this ever be called (see e.g. mypyc visitor)?
+        return self.accept(e.expr)
 
     def object_type(self) -> Instance:
         """Return instance type 'object'."""
