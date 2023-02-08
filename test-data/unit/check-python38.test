@@ -573,6 +573,14 @@ def foo() -> None:
     [x := x + y for y in [1, 2, 3]]
 [builtins fixtures/dict.pyi]
 
+[case testWalrusUsedBeforeDef]
+# flags: --python-version 3.8
+class C:
+    def f(self, c: 'C') -> None: pass
+
+(x := C()).f(y)  # E: Cannot determine type of "y"  # E: Name "y" is used before definition
+(y := C()).f(y)
+
 [case testOverloadWithPositionalOnlySelf]
 # flags: --python-version 3.8
 from typing import overload, Optional
