@@ -595,7 +595,11 @@ class TypeVarType(TypeVarLikeType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarType):
             return NotImplemented
-        return self.id == other.id and self.upper_bound == other.upper_bound
+        return (
+            self.id == other.id
+            and self.upper_bound == other.upper_bound
+            and self.values == other.values
+        )
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
