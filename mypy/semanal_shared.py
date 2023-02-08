@@ -18,6 +18,7 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     Node,
+    OverloadedFuncDef,
     RefExpr,
     SymbolNode,
     SymbolTable,
@@ -377,6 +378,17 @@ def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec |
         # typing.dataclass_transform usage must always result in a Decorator; it always uses the
         # `@dataclass_transform(...)` syntax and never `@dataclass_transform`
         node = node.func
+
+    if isinstance(node, OverloadedFuncDef):
+        # The dataclass_transform decorator may be attached to any single overload, so we must
+        # search them all.
+        # Note that using more than one decorator is undefined behavior, so we can just take the
+        # first that we find.
+        for candidate in node.items:
+            spec = find_dataclass_transform_spec(candidate)
+            if spec is not None:
+                return spec
+        return find_dataclass_transform_spec(node.impl)
 
     if isinstance(node, FuncDef):
         return node.dataclass_transform_spec
