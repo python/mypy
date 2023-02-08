@@ -252,6 +252,10 @@ def f2() -> None:
     if int():
         class c: pass
 
+glob = c()
+def f3(x: c = glob) -> None:
+    glob = 123
+
 [case testVarFromOuterScopeRedefined]
 # flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 x = 0

@@ -426,17 +426,24 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.process_definition(o.name)
-        self.tracker.enter_scope(ScopeType.Func)
         super().visit_func_def(o)
-        self.tracker.exit_scope()
 
     def visit_func(self, o: FuncItem) -> None:
         if o.is_dynamic() and not self.options.check_untyped_defs:
             return
-        if o.arguments is not None:
-            for arg in o.arguments:
-                self.tracker.record_definition(arg.variable.name)
-        super().visit_func(o)
+
+        args = o.arguments or []
+        # Process initializers (defaults) outside the function scope.
+        for arg in args:
+            if arg.initializer is not None:
+                arg.initializer.accept(self)
+
+        self.tracker.enter_scope(ScopeType.Func)
+        for arg in args:
+            self.process_definition(arg.variable.name)
+            super().visit_var(arg.variable)
+        o.body.accept(self)
+        self.tracker.exit_scope()
 
     def visit_generator_expr(self, o: GeneratorExpr) -> None:
         self.tracker.enter_scope(ScopeType.Generator)
