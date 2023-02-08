@@ -11,10 +11,14 @@ from mypy_extensions import trait
 from mypy import join
 from mypy.errorcodes import ErrorCode
 from mypy.nodes import (
+    CallExpr,
     Context,
+    DataclassTransformSpec,
+    Decorator,
     Expression,
     FuncDef,
     Node,
+    RefExpr,
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
@@ -341,3 +345,40 @@ class HasPlaceholders(BoolTypeQuery):
 def has_placeholder(typ: Type) -> bool:
     """Check if a type contains any placeholder types (recursively)."""
     return typ.accept(HasPlaceholders())
+
+
+def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec | None:
+    """
+    Find the dataclass transform spec for the given node, if any exists.
+
+    Per PEP 681 (https://peps.python.org/pep-0681/#the-dataclass-transform-decorator), dataclass
+    transforms can be specified in multiple ways, including decorator functions and
+    metaclasses/base classes. This function resolves the spec from any of these variants.
+    """
+
+    # The spec only lives on the function/class definition itself, so we need to unwrap down to that
+    # point
+    if isinstance(node, CallExpr):
+        # Like dataclasses.dataclass, transform-based decorators can be applied either with or
+        # without parameters; ie, both of these forms are accepted:
+        #
+        # @typing.dataclass_transform
+        # class Foo: ...
+        # @typing.dataclass_transform(eq=True, order=True, ...)
+        # class Bar: ...
+        #
+        # We need to unwrap the call for the second variant.
+        node = node.callee
+
+    if isinstance(node, RefExpr):
+        node = node.node
+
+    if isinstance(node, Decorator):
+        # typing.dataclass_transform usage must always result in a Decorator; it always uses the
+        # `@dataclass_transform(...)` syntax and never `@dataclass_transform`
+        node = node.func
+
+    if isinstance(node, FuncDef):
+        return node.dataclass_transform_spec
+
+    return None

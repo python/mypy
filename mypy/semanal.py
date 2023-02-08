@@ -99,6 +99,7 @@ from mypy.nodes import (
     ConditionalExpr,
     Context,
     ContinueStmt,
+    DataclassTransformSpec,
     Decorator,
     DelStmt,
     DictExpr,
@@ -213,6 +214,7 @@ from mypy.semanal_shared import (
     PRIORITY_FALLBACKS,
     SemanticAnalyzerInterface,
     calculate_tuple_fallback,
+    find_dataclass_transform_spec,
     has_placeholder,
     set_callable_name as set_callable_name,
 )
@@ -1523,7 +1525,7 @@ class SemanticAnalyzer(
             elif isinstance(d, CallExpr) and refers_to_fullname(
                 d.callee, DATACLASS_TRANSFORM_NAMES
             ):
-                dec.func.is_dataclass_transform = True
+                dec.func.dataclass_transform_spec = self.parse_dataclass_transform_spec(d)
             elif not dec.var.is_property:
                 # We have seen a "non-trivial" decorator before seeing @property, if
                 # we will see a @property later, give an error, as we don't support this.
@@ -1728,7 +1730,7 @@ class SemanticAnalyzer(
                 # Special case: if the decorator is itself decorated with
                 # typing.dataclass_transform, apply the hook for the dataclasses plugin
                 # TODO: remove special casing here
-                if hook is None and is_dataclass_transform_decorator(decorator):
+                if hook is None and find_dataclass_transform_spec(decorator):
                     hook = dataclasses_plugin.dataclass_tag_callback
                 if hook:
                     hook(ClassDefContext(defn, decorator, self))
@@ -6456,6 +6458,35 @@ class SemanticAnalyzer(
     def is_future_flag_set(self, flag: str) -> bool:
         return self.modules[self.cur_mod_id].is_future_flag_set(flag)
 
+    def parse_dataclass_transform_spec(self, call: CallExpr) -> DataclassTransformSpec:
+        """Build a DataclassTransformSpec from the arguments passed to the given call to
+        typing.dataclass_transform."""
+        parameters = DataclassTransformSpec()
+        for name, value in zip(call.arg_names, call.args):
+            # field_specifiers is currently the only non-boolean argument; check for it first so
+            # so the rest of the block can fail through to handling booleans
+            if name == "field_specifiers":
+                self.fail('"field_specifiers" support is currently unimplemented', call)
+                continue
+
+            boolean = self.parse_bool(value)
+            if boolean is None:
+                self.fail(f'"{name}" argument must be a True or False literal', call)
+                continue
+
+            if name == "eq_default":
+                parameters.eq_default = boolean
+            elif name == "order_default":
+                parameters.order_default = boolean
+            elif name == "kw_only_default":
+                parameters.kw_only_default = boolean
+            elif name == "frozen_default":
+                parameters.frozen_default = boolean
+            else:
+                self.fail(f'Unrecognized dataclass_transform parameter "{name}"', call)
+
+        return parameters
+
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
@@ -6645,21 +6676,3 @@ def is_trivial_body(block: Block) -> bool:
     return isinstance(stmt, PassStmt) or (
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
     )
-
-
-def is_dataclass_transform_decorator(node: Node | None) -> bool:
-    if isinstance(node, RefExpr):
-        return is_dataclass_transform_decorator(node.node)
-    if isinstance(node, CallExpr):
-        # Like dataclasses.dataclass, transform-based decorators can be applied either with or
-        # without parameters; ie, both of these forms are accepted:
-        #
-        # @typing.dataclass_transform
-        # class Foo: ...
-        # @typing.dataclass_transform(eq=True, order=True, ...)
-        # class Bar: ...
-        #
-        # We need to unwrap the call for the second variant.
-        return is_dataclass_transform_decorator(node.callee)
-
-    return isinstance(node, Decorator) and node.func.is_dataclass_transform

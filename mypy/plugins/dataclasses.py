@@ -18,9 +18,11 @@ from mypy.nodes import (
     AssignmentStmt,
     CallExpr,
     Context,
+    DataclassTransformSpec,
     Expression,
     JsonDict,
     NameExpr,
+    Node,
     PlaceholderNode,
     RefExpr,
     SymbolTableNode,
@@ -37,6 +39,7 @@ from mypy.plugins.common import (
     add_method,
     deserialize_and_fixup_type,
 )
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
 from mypy.typeops import map_type_from_supertype
@@ -56,11 +59,16 @@ from mypy.typevars import fill_typevars
 
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
-# The set of functions that generate dataclass fields.
-field_makers: Final = {"dataclasses.field"}
 
 
 SELF_TVAR_NAME: Final = "_DT"
+_TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
+    eq_default=True,
+    order_default=False,
+    kw_only_default=False,
+    frozen_default=False,
+    field_specifiers=("dataclasses.Field", "dataclasses.field"),
+)
 
 
 class DataclassAttribute:
@@ -155,6 +163,7 @@ class DataclassTransformer:
 
     def __init__(self, ctx: ClassDefContext) -> None:
         self._ctx = ctx
+        self._spec = _get_transform_spec(ctx.reason)
 
     def transform(self) -> bool:
         """Apply all the necessary transformations to the underlying
@@ -172,9 +181,9 @@ class DataclassTransformer:
                 return False
         decorator_arguments = {
             "init": _get_decorator_bool_argument(self._ctx, "init", True),
-            "eq": _get_decorator_bool_argument(self._ctx, "eq", True),
-            "order": _get_decorator_bool_argument(self._ctx, "order", False),
-            "frozen": _get_decorator_bool_argument(self._ctx, "frozen", False),
+            "eq": _get_decorator_bool_argument(self._ctx, "eq", self._spec.eq_default),
+            "order": _get_decorator_bool_argument(self._ctx, "order", self._spec.order_default),
+            "frozen": _get_decorator_bool_argument(self._ctx, "frozen", self._spec.frozen_default),
             "slots": _get_decorator_bool_argument(self._ctx, "slots", False),
             "match_args": _get_decorator_bool_argument(self._ctx, "match_args", True),
         }
@@ -411,7 +420,7 @@ class DataclassTransformer:
 
         # Second, collect attributes belonging to the current class.
         current_attr_names: set[str] = set()
-        kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
+        kw_only = _get_decorator_bool_argument(ctx, "kw_only", self._spec.kw_only_default)
         for stmt in cls.defs.body:
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
@@ -461,7 +470,7 @@ class DataclassTransformer:
             if self._is_kw_only_type(node_type):
                 kw_only = True
 
-            has_field_call, field_args = _collect_field_args(stmt.rvalue, ctx)
+            has_field_call, field_args = self._collect_field_args(stmt.rvalue, ctx)
 
             is_in_init_param = field_args.get("init")
             if is_in_init_param is None:
@@ -614,6 +623,36 @@ class DataclassTransformer:
             kind=MDEF, node=var, plugin_generated=True
         )
 
+    def _collect_field_args(
+        self, expr: Expression, ctx: ClassDefContext
+    ) -> tuple[bool, dict[str, Expression]]:
+        """Returns a tuple where the first value represents whether or not
+        the expression is a call to dataclass.field and the second is a
+        dictionary of the keyword arguments that field() was called with.
+        """
+        if (
+            isinstance(expr, CallExpr)
+            and isinstance(expr.callee, RefExpr)
+            and expr.callee.fullname in self._spec.field_specifiers
+        ):
+            # field() only takes keyword arguments.
+            args = {}
+            for name, arg, kind in zip(expr.arg_names, expr.args, expr.arg_kinds):
+                if not kind.is_named():
+                    if kind.is_named(star=True):
+                        # This means that `field` is used with `**` unpacking,
+                        # the best we can do for now is not to fail.
+                        # TODO: we can infer what's inside `**` and try to collect it.
+                        message = 'Unpacking **kwargs in "field()" is not supported'
+                    else:
+                        message = '"field()" does not accept positional arguments'
+                    ctx.api.fail(message, expr)
+                    return True, {}
+                assert name is not None
+                args[name] = arg
+            return True, args
+        return False, {}
+
 
 def dataclass_tag_callback(ctx: ClassDefContext) -> None:
     """Record that we have a dataclass in the main semantic analysis pass.
@@ -631,32 +670,29 @@ def dataclass_class_maker_callback(ctx: ClassDefContext) -> bool:
     return transformer.transform()
 
 
-def _collect_field_args(
-    expr: Expression, ctx: ClassDefContext
-) -> tuple[bool, dict[str, Expression]]:
-    """Returns a tuple where the first value represents whether or not
-    the expression is a call to dataclass.field and the second is a
-    dictionary of the keyword arguments that field() was called with.
+def _get_transform_spec(reason: Expression) -> DataclassTransformSpec:
+    """Find the relevant transform parameters from the decorator/parent class/metaclass that
+    triggered the dataclasses plugin.
+
+    Although the resulting DataclassTransformSpec is based on the typing.dataclass_transform
+    function, we also use it for traditional dataclasses.dataclass classes as well for simplicity.
+    In those cases, we return a default spec rather than one based on a call to
+    `typing.dataclass_transform`.
     """
-    if (
-        isinstance(expr, CallExpr)
-        and isinstance(expr.callee, RefExpr)
-        and expr.callee.fullname in field_makers
-    ):
-        # field() only takes keyword arguments.
-        args = {}
-        for name, arg, kind in zip(expr.arg_names, expr.args, expr.arg_kinds):
-            if not kind.is_named():
-                if kind.is_named(star=True):
-                    # This means that `field` is used with `**` unpacking,
-                    # the best we can do for now is not to fail.
-                    # TODO: we can infer what's inside `**` and try to collect it.
-                    message = 'Unpacking **kwargs in "field()" is not supported'
-                else:
-                    message = '"field()" does not accept positional arguments'
-                ctx.api.fail(message, expr)
-                return True, {}
-            assert name is not None
-            args[name] = arg
-        return True, args
-    return False, {}
+    if _is_dataclasses_decorator(reason):
+        return _TRANSFORM_SPEC_FOR_DATACLASSES
+
+    spec = find_dataclass_transform_spec(reason)
+    assert spec is not None, (
+        "trying to find dataclass transform spec, but reason is neither dataclasses.dataclass nor "
+        "decorated with typing.dataclass_transform"
+    )
+    return spec
+
+
+def _is_dataclasses_decorator(node: Node) -> bool:
+    if isinstance(node, CallExpr):
+        node = node.callee
+    if isinstance(node, RefExpr):
+        return node.fullname in dataclass_makers
+    return False
