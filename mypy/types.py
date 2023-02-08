@@ -590,7 +590,7 @@ class TypeVarType(TypeVarLikeType):
         return visitor.visit_type_var(self)
 
     def __hash__(self) -> int:
-        return hash((self.id, self.upper_bound))
+        return hash((self.id, self.upper_bound, tuple(self.values)))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarType):
