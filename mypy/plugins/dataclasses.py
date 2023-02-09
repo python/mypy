@@ -682,7 +682,7 @@ class DataclassTransformer:
             if value is not None:
                 return value
             else:
-                self._api.fail(f'"{name}" argument must be True or False.', expression)
+                self._api.fail(f'"{name}" argument must be True or False', expression)
         return default
 
 
