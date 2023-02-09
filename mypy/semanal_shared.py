@@ -392,6 +392,17 @@ def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec |
                 return base.dataclass_transform_spec
 
         # Check if there is a metaclass that is decorated with `typing.dataclass_transform`
+        #
+        # Note that PEP 681 only discusses using a metaclass that is directly decorated with
+        # `typing.dataclass_transform`; subclasses thereof should be treated with dataclass
+        # semantics rather than as transforms:
+        #
+        # > If dataclass_transform is applied to a class, dataclass-like semantics will be assumed
+        # > for any class that directly or indirectly derives from the decorated class or uses the
+        # > decorated class as a metaclass.
+        #
+        # The wording doesn't make this entirely explicit, but Pyright (the reference
+        # implementation for this PEP) only handles directly-decorated metaclasses.
         metaclass_type = node.metaclass_type
         if metaclass_type is not None and metaclass_type.type.dataclass_transform_spec is not None:
             return metaclass_type.type.dataclass_transform_spec
