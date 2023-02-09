@@ -1805,7 +1805,7 @@ class SemanticAnalyzer(
         elif isinstance(decorator, CallExpr) and refers_to_fullname(
             decorator.callee, DATACLASS_TRANSFORM_NAMES
         ):
-            defn.dataclass_transform_spec = self.parse_dataclass_transform_spec(decorator)
+            defn.info.dataclass_transform_spec = self.parse_dataclass_transform_spec(decorator)
 
     def clean_up_bases_and_infer_type_variables(
         self, defn: ClassDef, base_type_exprs: list[Expression], context: Context

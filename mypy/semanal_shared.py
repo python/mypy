@@ -388,15 +388,12 @@ def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec |
     if isinstance(node, TypeInfo):
         # Search all parent classes to see if any are decorated with `typing.dataclass_transform`
         for base in node.mro[1:]:
-            if base.defn.dataclass_transform_spec is not None:
-                return base.defn.dataclass_transform_spec
+            if base.dataclass_transform_spec is not None:
+                return base.dataclass_transform_spec
 
         # Check if there is a metaclass that is decorated with `typing.dataclass_transform`
         metaclass_type = node.metaclass_type
-        if (
-            metaclass_type is not None
-            and metaclass_type.type.defn.dataclass_transform_spec is not None
-        ):
-            return metaclass_type.type.defn.dataclass_transform_spec
+        if metaclass_type is not None and metaclass_type.type.dataclass_transform_spec is not None:
+            return metaclass_type.type.dataclass_transform_spec
 
     return None
