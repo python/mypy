@@ -1496,7 +1496,7 @@ class MessageBuilder:
     def no_overridable_method(self, name: str, context: Context) -> None:
         self.fail(
             f'Method "{name}" is marked as an override, '
-            "but no base method with this name was found",
+            "but no base method was found with this name",
             context,
         )
 
