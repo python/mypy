@@ -8,7 +8,7 @@ from mypy import git
 # - Release versions have the form "1.2.3".
 # - Dev versions have the form "1.2.3+dev" (PLUS sign to conform to PEP 440).
 # - Before 1.0 we had the form "0.NNN".
-__version__ = "1.0.0"
+__version__ = "1.0.1+dev"
 base_version = __version__
 
 mypy_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
