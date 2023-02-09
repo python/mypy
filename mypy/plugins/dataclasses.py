@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional
 from typing_extensions import Final
 
+from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -75,6 +76,7 @@ class DataclassAttribute:
     def __init__(
         self,
         name: str,
+        alias: str | None,
         is_in_init: bool,
         is_init_var: bool,
         has_default: bool,
@@ -85,6 +87,7 @@ class DataclassAttribute:
         kw_only: bool,
     ) -> None:
         self.name = name
+        self.alias = alias
         self.is_in_init = is_in_init
         self.is_init_var = is_init_var
         self.has_default = has_default
@@ -119,12 +122,13 @@ class DataclassAttribute:
         return self.type
 
     def to_var(self, current_info: TypeInfo) -> Var:
-        return Var(self.name, self.expand_type(current_info))
+        return Var(self.alias or self.name, self.expand_type(current_info))
 
     def serialize(self) -> JsonDict:
         assert self.type
         return {
             "name": self.name,
+            "alias": self.alias,
             "is_in_init": self.is_in_init,
             "is_init_var": self.is_init_var,
             "has_default": self.has_default,
@@ -482,7 +486,12 @@ class DataclassTransformer:
             # Ensure that something like x: int = field() is rejected
             # after an attribute with a default.
             if has_field_call:
-                has_default = "default" in field_args or "default_factory" in field_args
+                has_default = (
+                    "default" in field_args
+                    or "default_factory" in field_args
+                    # alias for default_factory defined in PEP 681
+                    or "factory" in field_args
+                )
 
             # All other assignments are already type checked.
             elif not isinstance(stmt.rvalue, TempNode):
@@ -498,7 +507,11 @@ class DataclassTransformer:
             # kw_only value from the decorator parameter.
             field_kw_only_param = field_args.get("kw_only")
             if field_kw_only_param is not None:
-                is_kw_only = bool(ctx.api.parse_bool(field_kw_only_param))
+                value = ctx.api.parse_bool(field_kw_only_param)
+                if value is not None:
+                    is_kw_only = value
+                else:
+                    ctx.api.fail('"kw_only" argument must be True or False.', stmt.rvalue)
 
             if sym.type is None and node.is_final and node.is_inferred:
                 # This is a special case, assignment like x: Final = 42 is classified
@@ -516,9 +529,20 @@ class DataclassTransformer:
                     )
                     node.type = AnyType(TypeOfAny.from_error)
 
+            alias = None
+            if "alias" in field_args:
+                alias = self._ctx.api.parse_str_literal(field_args["alias"])
+                if alias is None:
+                    self._ctx.api.fail(
+                        message_registry.DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL,
+                        stmt.rvalue,
+                        code=errorcodes.LITERAL_REQ,
+                    )
+
             current_attr_names.add(lhs.name)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
+                alias=alias,
                 is_in_init=is_in_init,
                 is_init_var=is_init_var,
                 has_default=has_default,
@@ -609,6 +633,14 @@ class DataclassTransformer:
         return node_type.type.fullname == "dataclasses.KW_ONLY"
 
     def _add_dataclass_fields_magic_attribute(self) -> None:
+        # Only add if the class is a dataclasses dataclass, and omit it for dataclass_transform
+        # classes.
+        # It would be nice if this condition were reified rather than using an `is` check.
+        # Only add if the class is a dataclasses dataclass, and omit it for dataclass_transform
+        # classes.
+        if self._spec is not _TRANSFORM_SPEC_FOR_DATACLASSES:
+            return
+
         attr_name = "__dataclass_fields__"
         any_type = AnyType(TypeOfAny.explicit)
         field_type = self._ctx.api.named_type_or_none("dataclasses.Field", [any_type]) or any_type

@@ -235,7 +235,7 @@ from mypy.typeanal import (
     remove_dups,
     type_constructors,
 )
-from mypy.typeops import function_type, get_type_vars
+from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
 from mypy.types import (
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
@@ -6451,6 +6451,15 @@ class SemanticAnalyzer(
                 return False
         return None
 
+    def parse_str_literal(self, expr: Expression) -> str | None:
+        if isinstance(expr, StrExpr):
+            return expr.value
+        if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.type is not None:
+            values = try_getting_str_literals_from_type(expr.node.type)
+            if values is not None and len(values) == 1:
+                return values[0]
+        return None
+
     def set_future_import_flags(self, module_name: str) -> None:
         if module_name in FUTURE_IMPORTS:
             self.modules[self.cur_mod_id].future_import_flags.add(FUTURE_IMPORTS[module_name])
@@ -6466,7 +6475,9 @@ class SemanticAnalyzer(
             # field_specifiers is currently the only non-boolean argument; check for it first so
             # so the rest of the block can fail through to handling booleans
             if name == "field_specifiers":
-                self.fail('"field_specifiers" support is currently unimplemented', call)
+                parameters.field_specifiers = self.parse_dataclass_transform_field_specifiers(
+                    value
+                )
                 continue
 
             boolean = self.parse_bool(value)
@@ -6486,6 +6497,18 @@ class SemanticAnalyzer(
                 self.fail(f'Unrecognized dataclass_transform parameter "{name}"', call)
 
         return parameters
+
+    def parse_dataclass_transform_field_specifiers(self, arg: Expression) -> tuple[str, ...]:
+        if not isinstance(arg, TupleExpr):
+            return tuple()
+
+        names = []
+        for specifier in arg.items:
+            if not isinstance(specifier, RefExpr):
+                self.fail('"field_specifiers" must only contain identifiers', specifier)
+                return tuple()
+            names.append(specifier.fullname)
+        return tuple(names)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
