@@ -15,6 +15,7 @@ from mypy.subtypes import (
 )
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
+    MYPYC_NATIVE_INT_NAMES,
     AnyType,
     CallableType,
     DeletedType,
@@ -166,7 +167,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         if (
             isinstance(narrowed, Instance)
             and narrowed.type.alt_promote
-            and narrowed.type.alt_promote is declared.type
+            and narrowed.type.alt_promote.type is declared.type
         ):
             # Special case: 'int' can't be narrowed down to a native int type such as
             # i64, since they have different runtime representations.
@@ -475,6 +476,9 @@ def is_overlapping_types(
         ):
             return True
 
+        if right.type.fullname == "builtins.int" and left.type.fullname in MYPYC_NATIVE_INT_NAMES:
+            return True
+
         # Two unrelated types cannot be partially overlapping: they're disjoint.
         if left.type.has_base(right.type.fullname):
             left = map_instance_to_supertype(left, right.type)
@@ -711,10 +715,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                         return NoneType()
             else:
                 alt_promote = t.type.alt_promote
-                if alt_promote and alt_promote is self.s.type:
+                if alt_promote and alt_promote.type is self.s.type:
                     return t
                 alt_promote = self.s.type.alt_promote
-                if alt_promote and alt_promote is t.type:
+                if alt_promote and alt_promote.type is t.type:
                     return self.s
                 if is_subtype(t, self.s):
                     return t

@@ -1001,7 +1001,7 @@ class IRBuilder:
     ) -> Value:
 
         # Handle data-driven special-cased primitive call ops.
-        if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
+        if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
             call_c_ops_candidates = function_ops.get(callee.fullname, [])
             target = self.builder.matching_call_c(
                 call_c_ops_candidates, arg_values, expr.line, self.node_type(expr)
@@ -1026,7 +1026,7 @@ class IRBuilder:
             callee_node = callee_node.func
         if (
             callee_node is not None
-            and callee.fullname is not None
+            and callee.fullname
             and callee_node in self.mapper.func_to_decl
             and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
         ):
@@ -1240,7 +1240,7 @@ class IRBuilder:
             and isinstance(expr.node, TypeInfo)
             and not self.is_synthetic_type(expr.node)
         ):
-            assert expr.fullname is not None
+            assert expr.fullname
             return self.load_native_type_object(expr.fullname)
         return self.load_global_str(expr.name, expr.line)
 

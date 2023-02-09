@@ -83,7 +83,7 @@ PRESET_EXTREME: int  # v big number
 @final
 class LZMADecompressor:
     def __init__(self, format: int | None = ..., memlimit: int | None = ..., filters: _FilterChain | None = ...) -> None: ...
-    def decompress(self, data: ReadableBuffer, max_length: int = ...) -> bytes: ...
+    def decompress(self, data: ReadableBuffer, max_length: int = -1) -> bytes: ...
     @property
     def check(self) -> int: ...
     @property
@@ -107,91 +107,91 @@ class LZMAError(Exception): ...
 class LZMAFile(io.BufferedIOBase, IO[bytes]):
     def __init__(
         self,
-        filename: _PathOrFile | None = ...,
-        mode: str = ...,
+        filename: _PathOrFile | None = None,
+        mode: str = "r",
         *,
-        format: int | None = ...,
-        check: int = ...,
-        preset: int | None = ...,
-        filters: _FilterChain | None = ...,
+        format: int | None = None,
+        check: int = -1,
+        preset: int | None = None,
+        filters: _FilterChain | None = None,
     ) -> None: ...
     def __enter__(self: Self) -> Self: ...
-    def peek(self, size: int = ...) -> bytes: ...
-    def read(self, size: int | None = ...) -> bytes: ...
-    def read1(self, size: int = ...) -> bytes: ...
-    def readline(self, size: int | None = ...) -> bytes: ...
+    def peek(self, size: int = -1) -> bytes: ...
+    def read(self, size: int | None = -1) -> bytes: ...
+    def read1(self, size: int = -1) -> bytes: ...
+    def readline(self, size: int | None = -1) -> bytes: ...
     def write(self, data: ReadableBuffer) -> int: ...
-    def seek(self, offset: int, whence: int = ...) -> int: ...
+    def seek(self, offset: int, whence: int = 0) -> int: ...
 
 @overload
 def open(
     filename: _PathOrFile,
-    mode: Literal["r", "rb"] = ...,
+    mode: Literal["r", "rb"] = "rb",
     *,
-    format: int | None = ...,
-    check: Literal[-1] = ...,
-    preset: None = ...,
-    filters: _FilterChain | None = ...,
-    encoding: None = ...,
-    errors: None = ...,
-    newline: None = ...,
+    format: int | None = None,
+    check: Literal[-1] = -1,
+    preset: None = None,
+    filters: _FilterChain | None = None,
+    encoding: None = None,
+    errors: None = None,
+    newline: None = None,
 ) -> LZMAFile: ...
 @overload
 def open(
     filename: _PathOrFile,
     mode: _OpenBinaryWritingMode,
     *,
-    format: int | None = ...,
-    check: int = ...,
-    preset: int | None = ...,
-    filters: _FilterChain | None = ...,
-    encoding: None = ...,
-    errors: None = ...,
-    newline: None = ...,
+    format: int | None = None,
+    check: int = -1,
+    preset: int | None = None,
+    filters: _FilterChain | None = None,
+    encoding: None = None,
+    errors: None = None,
+    newline: None = None,
 ) -> LZMAFile: ...
 @overload
 def open(
     filename: StrOrBytesPath,
     mode: Literal["rt"],
     *,
-    format: int | None = ...,
-    check: Literal[-1] = ...,
-    preset: None = ...,
-    filters: _FilterChain | None = ...,
-    encoding: str | None = ...,
-    errors: str | None = ...,
-    newline: str | None = ...,
+    format: int | None = None,
+    check: Literal[-1] = -1,
+    preset: None = None,
+    filters: _FilterChain | None = None,
+    encoding: str | None = None,
+    errors: str | None = None,
+    newline: str | None = None,
 ) -> TextIO: ...
 @overload
 def open(
     filename: StrOrBytesPath,
     mode: _OpenTextWritingMode,
     *,
-    format: int | None = ...,
-    check: int = ...,
-    preset: int | None = ...,
-    filters: _FilterChain | None = ...,
-    encoding: str | None = ...,
-    errors: str | None = ...,
-    newline: str | None = ...,
+    format: int | None = None,
+    check: int = -1,
+    preset: int | None = None,
+    filters: _FilterChain | None = None,
+    encoding: str | None = None,
+    errors: str | None = None,
+    newline: str | None = None,
 ) -> TextIO: ...
 @overload
 def open(
     filename: _PathOrFile,
     mode: str,
     *,
-    format: int | None = ...,
-    check: int = ...,
-    preset: int | None = ...,
-    filters: _FilterChain | None = ...,
-    encoding: str | None = ...,
-    errors: str | None = ...,
-    newline: str | None = ...,
+    format: int | None = None,
+    check: int = -1,
+    preset: int | None = None,
+    filters: _FilterChain | None = None,
+    encoding: str | None = None,
+    errors: str | None = None,
+    newline: str | None = None,
 ) -> LZMAFile | TextIO: ...
 def compress(
-    data: ReadableBuffer, format: int = ..., check: int = ..., preset: int | None = ..., filters: _FilterChain | None = ...
+    data: ReadableBuffer, format: int = 1, check: int = -1, preset: int | None = None, filters: _FilterChain | None = None
 ) -> bytes: ...
 def decompress(
-    data: ReadableBuffer, format: int = ..., memlimit: int | None = ..., filters: _FilterChain | None = ...
+    data: ReadableBuffer, format: int = 0, memlimit: int | None = None, filters: _FilterChain | None = None
 ) -> bytes: ...
 def is_check_supported(__check_id: int) -> bool: ...

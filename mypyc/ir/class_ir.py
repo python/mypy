@@ -69,10 +69,11 @@ from mypyc.namegen import NameGenerator, exported_name
 # placed in the class's shadow vtable (if it has one).
 
 
-VTableMethod = NamedTuple(
-    "VTableMethod",
-    [("cls", "ClassIR"), ("name", str), ("method", FuncIR), ("shadow_method", Optional[FuncIR])],
-)
+class VTableMethod(NamedTuple):
+    cls: "ClassIR"
+    name: str
+    method: FuncIR
+    shadow_method: Optional[FuncIR]
 
 
 VTableEntries = List[VTableMethod]
@@ -293,9 +294,12 @@ class ClassIR:
 
         return None
 
-    def get_method(self, name: str) -> FuncIR | None:
-        res = self.get_method_and_class(name)
+    def get_method(self, name: str, *, prefer_method: bool = False) -> FuncIR | None:
+        res = self.get_method_and_class(name, prefer_method=prefer_method)
         return res[0] if res else None
+
+    def has_method_decl(self, name: str) -> bool:
+        return any(name in ir.method_decls for ir in self.mro)
 
     def subclasses(self) -> set[ClassIR] | None:
         """Return all subclasses of this class, both direct and indirect.

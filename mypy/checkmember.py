@@ -901,7 +901,7 @@ def analyze_class_attribute_access(
             # For modules use direct symbol table lookup.
             if not itype.extra_attrs.mod_name:
                 return itype.extra_attrs.attrs[name]
-        if info.fallback_to_any:
+        if info.fallback_to_any or info.meta_fallback_to_any:
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         return None
 
@@ -1073,7 +1073,9 @@ def analyze_typeddict_access(
         if isinstance(mx.context, IndexExpr):
             # Since we can get this during `a['key'] = ...`
             # it is safe to assume that the context is `IndexExpr`.
-            item_type = mx.chk.expr_checker.visit_typeddict_index_expr(typ, mx.context.index)
+            item_type = mx.chk.expr_checker.visit_typeddict_index_expr(
+                typ, mx.context.index, setitem=True
+            )
         else:
             # It can also be `a.__setitem__(...)` direct call.
             # In this case `item_type` can be `Any`,

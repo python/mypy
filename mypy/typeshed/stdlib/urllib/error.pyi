@@ -6,7 +6,7 @@ __all__ = ["URLError", "HTTPError", "ContentTooShortError"]
 
 class URLError(IOError):
     reason: str | BaseException
-    def __init__(self, reason: str | BaseException, filename: str | None = ...) -> None: ...
+    def __init__(self, reason: str | BaseException, filename: str | None = None) -> None: ...
 
 class HTTPError(URLError, addinfourl):
     @property

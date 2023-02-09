@@ -6,7 +6,7 @@ import typing
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import IdentityFunction, Incomplete
 from collections.abc import Iterable
-from typing import (  # noqa: Y022,Y027,Y039
+from typing import (  # noqa: Y022,Y039
     TYPE_CHECKING as TYPE_CHECKING,
     Any as Any,
     AsyncContextManager as AsyncContextManager,
@@ -151,9 +151,9 @@ OrderedDict = _Alias()
 
 def get_type_hints(
     obj: Callable[..., Any],
-    globalns: dict[str, Any] | None = ...,
-    localns: dict[str, Any] | None = ...,
-    include_extras: bool = ...,
+    globalns: dict[str, Any] | None = None,
+    localns: dict[str, Any] | None = None,
+    include_extras: bool = False,
 ) -> dict[str, Any]: ...
 def get_args(tp: Any) -> tuple[Any, ...]: ...
 def get_origin(tp: Any) -> Any | None: ...
@@ -224,9 +224,9 @@ else:
 
     def dataclass_transform(
         *,
-        eq_default: bool = ...,
-        order_default: bool = ...,
-        kw_only_default: bool = ...,
+        eq_default: bool = True,
+        order_default: bool = False,
+        kw_only_default: bool = False,
         field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
         **kwargs: object,
     ) -> IdentityFunction: ...
@@ -268,11 +268,11 @@ class TypeVar:
         self,
         name: str,
         *constraints: Any,
-        bound: Any | None = ...,
-        covariant: bool = ...,
-        contravariant: bool = ...,
-        default: Any | None = ...,
-        infer_variance: bool = ...,
+        bound: Any | None = None,
+        covariant: bool = False,
+        contravariant: bool = False,
+        default: Any | None = None,
+        infer_variance: bool = False,
     ) -> None: ...
     if sys.version_info >= (3, 10):
         def __or__(self, right: Any) -> _SpecialForm: ...
@@ -291,10 +291,10 @@ class ParamSpec:
         self,
         name: str,
         *,
-        bound: None | type[Any] | str = ...,
-        contravariant: bool = ...,
-        covariant: bool = ...,
-        default: type[Any] | str | None = ...,
+        bound: None | type[Any] | str = None,
+        contravariant: bool = False,
+        covariant: bool = False,
+        default: type[Any] | str | None = None,
     ) -> None: ...
     @property
     def args(self) -> ParamSpecArgs: ...
@@ -305,7 +305,7 @@ class ParamSpec:
 class TypeVarTuple:
     __name__: str
     __default__: Any | None
-    def __init__(self, name: str, *, default: Any | None = ...) -> None: ...
+    def __init__(self, name: str, *, default: Any | None = None) -> None: ...
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
 def override(__arg: _F) -> _F: ...

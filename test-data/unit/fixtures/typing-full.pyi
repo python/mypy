@@ -181,3 +181,12 @@ class _TypedDict(Mapping[str, object]):
     def __delitem__(self, k: NoReturn) -> None: ...
 
 class _SpecialForm: pass
+
+def dataclass_transform(
+    *,
+    eq_default: bool = ...,
+    order_default: bool = ...,
+    kw_only_default: bool = ...,
+    field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: Any,
+) -> Callable[[T], T]: ...

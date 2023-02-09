@@ -16,3 +16,4 @@ class list(Generic[_T], Sequence[_T]):
     def __add__(self, rhs: Sequence[_T]) -> list[_T]: pass
 class tuple(Generic[_T]): pass
 class ellipsis: pass
+class dict: pass

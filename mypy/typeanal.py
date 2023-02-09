@@ -64,7 +64,6 @@ from mypy.types import (
     PlaceholderType,
     RawExpressionType,
     RequiredType,
-    StarType,
     SyntheticTypeVisitor,
     TrivialSyntheticTypeTranslator,
     TupleType,
@@ -132,12 +131,12 @@ def analyze_type_alias(
     in_dynamic_func: bool = False,
     global_scope: bool = True,
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
-) -> tuple[Type, set[str]] | None:
+) -> tuple[Type, set[str]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
     If `node` is valid as a type alias rvalue, return the resulting type and a set of
     full names of type aliases it depends on (directly or indirectly).
-    Return None otherwise. 'node' must have been semantically analyzed.
+    'node' must have been semantically analyzed.
     """
     analyzer = TypeAnalyser(
         api,
@@ -1031,17 +1030,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     code=codes.SYNTAX,
                 )
             return AnyType(TypeOfAny.from_error)
-        star_count = sum(1 for item in t.items if isinstance(item, StarType))
-        if star_count > 1:
-            self.fail("At most one star type allowed in a tuple", t)
-            if t.implicit:
-                return TupleType(
-                    [AnyType(TypeOfAny.from_error) for _ in t.items],
-                    self.named_type("builtins.tuple"),
-                    t.line,
-                )
-            else:
-                return AnyType(TypeOfAny.from_error)
+
         any_type = AnyType(TypeOfAny.special_form)
         # If the fallback isn't filled in yet, its type will be the falsey FakeInfo
         fallback = (
@@ -1093,9 +1082,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_literal_type(self, t: LiteralType) -> Type:
         return t
 
-    def visit_star_type(self, t: StarType) -> Type:
-        return StarType(self.anal_type(t.type), t.line)
-
     def visit_union_type(self, t: UnionType) -> Type:
         if (
             t.uses_pep604_syntax is True
@@ -1123,7 +1109,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
-        n = None if t.fullname is None else self.api.lookup_fully_qualified(t.fullname)
+        n = None if not t.fullname else self.api.lookup_fully_qualified(t.fullname)
         if not n or isinstance(n.node, PlaceholderNode):
             self.api.defer()  # Still incomplete
             return t

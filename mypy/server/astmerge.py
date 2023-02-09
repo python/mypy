@@ -95,7 +95,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     SyntheticTypeVisitor,
     TupleType,
     Type,
@@ -518,9 +517,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_ellipsis_type(self, typ: EllipsisType) -> None:
         pass
-
-    def visit_star_type(self, typ: StarType) -> None:
-        typ.type.accept(self)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass

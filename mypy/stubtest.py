@@ -493,7 +493,7 @@ def verify_typeinfo(
     for entry in sorted(to_check):
         mangled_entry = entry
         if entry.startswith("__") and not entry.endswith("__"):
-            mangled_entry = f"_{stub.name}{entry}"
+            mangled_entry = f"_{stub.name.lstrip('_')}{entry}"
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
         try:
@@ -1147,7 +1147,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
     ) -> nodes.FuncItem | None:
         if not isinstance(decorator, nodes.RefExpr):
             return None
-        if decorator.fullname is None:
+        if not decorator.fullname:
             # Happens with namedtuple
             return None
         if (

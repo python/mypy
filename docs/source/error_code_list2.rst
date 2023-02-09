@@ -85,8 +85,11 @@ Example:
 Check that methods do not have redundant Self annotations [redundant-self]
 --------------------------------------------------------------------------
 
-Such annotations are allowed by :pep:`673` but are redundant, so if you want
-warnings about them, enable this error code.
+If a method uses the ``Self`` type in the return type or the type of a
+non-self argument, there is no need to annotate the ``self`` argument
+explicitly. Such annotations are allowed by :pep:`673` but are
+redundant. If you enable this error code, mypy will generate an error if
+there is a redundant ``Self`` type.
 
 Example:
 
@@ -97,7 +100,7 @@ Example:
    from typing import Self
 
    class C:
-       # Error: Redundant Self annotation on method first argument
+       # Error: Redundant "Self" annotation for the first method argument
        def copy(self: Self) -> Self:
            return type(self)()
 
@@ -236,29 +239,34 @@ mypy generates an error if it thinks that an expression is redundant.
 Check that expression is not implicitly true in boolean context [truthy-bool]
 -----------------------------------------------------------------------------
 
-Warn when an expression whose type does not implement ``__bool__`` or ``__len__`` is used in boolean context,
-since unless implemented by a sub-type, the expression will always evaluate to true.
+Warn when the type of an expression in a boolean context does not
+implement ``__bool__`` or ``__len__``. Unless one of these is
+implemented by a subtype, the expression will always be considered
+true, and there may be a bug in the condition.
+
+As an exception, the ``object`` type is allowed in a boolean context.
+Using an iterable value in a boolean context has a separate error code
+(see below).
 
 .. code-block:: python
 
     # Use "mypy --enable-error-code truthy-bool ..."
 
     class Foo:
-      pass
+        pass
     foo = Foo()
     # Error: "foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
     if foo:
-       ...
-
-The check is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
-except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
-while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
+         ...
 
 
 Check that iterable is not implicitly true in boolean context [truthy-iterable]
 -------------------------------------------------------------------------------
 
-``Iterable`` does not implement ``__len__`` and so this code will be flagged:
+Generate an error if a value of type ``Iterable`` is used as a boolean
+condition, since ``Iterable`` does not implement ``__len__`` or ``__bool__``.
+
+Example:
 
 .. code-block:: python
 
@@ -270,9 +278,13 @@ Check that iterable is not implicitly true in boolean context [truthy-iterable]
             return [42]
         return [x + 1 for x in items]
 
-If called with a ``Generator`` like ``int(x) for x in []``, this function would not return ``[42]`` unlike
-what the author might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects,
-and so there is no error in practice. In such case, it is recommended to annotate ``items: Collection[int]``.
+If ``transform`` is called with a ``Generator`` argument, such as
+``int(x) for x in []``, this function would not return ``[42]`` unlike
+what might be intended. Of course, it's possible that ``transform`` is
+only called with ``list`` or other container objects, and the ``if not
+items`` check is actually valid. If that is the case, it is
+recommended to annotate ``items`` as ``Collection[int]`` instead of
+``Iterable[int]``.
 
 
 .. _ignore-without-code:

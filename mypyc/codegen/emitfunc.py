@@ -330,7 +330,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
-        if cl.get_method(op.attr):
+        prefer_method = cl.is_trait and attr_rtype.error_overlap
+        if cl.get_method(op.attr, prefer_method=prefer_method):
             # Properties are essentially methods, so use vtable access for them.
             version = "_TRAIT" if cl.is_trait else ""
             self.emit_line(
@@ -431,7 +432,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if not op.is_init and attr_rtype.is_refcounted:
-                # This is not an initalization (where we know that the attribute was
+                # This is not an initialization (where we know that the attribute was
                 # previously undefined), so decref the old value.
                 always_defined = cl.is_always_defined(op.attr)
                 if not always_defined:

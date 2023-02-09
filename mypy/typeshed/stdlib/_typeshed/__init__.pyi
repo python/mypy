@@ -36,6 +36,9 @@ AnyStr_co = TypeVar("AnyStr_co", str, bytes, covariant=True)  # noqa: Y001
 # "Incomplete | None" instead of "Any | None".
 Incomplete: TypeAlias = Any
 
+# To describe a function parameter that is unused and will work with anything.
+Unused: TypeAlias = object
+
 # stable
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
@@ -205,6 +208,7 @@ class HasFileno(Protocol):
 
 FileDescriptor: TypeAlias = int  # stable
 FileDescriptorLike: TypeAlias = int | HasFileno  # stable
+FileDescriptorOrPath: TypeAlias = int | StrOrBytesPath
 
 # stable
 class SupportsRead(Protocol[_T_co]):

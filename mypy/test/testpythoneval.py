@@ -81,6 +81,10 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
             # Normalize paths so that the output is the same on Windows and Linux/macOS.
             line = line.replace(test_temp_dir + os.sep, test_temp_dir + "/")
             output.append(line.rstrip("\r\n"))
+    if returncode > 1 and not testcase.output:
+        # Either api.run() doesn't work well in case of a crash, or pytest interferes with it.
+        # Tweak output to prevent tests with empty expected output to pass in case of a crash.
+        output.append("!!! Mypy crashed !!!")
     if returncode == 0 and not output:
         # Execute the program.
         proc = subprocess.run(

@@ -50,26 +50,27 @@ MypyFile:1(
       Args())))
 
 [case testAccessingGlobalNameBeforeDefinition]
+# flags: --disable-error-code used-before-def
 x
 f()
 x = 1
 def f(): pass
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
-    NameExpr(x [__main__.x]))
   ExpressionStmt:2(
-    CallExpr:2(
+    NameExpr(x [__main__.x]))
+  ExpressionStmt:3(
+    CallExpr:3(
       NameExpr(f [__main__.f])
       Args()))
-  AssignmentStmt:3(
+  AssignmentStmt:4(
     NameExpr(x [__main__.x])
     IntExpr(1)
     builtins.int)
-  FuncDef:4(
+  FuncDef:5(
     f
-    Block:4(
-      PassStmt:4())))
+    Block:5(
+      PassStmt:5())))
 
 [case testFunctionArgs]
 def f(x, y):
