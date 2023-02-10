@@ -234,29 +234,6 @@ A(1, "hello")  # E: Too many arguments for "A"
 a = A(1)
 a.a = 2  # E: Property "a" defined in "A" is read-only
 
-[case testDataclassTransformViaBaseClass]
-# flags: --python-version 3.11
-from typing import dataclass_transform
-
-@dataclass_transform(frozen_default=True)
-class Dataclass:
-    def __init_subclass__(cls, *, kw_only: bool = False): ...
-
-class Person(Dataclass, kw_only=True):
-    name: str
-    age: int
-
-reveal_type(Person)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> __main__.Person"
-Person('Jonh', 21)  # E: Too many positional arguments for "Person"
-person = Person(name='John', age=32)
-person.name = "John Smith"  # E: Property "name" defined in "Person" is read-only
-
-class Contact(Person):
-    email: str
-
-reveal_type(Contact)  # N: Revealed type is "def (email: builtins.str, *, name: builtins.str, age: builtins.int) -> __main__.Contact"
-Contact('john@john.com', name='John', age=32)
-
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
@@ -283,6 +260,35 @@ reveal_type(B)  # N: Revealed type is "def (b: builtins.int) -> __main__.B"
 A(1, "hello")  # E: Too many arguments for "A"
 a = A(1)
 a.a = 2  # E: Property "a" defined in "A" is read-only
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformViaBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+class Dataclass:
+    def __init_subclass__(cls, *, kw_only: bool = False): ...
+
+class Person(Dataclass, kw_only=True):
+    name: str
+    age: int
+
+reveal_type(Person)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('Jonh', 21)  # E: Too many positional arguments for "Person"
+person = Person(name='John', age=32)
+person.name = "John Smith"  # E: Property "name" defined in "Person" is read-only
+
+class Contact(Person):
+    email: str
+
+reveal_type(Contact)  # N: Revealed type is "def (email: builtins.str, *, name: builtins.str, age: builtins.int) -> __main__.Contact"
+Contact('john@john.com', name='John', age=32)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformViaMetaclass]
 # flags: --python-version 3.11
