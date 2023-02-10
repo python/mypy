@@ -10,6 +10,7 @@ VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
+    def __init_subclass__(cls) -> None: pass
     def __eq__(self, o: object) -> bool: pass
     def __ne__(self, o: object) -> bool: pass
 

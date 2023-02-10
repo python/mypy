@@ -472,6 +472,16 @@ def apply_hooks_to_class(
 
             if hook:
                 ok = ok and hook(ClassDefContext(defn, decorator, self))
+
+    # Check if the class definition itself triggers a dataclass transform (via a parent class/
+    # metaclass)
+    spec = find_dataclass_transform_spec(info)
+    if spec is not None:
+        with self.file_context(file_node, options, info):
+            # We can't use the normal hook because reason = defn, and ClassDefContext only accepts
+            # an Expression for reason
+            ok = ok and dataclasses_plugin.DataclassTransformer(defn, defn, spec, self).transform()
+
     return ok
 
 

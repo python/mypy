@@ -76,12 +76,19 @@ def my_dataclass(*, eq: bool = True, order: bool = False) -> Callable[[Type], Ty
     def transform(cls: Type) -> Type:
         return cls
     return transform
+@dataclass_transform()
+class BaseClass:
+    def __init_subclass__(cls, *, eq: bool): ...
+@dataclass_transform()
+class Metaclass(type): ...
 
 BOOL_CONSTANT = True
 @my_dataclass(eq=BOOL_CONSTANT)  # E: "eq" argument must be True or False.
 class A: ...
 @my_dataclass(order=not False)  # E: "order" argument must be True or False.
 class B: ...
+class C(BaseClass, eq=BOOL_CONSTANT): ...  # E: "eq" argument must be True or False
+class D(metaclass=Metaclass, order=not False): ...  # E: "order" argument must be True or False
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -199,6 +206,76 @@ class Foo:
 # Does not cause a type error because `dataclasses.field` is not a recognized field specifier by
 # default
 Foo(5)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformViaBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+class Dataclass:
+    def __init_subclass__(cls, *, kw_only: bool = False): ...
+
+class Person(Dataclass, kw_only=True):
+    name: str
+    age: int
+
+reveal_type(Person)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('Jonh', 21)  # E: Too many positional arguments for "Person"
+person = Person(name='John', age=32)
+person.name = "John Smith"  # E: Property "name" defined in "Person" is read-only
+
+class Contact(Person):
+    email: str
+
+reveal_type(Contact)  # N: Revealed type is "def (email: builtins.str, *, name: builtins.str, age: builtins.int) -> __main__.Contact"
+Contact('john@john.com', name='John', age=32)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformViaMetaclass]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+class Dataclass(type): ...
+
+class Person(metaclass=Dataclass, kw_only=True):
+    name: str
+    age: int
+
+reveal_type(Person)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('Jonh', 21)  # E: Too many positional arguments for "Person"
+person = Person(name='John', age=32)
+person.name = "John Smith"  # E: Property "name" defined in "Person" is read-only
+
+class Contact(Person):
+    email: str
+
+reveal_type(Contact)  # N: Revealed type is "def (email: builtins.str, *, name: builtins.str, age: builtins.int) -> __main__.Contact"
+Contact('john@john.com', name='John', age=32)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformViaSubclassOfMetaclass]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+class BaseMeta(type): ...
+class SubMeta(BaseMeta): ...
+
+# MyPy does *not* recognize this as a dataclass because the metaclass is not directly decorated with
+# dataclass_transform
+class Foo(metaclass=SubMeta):
+    foo: int
+
+reveal_type(Foo)  # N: Revealed type is "def () -> __main__.Foo"
+Foo(1)  # E: Too many arguments for "Foo"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
