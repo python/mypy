@@ -87,8 +87,8 @@ BOOL_CONSTANT = True
 class A: ...
 @my_dataclass(order=not False)  # E: "order" argument must be True or False.
 class B: ...
-class C(BaseClass, eq=BOOL_CONSTANT): ...  # E: "eq" argument must be True or False.
-class D(metaclass=Metaclass, order=not False): ...  # E: "order" argument must be True or False.
+class C(BaseClass, eq=BOOL_CONSTANT): ...  # E: "eq" argument must be True or False
+class D(metaclass=Metaclass, order=not False): ...  # E: "order" argument must be True or False
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
