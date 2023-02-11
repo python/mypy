@@ -1101,6 +1101,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if not all(key.isidentifier() for key, _ in items):
             # Keep the call syntax if there are non-identifier keys.
             self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
+            self._state = VAR
         else:
             bases = "TypedDict"
             if len(rvalue.args) > 2:
@@ -1108,11 +1109,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add(f"{self._indent}class {lvalue.name}({bases}):")
             if len(items) == 0:
                 self.add(" ...\n")
+                self._state = EMPTY_CLASS
             else:
                 self.add("\n")
                 for key, key_type in items:
                     self.add(f"{self._indent}    {key}: {key_type.accept(p)}\n")
-        self._state = CLASS
+                self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
         """Return True for things that look like target for an alias.
