@@ -125,6 +125,7 @@ from mypy.stubutil import (
 from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
 from mypy.types import (
     OVERLOAD_NAMES,
+    TYPED_NAMEDTUPLE_NAMES,
     AnyType,
     CallableType,
     Instance,
@@ -1077,14 +1078,24 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def is_namedtuple(self, expr: CallExpr) -> bool:
         callee = expr.callee
-        return (isinstance(callee, NameExpr) and callee.name.endswith("namedtuple")) or (
-            isinstance(callee, MemberExpr) and callee.name == "namedtuple"
+        return (
+            isinstance(callee, NameExpr)
+            and (self.refers_to_fullname(callee.name, "collections.namedtuple"))
+        ) or (
+            isinstance(callee, MemberExpr)
+            and isinstance(callee.expr, NameExpr)
+            and f"{callee.expr.name}.{callee.name}" in "collections.namedtuple"
         )
 
     def is_typed_namedtuple(self, expr: CallExpr) -> bool:
         callee = expr.callee
-        return (isinstance(callee, NameExpr) and callee.name.endswith("NamedTuple")) or (
-            isinstance(callee, MemberExpr) and callee.name == "NamedTuple"
+        return (
+            isinstance(callee, NameExpr)
+            and self.refers_to_fullname(callee.name, TYPED_NAMEDTUPLE_NAMES)
+        ) or (
+            isinstance(callee, MemberExpr)
+            and isinstance(callee.expr, NameExpr)
+            and f"{callee.expr.name}.{callee.name}" in TYPED_NAMEDTUPLE_NAMES
         )
 
     def _get_namedtuple_fields(self, call: CallExpr) -> list[tuple[str, str]] | None:

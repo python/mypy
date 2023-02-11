@@ -748,6 +748,23 @@ class Y(NamedTuple('Y', [('a', int), ('b', str)])): ...
 class R(NamedTuple('R', [('a', Incomplete), ('b', Incomplete)])): ...
 class S(typing.NamedTuple('S', [('a', int), ('b', str)])): ...
 
+[case testNotNamedTuple]
+from not_collections import namedtuple
+from not_typing import NamedTuple
+from collections import notnamedtuple
+from typing import NotNamedTuple
+X = namedtuple('X', ['a', 'b'])
+Y = notnamedtuple('Y', ['a', 'b'])
+Z = NamedTuple('Z', [('a', int), ('b', str)])
+W = NotNamedTuple('W', [('a', int), ('b', str)])
+[out]
+from _typeshed import Incomplete
+
+X: Incomplete
+Y: Incomplete
+Z: Incomplete
+W: Incomplete
+
 [case testArbitraryBaseClass]
 import x
 class D(x.C): ...
