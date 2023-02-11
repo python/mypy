@@ -585,8 +585,9 @@ class A:
     def _bar(cls) -> None: ...
 
 [case testNamedtuple]
-import collections, x
+import collections, typing, x
 X = collections.namedtuple('X', ['a', 'b'])
+Y = typing.NamedTuple('Y', [('a', int), ('b', str)])
 [out]
 from _typeshed import Incomplete
 from typing import NamedTuple
@@ -595,13 +596,20 @@ class X(NamedTuple):
     a: Incomplete
     b: Incomplete
 
+class Y(NamedTuple):
+    a: int
+    b: str
+
 [case testEmptyNamedtuple]
-import collections
+import collections, typing
 X = collections.namedtuple('X', [])
+Y = typing.NamedTuple('Y', [])
 [out]
 from typing import NamedTuple
 
 class X(NamedTuple): ...
+
+class Y(NamedTuple): ...
 
 [case testNamedtupleAltSyntax]
 from collections import namedtuple, xx
@@ -641,8 +649,10 @@ class X(NamedTuple):
 
 [case testNamedtupleWithUnderscore]
 from collections import namedtuple as _namedtuple
+from typing import NamedTuple as _NamedTuple
 def f(): ...
 X = _namedtuple('X', 'a b')
+Y = _NamedTuple('Y', [('a', int), ('b', str)])
 def g(): ...
 [out]
 from _typeshed import Incomplete
@@ -653,6 +663,10 @@ def f() -> None: ...
 class X(NamedTuple):
     a: Incomplete
     b: Incomplete
+
+class Y(NamedTuple):
+    a: int
+    b: str
 
 def g() -> None: ...
 
@@ -672,10 +686,14 @@ class Y(_X): ...
 
 [case testNamedtupleAltSyntaxFieldsTuples]
 from collections import namedtuple, xx
+from typing import NamedTuple
 X = namedtuple('X', ())
 Y = namedtuple('Y', ('a',))
 Z = namedtuple('Z', ('a', 'b', 'c', 'd', 'e'))
 xx
+R = NamedTuple('R', ())
+S = NamedTuple('S', (('a', int),))
+T = NamedTuple('T', (('a', int), ('b', str)))
 [out]
 from _typeshed import Incomplete
 from typing import NamedTuple
@@ -692,13 +710,43 @@ class Z(NamedTuple):
     d: Incomplete
     e: Incomplete
 
+class R(NamedTuple): ...
+
+class S(NamedTuple):
+    a: int
+
+class T(NamedTuple):
+    a: int
+    b: str
+
 [case testDynamicNamedTuple]
 from collections import namedtuple
+from typing import NamedTuple
 N = namedtuple('N', ['x', 'y'] + ['z'])
+M = NamedTuple('M', [('x', int), ('y', str)] + [('z', float)])
 [out]
 from _typeshed import Incomplete
 
 N: Incomplete
+M: Incomplete
+
+[case testNamedTupleInClassBases]
+import collections, typing
+from collections import namedtuple
+from typing import NamedTuple
+class X(namedtuple('X', ['a', 'b'])): ...
+class Y(NamedTuple('Y', [('a', int), ('b', str)])): ...
+class R(collections.namedtuple('R', ['a', 'b'])): ...
+class S(typing.NamedTuple('S', [('a', int), ('b', str)])): ...
+[out]
+import typing
+from _typeshed import Incomplete
+from typing import NamedTuple
+
+class X(NamedTuple('X', [('a', Incomplete), ('b', Incomplete)])): ...
+class Y(NamedTuple('Y', [('a', int), ('b', str)])): ...
+class R(NamedTuple('R', [('a', Incomplete), ('b', Incomplete)])): ...
+class S(typing.NamedTuple('S', [('a', int), ('b', str)])): ...
 
 [case testArbitraryBaseClass]
 import x
