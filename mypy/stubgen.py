@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping, cast
+from typing import Iterable, List, Mapping, Tuple, cast
 from typing_extensions import Final
 
 import mypy.build
@@ -1093,7 +1093,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self._state != EMPTY:
             self.add("\n")
         if isinstance(rvalue.args[1], DictExpr):
-            items_list = cast(list[tuple[StrExpr, Expression]], rvalue.args[1].items)
+            items_list = cast(List[Tuple[StrExpr, Expression]], rvalue.args[1].items)
             items = [(item[0].value, item[1]) for item in items_list]
         else:
             self.add(f"{self._indent}{lvalue.name}: Incomplete")
