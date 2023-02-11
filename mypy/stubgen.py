@@ -400,14 +400,17 @@ class AliasPrinter(NodeVisitor[str]):
         index = node.index.accept(self)
         return f"{base}[{index}]"
 
-    def visit_dict_expr(self, o: DictExpr) -> str:
-        return "{%s}" % ", ".join(f"{k.accept(self)}: {v.accept(self)}" for k, v in o.items)
-
     def visit_tuple_expr(self, node: TupleExpr) -> str:
         return ", ".join(n.accept(self) for n in node.items)
 
     def visit_list_expr(self, node: ListExpr) -> str:
         return f"[{', '.join(n.accept(self) for n in node.items)}]"
+
+    def visit_dict_expr(self, o: DictExpr) -> str:
+        # This is currently only used for TypedDict where all keys are strings.
+        return "{%s}" % ", ".join(
+            f"{cast(StrExpr, k).accept(self)}: {v.accept(self)}" for k, v in o.items
+        )
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
