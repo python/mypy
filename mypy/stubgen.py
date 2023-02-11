@@ -80,6 +80,7 @@ from mypy.nodes import (
     ClassDef,
     ComparisonExpr,
     Decorator,
+    DictExpr,
     EllipsisExpr,
     Expression,
     FloatExpr,
@@ -125,6 +126,7 @@ from mypy.stubutil import (
 from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
 from mypy.types import (
     OVERLOAD_NAMES,
+    TPDICT_NAMES,
     AnyType,
     CallableType,
     Instance,
@@ -398,6 +400,9 @@ class AliasPrinter(NodeVisitor[str]):
         index = node.index.accept(self)
         return f"{base}[{index}]"
 
+    def visit_dict_expr(self, o: DictExpr) -> str:
+        return "{%s}" % ", ".join(f"{k.accept(self)}: {v.accept(self)}" for k, v in o.items)
+
     def visit_tuple_expr(self, node: TupleExpr) -> str:
         return ", ".join(n.accept(self) for n in node.items)
 
@@ -622,7 +627,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         # Disable implicit exports of package-internal imports?
         self.export_less = export_less
         # Add imports that could be implicitly generated
-        self.import_tracker.add_import_from("typing", [("NamedTuple", None)])
+        self.import_tracker.add_import_from("typing", [("NamedTuple", None), ("TypedDict", None)])
         # Names in __all__ are required
         for name in _all_ or ():
             if name not in IGNORED_DUNDERS:
@@ -1002,6 +1007,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 assert isinstance(o.rvalue, CallExpr)
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
+            if isinstance(lvalue, NameExpr) and self.is_typeddict(o.rvalue):
+                assert isinstance(o.rvalue, CallExpr)
+                self.process_typeddict(lvalue, o.rvalue)
+                continue
             if (
                 isinstance(lvalue, NameExpr)
                 and not self.is_private_name(lvalue.name)
@@ -1067,6 +1076,42 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add("\n")
             for item in items:
                 self.add(f"{self._indent}    {item}: Incomplete\n")
+        self._state = CLASS
+
+    def is_typeddict(self, expr: Expression) -> bool:
+        if not isinstance(expr, CallExpr):
+            return False
+        callee = expr.callee
+        return isinstance(callee, (NameExpr, MemberExpr)) and any(
+            self.refers_to_fullname(callee.name, tpdict_name) for tpdict_name in TPDICT_NAMES
+        )
+
+    def process_typeddict(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
+        if self._state != EMPTY:
+            self.add("\n")
+        if isinstance(rvalue.args[1], DictExpr):
+            items_list = cast(list[tuple[StrExpr, Expression]], rvalue.args[1].items)
+            items = [(item[0].value, item[1]) for item in items_list]
+        else:
+            self.add(f"{self._indent}{lvalue.name}: Incomplete")
+            self.import_tracker.require_name("Incomplete")
+            return
+        self.import_tracker.require_name("TypedDict")
+        p = AliasPrinter(self)
+        if not all(key.isidentifier() for key, _ in items):
+            # Keep the call syntax if there are non-identifier keys.
+            self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
+        else:
+            bases = "TypedDict"
+            if len(rvalue.args) > 2:
+                bases += f", total={rvalue.args[2].accept(p)}"
+            self.add(f"{self._indent}class {lvalue.name}({bases}):")
+            if len(items) == 0:
+                self.add(" ...\n")
+            else:
+                self.add("\n")
+                for key, key_type in items:
+                    self.add(f"{self._indent}    {key}: {key_type.accept(p)}\n")
         self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:

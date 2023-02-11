@@ -2793,3 +2793,61 @@ def f(x: str | None) -> None: ...
 a: str | int
 
 def f(x: str | None) -> None: ...
+
+[case testTypeddict]
+import typing, x
+X = typing.TypedDict('X', {'a': int, 'b': str})
+Y = typing.TypedDict('X', {'a': int, 'b': str}, total=False)
+[out]
+from typing import TypedDict
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict, total=False):
+    a: int
+    b: str
+
+[case testTypeddictWithNonIdentifierKeys]
+from typing import TypedDict
+X = TypedDict('X', {'a-b': int, 'c': str})
+Y = TypedDict('X', {'a-b': int, 'c': str}, total=False)
+[out]
+from typing import TypedDict
+
+X = TypedDict('X', {'a-b': int, 'c': str})
+
+Y = TypedDict('X', {'a-b': int, 'c': str}, total=False)
+
+[case testEmptyTypeddict]
+import typing
+X = typing.TypedDict('X', {})
+[out]
+from typing import TypedDict
+
+class X(TypedDict): ...
+
+[case testTypeddictWithUnderscore]
+from typing import TypedDict as _TypedDict
+def f(): ...
+X = _TypedDict('X', {'a': int, 'b': str})
+def g(): ...
+[out]
+from typing import TypedDict
+
+def f() -> None: ...
+
+class X(TypedDict):
+    a: int
+    b: str
+
+def g() -> None: ...
+
+[case testTypeddictUnknownImport]
+from x import TypedDict
+X = TypedDict('X', {'a': int, 'b': str})
+[out]
+from _typeshed import Incomplete
+
+X: Incomplete
