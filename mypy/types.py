@@ -715,17 +715,6 @@ class ParamSpecType(TypeVarLikeType):
             return f"{n}.kwargs"
         return n
 
-    def as_parameters(self) -> Parameters:
-        return self.prefix.copy_modified(
-            arg_types=self.prefix.arg_types
-            + [
-                AnyType(TypeOfAny.implementation_artifact),
-                AnyType(TypeOfAny.implementation_artifact),
-            ],
-            arg_names=self.prefix.arg_names + [None, None],
-            arg_kinds=self.prefix.arg_kinds + [ARG_STAR, ARG_STAR2],
-        )
-
     def __hash__(self) -> int:
         return hash((self.id, self.flavor, self.prefix))
 
