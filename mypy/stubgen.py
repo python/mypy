@@ -1134,11 +1134,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(f"{self._indent}class {lvalue.name}(NamedTuple):")
         if len(fields) == 0:
             self.add(" ...\n")
+            self._state = EMPTY_CLASS
         else:
             self.add("\n")
             for f_name, f_type in fields:
                 self.add(f"{self._indent}    {f_name}: {f_type}\n")
-        self._state = CLASS
+            self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
         """Return True for things that look like target for an alias.
