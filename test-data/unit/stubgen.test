@@ -2844,10 +2844,13 @@ class X(TypedDict):
 
 def g() -> None: ...
 
-[case testTypeddictUnknownImport]
+[case testNotTypeddict]
 from x import TypedDict
+import y
 X = TypedDict('X', {'a': int, 'b': str})
+Y = y.TypedDict('Y', {'a': int, 'b': str})
 [out]
 from _typeshed import Incomplete
 
 X: Incomplete
+Y: Incomplete

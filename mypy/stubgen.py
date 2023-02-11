@@ -1085,8 +1085,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if not isinstance(expr, CallExpr):
             return False
         callee = expr.callee
-        return isinstance(callee, (NameExpr, MemberExpr)) and any(
-            self.refers_to_fullname(callee.name, tpdict_name) for tpdict_name in TPDICT_NAMES
+        return (
+            isinstance(callee, NameExpr) and self.refers_to_fullname(callee.name, TPDICT_NAMES)
+        ) or (
+            isinstance(callee, MemberExpr)
+            and isinstance(callee.expr, NameExpr)
+            and f"{callee.expr.name}.{callee.name}" in TPDICT_NAMES
         )
 
     def process_typeddict(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
