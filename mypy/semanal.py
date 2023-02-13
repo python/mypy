@@ -216,6 +216,7 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     find_dataclass_transform_spec,
     has_placeholder,
+    require_bool_literal_argument,
     set_callable_name as set_callable_name,
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
@@ -6473,15 +6474,19 @@ class SemanticAnalyzer(
         typing.dataclass_transform."""
         parameters = DataclassTransformSpec()
         for name, value in zip(call.arg_names, call.args):
+            # Skip any positional args. Note that any such args are invalid, but we can rely on
+            # typeshed to enforce this and don't need an additional error here.
+            if name is None:
+                continue
+
             # field_specifiers is currently the only non-boolean argument; check for it first so
             # so the rest of the block can fail through to handling booleans
             if name == "field_specifiers":
                 self.fail('"field_specifiers" support is currently unimplemented', call)
                 continue
 
-            boolean = self.parse_bool(value)
+            boolean = require_bool_literal_argument(self, value, name)
             if boolean is None:
-                self.fail(f'"{name}" argument must be a True or False literal', call)
                 continue
 
             if name == "eq_default":
