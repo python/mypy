@@ -396,8 +396,8 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.end_branch_statement()
 
     def visit_match_stmt(self, o: MatchStmt) -> None:
-        self.tracker.start_branch_statement()
         o.subject.accept(self)
+        self.tracker.start_branch_statement()
         for i in range(len(o.patterns)):
             pattern = o.patterns[i]
             pattern.accept(self)
