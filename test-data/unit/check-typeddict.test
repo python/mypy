@@ -1084,8 +1084,8 @@ reveal_type(d) \
 
 [case testTypedDictWithInvalidTotalArgument]
 from mypy_extensions import TypedDict
-A = TypedDict('A', {'x': int}, total=0) # E: TypedDict() "total" argument must be True or False
-B = TypedDict('B', {'x': int}, total=bool) # E: TypedDict() "total" argument must be True or False
+A = TypedDict('A', {'x': int}, total=0) # E: "total" argument must be a True or False literal
+B = TypedDict('B', {'x': int}, total=bool) # E: "total" argument must be a True or False literal
 C = TypedDict('C', {'x': int}, x=False) # E: Unexpected keyword argument "x" for "TypedDict"
 D = TypedDict('D', {'x': int}, False) # E: Unexpected arguments to TypedDict()
 [builtins fixtures/dict.pyi]
