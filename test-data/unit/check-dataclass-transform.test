@@ -210,6 +210,60 @@ Foo(5)
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassTransformOverloadsDecoratorOnOverload]
+# flags: --python-version 3.11
+from typing import dataclass_transform, overload, Any, Callable, Type, Literal
+
+@overload
+def my_dataclass(*, foo: str) -> Callable[[Type], Type]: ...
+@overload
+@dataclass_transform(frozen_default=True)
+def my_dataclass(*, foo: int) -> Callable[[Type], Type]: ...
+def my_dataclass(*, foo: Any) -> Callable[[Type], Type]:
+    return lambda cls: cls
+@my_dataclass(foo="hello")
+class A:
+    a: int
+@my_dataclass(foo=5)
+class B:
+    b: int
+
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (b: builtins.int) -> __main__.B"
+A(1, "hello")  # E: Too many arguments for "A"
+a = A(1)
+a.a = 2  # E: Property "a" defined in "A" is read-only
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformOverloadsDecoratorOnImpl]
+# flags: --python-version 3.11
+from typing import dataclass_transform, overload, Any, Callable, Type, Literal
+
+@overload
+def my_dataclass(*, foo: str) -> Callable[[Type], Type]: ...
+@overload
+def my_dataclass(*, foo: int) -> Callable[[Type], Type]: ...
+@dataclass_transform(frozen_default=True)
+def my_dataclass(*, foo: Any) -> Callable[[Type], Type]:
+    return lambda cls: cls
+@my_dataclass(foo="hello")
+class A:
+    a: int
+@my_dataclass(foo=5)
+class B:
+    b: int
+
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (b: builtins.int) -> __main__.B"
+A(1, "hello")  # E: Too many arguments for "A"
+a = A(1)
+a.a = 2  # E: Property "a" defined in "A" is read-only
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassTransformViaBaseClass]
 # flags: --python-version 3.11
 from typing import dataclass_transform
