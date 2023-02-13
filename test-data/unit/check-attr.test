@@ -1867,3 +1867,17 @@ D(1, "").a = 2 # E: Cannot assign to final attribute "a"
 D(1, "").b = "2" # E: Cannot assign to final attribute "b"
 
 [builtins fixtures/property.pyi]
+
+[case testSelfInClassInit]
+from attrs import define
+from typing import Union, Self
+
+@define
+class C:
+    a: Union[Self, None] = None
+
+reveal_type(C) # N: Revealed type is "def (a: Union[__main__.C, None] =) -> __main__.C"
+C(C())
+C(None)
+
+[builtins fixtures/property.pyi]
