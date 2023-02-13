@@ -6462,6 +6462,8 @@ class SemanticAnalyzer(
         return None
 
     def parse_str_literal(self, expr: Expression) -> str | None:
+        """Attempt to find the string literal value of the given expression. Returns `None` if no
+        literal value can be found."""
         if isinstance(expr, StrExpr):
             return expr.value
         if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.type is not None:
