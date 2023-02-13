@@ -689,6 +689,12 @@ class DataclassTransformer:
                         # the best we can do for now is not to fail.
                         # TODO: we can infer what's inside `**` and try to collect it.
                         message = 'Unpacking **kwargs in "field()" is not supported'
+                    elif self._spec is not _TRANSFORM_SPEC_FOR_DATACLASSES:
+                        # dataclasses.field can only be used with keyword args, but this
+                        # restriction is only enforced for the *standardized* arguments to
+                        # dataclass_transform field specifiers. If this is not a
+                        # dataclasses.dataclass class, we can just skip positional args safely.
+                        continue
                     else:
                         message = '"field()" does not accept positional arguments'
                     self._api.fail(message, expr)

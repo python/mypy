@@ -277,6 +277,28 @@ Foo.__dataclass_fields__  # E: "Type[Foo]" has no attribute "__dataclass_fields_
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassTransformFieldSpecifierExtraArgs]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+def field(extra1, *, kw_only=False, extra2=0): ...
+@dataclass_transform(field_specifiers=(field,))
+def my_dataclass(cls):
+    return cls
+
+@my_dataclass
+class Good:
+    a: int = field(5)
+    b: int = field(5, extra2=1)
+    c: int = field(5, kw_only=True)
+
+@my_dataclass
+class Bad:
+    a: int = field(kw_only=True)  # E: Missing positional argument "extra1" in call to "field"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassTransformOverloadsDecoratorOnOverload]
 # flags: --python-version 3.11
 from typing import dataclass_transform, overload, Any, Callable, Type, Literal
