@@ -524,7 +524,7 @@ class DataclassTransformer:
                 if value is not None:
                     is_kw_only = value
                 else:
-                    self._api.fail('"kw_only" argument must be True or False.', stmt.rvalue)
+                    self._api.fail('"kw_only" argument must be a boolean literal', stmt.rvalue)
 
             if sym.type is None and node.is_final and node.is_inferred:
                 # This is a special case, assignment like x: Final = 42 is classified
