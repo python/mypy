@@ -2082,6 +2082,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             arg_type_in_super,
                             supertype,
                             context,
+                            secondary_context=node,
                         )
                         emitted_msg = True
 
