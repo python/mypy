@@ -1249,7 +1249,7 @@ def find_node_type(
     else:
         typ = node.type
         if typ is not None:
-            typ = expand_self_type(node, typ, subtype)
+            typ = expand_self_type(typ, node.info, subtype)
     p_typ = get_proper_type(typ)
     if typ is None:
         return AnyType(TypeOfAny.from_error)
