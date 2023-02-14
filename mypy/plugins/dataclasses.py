@@ -41,7 +41,7 @@ from mypy.plugins.common import (
     add_method_to_class,
     deserialize_and_fixup_type,
 )
-from mypy.semanal_shared import find_dataclass_transform_spec
+from mypy.semanal_shared import find_dataclass_transform_spec, require_bool_literal_argument
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
 from mypy.typeops import map_type_from_supertype
@@ -678,11 +678,7 @@ class DataclassTransformer:
         # class's keyword arguments (ie `class Subclass(Parent, kwarg1=..., kwarg2=...)`)
         expression = self._cls.keywords.get(name)
         if expression is not None:
-            value = self._api.parse_bool(self._cls.keywords[name])
-            if value is not None:
-                return value
-            else:
-                self._api.fail(f'"{name}" argument must be True or False', expression)
+            return require_bool_literal_argument(self._api, expression, name, default)
         return default
 
 
