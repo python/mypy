@@ -1,9 +1,7 @@
 [case testI64BasicOps]
 from typing import List, Any, Tuple, Union
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32
 
 from testutil import assertRaises
 
@@ -517,12 +515,8 @@ def test_isinstance() -> None:
 from typing import Any, Tuple
 import sys
 
-from mypy_extensions import mypyc_attr
+from mypy_extensions import mypyc_attr, i64
 from typing_extensions import Final
-
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64
 
 from testutil import assertRaises
 
@@ -911,9 +905,7 @@ from typing_extensions import Final
 
 MAGIC: Final = -113
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64
+from mypy_extensions import i64
 
 def f(x: i64, y: i64 = 5) -> i64:
     return x + y
@@ -1211,9 +1203,7 @@ def test_magic_default() -> None:
 [case testI64UndefinedLocal]
 from typing_extensions import Final
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32
 
 from testutil import assertRaises
 
@@ -1346,9 +1336,7 @@ def test_many_locals() -> None:
 from typing import Any
 from typing_extensions import Final
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, trait
+from mypy_extensions import i64, trait
 
 from testutil import assertRaises
 

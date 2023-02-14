@@ -140,7 +140,6 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,
@@ -193,6 +192,11 @@ OVERLAPPING_TYPES_ALLOWLIST: Final = [
     "_collections_abc.dict_keys",
     "_collections_abc.dict_items",
 ]
+OVERLAPPING_BYTES_ALLOWLIST: Final = {
+    "builtins.bytes",
+    "builtins.bytearray",
+    "builtins.memoryview",
+}
 
 
 class TooManyUnions(Exception):
@@ -724,7 +728,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     literal_value = values[0]
             if literal_value is None:
                 key_context = item_name_expr or item_arg
-                self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
+                self.chk.fail(
+                    message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                    key_context,
+                    code=codes.LITERAL_REQ,
+                )
                 return None
             else:
                 item_names.append(literal_value)
@@ -3161,6 +3169,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return self.dangerous_comparison(left.args[0], right.args[0])
             elif left_name in ("builtins.list", "builtins.tuple") and right_name == left_name:
                 return self.dangerous_comparison(left.args[0], right.args[0])
+            elif left_name in OVERLAPPING_BYTES_ALLOWLIST and right_name in (
+                OVERLAPPING_BYTES_ALLOWLIST
+            ):
+                return False
         if isinstance(left, LiteralType) and isinstance(right, LiteralType):
             if isinstance(left.value, bool) and isinstance(right.value, bool):
                 # Comparing different booleans is not dangerous.
@@ -3354,7 +3366,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             is_subtype(right_type, left_type)
             and isinstance(left_type, Instance)
             and isinstance(right_type, Instance)
-            and left_type.type.alt_promote is not right_type.type
+            and not (
+                left_type.type.alt_promote is not None
+                and left_type.type.alt_promote.type is right_type.type
+            )
             and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
@@ -5153,8 +5168,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit__promote_expr(self, e: PromoteExpr) -> Type:
         return e.type
 
-    def visit_star_expr(self, e: StarExpr) -> StarType:
-        return StarType(self.accept(e.expr))
+    def visit_star_expr(self, e: StarExpr) -> Type:
+        # TODO: should this ever be called (see e.g. mypyc visitor)?
+        return self.accept(e.expr)
 
     def object_type(self) -> Instance:
         """Return instance type 'object'."""

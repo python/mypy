@@ -526,6 +526,9 @@ Whereas reading an unknown value will generate the more generic/serious
     # Error: TypedDict "Point" has no key "z"  [typeddict-item]
     _ = a["z"]
 
+.. note::
+
+    This error code is a sub-error code of a wider ``[typeddict-item]`` code.
 
 Check that type of target is known [has-type]
 ---------------------------------------------
@@ -800,6 +803,35 @@ consistently when using the call-based syntax. Example:
 
     # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
+
+Check that literal is used where expected [literal-required]
+------------------------------------------------------------
+
+There are some places where only a (string) literal value is expected for
+the purposes of static type checking, for example a ``TypedDict`` key, or
+a ``__match_args__`` item. Providing a ``str``-valued variable in such contexts
+will result in an error. Note however, in many cases you can use ``Final``,
+or ``Literal`` variables, for example:
+
+.. code-block:: python
+
+   from typing import Final, Literal, TypedDict
+
+   class Point(TypedDict):
+       x: int
+       y: int
+
+   def test(p: Point) -> None:
+       X: Final = "x"
+       p[X]  # OK
+
+       Y: Literal["y"] = "y"
+       p[Y]  # OK
+
+       key = "x"  # Inferred type of key is `str`
+       # Error: TypedDict key must be a string literal;
+       #   expected one of ("x", "y")  [literal-required]
+       p[key]
 
 Check that overloaded functions have an implementation [no-overload-impl]
 -------------------------------------------------------------------------

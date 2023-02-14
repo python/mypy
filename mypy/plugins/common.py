@@ -20,7 +20,11 @@ from mypy.nodes import (
     Var,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
-from mypy.semanal_shared import ALLOW_INCOMPATIBLE_OVERRIDE, set_callable_name
+from mypy.semanal_shared import (
+    ALLOW_INCOMPATIBLE_OVERRIDE,
+    require_bool_literal_argument,
+    set_callable_name,
+)
 from mypy.typeops import (  # noqa: F401  # Part of public API
     try_getting_str_literals as try_getting_str_literals,
 )
@@ -54,11 +58,7 @@ def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr, name: str, default:
     """
     attr_value = _get_argument(expr, name)
     if attr_value:
-        ret = ctx.api.parse_bool(attr_value)
-        if ret is None:
-            ctx.api.fail(f'"{name}" argument must be True or False.', expr)
-            return default
-        return ret
+        return require_bool_literal_argument(ctx.api, attr_value, name, default)
     return default
 
 

@@ -2783,3 +2783,13 @@ T = TypeVar("T", bound=str | None)
 from typing import TypeVar
 
 T = TypeVar('T', bound=str | None)
+
+
+[case testPEP604UnionType]
+a: str | int
+
+def f(x: str | None) -> None: ...
+[out]
+a: str | int
+
+def f(x: str | None) -> None: ...

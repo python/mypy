@@ -1084,8 +1084,8 @@ reveal_type(d) \
 
 [case testTypedDictWithInvalidTotalArgument]
 from mypy_extensions import TypedDict
-A = TypedDict('A', {'x': int}, total=0) # E: TypedDict() "total" argument must be True or False
-B = TypedDict('B', {'x': int}, total=bool) # E: TypedDict() "total" argument must be True or False
+A = TypedDict('A', {'x': int}, total=0) # E: "total" argument must be a True or False literal
+B = TypedDict('B', {'x': int}, total=bool) # E: "total" argument must be a True or False literal
 C = TypedDict('C', {'x': int}, x=False) # E: Unexpected keyword argument "x" for "TypedDict"
 D = TypedDict('D', {'x': int}, False) # E: Unexpected arguments to TypedDict()
 [builtins fixtures/dict.pyi]
@@ -1179,12 +1179,12 @@ reveal_type(d) # N: Revealed type is "TypedDict('__main__.D', {'x'?: builtins.in
 
 [case testTypedDictClassWithInvalidTotalArgument]
 from mypy_extensions import TypedDict
-class D(TypedDict, total=1): # E: Value of "total" must be True or False
+class D(TypedDict, total=1): # E: "total" argument must be a True or False literal
     x: int
-class E(TypedDict, total=bool): # E: Value of "total" must be True or False
+class E(TypedDict, total=bool): # E: "total" argument must be a True or False literal
     x: int
-class F(TypedDict, total=xyz): # E: Value of "total" must be True or False \
-                               # E: Name "xyz" is not defined
+class F(TypedDict, total=xyz): # E: Name "xyz" is not defined \
+                               # E: "total" argument must be a True or False literal
     x: int
 [builtins fixtures/dict.pyi]
 

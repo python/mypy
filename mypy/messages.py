@@ -1652,7 +1652,7 @@ class MessageBuilder:
                         format_key_list(extra, short=True), format_type(typ)
                     ),
                     context,
-                    code=codes.TYPPEDICT_UNKNOWN_KEY,
+                    code=codes.TYPEDDICT_UNKNOWN_KEY,
                 )
             if missing or extra:
                 # No need to check for further errors
@@ -1693,7 +1693,7 @@ class MessageBuilder:
                 context,
             )
         else:
-            err_code = codes.TYPPEDICT_UNKNOWN_KEY if setitem else codes.TYPEDDICT_ITEM
+            err_code = codes.TYPEDDICT_UNKNOWN_KEY if setitem else codes.TYPEDDICT_ITEM
             self.fail(
                 f'TypedDict {format_type(typ)} has no key "{item_name}"', context, code=err_code
             )
@@ -1787,7 +1787,9 @@ class MessageBuilder:
 
     def concrete_only_assign(self, typ: Type, context: Context) -> None:
         self.fail(
-            f"Can only assign concrete classes to a variable of type {format_type(typ)}", context
+            f"Can only assign concrete classes to a variable of type {format_type(typ)}",
+            context,
+            code=codes.TYPE_ABSTRACT,
         )
 
     def concrete_only_call(self, typ: Type, context: Context) -> None:

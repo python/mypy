@@ -64,7 +64,6 @@ from mypy.types import (
     PlaceholderType,
     RawExpressionType,
     RequiredType,
-    StarType,
     SyntheticTypeVisitor,
     TrivialSyntheticTypeTranslator,
     TupleType,
@@ -1031,17 +1030,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     code=codes.SYNTAX,
                 )
             return AnyType(TypeOfAny.from_error)
-        star_count = sum(1 for item in t.items if isinstance(item, StarType))
-        if star_count > 1:
-            self.fail("At most one star type allowed in a tuple", t)
-            if t.implicit:
-                return TupleType(
-                    [AnyType(TypeOfAny.from_error) for _ in t.items],
-                    self.named_type("builtins.tuple"),
-                    t.line,
-                )
-            else:
-                return AnyType(TypeOfAny.from_error)
+
         any_type = AnyType(TypeOfAny.special_form)
         # If the fallback isn't filled in yet, its type will be the falsey FakeInfo
         fallback = (
@@ -1092,9 +1081,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         return t
-
-    def visit_star_type(self, t: StarType) -> Type:
-        return StarType(self.anal_type(t.type), t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
         if (

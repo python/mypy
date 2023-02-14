@@ -84,8 +84,11 @@ DICT_ITEM: Final = ErrorCode(
 TYPEDDICT_ITEM: Final = ErrorCode(
     "typeddict-item", "Check items when constructing TypedDict", "General"
 )
-TYPPEDICT_UNKNOWN_KEY: Final = ErrorCode(
-    "typeddict-unknown-key", "Check unknown keys when constructing TypedDict", "General"
+TYPEDDICT_UNKNOWN_KEY: Final = ErrorCode(
+    "typeddict-unknown-key",
+    "Check unknown keys when constructing TypedDict",
+    "General",
+    sub_code_of=TYPEDDICT_ITEM,
 )
 HAS_TYPE: Final = ErrorCode(
     "has-type", "Check that type of reference can be determined", "General"
