@@ -212,15 +212,23 @@ Foo(5)
 
 [case testDataclassTransformFieldSpecifierRejectMalformed]
 # flags: --python-version 3.11
-from typing import dataclass_transform, Callable, Type
+from typing import dataclass_transform, Any, Callable, Final, Type
 
 def some_type() -> Type: ...
 def some_function() -> Callable[[], None]: ...
+
+def field(*args, **kwargs): ...
+def fields_tuple() -> tuple[type | Callable[..., Any], ...]: return (field,)
+CONSTANT: Final = (field,)
 
 @dataclass_transform(field_specifiers=(some_type(),))  # E: "field_specifiers" must only contain identifiers
 def bad_dataclass1() -> None: ...
 @dataclass_transform(field_specifiers=(some_function(),))  # E: "field_specifiers" must only contain identifiers
 def bad_dataclass2() -> None: ...
+@dataclass_transform(field_specifiers=CONSTANT)  # E: "field_specifiers" argument must be a tuple literal
+def bad_dataclass3() -> None: ...
+@dataclass_transform(field_specifiers=fields_tuple())  # E: "field_specifiers" argument must be a tuple literal
+def bad_dataclass4() -> None: ...
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]

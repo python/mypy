@@ -6517,6 +6517,7 @@ class SemanticAnalyzer(
 
     def parse_dataclass_transform_field_specifiers(self, arg: Expression) -> tuple[str, ...]:
         if not isinstance(arg, TupleExpr):
+            self.fail('"field_specifiers" argument must be a tuple literal', arg)
             return tuple()
 
         names = []
