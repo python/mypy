@@ -307,6 +307,28 @@ class Bad:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassTransformMultipleFieldSpecifiers]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+def field1(*, default: int) -> int: ...
+def field2(*, default: str) -> str: ...
+
+@dataclass_transform(field_specifiers=(field1, field2))
+def my_dataclass(cls): return cls
+
+@my_dataclass
+class Foo:
+    a: int = field1(default=0)
+    b: str = field2(default='hello')
+
+reveal_type(Foo)  # N: Revealed type is "def (a: builtins.int =, b: builtins.str =) -> __main__.Foo"
+Foo()
+Foo(a=1, b='bye')
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassTransformOverloadsDecoratorOnOverload]
 # flags: --python-version 3.11
 from typing import dataclass_transform, overload, Any, Callable, Type, Literal
