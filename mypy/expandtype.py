@@ -518,11 +518,11 @@ def expand_self_type(typ: Type, info: TypeInfo, replacement: Type) -> Type:
 
 
 @overload
-def expand_self_type(typ: None, info: TypeInfo, replacement: Type | None) -> None:
+def expand_self_type(typ: None, info: TypeInfo, replacement: Type) -> None:
     ...
 
 
-def expand_self_type(typ: Type | None, info: TypeInfo, replacement: Type | None) -> Type | None:
+def expand_self_type(typ: Type | None, info: TypeInfo, replacement: Type) -> Type | None:
     """Expand appearances of Self type in a variable type."""
     if typ is not None and info.self_type is not None:
         return expand_type(typ, {info.self_type.id: replacement})
