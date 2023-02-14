@@ -1869,6 +1869,7 @@ D(1, "").b = "2" # E: Cannot assign to final attribute "b"
 [builtins fixtures/property.pyi]
 
 [case testSelfInClassInit]
+# flags: --strict-optional
 from attrs import define
 from typing import Union, Self
 
