@@ -80,9 +80,13 @@ class NodeFixer(NodeVisitor[None]):
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
                 info.update_tuple_type(info.tuple_type)
+                if info.special_alias:
+                    info.special_alias.alias_tvars = list(info.defn.type_vars)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
                 info.update_typeddict_type(info.typeddict_type)
+                if info.special_alias:
+                    info.special_alias.alias_tvars = list(info.defn.type_vars)
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
