@@ -250,7 +250,7 @@ def field(
 def my_dataclass(cls: Type) -> Type:
     return cls
 
-B: Final = 'b'
+B: Final = 'b_'
 @my_dataclass
 class Foo:
     a: int = field(alias='a_')
@@ -264,13 +264,13 @@ class Foo:
     unused2: int = field(factory=lambda: 0)
     unused3: int = field(default_factory=lambda: 0)
 
-Foo(a=5, b=1)  # E: Unexpected keyword argument "a" for "Foo"
-Foo(a_=1, b=1, noinit=1)  # E: Unexpected keyword argument "noinit" for "Foo"
+Foo(a=5, b_=1)  # E: Unexpected keyword argument "a" for "Foo"
+Foo(a_=1, b_=1, noinit=1)  # E: Unexpected keyword argument "noinit" for "Foo"
 Foo(1, 2, 3)  # E: Too many positional arguments for "Foo"
-foo = Foo(a_=5, b=1)
+foo = Foo(1, 2, kwonly=3)
 reveal_type(foo.noinit)  # N: Revealed type is "builtins.int"
 reveal_type(foo.unused1)  # N: Revealed type is "builtins.int"
-Foo(a_=5, b=1, unused1=2, unused2=3, unused3=4)
+Foo(a_=5, b_=1, unused1=2, unused2=3, unused3=4)
 
 def some_str() -> str: ...
 def some_bool() -> bool: ...
