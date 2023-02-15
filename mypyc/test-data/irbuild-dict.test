@@ -218,13 +218,17 @@ L0:
     return r2
 
 [case testDictIterationMethods]
-from typing import Dict
+from typing import Dict, Union
 def print_dict_methods(d1: Dict[int, int], d2: Dict[int, int]) -> None:
     for v in d1.values():
         if v in d2:
             return
     for k, v in d2.items():
         d2[k] += v
+def union_of_dicts(d: Union[Dict[str, int], Dict[str, str]]) -> None:
+    new = {}
+    for k, v in d.items():
+        new[k] = int(v)
 [out]
 def print_dict_methods(d1, d2):
     d1, d2 :: dict
@@ -313,6 +317,58 @@ L10:
 L11:
     r34 = CPy_NoErrOccured()
 L12:
+    return 1
+def union_of_dicts(d):
+    d, r0, new :: dict
+    r1 :: short_int
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: object
+    r5 :: tuple[bool, short_int, object, object]
+    r6 :: short_int
+    r7 :: bool
+    r8, r9 :: object
+    r10 :: str
+    r11 :: union[int, str]
+    k :: str
+    v :: union[int, str]
+    r12, r13 :: object
+    r14 :: int
+    r15 :: object
+    r16 :: int32
+    r17, r18, r19 :: bit
+L0:
+    r0 = PyDict_New()
+    new = r0
+    r1 = 0
+    r2 = PyDict_Size(d)
+    r3 = r2 << 1
+    r4 = CPyDict_GetItemsIter(d)
+L1:
+    r5 = CPyDict_NextItem(r4, r1)
+    r6 = r5[1]
+    r1 = r6
+    r7 = r5[0]
+    if r7 goto L2 else goto L4 :: bool
+L2:
+    r8 = r5[2]
+    r9 = r5[3]
+    r10 = cast(str, r8)
+    r11 = cast(union[int, str], r9)
+    k = r10
+    v = r11
+    r12 = load_address PyLong_Type
+    r13 = PyObject_CallFunctionObjArgs(r12, v, 0)
+    r14 = unbox(int, r13)
+    r15 = box(int, r14)
+    r16 = CPyDict_SetItem(new, k, r15)
+    r17 = r16 >= 0 :: signed
+L3:
+    r18 = CPyDict_CheckSize(d, r3)
+    goto L1
+L4:
+    r19 = CPy_NoErrOccured()
+L5:
     return 1
 
 [case testDictLoadAddress]

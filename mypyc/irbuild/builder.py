@@ -879,23 +879,39 @@ class IRBuilder:
         else:
             return self.type_to_rtype(target_type.args[0])
 
-    def get_dict_base_type(self, expr: Expression) -> Instance:
+    def get_dict_base_type(self, expr: Expression) -> list[Instance]:
         """Find dict type of a dict-like expression.
 
         This is useful for dict subclasses like SymbolTable.
         """
         target_type = get_proper_type(self.types[expr])
-        assert isinstance(target_type, Instance), target_type
-        dict_base = next(base for base in target_type.type.mro if base.fullname == "builtins.dict")
-        return map_instance_to_supertype(target_type, dict_base)
+        if isinstance(target_type, UnionType):
+            types = [get_proper_type(item) for item in target_type.items]
+        else:
+            types = [target_type]
+
+        dict_types = []
+        for t in types:
+            assert isinstance(t, Instance), t
+            dict_base = next(base for base in t.type.mro if base.fullname == "builtins.dict")
+            dict_types.append(map_instance_to_supertype(t, dict_base))
+        return dict_types
 
     def get_dict_key_type(self, expr: Expression) -> RType:
-        dict_base_type = self.get_dict_base_type(expr)
-        return self.type_to_rtype(dict_base_type.args[0])
+        dict_base_types = self.get_dict_base_type(expr)
+        if len(dict_base_types) == 1:
+            return self.type_to_rtype(dict_base_types[0].args[0])
+        else:
+            rtypes = [self.type_to_rtype(t.args[0]) for t in dict_base_types]
+            return RUnion.make_simplified_union(rtypes)
 
     def get_dict_value_type(self, expr: Expression) -> RType:
-        dict_base_type = self.get_dict_base_type(expr)
-        return self.type_to_rtype(dict_base_type.args[1])
+        dict_base_types = self.get_dict_base_type(expr)
+        if len(dict_base_types) == 1:
+            return self.type_to_rtype(dict_base_types[0].args[1])
+        else:
+            rtypes = [self.type_to_rtype(t.args[1]) for t in dict_base_types]
+            return RUnion.make_simplified_union(rtypes)
 
     def get_dict_item_type(self, expr: Expression) -> RType:
         key_type = self.get_dict_key_type(expr)
