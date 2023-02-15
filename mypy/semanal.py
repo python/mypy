@@ -972,7 +972,7 @@ class SemanticAnalyzer(
             elif isinstance(functype, CallableType):
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
-                    leading_type = info.self_type if info.self_type else fill_typevars(info)
+                    leading_type: Type = info.self_type if info.self_type else fill_typevars(info)
                     if func.is_class or func.name == "__new__":
                         leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
