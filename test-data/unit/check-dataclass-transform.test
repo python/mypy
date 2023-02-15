@@ -210,6 +210,125 @@ Foo(5)
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassTransformFieldSpecifierRejectMalformed]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Any, Callable, Final, Type
+
+def some_type() -> Type: ...
+def some_function() -> Callable[[], None]: ...
+
+def field(*args, **kwargs): ...
+def fields_tuple() -> tuple[type | Callable[..., Any], ...]: return (field,)
+CONSTANT: Final = (field,)
+
+@dataclass_transform(field_specifiers=(some_type(),))  # E: "field_specifiers" must only contain identifiers
+def bad_dataclass1() -> None: ...
+@dataclass_transform(field_specifiers=(some_function(),))  # E: "field_specifiers" must only contain identifiers
+def bad_dataclass2() -> None: ...
+@dataclass_transform(field_specifiers=CONSTANT)  # E: "field_specifiers" argument must be a tuple literal
+def bad_dataclass3() -> None: ...
+@dataclass_transform(field_specifiers=fields_tuple())  # E: "field_specifiers" argument must be a tuple literal
+def bad_dataclass4() -> None: ...
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFieldSpecifierParams]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Any, Callable, Type, Final
+
+def field(
+    *,
+    init: bool = True,
+    kw_only: bool = False,
+    alias: str | None = None,
+    default: Any | None = None,
+    default_factory: Callable[[], Any] | None = None,
+    factory: Callable[[], Any] | None = None,
+): ...
+@dataclass_transform(field_specifiers=(field,))
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+B: Final = 'b_'
+@my_dataclass
+class Foo:
+    a: int = field(alias='a_')
+    b: int = field(alias=B)
+    # cannot be passed as a positional
+    kwonly: int = field(kw_only=True, default=0)
+    # Safe to omit from constructor, error to pass
+    noinit: int = field(init=False, default=1)
+    # It should be safe to call the constructor without passing any of these
+    unused1: int = field(default=0)
+    unused2: int = field(factory=lambda: 0)
+    unused3: int = field(default_factory=lambda: 0)
+
+Foo(a=5, b_=1)  # E: Unexpected keyword argument "a" for "Foo"
+Foo(a_=1, b_=1, noinit=1)  # E: Unexpected keyword argument "noinit" for "Foo"
+Foo(1, 2, 3)  # E: Too many positional arguments for "Foo"
+foo = Foo(1, 2, kwonly=3)
+reveal_type(foo.noinit)  # N: Revealed type is "builtins.int"
+reveal_type(foo.unused1)  # N: Revealed type is "builtins.int"
+Foo(a_=5, b_=1, unused1=2, unused2=3, unused3=4)
+
+def some_str() -> str: ...
+def some_bool() -> bool: ...
+@my_dataclass
+class Bad:
+    bad1: int = field(alias=some_str())  # E: "alias" argument to dataclass field must be a string literal
+    bad2: int = field(kw_only=some_bool())  # E: "kw_only" argument must be a boolean literal
+
+# this metadata should only exist for dataclasses.dataclass classes
+Foo.__dataclass_fields__  # E: "Type[Foo]" has no attribute "__dataclass_fields__"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFieldSpecifierExtraArgs]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+def field(extra1, *, kw_only=False, extra2=0): ...
+@dataclass_transform(field_specifiers=(field,))
+def my_dataclass(cls):
+    return cls
+
+@my_dataclass
+class Good:
+    a: int = field(5)
+    b: int = field(5, extra2=1)
+    c: int = field(5, kw_only=True)
+
+@my_dataclass
+class Bad:
+    a: int = field(kw_only=True)  # E: Missing positional argument "extra1" in call to "field"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformMultipleFieldSpecifiers]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+def field1(*, default: int) -> int: ...
+def field2(*, default: str) -> str: ...
+
+@dataclass_transform(field_specifiers=(field1, field2))
+def my_dataclass(cls): return cls
+
+@my_dataclass
+class Foo:
+    a: int = field1(default=0)
+    b: str = field2(default='hello')
+
+reveal_type(Foo)  # N: Revealed type is "def (a: builtins.int =, b: builtins.str =) -> __main__.Foo"
+Foo()
+Foo(a=1, b='bye')
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassTransformOverloadsDecoratorOnOverload]
 # flags: --python-version 3.11
 from typing import dataclass_transform, overload, Any, Callable, Type, Literal
