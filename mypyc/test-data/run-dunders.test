@@ -861,6 +861,7 @@ def test_dunder_min() -> None:
 
 
 [case testDundersPowerSpecial]
+import sys
 from typing import Any, Optional
 from testutil import assertRaises
 
@@ -920,18 +921,23 @@ def test_native() -> None:
     assert i.value == 4
 
 def test_errors() -> None:
+    if sys.version_info[0] >= 3 and sys.version_info[1] >= 10:
+        op = "** or pow()"
+    else:
+        op = "pow()"
+
     f = Forward()
-    with assertRaises(TypeError, "unsupported operand type(s) for pow(): 'Forward', 'int', 'str'"):
+    with assertRaises(TypeError, f"unsupported operand type(s) for {op}: 'Forward', 'int', 'str'"):
         pow(f, 3, "x")  # type: ignore
     with assertRaises(TypeError, "unsupported operand type(s) for **: 'Forward' and 'str'"):
         f**"x"  # type: ignore
     r = Reverse()
     with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'str' and 'Reverse'"):
         "x"**r  # type: ignore
-    with assertRaises(TypeError, "unsupported operand type(s) for pow(): 'int', 'Reverse', 'int'"):
+    with assertRaises(TypeError, f"unsupported operand type(s) for {op}: 'int', 'Reverse', 'int'"):
         # Ternary pow() does not fallback to __rpow__ if LHS's __pow__ returns NotImplemented.
         pow(3, r, 3)  # type: ignore
-    with assertRaises(TypeError, "unsupported operand type(s) for pow(): 'ForwardNotImplemented', 'Child', 'int'"):
+    with assertRaises(TypeError, f"unsupported operand type(s) for {op}: 'ForwardNotImplemented', 'Child', 'int'"):
         # Ternary pow() does not try RHS's __rpow__ first when it's a subclass and redefines
         # __rpow__ unlike other ops.
         pow(ForwardNotImplemented(), Child(), 3)  # type: ignore
