@@ -6359,3 +6359,34 @@ from m import Foo
 [file m.py]
 from missing_module import Meta  # type: ignore[import]
 class Foo(metaclass=Meta): ...
+
+[case testGenericTypedDictWithError]
+import b
+[file a.py]
+from typing import Generic, TypeVar
+from typing_extensions import TypedDict
+
+TValue = TypeVar("TValue")
+class Dict(TypedDict, Generic[TValue]):
+    value: TValue
+
+[file b.py]
+from a import Dict, TValue
+
+def f(d: Dict[TValue]) -> TValue:
+    return d["value"]
+def g(d: Dict[TValue]) -> TValue:
+    return d["x"]
+
+[file b.py.2]
+from a import Dict, TValue
+
+def f(d: Dict[TValue]) -> TValue:
+    return d["value"]
+def g(d: Dict[TValue]) -> TValue:
+    return d["y"]
+[builtins fixtures/dict.pyi]
+[out]
+tmp/b.py:6: error: TypedDict "a.Dict[TValue]" has no key "x"
+[out2]
+tmp/b.py:6: error: TypedDict "a.Dict[TValue]" has no key "y"

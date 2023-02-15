@@ -3473,8 +3473,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_tuple_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the tuple type described by a given TypeInfo."""
+        """Generate an alias to the tuple type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic tuple types),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.tuple_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, info.defn.type_vars)),
             info.fullname,
@@ -3484,8 +3489,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_typeddict_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the TypedDict type described by a given TypeInfo."""
+        """Generate an alias to the TypedDict type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic TypedDicts),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.typeddict_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.typeddict_type.copy_modified(
                 fallback=mypy.types.Instance(info, info.defn.type_vars)
