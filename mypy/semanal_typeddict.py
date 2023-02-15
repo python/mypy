@@ -31,7 +31,11 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder
+from mypy.semanal_shared import (
+    SemanticAnalyzerInterface,
+    has_placeholder,
+    require_bool_literal_argument,
+)
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     TPDICT_NAMES,
@@ -320,10 +324,7 @@ class TypedDictAnalyzer:
                     self.fail("Right hand side values are not supported in TypedDict", stmt)
         total: bool | None = True
         if "total" in defn.keywords:
-            total = self.api.parse_bool(defn.keywords["total"])
-            if total is None:
-                self.fail('Value of "total" must be True or False', defn)
-                total = True
+            total = require_bool_literal_argument(self.api, defn.keywords["total"], "total", True)
         required_keys = {
             field
             for (field, t) in zip(fields, types)
@@ -436,11 +437,9 @@ class TypedDictAnalyzer:
             )
         total: bool | None = True
         if len(args) == 3:
-            total = self.api.parse_bool(call.args[2])
+            total = require_bool_literal_argument(self.api, call.args[2], "total")
             if total is None:
-                return self.fail_typeddict_arg(
-                    'TypedDict() "total" argument must be True or False', call
-                )
+                return "", [], [], True, [], False
         dictexpr = args[1]
         tvar_defs = self.api.get_and_bind_all_tvars([t for k, t in dictexpr.items])
         res = self.parse_typeddict_fields_with_types(dictexpr.items, call)
