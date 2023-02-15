@@ -1692,9 +1692,8 @@ class C:
         return self
     def baz(self: Self) -> None:
         self.x = self
-    def bad(self) -> None:
-        # This is unfortunate, but required by PEP 484
-        self.x = self  # E: Incompatible types in assignment (expression has type "C", variable has type "Self")
+    def eggs(self) -> None:
+        self.x = self
 
 [case testTypingSelfClashInBodies]
 from typing import Self, TypeVar
