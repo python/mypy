@@ -21,10 +21,10 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
-from _typeshed import Self, SupportsWrite
+from _typeshed import SupportsWrite
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
 
 if sys.version_info >= (3, 8):
     from builtins import dict as _DictReadMapping
@@ -107,7 +107,7 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
         quoting: _QuotingType = ...,
         strict: bool = ...,
     ) -> None: ...
-    def __iter__(self: Self) -> Self: ...
+    def __iter__(self) -> Self: ...
     def __next__(self) -> _DictReadMapping[_T | Any, str | Any]: ...
     if sys.version_info >= (3, 12):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
