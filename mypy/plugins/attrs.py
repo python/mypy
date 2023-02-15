@@ -151,7 +151,7 @@ class Attribute:
             arg_kind = ARG_OPT if self.has_default else ARG_POS
 
         with state.strict_optional_set(ctx.api.options.strict_optional):
-            init_type = expand_self_type(init_type, self.info, fill_typevars(self.info))
+            init_type = expand_self_type(init_type, self.info, fill_typevars(ctx.cls.info))
 
         # Attrs removes leading underscores when creating the __init__ arguments.
         return Argument(Var(self.name.lstrip("_"), init_type), init_type, None, arg_kind)

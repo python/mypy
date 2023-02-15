@@ -1880,5 +1880,15 @@ class C:
 reveal_type(C) # N: Revealed type is "def (a: Union[__main__.C, None] =) -> __main__.C"
 C(C())
 C(None)
+reveal_type(C(C()).a)  # N: Revealed type is "Union[__main__.C, None]"
+
+@define
+class S(C):
+    ...
+
+reveal_type(S) # N: Revealed type is "def (a: Union[__main__.S, None] =) -> __main__.S"
+S(S())
+S(None)
+reveal_type(S(S()).a)  # N: Revealed type is "Union[__main__.S, None]"
 
 [builtins fixtures/property.pyi]
