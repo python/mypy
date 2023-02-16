@@ -13,6 +13,7 @@ from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper,
     generate_get_wrapper,
     generate_hash_wrapper,
+    generate_ipow_wrapper,
     generate_len_wrapper,
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
@@ -109,6 +110,11 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__ior__": ("nb_inplace_or", generate_dunder_wrapper),
     "__ixor__": ("nb_inplace_xor", generate_dunder_wrapper),
     "__imatmul__": ("nb_inplace_matrix_multiply", generate_dunder_wrapper),
+    # Ternary operations. (yes, really)
+    # These are special cased in generate_bin_op_wrapper().
+    "__pow__": ("nb_power", generate_bin_op_wrapper),
+    "__rpow__": ("nb_power", generate_bin_op_wrapper),
+    "__ipow__": ("nb_inplace_power", generate_ipow_wrapper),
 }
 
 AS_ASYNC_SLOT_DEFS: SlotTable = {
