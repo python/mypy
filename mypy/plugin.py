@@ -298,6 +298,10 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def parse_str_literal(self, expr: Expression) -> str | None:
+        """Parse string literals."""
+
+    @abstractmethod
     def fail(
         self,
         msg: str,

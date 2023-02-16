@@ -701,18 +701,6 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(
-        self,
-        target: Context | int,
-        column: int | None = None,
-        end_line: int | None = None,
-        end_column: int | None = None,
-    ) -> None:
-        super().set_line(target, column, end_line, end_column)
-        for arg in self.arguments:
-            # TODO: set arguments line/column to their precise locations.
-            arg.set_line(self.line, self.column, self.end_line, end_column)
-
     def is_dynamic(self) -> bool:
         return self.type is None
 
@@ -3495,8 +3483,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_tuple_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the tuple type described by a given TypeInfo."""
+        """Generate an alias to the tuple type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic tuple types),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.tuple_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, info.defn.type_vars)),
             info.fullname,
@@ -3506,8 +3499,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_typeddict_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the TypedDict type described by a given TypeInfo."""
+        """Generate an alias to the TypedDict type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic TypedDicts),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.typeddict_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.typeddict_type.copy_modified(
                 fallback=mypy.types.Instance(info, info.defn.type_vars)
