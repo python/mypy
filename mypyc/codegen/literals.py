@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, FrozenSet, List, Tuple, Union, cast
+from typing import Any, FrozenSet, List, Tuple, Union, cast
 from typing_extensions import Final
 
 # Supported Python literal types. All tuple / frozenset items must have supported
@@ -151,8 +151,7 @@ class Literals:
            <length of the second collection>
            ...
         """
-        # FIXME: https://github.com/mypyc/mypyc/issues/965
-        value_by_index = {index: value for value, index in cast(Dict[Any, int], values).items()}
+        value_by_index = {index: value for value, index in values.items()}
         result = []
         count = len(values)
         result.append(str(count))
