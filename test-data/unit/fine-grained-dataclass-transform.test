@@ -67,7 +67,9 @@ class B(A):
 B(x=1, y=2)
 
 [file m.py]
-class A:
+class Dataclass: ...
+
+class A(Dataclass):
     x: int
 
 [file m.py.2]
