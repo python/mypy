@@ -1703,6 +1703,18 @@ class MessageBuilder:
                     "Did you mean {}?".format(pretty_seq(matches, "or")), context, code=err_code
                 )
 
+    def typeddict_key_not_required(
+        self, typ: TypedDictType, item_name: str, context: Context
+    ) -> None:
+        type_name: str = ""
+        if not typ.is_anonymous():
+            type_name = format_type(typ) + " "
+        self.fail(
+            f'TypedDict {type_name}key "{item_name}" is not required and might not be present.',
+            context,
+            code=codes.TYPEDDICT_ITEM_ACCESS,
+        )
+
     def typeddict_context_ambiguous(self, types: list[TypedDictType], context: Context) -> None:
         formatted_types = ", ".join(list(format_type_distinctly(*types)))
         self.fail(

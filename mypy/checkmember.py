@@ -1074,7 +1074,7 @@ def analyze_typeddict_access(
             # Since we can get this during `a['key'] = ...`
             # it is safe to assume that the context is `IndexExpr`.
             item_type = mx.chk.expr_checker.visit_typeddict_index_expr(
-                typ, mx.context.index, setitem=True
+                typ, mx.context.index, setitem=True, is_rvalue=False
             )
         else:
             # It can also be `a.__setitem__(...)` direct call.
