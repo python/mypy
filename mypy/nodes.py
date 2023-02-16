@@ -701,18 +701,6 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(
-        self,
-        target: Context | int,
-        column: int | None = None,
-        end_line: int | None = None,
-        end_column: int | None = None,
-    ) -> None:
-        super().set_line(target, column, end_line, end_column)
-        for arg in self.arguments:
-            # TODO: set arguments line/column to their precise locations.
-            arg.set_line(self.line, self.column, self.end_line, end_column)
-
     def is_dynamic(self) -> bool:
         return self.type is None
 

@@ -676,8 +676,8 @@ class DataFileCollector(pytest.Collector):
     parent: DataSuiteCollector
 
     @classmethod  # We have to fight with pytest here:
-    def from_parent(  # type: ignore[override]
-        cls, parent: DataSuiteCollector, *, name: str
+    def from_parent(
+        cls, parent: DataSuiteCollector, *, name: str  # type: ignore[override]
     ) -> DataFileCollector:
         collector = super().from_parent(parent, name=name)
         assert isinstance(collector, DataFileCollector)

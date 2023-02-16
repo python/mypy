@@ -490,7 +490,7 @@ bar/baz.py:4:5:attr
 $ dmypy inspect foo.py:10:10 --show definition --include-span
 10:1:10:12 -> bar/baz.py:6:1:test
 $ dmypy inspect foo.py:14:6 --show definition --include-span --include-kind
-NameExpr:14:5:14:7 -> foo.py:13:1:arg
+NameExpr:14:5:14:7 -> foo.py:13:9:arg
 MemberExpr:14:5:14:9 -> bar/baz.py:9:5:x, bar/baz.py:11:5:x
 
 [file foo.py]
