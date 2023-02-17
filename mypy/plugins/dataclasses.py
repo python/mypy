@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
-from mypy.expandtype import expand_self_type, expand_type
+from mypy.expandtype import expand_type
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,

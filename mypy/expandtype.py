@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
 from typing_extensions import Final
 
-from mypy.nodes import ARG_POS, ARG_STAR, ArgKind, TypeInfo, Var
+from mypy.nodes import ARG_POS, ARG_STAR, ArgKind, Var
 from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     ANY_STRATEGY,

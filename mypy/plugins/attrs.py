@@ -7,7 +7,7 @@ from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.errorcodes import LITERAL_REQ
-from mypy.expandtype import expand_self_type, expand_type
+from mypy.expandtype import expand_type
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (
     ARG_NAMED,
