@@ -1,7 +1,7 @@
 import sys
 from _typeshed import ReadableBuffer, SupportsWrite
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, ClassVar, Protocol, SupportsBytes, Union
+from typing import Any, ClassVar, Protocol, SupportsBytes
 from typing_extensions import SupportsIndex, TypeAlias, final
 
 __all__ = [
@@ -142,13 +142,13 @@ class PickleError(Exception): ...
 class PicklingError(PickleError): ...
 class UnpicklingError(PickleError): ...
 
-_ReducedType: TypeAlias = Union[
-    str,
-    tuple[Callable[..., Any], tuple[Any, ...]],
-    tuple[Callable[..., Any], tuple[Any, ...], Any],
-    tuple[Callable[..., Any], tuple[Any, ...], Any, Iterator[Any] | None],
-    tuple[Callable[..., Any], tuple[Any, ...], Any, Iterator[Any] | None, Iterator[Any] | None],
-]
+_ReducedType: TypeAlias = (
+    str
+    | tuple[Callable[..., Any], tuple[Any, ...]]
+    | tuple[Callable[..., Any], tuple[Any, ...], Any]
+    | tuple[Callable[..., Any], tuple[Any, ...], Any, Iterator[Any] | None]
+    | tuple[Callable[..., Any], tuple[Any, ...], Any, Iterator[Any] | None, Iterator[Any] | None]
+)
 
 class Pickler:
     fast: bool

@@ -1,5 +1,5 @@
 import sys
-from _typeshed import ReadableBuffer, SupportsRead, _T_co
+from _typeshed import ReadableBuffer, StrPath, SupportsRead, _T_co
 from collections.abc import Iterable
 from typing import Any, NoReturn, Protocol
 from xml.sax.handler import ContentHandler as ContentHandler, ErrorHandler as ErrorHandler
@@ -29,12 +29,19 @@ default_parser_list: list[str]
 
 if sys.version_info >= (3, 8):
     def make_parser(parser_list: Iterable[str] = ...) -> XMLReader: ...
+    def parse(
+        source: StrPath | _SupportsReadClose[bytes] | _SupportsReadClose[str],
+        handler: ContentHandler,
+        errorHandler: ErrorHandler = ...,
+    ) -> None: ...
 
 else:
     def make_parser(parser_list: list[str] = ...) -> XMLReader: ...
+    def parse(
+        source: str | _SupportsReadClose[bytes] | _SupportsReadClose[str],
+        handler: ContentHandler,
+        errorHandler: ErrorHandler = ...,
+    ) -> None: ...
 
-def parse(
-    source: str | _SupportsReadClose[bytes] | _SupportsReadClose[str], handler: ContentHandler, errorHandler: ErrorHandler = ...
-) -> None: ...
 def parseString(string: ReadableBuffer | str, handler: ContentHandler, errorHandler: ErrorHandler | None = ...) -> None: ...
 def _create_parser(parser_name: str) -> XMLReader: ...
