@@ -1,9 +1,9 @@
 import sys
-from _typeshed import ReadableBuffer, Self, StrOrBytesPath
+from _typeshed import ReadableBuffer, StrOrBytesPath
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from types import TracebackType
 from typing import IO, Any, AnyStr, Generic, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Literal, Self, TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -257,8 +257,8 @@ if sys.version_info >= (3, 11):
         *,
         capture_output: bool = False,
         check: bool = False,
-        encoding: None = ...,
-        errors: None = ...,
+        encoding: None = None,
+        errors: None = None,
         input: ReadableBuffer | None = None,
         text: Literal[None, False] = ...,
         timeout: float | None = None,
@@ -461,8 +461,8 @@ elif sys.version_info >= (3, 10):
         *,
         capture_output: bool = False,
         check: bool = False,
-        encoding: None = ...,
-        errors: None = ...,
+        encoding: None = None,
+        errors: None = None,
         input: ReadableBuffer | None = None,
         text: Literal[None, False] = ...,
         timeout: float | None = None,
@@ -659,8 +659,8 @@ elif sys.version_info >= (3, 9):
         *,
         capture_output: bool = False,
         check: bool = False,
-        encoding: None = ...,
-        errors: None = ...,
+        encoding: None = None,
+        errors: None = None,
         input: ReadableBuffer | None = None,
         text: Literal[None, False] = ...,
         timeout: float | None = None,
@@ -838,8 +838,8 @@ else:
         *,
         capture_output: bool = False,
         check: bool = False,
-        encoding: None = ...,
-        errors: None = ...,
+        encoding: None = None,
+        errors: None = None,
         input: ReadableBuffer | None = None,
         text: Literal[None, False] = ...,
         timeout: float | None = None,
@@ -994,7 +994,7 @@ if sys.version_info >= (3, 11):
     def check_call(
         args: _CMD,
         bufsize: int = ...,
-        executable: StrOrBytesPath = ...,
+        executable: StrOrBytesPath | None = None,
         stdin: _FILE = ...,
         stdout: _FILE = ...,
         stderr: _FILE = ...,
@@ -1025,7 +1025,7 @@ elif sys.version_info >= (3, 10):
     def check_call(
         args: _CMD,
         bufsize: int = ...,
-        executable: StrOrBytesPath = ...,
+        executable: StrOrBytesPath | None = None,
         stdin: _FILE = ...,
         stdout: _FILE = ...,
         stderr: _FILE = ...,
@@ -1055,7 +1055,7 @@ elif sys.version_info >= (3, 9):
     def check_call(
         args: _CMD,
         bufsize: int = ...,
-        executable: StrOrBytesPath = ...,
+        executable: StrOrBytesPath | None = None,
         stdin: _FILE = ...,
         stdout: _FILE = ...,
         stderr: _FILE = ...,
@@ -1083,7 +1083,7 @@ else:
     def check_call(
         args: _CMD,
         bufsize: int = ...,
-        executable: StrOrBytesPath = ...,
+        executable: StrOrBytesPath | None = None,
         stdin: _FILE = ...,
         stdout: _FILE = ...,
         stderr: _FILE = ...,
@@ -1251,8 +1251,8 @@ if sys.version_info >= (3, 11):
         *,
         timeout: float | None = None,
         input: _InputString | None = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[None, False] = ...,
         user: str | int | None = ...,
         group: str | int | None = ...,
@@ -1437,8 +1437,8 @@ elif sys.version_info >= (3, 10):
         *,
         timeout: float | None = None,
         input: _InputString | None = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[None, False] = ...,
         user: str | int | None = ...,
         group: str | int | None = ...,
@@ -1617,8 +1617,8 @@ elif sys.version_info >= (3, 9):
         *,
         timeout: float | None = None,
         input: _InputString | None = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[None, False] = ...,
         user: str | int | None = ...,
         group: str | int | None = ...,
@@ -1778,8 +1778,8 @@ else:
         *,
         timeout: float | None = None,
         input: _InputString | None = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[None, False] = ...,
     ) -> bytes: ...
     @overload
@@ -2560,7 +2560,7 @@ class Popen(Generic[AnyStr]):
     def send_signal(self, sig: int) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...

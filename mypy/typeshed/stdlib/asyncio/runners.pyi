@@ -1,9 +1,9 @@
 import sys
-from _typeshed import Self, Unused
+from _typeshed import Unused
 from collections.abc import Callable, Coroutine
 from contextvars import Context
 from typing import Any, TypeVar
-from typing_extensions import final
+from typing_extensions import Self, final
 
 from .events import AbstractEventLoop
 
@@ -17,7 +17,7 @@ if sys.version_info >= (3, 11):
     @final
     class Runner:
         def __init__(self, *, debug: bool | None = None, loop_factory: Callable[[], AbstractEventLoop] | None = None) -> None: ...
-        def __enter__(self: Self) -> Self: ...
+        def __enter__(self) -> Self: ...
         def __exit__(self, exc_type: Unused, exc_val: Unused, exc_tb: Unused) -> None: ...
         def close(self) -> None: ...
         def get_loop(self) -> AbstractEventLoop: ...

@@ -7,7 +7,7 @@ from importlib.machinery import ModuleSpec
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
 from typing import Any, NoReturn, Protocol, TextIO, TypeVar, overload
-from typing_extensions import Literal, TypeAlias, final
+from typing_extensions import Final, Literal, TypeAlias, final
 
 _T = TypeVar("_T")
 
@@ -62,9 +62,10 @@ stdout: TextIO
 stderr: TextIO
 if sys.version_info >= (3, 10):
     stdlib_module_names: frozenset[str]
-__stdin__: TextIOWrapper
-__stdout__: TextIOWrapper
-__stderr__: TextIOWrapper
+
+__stdin__: Final[TextIOWrapper]  # Contains the original value of stdin
+__stdout__: Final[TextIOWrapper]  # Contains the original value of stdout
+__stderr__: Final[TextIOWrapper]  # Contains the original value of stderr
 tracebacklimit: int
 version: str
 api_version: int
@@ -277,10 +278,9 @@ if sys.platform == "win32":
 
 def intern(__string: str) -> str: ...
 def is_finalizing() -> bool: ...
-
-__breakpointhook__: Any  # contains the original value of breakpointhook
-
 def breakpointhook(*args: Any, **kwargs: Any) -> Any: ...
+
+__breakpointhook__ = breakpointhook  # Contains the original value of breakpointhook
 
 if sys.platform != "win32":
     def setdlopenflags(__flags: int) -> None: ...

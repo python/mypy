@@ -6,7 +6,7 @@ from enum import Enum
 from tkinter.constants import *
 from tkinter.font import _FontDescription
 from types import TracebackType
-from typing import Any, Generic, NamedTuple, Protocol, TypeVar, Union, overload
+from typing import Any, Generic, NamedTuple, Protocol, TypeVar, overload
 from typing_extensions import Literal, TypeAlias, TypedDict
 
 if sys.version_info >= (3, 9):
@@ -179,7 +179,7 @@ _CanvasItemId: TypeAlias = int
 _Color: TypeAlias = str  # typically '#rrggbb', '#rgb' or color names.
 _Compound: TypeAlias = Literal["top", "left", "center", "right", "bottom", "none"]  # -compound in manual page named 'options'
 # manual page: Tk_GetCursor
-_Cursor: TypeAlias = Union[str, tuple[str], tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]
+_Cursor: TypeAlias = str | tuple[str] | tuple[str, str] | tuple[str, str, str] | tuple[str, str, str, str]
 # example when it's sequence:  entry['invalidcommand'] = [entry.register(print), '%P']
 _EntryValidateCommand: TypeAlias = str | list[str] | tuple[str, ...] | Callable[[], bool]
 _GridIndex: TypeAlias = int | str
@@ -188,7 +188,7 @@ _Relief: TypeAlias = Literal["raised", "sunken", "flat", "ridge", "solid", "groo
 _ScreenUnits: TypeAlias = str | float  # Often the right type instead of int. Manual page: Tk_GetPixels
 # -xscrollcommand and -yscrollcommand in 'options' manual page
 _XYScrollCommand: TypeAlias = str | Callable[[float, float], object]
-_TakeFocusValue: TypeAlias = Union[int, Literal[""], Callable[[str], bool | None]]  # -takefocus in manual page named 'options'
+_TakeFocusValue: TypeAlias = int | Literal[""] | Callable[[str], bool | None]  # -takefocus in manual page named 'options'
 
 if sys.version_info >= (3, 11):
     class _VersionInfoType(NamedTuple):
@@ -421,7 +421,7 @@ class Misc:
     def winfo_viewable(self) -> bool: ...
     def winfo_visual(self) -> str: ...
     def winfo_visualid(self) -> str: ...
-    def winfo_visualsavailable(self, includeids: int = False) -> list[tuple[str, int]]: ...
+    def winfo_visualsavailable(self, includeids: bool = False) -> list[tuple[str, int]]: ...
     def winfo_vrootheight(self) -> int: ...
     def winfo_vrootwidth(self) -> int: ...
     def winfo_vrootx(self) -> int: ...

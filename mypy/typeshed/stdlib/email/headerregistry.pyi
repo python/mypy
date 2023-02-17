@@ -1,6 +1,5 @@
 import sys
 import types
-from _typeshed import Self
 from collections.abc import Iterable, Mapping
 from datetime import datetime as _datetime
 from email._header_value_parser import (
@@ -15,7 +14,7 @@ from email._header_value_parser import (
 from email.errors import MessageDefect
 from email.policy import Policy
 from typing import Any, ClassVar, Protocol
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
 
 class BaseHeader(str):
     # max_count is actually more of an abstract ClassVar (not defined on the base class, but expected to be defined in subclasses)
@@ -24,7 +23,7 @@ class BaseHeader(str):
     def name(self) -> str: ...
     @property
     def defects(self) -> tuple[MessageDefect, ...]: ...
-    def __new__(cls: type[Self], name: str, value: Any) -> Self: ...
+    def __new__(cls, name: str, value: Any) -> Self: ...
     def init(self, name: str, *, parse_tree: TokenList, defects: Iterable[MessageDefect]) -> None: ...
     def fold(self, *, policy: Policy) -> str: ...
 
