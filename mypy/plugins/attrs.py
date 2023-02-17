@@ -7,7 +7,7 @@ from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.errorcodes import LITERAL_REQ
-from mypy.expandtype import expand_self_type
+from mypy.expandtype import expand_self_type, expand_type
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -111,6 +111,15 @@ class Attribute:
         self.context = context
         self.init_type = init_type
 
+    def expand_type(self, typ: Type, ctx: mypy.plugin.ClassDefContext) -> Type | None:
+        if typ is not None and self.info.self_type is not None:
+            # In general, it is not safe to call `expand_type()` during semantic analyzis,
+            # however this plugin is called very late, so all types should be fully ready.
+            # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
+            # we serialize attributes).
+            return expand_type(typ, {self.info.self_type.id: fill_typevars(ctx.cls.info)})
+        return typ
+
     def argument(self, ctx: mypy.plugin.ClassDefContext) -> Argument:
         """Return this attribute as an argument to __init__."""
         assert self.init
@@ -151,7 +160,7 @@ class Attribute:
             arg_kind = ARG_OPT if self.has_default else ARG_POS
 
         with state.strict_optional_set(ctx.api.options.strict_optional):
-            init_type = expand_self_type(init_type, self.info, fill_typevars(ctx.cls.info))
+            init_type = self.expand_type(init_type, ctx)
 
         # Attrs removes leading underscores when creating the __init__ arguments.
         return Argument(Var(self.name.lstrip("_"), init_type), init_type, None, arg_kind)

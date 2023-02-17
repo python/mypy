@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
-from mypy.expandtype import expand_self_type
+from mypy.expandtype import expand_self_type, expand_type
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -108,16 +108,22 @@ class DataclassAttribute:
             arg_kind = ARG_OPT
         return Argument(
             variable=self.to_var(current_info),
-            type_annotation=expand_self_type(self.type, self.info, fill_typevars(current_info)),
+            type_annotation=self.expand_type(current_info),
             initializer=None,
             kind=arg_kind,
         )
 
+    def expand_type(self, current_info: TypeInfo) -> Type | None:
+        if self.type is not None and self.info.self_type is not None:
+            # In general, it is not safe to call `expand_type()` during semantic analyzis,
+            # however this plugin is called very late, so all types should be fully ready.
+            # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
+            # we serialize attributes).
+            return expand_type(self.type, {self.info.self_type.id: fill_typevars(current_info)})
+        return self.type
+
     def to_var(self, current_info: TypeInfo) -> Var:
-        return Var(
-            self.alias or self.name,
-            expand_self_type(self.type, self.info, fill_typevars(current_info)),
-        )
+        return Var(self.alias or self.name, self.expand_type(current_info))
 
     def serialize(self) -> JsonDict:
         assert self.type

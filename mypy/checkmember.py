@@ -737,7 +737,7 @@ def analyze_var(
         if not (mx.is_self or mx.is_super) or supported_self_type(
             get_proper_type(mx.original_type)
         ):
-            t = expand_self_type(t, var.info, mx.original_type)
+            t = expand_self_type(var, t, mx.original_type)
         t = get_proper_type(expand_type_by_instance(t, itype))
         freeze_all_type_vars(t)
         result: Type = t
@@ -768,7 +768,7 @@ def analyze_var(
                 # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
                 signature = freshen_all_functions_type_vars(functype)
-                bound = get_proper_type(expand_self_type(signature, var.info, mx.original_type))
+                bound = get_proper_type(expand_self_type(var, signature, mx.original_type))
                 assert isinstance(bound, FunctionLike)
                 signature = bound
                 signature = check_self_arg(
@@ -986,7 +986,7 @@ def analyze_class_attribute_access(
             # In the above example this means that we infer following types:
             #     C.x -> Any
             #     C[int].x -> int
-            t = get_proper_type(expand_self_type(t, node.node.info, itype))
+            t = get_proper_type(expand_self_type(node.node, t, itype))
             t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
