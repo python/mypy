@@ -1588,6 +1588,13 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.python_version = stubgen_options.pyversion
     options.show_traceback = True
     options.transform_source = remove_misplaced_type_comments
+
+    # Override cache_dir if provided in the environment
+    environ_cache_dir = os.getenv("MYPY_CACHE_DIR", "")
+    if environ_cache_dir.strip():
+        options.cache_dir = environ_cache_dir
+    options.cache_dir = os.path.expanduser(options.cache_dir)
+
     return options
 
 
@@ -1750,6 +1757,9 @@ Generate draft stubs for modules.
 Stubs are generated in directory ./out, to avoid overriding files with
 manual changes.  This directory is assumed to exist.
 """
+
+FOOTER: Final = """Environment variables:
+  Define MYPY_CACHE_DIR to override configuration cache_dir path."""
 
 
 def parse_options(args: list[str]) -> Options:
