@@ -111,7 +111,7 @@ class Attribute:
         self.context = context
         self.init_type = init_type
 
-    def expand_type(self, typ: Type, ctx: mypy.plugin.ClassDefContext) -> Type | None:
+    def expand_type(self, typ: Type | None, ctx: mypy.plugin.ClassDefContext) -> Type | None:
         if typ is not None and self.info.self_type is not None:
             # In general, it is not safe to call `expand_type()` during semantic analyzis,
             # however this plugin is called very late, so all types should be fully ready.
