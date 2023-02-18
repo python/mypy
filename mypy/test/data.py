@@ -169,9 +169,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
         elif item.id == "triggered" and item.arg is None:
             triggered = item.data
         else:
-            raise ValueError(
-                f"Invalid section header {item.id} in {case.file} at line {item.line}"
-            )
+            raise ValueError(f"Invalid section header {item.id} in {case.file}:{item.line}")
 
     if out_section_missing:
         raise ValueError(f"{case.file}, line {first_item.line}: Required output section not found")
