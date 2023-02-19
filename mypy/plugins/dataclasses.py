@@ -70,7 +70,7 @@ _TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
     order_default=False,
     kw_only_default=False,
     frozen_default=False,
-    field_specifiers=("dataclasses.Field", "dataclasses.field"),
+    field_specifiers=["dataclasses.Field", "dataclasses.field"],
 )
 
 

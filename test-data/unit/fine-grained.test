@@ -10341,3 +10341,40 @@ reveal_type(x)
 [out]
 ==
 a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"
+
+[case testDataclassTransformFieldSpecifiers]
+# flags: --python-version 3.7
+import b
+
+[file b.py]
+from abc import ABCMeta
+from typing import Any, Optional
+from typing_extensions import dataclass_transform
+
+class Field:
+    def __init__(self, default: Any = None) -> None: ...
+
+class FieldInfo:
+    def __init__(self, default: Any = None, *, alias: Optional[str] = None) -> None: ...
+
+@dataclass_transform(field_specifiers=(Field, FieldInfo))
+class ModelMetaclass(ABCMeta): ...
+
+class BaseModel(metaclass=ModelMetaclass): ...
+
+class Event(BaseModel):
+    id: Optional[int] = None
+[builtins fixtures/tuple.pyi]
+
+[file c.py]
+from b import Event
+Event()
+
+[file c.py.2]
+from b import Event
+Event()
+reveal_type(1)
+
+[out]
+==
+c.py:3: note: Revealed type is "Literal[1]?"

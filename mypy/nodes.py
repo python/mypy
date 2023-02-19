@@ -3889,7 +3889,7 @@ class DataclassTransformSpec:
         eq_default: bool | None = None,
         order_default: bool | None = None,
         kw_only_default: bool | None = None,
-        field_specifiers: tuple[str, ...] | None = None,
+        field_specifiers: list[str] | None = None,
         # Specified outside of PEP 681:
         # frozen_default was added to CPythonin https://github.com/python/cpython/pull/99958 citing
         # positive discussion in typing-sig
@@ -3899,7 +3899,7 @@ class DataclassTransformSpec:
         self.order_default = order_default if order_default is not None else False
         self.kw_only_default = kw_only_default if kw_only_default is not None else False
         self.frozen_default = frozen_default if frozen_default is not None else False
-        self.field_specifiers = field_specifiers if field_specifiers is not None else ()
+        self.field_specifiers = field_specifiers or []
 
     def serialize(self) -> JsonDict:
         return {
