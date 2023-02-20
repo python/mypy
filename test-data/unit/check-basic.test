@@ -219,6 +219,14 @@ reveal_type(__doc__)          # N: Revealed type is "builtins.str"
 reveal_type(__file__)         # N: Revealed type is "builtins.str"
 reveal_type(__package__)      # N: Revealed type is "builtins.str"
 reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+# This will actually reveal Union[importlib.machinery.ModuleSpec, None]
+reveal_type(__spec__)         # N: Revealed type is "Union[builtins.object, None]"
+
+import module
+reveal_type(module.__name__)  # N: Revealed type is "builtins.str"
+# This will actually reveal importlib.machinery.ModuleSpec
+reveal_type(module.__spec__)  # N: Revealed type is "builtins.object"
+[file module.py]
 [builtins fixtures/primitives.pyi]
 
 

@@ -270,6 +270,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarType,
     UnboundType,
+    UnionType,
     UnpackType,
     get_proper_type,
     get_proper_types,
@@ -643,6 +644,19 @@ class SemanticAnalyzer(
                     ), "Cannot find builtins.dict to add __annotations__"
                     self.defer()
                     return
+                typ = inst
+            elif name == "__spec__":
+                inst: Type | None = self.named_type_or_none("importlib.machinery.ModuleSpec")
+                if inst is None:
+                    if self.final_iteration:
+                        inst = self.named_type_or_none("builtins.object")
+                        assert inst is not None, "Cannot find builtins.object"
+                    else:
+                        self.defer()
+                        return
+                if file_node.name == "__main__":
+                    # https://docs.python.org/3/reference/import.html#main-spec
+                    inst = UnionType.make_union([inst, NoneType()])
                 typ = inst
             else:
                 assert t is not None, f"type should be specified for {name}"
