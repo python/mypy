@@ -1970,9 +1970,7 @@ class CallableType(FunctionLike):
         if self.arg_kinds[-2] != ARG_STAR or self.arg_kinds[-1] != ARG_STAR2:
             return None
         arg_type = self.arg_types[-2]
-        if not isinstance(arg_type, ParamSpecType) or not isinstance(
-            self.arg_types[-1], ParamSpecType
-        ):
+        if not isinstance(arg_type, ParamSpecType):
             return None
 
         # sometimes paramspectypes are analyzed in from mysterious places,

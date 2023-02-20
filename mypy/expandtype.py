@@ -373,16 +373,16 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
                 )
-            # TODO: it seems this only has to be done *sometimes*. Conceptually this should only
-            #       be done once; we should update that "once" location rather than here.
-            #       (see testAlreadyExpandedCallableWithParamSpecReplacement)
+            # TODO: Conceptually, the "len(t.arg_types) == 2" should not be here. However, this
+            #       errors without it. Either figure out how to eliminate this or place an
+            #       explanation for why this is necessary.
             elif isinstance(repl, ParamSpecType) and len(t.arg_types) == 2:
                 # We're substituting one paramspec for another; this can mean that the prefix
                 # changes. (e.g. sub Concatenate[int, P] for Q)
                 prefix = repl.prefix
                 old_prefix = param_spec.prefix
 
-                # Check assumptions. I'm not sure what order to switch these:
+                # Check assumptions. I'm not sure what order to place new prefix vs old prefix:
                 assert not old_prefix.arg_types or not prefix.arg_types
 
                 t = t.copy_modified(

@@ -1508,3 +1508,16 @@ def command(
 ) -> Any:
     ...
 [builtins fixtures/paramspec.pyi]
+
+[case testCopiedParamSpecComparison]
+# minimized from https://github.com/python/mypy/issues/12909
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+def identity(func: Callable[P, None]) -> Callable[P, None]: ...
+
+@identity
+def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+[builtins fixtures/paramspec.pyi]
