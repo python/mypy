@@ -8,7 +8,7 @@ from typing import Callable, Iterable, NoReturn, Optional, TextIO, Tuple, TypeVa
 from typing_extensions import Final, Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
-from mypy.errorcodes import IMPORT, ErrorCode
+from mypy.errorcodes import IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND, ErrorCode
 from mypy.message_registry import ErrorMessage
 from mypy.options import Options
 from mypy.scope import Scope
@@ -491,7 +491,11 @@ class Errors:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
-        if self.seen_import_error and info.code is not IMPORT and self.has_many_errors():
+        if (
+            self.seen_import_error
+            and info.code not in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND)
+            and self.has_many_errors()
+        ):
             # Missing stubs can easily cause thousands of errors about
             # Any types, especially when upgrading to mypy 0.900,
             # which no longer bundles third-party library stubs. Avoid
