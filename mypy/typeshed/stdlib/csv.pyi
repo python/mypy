@@ -21,10 +21,10 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
-from _typeshed import Self, SupportsWrite
+from _typeshed import SupportsWrite
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
 
 if sys.version_info >= (3, 8):
     from builtins import dict as _DictReadMapping
@@ -76,9 +76,9 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
         self,
         f: Iterable[str],
         fieldnames: Sequence[_T],
-        restkey: str | None = ...,
-        restval: str | None = ...,
-        dialect: _DialectLike = ...,
+        restkey: str | None = None,
+        restval: str | None = None,
+        dialect: _DialectLike = "excel",
         *,
         delimiter: str = ...,
         quotechar: str | None = ...,
@@ -93,10 +93,10 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
     def __init__(
         self: DictReader[str],
         f: Iterable[str],
-        fieldnames: Sequence[str] | None = ...,
-        restkey: str | None = ...,
-        restval: str | None = ...,
-        dialect: _DialectLike = ...,
+        fieldnames: Sequence[str] | None = None,
+        restkey: str | None = None,
+        restval: str | None = None,
+        dialect: _DialectLike = "excel",
         *,
         delimiter: str = ...,
         quotechar: str | None = ...,
@@ -107,7 +107,7 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
         quoting: _QuotingType = ...,
         strict: bool = ...,
     ) -> None: ...
-    def __iter__(self: Self) -> Self: ...
+    def __iter__(self) -> Self: ...
     def __next__(self) -> _DictReadMapping[_T | Any, str | Any]: ...
     if sys.version_info >= (3, 12):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
@@ -121,9 +121,9 @@ class DictWriter(Generic[_T]):
         self,
         f: SupportsWrite[str],
         fieldnames: Collection[_T],
-        restval: Any | None = ...,
-        extrasaction: Literal["raise", "ignore"] = ...,
-        dialect: _DialectLike = ...,
+        restval: Any | None = "",
+        extrasaction: Literal["raise", "ignore"] = "raise",
+        dialect: _DialectLike = "excel",
         *,
         delimiter: str = ...,
         quotechar: str | None = ...,
@@ -146,5 +146,5 @@ class DictWriter(Generic[_T]):
 
 class Sniffer:
     preferred: list[str]
-    def sniff(self, sample: str, delimiters: str | None = ...) -> type[Dialect]: ...
+    def sniff(self, sample: str, delimiters: str | None = None) -> type[Dialect]: ...
     def has_header(self, sample: str) -> bool: ...

@@ -41,7 +41,6 @@ from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.semanal import (
     SemanticAnalyzer,
     apply_semantic_analyzer_patches,
-    is_dataclass_transform_decorator,
     remove_imported_names_from_symtable,
 )
 from mypy.semanal_classprop import (
@@ -51,6 +50,7 @@ from mypy.semanal_classprop import (
     check_protocol_status,
 )
 from mypy.semanal_infer import infer_decorator_signature_if_simple
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.server.aststrip import SavedAttributes
 from mypy.util import is_typeshed_file
@@ -467,11 +467,21 @@ def apply_hooks_to_class(
             # Special case: if the decorator is itself decorated with
             # typing.dataclass_transform, apply the hook for the dataclasses plugin
             # TODO: remove special casing here
-            if hook is None and is_dataclass_transform_decorator(decorator):
+            if hook is None and find_dataclass_transform_spec(decorator):
                 hook = dataclasses_plugin.dataclass_class_maker_callback
 
             if hook:
                 ok = ok and hook(ClassDefContext(defn, decorator, self))
+
+    # Check if the class definition itself triggers a dataclass transform (via a parent class/
+    # metaclass)
+    spec = find_dataclass_transform_spec(info)
+    if spec is not None:
+        with self.file_context(file_node, options, info):
+            # We can't use the normal hook because reason = defn, and ClassDefContext only accepts
+            # an Expression for reason
+            ok = ok and dataclasses_plugin.DataclassTransformer(defn, defn, spec, self).transform()
+
     return ok
 
 

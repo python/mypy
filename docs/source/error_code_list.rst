@@ -89,6 +89,23 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
     x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
+
+Check that a variable is not used before it's defined [used-before-def]
+-----------------------------------------------------------------------
+
+Mypy will generate an error if a name is used before it's defined.
+While the name-defined check will catch issues with names that are undefined,
+it will not flag if a variable is used and then defined later in the scope.
+used-before-def check will catch such cases.
+
+Example:
+
+.. code-block:: python
+
+    print(x)  # Error: Name "x" is used before definition [used-before-def]
+    x = 123
+
+
 Check arguments in calls [call-arg]
 -----------------------------------
 
@@ -322,6 +339,35 @@ Example:
     #        variable has type "str")  [assignment]
     r.name = 5
 
+Check that assignment target is not a method [method-assign]
+------------------------------------------------------------
+
+In general, assigning to a method on class object or instance (a.k.a.
+monkey-patching) is ambiguous in terms of types, since Python's static type
+system cannot express difference between bound and unbound callable types.
+Consider this example:
+
+.. code-block:: python
+
+   class A:
+       def f(self) -> None: pass
+       def g(self) -> None: pass
+
+   def h(self: A) -> None: pass
+
+   A.f = h  # type of h is Callable[[A], None]
+   A().f()  # this works
+   A.f = A().g  # type of A().g is Callable[[], None]
+   A().f()  # but this also works at runtime
+
+To prevent the ambiguity, mypy will flag both assignments by default. If this
+error code is disabled, mypy will treat all method assignments r.h.s. as unbound,
+so the second assignment will still generate an error.
+
+.. note::
+
+    This error code is a sub-error code of a wider ``[assignment]`` code.
+
 Check type variable values [type-var]
 -------------------------------------
 
@@ -430,7 +476,7 @@ Example:
     # Error: Incompatible types (expression has type "float",
     #        TypedDict item "x" has type "int")  [typeddict-item]
     p: Point = {'x': 1.2, 'y': 4}
-    
+
 Check TypedDict Keys [typeddict-unknown-key]
 --------------------------------------------
 
@@ -480,6 +526,9 @@ Whereas reading an unknown value will generate the more generic/serious
     # Error: TypedDict "Point" has no key "z"  [typeddict-item]
     _ = a["z"]
 
+.. note::
+
+    This error code is a sub-error code of a wider ``[typeddict-item]`` code.
 
 Check that type of target is known [has-type]
 ---------------------------------------------
@@ -754,6 +803,35 @@ consistently when using the call-based syntax. Example:
 
     # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
+
+Check that literal is used where expected [literal-required]
+------------------------------------------------------------
+
+There are some places where only a (string) literal value is expected for
+the purposes of static type checking, for example a ``TypedDict`` key, or
+a ``__match_args__`` item. Providing a ``str``-valued variable in such contexts
+will result in an error. Note however, in many cases you can use ``Final``,
+or ``Literal`` variables, for example:
+
+.. code-block:: python
+
+   from typing import Final, Literal, TypedDict
+
+   class Point(TypedDict):
+       x: int
+       y: int
+
+   def test(p: Point) -> None:
+       X: Final = "x"
+       p[X]  # OK
+
+       Y: Literal["y"] = "y"
+       p[Y]  # OK
+
+       key = "x"  # Inferred type of key is `str`
+       # Error: TypedDict key must be a string literal;
+       #   expected one of ("x", "y")  [literal-required]
+       p[key]
 
 Check that overloaded functions have an implementation [no-overload-impl]
 -------------------------------------------------------------------------

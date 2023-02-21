@@ -38,22 +38,22 @@ class Process:
     def send_signal(self, signal: int) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...
-    async def communicate(self, input: bytes | bytearray | memoryview | None = ...) -> tuple[bytes, bytes]: ...
+    async def communicate(self, input: bytes | bytearray | memoryview | None = None) -> tuple[bytes, bytes]: ...
 
 if sys.version_info >= (3, 11):
     async def create_subprocess_shell(
         cmd: str | bytes,
-        stdin: int | IO[Any] | None = ...,
-        stdout: int | IO[Any] | None = ...,
-        stderr: int | IO[Any] | None = ...,
-        limit: int = ...,
+        stdin: int | IO[Any] | None = None,
+        stdout: int | IO[Any] | None = None,
+        stderr: int | IO[Any] | None = None,
+        limit: int = 65536,
         *,
         # These parameters are forced to these values by BaseEventLoop.subprocess_shell
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[True] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[True] = True,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[False, None] = ...,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = ...,
@@ -76,16 +76,16 @@ if sys.version_info >= (3, 11):
     async def create_subprocess_exec(
         program: _ExecArg,
         *args: _ExecArg,
-        stdin: int | IO[Any] | None = ...,
-        stdout: int | IO[Any] | None = ...,
-        stderr: int | IO[Any] | None = ...,
-        limit: int = ...,
+        stdin: int | IO[Any] | None = None,
+        stdout: int | IO[Any] | None = None,
+        stderr: int | IO[Any] | None = None,
+        limit: int = 65536,
         # These parameters are forced to these values by BaseEventLoop.subprocess_shell
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[True] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[True] = True,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         text: bool | None = ...,
         executable: StrOrBytesPath | None = ...,
@@ -109,17 +109,17 @@ if sys.version_info >= (3, 11):
 elif sys.version_info >= (3, 10):
     async def create_subprocess_shell(
         cmd: str | bytes,
-        stdin: int | IO[Any] | None = ...,
-        stdout: int | IO[Any] | None = ...,
-        stderr: int | IO[Any] | None = ...,
-        limit: int = ...,
+        stdin: int | IO[Any] | None = None,
+        stdout: int | IO[Any] | None = None,
+        stderr: int | IO[Any] | None = None,
+        limit: int = 65536,
         *,
         # These parameters are forced to these values by BaseEventLoop.subprocess_shell
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[True] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[True] = True,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[False, None] = ...,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = ...,
@@ -141,16 +141,16 @@ elif sys.version_info >= (3, 10):
     async def create_subprocess_exec(
         program: _ExecArg,
         *args: _ExecArg,
-        stdin: int | IO[Any] | None = ...,
-        stdout: int | IO[Any] | None = ...,
-        stderr: int | IO[Any] | None = ...,
-        limit: int = ...,
+        stdin: int | IO[Any] | None = None,
+        stdout: int | IO[Any] | None = None,
+        stderr: int | IO[Any] | None = None,
+        limit: int = 65536,
         # These parameters are forced to these values by BaseEventLoop.subprocess_shell
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[True] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[True] = True,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         text: bool | None = ...,
         executable: StrOrBytesPath | None = ...,
@@ -173,18 +173,18 @@ elif sys.version_info >= (3, 10):
 else:  # >= 3.9
     async def create_subprocess_shell(
         cmd: str | bytes,
-        stdin: int | IO[Any] | None = ...,
-        stdout: int | IO[Any] | None = ...,
-        stderr: int | IO[Any] | None = ...,
-        loop: events.AbstractEventLoop | None = ...,
-        limit: int = ...,
+        stdin: int | IO[Any] | None = None,
+        stdout: int | IO[Any] | None = None,
+        stderr: int | IO[Any] | None = None,
+        loop: events.AbstractEventLoop | None = None,
+        limit: int = 65536,
         *,
         # These parameters are forced to these values by BaseEventLoop.subprocess_shell
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[True] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[True] = True,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[False, None] = ...,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = ...,
@@ -205,17 +205,17 @@ else:  # >= 3.9
     async def create_subprocess_exec(
         program: _ExecArg,
         *args: _ExecArg,
-        stdin: int | IO[Any] | None = ...,
-        stdout: int | IO[Any] | None = ...,
-        stderr: int | IO[Any] | None = ...,
-        loop: events.AbstractEventLoop | None = ...,
-        limit: int = ...,
+        stdin: int | IO[Any] | None = None,
+        stdout: int | IO[Any] | None = None,
+        stderr: int | IO[Any] | None = None,
+        loop: events.AbstractEventLoop | None = None,
+        limit: int = 65536,
         # These parameters are forced to these values by BaseEventLoop.subprocess_shell
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[True] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[True] = True,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         text: bool | None = ...,
         executable: StrOrBytesPath | None = ...,

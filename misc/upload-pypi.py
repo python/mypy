@@ -119,7 +119,7 @@ def upload_dist(dist: Path, dry_run: bool = True) -> None:
 
 
 def upload_to_pypi(version: str, dry_run: bool = True) -> None:
-    assert re.match(r"v?0\.[0-9]{3}(\+\S+)?$", version)
+    assert re.match(r"v?[1-9]\.[0-9]+\.[0-9](\+\S+)?$", version)
     if "dev" in version:
         assert dry_run, "Must use --dry-run with dev versions of mypy"
     if version.startswith("v"):

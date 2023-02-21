@@ -8,6 +8,7 @@ from typing import (
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
 S = TypeVar('S')
 K = TypeVar('K') # for keys in mapping
 V = TypeVar('V') # for values in mapping
@@ -15,6 +16,26 @@ V = TypeVar('V') # for values in mapping
 class __SupportsAbs(Protocol[T_co]):
     def __abs__(self) -> T_co: pass
 
+class __SupportsDivMod(Protocol[T_contra, T_co]):
+    def __divmod__(self, other: T_contra) -> T_co: ...
+
+class __SupportsRDivMod(Protocol[T_contra, T_co]):
+    def __rdivmod__(self, other: T_contra) -> T_co: ...
+
+_M = TypeVar("_M", contravariant=True)
+
+class __SupportsPow2(Protocol[T_contra, T_co]):
+    def __pow__(self, other: T_contra) -> T_co: ...
+
+class __SupportsPow3NoneOnly(Protocol[T_contra, T_co]):
+    def __pow__(self, other: T_contra, modulo: None = ...) -> T_co: ...
+
+class __SupportsPow3(Protocol[T_contra, _M, T_co]):
+    def __pow__(self, other: T_contra, modulo: _M) -> T_co: ...
+
+__SupportsSomeKindOfPow = Union[
+    __SupportsPow2[Any, Any], __SupportsPow3NoneOnly[Any, Any] | __SupportsPow3[Any, Any, Any]
+]
 
 class object:
     def __init__(self) -> None: pass
@@ -42,6 +63,7 @@ class int:
     def __floordiv__(self, x: int) -> int: pass
     def __truediv__(self, x: float) -> float: pass
     def __mod__(self, x: int) -> int: pass
+    def __divmod__(self, x: float) -> Tuple[float, float]: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
     def __abs__(self) -> int: pass
@@ -92,6 +114,7 @@ class float:
     def __sub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __pow__(self, n: float) -> float: pass
     def __neg__(self) -> float: pass
     def __pos__(self) -> float: pass
     def __abs__(self) -> float: pass
@@ -307,6 +330,16 @@ def zip(x: Iterable[T], y: Iterable[S]) -> Iterator[Tuple[T, S]]: ...
 def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, V]]: ...
 def eval(e: str) -> Any: ...
 def abs(x: __SupportsAbs[T]) -> T: ...
+@overload
+def divmod(x: __SupportsDivMod[T_contra, T_co], y: T_contra) -> T_co: ...
+@overload
+def divmod(x: T_contra, y: __SupportsRDivMod[T_contra, T_co]) -> T_co: ...
+@overload
+def pow(base: __SupportsPow2[T_contra, T_co], exp: T_contra, mod: None = None) -> T_co: ...
+@overload
+def pow(base: __SupportsPow3NoneOnly[T_contra, T_co], exp: T_contra, mod: None = None) -> T_co: ...
+@overload
+def pow(base: __SupportsPow3[T_contra, _M, T_co], exp: T_contra, mod: _M) -> T_co: ...
 def exit() -> None: ...
 def min(x: T, y: T) -> T: ...
 def max(x: T, y: T) -> T: ...

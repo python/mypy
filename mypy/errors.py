@@ -4,7 +4,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Callable, NoReturn, Optional, TextIO, Tuple, TypeVar
+from typing import Callable, Iterable, NoReturn, Optional, TextIO, Tuple, TypeVar
 from typing_extensions import Final, Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
@@ -24,7 +24,7 @@ allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
 
 # Keep track of the original error code when the error code of a message is changed.
 # This is used to give notes about out-of-date "type: ignore" comments.
-original_error_codes: Final = {codes.LITERAL_REQ: codes.MISC}
+original_error_codes: Final = {codes.LITERAL_REQ: codes.MISC, codes.TYPE_ABSTRACT: codes.MISC}
 
 
 class ErrorInfo:
@@ -78,7 +78,7 @@ class ErrorInfo:
 
     # Actual origin of the error message as tuple (path, line number, end line number)
     # If end line number is unknown, use line number.
-    origin: tuple[str, int, int]
+    origin: tuple[str, Iterable[int]]
 
     # Fine-grained incremental target where this was reported
     target: str | None = None
@@ -104,7 +104,7 @@ class ErrorInfo:
         blocker: bool,
         only_once: bool,
         allow_dups: bool,
-        origin: tuple[str, int, int] | None = None,
+        origin: tuple[str, Iterable[int]] | None = None,
         target: str | None = None,
     ) -> None:
         self.import_ctx = import_ctx
@@ -122,7 +122,7 @@ class ErrorInfo:
         self.blocker = blocker
         self.only_once = only_once
         self.allow_dups = allow_dups
-        self.origin = origin or (file, line, line)
+        self.origin = origin or (file, [line])
         self.target = target
 
 
@@ -367,7 +367,7 @@ class Errors:
         file: str | None = None,
         only_once: bool = False,
         allow_dups: bool = False,
-        origin_span: tuple[int, int] | None = None,
+        origin_span: Iterable[int] | None = None,
         offset: int = 0,
         end_line: int | None = None,
         end_column: int | None = None,
@@ -411,7 +411,7 @@ class Errors:
             message = " " * offset + message
 
         if origin_span is None:
-            origin_span = (line, line)
+            origin_span = [line]
 
         if end_line is None:
             end_line = line
@@ -434,7 +434,7 @@ class Errors:
             blocker,
             only_once,
             allow_dups,
-            origin=(self.file, *origin_span),
+            origin=(self.file, origin_span),
             target=self.current_target(),
         )
         self.add_error_info(info)
@@ -467,7 +467,7 @@ class Errors:
         return False
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        file, line, end_line = info.origin
+        file, lines = info.origin
         # process the stack of ErrorWatchers before modifying any internal state
         # in case we need to filter out the error entirely
         # NB: we need to do this both here and in _add_error_info, otherwise we
@@ -478,7 +478,7 @@ class Errors:
             if file in self.ignored_lines:
                 # Check each line in this context for "type: ignore" comments.
                 # line == end_line for most nodes, so we only loop once.
-                for scope_line in range(line, end_line + 1):
+                for scope_line in lines:
                     if self.is_ignored_error(scope_line, info, self.ignored_lines[file]):
                         # Annotation requests us to ignore all errors on this line.
                         self.used_ignored_lines[file][scope_line].append(
@@ -586,7 +586,11 @@ class Errors:
             # Empty list means that we ignore all errors
             return True
         if info.code and self.is_error_code_enabled(info.code):
-            return info.code.code in ignores[line]
+            return (
+                info.code.code in ignores[line]
+                or info.code.sub_code_of is not None
+                and info.code.sub_code_of.code in ignores[line]
+            )
         return False
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
@@ -601,6 +605,8 @@ class Errors:
             return False
         elif error_code in current_mod_enabled:
             return True
+        elif error_code.sub_code_of is not None and error_code.sub_code_of in current_mod_disabled:
+            return False
         else:
             return error_code.default_enabled
 
@@ -641,6 +647,10 @@ class Errors:
             if len(ignored_codes) > 1 and len(unused_ignored_codes) > 0:
                 unused_codes_message = f"[{', '.join(sorted(unused_ignored_codes))}]"
             message = f'Unused "type: ignore{unused_codes_message}" comment'
+            for unused in unused_ignored_codes:
+                narrower = set(used_ignored_codes) & codes.sub_code_map[unused]
+                if narrower:
+                    message += f", use narrower [{', '.join(narrower)}] instead of [{unused}]"
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(
                 self.import_context(),

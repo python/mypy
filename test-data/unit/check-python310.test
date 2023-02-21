@@ -1813,6 +1813,19 @@ def f1(x: int) -> int:
 
 [typing fixtures/typing-medium.pyi]
 
+[case testUsedBeforeDefMatchWalrus]
+# flags: --enable-error-code used-before-def
+import typing
+
+def f0(x: int) -> None:
+    a = y  # E: Cannot determine type of "y"  # E: Name "y" is used before definition
+    match y := x:
+        case 1:
+            b = y
+        case 2:
+            c = y
+    d = y
+
 [case testTypeAliasWithNewUnionSyntaxAndNoneLeftOperand]
 from typing import overload
 class C:

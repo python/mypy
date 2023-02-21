@@ -35,7 +35,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,
@@ -153,11 +152,8 @@ class TypeVisitor(Generic[T]):
 class SyntheticTypeVisitor(TypeVisitor[T]):
     """A TypeVisitor that also knows how to visit synthetic AST constructs.
 
-    Not just real types."""
-
-    @abstractmethod
-    def visit_star_type(self, t: StarType) -> T:
-        pass
+    Not just real types.
+    """
 
     @abstractmethod
     def visit_type_list(self, t: TypeList) -> T:
@@ -386,9 +382,6 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_literal_type(self, t: LiteralType) -> T:
         return self.strategy([])
 
-    def visit_star_type(self, t: StarType) -> T:
-        return t.type.accept(self)
-
     def visit_union_type(self, t: UnionType) -> T:
         return self.query_types(t.items)
 
@@ -528,9 +521,6 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
 
     def visit_literal_type(self, t: LiteralType) -> bool:
         return self.default
-
-    def visit_star_type(self, t: StarType) -> bool:
-        return t.type.accept(self)
 
     def visit_union_type(self, t: UnionType) -> bool:
         return self.query_types(t.items)

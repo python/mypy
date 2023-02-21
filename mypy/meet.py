@@ -167,7 +167,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         if (
             isinstance(narrowed, Instance)
             and narrowed.type.alt_promote
-            and narrowed.type.alt_promote is declared.type
+            and narrowed.type.alt_promote.type is declared.type
         ):
             # Special case: 'int' can't be narrowed down to a native int type such as
             # i64, since they have different runtime representations.
@@ -715,10 +715,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                         return NoneType()
             else:
                 alt_promote = t.type.alt_promote
-                if alt_promote and alt_promote is self.s.type:
+                if alt_promote and alt_promote.type is self.s.type:
                     return t
                 alt_promote = self.s.type.alt_promote
-                if alt_promote and alt_promote is t.type:
+                if alt_promote and alt_promote.type is t.type:
                     return self.s
                 if is_subtype(t, self.s):
                     return t

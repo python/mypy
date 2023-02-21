@@ -331,6 +331,59 @@ main:7: note: This violates the Liskov substitution principle
 main:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:9: error: Return type "object" of "h" incompatible with return type "A" in supertype "A"
 
+[case testMethodOverridingWithIncompatibleTypesOnMultipleLines]
+class A:
+    def f(self, x: int, y: str) -> None: pass
+class B(A):
+    def f(
+        self,
+        x: int,
+        y: bool,
+    ) -> None:
+        pass
+[out]
+main:7: error: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
+main:7: note: This violates the Liskov substitution principle
+main:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+[case testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtArgument]
+class A:
+    def f(self, x: int, y: str) -> None: pass
+
+class B(A):
+    def f(
+        self,
+        x: int,
+        y: bool,  # type: ignore[override]
+    ) -> None:
+        pass
+
+[case testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition]
+class A:
+    def f(self, x: int, y: str) -> None: pass
+class B(A):
+    def f(  # type: ignore[override]
+        self,
+        x: int,
+        y: bool,
+    ) -> None:
+        pass
+
+[case testMultiLineMethodOverridingWithIncompatibleTypesWrongIgnore]
+class A:
+    def f(self, x: int, y: str) -> None: pass
+class B(A):
+    def f(  # type: ignore[return-type]
+        self,
+        x: int,
+        y: bool,
+    ) -> None:
+        pass
+[out]
+main:7: error: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
+main:7: note: This violates the Liskov substitution principle
+main:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
 [case testEqMethodsOverridingWithNonObjects]
 class A:
   def __eq__(self, other: A) -> bool: pass  # Fail
@@ -2626,10 +2679,10 @@ class D(A):
     def __iadd__(self, x: 'A') -> 'B': pass
 [out]
 main:6: error: Return type "A" of "__iadd__" incompatible with return type "B" in "__add__" of supertype "A"
+main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 main:8: error: Argument 1 of "__iadd__" is incompatible with "__add__" of supertype "A"; supertype defines the argument type as "A"
 main:8: note: This violates the Liskov substitution principle
 main:8: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 [case testGetattribute]
 

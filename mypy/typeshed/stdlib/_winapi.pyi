@@ -5,13 +5,15 @@ from typing import Any, NoReturn, overload
 from typing_extensions import Literal, final
 
 if sys.platform == "win32":
-    ABOVE_NORMAL_PRIORITY_CLASS: Literal[32768]
-    BELOW_NORMAL_PRIORITY_CLASS: Literal[16384]
-    CREATE_BREAKAWAY_FROM_JOB: Literal[16777216]
-    CREATE_DEFAULT_ERROR_MODE: Literal[67108864]
-    CREATE_NO_WINDOW: Literal[134217728]
-    CREATE_NEW_CONSOLE: Literal[16]
-    CREATE_NEW_PROCESS_GROUP: Literal[512]
+    ABOVE_NORMAL_PRIORITY_CLASS: Literal[0x8000]
+    BELOW_NORMAL_PRIORITY_CLASS: Literal[0x4000]
+
+    CREATE_BREAKAWAY_FROM_JOB: Literal[0x1000000]
+    CREATE_DEFAULT_ERROR_MODE: Literal[0x4000000]
+    CREATE_NO_WINDOW: Literal[0x8000000]
+    CREATE_NEW_CONSOLE: Literal[0x10]
+    CREATE_NEW_PROCESS_GROUP: Literal[0x200]
+
     DETACHED_PROCESS: Literal[8]
     DUPLICATE_CLOSE_SOURCE: Literal[1]
     DUPLICATE_SAME_ACCESS: Literal[2]
@@ -28,40 +30,43 @@ if sys.platform == "win32":
     ERROR_PIPE_CONNECTED: Literal[535]
     ERROR_SEM_TIMEOUT: Literal[121]
 
-    FILE_FLAG_FIRST_PIPE_INSTANCE: Literal[524288]
-    FILE_FLAG_OVERLAPPED: Literal[1073741824]
+    FILE_FLAG_FIRST_PIPE_INSTANCE: Literal[0x80000]
+    FILE_FLAG_OVERLAPPED: Literal[0x40000000]
+
     FILE_GENERIC_READ: Literal[1179785]
     FILE_GENERIC_WRITE: Literal[1179926]
+
     if sys.version_info >= (3, 8):
         FILE_MAP_ALL_ACCESS: Literal[983071]
         FILE_MAP_COPY: Literal[1]
         FILE_MAP_EXECUTE: Literal[32]
         FILE_MAP_READ: Literal[4]
         FILE_MAP_WRITE: Literal[2]
+
     FILE_TYPE_CHAR: Literal[2]
     FILE_TYPE_DISK: Literal[1]
     FILE_TYPE_PIPE: Literal[3]
     FILE_TYPE_REMOTE: Literal[32768]
     FILE_TYPE_UNKNOWN: Literal[0]
 
-    GENERIC_READ: Literal[2147483648]
-    GENERIC_WRITE: Literal[1073741824]
-    HIGH_PRIORITY_CLASS: Literal[128]
-    INFINITE: Literal[4294967295]
+    GENERIC_READ: Literal[0x80000000]
+    GENERIC_WRITE: Literal[0x40000000]
+    HIGH_PRIORITY_CLASS: Literal[0x80]
+    INFINITE: Literal[0xFFFFFFFF]
     if sys.version_info >= (3, 8):
-        INVALID_HANDLE_VALUE: int  # very large number
-    IDLE_PRIORITY_CLASS: Literal[64]
-    NORMAL_PRIORITY_CLASS: Literal[32]
-    REALTIME_PRIORITY_CLASS: Literal[256]
-    NMPWAIT_WAIT_FOREVER: Literal[4294967295]
+        INVALID_HANDLE_VALUE: Literal[0xFFFFFFFFFFFFFFFF]
+    IDLE_PRIORITY_CLASS: Literal[0x40]
+    NORMAL_PRIORITY_CLASS: Literal[0x20]
+    REALTIME_PRIORITY_CLASS: Literal[0x100]
+    NMPWAIT_WAIT_FOREVER: Literal[0xFFFFFFFF]
 
     if sys.version_info >= (3, 8):
-        MEM_COMMIT: Literal[4096]
-        MEM_FREE: Literal[65536]
-        MEM_IMAGE: Literal[16777216]
-        MEM_MAPPED: Literal[262144]
-        MEM_PRIVATE: Literal[131072]
-        MEM_RESERVE: Literal[8192]
+        MEM_COMMIT: Literal[0x1000]
+        MEM_FREE: Literal[0x10000]
+        MEM_IMAGE: Literal[0x1000000]
+        MEM_MAPPED: Literal[0x40000]
+        MEM_PRIVATE: Literal[0x20000]
+        MEM_RESERVE: Literal[0x2000]
 
     NULL: Literal[0]
     OPEN_EXISTING: Literal[3]
@@ -72,37 +77,42 @@ if sys.platform == "win32":
     PIPE_TYPE_MESSAGE: Literal[4]
     PIPE_UNLIMITED_INSTANCES: Literal[255]
     PIPE_WAIT: Literal[0]
-    if sys.version_info >= (3, 8):
-        PAGE_EXECUTE: Literal[16]
-        PAGE_EXECUTE_READ: Literal[32]
-        PAGE_EXECUTE_READWRITE: Literal[64]
-        PAGE_EXECUTE_WRITECOPY: Literal[128]
-        PAGE_GUARD: Literal[256]
-        PAGE_NOACCESS: Literal[1]
-        PAGE_NOCACHE: Literal[512]
-        PAGE_READONLY: Literal[2]
-        PAGE_READWRITE: Literal[4]
-        PAGE_WRITECOMBINE: Literal[1024]
-        PAGE_WRITECOPY: Literal[8]
 
-    PROCESS_ALL_ACCESS: Literal[2097151]
-    PROCESS_DUP_HANDLE: Literal[64]
     if sys.version_info >= (3, 8):
-        SEC_COMMIT: Literal[134217728]
-        SEC_IMAGE: Literal[16777216]
-        SEC_LARGE_PAGES: Literal[2147483648]
-        SEC_NOCACHE: Literal[268435456]
-        SEC_RESERVE: Literal[67108864]
-        SEC_WRITECOMBINE: Literal[1073741824]
-    STARTF_USESHOWWINDOW: Literal[1]
-    STARTF_USESTDHANDLES: Literal[256]
-    STD_ERROR_HANDLE: Literal[4294967284]
-    STD_INPUT_HANDLE: Literal[4294967286]
-    STD_OUTPUT_HANDLE: Literal[4294967285]
+        PAGE_EXECUTE: Literal[0x10]
+        PAGE_EXECUTE_READ: Literal[0x20]
+        PAGE_EXECUTE_READWRITE: Literal[0x40]
+        PAGE_EXECUTE_WRITECOPY: Literal[0x80]
+        PAGE_GUARD: Literal[0x100]
+        PAGE_NOACCESS: Literal[0x1]
+        PAGE_NOCACHE: Literal[0x200]
+        PAGE_READONLY: Literal[0x2]
+        PAGE_READWRITE: Literal[0x4]
+        PAGE_WRITECOMBINE: Literal[0x400]
+        PAGE_WRITECOPY: Literal[0x8]
+
+    PROCESS_ALL_ACCESS: Literal[0x1FFFFF]
+    PROCESS_DUP_HANDLE: Literal[0x40]
+
+    if sys.version_info >= (3, 8):
+        SEC_COMMIT: Literal[0x8000000]
+        SEC_IMAGE: Literal[0x1000000]
+        SEC_LARGE_PAGES: Literal[0x80000000]
+        SEC_NOCACHE: Literal[0x10000000]
+        SEC_RESERVE: Literal[0x4000000]
+        SEC_WRITECOMBINE: Literal[0x40000000]
+
+    STARTF_USESHOWWINDOW: Literal[0x1]
+    STARTF_USESTDHANDLES: Literal[0x100]
+
+    STD_ERROR_HANDLE: Literal[0xFFFFFFF4]
+    STD_OUTPUT_HANDLE: Literal[0xFFFFFFF5]
+    STD_INPUT_HANDLE: Literal[0xFFFFFFF6]
+
     STILL_ACTIVE: Literal[259]
     SW_HIDE: Literal[0]
     if sys.version_info >= (3, 8):
-        SYNCHRONIZE: Literal[1048576]
+        SYNCHRONIZE: Literal[0x100000]
     WAIT_ABANDONED_0: Literal[128]
     WAIT_OBJECT_0: Literal[0]
     WAIT_TIMEOUT: Literal[258]
@@ -128,7 +138,7 @@ if sys.platform == "win32":
     @overload
     def ConnectNamedPipe(handle: int, overlapped: Literal[True]) -> Overlapped: ...
     @overload
-    def ConnectNamedPipe(handle: int, overlapped: Literal[False] = ...) -> None: ...
+    def ConnectNamedPipe(handle: int, overlapped: Literal[False] = False) -> None: ...
     @overload
     def ConnectNamedPipe(handle: int, overlapped: bool) -> Overlapped | None: ...
     def CreateFile(
@@ -169,7 +179,7 @@ if sys.platform == "win32":
         __target_process_handle: int,
         __desired_access: int,
         __inherit_handle: bool,
-        __options: int = ...,
+        __options: int = 0,
     ) -> int: ...
     def ExitProcess(__ExitCode: int) -> NoReturn: ...
     def GetACP() -> int: ...
@@ -181,7 +191,7 @@ if sys.platform == "win32":
     def GetStdHandle(__std_handle: int) -> int: ...
     def GetVersion() -> int: ...
     def OpenProcess(__desired_access: int, __inherit_handle: bool, __process_id: int) -> int: ...
-    def PeekNamedPipe(__handle: int, __size: int = ...) -> tuple[int, int] | tuple[bytes, int, int]: ...
+    def PeekNamedPipe(__handle: int, __size: int = 0) -> tuple[int, int] | tuple[bytes, int, int]: ...
     if sys.version_info >= (3, 10):
         def LCMapStringEx(locale: str, flags: int, src: str) -> str: ...
         def UnmapViewOfFile(__address: int) -> None: ...
@@ -189,20 +199,20 @@ if sys.platform == "win32":
     @overload
     def ReadFile(handle: int, size: int, overlapped: Literal[True]) -> tuple[Overlapped, int]: ...
     @overload
-    def ReadFile(handle: int, size: int, overlapped: Literal[False] = ...) -> tuple[bytes, int]: ...
+    def ReadFile(handle: int, size: int, overlapped: Literal[False] = False) -> tuple[bytes, int]: ...
     @overload
     def ReadFile(handle: int, size: int, overlapped: int | bool) -> tuple[Any, int]: ...
     def SetNamedPipeHandleState(
         __named_pipe: int, __mode: int | None, __max_collection_count: int | None, __collect_data_timeout: int | None
     ) -> None: ...
     def TerminateProcess(__handle: int, __exit_code: int) -> None: ...
-    def WaitForMultipleObjects(__handle_seq: Sequence[int], __wait_flag: bool, __milliseconds: int = ...) -> int: ...
+    def WaitForMultipleObjects(__handle_seq: Sequence[int], __wait_flag: bool, __milliseconds: int = 0xFFFFFFFF) -> int: ...
     def WaitForSingleObject(__handle: int, __milliseconds: int) -> int: ...
     def WaitNamedPipe(__name: str, __timeout: int) -> None: ...
     @overload
     def WriteFile(handle: int, buffer: ReadableBuffer, overlapped: Literal[True]) -> tuple[Overlapped, int]: ...
     @overload
-    def WriteFile(handle: int, buffer: ReadableBuffer, overlapped: Literal[False] = ...) -> tuple[int, int]: ...
+    def WriteFile(handle: int, buffer: ReadableBuffer, overlapped: Literal[False] = False) -> tuple[int, int]: ...
     @overload
     def WriteFile(handle: int, buffer: ReadableBuffer, overlapped: int | bool) -> tuple[Any, int]: ...
     @final

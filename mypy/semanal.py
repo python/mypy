@@ -99,6 +99,7 @@ from mypy.nodes import (
     ConditionalExpr,
     Context,
     ContinueStmt,
+    DataclassTransformSpec,
     Decorator,
     DelStmt,
     DictExpr,
@@ -213,7 +214,9 @@ from mypy.semanal_shared import (
     PRIORITY_FALLBACKS,
     SemanticAnalyzerInterface,
     calculate_tuple_fallback,
+    find_dataclass_transform_spec,
     has_placeholder,
+    require_bool_literal_argument,
     set_callable_name as set_callable_name,
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
@@ -233,7 +236,7 @@ from mypy.typeanal import (
     remove_dups,
     type_constructors,
 )
-from mypy.typeops import function_type, get_type_vars
+from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
 from mypy.types import (
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
@@ -257,7 +260,6 @@ from mypy.types import (
     ParamSpecType,
     PlaceholderType,
     ProperType,
-    StarType,
     TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
@@ -1524,7 +1526,7 @@ class SemanticAnalyzer(
             elif isinstance(d, CallExpr) and refers_to_fullname(
                 d.callee, DATACLASS_TRANSFORM_NAMES
             ):
-                dec.func.is_dataclass_transform = True
+                dec.func.dataclass_transform_spec = self.parse_dataclass_transform_spec(d)
             elif not dec.var.is_property:
                 # We have seen a "non-trivial" decorator before seeing @property, if
                 # we will see a @property later, give an error, as we don't support this.
@@ -1729,7 +1731,7 @@ class SemanticAnalyzer(
                 # Special case: if the decorator is itself decorated with
                 # typing.dataclass_transform, apply the hook for the dataclasses plugin
                 # TODO: remove special casing here
-                if hook is None and is_dataclass_transform_decorator(decorator):
+                if hook is None and find_dataclass_transform_spec(decorator):
                     hook = dataclasses_plugin.dataclass_tag_callback
                 if hook:
                     hook(ClassDefContext(defn, decorator, self))
@@ -1747,6 +1749,12 @@ class SemanticAnalyzer(
                 hook = self.plugin.get_base_class_hook(base_name)
                 if hook:
                     hook(ClassDefContext(defn, base_expr, self))
+
+        # Check if the class definition itself triggers a dataclass transform (via a parent class/
+        # metaclass)
+        spec = find_dataclass_transform_spec(defn)
+        if spec is not None:
+            dataclasses_plugin.add_dataclass_tag(defn.info)
 
     def get_fullname_for_hook(self, expr: Expression) -> str | None:
         if isinstance(expr, CallExpr):
@@ -1795,6 +1803,10 @@ class SemanticAnalyzer(
                     self.fail("@runtime_checkable can only be used with protocol classes", defn)
             elif decorator.fullname in FINAL_DECORATOR_NAMES:
                 defn.info.is_final = True
+        elif isinstance(decorator, CallExpr) and refers_to_fullname(
+            decorator.callee, DATACLASS_TRANSFORM_NAMES
+        ):
+            defn.info.dataclass_transform_spec = self.parse_dataclass_transform_spec(decorator)
 
     def clean_up_bases_and_infer_type_variables(
         self, defn: ClassDef, base_type_exprs: list[Expression], context: Context
@@ -2597,6 +2609,16 @@ class SemanticAnalyzer(
             ):
                 # Yes. Generate a helpful note.
                 self.msg.add_fixture_note(fullname, context)
+            else:
+                typing_extensions = self.modules.get("typing_extensions")
+                if typing_extensions and source_id in typing_extensions.names:
+                    self.msg.note(
+                        f"Use `from typing_extensions import {source_id}` instead", context
+                    )
+                    self.msg.note(
+                        "See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module",
+                        context,
+                    )
 
     def process_import_over_existing_name(
         self,
@@ -3863,8 +3885,6 @@ class SemanticAnalyzer(
             self.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, ctx)
 
     def store_declared_types(self, lvalue: Lvalue, typ: Type) -> None:
-        if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
-            self.fail("Star type only allowed for starred expressions", lvalue)
         if isinstance(lvalue, RefExpr):
             lvalue.is_inferred_def = False
             if isinstance(lvalue.node, Var):
@@ -3892,10 +3912,7 @@ class SemanticAnalyzer(
                 self.fail("Tuple type expected for multiple variables", lvalue)
         elif isinstance(lvalue, StarExpr):
             # Historical behavior for the old parser
-            if isinstance(typ, StarType):
-                self.store_declared_types(lvalue.expr, typ.type)
-            else:
-                self.store_declared_types(lvalue.expr, typ)
+            self.store_declared_types(lvalue.expr, typ)
         else:
             # This has been flagged elsewhere as an error, so just ignore here.
             pass
@@ -6445,12 +6462,71 @@ class SemanticAnalyzer(
                 return False
         return None
 
+    def parse_str_literal(self, expr: Expression) -> str | None:
+        """Attempt to find the string literal value of the given expression. Returns `None` if no
+        literal value can be found."""
+        if isinstance(expr, StrExpr):
+            return expr.value
+        if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.type is not None:
+            values = try_getting_str_literals_from_type(expr.node.type)
+            if values is not None and len(values) == 1:
+                return values[0]
+        return None
+
     def set_future_import_flags(self, module_name: str) -> None:
         if module_name in FUTURE_IMPORTS:
             self.modules[self.cur_mod_id].future_import_flags.add(FUTURE_IMPORTS[module_name])
 
     def is_future_flag_set(self, flag: str) -> bool:
         return self.modules[self.cur_mod_id].is_future_flag_set(flag)
+
+    def parse_dataclass_transform_spec(self, call: CallExpr) -> DataclassTransformSpec:
+        """Build a DataclassTransformSpec from the arguments passed to the given call to
+        typing.dataclass_transform."""
+        parameters = DataclassTransformSpec()
+        for name, value in zip(call.arg_names, call.args):
+            # Skip any positional args. Note that any such args are invalid, but we can rely on
+            # typeshed to enforce this and don't need an additional error here.
+            if name is None:
+                continue
+
+            # field_specifiers is currently the only non-boolean argument; check for it first so
+            # so the rest of the block can fail through to handling booleans
+            if name == "field_specifiers":
+                parameters.field_specifiers = self.parse_dataclass_transform_field_specifiers(
+                    value
+                )
+                continue
+
+            boolean = require_bool_literal_argument(self, value, name)
+            if boolean is None:
+                continue
+
+            if name == "eq_default":
+                parameters.eq_default = boolean
+            elif name == "order_default":
+                parameters.order_default = boolean
+            elif name == "kw_only_default":
+                parameters.kw_only_default = boolean
+            elif name == "frozen_default":
+                parameters.frozen_default = boolean
+            else:
+                self.fail(f'Unrecognized dataclass_transform parameter "{name}"', call)
+
+        return parameters
+
+    def parse_dataclass_transform_field_specifiers(self, arg: Expression) -> tuple[str, ...]:
+        if not isinstance(arg, TupleExpr):
+            self.fail('"field_specifiers" argument must be a tuple literal', arg)
+            return tuple()
+
+        names = []
+        for specifier in arg.items:
+            if not isinstance(specifier, RefExpr):
+                self.fail('"field_specifiers" must only contain identifiers', specifier)
+                return tuple()
+            names.append(specifier.fullname)
+        return tuple(names)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
@@ -6641,21 +6717,3 @@ def is_trivial_body(block: Block) -> bool:
     return isinstance(stmt, PassStmt) or (
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
     )
-
-
-def is_dataclass_transform_decorator(node: Node | None) -> bool:
-    if isinstance(node, RefExpr):
-        return is_dataclass_transform_decorator(node.node)
-    if isinstance(node, CallExpr):
-        # Like dataclasses.dataclass, transform-based decorators can be applied either with or
-        # without parameters; ie, both of these forms are accepted:
-        #
-        # @typing.dataclass_transform
-        # class Foo: ...
-        # @typing.dataclass_transform(eq=True, order=True, ...)
-        # class Bar: ...
-        #
-        # We need to unwrap the call for the second variant.
-        return is_dataclass_transform_decorator(node.callee)
-
-    return isinstance(node, Decorator) and node.func.is_dataclass_transform

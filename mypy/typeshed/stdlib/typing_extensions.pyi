@@ -1,4 +1,3 @@
-import _typeshed
 import abc
 import collections
 import sys
@@ -6,7 +5,7 @@ import typing
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import IdentityFunction, Incomplete
 from collections.abc import Iterable
-from typing import (  # noqa: Y022,Y027,Y039
+from typing import (  # noqa: Y022,Y039
     TYPE_CHECKING as TYPE_CHECKING,
     Any as Any,
     AsyncContextManager as AsyncContextManager,
@@ -129,7 +128,7 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     __required_keys__: ClassVar[frozenset[str]]
     __optional_keys__: ClassVar[frozenset[str]]
     __total__: ClassVar[bool]
-    def copy(self: _typeshed.Self) -> _typeshed.Self: ...
+    def copy(self) -> Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: Never, default: object) -> object: ...
@@ -141,8 +140,8 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     def values(self) -> dict_values[str, object]: ...
     def __delitem__(self, k: Never) -> None: ...
     if sys.version_info >= (3, 9):
-        def __or__(self: _typeshed.Self, __value: _typeshed.Self) -> _typeshed.Self: ...
-        def __ior__(self: _typeshed.Self, __value: _typeshed.Self) -> _typeshed.Self: ...
+        def __or__(self, __value: Self) -> Self: ...
+        def __ior__(self, __value: Self) -> Self: ...
 
 # TypedDict is a (non-subscriptable) special form.
 TypedDict: object
@@ -151,9 +150,9 @@ OrderedDict = _Alias()
 
 def get_type_hints(
     obj: Callable[..., Any],
-    globalns: dict[str, Any] | None = ...,
-    localns: dict[str, Any] | None = ...,
-    include_extras: bool = ...,
+    globalns: dict[str, Any] | None = None,
+    localns: dict[str, Any] | None = None,
+    include_extras: bool = False,
 ) -> dict[str, Any]: ...
 def get_args(tp: Any) -> tuple[Any, ...]: ...
 def get_origin(tp: Any) -> Any | None: ...
@@ -224,9 +223,9 @@ else:
 
     def dataclass_transform(
         *,
-        eq_default: bool = ...,
-        order_default: bool = ...,
-        kw_only_default: bool = ...,
+        eq_default: bool = True,
+        order_default: bool = False,
+        kw_only_default: bool = False,
         field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
         **kwargs: object,
     ) -> IdentityFunction: ...
@@ -242,15 +241,15 @@ else:
         @overload
         def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
         @overload
-        def __init__(self, typename: str, fields: None = ..., **kwargs: Any) -> None: ...
+        def __init__(self, typename: str, fields: None = None, **kwargs: Any) -> None: ...
         @classmethod
-        def _make(cls: type[_typeshed.Self], iterable: Iterable[Any]) -> _typeshed.Self: ...
+        def _make(cls, iterable: Iterable[Any]) -> Self: ...
         if sys.version_info >= (3, 8):
             def _asdict(self) -> dict[str, Any]: ...
         else:
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
 
-        def _replace(self: _typeshed.Self, **kwargs: Any) -> _typeshed.Self: ...
+        def _replace(self, **kwargs: Any) -> Self: ...
 
 # New things in 3.xx
 # The `default` parameter was added to TypeVar, ParamSpec, and TypeVarTuple (PEP 696)
@@ -268,11 +267,11 @@ class TypeVar:
         self,
         name: str,
         *constraints: Any,
-        bound: Any | None = ...,
-        covariant: bool = ...,
-        contravariant: bool = ...,
-        default: Any | None = ...,
-        infer_variance: bool = ...,
+        bound: Any | None = None,
+        covariant: bool = False,
+        contravariant: bool = False,
+        default: Any | None = None,
+        infer_variance: bool = False,
     ) -> None: ...
     if sys.version_info >= (3, 10):
         def __or__(self, right: Any) -> _SpecialForm: ...
@@ -291,10 +290,10 @@ class ParamSpec:
         self,
         name: str,
         *,
-        bound: None | type[Any] | str = ...,
-        contravariant: bool = ...,
-        covariant: bool = ...,
-        default: type[Any] | str | None = ...,
+        bound: None | type[Any] | str = None,
+        contravariant: bool = False,
+        covariant: bool = False,
+        default: type[Any] | str | None = None,
     ) -> None: ...
     @property
     def args(self) -> ParamSpecArgs: ...
@@ -305,7 +304,7 @@ class ParamSpec:
 class TypeVarTuple:
     __name__: str
     __default__: Any | None
-    def __init__(self, name: str, *, default: Any | None = ...) -> None: ...
+    def __init__(self, name: str, *, default: Any | None = None) -> None: ...
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
 def override(__arg: _F) -> _F: ...
