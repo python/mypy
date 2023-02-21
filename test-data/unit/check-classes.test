@@ -3464,9 +3464,9 @@ class ProUser(User): pass
 class BasicUser(User): pass
 U = TypeVar('U', bound=Union[ProUser, BasicUser])
 def process(cls: Type[U]):
-    cls.foo()  # E: "Type[U]" has no attribute "foo"
+    cls.foo()
     obj = cls()
-    cls.bar(obj)  # E: "Type[U]" has no attribute "bar"
+    cls.bar(obj)
     cls.mro()  # Defined in class type
     cls.error  # E: "Type[U]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]

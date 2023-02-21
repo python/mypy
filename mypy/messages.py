@@ -516,6 +516,12 @@ class MessageBuilder:
                         context,
                         code=codes.UNION_ATTR,
                     )
+            else:
+                self.fail(
+                    '{} has no attribute "{}"{}'.format(format_type(original_type), member, extra),
+                    context,
+                    code=codes.ATTR_DEFINED,
+                )
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(
