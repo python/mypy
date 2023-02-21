@@ -1,12 +1,12 @@
 import ssl
 import sys
-from _typeshed import FileDescriptorLike, ReadableBuffer, Self, StrPath, Unused, WriteableBuffer
+from _typeshed import FileDescriptorLike, ReadableBuffer, StrPath, Unused, WriteableBuffer
 from abc import ABCMeta, abstractmethod
 from collections.abc import Awaitable, Callable, Coroutine, Generator, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Protocol, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Literal, Self, TypeAlias
 
 from .base_events import Server
 from .futures import Future
@@ -95,7 +95,7 @@ class TimerHandle(Handle):
 class AbstractServer:
     @abstractmethod
     def close(self) -> None: ...
-    async def __aenter__(self: Self) -> Self: ...
+    async def __aenter__(self) -> Self: ...
     async def __aexit__(self, *exc: Unused) -> None: ...
     @abstractmethod
     def get_loop(self) -> AbstractEventLoop: ...
@@ -524,11 +524,11 @@ class AbstractEventLoop:
         stdin: int | IO[Any] | None = -1,
         stdout: int | IO[Any] | None = -1,
         stderr: int | IO[Any] | None = -1,
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[True] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[True] = True,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[False, None] = ...,
         **kwargs: Any,
     ) -> tuple[SubprocessTransport, _ProtocolT]: ...
@@ -541,11 +541,11 @@ class AbstractEventLoop:
         stdin: int | IO[Any] | None = -1,
         stdout: int | IO[Any] | None = -1,
         stderr: int | IO[Any] | None = -1,
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[False] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[False] = False,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         **kwargs: Any,
     ) -> tuple[SubprocessTransport, _ProtocolT]: ...
     @abstractmethod

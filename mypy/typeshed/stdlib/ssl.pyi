@@ -1,17 +1,17 @@
 import enum
 import socket
 import sys
-from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
+from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Callable, Iterable
-from typing import Any, NamedTuple, Union, overload
-from typing_extensions import Literal, TypeAlias, TypedDict, final
+from typing import Any, NamedTuple, overload
+from typing_extensions import Literal, Self, TypeAlias, TypedDict, final
 
 _PCTRTT: TypeAlias = tuple[tuple[str, str], ...]
 _PCTRTTT: TypeAlias = tuple[_PCTRTT, ...]
 _PeerCertRetDictType: TypeAlias = dict[str, str | _PCTRTTT | _PCTRTT]
 _PeerCertRetType: TypeAlias = _PeerCertRetDictType | bytes | None
 _EnumRetType: TypeAlias = list[tuple[bytes, str, set[str] | bool]]
-_PasswordType: TypeAlias = Union[Callable[[], str | bytes | bytearray], str, bytes, bytearray]
+_PasswordType: TypeAlias = Callable[[], str | bytes | bytearray] | str | bytes | bytearray
 
 _SrvnmeCbType: TypeAlias = Callable[[SSLSocket | SSLObject, str | None, SSLSocket], int | None]
 
@@ -297,9 +297,9 @@ class _ASN1Object(NamedTuple):
     longname: str
     oid: str
     @classmethod
-    def fromnid(cls: type[Self], nid: int) -> Self: ...
+    def fromnid(cls, nid: int) -> Self: ...
     @classmethod
-    def fromname(cls: type[Self], name: str) -> Self: ...
+    def fromname(cls, name: str) -> Self: ...
 
 class Purpose(_ASN1Object, enum.Enum):
     SERVER_AUTH: _ASN1Object
@@ -383,9 +383,9 @@ class SSLContext:
     if sys.version_info >= (3, 10):
         # Using the default (None) for the `protocol` parameter is deprecated,
         # but there isn't a good way of marking that in the stub unless/until PEP 702 is accepted
-        def __new__(cls: type[Self], protocol: int | None = None, *args: Any, **kwargs: Any) -> Self: ...
+        def __new__(cls, protocol: int | None = None, *args: Any, **kwargs: Any) -> Self: ...
     else:
-        def __new__(cls: type[Self], protocol: int = ..., *args: Any, **kwargs: Any) -> Self: ...
+        def __new__(cls, protocol: int = ..., *args: Any, **kwargs: Any) -> Self: ...
 
     def cert_store_stats(self) -> dict[str, int]: ...
     def load_cert_chain(

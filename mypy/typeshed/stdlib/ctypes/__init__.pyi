@@ -1,10 +1,10 @@
 import sys
 from _ctypes import RTLD_GLOBAL as RTLD_GLOBAL, RTLD_LOCAL as RTLD_LOCAL
-from _typeshed import ReadableBuffer, Self, WriteableBuffer
+from _typeshed import ReadableBuffer, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from typing import Any, ClassVar, Generic, TypeVar, Union as _UnionT, overload
-from typing_extensions import TypeAlias
+from typing import Any, ClassVar, Generic, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -77,21 +77,21 @@ class _CData(metaclass=_CDataMeta):
     _b_needsfree_: bool
     _objects: Mapping[Any, int] | None
     @classmethod
-    def from_buffer(cls: type[Self], source: WriteableBuffer, offset: int = ...) -> Self: ...
+    def from_buffer(cls, source: WriteableBuffer, offset: int = ...) -> Self: ...
     @classmethod
-    def from_buffer_copy(cls: type[Self], source: ReadableBuffer, offset: int = ...) -> Self: ...
+    def from_buffer_copy(cls, source: ReadableBuffer, offset: int = ...) -> Self: ...
     @classmethod
-    def from_address(cls: type[Self], address: int) -> Self: ...
+    def from_address(cls, address: int) -> Self: ...
     @classmethod
-    def from_param(cls: type[Self], obj: Any) -> Self | _CArgObject: ...
+    def from_param(cls, obj: Any) -> Self | _CArgObject: ...
     @classmethod
-    def in_dll(cls: type[Self], library: CDLL, name: str) -> Self: ...
+    def in_dll(cls, library: CDLL, name: str) -> Self: ...
 
 class _CanCastTo(_CData): ...
 class _PointerLike(_CanCastTo): ...
 
 _ECT: TypeAlias = Callable[[type[_CData] | None, _FuncPointer, tuple[_CData, ...]], _CData]
-_PF: TypeAlias = _UnionT[tuple[int], tuple[int, str], tuple[int, str, Any]]
+_PF: TypeAlias = tuple[int] | tuple[int, str] | tuple[int, str, Any]
 
 class _FuncPointer(_PointerLike, _CData):
     restype: type[_CData] | Callable[[int], Any] | None

@@ -1561,9 +1561,9 @@ class StubtestMiscUnit(unittest.TestCase):
         expected = (
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
             'from runtime argument "num"\n'
-            f"Stub: at line 1 in file {TEST_MODULE_NAME}.pyi\n"
+            f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
             "def (number: builtins.int, text: builtins.str)\n"
-            f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
+            f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
         assert remove_color_code(output) == expected
@@ -1721,7 +1721,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
             f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"
-            f"Stub: at line 2 in file {TEST_MODULE_NAME}.pyi\n_decimal.Decimal\nRuntime:\n5\n\n"
+            f"Stub: in file {TEST_MODULE_NAME}.pyi:2\n_decimal.Decimal\nRuntime:\n5\n\n"
             "Found 1 error (checked 1 module)\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)

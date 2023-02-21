@@ -1031,3 +1031,12 @@ def f1(b: bool) -> Optional[int]:
 class Defer:
     def __init__(self) -> None:
         self.defer = 10
+
+[case testOptionalIterator]
+# mypy: no-strict-optional
+from typing import Optional, List
+
+x: Optional[List[int]]
+if 3 in x:
+    pass
+

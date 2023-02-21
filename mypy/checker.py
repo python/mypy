@@ -2067,7 +2067,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if not is_subtype(
                         original.arg_types[i], erase_override(override.arg_types[i])
                     ):
+
                         arg_type_in_super = original.arg_types[i]
+
+                        if isinstance(node, FuncDef):
+                            context: Context = node.arguments[i + len(override.bound_args)]
+                        else:
+                            context = node
                         self.msg.argument_incompatible_with_supertype(
                             i + 1,
                             name,
@@ -2075,7 +2081,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             name_in_super,
                             arg_type_in_super,
                             supertype,
-                            node,
+                            context,
+                            secondary_context=node,
                         )
                         emitted_msg = True
 

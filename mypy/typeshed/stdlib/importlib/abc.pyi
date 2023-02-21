@@ -133,7 +133,7 @@ if sys.version_info >= (3, 9):
         @overload
         @abstractmethod
         def open(
-            self, mode: OpenBinaryMode, buffering: Literal[0], encoding: None = ..., errors: None = ..., newline: None = ...
+            self, mode: OpenBinaryMode, buffering: Literal[0], encoding: None = None, errors: None = None, newline: None = None
         ) -> FileIO: ...
         # Buffering is on: return BufferedRandom, BufferedReader, or BufferedWriter
         @overload
@@ -142,9 +142,9 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeUpdating,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedRandom: ...
         @overload
         @abstractmethod
@@ -152,9 +152,9 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeWriting,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedWriter: ...
         @overload
         @abstractmethod
@@ -162,15 +162,15 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeReading,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedReader: ...
         # Buffering cannot be determined: fall back to BinaryIO
         @overload
         @abstractmethod
         def open(
-            self, mode: OpenBinaryMode, buffering: int = ..., encoding: None = ..., errors: None = ..., newline: None = ...
+            self, mode: OpenBinaryMode, buffering: int = ..., encoding: None = None, errors: None = None, newline: None = None
         ) -> BinaryIO: ...
         # Fallback if mode is not specified
         @overload
