@@ -273,6 +273,20 @@ class Pokemon(enum.Enum):
 assert Pokemon.magikarp.value == 1
 assert Pokemon.squirtle.name == 'squirtle'
 
+import sys, enum, typing_extensions
+
+# skip test on python 3.8 as it does not allow multiple data-type mixins of the same type
+if sys.version_info[:2] != (3, 8):
+    base_cls: typing_extensions.TypeAlias = enum.IntEnum
+else:
+    base_cls: typing_extensions.TypeAlias = enum.Enum
+
+class Color(base_cls):
+    GREEN = 1
+
+if sys.version_info[:2] != (3, 8):
+    assert Color.GREEN == 1
+
 [file other.py]
 # Force a multi-module test to make sure we can compile multi-file with
 # non-extension classes

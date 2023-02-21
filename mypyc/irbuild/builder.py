@@ -973,8 +973,7 @@ class IRBuilder:
             sym = expr.expr.node.get(expr.name)
             if sym and isinstance(sym.node, Var):
                 # Enum attribute are treated as final since they are added to the global cache
-                expr_fullname = expr.expr.node.bases[0].type.fullname
-                is_final = sym.node.is_final or expr_fullname == "enum.Enum"
+                is_final = sym.node.is_final or expr.expr.node.is_enum
                 if is_final:
                     final_var = sym.node
                     fullname = f"{sym.node.info.fullname}.{final_var.name}"
