@@ -3907,7 +3907,7 @@ class DataclassTransformSpec:
             "order_default": self.order_default,
             "kw_only_default": self.kw_only_default,
             "frozen_only_default": self.frozen_default,
-            "field_specifiers": self.field_specifiers,
+            "field_specifiers": list(self.field_specifiers),
         }
 
     @classmethod
@@ -3917,7 +3917,7 @@ class DataclassTransformSpec:
             order_default=data.get("order_default"),
             kw_only_default=data.get("kw_only_default"),
             frozen_default=data.get("frozen_default"),
-            field_specifiers=data.get("field_specifiers"),
+            field_specifiers=tuple(data.get("field_specifiers", [])),
         )
 
 
