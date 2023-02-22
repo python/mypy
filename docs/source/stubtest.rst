@@ -41,6 +41,10 @@ stubs and implementation or to check for stub completeness. It's used to
 test Python's official collection of library stubs,
 `typeshed <https://github.com/python/typeshed>`_.
 
+.. warning::
+
+    stubtest will import and execute Python code from the packages it checks.
+
 Example
 *******
 
@@ -65,14 +69,14 @@ Here's a quick example of what stubtest can do:
     error: library.foo is inconsistent, runtime argument "x" has a default value but stub argument does not
     Stub: at line 3
     def (x: builtins.int)
-    Runtime: at line 3 in file ~/library.py
+    Runtime: in file ~/library.py:3
     def (x=None)
 
     error: library.x variable differs from runtime type Literal['hello, stubtest']
     Stub: at line 1
     builtins.int
     Runtime:
-    hello, stubtest
+    'hello, stubtest'
 
 
 Usage
@@ -86,7 +90,14 @@ is installed in the same environment as the library to be tested. In some
 cases, setting ``PYTHONPATH`` can help stubtest find the code to import.
 
 Similarly, stubtest must be able to find the stubs to be checked. Stubtest
-respects the ``MYPYPATH`` environment variable.
+respects the ``MYPYPATH`` environment variable -- consider using this if you
+receive a complaint along the lines of "failed to find stubs".
+
+Note that stubtest requires mypy to be able to analyse stubs. If mypy is unable
+to analyse stubs, you may get an error on the lines of "not checking stubs due
+to mypy build errors". In this case, you will need to mitigate those errors
+before stubtest will run. Despite potential overlap in errors here, stubtest is
+not intended as a substitute for running mypy directly.
 
 If you wish to ignore some of stubtest's complaints, stubtest supports a
 pretty handy allowlist system.

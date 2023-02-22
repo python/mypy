@@ -10,6 +10,7 @@ VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
+    def __init_subclass__(cls) -> None: pass
     def __eq__(self, o: object) -> bool: pass
     def __ne__(self, o: object) -> bool: pass
 
@@ -18,6 +19,7 @@ class ellipsis: pass
 class tuple(Generic[_T]): pass
 class int: pass
 class float: pass
+class bytes: pass
 class str: pass
 class bool(int): pass
 
@@ -37,7 +39,11 @@ class dict(Mapping[KT, VT]):
     def get(self, k: KT, default: Union[KT, _T]) -> Union[VT, _T]: pass
     def __len__(self) -> int: ...
 
-class list(Generic[_T], Sequence[_T]): pass
+class list(Generic[_T], Sequence[_T]):
+    def __contains__(self, item: object) -> int: pass
+    def __getitem__(self, key: int) -> _T: pass
+    def __iter__(self) -> Iterator[_T]: pass
+
 class function: pass
 class classmethod: pass
 property = object()

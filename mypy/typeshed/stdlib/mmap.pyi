@@ -1,6 +1,8 @@
 import sys
-from _typeshed import ReadableBuffer
-from typing import ContextManager, Iterable, Iterator, NoReturn, Sized, overload
+from _typeshed import ReadableBuffer, Unused
+from collections.abc import Iterable, Iterator, Sized
+from typing import NoReturn, overload
+from typing_extensions import Self
 
 ACCESS_DEFAULT: int
 ACCESS_READ: int
@@ -12,6 +14,8 @@ ALLOCATIONGRANULARITY: int
 if sys.platform == "linux":
     MAP_DENYWRITE: int
     MAP_EXECUTABLE: int
+    if sys.version_info >= (3, 10):
+        MAP_POPULATE: int
 
 if sys.platform != "win32":
     MAP_ANON: int
@@ -24,18 +28,20 @@ if sys.platform != "win32":
 
     PAGESIZE: int
 
-class mmap(ContextManager[mmap], Iterable[int], Sized):
+class mmap(Iterable[int], Sized):
     if sys.platform == "win32":
         def __init__(self, fileno: int, length: int, tagname: str | None = ..., access: int = ..., offset: int = ...) -> None: ...
     else:
         def __init__(
             self, fileno: int, length: int, flags: int = ..., prot: int = ..., access: int = ..., offset: int = ...
         ) -> None: ...
+
     def close(self) -> None: ...
     if sys.version_info >= (3, 8):
         def flush(self, offset: int = ..., size: int = ...) -> None: ...
     else:
         def flush(self, offset: int = ..., size: int = ...) -> int: ...
+
     def move(self, dest: int, src: int, count: int) -> None: ...
     def read_byte(self) -> int: ...
     def readline(self) -> bytes: ...
@@ -48,22 +54,28 @@ class mmap(ContextManager[mmap], Iterable[int], Sized):
     closed: bool
     if sys.version_info >= (3, 8) and sys.platform != "win32":
         def madvise(self, option: int, start: int = ..., length: int = ...) -> None: ...
+
     def find(self, sub: ReadableBuffer, start: int = ..., stop: int = ...) -> int: ...
     def rfind(self, sub: ReadableBuffer, start: int = ..., stop: int = ...) -> int: ...
     def read(self, n: int | None = ...) -> bytes: ...
     def write(self, bytes: ReadableBuffer) -> int: ...
     @overload
-    def __getitem__(self, index: int) -> int: ...
+    def __getitem__(self, __index: int) -> int: ...
     @overload
-    def __getitem__(self, index: slice) -> bytes: ...
-    def __delitem__(self, index: int | slice) -> NoReturn: ...
+    def __getitem__(self, __index: slice) -> bytes: ...
+    def __delitem__(self, __index: int | slice) -> NoReturn: ...
     @overload
-    def __setitem__(self, index: int, object: int) -> None: ...
+    def __setitem__(self, __index: int, __object: int) -> None: ...
     @overload
-    def __setitem__(self, index: slice, object: ReadableBuffer) -> None: ...
-    # Doesn't actually exist, but the object is actually iterable because it has __getitem__ and
-    # __len__, so we claim that there is also an __iter__ to help type checkers.
+    def __setitem__(self, __index: slice, __object: ReadableBuffer) -> None: ...
+    # Doesn't actually exist, but the object actually supports "in" because it has __getitem__,
+    # so we claim that there is also a __contains__ to help type checkers.
+    def __contains__(self, __o: object) -> bool: ...
+    # Doesn't actually exist, but the object is actually iterable because it has __getitem__ and __len__,
+    # so we claim that there is also an __iter__ to help type checkers.
     def __iter__(self) -> Iterator[int]: ...
+    def __enter__(self) -> Self: ...
+    def __exit__(self, *args: Unused) -> None: ...
 
 if sys.version_info >= (3, 8) and sys.platform != "win32":
     MADV_NORMAL: int
@@ -71,6 +83,7 @@ if sys.version_info >= (3, 8) and sys.platform != "win32":
     MADV_SEQUENTIAL: int
     MADV_WILLNEED: int
     MADV_DONTNEED: int
+    MADV_FREE: int
 
     if sys.platform == "linux":
         MADV_REMOVE: int
@@ -86,7 +99,6 @@ if sys.version_info >= (3, 8) and sys.platform != "win32":
         MADV_NOHUGEPAGE: int
         MADV_DONTDUMP: int
         MADV_DODUMP: int
-        MADV_FREE: int
 
     # This Values are defined for FreeBSD but type checkers do not support conditions for these
     if sys.platform != "linux" and sys.platform != "darwin":

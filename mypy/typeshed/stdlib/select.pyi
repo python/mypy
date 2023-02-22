@@ -1,7 +1,9 @@
 import sys
-from _typeshed import FileDescriptorLike, Self
+from _typeshed import FileDescriptorLike
+from collections.abc import Iterable
 from types import TracebackType
-from typing import Any, Iterable, Type
+from typing import Any
+from typing_extensions import Self, final
 
 if sys.platform != "win32":
     PIPE_BUF: int
@@ -13,26 +15,27 @@ if sys.platform != "win32":
     POLLOUT: int
     POLLPRI: int
     POLLRDBAND: int
+    POLLRDHUP: int
     POLLRDNORM: int
     POLLWRBAND: int
     POLLWRNORM: int
 
 class poll:
-    def __init__(self) -> None: ...
     def register(self, fd: FileDescriptorLike, eventmask: int = ...) -> None: ...
     def modify(self, fd: FileDescriptorLike, eventmask: int) -> None: ...
     def unregister(self, fd: FileDescriptorLike) -> None: ...
     def poll(self, timeout: float | None = ...) -> list[tuple[int, int]]: ...
 
 def select(
-    __rlist: Iterable[Any], __wlist: Iterable[Any], __xlist: Iterable[Any], __timeout: float | None = ...
+    __rlist: Iterable[Any], __wlist: Iterable[Any], __xlist: Iterable[Any], __timeout: float | None = None
 ) -> tuple[list[Any], list[Any], list[Any]]: ...
 
 error = OSError
 
 if sys.platform != "linux" and sys.platform != "win32":
     # BSD only
-    class kevent(object):
+    @final
+    class kevent:
         data: Any
         fflags: int
         filter: int
@@ -49,12 +52,13 @@ if sys.platform != "linux" and sys.platform != "win32":
             udata: Any = ...,
         ) -> None: ...
     # BSD only
-    class kqueue(object):
+    @final
+    class kqueue:
         closed: bool
         def __init__(self) -> None: ...
         def close(self) -> None: ...
         def control(
-            self, __changelist: Iterable[kevent] | None, __maxevents: int, __timeout: float | None = ...
+            self, __changelist: Iterable[kevent] | None, __maxevents: int, __timeout: float | None = None
         ) -> list[kevent]: ...
         def fileno(self) -> int: ...
         @classmethod
@@ -99,14 +103,15 @@ if sys.platform != "linux" and sys.platform != "win32":
     KQ_NOTE_WRITE: int
 
 if sys.platform == "linux":
-    class epoll(object):
+    @final
+    class epoll:
         def __init__(self, sizehint: int = ..., flags: int = ...) -> None: ...
-        def __enter__(self: Self) -> Self: ...
+        def __enter__(self) -> Self: ...
         def __exit__(
             self,
-            exc_type: Type[BaseException] | None = ...,
-            exc_val: BaseException | None = ...,
-            exc_tb: TracebackType | None = ...,
+            __exc_type: type[BaseException] | None = None,
+            __exc_val: BaseException | None = ...,
+            __exc_tb: TracebackType | None = None,
         ) -> None: ...
         def close(self) -> None: ...
         closed: bool
@@ -114,10 +119,11 @@ if sys.platform == "linux":
         def register(self, fd: FileDescriptorLike, eventmask: int = ...) -> None: ...
         def modify(self, fd: FileDescriptorLike, eventmask: int) -> None: ...
         def unregister(self, fd: FileDescriptorLike) -> None: ...
-        def poll(self, timeout: float | None = ..., maxevents: int = ...) -> list[tuple[int, int]]: ...
+        def poll(self, timeout: float | None = None, maxevents: int = -1) -> list[tuple[int, int]]: ...
         @classmethod
         def fromfd(cls, __fd: FileDescriptorLike) -> epoll: ...
     EPOLLERR: int
+    EPOLLEXCLUSIVE: int
     EPOLLET: int
     EPOLLHUP: int
     EPOLLIN: int
@@ -126,10 +132,12 @@ if sys.platform == "linux":
     EPOLLOUT: int
     EPOLLPRI: int
     EPOLLRDBAND: int
+    EPOLLRDHUP: int
     EPOLLRDNORM: int
     EPOLLWRBAND: int
     EPOLLWRNORM: int
     EPOLL_RDHUP: int
+    EPOLL_CLOEXEC: int
 
 if sys.platform != "linux" and sys.platform != "darwin" and sys.platform != "win32":
     # Solaris only

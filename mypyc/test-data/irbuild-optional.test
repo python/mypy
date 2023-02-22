@@ -13,7 +13,7 @@ def f(x):
     r0 :: object
     r1 :: bit
 L0:
-    r0 = box(None, 1)
+    r0 = load_address _Py_NoneStruct
     r1 = x == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -34,12 +34,11 @@ def f(x: Optional[A]) -> int:
 def f(x):
     x :: union[__main__.A, None]
     r0 :: object
-    r1, r2 :: bit
+    r1 :: bit
 L0:
-    r0 = box(None, 1)
-    r1 = x == r0
-    r2 = r1 ^ 1
-    if r2 goto L1 else goto L2 :: bool
+    r0 = load_address _Py_NoneStruct
+    r1 = x != r0
+    if r1 goto L1 else goto L2 :: bool
 L1:
     return 2
 L2:
@@ -142,11 +141,11 @@ L0:
     r1 = A()
     x = r1
     x = y
-    r2 = box(short_int, 2)
+    r2 = object 1
     z = r2
     r3 = A()
     a = r3
-    r4 = box(short_int, 2)
+    r4 = object 1
     a.a = r4; r5 = is_error
     r6 = box(None, 1)
     a.a = r6; r7 = is_error
@@ -166,7 +165,7 @@ def f(x):
     r2 :: object
     r3 :: bit
 L0:
-    r0 = box(short_int, 0)
+    r0 = object 0
     r1 = CPyList_SetItem(x, 0, r0)
     r2 = box(None, 1)
     r3 = CPyList_SetItem(x, 2, r2)
@@ -188,20 +187,19 @@ def f(x):
     x :: union[__main__.A, None]
     r0, y :: __main__.A
     r1 :: object
-    r2, r3 :: bit
-    r4, r5 :: __main__.A
+    r2 :: bit
+    r3, r4 :: __main__.A
 L0:
     r0 = A()
     y = r0
-    r1 = box(None, 1)
-    r2 = x == r1
-    r3 = r2 ^ 1
-    if r3 goto L1 else goto L2 :: bool
+    r1 = load_address _Py_NoneStruct
+    r2 = x != r1
+    if r2 goto L1 else goto L2 :: bool
 L1:
+    r3 = cast(__main__.A, x)
+    y = r3
     r4 = cast(__main__.A, x)
-    y = r4
-    r5 = cast(__main__.A, x)
-    return r5
+    return r4
 L2:
     return y
 
@@ -219,8 +217,8 @@ def f(y):
     x :: union[int, None]
     r1 :: bit
     r2, r3 :: object
-    r4, r5 :: bit
-    r6 :: int
+    r4 :: bit
+    r5 :: int
 L0:
     r0 = box(None, 1)
     x = r0
@@ -230,13 +228,12 @@ L1:
     r2 = box(int, y)
     x = r2
 L2:
-    r3 = box(None, 1)
-    r4 = x == r3
-    r5 = r4 ^ 1
-    if r5 goto L3 else goto L4 :: bool
+    r3 = load_address _Py_NoneStruct
+    r4 = x != r3
+    if r4 goto L3 else goto L4 :: bool
 L3:
-    r6 = unbox(int, x)
-    y = r6
+    r5 = unbox(int, x)
+    y = r5
 L4:
     return 1
 
@@ -272,8 +269,9 @@ L1:
     r5 = CPyTagged_Add(r4, 2)
     return r5
 L2:
-    r6 = cast(__main__.A, x)
+    r6 = borrow cast(__main__.A, x)
     r7 = r6.a
+    keep_alive x
     return r7
 L3:
     unreachable
@@ -417,13 +415,13 @@ L2:
     if r11 goto L3 else goto L4 :: bool
 L3:
     r12 = cast(__main__.B, o)
-    r13 = box(short_int, 2)
+    r13 = object 1
     r14 = r12.f(r13)
     r7 = r14
     goto L5
 L4:
     r15 = cast(__main__.C, o)
-    r16 = box(short_int, 2)
+    r16 = object 1
     r17 = r15.f(r16)
     r18 = box(int, r17)
     r7 = r18
@@ -529,15 +527,10 @@ class B:
 
 [out]
 def f(o):
-    o :: union[object, object]
-    r0 :: object
-    r1 :: str
-    r2, r3 :: object
+    o :: object
+    r0 :: str
+    r1 :: object
 L0:
-    r0 = o
-    r1 = 'x'
-    r2 = CPyObject_GetAttr(r0, r1)
-    r3 = r2
-L1:
+    r0 = 'x'
+    r1 = CPyObject_GetAttr(o, r0)
     return 1
-

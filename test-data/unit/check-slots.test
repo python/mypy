@@ -361,8 +361,7 @@ a.a = 1
 a.b = custom_obj
 a.c = custom_obj
 a.d = custom_obj
-# TODO: Should this be allowed?
-a.e = custom_obj  # E: Cannot assign to a method
+a.e = custom_obj
 [out]
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
@@ -517,4 +516,14 @@ class A:
         self.a = 1
         self.b = 2
         self.missing = 3
+[builtins fixtures/tuple.pyi]
+
+[case testSlotsWithClassVar]
+from typing import ClassVar
+class X:
+    __slots__ = ('a',)
+    a: int
+x = X()
+X.a  # E: "a" in __slots__ conflicts with class variable access
+x.a
 [builtins fixtures/tuple.pyi]

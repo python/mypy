@@ -1,28 +1,33 @@
 import sys
-from typing import Any, Callable, Mapping, Tuple
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any
+
+if sys.version_info >= (3, 8):
+    __all__ = ["BaseProcess", "current_process", "active_children", "parent_process"]
+else:
+    __all__ = ["BaseProcess", "current_process", "active_children"]
 
 class BaseProcess:
     name: str
     daemon: bool
     authkey: bytes
-    _identity: Tuple[int, ...]  # undocumented
+    _identity: tuple[int, ...]  # undocumented
     def __init__(
         self,
-        group: None = ...,
-        target: Callable[..., Any] | None = ...,
-        name: str | None = ...,
-        args: Tuple[Any, ...] = ...,
+        group: None = None,
+        target: Callable[..., object] | None = None,
+        name: str | None = None,
+        args: Iterable[Any] = ...,
         kwargs: Mapping[str, Any] = ...,
         *,
-        daemon: bool | None = ...,
+        daemon: bool | None = None,
     ) -> None: ...
     def run(self) -> None: ...
     def start(self) -> None: ...
     def terminate(self) -> None: ...
-    if sys.version_info >= (3, 7):
-        def kill(self) -> None: ...
-        def close(self) -> None: ...
-    def join(self, timeout: float | None = ...) -> None: ...
+    def kill(self) -> None: ...
+    def close(self) -> None: ...
+    def join(self, timeout: float | None = None) -> None: ...
     def is_alive(self) -> bool: ...
     @property
     def exitcode(self) -> int | None: ...

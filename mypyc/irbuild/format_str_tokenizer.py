@@ -1,20 +1,25 @@
 """Tokenizers for three string formatting methods"""
 
-from typing import List, Tuple, Optional
-from typing_extensions import Final
+from __future__ import annotations
+
 from enum import Enum, unique
+from typing_extensions import Final
 
 from mypy.checkstrformat import (
-    parse_format_value, ConversionSpecifier, parse_conversion_specifiers
+    ConversionSpecifier,
+    parse_conversion_specifiers,
+    parse_format_value,
 )
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context, Expression
-
-from mypyc.ir.ops import Value, Integer
+from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (
-    c_pyssize_t_rprimitive, is_str_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
-    is_bytes_rprimitive
+    c_pyssize_t_rprimitive,
+    is_bytes_rprimitive,
+    is_int_rprimitive,
+    is_short_int_rprimitive,
+    is_str_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.primitives.bytes_ops import bytes_build_op
@@ -32,12 +37,13 @@ class FormatOp(Enum):
     ConversionSpecifier may have several representations, like '%s', '{}'
     or '{:{}}'. However, there would only exist one corresponding FormatOp.
     """
-    STR = 's'
-    INT = 'd'
-    BYTES = 'b'
+
+    STR = "s"
+    INT = "d"
+    BYTES = "b"
 
 
-def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[FormatOp]]:
+def generate_format_ops(specifiers: list[ConversionSpecifier]) -> list[FormatOp] | None:
     """Convert ConversionSpecifier to FormatOp.
 
     Different ConversionSpecifiers may share a same FormatOp.
@@ -45,11 +51,11 @@ def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[
     format_ops = []
     for spec in specifiers:
         # TODO: Match specifiers instead of using whole_seq
-        if spec.whole_seq == '%s' or spec.whole_seq == '{:{}}':
+        if spec.whole_seq == "%s" or spec.whole_seq == "{:{}}":
             format_op = FormatOp.STR
-        elif spec.whole_seq == '%d':
+        elif spec.whole_seq == "%d":
             format_op = FormatOp.INT
-        elif spec.whole_seq == '%b':
+        elif spec.whole_seq == "%b":
             format_op = FormatOp.BYTES
         elif spec.whole_seq:
             return None
@@ -59,14 +65,14 @@ def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[
     return format_ops
 
 
-def tokenizer_printf_style(format_str: str) -> Optional[Tuple[List[str], List[FormatOp]]]:
+def tokenizer_printf_style(format_str: str) -> tuple[list[str], list[FormatOp]] | None:
     """Tokenize a printf-style format string using regex.
 
     Return:
         A list of string literals and a list of FormatOps.
     """
-    literals: List[str] = []
-    specifiers: List[ConversionSpecifier] = parse_conversion_specifiers(format_str)
+    literals: list[str] = []
+    specifiers: list[ConversionSpecifier] = parse_conversion_specifiers(format_str)
     format_ops = generate_format_ops(specifiers)
     if format_ops is None:
         return None
@@ -86,8 +92,7 @@ def tokenizer_printf_style(format_str: str) -> Optional[Tuple[List[str], List[Fo
 EMPTY_CONTEXT: Final = Context()
 
 
-def tokenizer_format_call(
-        format_str: str) -> Optional[Tuple[List[str], List[FormatOp]]]:
+def tokenizer_format_call(format_str: str) -> tuple[list[str], list[FormatOp]] | None:
     """Tokenize a str.format() format string.
 
     The core function parse_format_value() is shared with mypy.
@@ -103,29 +108,29 @@ def tokenizer_format_call(
     """
     # Creates an empty MessageBuilder here.
     # It wouldn't be used since the code has passed the type-checking.
-    specifiers = parse_format_value(format_str, EMPTY_CONTEXT,
-                                    MessageBuilder(Errors(), {}))
+    specifiers = parse_format_value(format_str, EMPTY_CONTEXT, MessageBuilder(Errors(), {}))
     if specifiers is None:
         return None
     format_ops = generate_format_ops(specifiers)
     if format_ops is None:
         return None
 
-    literals: List[str] = []
+    literals: list[str] = []
     last_end = 0
     for spec in specifiers:
         # Skip { and }
-        literals.append(format_str[last_end:spec.start_pos - 1])
+        literals.append(format_str[last_end : spec.start_pos - 1])
         last_end = spec.start_pos + len(spec.whole_seq) + 1
     literals.append(format_str[last_end:])
     # Deal with escaped {{
-    literals = [x.replace('{{', '{').replace('}}', '}') for x in literals]
+    literals = [x.replace("{{", "{").replace("}}", "}") for x in literals]
 
     return literals, format_ops
 
 
-def convert_format_expr_to_str(builder: IRBuilder, format_ops: List[FormatOp],
-                               exprs: List[Expression], line: int) -> Optional[List[Value]]:
+def convert_format_expr_to_str(
+    builder: IRBuilder, format_ops: list[FormatOp], exprs: list[Expression], line: int
+) -> list[Value] | None:
     """Convert expressions into string literal objects with the guidance
     of FormatOps. Return None when fails."""
     if len(format_ops) != len(exprs):
@@ -152,8 +157,9 @@ def convert_format_expr_to_str(builder: IRBuilder, format_ops: List[FormatOp],
     return converted
 
 
-def join_formatted_strings(builder: IRBuilder, literals: Optional[List[str]],
-                           substitutions: List[Value], line: int) -> Value:
+def join_formatted_strings(
+    builder: IRBuilder, literals: list[str] | None, substitutions: list[Value], line: int
+) -> Value:
     """Merge the list of literals and the list of substitutions
     alternatively using 'str_build_op'.
 
@@ -172,7 +178,7 @@ def join_formatted_strings(builder: IRBuilder, literals: Optional[List[str]],
     """
     # The first parameter for str_build_op is the total size of
     # the following PyObject*
-    result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
+    result_list: list[Value] = [Integer(0, c_pyssize_t_rprimitive)]
 
     if literals is not None:
         for a, b in zip(literals, substitutions):
@@ -194,8 +200,9 @@ def join_formatted_strings(builder: IRBuilder, literals: Optional[List[str]],
     return builder.call_c(str_build_op, result_list, line)
 
 
-def convert_format_expr_to_bytes(builder: IRBuilder, format_ops: List[FormatOp],
-                                 exprs: List[Expression], line: int) -> Optional[List[Value]]:
+def convert_format_expr_to_bytes(
+    builder: IRBuilder, format_ops: list[FormatOp], exprs: list[Expression], line: int
+) -> list[Value] | None:
     """Convert expressions into bytes literal objects with the guidance
     of FormatOps. Return None when fails."""
     if len(format_ops) != len(exprs):
@@ -216,11 +223,12 @@ def convert_format_expr_to_bytes(builder: IRBuilder, format_ops: List[FormatOp],
     return converted
 
 
-def join_formatted_bytes(builder: IRBuilder, literals: List[str],
-                         substitutions: List[Value], line: int) -> Value:
+def join_formatted_bytes(
+    builder: IRBuilder, literals: list[str], substitutions: list[Value], line: int
+) -> Value:
     """Merge the list of literals and the list of substitutions
     alternatively using 'bytes_build_op'."""
-    result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
+    result_list: list[Value] = [Integer(0, c_pyssize_t_rprimitive)]
 
     for a, b in zip(literals, substitutions):
         if a:
@@ -231,7 +239,7 @@ def join_formatted_bytes(builder: IRBuilder, literals: List[str],
 
     # Special case for empty bytes and literal
     if len(result_list) == 1:
-        return builder.load_bytes_from_str_literal('')
+        return builder.load_bytes_from_str_literal("")
     if not substitutions and len(result_list) == 2:
         return result_list[1]
 

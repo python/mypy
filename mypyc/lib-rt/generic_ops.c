@@ -33,12 +33,17 @@ PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl)
 
 PyObject *CPyIter_Next(PyObject *iter)
 {
-    return (*iter->ob_type->tp_iternext)(iter);
+    return (*Py_TYPE(iter)->tp_iternext)(iter);
 }
 
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index)
 {
     return PyNumber_Power(base, index, Py_None);
+}
+
+PyObject *CPyNumber_InPlacePower(PyObject *base, PyObject *index)
+{
+    return PyNumber_InPlacePower(base, index, Py_None);
 }
 
 PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {

@@ -1,11 +1,12 @@
-from _typeshed import Self
+from collections.abc import Iterator, MutableMapping
 from types import TracebackType
-from typing import Iterator, MutableMapping, Tuple, Type, Union
-from typing_extensions import Literal
+from typing_extensions import Literal, Self, TypeAlias
 
-_KeyType = Union[str, bytes]
-_ValueType = Union[str, bytes]
-_TFlags = Literal[
+__all__ = ["open", "whichdb", "error"]
+
+_KeyType: TypeAlias = str | bytes
+_ValueType: TypeAlias = str | bytes | bytearray
+_TFlags: TypeAlias = Literal[
     "r",
     "w",
     "c",
@@ -80,14 +81,14 @@ class _Database(MutableMapping[_KeyType, bytes]):
     def __iter__(self) -> Iterator[bytes]: ...
     def __len__(self) -> int: ...
     def __del__(self) -> None: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
 
 class _error(Exception): ...
 
-error = Tuple[Type[_error], Type[OSError]]
+error: tuple[type[_error], type[OSError]]
 
 def whichdb(filename: str) -> str: ...
-def open(file: str, flag: _TFlags = ..., mode: int = ...) -> _Database: ...
+def open(file: str, flag: _TFlags = "r", mode: int = 0o666) -> _Database: ...

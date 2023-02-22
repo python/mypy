@@ -272,8 +272,9 @@ else:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   IfStmt:2(
     If(
       NameExpr(x [__main__.x]))
@@ -326,8 +327,9 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     IntExpr(1))
   AssignmentStmt:2(
-    NameExpr(xx* [__main__.xx])
-    IntExpr(1))
+    NameExpr(xx [__main__.xx])
+    IntExpr(1)
+    builtins.int)
   AssignmentStmt:3(
     MemberExpr:3(
       NameExpr(x [__main__.x])
@@ -408,8 +410,9 @@ MypyFile:1(
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   AssignmentStmt:2(
     TupleExpr:2(
       NameExpr(y* [__main__.y]))
@@ -436,8 +439,9 @@ y, x = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   AssignmentStmt:2(
     TupleExpr:2(
       NameExpr(y* [__main__.y])
@@ -450,8 +454,9 @@ y, (x, z) = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   AssignmentStmt:2(
     TupleExpr:2(
       NameExpr(y* [__main__.y])
@@ -468,8 +473,9 @@ if x:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   IfStmt:2(
     If(
       NameExpr(x [__main__.x]))
@@ -510,8 +516,9 @@ del x
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int)
   DelStmt:2(
     NameExpr(x [__main__.x])))
 
@@ -782,6 +789,7 @@ MypyFile:1(
           Args())))))
 
 [case testTryExceptWithMultipleHandlers]
+class Err(BaseException): pass
 try:
     pass
 except BaseException as e:
@@ -789,36 +797,34 @@ except BaseException as e:
 except Err as f:
     f = BaseException() # Fail
     f = Err()
-class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
 [out]
 MypyFile:1(
-  TryStmt:1(
-    Block:1(
-      PassStmt:2())
-    NameExpr(BaseException [builtins.BaseException])
-    NameExpr(e* [__main__.e])
-    Block:3(
-      PassStmt:4())
-    NameExpr(Err [__main__.Err])
-    NameExpr(f* [__main__.f])
-    Block:5(
-      AssignmentStmt:6(
-        NameExpr(f [__main__.f])
-        CallExpr:6(
-          NameExpr(BaseException [builtins.BaseException])
-          Args()))
-      AssignmentStmt:7(
-        NameExpr(f [__main__.f])
-        CallExpr:7(
-          NameExpr(Err [__main__.Err])
-          Args()))))
-  ClassDef:8(
+  ClassDef:1(
     Err
     BaseType(
       builtins.BaseException)
-    PassStmt:8()))
-
+    PassStmt:1())
+  TryStmt:2(
+    Block:2(
+      PassStmt:3())
+    NameExpr(BaseException [builtins.BaseException])
+    NameExpr(e* [__main__.e])
+    Block:4(
+      PassStmt:5())
+    NameExpr(Err [__main__.Err])
+    NameExpr(f* [__main__.f])
+    Block:6(
+      AssignmentStmt:7(
+        NameExpr(f [__main__.f])
+        CallExpr:7(
+          NameExpr(BaseException [builtins.BaseException])
+          Args()))
+      AssignmentStmt:8(
+        NameExpr(f [__main__.f])
+        CallExpr:8(
+          NameExpr(Err [__main__.Err])
+          Args())))))
 [case testMultipleAssignmentWithPartialNewDef]
 # flags: --allow-redefinition
 o = None
@@ -961,16 +967,18 @@ MypyFile:1(
     Block:2(
       PassStmt:2()))
   AssignmentStmt:3(
-    NameExpr(x'* [__main__.x'])
-    IntExpr(0))
+    NameExpr(x' [__main__.x'])
+    IntExpr(0)
+    builtins.int)
   ExpressionStmt:4(
     CallExpr:4(
       NameExpr(f [__main__.f])
       Args(
         NameExpr(x' [__main__.x']))))
   AssignmentStmt:5(
-    NameExpr(x* [__main__.x])
-    StrExpr())
+    NameExpr(x [__main__.x])
+    StrExpr()
+    builtins.str)
   ExpressionStmt:6(
     CallExpr:6(
       NameExpr(f [__main__.f])
@@ -993,8 +1001,9 @@ MypyFile:1(
     Block:2(
       PassStmt:2()))
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
-    IntExpr(0))
+    NameExpr(x [__main__.x])
+    IntExpr(0)
+    builtins.int)
   ExpressionStmt:4(
     CallExpr:4(
       NameExpr(f [__main__.f])
@@ -1046,15 +1055,261 @@ x = ''
 [out]
 MypyFile:1(
   AssignmentStmt:2(
-    NameExpr(x* [__main__.x])
-    IntExpr(0))
+    NameExpr(x [__main__.x])
+    IntExpr(0)
+    builtins.int)
   ExpressionStmt:3(
     NameExpr(x [__main__.x]))
   ClassDef:4(
     A
     AssignmentStmt:5(
-      NameExpr(x* [m])
-      IntExpr(1)))
+      NameExpr(x [m])
+      IntExpr(1)
+      builtins.int))
   AssignmentStmt:6(
     NameExpr(x [__main__.x])
     StrExpr()))
+
+[case testSimpleWithRenaming]
+with 0 as y:
+    z = y
+with 1 as y:
+    y = 1
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      IntExpr(0))
+    Target(
+      NameExpr(y'* [__main__.y']))
+    Block:1(
+      AssignmentStmt:2(
+        NameExpr(z* [__main__.z])
+        NameExpr(y' [__main__.y']))))
+  WithStmt:3(
+    Expr(
+      IntExpr(1))
+    Target(
+      NameExpr(y* [__main__.y]))
+    Block:3(
+      AssignmentStmt:4(
+        NameExpr(y [__main__.y])
+        IntExpr(1)))))
+
+[case testSimpleWithRenamingFailure]
+with 0 as y:
+    z = y
+zz = y
+with 1 as y:
+    y = 1
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      IntExpr(0))
+    Target(
+      NameExpr(y* [__main__.y]))
+    Block:1(
+      AssignmentStmt:2(
+        NameExpr(z* [__main__.z])
+        NameExpr(y [__main__.y]))))
+  AssignmentStmt:3(
+    NameExpr(zz* [__main__.zz])
+    NameExpr(y [__main__.y]))
+  WithStmt:4(
+    Expr(
+      IntExpr(1))
+    Target(
+      NameExpr(y [__main__.y]))
+    Block:4(
+      AssignmentStmt:5(
+        NameExpr(y [__main__.y])
+        IntExpr(1)))))
+
+[case testConstantFold1]
+from typing_extensions import Final
+add: Final = 15 + 47
+add_mul: Final = (2 + 3) * 5
+sub: Final = 7 - 11
+bit_and: Final = 6 & 10
+bit_or: Final = 6 | 10
+bit_xor: Final = 6 ^ 10
+lshift: Final = 5 << 2
+rshift: Final = 13 >> 2
+lshift0: Final = 5 << 0
+rshift0: Final = 13 >> 0
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [Final])
+  AssignmentStmt:2(
+    NameExpr(add [__main__.add] = 62)
+    OpExpr:2(
+      +
+      IntExpr(15)
+      IntExpr(47))
+    Literal[62]?)
+  AssignmentStmt:3(
+    NameExpr(add_mul [__main__.add_mul] = 25)
+    OpExpr:3(
+      *
+      OpExpr:3(
+        +
+        IntExpr(2)
+        IntExpr(3))
+      IntExpr(5))
+    Literal[25]?)
+  AssignmentStmt:4(
+    NameExpr(sub [__main__.sub] = -4)
+    OpExpr:4(
+      -
+      IntExpr(7)
+      IntExpr(11))
+    Literal[-4]?)
+  AssignmentStmt:5(
+    NameExpr(bit_and [__main__.bit_and] = 2)
+    OpExpr:5(
+      &
+      IntExpr(6)
+      IntExpr(10))
+    Literal[2]?)
+  AssignmentStmt:6(
+    NameExpr(bit_or [__main__.bit_or] = 14)
+    OpExpr:6(
+      |
+      IntExpr(6)
+      IntExpr(10))
+    Literal[14]?)
+  AssignmentStmt:7(
+    NameExpr(bit_xor [__main__.bit_xor] = 12)
+    OpExpr:7(
+      ^
+      IntExpr(6)
+      IntExpr(10))
+    Literal[12]?)
+  AssignmentStmt:8(
+    NameExpr(lshift [__main__.lshift] = 20)
+    OpExpr:8(
+      <<
+      IntExpr(5)
+      IntExpr(2))
+    Literal[20]?)
+  AssignmentStmt:9(
+    NameExpr(rshift [__main__.rshift] = 3)
+    OpExpr:9(
+      >>
+      IntExpr(13)
+      IntExpr(2))
+    Literal[3]?)
+  AssignmentStmt:10(
+    NameExpr(lshift0 [__main__.lshift0] = 5)
+    OpExpr:10(
+      <<
+      IntExpr(5)
+      IntExpr(0))
+    Literal[5]?)
+  AssignmentStmt:11(
+    NameExpr(rshift0 [__main__.rshift0] = 13)
+    OpExpr:11(
+      >>
+      IntExpr(13)
+      IntExpr(0))
+    Literal[13]?))
+
+[case testConstantFold2]
+from typing_extensions import Final
+neg1: Final = -5
+neg2: Final = --1
+neg3: Final = -0
+pos: Final = +5
+inverted1: Final = ~0
+inverted2: Final = ~5
+inverted3: Final = ~3
+p0: Final = 3**0
+p1: Final = 3**5
+p2: Final = (-5)**3
+p3: Final = 0**0
+s: Final = 'x' + 'y'
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [Final])
+  AssignmentStmt:2(
+    NameExpr(neg1 [__main__.neg1] = -5)
+    UnaryExpr:2(
+      -
+      IntExpr(5))
+    Literal[-5]?)
+  AssignmentStmt:3(
+    NameExpr(neg2 [__main__.neg2] = 1)
+    UnaryExpr:3(
+      -
+      UnaryExpr:3(
+        -
+        IntExpr(1)))
+    Literal[1]?)
+  AssignmentStmt:4(
+    NameExpr(neg3 [__main__.neg3] = 0)
+    UnaryExpr:4(
+      -
+      IntExpr(0))
+    Literal[0]?)
+  AssignmentStmt:5(
+    NameExpr(pos [__main__.pos] = 5)
+    UnaryExpr:5(
+      +
+      IntExpr(5))
+    Literal[5]?)
+  AssignmentStmt:6(
+    NameExpr(inverted1 [__main__.inverted1] = -1)
+    UnaryExpr:6(
+      ~
+      IntExpr(0))
+    Literal[-1]?)
+  AssignmentStmt:7(
+    NameExpr(inverted2 [__main__.inverted2] = -6)
+    UnaryExpr:7(
+      ~
+      IntExpr(5))
+    Literal[-6]?)
+  AssignmentStmt:8(
+    NameExpr(inverted3 [__main__.inverted3] = -4)
+    UnaryExpr:8(
+      ~
+      IntExpr(3))
+    Literal[-4]?)
+  AssignmentStmt:9(
+    NameExpr(p0 [__main__.p0] = 1)
+    OpExpr:9(
+      **
+      IntExpr(3)
+      IntExpr(0))
+    Literal[1]?)
+  AssignmentStmt:10(
+    NameExpr(p1 [__main__.p1] = 243)
+    OpExpr:10(
+      **
+      IntExpr(3)
+      IntExpr(5))
+    Literal[243]?)
+  AssignmentStmt:11(
+    NameExpr(p2 [__main__.p2] = -125)
+    OpExpr:11(
+      **
+      UnaryExpr:11(
+        -
+        IntExpr(5))
+      IntExpr(3))
+    Literal[-125]?)
+  AssignmentStmt:12(
+    NameExpr(p3 [__main__.p3] = 1)
+    OpExpr:12(
+      **
+      IntExpr(0)
+      IntExpr(0))
+    Literal[1]?)
+  AssignmentStmt:13(
+    NameExpr(s [__main__.s] = xy)
+    OpExpr:13(
+      +
+      StrExpr(x)
+      StrExpr(y))
+    Literal['xy']?))

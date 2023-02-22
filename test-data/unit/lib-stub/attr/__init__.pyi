@@ -94,6 +94,7 @@ def attrs(maybe_cls: _C,
           cache_hash: bool = ...,
           eq: Optional[bool] = ...,
           order: Optional[bool] = ...,
+          match_args: bool = ...,
           ) -> _C: ...
 @overload
 def attrs(maybe_cls: None = ...,
@@ -112,6 +113,7 @@ def attrs(maybe_cls: None = ...,
           cache_hash: bool = ...,
           eq: Optional[bool] = ...,
           order: Optional[bool] = ...,
+          match_args: bool = ...,
           ) -> Callable[[_C], _C]: ...
 
 

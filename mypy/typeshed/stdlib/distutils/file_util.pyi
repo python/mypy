@@ -1,4 +1,4 @@
-from typing import Sequence
+from collections.abc import Sequence
 
 def copy_file(
     src: str,
@@ -6,7 +6,7 @@ def copy_file(
     preserve_mode: bool = ...,
     preserve_times: bool = ...,
     update: bool = ...,
-    link: str | None = ...,
+    link: str | None = None,
     verbose: bool = ...,
     dry_run: bool = ...,
 ) -> tuple[str, str]: ...

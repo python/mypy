@@ -26,6 +26,8 @@ Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+TypeAlias = 0
+LiteralString = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -65,5 +67,7 @@ class ContextManager(Generic[T]):
     def __enter__(self) -> T: pass
     # Use Any because not all the precise types are in the fixtures.
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
+
+class _SpecialForm: pass
 
 TYPE_CHECKING = 1

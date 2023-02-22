@@ -9,6 +9,7 @@
 from abc import ABCMeta
 
 cast = 0
+assert_type = 0
 overload = 0
 Any = 0
 Union = 0
@@ -25,6 +26,7 @@ TypedDict = 0
 NoReturn = 0
 Required = 0
 NotRequired = 0
+Self = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -43,7 +45,8 @@ class Iterator(Iterable[T_co], Protocol):
     def __next__(self) -> T_co: pass
 
 class Sequence(Iterable[T_co]):
-    def __getitem__(self, n: Any) -> T_co: pass
+    # misc is for explicit Any.
+    def __getitem__(self, n: Any) -> T_co: pass # type: ignore[misc]
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def __getitem__(self, key: T) -> T_co: pass

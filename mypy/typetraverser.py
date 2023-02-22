@@ -1,12 +1,38 @@
+from __future__ import annotations
+
 from typing import Iterable
 
 from mypy_extensions import trait
 
 from mypy.types import (
-    Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneType, ErasedType, DeletedType,
-    TypeVarType, LiteralType, Instance, CallableType, TupleType, TypedDictType, UnionType,
-    Overloaded, TypeType, CallableArgument, UnboundType, TypeList, StarType, EllipsisType,
-    PlaceholderType, PartialType, RawExpressionType, TypeAliasType, ParamSpecType
+    AnyType,
+    CallableArgument,
+    CallableType,
+    DeletedType,
+    EllipsisType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    PlaceholderType,
+    RawExpressionType,
+    SyntheticTypeVisitor,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
 )
 
 
@@ -38,6 +64,12 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_param_spec(self, t: ParamSpecType) -> None:
+        pass
+
+    def visit_parameters(self, t: Parameters) -> None:
+        self.traverse_types(t.arg_types)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
         pass
 
     def visit_literal_type(self, t: LiteralType) -> None:
@@ -82,9 +114,6 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     def visit_type_list(self, t: TypeList) -> None:
         self.traverse_types(t.items)
 
-    def visit_star_type(self, t: StarType) -> None:
-        t.type.accept(self)
-
     def visit_ellipsis_type(self, t: EllipsisType) -> None:
         pass
 
@@ -98,7 +127,13 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        # TODO: sometimes we want to traverse target as well
+        # We need to find a way to indicate explicitly the intent,
+        # maybe make this method abstract (like for TypeTranslator)?
         self.traverse_types(t.args)
+
+    def visit_unpack_type(self, t: UnpackType) -> None:
+        t.type.accept(self)
 
     # Helpers
 

@@ -57,7 +57,7 @@ Never = NoReturn
 a: Never  # Used to be an error here
 
 def f(a: Never): ...
-f(5)  # E: Argument 1 to "f" has incompatible type "int"; expected "NoReturn" 
+f(5)  # E: Argument 1 to "f" has incompatible type "int"; expected "NoReturn"
 [case testImportUnionAlias]
 import typing
 from _m import U
@@ -197,7 +197,7 @@ Alias = Tuple[int, T]
 [out]
 
 [case testRecursiveAliasesErrors1]
-
+# flags: --disable-recursive-aliases
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -206,7 +206,7 @@ B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
 C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
 
 [case testRecursiveAliasesErrors2]
-
+# flags: --disable-recursive-aliases --disable-error-code=used-before-def
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -224,6 +224,7 @@ main:7: error: Cannot resolve name "C" (possible cyclic definition)
 main:9: note: Revealed type is "Union[Any, builtins.int]"
 
 [case testDoubleForwardAlias]
+# flags: --disable-error-code=used-before-def
 from typing import List
 x: A
 A = List[B]
@@ -233,6 +234,7 @@ reveal_type(x) # N: Revealed type is "builtins.list[builtins.list[builtins.int]]
 [out]
 
 [case testDoubleForwardAliasWithNamedTuple]
+# flags: --disable-error-code=used-before-def
 from typing import List, NamedTuple
 x: A
 A = List[B]
@@ -243,8 +245,7 @@ reveal_type(x[0].x) # N: Revealed type is "builtins.str"
 [out]
 
 [case testJSONAliasApproximation]
-
-# Recursive aliases are not supported yet.
+# flags: --disable-recursive-aliases
 from typing import List, Union, Dict
 x: JSON # E: Cannot resolve name "JSON" (possible cyclic definition)
 JSON = Union[int, str, List[JSON], Dict[str, JSON]] # E: Cannot resolve name "JSON" (possible cyclic definition)
@@ -255,6 +256,7 @@ if isinstance(x, list):
 [out]
 
 [case testForwardRefToTypeVar]
+# flags: --disable-error-code=used-before-def
 
 from typing import TypeVar, List
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
@@ -341,14 +343,14 @@ x: N.A[C]
 reveal_type(x)  # N: Revealed type is "__main__.C[__main__.C[Any]]"
 
 xx = N.A[C]()
-reveal_type(xx)  # N: Revealed type is "__main__.C[__main__.C*[Any]]"
+reveal_type(xx)  # N: Revealed type is "__main__.C[__main__.C[Any]]"
 
 y = N.A()
 reveal_type(y)  # N: Revealed type is "__main__.C[Any]"
 
 M = N
 b = M.A[int]()
-reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int*]"
+reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int]"
 
 n: Type[N]
 w = n.B()
@@ -445,7 +447,7 @@ A = Union[None]
 [case testAliasToClassMethod]
 from typing import TypeVar, Generic, Union, Type
 
-T = TypeVar('T', bound=C)
+T = TypeVar('T', bound='C')
 
 MYPY = False
 if MYPY:
@@ -457,8 +459,8 @@ class C:
 
 class D(C): ...
 
-reveal_type(D.meth(1))  # N: Revealed type is "Union[__main__.D*, builtins.int]"
-reveal_type(D().meth(1))  # N: Revealed type is "Union[__main__.D*, builtins.int]"
+reveal_type(D.meth(1))  # N: Revealed type is "Union[__main__.D, builtins.int]"
+reveal_type(D().meth(1))  # N: Revealed type is "Union[__main__.D, builtins.int]"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -702,6 +704,30 @@ x: TypeAlias = list(int)  # E: Invalid type alias: expression is not a valid typ
 a: x
 [builtins fixtures/tuple.pyi]
 
+[case testAliasedImportPep613]
+import typing as tpp
+import typing_extensions as tpx
+from typing import TypeAlias as TPA
+from typing_extensions import TypeAlias as TXA
+import typing
+import typing_extensions
+
+Int1: tpp.TypeAlias = int
+Int2: tpx.TypeAlias = int
+Int3: TPA = int
+Int4: TXA = int
+Int5: typing.TypeAlias = int
+Int6: typing_extensions.TypeAlias = int
+
+x1: Int1 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x2: Int2 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x3: Int3 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x4: Int4 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x5: Int5 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x6: Int6 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testFunctionScopePep613]
 from typing_extensions import TypeAlias
 
@@ -728,3 +754,277 @@ from typing_extensions import TypeAlias
 A: TypeAlias = str
 [builtins fixtures/bool.pyi]
 [out]
+
+
+[case testLiteralStringPep675]
+# flags: --python-version 3.11
+from typing import LiteralString as tpLS
+from typing_extensions import LiteralString as tpxLS
+
+def f(a: tpLS, b: tpxLS) -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+    reveal_type(b)  # N: Revealed type is "builtins.str"
+
+# This isn't the correct behaviour, but should unblock use of LiteralString in typeshed
+f("asdf", "asdf")
+string: str
+f(string, string)
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testForwardTypeVarRefWithRecursiveFlag]
+import c
+[file a.py]
+from typing import TypeVar, List, Any, Generic
+from b import Alias
+
+T = TypeVar("T", bound=Alias[Any])
+def foo(x: T) -> T: ...
+
+[file b.py]
+from c import C
+from typing import TypeVar, List
+
+S = TypeVar("S")
+Alias = List[C[S]]
+
+[file c.py]
+from typing import TypeVar, List, Generic
+import a
+
+S = TypeVar("S")
+class C(Generic[S], List[Defer]): ...
+class Defer: ...
+[builtins fixtures/list.pyi]
+
+[case testClassLevelTypeAliasesInUnusualContexts]
+from typing import Union
+from typing_extensions import TypeAlias
+
+class Foo: pass
+
+NormalImplicit = Foo
+NormalExplicit: TypeAlias = Foo
+SpecialImplicit = Union[int, str]
+SpecialExplicit: TypeAlias = Union[int, str]
+
+class Parent:
+    NormalImplicit = Foo
+    NormalExplicit: TypeAlias = Foo
+    SpecialImplicit = Union[int, str]
+    SpecialExplicit: TypeAlias = Union[int, str]
+
+class Child(Parent): pass
+
+p = Parent()
+c = Child()
+
+# Use type aliases in a runtime context
+
+reveal_type(NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
+
+reveal_type(Parent.NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(Parent.NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(Parent.SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(Parent.SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
+
+reveal_type(Child.NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(Child.NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(Child.SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(Child.SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
+
+reveal_type(p.NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(p.NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(p.SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(p.SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
+
+reveal_type(c.NormalImplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(p.NormalExplicit)   # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(c.SpecialImplicit)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(c.SpecialExplicit)  # N: Revealed type is "typing._SpecialForm"
+
+# Use type aliases in a type alias context in a plausible way
+
+def plausible_top_1() -> NormalImplicit: pass
+def plausible_top_2() -> NormalExplicit: pass
+def plausible_top_3() -> SpecialImplicit: pass
+def plausible_top_4() -> SpecialExplicit: pass
+reveal_type(plausible_top_1)  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(plausible_top_2)  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(plausible_top_3)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+reveal_type(plausible_top_4)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+
+def plausible_parent_1() -> Parent.NormalImplicit: pass  # E: Variable "__main__.Parent.NormalImplicit" is not valid as a type \
+                                                         # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+def plausible_parent_2() -> Parent.NormalExplicit: pass
+def plausible_parent_3() -> Parent.SpecialImplicit: pass
+def plausible_parent_4() -> Parent.SpecialExplicit: pass
+reveal_type(plausible_parent_1)  # N: Revealed type is "def () -> Parent.NormalImplicit?"
+reveal_type(plausible_parent_2)  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(plausible_parent_3)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+reveal_type(plausible_parent_4)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+
+def plausible_child_1() -> Child.NormalImplicit: pass  # E: Variable "__main__.Parent.NormalImplicit" is not valid as a type \
+                                                       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+def plausible_child_2() -> Child.NormalExplicit: pass
+def plausible_child_3() -> Child.SpecialImplicit: pass
+def plausible_child_4() -> Child.SpecialExplicit: pass
+reveal_type(plausible_child_1)  # N: Revealed type is "def () -> Child.NormalImplicit?"
+reveal_type(plausible_child_2)  # N: Revealed type is "def () -> __main__.Foo"
+reveal_type(plausible_child_3)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+reveal_type(plausible_child_4)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+
+# Use type aliases in a type alias context in an implausible way
+
+def weird_parent_1() -> p.NormalImplicit: pass   # E: Name "p.NormalImplicit" is not defined
+def weird_parent_2() -> p.NormalExplicit: pass   # E: Name "p.NormalExplicit" is not defined
+def weird_parent_3() -> p.SpecialImplicit: pass  # E: Name "p.SpecialImplicit" is not defined
+def weird_parent_4() -> p.SpecialExplicit: pass  # E: Name "p.SpecialExplicit" is not defined
+reveal_type(weird_parent_1)  # N: Revealed type is "def () -> Any"
+reveal_type(weird_parent_2)  # N: Revealed type is "def () -> Any"
+reveal_type(weird_parent_3)  # N: Revealed type is "def () -> Any"
+reveal_type(weird_parent_4)  # N: Revealed type is "def () -> Any"
+
+def weird_child_1() -> c.NormalImplicit: pass   # E: Name "c.NormalImplicit" is not defined
+def weird_child_2() -> c.NormalExplicit: pass   # E: Name "c.NormalExplicit" is not defined
+def weird_child_3() -> c.SpecialImplicit: pass  # E: Name "c.SpecialImplicit" is not defined
+def weird_child_4() -> c.SpecialExplicit: pass  # E: Name "c.SpecialExplicit" is not defined
+reveal_type(weird_child_1)  # N: Revealed type is "def () -> Any"
+reveal_type(weird_child_2)  # N: Revealed type is "def () -> Any"
+reveal_type(weird_child_3)  # N: Revealed type is "def () -> Any"
+reveal_type(weird_child_4)  # N: Revealed type is "def () -> Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testMalformedTypeAliasRuntimeReassignments]
+from typing import Union
+from typing_extensions import TypeAlias
+
+class Foo: pass
+
+NormalImplicit = Foo
+NormalExplicit: TypeAlias = Foo
+SpecialImplicit = Union[int, str]
+SpecialExplicit: TypeAlias = Union[int, str]
+
+class Parent:
+    NormalImplicit = Foo
+    NormalExplicit: TypeAlias = Foo
+    SpecialImplicit = Union[int, str]
+    SpecialExplicit: TypeAlias = Union[int, str]
+
+class Child(Parent): pass
+
+p = Parent()
+c = Child()
+
+NormalImplicit = 4   # E: Cannot assign multiple types to name "NormalImplicit" without an explicit "Type[...]" annotation \
+                     # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+NormalExplicit = 4   # E: Cannot assign multiple types to name "NormalExplicit" without an explicit "Type[...]" annotation \
+                     # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+SpecialImplicit = 4  # E: Cannot assign multiple types to name "SpecialImplicit" without an explicit "Type[...]" annotation
+SpecialExplicit = 4  # E: Cannot assign multiple types to name "SpecialExplicit" without an explicit "Type[...]" annotation
+
+Parent.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+Parent.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+Parent.SpecialImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "<typing special form>")
+Parent.SpecialExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "<typing special form>")
+
+Child.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+Child.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+Child.SpecialImplicit = 4
+Child.SpecialExplicit = 4
+
+p.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+p.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+p.SpecialImplicit = 4
+p.SpecialExplicit = 4
+
+c.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+c.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+c.SpecialImplicit = 4
+c.SpecialExplicit = 4
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testNewStyleUnionInTypeAliasWithMalformedInstance]
+# flags: --python-version 3.10
+from typing import List
+
+A = List[int, str] | int  # E: "list" expects 1 type argument, but 2 given
+B = int | list[int, str]  # E: "list" expects 1 type argument, but 2 given
+a: A
+b: B
+reveal_type(a)  # N: Revealed type is "Union[builtins.list[Any], builtins.int]"
+reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.list[Any]]"
+
+[case testValidTypeAliasValues]
+from typing import TypeVar, Generic, List
+
+T = TypeVar("T", int, str)
+S = TypeVar("S", int, bytes)
+
+class C(Generic[T]): ...
+class D(C[S]): ...  # E: Invalid type argument value for "C"
+
+U = TypeVar("U")
+A = List[C[U]]
+x: A[bytes]  # E: Value of type variable "T" of "C" cannot be "bytes"
+
+V = TypeVar("V", bound=int)
+class E(Generic[V]): ...
+B = List[E[U]]
+y: B[str]  # E: Type argument "str" of "E" must be a subtype of "int"
+
+[case testValidTypeAliasValuesMoreRestrictive]
+from typing import TypeVar, Generic, List
+
+T = TypeVar("T")
+S = TypeVar("S", int, str)
+U = TypeVar("U", bound=int)
+
+class C(Generic[T]): ...
+
+A = List[C[S]]
+x: A[int]
+x_bad: A[bytes]  # E: Value of type variable "S" of "A" cannot be "bytes"
+
+B = List[C[U]]
+y: B[int]
+y_bad: B[str]  # E: Type argument "str" of "B" must be a subtype of "int"
+
+[case testTupleWithDifferentArgsPy38]
+# flags: --python-version 3.8
+NotYet1 = tuple[float]  # E: "tuple" is not subscriptable
+NotYet2 = tuple[float, float]  # E: "tuple" is not subscriptable
+NotYet3 = tuple[float, ...]  # E: Unexpected "..." \
+                             # E: "tuple" is not subscriptable
+NotYet4 = tuple[float, float, ...]  # E: Unexpected "..." \
+                                    # E: "tuple" is not subscriptable
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithDifferentArgsStub]
+# https://github.com/python/mypy/issues/11098
+import tup
+
+[file tup.pyi]
+Correct1 = str | tuple[float, float, str]
+Correct2 = tuple[float] | str
+Correct3 = tuple[float, ...] | str
+Correct4 = tuple[float, str] | str
+Correct5 = tuple[int, str]
+Correct6 = tuple[int, ...]
+
+RHSAlias1: type = tuple[int, int]
+RHSAlias2: type = tuple[int]
+RHSAlias3: type = tuple[int, ...]
+
+# Wrong:
+
+WrongTypeElement = str | tuple[float, 1]  # E: Invalid type: try using Literal[1] instead?
+WrongEllipsis = str | tuple[float, float, ...]  # E: Unexpected "..."
+[builtins fixtures/tuple.pyi]

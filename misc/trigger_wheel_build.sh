@@ -14,7 +14,7 @@ pip install -r mypy-requirements.txt
 V=$(python3 -m mypy --version)
 V=$(echo "$V" | cut -d" " -f2)
 
-git clone https://${WHEELS_PUSH_TOKEN}@github.com/mypyc/mypy_mypyc-wheels.git build
+git clone --depth 1 https://${WHEELS_PUSH_TOKEN}@github.com/mypyc/mypy_mypyc-wheels.git build
 cd build
 echo $COMMIT > mypy_commit
 git commit -am "Build wheels for mypy $V"

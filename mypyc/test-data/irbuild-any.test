@@ -176,3 +176,65 @@ L6:
     r4 = unbox(int, r3)
     n = r4
     return 1
+
+[case testAbsSpecialization]
+# Specialization of native classes that implement __abs__ is checked in
+# irbuild-dunders.test
+def f() -> None:
+    a = abs(1)
+    b = abs(1.1)
+[out]
+def f():
+    r0, r1 :: object
+    r2, a :: int
+    r3, r4, b :: float
+L0:
+    r0 = object 1
+    r1 = PyNumber_Absolute(r0)
+    r2 = unbox(int, r1)
+    a = r2
+    r3 = 1.1
+    r4 = PyNumber_Absolute(r3)
+    b = r4
+    return 1
+
+[case testFunctionBasedOps]
+def f() -> None:
+    a = divmod(5, 2)
+def f2() -> int:
+    return pow(2, 5)
+def f3() -> float:
+    return pow(2, 5, 3)
+[out]
+def f():
+    r0, r1, r2 :: object
+    r3, a :: tuple[float, float]
+L0:
+    r0 = object 5
+    r1 = object 2
+    r2 = PyNumber_Divmod(r0, r1)
+    r3 = unbox(tuple[float, float], r2)
+    a = r3
+    return 1
+def f2():
+    r0, r1, r2 :: object
+    r3 :: int
+L0:
+    r0 = object 2
+    r1 = object 5
+    r2 = CPyNumber_Power(r0, r1)
+    r3 = unbox(int, r2)
+    return r3
+def f3():
+    r0, r1, r2, r3 :: object
+    r4 :: int
+    r5 :: object
+L0:
+    r0 = object 2
+    r1 = object 5
+    r2 = object 3
+    r3 = PyNumber_Power(r0, r1, r2)
+    r4 = unbox(int, r3)
+    r5 = box(int, r4)
+    return r5
+

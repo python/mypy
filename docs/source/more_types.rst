@@ -2,7 +2,7 @@ More types
 ==========
 
 This section introduces a few additional kinds of types, including :py:data:`~typing.NoReturn`,
-:py:func:`NewType <typing.NewType>`, ``TypedDict``, and types for async code. It also discusses
+:py:func:`NewType <typing.NewType>`, and types for async code. It also discusses
 how to give functions more precise types using overloads. All of these are only
 situationally useful, so feel free to skip this section and come back when you
 have a need for some of them.
@@ -19,9 +19,6 @@ Here's a quick summary of what's covered here:
 * :py:func:`@overload <typing.overload>` lets you define a function that can accept multiple distinct
   signatures. This is useful if you need to encode a relationship between the
   arguments and the return type that would be difficult to express normally.
-
-* ``TypedDict`` lets you give precise types for dictionaries that represent
-  objects with a fixed schema, such as ``{'id': 1, 'items': ['x']}``.
 
 * Async types let you type check programs using ``async`` and ``await``.
 
@@ -59,12 +56,6 @@ pip to use :py:data:`~typing.NoReturn` in your code. Python 3 command line:
 .. code-block:: text
 
     python3 -m pip install --upgrade typing-extensions
-
-This works for Python 2:
-
-.. code-block:: text
-
-    pip install --upgrade typing-extensions
 
 .. _newtypes:
 
@@ -120,7 +111,7 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
     name_by_id(42)          # Fails type check
     name_by_id(UserId(42))  # OK
 
-    num = UserId(5) + 1     # type: int
+    num: int = UserId(5) + 1
 
 :py:func:`NewType <typing.NewType>` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
@@ -581,6 +572,115 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
    to returning ``Any`` only if the input arguments also contain ``Any``.
 
 
+Conditional overloads
+---------------------
+
+Sometimes it is useful to define overloads conditionally.
+Common use cases include types that are unavailable at runtime or that
+only exist in a certain Python version. All existing overload rules still apply.
+For example, there must be at least two overloads.
+
+.. note::
+
+    Mypy can only infer a limited number of conditions.
+    Supported ones currently include :py:data:`~typing.TYPE_CHECKING`, ``MYPY``,
+    :ref:`version_and_platform_checks`, :option:`--always-true <mypy --always-true>`,
+    and :option:`--always-false <mypy --always-false>` values.
+
+.. code-block:: python
+
+    from typing import TYPE_CHECKING, Any, overload
+
+    if TYPE_CHECKING:
+        class A: ...
+        class B: ...
+
+
+    if TYPE_CHECKING:
+        @overload
+        def func(var: A) -> A: ...
+
+        @overload
+        def func(var: B) -> B: ...
+
+    def func(var: Any) -> Any:
+        return var
+
+
+    reveal_type(func(A()))  # Revealed type is "A"
+
+.. code-block:: python
+
+    # flags: --python-version 3.10
+    import sys
+    from typing import Any, overload
+
+    class A: ...
+    class B: ...
+    class C: ...
+    class D: ...
+
+
+    if sys.version_info < (3, 7):
+        @overload
+        def func(var: A) -> A: ...
+
+    elif sys.version_info >= (3, 10):
+        @overload
+        def func(var: B) -> B: ...
+
+    else:
+        @overload
+        def func(var: C) -> C: ...
+
+    @overload
+    def func(var: D) -> D: ...
+
+    def func(var: Any) -> Any:
+        return var
+
+
+    reveal_type(func(B()))  # Revealed type is "B"
+    reveal_type(func(C()))  # No overload variant of "func" matches argument type "C"
+        # Possible overload variants:
+        #     def func(var: B) -> B
+        #     def func(var: D) -> D
+        # Revealed type is "Any"
+
+
+.. note::
+
+    In the last example, mypy is executed with
+    :option:`--python-version 3.10 <mypy --python-version>`.
+    Therefore, the condition ``sys.version_info >= (3, 10)`` will match and
+    the overload for ``B`` will be added.
+    The overloads for ``A`` and ``C`` are ignored!
+    The overload for ``D`` is not defined conditionally and thus is also added.
+
+When mypy cannot infer a condition to be always ``True`` or always ``False``,
+an error is emitted.
+
+.. code-block:: python
+
+    from typing import Any, overload
+
+    class A: ...
+    class B: ...
+
+
+    def g(bool_var: bool) -> None:
+        if bool_var:  # Condition can't be inferred, unable to merge overloads
+            @overload
+            def func(var: A) -> A: ...
+
+            @overload
+            def func(var: B) -> B: ...
+
+        def func(var: Any) -> Any: ...
+
+        reveal_type(func(A()))  # Revealed type is "Any"
+
+
 .. _advanced_self:
 
 Advanced uses of self-types
@@ -737,7 +837,7 @@ expect to get back when ``await``-ing the coroutine.
    import asyncio
 
    async def format_string(tag: str, count: int) -> str:
-       return 'T-minus {} ({})'.format(count, tag)
+       return f'T-minus {count} ({tag})'
 
    async def countdown_1(tag: str, count: int) -> str:
        while count > 0:
@@ -765,68 +865,6 @@ value of type :py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a 
     :ref:`reveal_type() <reveal-type>` displays the inferred static type of
     an expression.
 
-If you want to use coroutines in Python 3.4, which does not support
-the ``async def`` syntax, you can instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
-decorator to convert a generator into a coroutine.
-
-Note that we set the ``YieldType`` of the generator to be ``Any`` in the
-following example. This is because the exact yield type is an implementation
-detail of the coroutine runner (e.g. the :py:mod:`asyncio` event loop) and your
-coroutine shouldn't have to know or care about what precisely that type is.
-
-.. code-block:: python
-
-   from typing import Any, Generator
-   import asyncio
-
-   @asyncio.coroutine
-   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
-       while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
-           yield from asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_2("USS Enterprise", 5))
-   loop.close()
-
-As before, the result of calling a generator decorated with :py:func:`@asyncio.coroutine <asyncio.coroutine>`
-will be a value of type :py:class:`Awaitable[T] <typing.Awaitable>`.
-
-.. note::
-
-   At runtime, you are allowed to add the :py:func:`@asyncio.coroutine <asyncio.coroutine>` decorator to
-   both functions and generators. This is useful when you want to mark a
-   work-in-progress function as a coroutine, but have not yet added ``yield`` or
-   ``yield from`` statements:
-
-   .. code-block:: python
-
-      import asyncio
-
-      @asyncio.coroutine
-      def serialize(obj: object) -> str:
-          # todo: add yield/yield from to turn this into a generator
-          return "placeholder"
-
-   However, mypy currently does not support converting functions into
-   coroutines. Support for this feature will be added in a future version, but
-   for now, you can manually force the function to be a generator by doing
-   something like this:
-
-   .. code-block:: python
-
-      from typing import Generator
-      import asyncio
-
-      @asyncio.coroutine
-      def serialize(obj: object) -> Generator[None, None, str]:
-          # todo: add yield/yield from to turn this into a generator
-          if False:
-              yield
-          return "placeholder"
-
 You may also choose to create a subclass of :py:class:`~typing.Awaitable` instead:
 
 .. code-block:: python
@@ -841,7 +879,7 @@ You may also choose to create a subclass of :py:class:`~typing.Awaitable` instea
 
        def __await__(self) -> Generator[Any, None, str]:
            for i in range(n, 0, -1):
-               print('T-minus {} ({})'.format(i, tag))
+               print(f'T-minus {i} ({tag})')
                yield from asyncio.sleep(0.1)
            return "Blastoff!"
 
@@ -878,7 +916,7 @@ To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
 
    async def countdown_4(tag: str, n: int) -> str:
        async for i in arange(n, 0, -1):
-           print('T-minus {} ({})'.format(i, tag))
+           print(f'T-minus {i} ({tag})')
            await asyncio.sleep(0.1)
        return "Blastoff!"
 
@@ -886,269 +924,25 @@ To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
    loop.run_until_complete(countdown_4("Serenity", 5))
    loop.close()
 
-For a more concrete example, the mypy repo has a toy webcrawler that
-demonstrates how to work with coroutines. One version
-`uses async/await <https://github.com/python/mypy/blob/master/test-data/samples/crawl2.py>`_
-and one
-`uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
-
-.. _typeddict:
-
-TypedDict
-*********
-
-Python programs often use dictionaries with string keys to represent objects.
-Here is a typical example:
+If you use coroutines in legacy code that was originally written for
+Python 3.4, which did not support the ``async def`` syntax, you would
+instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
+decorator to convert a generator into a coroutine, and use a
+generator type as the return type:
 
 .. code-block:: python
 
-   movie = {'name': 'Blade Runner', 'year': 1982}
-
-Only a fixed set of string keys is expected (``'name'`` and
-``'year'`` above), and each key has an independent value type (``str``
-for ``'name'`` and ``int`` for ``'year'`` above). We've previously
-seen the ``dict[K, V]`` type, which lets you declare uniform
-dictionary types, where every value has the same type, and arbitrary keys
-are supported. This is clearly not a good fit for
-``movie`` above. Instead, you can use a ``TypedDict`` to give a precise
-type for objects like ``movie``, where the type of each
-dictionary value depends on the key:
-
-.. code-block:: python
-
-   from typing_extensions import TypedDict
-
-   Movie = TypedDict('Movie', {'name': str, 'year': int})
-
-   movie = {'name': 'Blade Runner', 'year': 1982}  # type: Movie
-
-``Movie`` is a ``TypedDict`` type with two items: ``'name'`` (with type ``str``)
-and ``'year'`` (with type ``int``). Note that we used an explicit type
-annotation for the ``movie`` variable. This type annotation is
-important -- without it, mypy will try to infer a regular, uniform
-:py:class:`dict` type for ``movie``, which is not what we want here.
-
-.. note::
-
-   If you pass a ``TypedDict`` object as an argument to a function, no
-   type annotation is usually necessary since mypy can infer the
-   desired type based on the declared argument type. Also, if an
-   assignment target has been previously defined, and it has a
-   ``TypedDict`` type, mypy will treat the assigned value as a ``TypedDict``,
-   not :py:class:`dict`.
-
-Now mypy will recognize these as valid:
-
-.. code-block:: python
-
-   name = movie['name']  # Okay; type of name is str
-   year = movie['year']  # Okay; type of year is int
-
-Mypy will detect an invalid key as an error:
-
-.. code-block:: python
-
-   director = movie['director']  # Error: 'director' is not a valid key
-
-Mypy will also reject a runtime-computed expression as a key, as
-it can't verify that it's a valid key. You can only use string
-literals as ``TypedDict`` keys.
-
-The ``TypedDict`` type object can also act as a constructor. It
-returns a normal :py:class:`dict` object at runtime -- a ``TypedDict`` does
-not define a new runtime type:
-
-.. code-block:: python
-
-   toy_story = Movie(name='Toy Story', year=1995)
-
-This is equivalent to just constructing a dictionary directly using
-``{ ... }`` or ``dict(key=value, ...)``. The constructor form is
-sometimes convenient, since it can be used without a type annotation,
-and it also makes the type of the object explicit.
-
-Like all types, ``TypedDict``\s can be used as components to build
-arbitrarily complex types. For example, you can define nested
-``TypedDict``\s and containers with ``TypedDict`` items.
-Unlike most other types, mypy uses structural compatibility checking
-(or structural subtyping) with ``TypedDict``\s. A ``TypedDict`` object with
-extra items is compatible with (a subtype of) a narrower
-``TypedDict``, assuming item types are compatible (*totality* also affects
-subtyping, as discussed below).
-
-A ``TypedDict`` object is not a subtype of the regular ``dict[...]``
-type (and vice versa), since :py:class:`dict` allows arbitrary keys to be
-added and removed, unlike ``TypedDict``. However, any ``TypedDict`` object is
-a subtype of (that is, compatible with) ``Mapping[str, object]``, since
-:py:class:`~typing.Mapping` only provides read-only access to the dictionary items:
-
-.. code-block:: python
-
-   def print_typed_dict(obj: Mapping[str, object]) -> None:
-       for key, value in obj.items():
-           print('{}: {}'.format(key, value))
-
-   print_typed_dict(Movie(name='Toy Story', year=1995))  # OK
-
-.. note::
-
-   Unless you are on Python 3.8 or newer (where ``TypedDict`` is available in
-   standard library :py:mod:`typing` module) you need to install ``typing_extensions``
-   using pip to use ``TypedDict``:
-
-   .. code-block:: text
-
-      python3 -m pip install --upgrade typing-extensions
-
-   Or, if you are using Python 2:
-
-   .. code-block:: text
-
-      pip install --upgrade typing-extensions
-
-Totality
---------
-
-By default mypy ensures that a ``TypedDict`` object has all the specified
-keys. This will be flagged as an error:
-
-.. code-block:: python
-
-   # Error: 'year' missing
-   toy_story = {'name': 'Toy Story'}  # type: Movie
-
-Sometimes you want to allow keys to be left out when creating a
-``TypedDict`` object. You can provide the ``total=False`` argument to
-``TypedDict(...)`` to achieve this:
-
-.. code-block:: python
-
-   GuiOptions = TypedDict(
-       'GuiOptions', {'language': str, 'color': str}, total=False)
-   options = {}  # type: GuiOptions  # Okay
-   options['language'] = 'en'
-
-You may need to use :py:meth:`~dict.get` to access items of a partial (non-total)
-``TypedDict``, since indexing using ``[]`` could fail at runtime.
-However, mypy still lets use ``[]`` with a partial ``TypedDict`` -- you
-just need to be careful with it, as it could result in a :py:exc:`KeyError`.
-Requiring :py:meth:`~dict.get` everywhere would be too cumbersome. (Note that you
-are free to use :py:meth:`~dict.get` with total ``TypedDict``\s as well.)
-
-Keys that aren't required are shown with a ``?`` in error messages:
-
-.. code-block:: python
-
-   # Revealed type is "TypedDict('GuiOptions', {'language'?: builtins.str,
-   #                                            'color'?: builtins.str})"
-   reveal_type(options)
-
-Totality also affects structural compatibility. You can't use a partial
-``TypedDict`` when a total one is expected. Also, a total ``TypedDict`` is not
-valid when a partial one is expected.
-
-Supported operations
---------------------
-
-``TypedDict`` objects support a subset of dictionary operations and methods.
-You must use string literals as keys when calling most of the methods,
-as otherwise mypy won't be able to check that the key is valid. List
-of supported operations:
-
-* Anything included in :py:class:`~typing.Mapping`:
-
-  * ``d[key]``
-  * ``key in d``
-  * ``len(d)``
-  * ``for key in d`` (iteration)
-  * :py:meth:`d.get(key[, default]) <dict.get>`
-  * :py:meth:`d.keys() <dict.keys>`
-  * :py:meth:`d.values() <dict.values>`
-  * :py:meth:`d.items() <dict.items>`
-
-* :py:meth:`d.copy() <dict.copy>`
-* :py:meth:`d.setdefault(key, default) <dict.setdefault>`
-* :py:meth:`d1.update(d2) <dict.update>`
-* :py:meth:`d.pop(key[, default]) <dict.pop>` (partial ``TypedDict``\s only)
-* ``del d[key]`` (partial ``TypedDict``\s only)
-
-In Python 2 code, these methods are also supported:
-
-* ``has_key(key)``
-* ``viewitems()``
-* ``viewkeys()``
-* ``viewvalues()``
-
-.. note::
-
-   :py:meth:`~dict.clear` and :py:meth:`~dict.popitem` are not supported since they are unsafe
-   -- they could delete required ``TypedDict`` items that are not visible to
-   mypy because of structural subtyping.
-
-Class-based syntax
-------------------
-
-An alternative, class-based syntax to define a ``TypedDict`` is supported
-in Python 3.6 and later:
-
-.. code-block:: python
-
-   from typing_extensions import TypedDict
-
-   class Movie(TypedDict):
-       name: str
-       year: int
-
-The above definition is equivalent to the original ``Movie``
-definition. It doesn't actually define a real class. This syntax also
-supports a form of inheritance -- subclasses can define additional
-items. However, this is primarily a notational shortcut. Since mypy
-uses structural compatibility with ``TypedDict``\s, inheritance is not
-required for compatibility. Here is an example of inheritance:
-
-.. code-block:: python
-
-   class Movie(TypedDict):
-       name: str
-       year: int
-
-   class BookBasedMovie(Movie):
-       based_on: str
-
-Now ``BookBasedMovie`` has keys ``name``, ``year`` and ``based_on``.
-
-Mixing required and non-required items
---------------------------------------
-
-In addition to allowing reuse across ``TypedDict`` types, inheritance also allows
-you to mix required and non-required (using ``total=False``) items
-in a single ``TypedDict``. Example:
-
-.. code-block:: python
-
-   class MovieBase(TypedDict):
-       name: str
-       year: int
-
-   class Movie(MovieBase, total=False):
-       based_on: str
-
-Now ``Movie`` has required keys ``name`` and ``year``, while ``based_on``
-can be left out when constructing an object. A ``TypedDict`` with a mix of required
-and non-required keys, such as ``Movie`` above, will only be compatible with
-another ``TypedDict`` if all required keys in the other ``TypedDict`` are required keys in the
-first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
-in the first ``TypedDict``.
-
-Unions of TypedDicts
---------------------
-
-Since TypedDicts are really just regular dicts at runtime, it is not possible to
-use ``isinstance`` checks to distinguish between different variants of a Union of
-TypedDict in the same way you can with regular objects.
-
-Instead, you can use the :ref:`tagged union pattern <tagged_unions>`. The referenced
-section of the docs has a full description with an example, but in short, you will
-need to give each TypedDict the same key where each value has a unique
-:ref:`Literal type <literal_types>`. Then, check that key to distinguish
-between your TypedDicts.
+   from typing import Any, Generator
+   import asyncio
+
+   @asyncio.coroutine
+   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
+       while count > 0:
+           print(f'T-minus {count} ({tag})')
+           yield from asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
+
+   loop = asyncio.get_event_loop()
+   loop.run_until_complete(countdown_2("USS Enterprise", 5))
+   loop.close()

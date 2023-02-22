@@ -2,6 +2,14 @@ import sys
 from enum import IntEnum
 from typing_extensions import Literal
 
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+
+if sys.version_info >= (3, 11):
+    __all__ = ["HTTPStatus", "HTTPMethod"]
+else:
+    __all__ = ["HTTPStatus"]
+
 class HTTPStatus(IntEnum):
     @property
     def phrase(self) -> str: ...
@@ -64,11 +72,24 @@ class HTTPStatus(IntEnum):
     LOOP_DETECTED: int
     NOT_EXTENDED: int
     NETWORK_AUTHENTICATION_REQUIRED: int
-    if sys.version_info >= (3, 7):
-        MISDIRECTED_REQUEST: int
+    MISDIRECTED_REQUEST: int
     if sys.version_info >= (3, 8):
         UNAVAILABLE_FOR_LEGAL_REASONS: int
     if sys.version_info >= (3, 9):
         EARLY_HINTS: Literal[103]
         IM_A_TEAPOT: Literal[418]
         TOO_EARLY: Literal[425]
+
+if sys.version_info >= (3, 11):
+    class HTTPMethod(StrEnum):
+        @property
+        def description(self) -> str: ...
+        CONNECT: str
+        DELETE: str
+        GET: str
+        HEAD: str
+        OPTIONS: str
+        PATCH: str
+        POST: str
+        PUT: str
+        TRACE: str
