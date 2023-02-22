@@ -1227,9 +1227,9 @@ class MypyError:
 _ErrorLocation = Tuple[str, int, int]
 
 
-def create_errors(error_tuples: List[ErrorTuple]) -> List[MypyError]:
-    errors: List[MypyError] = []
-    latest_error_at_location: Dict[_ErrorLocation, MypyError] = {}
+def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
+    errors: list[MypyError] = []
+    latest_error_at_location: dict[_ErrorLocation, MypyError] = {}
 
     for error_tuple in error_tuples:
         file_path, line, column, severity, message, _, errorcode = error_tuple
