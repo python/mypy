@@ -1521,3 +1521,27 @@ def identity(func: Callable[P, None]) -> Callable[P, None]: ...
 @identity
 def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
 [builtins fixtures/paramspec.pyi]
+
+[case testRemoveSharedPrefixForConstraining]
+# copied essentially verbatim from testing usages of ParamSpec
+from typing import TypeVar, Callable
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+T = TypeVar("T")
+V = TypeVar("V")
+R = TypeVar("R")
+
+def command_builder() -> Callable[[Callable[Concatenate[T, P], R]], Callable[P, Callable[[T], R]]]:
+    def transformer(f: Callable[Concatenate[T, P], R], /) -> Callable[P, Callable[[T], R]]:
+        def returned(*args: P.args, **kwargs: P.kwargs) -> Callable[[T], R]:
+            def returned_transformer(z: T) -> R:
+                return f(z, *args, **kwargs)
+
+            return returned_transformer
+        
+        return returned
+
+    reveal_type(transformer)  # N: Revealed type is "def [T, P, R] (def (T`-1, *P.args, **P.kwargs) -> R`-3) -> def (*P.args, **P.kwargs) -> def (T`-1) -> R`-3"
+    return transformer
+[builtins fixtures/paramspec.pyi]

@@ -176,12 +176,13 @@ def infer_constraints_for_callable(
 def infer_constraints(template: Type, actual: Type, direction: int) -> list[Constraint]:
     """Infer type constraints.
 
-    Match a template type, which may contain type variable references,
-    recursively against a type which does not contain (the same) type
-    variable references. The result is a list of type constrains of
-    form 'T is a supertype/subtype of x', where T is a type variable
-    present in the template and x is a type without reference to type
-    variables present in the template.
+    Match a template type, which may contain type variable and parameter
+    specification references, recursively against a type which does not
+    contain (the same) type variable and parameter specification references.
+    The result is a list of type constraints of form 'T is a supertype/subtype
+    of x', where T is a type variable present in the template or a parameter
+    specification without its prefix and x is a type without reference to type
+    variables nor parameters present in the template.
 
     Assume T and S are type variables. Now the following results can be
     calculated (read as '(template, actual) --> result'):
@@ -191,6 +192,23 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> list[Cons
       ((T, T), (X, Y))  -->  T :> X and T :> Y
       ((T, S), (X, Y))  -->  T :> X and S :> Y
       (X[T], Any)       -->  T <: Any and T :> Any
+
+    Assume P and Q are prefix-less parameter specifications. The following
+    results can be calculated in a similar format:
+
+      (P, [...W])                --> P :> [...W]
+      (X[P], X[[...W]])          --> P :> [...W]
+        // note that parameter specifications are *always* contravariant as
+        // they echo Callable arguments.
+      ((P, P), ([...W], [...U])) --> P :> [...W] and P :> [...U]
+      ((P, Q), ([...W], [...U])) --> P :> [...W] and Q :> [...U]
+      (P, ...)                   --> P :> ...
+
+    With prefixes (note that I am not sure these cases are implemented):
+
+      ([...Z, P], [...Z, ...W])    --> P :> [...W]
+      ([...Z, P], Q)               --> [...Z, P] :> Q
+      (P, [...Z, Q])               --> P :> [...Z, Q]
 
     The constraints are represented as Constraint objects.
     """
@@ -918,14 +936,20 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # sometimes, it appears we try to get constraints between two paramspec callables?
 
                 # TODO: Direction
-                # TODO: check the prefixes match
                 prefix = param_spec.prefix
                 prefix_len = len(prefix.arg_types)
                 cactual_ps = cactual.param_spec()
 
+                if cactual_ps:
+                    cactual_prefix = cactual_ps.prefix
+                else:
+                    cactual_prefix = cactual
+
+                max_prefix_len = len([k for k in cactual_prefix.arg_kinds if k in (ARG_POS, ARG_OPT)])
+                prefix_len = min(prefix_len, max_prefix_len)
+
+                # we could check the prefixes match here, but that should be caught elsewhere.
                 if not cactual_ps:
-                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
-                    prefix_len = min(prefix_len, max_prefix_len)
                     res.append(
                         Constraint(
                             param_spec,
@@ -939,7 +963,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         )
                     )
                 else:
-                    res.append(Constraint(param_spec, SUBTYPE_OF, cactual_ps))
+                    res.append(Constraint(param_spec, SUBTYPE_OF, cactual_ps.copy_modified(
+                        prefix=cactual_prefix.copy_modified(
+                            arg_types=cactual_prefix.arg_types[prefix_len:],
+                            arg_kinds=cactual_prefix.arg_kinds[prefix_len:],
+                            arg_names=cactual_prefix.arg_names[prefix_len:]
+                        )
+                    )))
 
                 # compare prefixes
                 cactual_prefix = cactual.copy_modified(
