@@ -713,19 +713,26 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
+
+                        prefix = mapped_arg.prefix
+                        length = len(prefix.arg_types)
                         if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
-                            # TODO: constraints between prefixes
-                            prefix = mapped_arg.prefix
-                            suffix = suffix.copy_modified(
-                                suffix.arg_types[len(prefix.arg_types) :],
-                                suffix.arg_kinds[len(prefix.arg_kinds) :],
-                                suffix.arg_names[len(prefix.arg_names) :],
-                            )
-                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix.copy_modified(
+                                arg_types=suffix.arg_types[length:],
+                                arg_kinds=suffix.arg_kinds[length:],
+                                arg_names=suffix.arg_names[length:],
+                            )))
                         elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
+                            suffix_prefix = suffix.prefix
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix.copy_modified(
+                                prefix=suffix_prefix.copy_modified(
+                                    arg_types=suffix_prefix.arg_types[length:],
+                                    arg_kinds=suffix_prefix.arg_kinds[length:],
+                                    arg_names=suffix_prefix.arg_names[length:]
+                                )
+                            )))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)

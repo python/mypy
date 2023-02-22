@@ -172,7 +172,11 @@ class TypeVarEraser(TypeTranslator):
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         if self.erase_id(t.id):
-            return self.replacement
+            return t.prefix.copy_modified(
+                arg_types=t.prefix.arg_types + [self.replacement, self.replacement],
+                arg_kinds=t.prefix.arg_kinds + [ARG_STAR, ARG_STAR2],
+                arg_names=t.prefix.arg_names + [None, None]
+            )
         return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
