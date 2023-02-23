@@ -1208,13 +1208,15 @@ def report_internal_error(
 
 
 class MypyError:
-    def __init__(self,
-                 file_path: str,
-                 line: int,
-                 column: int,
-                 message: str,
-                 hint: str,
-                 errorcode: Optional[ErrorCode]) -> None:
+    def __init__(
+        self,
+        file_path: str,
+        line: int,
+        column: int,
+        message: str,
+        hint: str,
+        errorcode: Optional[ErrorCode],
+    ) -> None:
         self.file_path = file_path
         self.line = line
         self.column = column
@@ -1236,18 +1238,18 @@ def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
         if file_path is None:
             continue
 
-        assert severity in ('error', 'note')
-        if severity == 'note':
+        assert severity in ("error", "note")
+        if severity == "note":
             error_location = (file_path, line, column)
             error = latest_error_at_location.get(error_location)
             if error is None:
                 # No error tuple found for this hint. Ignoring it
                 continue
 
-            if error.hint == '':
+            if error.hint == "":
                 error.hint = message
             else:
-                error.hint += '\n' + message
+                error.hint += "\n" + message
 
         else:
             error = MypyError(file_path, line, column, message, "", errorcode)
