@@ -36,6 +36,7 @@ from typing import (
     Mapping,
     NamedTuple,
     NoReturn,
+    Optional,
     Sequence,
     TextIO,
     TypeVar,
