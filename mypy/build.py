@@ -267,7 +267,7 @@ def _build(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
-        error_formatter=JSONFormatter() if options.output == 'json' else None,
+        error_formatter=JSONFormatter() if options.output == "json" else None,
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,
@@ -619,7 +619,7 @@ class BuildManager:
         fscache: FileSystemCache,
         stdout: TextIO,
         stderr: TextIO,
-        error_formatter: Optional['ErrorFormatter'] = None,
+        error_formatter: Optional["ErrorFormatter"] = None,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
         self.stdout = stdout
@@ -3444,8 +3444,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        errors = manager.errors.file_messages(
-            graph[id].xpath, formatter=manager.error_formatter)
+        errors = manager.errors.file_messages(graph[id].xpath, formatter=manager.error_formatter)
         manager.flush_errors(errors, False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
