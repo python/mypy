@@ -671,6 +671,7 @@ def request(
             sys.stdout.write(stdout)
         stderr = response.get("stderr")
         if stderr:
+            print("-" * 79)
             print("stderr:")
             sys.stdout.write(stderr)
         return response
