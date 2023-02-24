@@ -250,7 +250,9 @@ assert o.get(20) == 20
 assert get_class_var() == 'xy'
 
 [case testEnum]
-from enum import Enum
+from enum import Enum, IntEnum, Flag, auto
+import sys, typing_extensions
+
 
 class TestEnum(Enum):
     _order_ = "a b"
@@ -263,9 +265,7 @@ class TestEnum(Enum):
 
 assert TestEnum.test() == 3
 
-import enum
-
-class Pokemon(enum.Enum):
+class Pokemon(Enum):
     magikarp = 1
     squirtle = 2
     slowbro = 3
@@ -273,19 +273,17 @@ class Pokemon(enum.Enum):
 assert Pokemon.magikarp.value == 1
 assert Pokemon.squirtle.name == 'squirtle'
 
-import sys, enum, typing_extensions
-
-# skip test on python 3.8 as it does not allow multiple data-type mixins of the same type
+# skip test on python 3.8 as it does not allow multiple data-type mixins of the same type (see bpo-39587)
 if sys.version_info[:2] != (3, 8):
-    base_cls: typing_extensions.TypeAlias = enum.IntEnum
+    base_cls: typing_extensions.TypeAlias = IntEnum
 else:
-    base_cls: typing_extensions.TypeAlias = enum.Enum
+    base_cls: typing_extensions.TypeAlias = Enum
 
 class Color(base_cls):
     GREEN = 1
 
 if sys.version_info[:2] != (3, 8):
-    assert Color.GREEN == 1
+    assert Color.GREEN.value == 1
 
 [file other.py]
 # Force a multi-module test to make sure we can compile multi-file with
