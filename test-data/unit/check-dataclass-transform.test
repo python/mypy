@@ -279,8 +279,7 @@ class Bad:
     bad1: int = field(alias=some_str())  # E: "alias" argument to dataclass field must be a string literal
     bad2: int = field(kw_only=some_bool())  # E: "kw_only" argument must be a boolean literal
 
-# this metadata should only exist for dataclasses.dataclass classes
-Foo.__dataclass_fields__  # E: "Type[Foo]" has no attribute "__dataclass_fields__"
+reveal_type(Foo.__dataclass_fields__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
