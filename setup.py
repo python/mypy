@@ -41,7 +41,7 @@ types.
 
 
 def is_list_of_setuptools_extension(items: list[Any]) -> TypeGuard[list[Extension]]:
-    return all(item is Extension for item in items)
+    return all(isinstance(item, Extension) for item in items)
 
 
 def find_package_data(base, globs, root="mypy"):
