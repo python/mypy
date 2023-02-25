@@ -126,7 +126,6 @@ def freshen_function_type_vars(callee: F) -> F:
             if isinstance(v, TypeVarType):
                 tv: TypeVarLikeType = TypeVarType.new_unification_variable(v)
             elif isinstance(v, TypeVarTupleType):
-                assert isinstance(v, TypeVarTupleType)
                 tv = TypeVarTupleType.new_unification_variable(v)
             else:
                 assert isinstance(v, ParamSpecType)

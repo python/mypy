@@ -484,8 +484,9 @@ class StrConv(NodeVisitor[str]):
             a += ["Variance(COVARIANT)"]
         if o.variance == mypy.nodes.CONTRAVARIANT:
             a += ["Variance(CONTRAVARIANT)"]
-        if not mypy.types.is_named_instance(o.upper_bound, "builtins.object"):
-            a += [f"UpperBound({o.upper_bound})"]
+        # ParamSpecs do not have upper bounds!!! (should this be left for future proofing?)
+        # if not mypy.types.is_named_instance(o.upper_bound, "builtins.object"):
+        #     a += [f"UpperBound({o.upper_bound})"]
         return self.dump(a, o)
 
     def visit_type_var_tuple_expr(self, o: mypy.nodes.TypeVarTupleExpr) -> str:

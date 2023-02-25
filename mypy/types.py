@@ -675,7 +675,6 @@ class ParamSpecType(TypeVarLikeType):
         super().__init__(name, fullname, id, upper_bound, line=line, column=column)
         self.flavor = flavor
         self.prefix = prefix or Parameters([], [], [])
-        assert flavor != ParamSpecFlavor.BARE or isinstance(upper_bound, (CallableType, Parameters))
 
     @staticmethod
     def new_unification_variable(old: ParamSpecType) -> ParamSpecType:
@@ -1995,8 +1994,8 @@ class CallableType(FunctionLike):
             upper_bound=Parameters(
                 arg_types=[any_type, any_type],
                 arg_kinds=[ARG_STAR, ARG_STAR2],
-                arg_names=[None, None]
-            )
+                arg_names=[None, None],
+            ),
         )
 
     def expand_param_spec(

@@ -5606,7 +5606,7 @@ class SemanticAnalyzer(
         return Parameters(
             arg_types=[self.object_type(), self.object_type()],
             arg_kinds=[ARG_STAR, ARG_STAR2],
-            arg_names=[None, None]
+            arg_names=[None, None],
         )
 
     def str_type(self) -> Instance:

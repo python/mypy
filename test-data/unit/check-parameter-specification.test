@@ -1552,9 +1552,7 @@ class Example(Generic[P]):
 def test(ex: Example[P]) -> Example[Concatenate[int, P]]:
     ...
 
-ex: Example[int] = test()(reveal_type(Example()))  # N: Revealed type is "__main__.Example[<nothing>]"
-# TODO: fix
-reveal_type(test()(Example[int]()))  # N: Revealed type is "__main__.Example[<nothing>]" \
-                                     # E: Argument 1 has incompatible type "Example[[int]]"; expected "Example[<nothing>]"
-ex = test()(Example[int]())  # E: Argument 1 has incompatible type "Example[[int]]"; expected "Example[<nothing>]"
+ex: Example[int] = test()(reveal_type(Example()))  # N: Revealed type is "__main__.Example[[]]"
+reveal_type(test()(Example[int]()))  # N: Revealed type is "__main__.Example[[builtins.int, builtins.int]]"
+ex = test()(Example[int]())  # E: Argument 1 has incompatible type "Example[[int]]"; expected "Example[[]]"
 [builtins fixtures/paramspec.pyi]

@@ -175,7 +175,7 @@ class TypeVarEraser(TypeTranslator):
             return t.prefix.copy_modified(
                 arg_types=t.prefix.arg_types + [self.replacement, self.replacement],
                 arg_kinds=t.prefix.arg_kinds + [ARG_STAR, ARG_STAR2],
-                arg_names=t.prefix.arg_names + [None, None]
+                arg_names=t.prefix.arg_names + [None, None],
             )
         return t
 

@@ -1776,6 +1776,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee_type, args, arg_kinds, formal_to_actual, inferred_args, context
                 )
 
+            return_type = get_proper_type(callee_type.ret_type)
+            if isinstance(return_type, CallableType):
+                # fixup:
+                # def [T] () -> def (T) -> T
+                # into
+                # def () -> def [T] (T) -> T
+                for i, argument in enumerate(inferred_args):
+                    if isinstance(get_proper_type(argument), UninhabitedType):
+                        inferred_args[i] = callee_type.variables[i]
+
+                        # handle multiple type variables
+                        return_type = return_type.copy_modified(
+                            variables=[*return_type.variables, callee_type.variables[i]]
+                        )
+
+                callee_type = callee_type.copy_modified(
+                    # am I allowed to assign the get_proper_type'd thing?
+                    ret_type=return_type
+                )
+
             if (
                 callee_type.special_sig == "dict"
                 and len(inferred_args) == 2
