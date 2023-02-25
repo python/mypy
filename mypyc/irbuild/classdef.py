@@ -467,12 +467,13 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
     The tuple is passed to the metaclass constructor.
     """
     is_named_tuple = cdef.info.is_named_tuple
+    is_enum = cdef.info.is_enum
     ir = builder.mapper.type_to_ir[cdef.info]
     bases = []
     for cls in cdef.info.mro[1:]:
         if cls.fullname == "builtins.object":
             continue
-        if is_named_tuple and cls.fullname in (
+        if (is_named_tuple or is_enum) and cls.fullname in (
             "typing.Sequence",
             "typing.Iterable",
             "typing.Collection",

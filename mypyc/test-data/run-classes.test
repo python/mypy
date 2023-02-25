@@ -250,11 +250,11 @@ assert o.get(20) == 20
 assert get_class_var() == 'xy'
 
 [case testEnum]
-from enum import Enum, IntEnum, Flag, auto
+import enum
 import sys, typing_extensions
 
 
-class TestEnum(Enum):
+class TestEnum(enum.Enum):
     _order_ = "a b"
     a : int = 1
     b : int = 2
@@ -265,7 +265,7 @@ class TestEnum(Enum):
 
 assert TestEnum.test() == 3
 
-class Pokemon(Enum):
+class Pokemon(enum.Enum):
     magikarp = 1
     squirtle = 2
     slowbro = 3
@@ -275,15 +275,37 @@ assert Pokemon.squirtle.name == 'squirtle'
 
 # skip test on python 3.8 as it does not allow multiple data-type mixins of the same type (see bpo-39587)
 if sys.version_info[:2] != (3, 8):
-    base_cls: typing_extensions.TypeAlias = IntEnum
+    int_enum_base_cls: typing_extensions.TypeAlias = enum.IntEnum
+    int_flag_enum_blase_cls: typing_extensions.TypeAlias = enum.IntFlag
 else:
-    base_cls: typing_extensions.TypeAlias = Enum
+    int_enum_base_cls: typing_extensions.TypeAlias = enum.Enum
+    int_flag_enum_blase_cls: typing_extensions.TypeAlias = enum.Enum
 
-class Color(base_cls):
+class Color(int_enum_base_cls):
     GREEN = 1
 
 if sys.version_info[:2] != (3, 8):
     assert Color.GREEN.value == 1
+
+if sys.version_info[0] >= 3 and sys.version_info[1] >= 11:
+    str_enum_base_cls: typing_extensions.TypeAlias = enum.StrEnum
+else:
+    str_enum_base_cls: typing_extensions.TypeAlias = enum.Enum
+
+class BuildEnum(str_enum_base_cls):
+    DEBUG = "debug"
+    RELEASE = "release"
+
+class ColorFlagEnum(enum.Flag):
+    RED = enum.auto()
+    GREEN = enum.auto()
+    BLUE = enum.auto()
+
+class ColorIntFlagEnum(int_flag_enum_blase_cls):
+    RED = enum.auto()
+    GREEN = enum.auto()
+    BLUE = enum.auto()
+
 
 [file other.py]
 # Force a multi-module test to make sure we can compile multi-file with
@@ -291,6 +313,7 @@ if sys.version_info[:2] != (3, 8):
 
 [file driver.py]
 import sys
+from native import ColorFlagEnum
 # "_order_" isn't supported in 3.5
 if sys.version_info[:2] > (3, 5):
     from native import TestEnum
@@ -298,6 +321,18 @@ if sys.version_info[:2] > (3, 5):
     assert TestEnum.a.value == 1
     assert TestEnum.b.name == 'b'
     assert TestEnum.b.value == 2
+
+# StrEnum is available in 3.11
+if sys.version_info[:2] >= (3, 11):
+    from native import BuildEnum
+    assert BuildEnum.DEBUG == "debug"
+
+purple = ColorFlagEnum.RED | ColorFlagEnum.BLUE
+assert ColorFlagEnum.RED in purple
+
+if sys.version_info[:2] != (3, 8):
+    from native import ColorIntFlagEnum
+    assert ColorIntFlagEnum.GREEN == ColorIntFlagEnum.RED + 1
 
 [case testGetAttribute]
 class C:
