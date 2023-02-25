@@ -6,7 +6,7 @@ import glob
 import os
 import os.path
 import sys
-from typing import cast
+from typing import TYPE_CHECKING, Any
 
 if sys.version_info < (3, 7, 0):
     sys.stderr.write("ERROR: You need Python 3.7 or later to use mypy.\n")
@@ -23,6 +23,9 @@ from setuptools.command.build_py import build_py
 
 from mypy.version import __version__ as version
 
+if TYPE_CHECKING:
+    from typing_extensions import TypeGuard
+
 description = "Optional static typing for Python"
 long_description = """
 Mypy -- Optional Static Typing for Python
@@ -35,6 +38,10 @@ actually having to run it.  Mypy has a powerful type system with
 features such as type inference, gradual typing, generics and union
 types.
 """.lstrip()
+
+
+def is_list_of_setuptools_extension(items: list[Any]) -> TypeGuard[list[Extension]]:
+    return all(item is Extension for item in items)
 
 
 def find_package_data(base, globs, root="mypy"):
@@ -159,17 +166,16 @@ if USE_MYPYC:
     opt_level = os.getenv("MYPYC_OPT_LEVEL", "3")
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
     force_multifile = os.getenv("MYPYC_MULTI_FILE", "") == "1"
-    ext_modules = cast(
-        Extension,
-        mypycify(
-            mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
-            opt_level=opt_level,
-            debug_level=debug_level,
-            # Use multi-file compilation mode on windows because without it
-            # our Appveyor builds run out of memory sometimes.
-            multi_file=sys.platform == "win32" or force_multifile,
-        ),
+    ext_modules = mypycify(
+        mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
+        opt_level=opt_level,
+        debug_level=debug_level,
+        # Use multi-file compilation mode on windows because without it
+        # our Appveyor builds run out of memory sometimes.
+        multi_file=sys.platform == "win32" or force_multifile,
     )
+    assert is_list_of_setuptools_extension(ext_modules), "Expected mypycify to use setuptools"
+
 else:
     ext_modules = []
 
