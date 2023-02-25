@@ -648,17 +648,18 @@ class DataclassTransformer:
         return node_type.type.fullname == "dataclasses.KW_ONLY"
 
     def _add_dataclass_fields_magic_attribute(self) -> None:
-        # Only add if the class is a dataclasses dataclass, and omit it for dataclass_transform
-        # classes.
-        # It would be nice if this condition were reified rather than using an `is` check.
-        # Only add if the class is a dataclasses dataclass, and omit it for dataclass_transform
-        # classes.
-        if self._spec is not _TRANSFORM_SPEC_FOR_DATACLASSES:
-            return
-
         attr_name = "__dataclass_fields__"
         any_type = AnyType(TypeOfAny.explicit)
-        field_type = self._api.named_type_or_none("dataclasses.Field", [any_type]) or any_type
+        # For `dataclasses`, use the type `dict[str, Field[Any]]` for accuracy. For dataclass
+        # transforms, it's inaccurate to use `Field` since a given transform may use a completely
+        # different type (or none); fall back to `Any` there.
+        #
+        # In either case, we're aiming to match the Typeshed stub for `is_dataclass`, which expects
+        # the instance to have a `__dataclass_fields__` attribute of type `dict[str, Field[Any]]`.
+        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+            field_type = self._api.named_type_or_none("dataclasses.Field", [any_type]) or any_type
+        else:
+            field_type = any_type
         attr_type = self._api.named_type(
             "builtins.dict", [self._api.named_type("builtins.str"), field_type]
         )
