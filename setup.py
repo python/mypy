@@ -6,6 +6,7 @@ import glob
 import os
 import os.path
 import sys
+from typing import cast
 
 if sys.version_info < (3, 7, 0):
     sys.stderr.write("ERROR: You need Python 3.7 or later to use mypy.\n")
@@ -17,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 # This requires setuptools when building; setuptools is not needed
 # when installing from a wheel file (though it is still needed for
 # alternative forms of installing, as suggested by README.md).
-from setuptools import find_packages, setup
+from setuptools import Extension, find_packages, setup
 from setuptools.command.build_py import build_py
 
 from mypy.version import __version__ as version
@@ -158,13 +159,16 @@ if USE_MYPYC:
     opt_level = os.getenv("MYPYC_OPT_LEVEL", "3")
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
     force_multifile = os.getenv("MYPYC_MULTI_FILE", "") == "1"
-    ext_modules = mypycify(
-        mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
-        opt_level=opt_level,
-        debug_level=debug_level,
-        # Use multi-file compilation mode on windows because without it
-        # our Appveyor builds run out of memory sometimes.
-        multi_file=sys.platform == "win32" or force_multifile,
+    ext_modules = cast(
+        Extension,
+        mypycify(
+            mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
+            opt_level=opt_level,
+            debug_level=debug_level,
+            # Use multi-file compilation mode on windows because without it
+            # our Appveyor builds run out of memory sometimes.
+            multi_file=sys.platform == "win32" or force_multifile,
+        ),
     )
 else:
     ext_modules = []
