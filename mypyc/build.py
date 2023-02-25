@@ -41,7 +41,7 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
 if TYPE_CHECKING:
-    from distutils.core import Extension
+    from setuptools import Extension
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
