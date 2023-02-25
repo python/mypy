@@ -651,7 +651,8 @@ class ParamSpecType(TypeVarLikeType):
     The upper_bound is really used as a fallback type -- it's shared
     with TypeVarType for simplicity. It can't be specified by the user
     and the value is directly derived from the flavor (currently
-    always just 'object').
+    always just '(*Any, **Any)' or '(*object, **object)' depending on
+    context).
     """
 
     __slots__ = ("flavor", "prefix")
@@ -674,6 +675,7 @@ class ParamSpecType(TypeVarLikeType):
         super().__init__(name, fullname, id, upper_bound, line=line, column=column)
         self.flavor = flavor
         self.prefix = prefix or Parameters([], [], [])
+        assert flavor != ParamSpecFlavor.BARE or isinstance(upper_bound, (CallableType, Parameters))
 
     @staticmethod
     def new_unification_variable(old: ParamSpecType) -> ParamSpecType:
@@ -696,13 +698,14 @@ class ParamSpecType(TypeVarLikeType):
         id: Bogus[TypeVarId | int] = _dummy,
         flavor: int = _dummy_int,
         prefix: Bogus[Parameters] = _dummy,
+        upper_bound: Bogus[Type] = _dummy,
     ) -> ParamSpecType:
         return ParamSpecType(
             self.name,
             self.fullname,
             id if id is not _dummy else self.id,
             flavor if flavor != _dummy_int else self.flavor,
-            self.upper_bound,
+            upper_bound if upper_bound is not _dummy else self.upper_bound,
             line=self.line,
             column=self.column,
             prefix=prefix if prefix is not _dummy else self.prefix,
@@ -1984,7 +1987,17 @@ class CallableType(FunctionLike):
             # TODO: confirm that all arg kinds are positional
             prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
 
-        return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
+        # TODO: should this take in `object`s?
+        any_type = AnyType(TypeOfAny.special_form)
+        return arg_type.copy_modified(
+            flavor=ParamSpecFlavor.BARE,
+            prefix=prefix,
+            upper_bound=Parameters(
+                arg_types=[any_type, any_type],
+                arg_kinds=[ARG_STAR, ARG_STAR2],
+                arg_names=[None, None]
+            )
+        )
 
     def expand_param_spec(
         self, c: CallableType | Parameters, no_prefix: bool = False

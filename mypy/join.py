@@ -97,7 +97,7 @@ class InstanceJoiner:
                 else:
                     # ParamSpec type variables behave the same, independent of variance
                     if not is_equivalent(ta, sa):
-                        return get_proper_type(type_var.upper_bound)
+                        return object_from_instance(t)
                     new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
@@ -311,9 +311,11 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        # TODO: should this mirror the `isinstance(...) ...` above?
         if self.s == t:
             return t
-        return self.default(self.s)
+        else:
+            return self.default(self.s)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
         if self.s == t:

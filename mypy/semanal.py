@@ -4160,7 +4160,7 @@ class SemanticAnalyzer(
 
         if not call.analyzed:
             paramspec_var = ParamSpecExpr(
-                name, self.qualified_name(name), self.object_type(), INVARIANT
+                name, self.qualified_name(name), self.top_caller(), INVARIANT
             )
             paramspec_var.line = call.line
             call.analyzed = paramspec_var
@@ -5601,6 +5601,13 @@ class SemanticAnalyzer(
 
     def object_type(self) -> Instance:
         return self.named_type("builtins.object")
+
+    def top_caller(self) -> Parameters:
+        return Parameters(
+            arg_types=[self.object_type(), self.object_type()],
+            arg_kinds=[ARG_STAR, ARG_STAR2],
+            arg_names=[None, None]
+        )
 
     def str_type(self) -> Instance:
         return self.named_type("builtins.str")

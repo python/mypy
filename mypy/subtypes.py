@@ -592,6 +592,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             ):
                                 nominal = False
                         else:
+                            # TODO: I'm *pretty* sure `CONTRAVARIANT` should be here...
+                            #       But it's erroring!
                             if not check_type_parameter(
                                 lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
                             ):

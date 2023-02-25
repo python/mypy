@@ -1524,7 +1524,7 @@ def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
 
 [case testRemoveSharedPrefixForConstraining]
 # copied essentially verbatim from testing usages of ParamSpec
-from typing import TypeVar, Callable
+from typing import TypeVar, Callable, Generic
 from typing_extensions import ParamSpec, Concatenate
 
 P = ParamSpec("P")
@@ -1533,7 +1533,7 @@ V = TypeVar("V")
 R = TypeVar("R")
 
 def command_builder() -> Callable[[Callable[Concatenate[T, P], R]], Callable[P, Callable[[T], R]]]:
-    def transformer(f: Callable[Concatenate[T, P], R], /) -> Callable[P, Callable[[T], R]]:
+    def transformer(f: Callable[Concatenate[T, P], R]) -> Callable[P, Callable[[T], R]]:
         def returned(*args: P.args, **kwargs: P.kwargs) -> Callable[[T], R]:
             def returned_transformer(z: T) -> R:
                 return f(z, *args, **kwargs)
@@ -1542,6 +1542,19 @@ def command_builder() -> Callable[[Callable[Concatenate[T, P], R]], Callable[P, 
         
         return returned
 
-    reveal_type(transformer)  # N: Revealed type is "def [T, P, R] (def (T`-1, *P.args, **P.kwargs) -> R`-3) -> def (*P.args, **P.kwargs) -> def (T`-1) -> R`-3"
+    reveal_type(transformer)  # N: Revealed type is "def [T, P, R] (f: def (T`-1, *P.args, **P.kwargs) -> R`-3) -> def (*P.args, **P.kwargs) -> def (T`-1) -> R`-3"
     return transformer
+
+class Example(Generic[P]):
+    pass
+
+@command_builder()
+def test(ex: Example[P]) -> Example[Concatenate[int, P]]:
+    ...
+
+ex: Example[int] = test()(reveal_type(Example()))  # N: Revealed type is "__main__.Example[<nothing>]"
+# TODO: fix
+reveal_type(test()(Example[int]()))  # N: Revealed type is "__main__.Example[<nothing>]" \
+                                     # E: Argument 1 has incompatible type "Example[[int]]"; expected "Example[<nothing>]"
+ex = test()(Example[int]())  # E: Argument 1 has incompatible type "Example[[int]]"; expected "Example[<nothing>]"
 [builtins fixtures/paramspec.pyi]

@@ -2510,6 +2510,13 @@ class ParamSpecExpr(TypeVarLikeExpr):
 
     __match_args__ = ("name", "upper_bound")
 
+    # TODO: Technically the variance cannot be customized. Nor can the upper bound.
+    def __init__(
+        self, name: str, fullname: str, upper_bound: mypy.types.Type, variance: int = INVARIANT
+    ) -> None:
+        super().__init__(name, fullname, upper_bound, variance)
+        assert isinstance(upper_bound, (mypy.types.CallableType, mypy.types.Parameters))
+
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_paramspec_expr(self)
 
