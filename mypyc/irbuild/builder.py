@@ -567,7 +567,9 @@ class IRBuilder:
         else:
             assert False, "Unsupported final literal value"
 
-    def get_assignment_target(self, lvalue: Lvalue, line: int = -1) -> AssignmentTarget:
+    def get_assignment_target(
+        self, lvalue: Lvalue, line: int = -1, *, for_read: bool = False
+    ) -> AssignmentTarget:
         if line == -1:
             line = lvalue.line
         if isinstance(lvalue, NameExpr):
@@ -580,8 +582,8 @@ class IRBuilder:
                 # New semantic analyzer doesn't create ad-hoc Vars for special forms.
                 assert lvalue.is_special_form
                 symbol = Var(lvalue.name)
-            if isinstance(symbol, Var) and symbol.is_cls:
-                self.error('Cannot assign to the first argument of classmethod', line)
+            if not for_read and isinstance(symbol, Var) and symbol.is_cls:
+                self.error("Cannot assign to the first argument of classmethod", line)
             if lvalue.kind == LDEF:
                 if symbol not in self.symtables[-1]:
                     # If the function is a generator function, then first define a new variable
