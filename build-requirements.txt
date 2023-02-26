@@ -2,5 +2,5 @@
 -r mypy-requirements.txt
 types-psutil
 # TODO: fix build when using the latest version of types-setuptools
-types-setuptools<67.4.0.3
+types-setuptools<67.4.0.2
 types-typed-ast>=1.5.8,<1.6.0
