@@ -63,13 +63,14 @@ def get_extension() -> type[Extension]:
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
+    extension_class: type[Extension]
 
     if not use_setuptools:
-        from distutils.core import Extension
+        from distutils.core import Extension as extension_class
     else:
-        from setuptools import Extension
+        from setuptools import Extension as extension_class
 
-    return Extension
+    return extension_class
 
 
 def setup_mypycify_vars() -> None:
