@@ -25,7 +25,7 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -41,7 +41,13 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
 if TYPE_CHECKING:
-    from distutils.core import Extension
+    from distutils.core import Extension as _distutils_Extension
+    from typing_extensions import TypeAlias
+
+    from setuptools import Extension as _setuptools_Extension
+
+    Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
