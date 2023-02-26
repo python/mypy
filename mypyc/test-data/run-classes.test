@@ -664,6 +664,9 @@ AttributeError: attribute 'x' of 'X' undefined
 [case testClassMethods]
 from typing import ClassVar, Any
 from typing_extensions import final
+from mypy_extensions import mypyc_attr
+
+from interp import make_interpreted_subclass
 
 class C:
     lurr: ClassVar[int] = 9
@@ -737,6 +740,29 @@ class F2:  # Implicitly final (no subclasses)
 def test_classmethod_of_final_class() -> None:
     assert F1.f(5) == 6
     assert F2.f(7) == 8
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class CI:
+    @classmethod
+    def f(cls, x: int) -> int:
+        return cls.g(x)
+
+    @classmethod
+    def g(cls, x: int) -> int:
+        return x + 1
+
+def test_classmethod_with_allow_interpreted() -> None:
+    assert CI.f(4) == 5
+    sub = make_interpreted_subclass(CI)
+    assert sub.f(4) == 7
+
+[file interp.py]
+def make_interpreted_subclass(base):
+    class Sub(base):
+        @classmethod
+        def g(cls, x: int) -> int:
+            return x + 3
+    return Sub
 
 [case testSuper]
 from mypy_extensions import trait

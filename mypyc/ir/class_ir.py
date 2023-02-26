@@ -169,7 +169,9 @@ class ClassIR:
         self.base_mro: list[ClassIR] = [self]
 
         # Direct subclasses of this class (use subclasses() to also include non-direct ones)
-        # None if separate compilation prevents this from working
+        # None if separate compilation prevents this from working.
+        #
+        # NOTE: Usually use subclasses() instead.
         self.children: list[ClassIR] | None = []
 
         # Instance attributes that are initialized in the class body.
