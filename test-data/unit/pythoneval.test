@@ -1924,3 +1924,15 @@ _testStarUnpackNestedUnderscore.py:10: error: List item 0 has incompatible type 
 _testStarUnpackNestedUnderscore.py:10: error: List item 1 has incompatible type "int"; expected "str"
 _testStarUnpackNestedUnderscore.py:11: note: Revealed type is "builtins.list[builtins.str]"
 _testStarUnpackNestedUnderscore.py:16: note: Revealed type is "builtins.list[builtins.object]"
+
+[case testStrictEqualitywithParamSpec]
+# flags: --strict-equality
+from typing import Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class Foo(Generic[P]): ...
+
+def check(foo1: Foo[[int]], foo2: Foo[[str]]) -> bool:
+    return foo1 == foo2
