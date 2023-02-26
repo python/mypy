@@ -66,9 +66,11 @@ def get_extension() -> type[Extension]:
     extension_class: type[Extension]
 
     if not use_setuptools:
-        from distutils.core import Extension as extension_class
+        import distutils.core
+        extension_class = distutils.core.Extension
     else:
-        from setuptools import Extension as extension_class
+        import setuptools
+        extension_class = setuptools.Extension
 
     return extension_class
 
