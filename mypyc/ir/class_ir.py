@@ -171,7 +171,7 @@ class ClassIR:
         # Direct subclasses of this class (use subclasses() to also include non-direct ones)
         # None if separate compilation prevents this from working.
         #
-        # NOTE: Usually use subclasses() instead.
+        # Often it's better to use has_no_subclasses() or subclasses() instead.
         self.children: list[ClassIR] | None = []
 
         # Instance attributes that are initialized in the class body.
@@ -302,6 +302,9 @@ class ClassIR:
 
     def has_method_decl(self, name: str) -> bool:
         return any(name in ir.method_decls for ir in self.mro)
+
+    def has_no_subclasses(self) -> bool:
+        return self.children == [] and not self.allow_interpreted_subclasses
 
     def subclasses(self) -> set[ClassIR] | None:
         """Return all subclasses of this class, both direct and indirect.

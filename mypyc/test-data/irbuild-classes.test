@@ -718,6 +718,8 @@ class C:
     @classmethod
     def m(cls) -> None:
         cls = cast(Any, D)  # E: Cannot assign to the first argument of classmethod
+        cls, x = cast(Any, D), 1  # E: Cannot assign to the first argument of classmethod
+        cls, x = cast(Any, [1, 2])  # E: Cannot assign to the first argument of classmethod
         cls.m()
 
 class D:

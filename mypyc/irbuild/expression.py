@@ -352,7 +352,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
                 typ = get_proper_type(node.type)
                 if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
                     class_ir = builder.mapper.type_to_ir.get(typ.item.type)
-                    if class_ir and class_ir.is_ext_class and class_ir.subclasses() == set():
+                    if class_ir and class_ir.is_ext_class and class_ir.has_no_subclasses():
                         # Call a native classmethod via cls that can be statically bound,
                         # since the class has no subclasses.
                         return call_classmethod(builder, class_ir, expr, callee)
