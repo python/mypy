@@ -1350,7 +1350,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result_type, callee_type = self.check_call(
                 item, args, arg_kinds, context, arg_names, callable_node
             )
-            if isinstance(callee.item, TypeVarType) and not isinstance(result_type, AnyType):
+            if isinstance(callee.item, TypeVarType) and not isinstance(
+                get_proper_type(result_type), AnyType
+            ):
                 # If it was `type[SomeTypeVar]`, successful instantiation produces SomeTypeVar
                 return callee.item, callee_type
             else:
