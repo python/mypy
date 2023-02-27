@@ -1924,3 +1924,46 @@ _testStarUnpackNestedUnderscore.py:10: error: List item 0 has incompatible type 
 _testStarUnpackNestedUnderscore.py:10: error: List item 1 has incompatible type "int"; expected "str"
 _testStarUnpackNestedUnderscore.py:11: note: Revealed type is "builtins.list[builtins.str]"
 _testStarUnpackNestedUnderscore.py:16: note: Revealed type is "builtins.list[builtins.object]"
+
+[case testStrictEqualitywithParamSpec]
+# flags: --strict-equality
+from typing import Generic
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec("P")
+
+class Foo(Generic[P]): ...
+class Bar(Generic[P]): ...
+
+def bad(foo: Foo[[int]], bar: Bar[[int]]) -> bool:
+    return foo == bar
+
+def good1(foo1: Foo[[int]], foo2: Foo[[str]]) -> bool:
+    return foo1 == foo2
+
+def good2(foo1: Foo[[int, str]], foo2: Foo[[int, bytes]]) -> bool:
+    return foo1 == foo2
+
+def good3(foo1: Foo[[int]], foo2: Foo[[int, int]]) -> bool:
+    return foo1 == foo2
+
+def good4(foo1: Foo[[int]], foo2: Foo[[int]]) -> bool:
+    return foo1 == foo2
+
+def good5(foo1: Foo[[int]], foo2: Foo[[bool]]) -> bool:
+    return foo1 == foo2
+
+def good6(foo1: Foo[[int, int]], foo2: Foo[[bool, bool]]) -> bool:
+    return foo1 == foo2
+
+def good7(foo1: Foo[[int]], foo2: Foo[P], *args: P.args, **kwargs: P.kwargs) -> bool:
+    return foo1 == foo2
+
+def good8(foo1: Foo[P], foo2: Foo[[int, str, bytes]], *args: P.args, **kwargs: P.kwargs) -> bool:
+    return foo1 == foo2
+
+def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P.args, **kwargs: P.kwargs) -> bool:
+    return foo1 == foo2
+
+[out]
+_testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")
