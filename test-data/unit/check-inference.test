@@ -270,6 +270,18 @@ def f() -> None:
 class A: pass
 [out]
 
+[case testInferringLvarTypesUnpackedFromIterableClassObject]
+from typing import Iterator
+class Meta(type):
+    def __iter__(cls) -> Iterator[int]:
+        yield from [1, 2, 3]
+
+class Foo(metaclass=Meta): ...
+
+a, b, c = Foo
+reveal_type(a)  # N: Revealed type is "builtins.int"
+[out]
+
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
 from typing import Tuple
 t = None # type: Tuple[object, object, object]
