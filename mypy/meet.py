@@ -343,7 +343,7 @@ def is_overlapping_types(
     right_possible = get_possible_variants(right)
 
     # First handle special cases relating to PEP 612:
-    # - comparing a `Parameters` to a `Parameters
+    # - comparing a `Parameters` to a `Parameters`
     # - comparing a `Parameters` to a `ParamSpecType`
     # - comparing a `ParamSpecType` to a `ParamSpecType`
     #
