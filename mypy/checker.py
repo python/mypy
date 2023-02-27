@@ -4055,7 +4055,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             [nodes.ARG_POS, nodes.ARG_POS],
             context,
         )
-        if isinstance(get_proper_type(res_type), UninhabitedType):
+        res_type = get_proper_type(res_type)
+        if isinstance(res_type, UninhabitedType) and not res_type.ambiguous:
             self.binder.unreachable()
 
     def try_infer_partial_type_from_indexed_assignment(
