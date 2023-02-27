@@ -347,7 +347,7 @@ def is_overlapping_types(
     # - comparing a `Parameters` to a `ParamSpecType`
     # - comparing a `ParamSpecType` to a `ParamSpecType`
     #
-    # This should all always be considered overlapping equality checks.
+    # These should all always be considered overlapping equality checks.
     # These need to be done before we move on to other TypeVarLike comparisons.
     if isinstance(left, (Parameters, ParamSpecType)) and isinstance(
         right, (Parameters, ParamSpecType)
