@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import chain
 from typing import Callable
 
 from mypy import join
@@ -343,13 +342,20 @@ def is_overlapping_types(
     left_possible = get_possible_variants(left)
     right_possible = get_possible_variants(right)
 
-    # First handle a special case: comparing a `Parameters` to a `ParamSpecType`.
-    # This should always be considered an overlapping equality check.
-    # This needs to be done before we move on to other TypeVarLike comparisons.
-    if (isinstance(left, Parameters) and isinstance(right, ParamSpecType)) or (
-        isinstance(left, ParamSpecType) and isinstance(right, Parameters)
+    # First handle special cases relating to PEP 612:
+    # - comparing a `Parameters` to a `Parameters
+    # - comparing a `Parameters` to a `ParamSpecType`
+    # - comparing a `ParamSpecType` to a `ParamSpecType`
+    #
+    # This should all always be considered overlapping equality checks.
+    # These need to be done before we move on to other TypeVarLike comparisons.
+    if isinstance(left, (Parameters, ParamSpecType)) and isinstance(
+        right, (Parameters, ParamSpecType)
     ):
         return True
+    # A `Parameters` does not overlap with anything else, however
+    if isinstance(left, Parameters) or isinstance(right, Parameters):
+        return False
 
     # Now move on to checking multi-variant types like Unions. We also perform
     # the same logic if either type happens to be a TypeVar/ParamSpec/TypeVarTuple.
@@ -459,24 +465,6 @@ def is_overlapping_types(
         left = left.fallback
     elif isinstance(right, CallableType):
         right = right.fallback
-
-    if isinstance(left, Parameters):
-        if not isinstance(right, Parameters):
-            return False
-        if len(left.arg_types) == len(right.arg_types):
-            return all(
-                _is_overlapping_types(left_arg, right_arg)
-                for left_arg, right_arg in zip(left.arg_types, right.arg_types)
-            )
-        if not any(
-            isinstance(arg, TypeVarLikeType) for arg in chain(left.arg_types, right.arg_types)
-        ):
-            return False
-        # TODO: Is this sound?
-        return True
-    if isinstance(right, Parameters):
-        assert not isinstance(left, (Parameters, TypeVarLikeType))
-        return False
 
     if isinstance(left, LiteralType) and isinstance(right, LiteralType):
         if left.value == right.value:
