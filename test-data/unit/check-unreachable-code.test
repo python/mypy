@@ -1423,3 +1423,27 @@ def f(value: None) -> None:
 
 x = force_forward_ref()
 [builtins fixtures/exception.pyi]
+
+[case testSetitemNoReturn]
+# flags: --warn-unreachable
+from typing import NoReturn
+class Foo:
+    def __setitem__(self, key: str, value: str) -> NoReturn:
+        raise Exception
+Foo()['a'] = 'a'
+x = 0  # E: Statement is unreachable
+[builtins fixtures/exception.pyi]
+
+[case TestNoImplicNoReturnFromError]
+# flags: --warn-unreachable
+from typing import TypeVar
+
+T = TypeVar("T")
+class Foo:
+    def __setitem__(self, key: str, value: str) -> T:  # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
+        raise Exception
+
+def f() -> None:
+    Foo()['a'] = 'a'
+    x = 0 # This should not be reported as unreachable
+[builtins fixtures/exception.pyi]
