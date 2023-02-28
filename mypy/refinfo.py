@@ -20,10 +20,13 @@ class RefInfoVisitor(TraverserVisitor):
         self.record_ref_expr(expr)
 
     def record_ref_expr(self, expr: RefExpr) -> None:
+        fullname = None
         if expr.kind != LDEF and "." in expr.fullname:
-            self.data.append({"line": expr.line, "target": expr.fullname})
+            fullname = expr.fullname
         elif isinstance(expr, MemberExpr) and not expr.fullname:
-            self.data.append({"line": expr.line, "target": f"*.{expr.name}"})
+            fullname = f"*.{expr.name}"
+        if fullname is not None:
+            self.data.append({"line": expr.line, "column": expr.column, "target": fullname})
 
 
 def get_undocumented_ref_info_json(tree: MypyFile) -> list[dict[str, object]]:
