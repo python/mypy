@@ -424,6 +424,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     @property
     def type_context(self) -> list[Type | None]:
         return self.expr_checker.type_context
+    
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
@@ -4348,7 +4349,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # flow will escape. We need to check that the finally clause
             # type checks in both contexts, but only the resulting types
             # from the latter context affect the type state in the code
-            # that follows the try statement.)
+            # that follows theframe try statement.)
             if not self.binder.is_unreachable():
                 self.accept(s.finally_body)
 
@@ -5208,9 +5209,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f"Call returns {typ}"
             else:
                 return f"Expression has type {typ}"
-
         if isinstance(t, FunctionLike):
-            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
+            #Todo --this if checks if the function is a module with type Callable[...] and then assigns self.fail to the function name
+            if 0:
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(t.get_name(),format_type(t)), expr)
+            #Todo --this elif checks if the function is a method with type Callable[...] and then assigns self.fail to the function name
+            elif 0:
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(t.get_name(),format_type(t)), expr)
+            #Todo --this elif checks if the function is a variable with type Callable[...] and then assigns self.fail to the function name
+            elif 0:
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(t.get_name(),format_type(t)), expr)
+            #Todo --this elif checks if the function is a Direct Reference with type Callable[...] and then assigns self.fail to the function name
+            elif 0:
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(t.get_name(),format_type(t)), expr)
+            else :
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":

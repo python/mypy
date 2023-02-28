@@ -1,0 +1,19 @@
+[case testFunctionAlwaysTrue]
+# flags: --python-version 3.6
+def f(x: int) -> str: pass
+
+if f:
+    pass
+
+[case testFunctionAlwaysTrue2]
+# flags: --python-version 3.6
+def f(x: int) -> str: pass
+
+my_var = f
+
+if my_var:
+    pass
+
+
+
+
