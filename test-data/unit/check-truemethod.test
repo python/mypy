@@ -1,0 +1,10 @@
+[case testMethodAlwaysTrue]
+class User:
+    def __init__(self, username):
+        self.username = username
+
+    def isUser(self) -> str: pass
+
+user = User("Kenny")
+if user.isUser(): 
+    pass
