@@ -339,6 +339,9 @@ class Options:
         self.disable_recursive_aliases = False
         # Deprecated reverse version of the above, do not use.
         self.enable_recursive_aliases = False
+        # Export line-level, limited, fine-grained dependency information in cache data
+        # (undocumented feature).
+        self.export_ref_info = False
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
