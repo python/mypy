@@ -3399,6 +3399,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if len(relevant_items) == 1:
                 rvalue_type = get_proper_type(relevant_items[0])
 
+        if isinstance(rvalue_type, FunctionLike) and rvalue_type.is_type_obj():
+            ret_type = get_proper_type(rvalue_type.items[0].ret_type)
+            if isinstance(ret_type, Instance):
+                rvalue_type = ret_type.type.metaclass_type or rvalue_type
+
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
