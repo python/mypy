@@ -3404,6 +3404,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(ret_type, Instance):
                 rvalue_type = ret_type.type.metaclass_type or rvalue_type
 
+        if isinstance(rvalue_type, TypeType) and isinstance(rvalue_type.item, Instance):
+            rvalue_type = rvalue_type.item.type.metaclass_type or rvalue_type
+
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
                 if isinstance(lv, StarExpr):

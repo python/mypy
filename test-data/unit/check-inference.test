@@ -271,7 +271,7 @@ class A: pass
 [out]
 
 [case testInferringLvarTypesUnpackedFromIterableClassObject]
-from typing import Iterator
+from typing import Iterator, Type
 class Meta(type):
     def __iter__(cls) -> Iterator[int]:
         yield from [1, 2, 3]
@@ -280,6 +280,10 @@ class Foo(metaclass=Meta): ...
 
 a, b, c = Foo
 reveal_type(a)  # N: Revealed type is "builtins.int"
+
+F: Type[Foo] = Foo
+d, e, f = F
+reveal_type(d)  # N: Revealed type is "builtins.int"
 [out]
 
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
