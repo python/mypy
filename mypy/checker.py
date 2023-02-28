@@ -5188,15 +5188,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
-        if not state.strict_optional:
-            return  # if everything can be None, all bets are off
+        # if not state.strict_optional:
+        #     return  # if everything can be None, all bets are off
 
         t = get_proper_type(t)
         if not self._is_truthy_type(t):
             return
 
+
         def format_expr_type() -> str:
             typ = format_type(t)
+            print(typ)
             if isinstance(expr, MemberExpr):
                 return f'Member "{expr.name}" has type {typ}'
             elif isinstance(expr, RefExpr) and expr.fullname:
@@ -5209,6 +5211,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f"Call returns {typ}"
             else:
                 return f"Expression has type {typ}"
+    
         if isinstance(t, FunctionLike):
             #Todo --this if checks if the function is a module with type Callable[...] and then assigns self.fail to the function name
             if 0:
@@ -5224,6 +5227,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(t.get_name(),format_type(t)), expr)
             else :
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
+        # elif isinstance(t, Type):
+        #     self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
+        elif isinstance(expr, CallExpr):
+            if isinstance(expr.callee, MemberExpr):
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(f'"{expr.callee.name}"'), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":
