@@ -279,11 +279,13 @@ class Meta(type):
 class Foo(metaclass=Meta): ...
 
 a, b, c = Foo
-reveal_type(a)  # N: Revealed type is "builtins.int"
+for var in [a, b, c]:
+    reveal_type(var)  # N: Revealed type is "builtins.int"
 
 F: Type[Foo] = Foo
 d, e, f = F
-reveal_type(d)  # N: Revealed type is "builtins.int"
+for var in [d, e, f]:
+    reveal_type(d)  # N: Revealed type is "builtins.int"
 [out]
 
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
