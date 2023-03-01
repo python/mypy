@@ -5219,7 +5219,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif 0:
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(t.get_name(),format_type(t)), expr)
             #Todo --this elif checks if the function is a Direct Reference with type Callable[...] and then assigns self.fail to the function name
-            elif 0:
+            elif t.get_name() is not None:
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(t.get_name(),format_type(t)), expr)
             else :
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)

@@ -2,10 +2,10 @@
 # flags: --python-version 3.6
 def f(x: int) -> str: pass
 
-if f:
+if f: # E: Function f that has signature "Callable[[int], str]" could always be true in boolean context
     pass
 
-[case testFunctionAlwaysTrue2]
+[case testVariableAlwaysTrue2]
 # flags: --python-version 3.6
 def f(x: int) -> str: pass
 
