@@ -15,5 +15,37 @@ if my_var:
     pass
 
 
+[case testFunctionAlwaysTrueVar]
+# flags: --python-version 3.6
+def f(x: int) -> str: pass
+
+my_var = f
+
+if my_var(1): # E: Variable function "my_var" could always be true in boolean context
+    pass
+
+
+[case testFunctionAlwaysTrueAttribute]
+# flags: --python-version 3.6
+
+class Dummy:
+    def __init__(self,f):
+        self.my_var=f
+
+def f(x: int) -> str: pass
+dummy=Dummy(f)
+
+if dummy.my_var: # E: Attribute "my_var" could always be true in boolean context
+    pass
+
+
+[case testFunctionAlwaysTrueK]
+# flags: --python-version 3.6
+def f(x: int) -> str: pass
+
+if f:  # E: Function "Callable[[int], str]" could always be true in boolean context
+    pass
+
+
 
 
