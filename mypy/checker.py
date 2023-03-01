@@ -3385,6 +3385,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         undefined_rvalue: bool = False,
     ) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
+        # TODO: Overloaded `__iter__` methods
+        # lead to unpacked variables being silently inferred as `Any`.
+        # See #14811
 
         # Infer the type of an ordinary rvalue expression.
         # TODO: maybe elsewhere; redundant.
