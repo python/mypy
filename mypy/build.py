@@ -919,7 +919,7 @@ class BuildManager:
 
 
 def deps_to_json(x: dict[str, set[str]]) -> str:
-    return json.dumps({k: list(v) for k, v in x.items()})
+    return json.dumps({k: list(v) for k, v in x.items()}, separators=(",", ":"))
 
 
 # File for storing metadata about all the fine-grained dependency caches
@@ -987,7 +987,7 @@ def write_deps_cache(
 
     meta = {"snapshot": meta_snapshot, "deps_meta": fg_deps_meta}
 
-    if not metastore.write(DEPS_META_FILE, json.dumps(meta)):
+    if not metastore.write(DEPS_META_FILE, json.dumps(meta, separators=(",", ":"))):
         manager.log(f"Error writing fine-grained deps meta JSON file {DEPS_META_FILE}")
         error = True
 
@@ -1055,7 +1055,8 @@ PLUGIN_SNAPSHOT_FILE: Final = "@plugins_snapshot.json"
 
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
-    if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, json.dumps(manager.plugins_snapshot)):
+    snapshot = json.dumps(manager.plugins_snapshot, separators=(",", ":"))
+    if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, snapshot):
         manager.errors.set_file(_cache_dir_prefix(manager.options), None, manager.options)
         manager.errors.report(0, 0, "Error writing plugins snapshot", blocker=True)
 
@@ -1487,7 +1488,7 @@ def validate_meta(
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
             else:
-                meta_str = json.dumps(meta_dict)
+                meta_str = json.dumps(meta_dict, separators=(",", ":"))
             meta_json, _, _ = get_cache_names(id, path, manager.options)
             manager.log(
                 "Updating mtime for {}: file {}, meta {}, mtime {}".format(
@@ -1517,7 +1518,7 @@ def json_dumps(obj: Any, debug_cache: bool) -> str:
     if debug_cache:
         return json.dumps(obj, indent=2, sort_keys=True)
     else:
-        return json.dumps(obj, sort_keys=True)
+        return json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
 def write_cache(
@@ -3639,4 +3640,4 @@ def write_undocumented_ref_info(state: State, metastore: MetadataStore, options:
     assert not ref_info_file.startswith(".")
 
     deps_json = get_undocumented_ref_info_json(state.tree)
-    metastore.write(ref_info_file, json.dumps(deps_json))
+    metastore.write(ref_info_file, json.dumps(deps_json, separators=(",", ":")))
