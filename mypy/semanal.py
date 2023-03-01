@@ -216,6 +216,7 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     find_dataclass_transform_spec,
     has_placeholder,
+    require_bool_literal_argument,
     set_callable_name as set_callable_name,
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
@@ -235,7 +236,7 @@ from mypy.typeanal import (
     remove_dups,
     type_constructors,
 )
-from mypy.typeops import function_type, get_type_vars
+from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
 from mypy.types import (
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
@@ -1749,6 +1750,12 @@ class SemanticAnalyzer(
                 if hook:
                     hook(ClassDefContext(defn, base_expr, self))
 
+        # Check if the class definition itself triggers a dataclass transform (via a parent class/
+        # metaclass)
+        spec = find_dataclass_transform_spec(defn)
+        if spec is not None:
+            dataclasses_plugin.add_dataclass_tag(defn.info)
+
     def get_fullname_for_hook(self, expr: Expression) -> str | None:
         if isinstance(expr, CallExpr):
             return self.get_fullname_for_hook(expr.callee)
@@ -1796,6 +1803,10 @@ class SemanticAnalyzer(
                     self.fail("@runtime_checkable can only be used with protocol classes", defn)
             elif decorator.fullname in FINAL_DECORATOR_NAMES:
                 defn.info.is_final = True
+        elif isinstance(decorator, CallExpr) and refers_to_fullname(
+            decorator.callee, DATACLASS_TRANSFORM_NAMES
+        ):
+            defn.info.dataclass_transform_spec = self.parse_dataclass_transform_spec(decorator)
 
     def clean_up_bases_and_infer_type_variables(
         self, defn: ClassDef, base_type_exprs: list[Expression], context: Context
@@ -5238,7 +5249,9 @@ class SemanticAnalyzer(
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope() or not self.function_stack:
             # We check both because is_function_scope() returns True inside comprehensions.
-            self.fail('"await" outside function', expr, serious=True, blocker=True)
+            # This is not a blocker, because some enviroments (like ipython)
+            # support top level awaits.
+            self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:
             self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
         expr.expr.accept(self)
@@ -6451,6 +6464,17 @@ class SemanticAnalyzer(
                 return False
         return None
 
+    def parse_str_literal(self, expr: Expression) -> str | None:
+        """Attempt to find the string literal value of the given expression. Returns `None` if no
+        literal value can be found."""
+        if isinstance(expr, StrExpr):
+            return expr.value
+        if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.type is not None:
+            values = try_getting_str_literals_from_type(expr.node.type)
+            if values is not None and len(values) == 1:
+                return values[0]
+        return None
+
     def set_future_import_flags(self, module_name: str) -> None:
         if module_name in FUTURE_IMPORTS:
             self.modules[self.cur_mod_id].future_import_flags.add(FUTURE_IMPORTS[module_name])
@@ -6463,15 +6487,21 @@ class SemanticAnalyzer(
         typing.dataclass_transform."""
         parameters = DataclassTransformSpec()
         for name, value in zip(call.arg_names, call.args):
+            # Skip any positional args. Note that any such args are invalid, but we can rely on
+            # typeshed to enforce this and don't need an additional error here.
+            if name is None:
+                continue
+
             # field_specifiers is currently the only non-boolean argument; check for it first so
             # so the rest of the block can fail through to handling booleans
             if name == "field_specifiers":
-                self.fail('"field_specifiers" support is currently unimplemented', call)
+                parameters.field_specifiers = self.parse_dataclass_transform_field_specifiers(
+                    value
+                )
                 continue
 
-            boolean = self.parse_bool(value)
+            boolean = require_bool_literal_argument(self, value, name)
             if boolean is None:
-                self.fail(f'"{name}" argument must be a True or False literal', call)
                 continue
 
             if name == "eq_default":
@@ -6486,6 +6516,19 @@ class SemanticAnalyzer(
                 self.fail(f'Unrecognized dataclass_transform parameter "{name}"', call)
 
         return parameters
+
+    def parse_dataclass_transform_field_specifiers(self, arg: Expression) -> tuple[str, ...]:
+        if not isinstance(arg, TupleExpr):
+            self.fail('"field_specifiers" argument must be a tuple literal', arg)
+            return tuple()
+
+        names = []
+        for specifier in arg.items:
+            if not isinstance(specifier, RefExpr):
+                self.fail('"field_specifiers" must only contain identifiers', specifier)
+                return tuple()
+            names.append(specifier.fullname)
+        return tuple(names)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

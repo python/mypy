@@ -2410,6 +2410,10 @@ class State:
             manager.report_file(self.tree, self.type_map(), self.options)
 
             self.update_fine_grained_deps(self.manager.fg_deps)
+
+            if manager.options.export_ref_info:
+                write_undocumented_ref_info(self, manager.metastore, manager.options)
+
             self.free_state()
             if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
                 free_tree(self.tree)
@@ -2941,6 +2945,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         dump_all_dependencies(
             manager.modules, manager.all_types, manager.options.python_version, manager.options
         )
+
     return graph
 
 
@@ -3616,3 +3621,22 @@ def is_silent_import_module(manager: BuildManager, path: str) -> bool:
         is_sub_path(path, dir)
         for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path
     )
+
+
+def write_undocumented_ref_info(state: State, metastore: MetadataStore, options: Options) -> None:
+    # This exports some dependency information in a rather ad-hoc fashion, which
+    # can be helpful for some tools. This is all highly experimental and could be
+    # removed at any time.
+
+    from mypy.refinfo import get_undocumented_ref_info_json
+
+    if not state.tree:
+        # We need a full AST for this.
+        return
+
+    _, data_file, _ = get_cache_names(state.id, state.xpath, options)
+    ref_info_file = ".".join(data_file.split(".")[:-2]) + ".refs.json"
+    assert not ref_info_file.startswith(".")
+
+    deps_json = get_undocumented_ref_info_json(state.tree)
+    metastore.write(ref_info_file, json.dumps(deps_json))

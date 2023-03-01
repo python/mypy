@@ -2,11 +2,11 @@ import email.message
 import io
 import ssl
 import types
-from _typeshed import ReadableBuffer, Self, SupportsRead, WriteableBuffer
+from _typeshed import ReadableBuffer, SupportsRead, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket
 from typing import Any, BinaryIO, TypeVar, overload
-from typing_extensions import TypeAlias
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "HTTPResponse",
@@ -127,7 +127,7 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     def getheaders(self) -> list[tuple[str, str]]: ...
     def isclosed(self) -> bool: ...
     def __iter__(self) -> Iterator[bytes]: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...

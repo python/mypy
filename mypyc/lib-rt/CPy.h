@@ -344,6 +344,7 @@ CPyTagged CPyObject_Hash(PyObject *o);
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index);
+PyObject *CPyNumber_InPlacePower(PyObject *base, PyObject *index);
 PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 

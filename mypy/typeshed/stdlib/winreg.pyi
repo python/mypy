@@ -1,8 +1,7 @@
 import sys
-from _typeshed import Self
 from types import TracebackType
 from typing import Any
-from typing_extensions import Literal, TypeAlias, final
+from typing_extensions import Literal, Self, TypeAlias, final
 
 if sys.platform == "win32":
     _KeyType: TypeAlias = HKEYType | int
@@ -93,7 +92,7 @@ if sys.platform == "win32":
     class HKEYType:
         def __bool__(self) -> bool: ...
         def __int__(self) -> int: ...
-        def __enter__(self: Self) -> Self: ...
+        def __enter__(self) -> Self: ...
         def __exit__(
             self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
         ) -> bool | None: ...

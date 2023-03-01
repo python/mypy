@@ -109,14 +109,25 @@ for op, funcname in [
         priority=0,
     )
 
-binary_op(
-    name="**",
-    arg_types=[object_rprimitive, object_rprimitive],
-    return_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    c_function_name="CPyNumber_Power",
-    priority=0,
-)
+for op, c_function in (("**", "CPyNumber_Power"), ("**=", "CPyNumber_InPlacePower")):
+    binary_op(
+        name=op,
+        arg_types=[object_rprimitive, object_rprimitive],
+        return_type=object_rprimitive,
+        error_kind=ERR_MAGIC,
+        c_function_name=c_function,
+        priority=0,
+    )
+
+for arg_count, c_function in ((2, "CPyNumber_Power"), (3, "PyNumber_Power")):
+    function_op(
+        name="builtins.pow",
+        arg_types=[object_rprimitive] * arg_count,
+        return_type=object_rprimitive,
+        error_kind=ERR_MAGIC,
+        c_function_name=c_function,
+        priority=0,
+    )
 
 binary_op(
     name="in",

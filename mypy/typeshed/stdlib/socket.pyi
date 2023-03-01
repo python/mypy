@@ -112,12 +112,12 @@ from _socket import (
     setdefaulttimeout as setdefaulttimeout,
     timeout as timeout,
 )
-from _typeshed import ReadableBuffer, Self, Unused, WriteableBuffer
+from _typeshed import ReadableBuffer, Unused, WriteableBuffer
 from collections.abc import Iterable
 from enum import IntEnum, IntFlag
 from io import BufferedReader, BufferedRWPair, BufferedWriter, IOBase, RawIOBase, TextIOWrapper
 from typing import Any, Protocol, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
 
 if sys.platform != "darwin" or sys.version_info >= (3, 9):
     from _socket import (
@@ -657,9 +657,9 @@ class socket(_socket.socket):
     def __init__(
         self, family: AddressFamily | int = -1, type: SocketKind | int = -1, proto: int = -1, fileno: int | None = None
     ) -> None: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(self, *args: Unused) -> None: ...
-    def dup(self: Self) -> Self: ...  # noqa: F811
+    def dup(self) -> Self: ...  # noqa: F811
     def accept(self) -> tuple[socket, _RetAddress]: ...
     # Note that the makefile's documented windows-specific behavior is not represented
     # mode strings with duplicates are intentionally excluded

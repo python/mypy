@@ -155,3 +155,49 @@ jobs:
         continue-on-error: true
       - name: Mark as a success
         run: exit 0
+
+  python_32bits:
+    runs-on: ubuntu-latest
+    name: Test mypyc suite with 32-bit Python
+    env:
+      TOX_SKIP_MISSING_INTERPRETERS: False
+      # Rich (pip)
+      FORCE_COLOR: 1
+      # Tox
+      PY_COLORS: 1
+      # Mypy (see https://github.com/python/mypy/issues/7771)
+      TERM: xterm-color
+      MYPY_FORCE_COLOR: 1
+      MYPY_FORCE_TERMINAL_WIDTH: 200
+      # Pytest
+      PYTEST_ADDOPTS: --color=yes
+      CXX: i686-linux-gnu-g++
+      CC: i686-linux-gnu-gcc
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install 32-bit build dependencies
+        run: |
+          sudo dpkg --add-architecture i386 && \
+          sudo apt-get update && sudo apt-get install -y \
+            zlib1g-dev:i386 \
+            g++-i686-linux-gnu \
+            gcc-i686-linux-gnu \
+            libffi-dev:i386 \
+            libssl-dev:i386 \
+            libbz2-dev:i386 \
+            libncurses-dev:i386 \
+            libreadline-dev:i386 \
+            libsqlite3-dev:i386 \
+            liblzma-dev:i386 \
+            uuid-dev:i386
+      - name: Compile, install, and activate 32-bit Python
+        uses: gabrielfalcao/pyenv-action@v13
+        with:
+          default: 3.11.1
+          command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
+      - name: Install tox
+        run: pip install --upgrade 'setuptools!=50' tox==4.4.4
+      - name: Setup tox environment
+        run: tox run -e py --notest
+      - name: Test
+        run: tox run -e py --skip-pkg-install -- -n 2 mypyc/test/

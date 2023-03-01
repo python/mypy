@@ -1,11 +1,11 @@
 import sys
 import threading
-from _typeshed import Self, Unused
+from _typeshed import Unused
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from logging import Logger
 from types import TracebackType
 from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal, ParamSpec, SupportsIndex
+from typing_extensions import Literal, ParamSpec, Self, SupportsIndex
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -62,7 +62,7 @@ class Executor:
     else:
         def shutdown(self, wait: bool = True) -> None: ...
 
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...

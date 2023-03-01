@@ -2,8 +2,9 @@ from _typeshed import OptExcInfo, StrOrBytesPath
 from collections.abc import Callable
 from types import FrameType, TracebackType
 from typing import IO, Any
+from typing_extensions import Final
 
-__UNDEF__: object  # undocumented sentinel
+__UNDEF__: Final[object]  # undocumented sentinel
 
 def reset() -> str: ...  # undocumented
 def small(text: str) -> str: ...  # undocumented

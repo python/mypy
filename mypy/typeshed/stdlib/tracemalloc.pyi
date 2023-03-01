@@ -1,7 +1,7 @@
 import sys
 from _tracemalloc import *
 from collections.abc import Sequence
-from typing import Any, Union, overload
+from typing import Any, overload
 from typing_extensions import SupportsIndex, TypeAlias
 
 def get_object_traceback(obj: object) -> Traceback | None: ...
@@ -67,7 +67,7 @@ class Frame:
         def __le__(self, other: Frame, NotImplemented: Any = ...) -> bool: ...
 
 if sys.version_info >= (3, 9):
-    _TraceTuple: TypeAlias = Union[tuple[int, int, Sequence[_FrameTuple], int | None], tuple[int, int, Sequence[_FrameTuple]]]
+    _TraceTuple: TypeAlias = tuple[int, int, Sequence[_FrameTuple], int | None] | tuple[int, int, Sequence[_FrameTuple]]
 else:
     _TraceTuple: TypeAlias = tuple[int, int, Sequence[_FrameTuple]]
 

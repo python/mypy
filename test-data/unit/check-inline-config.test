@@ -210,3 +210,12 @@ enable_error_code = ignore-without-code, truthy-bool
 
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
+
+[case testInlineErrorCodesMultipleCodes]
+# mypy: disable-error-code="truthy-bool, ignore-without-code"
+class Foo:
+    pass
+
+foo = Foo()
+if foo: ...
+42 + "no"  # type: ignore

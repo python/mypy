@@ -73,6 +73,7 @@ from mypy.nodes import (
     TypeVarTupleExpr,
     Var,
 )
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.types import (
     AnyType,
     CallableType,
@@ -230,6 +231,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
         elif isinstance(node, OverloadedFuncDef) and node.impl:
             impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
         is_trivial_body = impl.is_trivial_body if impl else False
+        dataclass_transform_spec = find_dataclass_transform_spec(node)
         return (
             "Func",
             common,
@@ -239,6 +241,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             node.is_static,
             signature,
             is_trivial_body,
+            dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)
@@ -256,6 +259,10 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             snapshot_definition(node.func, common),
         )
     elif isinstance(node, TypeInfo):
+        dataclass_transform_spec = node.dataclass_transform_spec
+        if dataclass_transform_spec is None:
+            dataclass_transform_spec = find_dataclass_transform_spec(node)
+
         attrs = (
             node.is_abstract,
             node.is_enum,
@@ -280,6 +287,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             tuple(snapshot_type(tdef) for tdef in node.defn.type_vars),
             [snapshot_type(base) for base in node.bases],
             [snapshot_type(p) for p in node._promote],
+            dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
         )
         prefix = node.fullname
         symbol_table = snapshot_symbol_table(prefix, node.names)

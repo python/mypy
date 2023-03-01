@@ -461,20 +461,17 @@ class ImportFrom(ImportBase):
 class ImportAll(ImportBase):
     """from m import *"""
 
-    __slots__ = ("id", "relative", "imported_names")
+    __slots__ = ("id", "relative")
 
     __match_args__ = ("id", "relative")
 
     id: str
     relative: int
-    # NOTE: Only filled and used by old semantic analyzer.
-    imported_names: list[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
-        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
@@ -703,18 +700,6 @@ class FuncItem(FuncBase):
 
     def max_fixed_argc(self) -> int:
         return self.max_pos
-
-    def set_line(
-        self,
-        target: Context | int,
-        column: int | None = None,
-        end_line: int | None = None,
-        end_column: int | None = None,
-    ) -> None:
-        super().set_line(target, column, end_line, end_column)
-        for arg in self.arguments:
-            # TODO: set arguments line/column to their precise locations.
-            arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
         return self.type is None
@@ -2830,6 +2815,7 @@ class TypeInfo(SymbolNode):
         "type_var_tuple_prefix",
         "type_var_tuple_suffix",
         "self_type",
+        "dataclass_transform_spec",
     )
 
     _fullname: str  # Fully qualified name
@@ -2977,6 +2963,9 @@ class TypeInfo(SymbolNode):
     # Shared type variable for typing.Self in this class (if used, otherwise None).
     self_type: mypy.types.TypeVarType | None
 
+    # Added if the corresponding class is directly decorated with `typing.dataclass_transform`
+    dataclass_transform_spec: DataclassTransformSpec | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3032,6 +3021,7 @@ class TypeInfo(SymbolNode):
         self.is_intersection = False
         self.metadata = {}
         self.self_type = None
+        self.dataclass_transform_spec = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3251,6 +3241,11 @@ class TypeInfo(SymbolNode):
             "slots": list(sorted(self.slots)) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
             "self_type": self.self_type.serialize() if self.self_type is not None else None,
+            "dataclass_transform_spec": (
+                self.dataclass_transform_spec.serialize()
+                if self.dataclass_transform_spec is not None
+                else None
+            ),
         }
         return data
 
@@ -3314,6 +3309,10 @@ class TypeInfo(SymbolNode):
         set_flags(ti, data["flags"])
         st = data["self_type"]
         ti.self_type = mypy.types.TypeVarType.deserialize(st) if st is not None else None
+        if data.get("dataclass_transform_spec") is not None:
+            ti.dataclass_transform_spec = DataclassTransformSpec.deserialize(
+                data["dataclass_transform_spec"]
+            )
         return ti
 
 
@@ -3484,8 +3483,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_tuple_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the tuple type described by a given TypeInfo."""
+        """Generate an alias to the tuple type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic tuple types),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.tuple_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, info.defn.type_vars)),
             info.fullname,
@@ -3495,8 +3499,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_typeddict_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the TypedDict type described by a given TypeInfo."""
+        """Generate an alias to the TypedDict type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic TypedDicts),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.typeddict_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.typeddict_type.copy_modified(
                 fallback=mypy.types.Instance(info, info.defn.type_vars)
@@ -3898,7 +3907,7 @@ class DataclassTransformSpec:
             "order_default": self.order_default,
             "kw_only_default": self.kw_only_default,
             "frozen_only_default": self.frozen_default,
-            "field_specifiers": self.field_specifiers,
+            "field_specifiers": list(self.field_specifiers),
         }
 
     @classmethod
@@ -3908,7 +3917,7 @@ class DataclassTransformSpec:
             order_default=data.get("order_default"),
             kw_only_default=data.get("kw_only_default"),
             frozen_default=data.get("frozen_default"),
-            field_specifiers=data.get("field_specifiers"),
+            field_specifiers=tuple(data.get("field_specifiers", [])),
         )
 
 

@@ -2067,7 +2067,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if not is_subtype(
                         original.arg_types[i], erase_override(override.arg_types[i])
                     ):
+
                         arg_type_in_super = original.arg_types[i]
+
+                        if isinstance(node, FuncDef):
+                            context: Context = node.arguments[i + len(override.bound_args)]
+                        else:
+                            context = node
                         self.msg.argument_incompatible_with_supertype(
                             i + 1,
                             name,
@@ -2075,7 +2081,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             name_in_super,
                             arg_type_in_super,
                             supertype,
-                            node,
+                            context,
+                            secondary_context=node,
                         )
                         emitted_msg = True
 
@@ -4040,7 +4047,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
         lvalue.method_type = method_type
-        self.expr_checker.check_method_call(
+        res_type, _ = self.expr_checker.check_method_call(
             "__setitem__",
             basetype,
             method_type,
@@ -4048,6 +4055,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             [nodes.ARG_POS, nodes.ARG_POS],
             context,
         )
+        res_type = get_proper_type(res_type)
+        if isinstance(res_type, UninhabitedType) and not res_type.ambiguous:
+            self.binder.unreachable()
 
     def try_infer_partial_type_from_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression

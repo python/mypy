@@ -215,7 +215,9 @@ class Server:
                 with server:
                     data = receive(server)
                     debug_stdout = io.StringIO()
+                    debug_stderr = io.StringIO()
                     sys.stdout = debug_stdout
+                    sys.stderr = debug_stderr
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -233,9 +235,11 @@ class Server:
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
                                 resp["stdout"] = debug_stdout.getvalue()
+                                resp["stderr"] = debug_stderr.getvalue()
                                 server.write(json.dumps(resp).encode("utf8"))
                                 raise
                     resp["stdout"] = debug_stdout.getvalue()
+                    resp["stderr"] = debug_stderr.getvalue()
                     try:
                         resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode("utf8"))

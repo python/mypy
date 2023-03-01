@@ -1,9 +1,9 @@
 from _typeshed import SupportsWrite
 from collections.abc import Iterable, Iterator
-from typing import Any, Union
-from typing_extensions import Literal, TypeAlias
+from typing import Any
+from typing_extensions import Final, Literal, TypeAlias
 
-__version__: str
+__version__: Final[str]
 
 QUOTE_ALL: Literal[1]
 QUOTE_MINIMAL: Literal[0]
@@ -27,7 +27,7 @@ class Dialect:
     strict: bool
     def __init__(self) -> None: ...
 
-_DialectLike: TypeAlias = Union[str, Dialect, type[Dialect]]
+_DialectLike: TypeAlias = str | Dialect | type[Dialect]
 
 class _reader(Iterator[list[str]]):
     @property

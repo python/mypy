@@ -1,7 +1,8 @@
 import sys
-from _typeshed import ReadableBuffer, Self, Unused
+from _typeshed import ReadableBuffer, Unused
 from collections.abc import Iterable, Iterator, Sized
 from typing import NoReturn, overload
+from typing_extensions import Self
 
 ACCESS_DEFAULT: int
 ACCESS_READ: int
@@ -73,7 +74,7 @@ class mmap(Iterable[int], Sized):
     # Doesn't actually exist, but the object is actually iterable because it has __getitem__ and __len__,
     # so we claim that there is also an __iter__ to help type checkers.
     def __iter__(self) -> Iterator[int]: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(self, *args: Unused) -> None: ...
 
 if sys.version_info >= (3, 8) and sys.platform != "win32":
