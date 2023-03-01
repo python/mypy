@@ -14,6 +14,14 @@ my_var = f
 if my_var:
     pass
 
+[case testMethodAlwaysTrue]
+class User:
+    def __init__(self, username):
+        self.username = username
 
+    def isUser(self, x: int) -> str: pass
 
+user = User("Kenny")
 
+if user.isUser: # E: Method "isUser" that has signature "Callable[[int], str]" could always be true in boolean context
+    pass
