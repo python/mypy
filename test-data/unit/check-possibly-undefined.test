@@ -936,7 +936,7 @@ def f0() -> None:
     inner()  # No error.
     inner = lambda: None
 
-[case testUsedBeforeDefBuiltins]
+[case testUsedBeforeDefBuiltinsFunc]
 # flags: --enable-error-code used-before-def
 
 def f0() -> None:
@@ -946,6 +946,26 @@ def f0() -> None:
 
 def f1() -> None:
     s = type(123)
+
+[case testUsedBeforeDefBuiltinsGlobal]
+# flags: --enable-error-code used-before-def
+
+s = type(123)
+type = "abc"
+a = type
+
+[case testUsedBeforeDefBuiltinsClass]
+# flags: --enable-error-code used-before-def
+
+class C:
+    s = type
+    type = s
+
+[case testUsedBeforeDefBuiltinsGenerator]
+# flags: --enable-error-code used-before-def
+
+def f0() -> None:
+    _ = [type for type in [type("a"), type(1)]]
 
 [case testUsedBeforeDefBuiltinsMultipass]
 # flags: --enable-error-code used-before-def

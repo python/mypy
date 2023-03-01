@@ -332,11 +332,6 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.loops: list[Loop] = []
         self.try_depth = 0
         self.tracker = DefinedVariableTracker()
-        builtins_mod = names.get("__builtins__", None)
-        if builtins_mod:
-            assert isinstance(builtins_mod.node, MypyFile)
-            for name in builtins_mod.node.names:
-                self.tracker.record_definition(name)
         for name in implicit_module_attrs:
             self.tracker.record_definition(name)
 
@@ -621,6 +616,8 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_starred_pattern(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
+        if o.name in self.builtins and self.tracker.in_scope(ScopeType.Global):
+            return
         if self.tracker.is_possibly_undefined(o.name):
             # A variable is only defined in some branches.
             self.variable_may_be_undefined(o.name, o)
