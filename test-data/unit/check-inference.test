@@ -271,21 +271,56 @@ class A: pass
 [out]
 
 [case testInferringLvarTypesUnpackedFromIterableClassObject]
-from typing import Iterator, Type
+from typing import Iterator, Type, TypeVar, Union
 class Meta(type):
     def __iter__(cls) -> Iterator[int]:
         yield from [1, 2, 3]
 
+class Meta2(type):
+    def __iter__(cls) -> Iterator[str]:
+        yield from ["foo", "bar", "baz"]
+
 class Foo(metaclass=Meta): ...
+class Bar(metaclass=Meta2): ...
+
+A: Type[Foo] = Foo
+B: Type[Union[Foo, Bar]] = Foo
+C: Union[Type[Foo], Type[Bar]] = Foo
 
 a, b, c = Foo
-for var in [a, b, c]:
+d, e, f = A
+g, h, i = B
+j, k, l = C
+
+for var in [a, b, c, d, e, f]:
     reveal_type(var)  # N: Revealed type is "builtins.int"
 
-F: Type[Foo] = Foo
-d, e, f = F
-for var in [d, e, f]:
-    reveal_type(d)  # N: Revealed type is "builtins.int"
+for var2 in [g, h, i, j, k, l]:
+    reveal_type(var2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+T = TypeVar("T", bound=Type[Foo])
+
+def check(x: T) -> T:
+    a, b, c = x
+    for var in [a, b, c]:
+        reveal_type(var)  # N: Revealed type is "builtins.int"
+    return x
+
+T2 = TypeVar("T2", bound=Type[Union[Foo, Bar]])
+
+def check2(x: T2) -> T2:
+    a, b, c = x
+    for var in [a, b, c]:
+        reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    return x
+
+T3 = TypeVar("T3", bound=Union[Type[Foo], Type[Bar]])
+
+def check3(x: T3) -> T3:
+    a, b, c = x
+    for var in [a, b, c]:
+        reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    return x
 [out]
 
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
