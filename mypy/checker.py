@@ -424,7 +424,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     @property
     def type_context(self) -> list[Type | None]:
         return self.expr_checker.type_context
-    
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
@@ -700,7 +699,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             sig1 = self.function_type(item.func)
             assert isinstance(sig1, CallableType)
 
-            for j, item2 in enumerate(defn.items[i + 1 :]):
+            for j, item2 in enumerate(defn.items[i + 1:]):
                 assert isinstance(item2, Decorator)
                 sig2 = self.function_type(item2.func)
                 assert isinstance(sig2, CallableType)
@@ -1072,8 +1071,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         fdef.info
                         and fdef.name in ("__init__", "__init_subclass__")
                         and not isinstance(
-                            get_proper_type(typ.ret_type), (NoneType, UninhabitedType)
-                        )
+                        get_proper_type(typ.ret_type), (NoneType, UninhabitedType)
+                    )
                         and not self.dynamic_funcs[-1]
                     ):
                         self.fail(
@@ -1238,8 +1237,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     (
                         not allow_empty
                         and not (
-                            isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT
-                        )
+                        isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT
+                    )
                         and not self.is_stub
                     )
                 )
@@ -2424,7 +2423,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for name in non_overridden_attrs:
                 if is_private(name):
                     continue
-                for base2 in mro[i + 1 :]:
+                for base2 in mro[i + 1:]:
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
                     # checks suffice (these are implemented elsewhere).
@@ -2547,7 +2546,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             entry.metaclass_type
             for entry in typ.mro[1:-1]
             if entry.metaclass_type
-            and not is_named_instance(entry.metaclass_type, "builtins.type")
+               and not is_named_instance(entry.metaclass_type, "builtins.type")
         ]
         if not metaclasses:
             return
@@ -2836,14 +2835,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     isinstance(p_rvalue_type, CallableType)
                     and p_rvalue_type.is_type_obj()
                     and (
-                        p_rvalue_type.type_object().is_abstract
-                        or p_rvalue_type.type_object().is_protocol
-                    )
+                    p_rvalue_type.type_object().is_abstract
+                    or p_rvalue_type.type_object().is_protocol
+                )
                     and isinstance(p_lvalue_type, TypeType)
                     and isinstance(p_lvalue_type.item, Instance)
                     and (
-                        p_lvalue_type.item.type.is_abstract or p_lvalue_type.item.type.is_protocol
-                    )
+                    p_lvalue_type.item.type.is_abstract or p_lvalue_type.item.type.is_protocol
+                )
                 ):
                     self.msg.concrete_only_assign(p_lvalue_type, rvalue)
                     return
@@ -3334,7 +3333,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     rvalues = (
                         rvalues[0:iterable_start]
                         + [TempNode(iterable_type) for i in range(rvalue_needed)]
-                        + rvalues[iterable_end + 1 :]
+                        + rvalues[iterable_end + 1:]
                     )
 
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
@@ -3346,7 +3345,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 star_lv = (
                     cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
                 )
-                right_lvs = lvalues[star_index + 1 :]
+                right_lvs = lvalues[star_index + 1:]
 
                 left_rvs, star_rvs, right_rvs = self.split_around_star(
                     rvalues, star_index, len(lvalues)
@@ -3518,7 +3517,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             left_lvs = lvalues[:star_index]
             star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
-            right_lvs = lvalues[star_index + 1 :]
+            right_lvs = lvalues[star_index + 1:]
 
             if not undefined_rvalue:
                 # Infer rvalue again, now in the correct type context.
@@ -3569,7 +3568,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
         left_lvs = lvalues[:star_index]
         star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
-        right_lvs = lvalues[star_index + 1 :]
+        right_lvs = lvalues[star_index + 1:]
         left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
             rvalue_type.items, star_index, len(lvalues)
         )
@@ -3748,15 +3747,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (
                 is_ref
                 and (
-                    fullname == "builtins.list"
-                    or fullname == "builtins.set"
-                    or fullname == "builtins.dict"
-                    or fullname == "collections.OrderedDict"
-                )
+                fullname == "builtins.list"
+                or fullname == "builtins.set"
+                or fullname == "builtins.dict"
+                or fullname == "collections.OrderedDict"
+            )
                 and all(
-                    isinstance(t, (NoneType, UninhabitedType))
-                    for t in get_proper_types(init_type.args)
-                )
+                isinstance(t, (NoneType, UninhabitedType))
+                for t in get_proper_types(init_type.args)
+            )
             ):
                 partial_type = PartialType(init_type.type, name)
             elif is_ref and fullname == "collections.defaultdict":
@@ -4091,10 +4090,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and is_valid_inferred_type(value_type)
                         and not self.current_node_deferred
                         and not (
-                            typename == "collections.defaultdict"
-                            and var.type.value_type is not None
-                            and not is_equivalent(value_type, var.type.value_type)
-                        )
+                        typename == "collections.defaultdict"
+                        and var.type.value_type is not None
+                        and not is_equivalent(value_type, var.type.value_type)
+                    )
                     ):
                         var.type = self.named_generic_type(typename, [key_type, value_type])
                         del partial_types[var]
@@ -4179,13 +4178,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and not self.current_node_deferred
                         and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
                         and not (
-                            defn.name in BINARY_MAGIC_METHODS
-                            and is_literal_not_implemented(s.expr)
-                        )
+                        defn.name in BINARY_MAGIC_METHODS
+                        and is_literal_not_implemented(s.expr)
+                    )
                         and not (
-                            isinstance(return_type, Instance)
-                            and return_type.type.fullname == "builtins.object"
-                        )
+                        isinstance(return_type, Instance)
+                        and return_type.type.fullname == "builtins.object"
+                    )
                     ):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
@@ -5188,6 +5187,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
+        # print("Enter check_for_truthy_type")
+
         if not state.strict_optional:
             return  # if everything can be None, all bets are off
 
@@ -5209,21 +5210,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f"Call returns {typ}"
             else:
                 return f"Expression has type {typ}"
+
         if isinstance(t, FunctionLike):
-            #Todo --this if checks if the function is a module with type Callable[...] and then assigns self.fail to the function name
+            # print("Enter isinstance(t, FunctionLike)")
+            # Todo --this if checks if the function is a module with type Callable[...] and then assigns self.fail to the function name
             if 0:
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(t.get_name(),format_type(t)), expr)
-            #Todo --this elif checks if the function is a method with type Callable[...] and then assigns self.fail to the function name
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(t.get_name(), format_type(t)), expr)
+            # Todo --this elif checks if the function is a method with type Callable[...] and then assigns self.fail to the function name
             elif 0:
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(t.get_name(),format_type(t)), expr)
-            #Todo --this elif checks if the function is a variable with type Callable[...] and then assigns self.fail to the function name
-            elif 0:
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(t.get_name(),format_type(t)), expr)
-            #Todo --this elif checks if the function is a Direct Reference with type Callable[...] and then assigns self.fail to the function name
-            elif 0:
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(t.get_name(),format_type(t)), expr)
-            else :
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(t.get_name(), format_type(t)), expr)
+            # Todo --this elif checks if the function is a Direct Reference with type Callable[...] and then assigns self.fail to the function name
+            elif t.get_name() is not None:
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(t.get_name(), format_type(t)), expr)
+            # Todo --this elif checks if the function is a variable with type Callable[...] and then assigns self.fail to the function name
+            elif isinstance(expr, NameExpr):
+                # print("enter isinstance(expr, NameExpr)")
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(f'"{expr.name}"', format_type(t)), expr)
+            else:
+                # print("enter the last else statement")
+                # print("type of t:", type(t))
+                # print("t:", t)
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(t.get_name(), format_type(t)), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":
@@ -5530,9 +5537,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 collection_item_type is not None
                                 and not is_optional(collection_item_type)
                                 and not (
-                                    isinstance(collection_item_type, Instance)
-                                    and collection_item_type.type.fullname == "builtins.object"
-                                )
+                                isinstance(collection_item_type, Instance)
+                                and collection_item_type.type.fullname == "builtins.object"
+                            )
                                 and is_overlapping_erased_types(item_type, collection_item_type)
                             ):
                                 if_map[operands[left_index]] = remove_optional(item_type)

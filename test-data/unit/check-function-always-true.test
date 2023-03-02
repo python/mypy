@@ -1,17 +1,7 @@
 [case testFunctionAlwaysTrue]
 # flags: --python-version 3.6
 def f(x: int) -> str: pass
-
-if f:
-    pass
-
-[case testFunctionAlwaysTrue2]
-# flags: --python-version 3.6
-def f(x: int) -> str: pass
-
-my_var = f
-
-if my_var:
+if f: # E: Function f that has signature "Callable[[int], str]" could always be true in boolean context
     pass
 
 
@@ -21,7 +11,7 @@ def f(x: int) -> str: pass
 
 my_var = f
 
-if my_var(1): # E: Variable function "my_var" could always be true in boolean context
+if my_var: # E: Variable Function "my_var" that has signature "Callable[[int], str]" could always be true in boolean context
     pass
 
 
@@ -36,14 +26,6 @@ def f(x: int) -> str: pass
 dummy=Dummy(f)
 
 if dummy.my_var: # E: Attribute "my_var" could always be true in boolean context
-    pass
-
-
-[case testFunctionAlwaysTrueK]
-# flags: --python-version 3.6
-def f(x: int) -> str: pass
-
-if f:  # E: Function "Callable[[int], str]" could always be true in boolean context
     pass
 
 
