@@ -5188,8 +5188,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
-        #if not state.strict_optional:
-            #return  # if everything can be None, all bets are off
+        # if not state.strict_optional:
+        #     return  # if everything can be None, all bets are off
 
         t = get_proper_type(t)
         if not self._is_truthy_type(t):
@@ -5210,18 +5210,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 return f"Expression has type {typ}"
         if isinstance(t, FunctionLike):
-            print(1)
             #Todo --this if checks if the function is a module with type Callable[...] and then assigns self.fail to the function name
             if 0:
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(t.get_name(),format_type(t)), expr)
             #Todo --this elif checks if the function is a method with type Callable[...] and then assigns self.fail to the function name
-            elif 0:
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(t.get_name(),format_type(t)), expr)
-            #Todo --this elif checks if the function is a variable with type Callable[...] and then assigns self.fail to the function name
+            elif isinstance(expr, MemberExpr):
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(f'"{expr.name}"',format_type(t)), expr)
             elif 0:
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(t.get_name(),format_type(t)), expr)
             #Todo --this elif checks if the function is a Direct Reference with type Callable[...] and then assigns self.fail to the function name
-            elif 0:
+            elif t.get_name() is not None:
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(t.get_name(),format_type(t)), expr)
             else :
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(f'"{expr.name}"', format_type(t)), expr)
@@ -5237,6 +5235,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
         else:
             self.fail(message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()), expr)
+
     def find_type_equals_check(
         self, node: ComparisonExpr, expr_indices: list[int]
     ) -> tuple[TypeMap, TypeMap]:
@@ -7606,3 +7605,4 @@ def collapse_walrus(e: Expression) -> Expression:
     if isinstance(e, AssignmentExpr):
         return e.target
     return e
+

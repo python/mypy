@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [case testFunctionAlwaysTrue]
 # flags: --python-version 3.6
 def f(x: int) -> str: pass
@@ -14,6 +15,36 @@ my_var = f
 if my_var:
     pass
 
+
+[case testFunctionAlwaysTrue]
+# flags: --python-version 3.6
+def f(x: int) -> str: pass
+
+if f: # E: Function f that has signature "Callable[[int], str]" could always be true in boolean context
+    pass
+
+[case testVariableAlwaysTrue2]
+# flags: --python-version 3.6
+def f(x: int) -> str: pass
+
+my_var = f
+
+if my_var:
+    pass
+
+[case testMethodAlwaysTrue]
+class User:
+    def __init__(self, username):
+        self.username = username
+
+    def isUser(self, x: int) -> str: pass
+
+user = User("Kenny")
+
+if user.isUser: # E: Method "isUser" that has signature "Callable[[int], str]" could always be true in boolean context
+    pass
+
+
 [case testFunctionAlwaysTrue5]
 # flags: --python-version 3.6
 def f(x: int) -> str: pass
@@ -24,5 +55,3 @@ def callable():
 f = callable()
 if f: # E: Function "f" that has signature "Callable[[int], str]" could always be true in boolean context
     pass
-
-

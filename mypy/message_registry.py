@@ -157,8 +157,8 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
 FUNCTION_ALWAYS_TRUE_MODULE: Final = ErrorMessage(
     "Module Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
-FUNCTION_ALWAYS_TRUE_Method: Final = ErrorMessage(
-    "Method Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
+FUNCTION_ALWAYS_TRUE_METHOD: Final = ErrorMessage(
+    "Method {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 FUNCTION_ALWAYS_TRUE_VAR: Final = ErrorMessage(
     "Variable Function {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
@@ -286,3 +286,4 @@ CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL: Final = (
     '"alias" argument to dataclass field must be a string literal'
 )
+
