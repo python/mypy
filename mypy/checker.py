@@ -5215,9 +5215,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(t.get_name(),format_type(t)), expr)
             elif isinstance(expr, MemberExpr):
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(f'"{expr.name}"',format_type(t)), expr)
-            #Todo --this elif checks if the function is a variable with type Callable[...] and then assigns self.fail to the function name
-            elif 0:
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(t.get_name(),format_type(t)), expr)
+            elif isinstance(expr, NameExpr):
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(f'"{expr.name}"', format_type(t)), expr)
             elif isinstance(expr, RefExpr):
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(f'"{expr.name}"',format_type(t)), expr)
             else :
