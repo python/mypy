@@ -5219,7 +5219,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(f'"{expr.name}"', format_type(t)), expr)
             else :
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(f'"{expr.name}"',format_type(t)), expr)
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":
