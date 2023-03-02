@@ -7,6 +7,7 @@ from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.checker import TypeChecker
+from mypy.errorcodes import LITERAL_REQ
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import format_type_bare
 from mypy.nodes import (
@@ -249,7 +250,11 @@ def _get_decorator_optional_bool_argument(
                     return False
                 if attr_value.fullname == "builtins.None":
                     return None
-            ctx.api.fail(f'"{name}" argument must be True or False.', ctx.reason)
+            ctx.api.fail(
+                f'"{name}" argument must be a True, False, or None literal',
+                ctx.reason,
+                code=LITERAL_REQ,
+            )
             return default
         return default
     else:

@@ -16,7 +16,7 @@ from collections.abc import (
 from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Generic, Mapping, Protocol, TypeVar, overload  # noqa: Y027
+from typing import Any, ClassVar, Generic, Mapping, Protocol, TypeVar, overload  # noqa: Y022
 from typing_extensions import Literal, ParamSpec, final
 
 __all__ = [
@@ -241,13 +241,13 @@ class CodeType:
         def replace(
             self,
             *,
-            co_argcount: int = ...,
-            co_posonlyargcount: int = ...,
-            co_kwonlyargcount: int = ...,
-            co_nlocals: int = ...,
-            co_stacksize: int = ...,
-            co_flags: int = ...,
-            co_firstlineno: int = ...,
+            co_argcount: int = -1,
+            co_posonlyargcount: int = -1,
+            co_kwonlyargcount: int = -1,
+            co_nlocals: int = -1,
+            co_stacksize: int = -1,
+            co_flags: int = -1,
+            co_firstlineno: int = -1,
             co_code: bytes = ...,
             co_consts: tuple[object, ...] = ...,
             co_names: tuple[str, ...] = ...,
@@ -264,13 +264,13 @@ class CodeType:
         def replace(
             self,
             *,
-            co_argcount: int = ...,
-            co_posonlyargcount: int = ...,
-            co_kwonlyargcount: int = ...,
-            co_nlocals: int = ...,
-            co_stacksize: int = ...,
-            co_flags: int = ...,
-            co_firstlineno: int = ...,
+            co_argcount: int = -1,
+            co_posonlyargcount: int = -1,
+            co_kwonlyargcount: int = -1,
+            co_nlocals: int = -1,
+            co_stacksize: int = -1,
+            co_flags: int = -1,
+            co_firstlineno: int = -1,
             co_code: bytes = ...,
             co_consts: tuple[object, ...] = ...,
             co_names: tuple[str, ...] = ...,
@@ -285,13 +285,13 @@ class CodeType:
         def replace(
             self,
             *,
-            co_argcount: int = ...,
-            co_posonlyargcount: int = ...,
-            co_kwonlyargcount: int = ...,
-            co_nlocals: int = ...,
-            co_stacksize: int = ...,
-            co_flags: int = ...,
-            co_firstlineno: int = ...,
+            co_argcount: int = -1,
+            co_posonlyargcount: int = -1,
+            co_kwonlyargcount: int = -1,
+            co_nlocals: int = -1,
+            co_stacksize: int = -1,
+            co_flags: int = -1,
+            co_firstlineno: int = -1,
             co_code: bytes = ...,
             co_consts: tuple[object, ...] = ...,
             co_names: tuple[str, ...] = ...,
@@ -310,7 +310,7 @@ class MappingProxyType(Mapping[_KT, _VT_co], Generic[_KT, _VT_co]):
     def __getitem__(self, __key: _KT) -> _VT_co: ...
     def __iter__(self) -> Iterator[_KT]: ...
     def __len__(self) -> int: ...
-    def __eq__(self, other: object) -> bool: ...
+    def __eq__(self, __value: object) -> bool: ...
     def copy(self) -> dict[_KT, _VT_co]: ...
     def keys(self) -> KeysView[_KT]: ...
     def values(self) -> ValuesView[_VT_co]: ...
@@ -363,7 +363,7 @@ class GeneratorType(Generator[_T_co, _T_contra, _V_co]):
         self, __typ: type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...
     ) -> _T_co: ...
     @overload
-    def throw(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> _T_co: ...
+    def throw(self, __typ: BaseException, __val: None = None, __tb: TracebackType | None = ...) -> _T_co: ...
 
 @final
 class AsyncGeneratorType(AsyncGenerator[_T_co, _T_contra]):
@@ -379,7 +379,7 @@ class AsyncGeneratorType(AsyncGenerator[_T_co, _T_contra]):
         self, __typ: type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...
     ) -> _T_co: ...
     @overload
-    async def athrow(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> _T_co: ...
+    async def athrow(self, __typ: BaseException, __val: None = None, __tb: TracebackType | None = ...) -> _T_co: ...
     def aclose(self) -> Coroutine[Any, Any, None]: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, __item: Any) -> GenericAlias: ...
@@ -402,7 +402,7 @@ class CoroutineType(Coroutine[_T_co, _T_contra, _V_co]):
         self, __typ: type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...
     ) -> _T_co: ...
     @overload
-    def throw(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> _T_co: ...
+    def throw(self, __typ: BaseException, __val: None = None, __tb: TracebackType | None = ...) -> _T_co: ...
 
 class _StaticFunctionType:
     # Fictional type to correct the type of MethodType.__func__.
@@ -414,7 +414,7 @@ class _StaticFunctionType:
     # By wrapping FunctionType in _StaticFunctionType, we get the right result;
     # similar to wrapping a function in staticmethod() at runtime to prevent it
     # being bound as a method.
-    def __get__(self, obj: object | None, type: type | None) -> FunctionType: ...
+    def __get__(self, obj: object, type: type | None) -> FunctionType: ...
 
 @final
 class MethodType:
@@ -555,12 +555,12 @@ class MemberDescriptorType:
 def new_class(
     name: str,
     bases: Iterable[object] = ...,
-    kwds: dict[str, Any] | None = ...,
-    exec_body: Callable[[dict[str, Any]], object] | None = ...,
+    kwds: dict[str, Any] | None = None,
+    exec_body: Callable[[dict[str, Any]], object] | None = None,
 ) -> type: ...
 def resolve_bases(bases: Iterable[object]) -> tuple[Any, ...]: ...
 def prepare_class(
-    name: str, bases: tuple[type, ...] = ..., kwds: dict[str, Any] | None = ...
+    name: str, bases: tuple[type, ...] = ..., kwds: dict[str, Any] | None = None
 ) -> tuple[type, dict[str, Any], dict[str, Any]]: ...
 
 # Actually a different type, but `property` is special and we want that too.

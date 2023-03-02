@@ -134,6 +134,7 @@ from mypy.types import (
     TypeList,
     TypeStrVisitor,
     UnboundType,
+    UnionType,
     get_proper_type,
 )
 from mypy.visitor import NodeVisitor
@@ -325,6 +326,9 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_type_list(self, t: TypeList) -> str:
         return f"[{self.list_str(t.items)}]"
+
+    def visit_union_type(self, t: UnionType) -> str:
+        return " | ".join([item.accept(self) for item in t.items])
 
     def args_str(self, args: Iterable[Type]) -> str:
         """Convert an array of arguments to strings and join the results with commas.
@@ -999,8 +1003,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
             if (
-                self.is_top_level()
-                and isinstance(lvalue, NameExpr)
+                isinstance(lvalue, NameExpr)
                 and not self.is_private_name(lvalue.name)
                 and
                 # it is never an alias with explicit annotation
@@ -1118,7 +1121,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def process_typealias(self, lvalue: NameExpr, rvalue: Expression) -> None:
         p = AliasPrinter(self)
-        self.add(f"{lvalue.name} = {rvalue.accept(p)}\n")
+        self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
         self.record_name(lvalue.name)
         self._vars[-1].append(lvalue.name)
 

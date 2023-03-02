@@ -4,14 +4,17 @@ Protocols and structural subtyping
 ==================================
 
 Mypy supports two ways of deciding whether two classes are compatible
-as types: nominal subtyping and structural subtyping. *Nominal*
-subtyping is strictly based on the class hierarchy. If class ``D``
+as types: nominal subtyping and structural subtyping.
+
+*Nominal* subtyping is strictly based on the class hierarchy. If class ``D``
 inherits class ``C``, it's also a subtype of ``C``, and instances of
 ``D`` can be used when ``C`` instances are expected. This form of
 subtyping is used by default in mypy, since it's easy to understand
 and produces clear and concise error messages, and since it matches
 how the native :py:func:`isinstance <isinstance>` check works -- based on class
-hierarchy. *Structural* subtyping can also be useful. Class ``D`` is
+hierarchy.
+
+*Structural* subtyping is based on the operations that can be performed with an object. Class ``D`` is
 a structural subtype of class ``C`` if the former has all attributes
 and methods of the latter, and with compatible types.
 
@@ -72,14 +75,15 @@ class:
    from typing_extensions import Protocol
 
    class SupportsClose(Protocol):
-       def close(self) -> None:
-          ...  # Empty method body (explicit '...')
+       # Empty method body (explicit '...')
+       def close(self) -> None: ...
 
    class Resource:  # No SupportsClose base class!
-       # ... some methods ...
 
        def close(self) -> None:
           self.resource.release()
+
+       # ... other methods ...
 
    def close_all(items: Iterable[SupportsClose]) -> None:
        for item in items:
@@ -146,7 +150,9 @@ present if you are defining a protocol:
 
 You can also include default implementations of methods in
 protocols. If you explicitly subclass these protocols you can inherit
-these default implementations. Explicitly including a protocol as a
+these default implementations.
+
+Explicitly including a protocol as a
 base class is also a way of documenting that your class implements a
 particular protocol, and it forces mypy to verify that your class
 implementation is actually compatible with the protocol. In particular,
@@ -157,11 +163,61 @@ abstract:
 
    class SomeProto(Protocol):
        attr: int  # Note, no right hand side
-       def method(self) -> str: ...  # Literal ... here
+       def method(self) -> str: ...  # Literally just ... here
+
    class ExplicitSubclass(SomeProto):
        pass
+
    ExplicitSubclass()  # error: Cannot instantiate abstract class 'ExplicitSubclass'
                        # with abstract attributes 'attr' and 'method'
+
+Invariance of protocol attributes
+*********************************
+
+A common issue with protocols is that protocol attributes are invariant.
+For example:
+
+.. code-block:: python
+
+   class Box(Protocol):
+         content: object
+
+   class IntBox:
+         content: int
+
+   def takes_box(box: Box) -> None: ...
+
+   takes_box(IntBox())  # error: Argument 1 to "takes_box" has incompatible type "IntBox"; expected "Box"
+                        # note:  Following member(s) of "IntBox" have conflicts:
+                        # note:      content: expected "object", got "int"
+
+This is because ``Box`` defines ``content`` as a mutable attribute.
+Here's why this is problematic:
+
+.. code-block:: python
+
+   def takes_box_evil(box: Box) -> None:
+       box.content = "asdf"  # This is bad, since box.content is supposed to be an object
+
+   my_int_box = IntBox()
+   takes_box_evil(my_int_box)
+   my_int_box.content + 1  # Oops, TypeError!
+
+This can be fixed by declaring ``content`` to be read-only in the ``Box``
+protocol using ``@property``:
+
+.. code-block:: python
+
+   class Box(Protocol):
+       @property
+       def content(self) -> object: ...
+
+   class IntBox:
+       content: int
+
+   def takes_box(box: Box) -> None: ...
+
+   takes_box(IntBox(42))  # OK
 
 Recursive protocols
 *******************
@@ -197,7 +253,7 @@ Using isinstance() with protocols
 
 You can use a protocol class with :py:func:`isinstance` if you decorate it
 with the ``@runtime_checkable`` class decorator. The decorator adds
-support for basic runtime structural checks:
+rudimentary support for runtime structural checks:
 
 .. code-block:: python
 
@@ -214,16 +270,23 @@ support for basic runtime structural checks:
    def use(handles: int) -> None: ...
 
    mug = Mug()
-   if isinstance(mug, Portable):
-      use(mug.handles)  # Works statically and at runtime
+   if isinstance(mug, Portable):  # Works at runtime!
+      use(mug.handles)
 
 :py:func:`isinstance` also works with the :ref:`predefined protocols <predefined_protocols>`
 in :py:mod:`typing` such as :py:class:`~typing.Iterable`.
 
-.. note::
+.. warning::
    :py:func:`isinstance` with protocols is not completely safe at runtime.
    For example, signatures of methods are not checked. The runtime
-   implementation only checks that all protocol members are defined.
+   implementation only checks that all protocol members exist,
+   not that they have the correct type. :py:func:`issubclass` with protocols
+   will only check for the existence of methods.
+
+.. note::
+   :py:func:`isinstance` with protocols can also be surprisingly slow.
+   In many cases, you're better served by using :py:func:`hasattr` to
+   check for the presence of attributes.
 
 .. _callback_protocols:
 

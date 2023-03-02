@@ -8,7 +8,7 @@ __all__ = ["Repr", "repr", "recursive_repr"]
 
 _ReprFunc: TypeAlias = Callable[[Any], str]
 
-def recursive_repr(fillvalue: str = ...) -> Callable[[_ReprFunc], _ReprFunc]: ...
+def recursive_repr(fillvalue: str = "...") -> Callable[[_ReprFunc], _ReprFunc]: ...
 
 class Repr:
     maxlevel: int
