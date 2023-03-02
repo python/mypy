@@ -424,7 +424,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     @property
     def type_context(self) -> list[Type | None]:
         return self.expr_checker.type_context
-    
+
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
@@ -5235,8 +5235,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr,
             )
         else:
-            self.fail(message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()), expr)
-
+            self.fail(message_registry.TYPE_ALWAYS_TRUE_CALLABLE.format("\""+expr.callee.name+"\"", format_expr_type()), expr)
     def find_type_equals_check(
         self, node: ComparisonExpr, expr_indices: list[int]
     ) -> tuple[TypeMap, TypeMap]:

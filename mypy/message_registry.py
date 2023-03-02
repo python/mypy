@@ -166,6 +166,9 @@ FUNCTION_ALWAYS_TRUE_VAR: Final = ErrorMessage(
 FUNCTION_ALWAYS_TRUE_DIRREF: Final = ErrorMessage(
     "Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
+TYPE_ALWAYS_TRUE_CALLABLE: Final = ErrorMessage(
+    "Function {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
+)
 ITERABLE_ALWAYS_TRUE: Final = ErrorMessage(
     "{} which can always be true in boolean context. Consider using {} instead.",
     code=codes.TRUTHY_ITERABLE,

@@ -14,6 +14,14 @@ my_var = f
 if my_var:
     pass
 
+[case testFunctionAlwaysTrue5]
+# flags: --python-version 3.6
+def f(x: int) -> str: pass
 
+def callable():
+    return f
+
+if callable(): # E: Function "callable" could always be true in boolean context
+    pass
 
 
