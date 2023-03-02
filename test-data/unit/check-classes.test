@@ -4524,6 +4524,72 @@ WithMeta().a              # E: "WithMeta" has no attribute "a"
 t: Type[WithMeta]
 t.unknown  # OK
 
+[case testUnpackIterableClassWithOverloadedIter]
+from typing import Generic, overload, Iterator, TypeVar, Union
+
+AnyNum = TypeVar('AnyNum', int, float)
+
+class Foo(Generic[AnyNum]):
+    @overload
+    def __iter__(self: Foo[int]) -> Iterator[float]: ...
+    @overload
+    def __iter__(self: Foo[float]) -> Iterator[int]: ...
+    def __iter__(self) -> Iterator[Union[float, int]]:
+        ...
+
+a, b, c = Foo[int]()
+reveal_type(a)  # N: Revealed type is "builtins.float"
+reveal_type(b)  # N: Revealed type is "builtins.float"
+reveal_type(c)  # N: Revealed type is "builtins.float"
+
+x, y = Foo[float]()
+reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+
+[case testUnpackIterableClassWithOverloadedIter2]
+from typing import Union, TypeVar, Generic, overload, Iterator
+
+X = TypeVar('X')
+
+class Foo(Generic[X]):
+    @overload
+    def __iter__(self: Foo[str]) -> Iterator[int]: ...  # type: ignore
+    @overload
+    def __iter__(self: Foo[X]) -> Iterator[str]: ...
+    def __iter__(self) -> Iterator[Union[int, str]]:
+        ...
+
+a, b, c = Foo[str]()
+reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(b)  # N: Revealed type is "builtins.int"
+reveal_type(c)  # N: Revealed type is "builtins.int"
+
+x, y = Foo[float]()
+reveal_type(x)  # N: Revealed type is "builtins.str"
+reveal_type(y)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testUnpackIterableRegular]
+from typing import TypeVar, Generic, Iterator
+
+X = TypeVar('X')
+
+class Foo(Generic[X]):
+    def __iter__(self) -> Iterator[X]:
+        ...
+
+a, b = Foo[int]()
+reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(b)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+
+[case testUnpackNotIterableClass]
+class Foo: ...
+
+a, b, c = Foo()  # E: "Foo" object is not iterable
+[builtins fixtures/list.pyi]
+
 [case testMetaclassIterable]
 from typing import Iterable, Iterator
 
