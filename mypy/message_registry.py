@@ -152,7 +152,7 @@ TYPE_ALWAYS_TRUE_UNIONTYPE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
-    "Function {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
+    "Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 FUNCTION_ALWAYS_TRUE_MODULE: Final = ErrorMessage(
     "Module Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION

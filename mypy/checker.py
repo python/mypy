@@ -424,7 +424,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     @property
     def type_context(self) -> list[Type | None]:
         return self.expr_checker.type_context
-    
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
@@ -5188,13 +5187,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
-        if not state.strict_optional:
-            return  # if everything can be None, all bets are off
+        # if not state.strict_optional:
+        #     return  # if everything can be None, all bets are off
 
         t = get_proper_type(t)
         if not self._is_truthy_type(t):
             return
-        
         def format_expr_type() -> str:
             typ = format_type(t)
             if isinstance(expr, MemberExpr):
@@ -5220,7 +5218,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif isinstance(expr, RefExpr):
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(f'"{expr.name}"',format_type(t)), expr)
             else :
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(f'"{expr.name}"',format_type(t)), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":

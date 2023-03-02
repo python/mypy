@@ -40,3 +40,14 @@ sport = Sport("Soccer")
 
 if sport.isSport: # E: Function "isSport" that has signature "Callable[[int], str]" could always be true in boolean context
     pass
+
+[case testFunctionAlwaysTrue5]
+# flags: --python-version 3.6
+def f(x: int) -> str: pass
+
+def callable():
+    return f
+
+f = callable()
+if f: # E: Function "f" that has signature "Callable[[int], str]" could always be true in boolean context
+    pass
