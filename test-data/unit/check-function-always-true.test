@@ -5,16 +5,19 @@ def f(x: int) -> str: pass
 if f: # E: Function f that has signature "Callable[[int], str]" could always be true in boolean context
     pass
 
-[case testVariableAlwaysTrue2]
+
+[case testVariableAlwaysTrue]
 # flags: --python-version 3.6
 def f(x: int) -> str: pass
 
 my_var = f
 
-if my_var:
+if my_var: # E: Variable Function "my_var" that has signature "Callable[[int], str]" could always be true in boolean context
     pass
 
+
 [case testMethodAlwaysTrue]
+# flags: --python-version 3.6
 class User:
     def __init__(self, username):
         self.username = username
@@ -26,6 +29,17 @@ user = User("Kenny")
 if user.isUser: # E: Method "isUser" that has signature "Callable[[int], str]" could always be true in boolean context
     pass
 
+[case testDirRefAlwaysTrue]
+# flags: --python-version 3.6
+class Sport:
+    def __init__(self, sport):
+        self.sport = sport
+    def isSport(x: int) -> str: pass
+
+sport = Sport("Soccer")
+
+if sport.isSport: # E: Function "isSport" that has signature "Callable[[int], str]" could always be true in boolean context
+    pass
 
 [case testFunctionAlwaysTrue5]
 # flags: --python-version 3.6
