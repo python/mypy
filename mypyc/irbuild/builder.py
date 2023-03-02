@@ -41,6 +41,7 @@ from mypy.nodes import (
     Statement,
     SymbolNode,
     TupleExpr,
+    TypeAlias,
     TypeInfo,
     UnaryExpr,
     Var,
@@ -1024,7 +1025,8 @@ class IRBuilder:
 
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
-            call_c_ops_candidates = function_ops.get(callee.fullname, [])
+            fullname = get_call_target_fullname(callee)
+            call_c_ops_candidates = function_ops.get(fullname, [])
             target = self.builder.matching_call_c(
                 call_c_ops_candidates, arg_values, expr.line, self.node_type(expr)
             )
@@ -1355,3 +1357,12 @@ def remangle_redefinition_name(name: str) -> str:
     lookups.
     """
     return name.replace("'", "__redef__")
+
+
+def get_call_target_fullname(ref: RefExpr) -> str:
+    if isinstance(ref.node, TypeAlias):
+        # Resolve simple type aliases. In calls they evaluate to the type they point to.
+        target = get_proper_type(ref.node.target)
+        if isinstance(target, Instance):
+            return target.type.fullname
+    return ref.fullname
