@@ -3405,10 +3405,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(rvalue_type, FunctionLike) and rvalue_type.is_type_obj():
             ret_type = get_proper_type(rvalue_type.items[0].ret_type)
             if isinstance(ret_type, Instance):
-                rvalue_type = ret_type.type.metaclass_type or rvalue_type
+                metaclass = ret_type.type.metaclass_type
+                if metaclass and metaclass.type.get_method("__iter__"):
+                    rvalue_type = metaclass
 
         if isinstance(rvalue_type, TypeType) and isinstance(rvalue_type.item, Instance):
-            rvalue_type = rvalue_type.item.type.metaclass_type or rvalue_type
+            metaclass = rvalue_type.item.type.metaclass_type
+            if metaclass and metaclass.type.get_method("__iter__"):
+                rvalue_type = metaclass
 
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
