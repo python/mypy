@@ -3399,13 +3399,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if len(relevant_items) == 1:
                 rvalue_type = get_proper_type(relevant_items[0])
 
+        # Some special-casing for class objects which are iterable
+        # by virtue of having __iter__ defined on the metaclass.
+        #
+        # Note that this doesn't handle metaclasses with overloaded __iter__ methods,
+        # but it's quite hard to come up with an overloaded __iter__ method
+        # without making the metaclass generic,
+        # and mypy has lots of issues with generic metaclasses in general
         if isinstance(rvalue_type, FunctionLike) and rvalue_type.is_type_obj():
             ret_type = get_proper_type(rvalue_type.items[0].ret_type)
             if isinstance(ret_type, Instance):
                 metaclass = ret_type.type.metaclass_type
                 if metaclass and metaclass.type.get_method("__iter__"):
                     rvalue_type = metaclass
-
         if isinstance(rvalue_type, TypeType) and isinstance(rvalue_type.item, Instance):
             metaclass = rvalue_type.item.type.metaclass_type
             if metaclass and metaclass.type.get_method("__iter__"):
