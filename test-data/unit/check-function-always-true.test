@@ -15,6 +15,7 @@ if my_var:
     pass
 
 [case testMethodAlwaysTrue]
+# flags: --python-version 3.6
 class User:
     def __init__(self, username):
         self.username = username

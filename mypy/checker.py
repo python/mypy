@@ -5188,8 +5188,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
-        # if not state.strict_optional:
-        #     return  # if everything can be None, all bets are off
+        if not state.strict_optional:
+            return  # if everything can be None, all bets are off
 
         t = get_proper_type(t)
         if not self._is_truthy_type(t):
