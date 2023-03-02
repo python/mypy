@@ -6395,14 +6395,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # in case there is no explicit base class.
             return item_type
         # Try also structural typing.
-        iter_type = get_proper_type(find_member("__iter__", instance, instance, is_operator=True))
-        if iter_type and isinstance(iter_type, CallableType):
-            ret_type = get_proper_type(iter_type.ret_type)
-            if isinstance(ret_type, Instance):
-                iterator = map_instance_to_supertype(
-                    ret_type, self.lookup_typeinfo("typing.Iterator")
-                )
-                item_type = iterator.args[0]
+        ret_type, _ = self.expr_checker.check_method_call_by_name(
+            "__iter__", instance, [], [], instance
+        )
+        ret_type = get_proper_type(ret_type)
+        if isinstance(ret_type, Instance):
+            iterator = map_instance_to_supertype(ret_type, self.lookup_typeinfo("typing.Iterator"))
+            item_type = iterator.args[0]
         return item_type
 
     def function_type(self, func: FuncBase) -> FunctionLike:
