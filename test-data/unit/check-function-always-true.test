@@ -11,7 +11,7 @@ def f(x: int) -> str: pass
 
 my_var = f
 
-if my_var: # E: Variable Function "my_var" that has signature "Callable[[int], str]" could always be true in boolean context
+if my_var: # E: Variable function "my_var" that has signature "Callable[[int], str]" could always be true in boolean context
     pass
 
 [case testMethodAlwaysTrue]

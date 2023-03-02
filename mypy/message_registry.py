@@ -155,13 +155,13 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     "Function {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 FUNCTION_ALWAYS_TRUE_MODULE: Final = ErrorMessage(
-    "Module Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
+    "Module function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 FUNCTION_ALWAYS_TRUE_METHOD: Final = ErrorMessage(
     "Method {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 FUNCTION_ALWAYS_TRUE_VAR: Final = ErrorMessage(
-    "Variable Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
+    "Variable function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 FUNCTION_ALWAYS_TRUE_DIRREF: Final = ErrorMessage(
     "Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION

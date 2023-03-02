@@ -5216,7 +5216,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif isinstance(expr, RefExpr):
                 if t.get_name() != None:
                     self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(f'"{t.get_name()}"',format_type(t)), expr)
-                else:
+                elif isinstance(expr, NameExpr):
                     self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(f'"{expr.name}"', format_type(t)), expr)
             else :
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
