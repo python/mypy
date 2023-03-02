@@ -424,7 +424,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     @property
     def type_context(self) -> list[Type | None]:
         return self.expr_checker.type_context
-
+    
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
@@ -5194,7 +5194,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         t = get_proper_type(t)
         if not self._is_truthy_type(t):
             return
-
+        
         def format_expr_type() -> str:
             typ = format_type(t)
             if isinstance(expr, MemberExpr):
@@ -5209,20 +5209,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f"Call returns {typ}"
             else:
                 return f"Expression has type {typ}"
-
         if isinstance(t, FunctionLike):
             #Todo --this if checks if the function is a module with type Callable[...] and then assigns self.fail to the function name
             if 0:
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(t.get_name(),format_type(t)), expr)
-            #Todo --this elif checks if the function is a method with type Callable[...] and then assigns self.fail to the function name
             elif isinstance(expr, MemberExpr):
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(f'"{expr.name}"',format_type(t)), expr)
-            #Todo --this elif checks if the function is a Direct Reference with type Callable[...] and then assigns self.fail to the function name
-            elif t.get_name() is not None:
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(t.get_name(),format_type(t)), expr)
-            # Todo --this elif checks if the function is a variable with type Callable[...] and then assigns self.fail to the function name
             elif isinstance(expr, NameExpr):
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_VAR.format(f'"{expr.name}"', format_type(t)), expr)
+            elif isinstance(expr, RefExpr):
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(f'"{expr.name}"',format_type(t)), expr)
             else :
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
         elif isinstance(t, UnionType):
