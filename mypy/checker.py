@@ -5188,8 +5188,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
-        if not state.strict_optional:
-            return  # if everything can be None, all bets are off
+        #if not state.strict_optional:
+            #return  # if everything can be None, all bets are off
 
         t = get_proper_type(t)
         if not self._is_truthy_type(t):
@@ -5210,6 +5210,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 return f"Expression has type {typ}"
         if isinstance(t, FunctionLike):
+            print(1)
             #Todo --this if checks if the function is a module with type Callable[...] and then assigns self.fail to the function name
             if 0:
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(t.get_name(),format_type(t)), expr)
@@ -5223,7 +5224,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif 0:
                 self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(t.get_name(),format_type(t)), expr)
             else :
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
+                self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(f'"{expr.name}"', format_type(t)), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":
@@ -5235,7 +5236,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr,
             )
         else:
-            self.fail(message_registry.TYPE_ALWAYS_TRUE_CALLABLE.format("\""+expr.callee.name+"\"", format_expr_type()), expr)
+            self.fail(message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()), expr)
     def find_type_equals_check(
         self, node: ComparisonExpr, expr_indices: list[int]
     ) -> tuple[TypeMap, TypeMap]:

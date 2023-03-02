@@ -152,7 +152,7 @@ TYPE_ALWAYS_TRUE_UNIONTYPE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
-    "Function {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
+    "Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 FUNCTION_ALWAYS_TRUE_MODULE: Final = ErrorMessage(
     "Module Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
@@ -165,9 +165,6 @@ FUNCTION_ALWAYS_TRUE_VAR: Final = ErrorMessage(
 )
 FUNCTION_ALWAYS_TRUE_DIRREF: Final = ErrorMessage(
     "Function {} that has signature {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
-)
-TYPE_ALWAYS_TRUE_CALLABLE: Final = ErrorMessage(
-    "Function {} could always be true in boolean context", code=codes.TRUTHY_FUNCTION
 )
 ITERABLE_ALWAYS_TRUE: Final = ErrorMessage(
     "{} which can always be true in boolean context. Consider using {} instead.",
