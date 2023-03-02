@@ -11,7 +11,6 @@ from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
 from mypy.options import TYPE_VAR_TUPLE, UNPACK
-from mypy.semanal_main import core_modules
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
@@ -188,12 +187,10 @@ class TypeCheckSuite(DataSuite):
             if incremental_step:
                 name += str(incremental_step + 1)
             expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
-            actual = res.manager.processed_targets
-            # Skip the initial builtin cycle.
             actual = [
-                t
-                for t in actual
-                if not any(t.startswith(mod) for mod in core_modules + ["mypy_extensions"])
+                target
+                for module, target in res.manager.processed_targets
+                if module in testcase.test_modules
             ]
             if expected is not None:
                 assert_target_equivalence(name, expected, actual)
