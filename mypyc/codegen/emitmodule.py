@@ -369,7 +369,7 @@ def write_cache(
             "src_hashes": hashes[group_map[id]],
         }
 
-        result.manager.metastore.write(newpath, json.dumps(ir_data))
+        result.manager.metastore.write(newpath, json.dumps(ir_data, separators=(",", ":")))
 
     result.manager.metastore.commit()
 

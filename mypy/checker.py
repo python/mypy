@@ -4058,7 +4058,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
         lvalue.method_type = method_type
-        self.expr_checker.check_method_call(
+        res_type, _ = self.expr_checker.check_method_call(
             "__setitem__",
             basetype,
             method_type,
@@ -4066,6 +4066,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             [nodes.ARG_POS, nodes.ARG_POS],
             context,
         )
+        res_type = get_proper_type(res_type)
+        if isinstance(res_type, UninhabitedType) and not res_type.ambiguous:
+            self.binder.unreachable()
 
     def try_infer_partial_type_from_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression
@@ -6403,14 +6406,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # in case there is no explicit base class.
             return item_type
         # Try also structural typing.
-        iter_type = get_proper_type(find_member("__iter__", instance, instance, is_operator=True))
-        if iter_type and isinstance(iter_type, CallableType):
-            ret_type = get_proper_type(iter_type.ret_type)
-            if isinstance(ret_type, Instance):
-                iterator = map_instance_to_supertype(
-                    ret_type, self.lookup_typeinfo("typing.Iterator")
-                )
-                item_type = iterator.args[0]
+        ret_type, _ = self.expr_checker.check_method_call_by_name(
+            "__iter__", instance, [], [], instance
+        )
+        ret_type = get_proper_type(ret_type)
+        if isinstance(ret_type, Instance):
+            iterator = map_instance_to_supertype(ret_type, self.lookup_typeinfo("typing.Iterator"))
+            item_type = iterator.args[0]
         return item_type
 
     def function_type(self, func: FuncBase) -> FunctionLike:

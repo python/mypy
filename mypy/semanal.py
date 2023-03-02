@@ -1369,8 +1369,11 @@ class SemanticAnalyzer(
                 # The first argument of a non-static, non-class method is like 'self'
                 # (though the name could be different), having the enclosing class's
                 # instance type.
-                if is_method and not defn.is_static and not defn.is_class and defn.arguments:
-                    defn.arguments[0].variable.is_self = True
+                if is_method and not defn.is_static and defn.arguments:
+                    if not defn.is_class:
+                        defn.arguments[0].variable.is_self = True
+                    else:
+                        defn.arguments[0].variable.is_cls = True
 
                 defn.body.accept(self)
             self.function_stack.pop()
@@ -5249,7 +5252,9 @@ class SemanticAnalyzer(
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope() or not self.function_stack:
             # We check both because is_function_scope() returns True inside comprehensions.
-            self.fail('"await" outside function', expr, serious=True, blocker=True)
+            # This is not a blocker, because some enviroments (like ipython)
+            # support top level awaits.
+            self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:
             self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
         expr.expr.accept(self)

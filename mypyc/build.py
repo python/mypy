@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools  # noqa: F401
+    import setuptools
 except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
@@ -63,13 +63,16 @@ def get_extension() -> type[Extension]:
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
+    extension_class: type[Extension]
 
     if not use_setuptools:
-        from distutils.core import Extension
-    else:
-        from setuptools import Extension
+        import distutils.core
 
-    return Extension
+        extension_class = distutils.core.Extension
+    else:
+        extension_class = setuptools.Extension
+
+    return extension_class
 
 
 def setup_mypycify_vars() -> None:

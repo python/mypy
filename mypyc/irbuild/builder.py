@@ -41,6 +41,7 @@ from mypy.nodes import (
     Statement,
     SymbolNode,
     TupleExpr,
+    TypeAlias,
     TypeInfo,
     UnaryExpr,
     Var,
@@ -567,7 +568,11 @@ class IRBuilder:
         else:
             assert False, "Unsupported final literal value"
 
-    def get_assignment_target(self, lvalue: Lvalue, line: int = -1) -> AssignmentTarget:
+    def get_assignment_target(
+        self, lvalue: Lvalue, line: int = -1, *, for_read: bool = False
+    ) -> AssignmentTarget:
+        if line == -1:
+            line = lvalue.line
         if isinstance(lvalue, NameExpr):
             # If we are visiting a decorator, then the SymbolNode we really want to be looking at
             # is the function that is decorated, not the entire Decorator node itself.
@@ -578,6 +583,8 @@ class IRBuilder:
                 # New semantic analyzer doesn't create ad-hoc Vars for special forms.
                 assert lvalue.is_special_form
                 symbol = Var(lvalue.name)
+            if not for_read and isinstance(symbol, Var) and symbol.is_cls:
+                self.error("Cannot assign to the first argument of classmethod", line)
             if lvalue.kind == LDEF:
                 if symbol not in self.symtables[-1]:
                     # If the function is a generator function, then first define a new variable
@@ -1018,7 +1025,8 @@ class IRBuilder:
 
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
-            call_c_ops_candidates = function_ops.get(callee.fullname, [])
+            fullname = get_call_target_fullname(callee)
+            call_c_ops_candidates = function_ops.get(fullname, [])
             target = self.builder.matching_call_c(
                 call_c_ops_candidates, arg_values, expr.line, self.node_type(expr)
             )
@@ -1349,3 +1357,12 @@ def remangle_redefinition_name(name: str) -> str:
     lookups.
     """
     return name.replace("'", "__redef__")
+
+
+def get_call_target_fullname(ref: RefExpr) -> str:
+    if isinstance(ref.node, TypeAlias):
+        # Resolve simple type aliases. In calls they evaluate to the type they point to.
+        target = get_proper_type(ref.node.target)
+        if isinstance(target, Instance):
+            return target.type.fullname
+    return ref.fullname

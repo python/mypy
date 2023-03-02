@@ -945,11 +945,15 @@ async def bar(x: Union[A, B]) -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testInvalidComprehensionNoCrash]
+# flags: --show-error-codes
 async def foo(x: int) -> int: ...
 
-crasher = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside function
+# These are allowed in some cases:
+top_level = await foo(1)  # E: "await" outside function  [top-level-await]
+crasher = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside function  [top-level-await]
 
 def bad() -> None:
+    # These are always critical / syntax issues:
     y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")
 async def good() -> None:
     y = [await foo(x) for x in [1, 2, 3]]  # OK
