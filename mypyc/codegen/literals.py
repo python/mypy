@@ -55,13 +55,13 @@ class Literals:
             tuple_literals = self.tuple_literals
             if value not in tuple_literals:
                 for item in value:
-                    self.record_literal(cast(Any, item))
+                    self.record_literal(cast(LiteralValue, item))
                 tuple_literals[value] = len(tuple_literals)
         elif isinstance(value, frozenset):
             frozenset_literals = self.frozenset_literals
             if value not in frozenset_literals:
                 for item in value:
-                    self.record_literal(cast(Any, item))
+                    self.record_literal(cast(LiteralValue, item))
                 frozenset_literals[value] = len(frozenset_literals)
         else:
             assert False, "invalid literal: %r" % value
