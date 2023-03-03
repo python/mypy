@@ -37,3 +37,12 @@ def callable():
 f = callable()
 if f: # E: Function "f" that has signature "Callable[[int], str]" could always be true in boolean context
     pass
+
+[case testModuleAlwaysTrue]
+# flags: --python-version 3.6
+import math 
+
+if math.sqrt: # E: Module function "sqrt" that has signature "Callable[[Any], float]" could always be true in boolean context
+    pass
+[builtins fixtures/tuple.pyi]
+

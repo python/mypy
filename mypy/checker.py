@@ -50,6 +50,7 @@ from mypy.messages import (
     MessageBuilder,
     append_invariance_notes,
     format_type,
+    find_defining_module,
     format_type_bare,
     format_type_distinctly,
     make_inferred_type_note,
@@ -5208,11 +5209,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 return f"Expression has type {typ}"
         if isinstance(t, FunctionLike):
-            #Todo --this if checks if the function is a module with type Callable[...] and then assigns self.fail to the function name
-            if 0:
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(t.get_name(),format_type(t)), expr)
-            elif isinstance(expr, MemberExpr):
-                self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(f'"{expr.name}"',format_type(t)), expr)
+            if isinstance(expr, MemberExpr):
+                if isinstance(expr, RefExpr) and expr.fullname:
+                    self.fail(message_registry.FUNCTION_ALWAYS_TRUE_MODULE.format(f'"{t.get_name()}"',format_type(t)), expr)
+                else:
+                    self.fail(message_registry.FUNCTION_ALWAYS_TRUE_METHOD.format(f'"{expr.name}"',format_type(t)), expr)
             elif isinstance(expr, RefExpr):
                 if t.get_name() != None:
                     self.fail(message_registry.FUNCTION_ALWAYS_TRUE_DIRREF.format(f'"{t.get_name()}"',format_type(t)), expr)

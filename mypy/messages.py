@@ -2530,7 +2530,7 @@ def format_type_bare(typ: Type, verbosity: int = 0, module_names: bool = False) 
     `fullnames` specifies a set of names that should be printed in full
 
     This function will return an unquoted string.  If a caller doesn't need to
-    perform post-processing on the string output, format_type should be used
+    perform poformat_typest-processing on the string output, format_type should be used
     instead.  (The caller may want to use quote_type_string after
     processing has happened, to maintain consistent quoting in messages.)
     """
