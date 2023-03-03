@@ -92,7 +92,7 @@ import typing
 import _m
 A2 = _m.A
 x = 1 # type: A2
-[file _m.py]
+[fixture _m.py]
 import typing
 class A: pass
 [out]
@@ -255,7 +255,7 @@ MypyFile:1(
 import typing
 from _m import U
 def f(x: U) -> None: pass
-[file _m.py]
+[fixture _m.py]
 from typing import Union
 class A: pass
 U = Union[int, A]
@@ -275,7 +275,7 @@ MypyFile:1(
 import typing
 import _m
 def f(x: _m.U) -> None: pass
-[file _m.py]
+[fixture _m.py]
 from typing import Union
 class A: pass
 U = Union[int, A]
@@ -295,7 +295,7 @@ MypyFile:1(
 import typing
 from _m import A
 def f(x: A) -> None: pass
-[file _m.py]
+[fixture _m.py]
 import typing
 A = int
 [out]
@@ -314,7 +314,7 @@ MypyFile:1(
 import typing
 import _m
 def f(x: _m.A) -> None: pass
-[file _m.py]
+[fixture _m.py]
 import typing
 A = int
 [out]
@@ -385,7 +385,7 @@ from typing import Union
 from _m import U
 U2 = U
 x = 1 # type: U2
-[file _m.py]
+[fixture _m.py]
 from typing import Union
 U = Union[int, str]
 [out]
