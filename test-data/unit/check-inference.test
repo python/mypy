@@ -380,6 +380,8 @@ class Nums(Iterable[int]):
     def __iter__(self): pass
     def __next__(self): pass
 a, b = Nums()
+reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(b)  # N: Revealed type is "builtins.int"
 if int():
     a = b = 1
 if int():
@@ -387,6 +389,37 @@ if int():
 if int():
     b = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/for.pyi]
+
+[case testInferringTypesFromIterableStructuralSubtyping1]
+from typing import Iterator
+class Nums:
+    def __iter__(self) -> Iterator[int]: pass
+a, b = Nums()
+reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(b)  # N: Revealed type is "builtins.int"
+if int():
+    a = b = 1
+if int():
+    a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    b = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/for.pyi]
+
+[case testInferringTypesFromIterableStructuralSubtyping2]
+from typing import Self
+class Nums:
+    def __iter__(self) -> Self: pass
+    def __next__(self) -> int: pass
+a, b = Nums()
+reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(b)  # N: Revealed type is "builtins.int"
+if int():
+    a = b = 1
+if int():
+    a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    b = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 
 -- Type variable inference for generic functions
