@@ -1,3 +1,4 @@
 [codespell]
 skip = .git,*.pdf,*.svg,*.test
-# ignore-words-list = 
+# fo,ot -- variables used
+ignore-words-list = fo,ot
