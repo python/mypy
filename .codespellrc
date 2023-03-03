@@ -3,6 +3,7 @@ skip = .git,*.pdf,*.svg,*.test
 # fo,ot,statics,ans,alo,haa -- variables used
 # hax -- HAX, initials,
 # SEH,NAMS,WONT -- abbreviations but codespell is case incensitive
-# spawnve -- function name
+# spawnve,asend -- function names
 # zar -- yet another short name
-ignore-words-list = fo,ot,hax,seh,nams,wont,zar,statics,ans,alo,haa,spawnve
+# whet -- legit word, but rarely used thus by default picked up
+ignore-words-list = fo,ot,hax,seh,nams,wont,zar,statics,ans,alo,haa,spawnve,asend,whet
