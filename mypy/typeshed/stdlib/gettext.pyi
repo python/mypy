@@ -57,8 +57,8 @@ class GNUTranslations(NullTranslations):
     CONTEXT: str
     VERSIONS: Sequence[int]
 
-@overload  # ignores incompatible overloads
-def find(  # type: ignore[misc]
+@overload
+def find(
     domain: str, localedir: StrPath | None = None, languages: Iterable[str] | None = None, all: Literal[False] = False
 ) -> str | None: ...
 @overload

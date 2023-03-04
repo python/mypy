@@ -64,9 +64,14 @@ class _GeneratorContextManager(AbstractContextManager[_T_co], ContextDecorator, 
     func: Callable[..., Generator[_T_co, Any, Any]]
     args: tuple[Any, ...]
     kwds: dict[str, Any]
-    def __exit__(
-        self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
-    ) -> bool | None: ...
+    if sys.version_info >= (3, 9):
+        def __exit__(
+            self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+        ) -> bool | None: ...
+    else:
+        def __exit__(
+            self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+        ) -> bool | None: ...
 
 def contextmanager(func: Callable[_P, Iterator[_T_co]]) -> Callable[_P, _GeneratorContextManager[_T_co]]: ...
 

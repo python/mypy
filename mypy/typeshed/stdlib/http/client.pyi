@@ -174,7 +174,7 @@ class HTTPConnection:
 
 class HTTPSConnection(HTTPConnection):
     # Can be `None` if `.connect()` was not called:
-    sock: ssl.SSLSocket | Any  # type: ignore[override]
+    sock: ssl.SSLSocket | Any
     def __init__(
         self,
         host: str,
