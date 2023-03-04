@@ -664,7 +664,7 @@ class socket(_socket.socket):
     # Note that the makefile's documented windows-specific behavior is not represented
     # mode strings with duplicates are intentionally excluded
     @overload
-    def makefile(  # type: ignore[misc]
+    def makefile(
         self,
         mode: Literal["b", "rb", "br", "wb", "bw", "rwb", "rbw", "wrb", "wbr", "brw", "bwr"],
         buffering: Literal[0],
@@ -725,9 +725,9 @@ class socket(_socket.socket):
     ) -> TextIOWrapper: ...
     def sendfile(self, file: _SendableFile, offset: int = 0, count: int | None = None) -> int: ...
     @property
-    def family(self) -> AddressFamily: ...  # type: ignore[override]
+    def family(self) -> AddressFamily: ...
     @property
-    def type(self) -> SocketKind: ...  # type: ignore[override]
+    def type(self) -> SocketKind: ...
     def get_inheritable(self) -> bool: ...
     def set_inheritable(self, inheritable: bool) -> None: ...
 

@@ -1,3 +1,4 @@
+from _typeshed import Incomplete
 from abc import abstractmethod
 from collections.abc import Callable, Iterable
 from distutils.dist import Distribution
@@ -60,3 +61,5 @@ class Command:
         skip_msg: str | None = None,
         level: Any = 1,
     ) -> None: ...  # level is not used
+    def ensure_finalized(self) -> None: ...
+    def dump_options(self, header: Incomplete | None = None, indent: str = "") -> None: ...
