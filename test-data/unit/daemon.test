@@ -615,3 +615,20 @@ b: str
 from demo.test import a
 [file demo/test.py]
 a: int
+
+[case testUnusedTypeIgnorePreservedOnRerun]
+-- Regression test for https://github.com/python/mypy/issues/9655
+$ dmypy start -- --warn-unused-ignores --no-error-summary --hide-error-codes
+Daemon started
+$ dmypy check -- bar.py
+bar.py:2: error: Unused "type: ignore" comment
+== Return code: 1
+$ dmypy check -- bar.py
+bar.py:2: error: Unused "type: ignore" comment
+== Return code: 1
+
+[file foo/__init__.py]
+[file foo/empty.py]
+[file bar.py]
+from foo.empty import *
+a = 1  # type: ignore
