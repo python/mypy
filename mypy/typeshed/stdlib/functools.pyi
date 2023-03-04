@@ -1,9 +1,9 @@
 import sys
 import types
-from _typeshed import SupportsAllComparisons, SupportsItems
+from _typeshed import IdentityFunction, SupportsAllComparisons, SupportsItems
 from collections.abc import Callable, Hashable, Iterable, Sequence, Sized
 from typing import Any, Generic, NamedTuple, TypeVar, overload
-from typing_extensions import Literal, ParamSpec, Self, TypeAlias, TypedDict, final
+from typing_extensions import Literal, Self, TypeAlias, TypedDict, final
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -28,12 +28,10 @@ if sys.version_info >= (3, 8):
 if sys.version_info >= (3, 9):
     __all__ += ["cache"]
 
+_AnyCallable: TypeAlias = Callable[..., object]
+
 _T = TypeVar("_T")
 _S = TypeVar("_S")
-_PWrapped = ParamSpec("_PWrapped")
-_RWrapped = TypeVar("_RWrapped")
-_PWrapper = ParamSpec("_PWrapper")
-_RWrapper = TypeVar("_RWrapper")
 
 @overload
 def reduce(function: Callable[[_T, _S], _T], sequence: Iterable[_S], initial: _T) -> _T: ...
@@ -87,41 +85,31 @@ else:
     ]
 WRAPPER_UPDATES: tuple[Literal["__dict__"]]
 
-class _Wrapped(Generic[_PWrapped, _RWrapped, _PWrapper, _RWrapper]):
-    __wrapped__: Callable[_PWrapped, _RWrapped]
-    def __call__(self, *args: _PWrapper.args, **kwargs: _PWrapper.kwargs) -> _RWrapper: ...
-    # as with ``Callable``, we'll assume that these attributes exist
-    __name__: str
-    __qualname__: str
-
-class _Wrapper(Generic[_PWrapped, _RWrapped]):
-    def __call__(self, f: Callable[_PWrapper, _RWrapper]) -> _Wrapped[_PWrapped, _RWrapped, _PWrapper, _RWrapper]: ...
-
 if sys.version_info >= (3, 12):
     def update_wrapper(
-        wrapper: Callable[_PWrapper, _RWrapper],
-        wrapped: Callable[_PWrapped, _RWrapped],
+        wrapper: _T,
+        wrapped: _AnyCallable,
         assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__", "__type_params__"),
         updated: Sequence[str] = ("__dict__",),
-    ) -> _Wrapped[_PWrapped, _RWrapped, _PWrapper, _RWrapper]: ...
+    ) -> _T: ...
     def wraps(
-        wrapped: Callable[_PWrapped, _RWrapped],
+        wrapped: _AnyCallable,
         assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__", "__type_params__"),
         updated: Sequence[str] = ("__dict__",),
-    ) -> _Wrapper[_PWrapped, _RWrapped]: ...
+    ) -> IdentityFunction: ...
 
 else:
     def update_wrapper(
-        wrapper: Callable[_PWrapper, _RWrapper],
-        wrapped: Callable[_PWrapped, _RWrapped],
+        wrapper: _T,
+        wrapped: _AnyCallable,
         assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
         updated: Sequence[str] = ("__dict__",),
-    ) -> _Wrapped[_PWrapped, _RWrapped, _PWrapper, _RWrapper]: ...
+    ) -> _T: ...
     def wraps(
-        wrapped: Callable[_PWrapped, _RWrapped],
+        wrapped: _AnyCallable,
         assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
         updated: Sequence[str] = ("__dict__",),
-    ) -> _Wrapper[_PWrapped, _RWrapped]: ...
+    ) -> IdentityFunction: ...
 
 def total_ordering(cls: type[_T]) -> type[_T]: ...
 def cmp_to_key(mycmp: Callable[[_T, _T], int]) -> Callable[[_T], SupportsAllComparisons]: ...
