@@ -227,12 +227,12 @@ L0:
 def f3():
     r0, r1, r2, r3 :: object
     r4 :: int
-    r5 :: object
+    r5 :: float
 L0:
     r0 = object 2
     r1 = object 5
     r2 = object 3
     r3 = PyNumber_Power(r0, r1, r2)
     r4 = unbox(int, r3)
-    r5 = box(int, r4)
+    r5 = CPyFloat_FromTagged(r4)
     return r5
