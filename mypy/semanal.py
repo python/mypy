@@ -5810,7 +5810,7 @@ class SemanticAnalyzer(
         # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
         # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
         # See also https://github.com/mypyc/mypyc/issues/892
-        f = cast(Any, lambda x: x)
+        f: Callable[[object], Any] = lambda x: x
         if isinstance(f(symbol_node), (Decorator, FuncBase, Var)):
             # For imports in class scope, we construct a new node to represent the symbol and
             # set its `info` attribute to `self.type`.

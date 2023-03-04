@@ -351,8 +351,7 @@ def parse_type_comment(
     else:
         extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment)
         if extra_ignore:
-            # Typeshed has a non-optional return type for group!
-            tag: str | None = cast(Any, extra_ignore).group(1)
+            tag: str | None = extra_ignore.group(1)
             ignored: list[str] | None = parse_type_ignore_tag(tag)
             if ignored is None:
                 if errors is not None:
