@@ -431,24 +431,36 @@ FLOAT_N: Final = 1.5
 def integral() -> None:
     pos = 1+2j
     pos_2 = 2j+N
+    neg = 1-2j
+    neg_2 = 2j-N
 def floating() -> None:
     pos = 1.5+2j
     pos_2 = 2j+FLOAT_N
+    neg = 1.5-2j
+    neg_2 = 2j-FLOAT_N
 [out]
 def integral():
-    r0, pos, r1, pos_2 :: object
+    r0, pos, r1, pos_2, r2, neg, r3, neg_2 :: object
 L0:
     r0 = (1+2j)
     pos = r0
     r1 = (1+2j)
     pos_2 = r1
+    r2 = (1-2j)
+    neg = r2
+    r3 = (-1+2j)
+    neg_2 = r3
     return 1
 def floating():
-    r0, pos, r1, pos_2 :: object
+    r0, pos, r1, pos_2, r2, neg, r3, neg_2 :: object
 L0:
     r0 = (1.5+2j)
     pos = r0
     r1 = (1.5+2j)
     pos_2 = r1
+    r2 = (1.5-2j)
+    neg = r2
+    r3 = (-1.5+2j)
+    neg_2 = r3
     return 1
 

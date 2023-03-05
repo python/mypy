@@ -130,6 +130,7 @@ class complex:
     def __add__(self, n: complex) -> complex: pass
     def __radd__(self, n: float) -> complex: pass
     def __sub__(self, n: complex) -> complex: pass
+    def __rsub__(self, n: float) -> complex: pass
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
     def __neg__(self) -> complex: pass
