@@ -68,20 +68,17 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
     elif isinstance(expr, OpExpr):
         left = constant_fold_expr(expr.left, cur_mod_id)
         right = constant_fold_expr(expr.right, cur_mod_id)
-        value = constant_fold_binary_op(expr.op, left, right)
-        if value is not None:
-            return value
+        if left is not None and right is not None:
+            return constant_fold_binary_op(expr.op, left, right)
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(expr.expr, cur_mod_id)
-        if isinstance(value, int):
-            return constant_fold_unary_int_op(expr.op, value)
-        if isinstance(value, float):
-            return constant_fold_unary_float_op(expr.op, value)
+        if value is not None:
+            return constant_fold_unary_op(expr.op, value)
     return None
 
 
 def constant_fold_binary_op(
-    op: str, left: ConstantValue | None, right: ConstantValue | None
+    op: str, left: ConstantValue, right: ConstantValue
 ) -> ConstantValue | None:
     if isinstance(left, int) and isinstance(right, int):
         return constant_fold_binary_int_op(op, left, right)
@@ -178,19 +175,11 @@ def constant_fold_binary_float_op(op: str, left: int | float, right: int | float
     return None
 
 
-def constant_fold_unary_int_op(op: str, value: int) -> int | None:
-    if op == "-":
+def constant_fold_unary_op(op: str, value: ConstantValue) -> int | float | None:
+    if op == "-" and isinstance(value, (int, float)):
         return -value
-    elif op == "~":
+    elif op == "~" and isinstance(value, int):
         return ~value
-    elif op == "+":
-        return value
-    return None
-
-
-def constant_fold_unary_float_op(op: str, value: float) -> float | None:
-    if op == "-":
-        return -value
-    elif op == "+":
+    elif op == "+" and isinstance(value, (int, float)):
         return value
     return None
