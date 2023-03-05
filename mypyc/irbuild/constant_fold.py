@@ -15,6 +15,7 @@ from typing_extensions import Final
 
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_int_op
 from mypy.nodes import (
+    BytesExpr,
     ComplexExpr,
     Expression,
     FloatExpr,
@@ -27,10 +28,11 @@ from mypy.nodes import (
     Var,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.util import bytes_from_str
 
 # All possible result types of constant folding
-ConstantValue = Union[int, float, complex, str]
-CONST_TYPES: Final = (int, float, complex, str)
+ConstantValue = Union[int, float, complex, str, bytes]
+CONST_TYPES: Final = (int, float, complex, str, bytes)
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
@@ -44,30 +46,52 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         return expr.value
     if isinstance(expr, StrExpr):
         return expr.value
+    if isinstance(expr, BytesExpr):
+        return bytes_from_str(expr.value)
     if isinstance(expr, ComplexExpr):
         return expr.value
     elif isinstance(expr, NameExpr):
         node = expr.node
         if isinstance(node, Var) and node.is_final:
-            value = node.final_value
-            if isinstance(value, (CONST_TYPES)):
-                return value
+            final_value = node.final_value
+            if isinstance(final_value, (CONST_TYPES)):
+                return final_value
     elif isinstance(expr, MemberExpr):
         final = builder.get_final_ref(expr)
         if final is not None:
             fn, final_var, native = final
             if final_var.is_final:
-                value = final_var.final_value
-                if isinstance(value, (CONST_TYPES)):
-                    return value
+                final_value = final_var.final_value
+                if isinstance(final_value, (CONST_TYPES)):
+                    return final_value
     elif isinstance(expr, OpExpr):
         left = constant_fold_expr(builder, expr.left)
         right = constant_fold_expr(builder, expr.right)
-        value = constant_fold_binary_op(expr.op, left, right)
+        value = constant_fold_binary_op_extended(expr.op, left, right)
         if value is not None:
             return value
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(builder, expr.expr)
         if isinstance(value, int):
             return constant_fold_unary_int_op(expr.op, value)
+    return None
+
+
+def constant_fold_binary_op_extended(
+    op: str, left: ConstantValue | None, right: ConstantValue | None
+) -> ConstantValue | None:
+    """Like mypy's constant_fold_binary_op(), but includes bytes support.
+
+    mypy cannot use constant folded bytes easily so it's simpler to only support them in mypyc.
+    """
+    if not isinstance(left, bytes) and not isinstance(right, bytes):
+        return constant_fold_binary_op(op, left, right)
+
+    if op == "+" and isinstance(left, bytes) and isinstance(right, bytes):
+        return left + right
+    elif op == "*" and isinstance(left, bytes) and isinstance(right, int):
+        return left * right
+    elif op == "*" and isinstance(left, int) and isinstance(right, bytes):
+        return left * right
+
     return None

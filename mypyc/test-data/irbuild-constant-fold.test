@@ -258,6 +258,28 @@ L0:
     mul2 = r3
     return 1
 
+[case testBytesConstantFolding]
+from typing_extensions import Final
+
+N: Final = 2
+
+def f() -> None:
+    # Unfortunately, mypy doesn't store the bytes value of final refs.
+    x = b'foo' + b'bar'
+    mul = b"foobar" * 2
+    mul2 = N * b"foobar"
+[out]
+def f():
+    r0, x, r1, mul, r2, mul2 :: bytes
+L0:
+    r0 = b'foobar'
+    x = r0
+    r1 = b'foobarfoobar'
+    mul = r1
+    r2 = b'foobarfoobar'
+    mul2 = r2
+    return 1
+
 [case testComplexConstantFolding]
 from typing_extensions import Final
 
