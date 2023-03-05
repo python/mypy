@@ -115,7 +115,7 @@ class float:
     def __add__(self, n: float) -> float: pass
     def __radd__(self, n: int) -> float: pass
     def __sub__(self, n: float) -> float: pass
-    def __rsub__(self, n: int) -> int: pass
+    def __rsub__(self, n: int) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
     def __floordiv__(self, n: float) -> float: pass

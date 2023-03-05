@@ -333,21 +333,18 @@ def error_cases() -> None:
     power_overflow = 2.0**10000
 [out]
 def bin_ops():
-    r0, add, r1 :: float
-    r2, sub :: int
-    r3, mul, r4, div, r5, floor_div :: float
+    r0, add, r1, sub, r2, mul, r3, div, r4, floor_div :: float
 L0:
     r0 = 1.5
     add = r0
     r1 = 0.5
-    r2 = unbox(int, r1)
-    sub = r2
-    r3 = 2.5
-    mul = r3
-    r4 = 10.0
-    div = r4
-    r5 = 1.0
-    floor_div = r5
+    sub = r1
+    r2 = 2.5
+    mul = r2
+    r3 = 10.0
+    div = r3
+    r4 = 1.0
+    floor_div = r4
     return 1
 def error_cases():
     r0 :: float
