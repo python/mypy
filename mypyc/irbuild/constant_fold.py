@@ -13,7 +13,11 @@ from __future__ import annotations
 from typing import Union
 from typing_extensions import Final
 
-from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_int_op
+from mypy.constant_fold import (
+    constant_fold_binary_op,
+    constant_fold_unary_int_op,
+    constant_fold_unary_float_op,
+)
 from mypy.nodes import (
     BytesExpr,
     ComplexExpr,
@@ -74,6 +78,8 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if isinstance(value, int):
             return constant_fold_unary_int_op(expr.op, value)
+        if isinstance(value, float):
+            return constant_fold_unary_float_op(expr.op, value)
     return None
 
 

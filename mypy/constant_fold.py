@@ -75,6 +75,8 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if isinstance(value, int):
             return constant_fold_unary_int_op(expr.op, value)
+        if isinstance(value, float):
+            return constant_fold_unary_float_op(expr.op, value)
     return None
 
 
@@ -84,6 +86,13 @@ def constant_fold_binary_op(
     if isinstance(left, int) and isinstance(right, int):
         return constant_fold_binary_int_op(op, left, right)
 
+    if isinstance(left, float) and isinstance(right, float):
+        return constant_fold_binary_float_op(op, left, right)
+    if isinstance(left, float) and isinstance(right, int):
+        return constant_fold_binary_float_op(op, left, right)
+    if isinstance(left, int) and isinstance(right, float):
+        return constant_fold_binary_float_op(op, left, right)
+
     if op == "+" and isinstance(left, str) and isinstance(right, str):
         return left + right
     elif op == "*" and isinstance(left, str) and isinstance(right, int):
@@ -91,21 +100,24 @@ def constant_fold_binary_op(
     elif op == "*" and isinstance(left, int) and isinstance(right, str):
         return left * right
 
-    if op == "+" and isinstance(left, int) and isinstance(right, complex):
+    if op == "+" and isinstance(left, (int, float)) and isinstance(right, complex):
         return left + right
-    elif op == "+" and isinstance(left, complex) and isinstance(right, int):
+    elif op == "+" and isinstance(left, complex) and isinstance(right, (int, float)):
         return left + right
 
     return None
 
 
-def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | None:
+def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | float | None:
     if op == "+":
         return left + right
     if op == "-":
         return left - right
     elif op == "*":
         return left * right
+    elif op == "/":
+        if right != 0:
+            return left / right
     elif op == "//":
         if right != 0:
             return left // right
@@ -132,11 +144,49 @@ def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | None:
     return None
 
 
+def constant_fold_binary_float_op(op: str, left: int | float, right: int | float) -> float | None:
+    assert not (isinstance(left, int) and isinstance(right, int)), (op, left, right)
+    if op == "+":
+        return left + right
+    if op == "-":
+        return left - right
+    elif op == "*":
+        return left * right
+    elif op == "/":
+        if right != 0:
+            return left / right
+    elif op == "//":
+        if right != 0:
+            return left // right
+    elif op == "%":
+        if right != 0:
+            return left % right
+    elif op == "**":
+        if (left < 0 and right >= 1 or right == 0) or (left >= 0 and right >= 0):
+            try:
+                ret = left**right
+            except OverflowError:
+                return None
+            else:
+                assert isinstance(ret, float)
+                return ret
+
+    return None
+
+
 def constant_fold_unary_int_op(op: str, value: int) -> int | None:
     if op == "-":
         return -value
     elif op == "~":
         return ~value
+    elif op == "+":
+        return value
+    return None
+
+
+def constant_fold_unary_float_op(op: str, value: float) -> float | None:
+    if op == "-":
+        return -value
     elif op == "+":
         return value
     return None
