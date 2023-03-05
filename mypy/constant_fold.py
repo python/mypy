@@ -8,11 +8,21 @@ from __future__ import annotations
 from typing import Union
 from typing_extensions import Final
 
-from mypy.nodes import Expression, FloatExpr, IntExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var
+from mypy.nodes import (
+    ComplexExpr,
+    Expression,
+    FloatExpr,
+    IntExpr,
+    NameExpr,
+    OpExpr,
+    StrExpr,
+    UnaryExpr,
+    Var,
+)
 
 # All possible result types of constant folding
-ConstantValue = Union[int, bool, float, str]
-CONST_TYPES: Final = (int, bool, float, str)
+ConstantValue = Union[int, bool, float, complex, str]
+CONST_TYPES: Final = (int, bool, float, complex, str)
 
 
 def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | None:
@@ -38,6 +48,8 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
     if isinstance(expr, StrExpr):
         return expr.value
     if isinstance(expr, FloatExpr):
+        return expr.value
+    if isinstance(expr, ComplexExpr):
         return expr.value
     elif isinstance(expr, NameExpr):
         if expr.name == "True":
@@ -78,6 +90,11 @@ def constant_fold_binary_op(
         return left * right
     elif op == "*" and isinstance(left, int) and isinstance(right, str):
         return left * right
+
+    if op == "+" and isinstance(left, int) and isinstance(right, complex):
+        return left + right
+    elif op == "+" and isinstance(left, complex) and isinstance(right, int):
+        return left + right
 
     return None
 

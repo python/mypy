@@ -15,6 +15,7 @@ from typing_extensions import Final
 
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_int_op
 from mypy.nodes import (
+    ComplexExpr,
     Expression,
     FloatExpr,
     IntExpr,
@@ -28,8 +29,8 @@ from mypy.nodes import (
 from mypyc.irbuild.builder import IRBuilder
 
 # All possible result types of constant folding
-ConstantValue = Union[int, float, str]
-CONST_TYPES: Final = (int, float, str)
+ConstantValue = Union[int, float, complex, str]
+CONST_TYPES: Final = (int, float, complex, str)
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
@@ -42,6 +43,8 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
     if isinstance(expr, FloatExpr):
         return expr.value
     if isinstance(expr, StrExpr):
+        return expr.value
+    if isinstance(expr, ComplexExpr):
         return expr.value
     elif isinstance(expr, NameExpr):
         node = expr.node

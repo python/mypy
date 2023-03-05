@@ -562,10 +562,8 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
     Return None otherwise.
     """
     value = constant_fold_expr(builder, expr)
-    if isinstance(value, int):
-        return builder.load_int(value)
-    elif isinstance(value, str):
-        return builder.load_str(value)
+    if value is not None:
+        return builder.load_literal_value(value)
     return None
 
 

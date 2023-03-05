@@ -125,6 +125,7 @@ class float:
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
     def __add__(self, n: complex) -> complex: pass
+    def __radd__(self, n: int) -> complex: pass
     def __sub__(self, n: complex) -> complex: pass
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
