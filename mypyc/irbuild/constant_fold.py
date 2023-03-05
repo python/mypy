@@ -56,6 +56,10 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
             return constant_fold_binary_int_op(expr.op, left, right)
         elif isinstance(left, str) and isinstance(right, str):
             return constant_fold_binary_str_op(expr.op, left, right)
+        elif isinstance(left, str) and isinstance(right, int):
+            return constant_fold_binary_str_op(expr.op, left, right)
+        elif isinstance(left, int) and isinstance(right, str):
+            return constant_fold_binary_str_op(expr.op, left, right)
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(builder, expr.expr)
         if isinstance(value, int):

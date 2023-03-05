@@ -237,16 +237,24 @@ L0:
 from typing_extensions import Final
 
 S: Final = 'z'
+N: Final = 2
 
 def f() -> None:
     x = 'foo' + 'bar'
     y = 'x' + 'y' + S
+    mul = "foobar" * 2
+    mul2 = N * "foobar"
 [out]
 def f():
-    r0, x, r1, y :: str
+    r0, x, r1, y, r2, mul, r3, mul2 :: str
 L0:
     r0 = 'foobar'
     x = r0
     r1 = 'xyz'
     y = r1
+    r2 = 'foobarfoobar'
+    mul = r2
+    r3 = 'foobarfoobar'
+    mul2 = r3
     return 1
+
