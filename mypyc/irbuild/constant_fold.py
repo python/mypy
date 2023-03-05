@@ -13,17 +13,23 @@ from __future__ import annotations
 from typing import Union
 from typing_extensions import Final
 
-from mypy.constant_fold import (
-    constant_fold_binary_int_op,
-    constant_fold_binary_str_op,
-    constant_fold_unary_int_op,
+from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_int_op
+from mypy.nodes import (
+    Expression,
+    FloatExpr,
+    IntExpr,
+    MemberExpr,
+    NameExpr,
+    OpExpr,
+    StrExpr,
+    UnaryExpr,
+    Var,
 )
-from mypy.nodes import Expression, IntExpr, MemberExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var
 from mypyc.irbuild.builder import IRBuilder
 
 # All possible result types of constant folding
-ConstantValue = Union[int, str]
-CONST_TYPES: Final = (int, str)
+ConstantValue = Union[int, float, str]
+CONST_TYPES: Final = (int, float, str)
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
@@ -32,6 +38,8 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
     Return None otherwise.
     """
     if isinstance(expr, IntExpr):
+        return expr.value
+    if isinstance(expr, FloatExpr):
         return expr.value
     if isinstance(expr, StrExpr):
         return expr.value
@@ -52,14 +60,9 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
     elif isinstance(expr, OpExpr):
         left = constant_fold_expr(builder, expr.left)
         right = constant_fold_expr(builder, expr.right)
-        if isinstance(left, int) and isinstance(right, int):
-            return constant_fold_binary_int_op(expr.op, left, right)
-        elif isinstance(left, str) and isinstance(right, str):
-            return constant_fold_binary_str_op(expr.op, left, right)
-        elif isinstance(left, str) and isinstance(right, int):
-            return constant_fold_binary_str_op(expr.op, left, right)
-        elif isinstance(left, int) and isinstance(right, str):
-            return constant_fold_binary_str_op(expr.op, left, right)
+        value = constant_fold_binary_op(expr.op, left, right)
+        if value is not None:
+            return value
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(builder, expr.expr)
         if isinstance(value, int):

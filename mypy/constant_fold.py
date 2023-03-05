@@ -5,7 +5,7 @@ For example, 3 + 5 can be constant folded into 8.
 
 from __future__ import annotations
 
-from typing import Union, overload
+from typing import Union
 from typing_extensions import Final
 
 from mypy.nodes import Expression, FloatExpr, IntExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var
@@ -56,18 +56,29 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
     elif isinstance(expr, OpExpr):
         left = constant_fold_expr(expr.left, cur_mod_id)
         right = constant_fold_expr(expr.right, cur_mod_id)
-        if isinstance(left, int) and isinstance(right, int):
-            return constant_fold_binary_int_op(expr.op, left, right)
-        elif isinstance(left, str) and isinstance(right, str):
-            return constant_fold_binary_str_op(expr.op, left, right)
-        elif isinstance(left, str) and isinstance(right, int):
-            return constant_fold_binary_str_op(expr.op, left, right)
-        elif isinstance(left, int) and isinstance(right, str):
-            return constant_fold_binary_str_op(expr.op, left, right)
+        value = constant_fold_binary_op(expr.op, left, right)
+        if value is not None:
+            return value
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if isinstance(value, int):
             return constant_fold_unary_int_op(expr.op, value)
+    return None
+
+
+def constant_fold_binary_op(
+    op: str, left: ConstantValue | None, right: ConstantValue | None
+) -> ConstantValue | None:
+    if isinstance(left, int) and isinstance(right, int):
+        return constant_fold_binary_int_op(op, left, right)
+
+    if op == "+" and isinstance(left, str) and isinstance(right, str):
+        return left + right
+    elif op == "*" and isinstance(left, str) and isinstance(right, int):
+        return left * right
+    elif op == "*" and isinstance(left, int) and isinstance(right, str):
+        return left * right
+
     return None
 
 
@@ -111,31 +122,4 @@ def constant_fold_unary_int_op(op: str, value: int) -> int | None:
         return ~value
     elif op == "+":
         return value
-    return None
-
-
-@overload
-def constant_fold_binary_str_op(op: str, left: int, right: str) -> str | None:
-    ...
-
-
-@overload
-def constant_fold_binary_str_op(op: str, left: str, right: int) -> str | None:
-    ...
-
-
-@overload
-def constant_fold_binary_str_op(op: str, left: str, right: str) -> str | None:
-    ...
-
-
-def constant_fold_binary_str_op(op: str, left: str | int, right: str | int) -> str | None:
-    if op == "+":
-        if isinstance(left, str) and isinstance(right, str):
-            return left + right
-    elif op == "*":
-        if isinstance(left, int) and isinstance(right, str):
-            return left * right
-        if isinstance(left, str) and isinstance(right, int):
-            return left * right
     return None
