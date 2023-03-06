@@ -7,7 +7,7 @@ requires = [
     "wheel >= 0.30.0",
     # the following is from mypy-requirements.txt
     "typing_extensions>=3.10",
-    "mypy_extensions>=0.4.3",
+    "mypy_extensions>=1.0.0",
     "typed_ast>=1.4.0,<2; python_version<'3.8'",
     "tomli>=1.1.0; python_version<'3.11'",
     # the following is from build-requirements.txt

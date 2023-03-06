@@ -25,3 +25,5 @@ class set(Iterable[T], Generic[T]):
     def add(self, x: T) -> None: pass
     def discard(self, x: T) -> None: pass
     def update(self, x: Set[T]) -> None: pass
+
+class dict: pass

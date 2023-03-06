@@ -1,11 +1,11 @@
 import queue
 import sys
 import threading
-from _typeshed import Self, SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
+from _typeshed import SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
 from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping, MutableSequence, Sequence
 from types import TracebackType
 from typing import Any, AnyStr, ClassVar, Generic, TypeVar, overload
-from typing_extensions import SupportsIndex, TypeAlias
+from typing_extensions import Self, SupportsIndex, TypeAlias
 
 from .connection import Connection
 from .context import BaseContext
@@ -47,11 +47,11 @@ class BaseProxy:
         self,
         token: Any,
         serializer: str,
-        manager: Any = ...,
-        authkey: AnyStr | None = ...,
-        exposed: Any = ...,
-        incref: bool = ...,
-        manager_owned: bool = ...,
+        manager: Any = None,
+        authkey: AnyStr | None = None,
+        exposed: Any = None,
+        incref: bool = True,
+        manager_owned: bool = False,
     ) -> None: ...
     def __deepcopy__(self, memo: Any | None) -> Any: ...
     def _callmethod(self, methodname: str, args: tuple[Any, ...] = ..., kwds: dict[Any, Any] = ...) -> None: ...
@@ -111,13 +111,13 @@ class BaseListProxy(BaseProxy, MutableSequence[_T]):
     # Use BaseListProxy[SupportsRichComparisonT] for the first overload rather than [SupportsRichComparison]
     # to work around invariance
     @overload
-    def sort(self: BaseListProxy[SupportsRichComparisonT], *, key: None = ..., reverse: bool = ...) -> None: ...
+    def sort(self: BaseListProxy[SupportsRichComparisonT], *, key: None = None, reverse: bool = ...) -> None: ...
     @overload
     def sort(self, *, key: Callable[[_T], SupportsRichComparison], reverse: bool = ...) -> None: ...
 
 class ListProxy(BaseListProxy[_T]):
-    def __iadd__(self: Self, __x: Iterable[_T]) -> Self: ...  # type: ignore[override]
-    def __imul__(self: Self, __n: SupportsIndex) -> Self: ...  # type: ignore[override]
+    def __iadd__(self, __value: Iterable[_T]) -> Self: ...  # type: ignore[override]
+    def __imul__(self, __value: SupportsIndex) -> Self: ...  # type: ignore[override]
 
 # Returned by BaseManager.get_server()
 class Server:
@@ -132,36 +132,40 @@ class BaseManager:
     if sys.version_info >= (3, 11):
         def __init__(
             self,
-            address: Any | None = ...,
-            authkey: bytes | None = ...,
-            serializer: str = ...,
-            ctx: BaseContext | None = ...,
+            address: Any | None = None,
+            authkey: bytes | None = None,
+            serializer: str = "pickle",
+            ctx: BaseContext | None = None,
             *,
-            shutdown_timeout: float = ...,
+            shutdown_timeout: float = 1.0,
         ) -> None: ...
     else:
         def __init__(
-            self, address: Any | None = ..., authkey: bytes | None = ..., serializer: str = ..., ctx: BaseContext | None = ...
+            self,
+            address: Any | None = None,
+            authkey: bytes | None = None,
+            serializer: str = "pickle",
+            ctx: BaseContext | None = None,
         ) -> None: ...
 
     def get_server(self) -> Server: ...
     def connect(self) -> None: ...
-    def start(self, initializer: Callable[..., object] | None = ..., initargs: Iterable[Any] = ...) -> None: ...
+    def start(self, initializer: Callable[..., object] | None = None, initargs: Iterable[Any] = ...) -> None: ...
     def shutdown(self) -> None: ...  # only available after start() was called
-    def join(self, timeout: float | None = ...) -> None: ...  # undocumented
+    def join(self, timeout: float | None = None) -> None: ...  # undocumented
     @property
     def address(self) -> Any: ...
     @classmethod
     def register(
         cls,
         typeid: str,
-        callable: Callable[..., object] | None = ...,
-        proxytype: Any = ...,
-        exposed: Sequence[str] | None = ...,
-        method_to_typeid: Mapping[str, str] | None = ...,
-        create_method: bool = ...,
+        callable: Callable[..., object] | None = None,
+        proxytype: Any = None,
+        exposed: Sequence[str] | None = None,
+        method_to_typeid: Mapping[str, str] | None = None,
+        create_method: bool = True,
     ) -> None: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...

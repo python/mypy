@@ -48,6 +48,7 @@ from mypy.nodes import (
 )
 from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
 from mypyc.common import MAX_SHORT_INT
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
     Assign,
@@ -174,7 +175,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             )
             return obj
         else:
-            return builder.read(builder.get_assignment_target(expr), expr.line)
+            return builder.read(builder.get_assignment_target(expr, for_read=True), expr.line)
 
     return builder.load_global(expr)
 
@@ -336,30 +337,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         # Call a method via the *class*
         assert isinstance(callee.expr.node, TypeInfo)
         ir = builder.mapper.type_to_ir[callee.expr.node]
-        decl = ir.method_decl(callee.name)
-        args = []
-        arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
-        # Add the class argument for class methods in extension classes
-        if decl.kind == FUNC_CLASSMETHOD and ir.is_ext_class:
-            args.append(builder.load_native_type_object(callee.expr.node.fullname))
-            arg_kinds.insert(0, ARG_POS)
-            arg_names.insert(0, None)
-        args += [builder.accept(arg) for arg in expr.args]
-
-        if ir.is_ext_class:
-            return builder.builder.call(decl, args, arg_kinds, arg_names, expr.line)
-        else:
-            obj = builder.accept(callee.expr)
-            return builder.gen_method_call(
-                obj,
-                callee.name,
-                args,
-                builder.node_type(expr),
-                expr.line,
-                expr.arg_kinds,
-                expr.arg_names,
-            )
-
+        return call_classmethod(builder, ir, expr, callee)
     elif builder.is_module_member_expr(callee):
         # Fall back to a PyCall for non-native module calls
         function = builder.accept(callee)
@@ -368,6 +346,17 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
             function, args, expr.line, arg_kinds=expr.arg_kinds, arg_names=expr.arg_names
         )
     else:
+        if isinstance(callee.expr, RefExpr):
+            node = callee.expr.node
+            if isinstance(node, Var) and node.is_cls:
+                typ = get_proper_type(node.type)
+                if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+                    class_ir = builder.mapper.type_to_ir.get(typ.item.type)
+                    if class_ir and class_ir.is_ext_class and class_ir.has_no_subclasses():
+                        # Call a native classmethod via cls that can be statically bound,
+                        # since the class has no subclasses.
+                        return call_classmethod(builder, class_ir, expr, callee)
+
         receiver_typ = builder.node_type(callee.expr)
 
         # If there is a specializer for this method name/type, try calling it.
@@ -378,6 +367,32 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
         obj = builder.accept(callee.expr)
         args = [builder.accept(arg) for arg in expr.args]
+        return builder.gen_method_call(
+            obj,
+            callee.name,
+            args,
+            builder.node_type(expr),
+            expr.line,
+            expr.arg_kinds,
+            expr.arg_names,
+        )
+
+
+def call_classmethod(builder: IRBuilder, ir: ClassIR, expr: CallExpr, callee: MemberExpr) -> Value:
+    decl = ir.method_decl(callee.name)
+    args = []
+    arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
+    # Add the class argument for class methods in extension classes
+    if decl.kind == FUNC_CLASSMETHOD and ir.is_ext_class:
+        args.append(builder.load_native_type_object(ir.fullname))
+        arg_kinds.insert(0, ARG_POS)
+        arg_names.insert(0, None)
+    args += [builder.accept(arg) for arg in expr.args]
+
+    if ir.is_ext_class:
+        return builder.builder.call(decl, args, arg_kinds, arg_names, expr.line)
+    else:
+        obj = builder.accept(callee.expr)
         return builder.gen_method_call(
             obj,
             callee.name,

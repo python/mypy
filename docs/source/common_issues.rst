@@ -9,15 +9,6 @@ doesn't work as expected. Statically typed code is often identical to
 normal Python code (except for type annotations), but sometimes you need
 to do things slightly differently.
 
-Can't install mypy using pip
-----------------------------
-
-If installation fails, you've probably hit one of these issues:
-
-* Mypy needs Python 3.6 or later to run.
-* You may have to run pip like this:
-  ``python3 -m pip install mypy``.
-
 .. _annotations_needed:
 
 No errors reported for obviously wrong code
@@ -26,7 +17,9 @@ No errors reported for obviously wrong code
 There are several common reasons why obviously wrong code is not
 flagged as an error.
 
-**The function containing the error is not annotated.** Functions that
+**The function containing the error is not annotated.**
+
+Functions that
 do not have any annotations (neither for any argument nor for the
 return type) are not type-checked, and even the most blatant type
 errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
@@ -52,7 +45,9 @@ once you add annotations:
 
 If you don't know what types to add, you can use ``Any``, but beware:
 
-**One of the values involved has type 'Any'.** Extending the above
+**One of the values involved has type 'Any'.**
+
+Extending the above
 example, if we were to leave out the annotation for ``a``, we'd get
 no error:
 
@@ -68,49 +63,52 @@ The reason is that if the type of ``a`` is unknown, the type of
 If you're having trouble debugging such situations,
 :ref:`reveal_type() <reveal-type>` might come in handy.
 
-Note that sometimes library stubs have imprecise type information,
-e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
-<https://github.com/python/typeshed/issues/285>`_ for the reason).
+Note that sometimes library stubs with imprecise type information
+can be a source of ``Any`` values.
 
 :py:meth:`__init__ <object.__init__>` **method has no annotated
-arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
-is considered fully-annotated **if at least one argument is annotated**,
-while mypy will infer the return type as ``None``.
-The implication is that, for a :py:meth:`__init__ <object.__init__>` method
-that has no argument, you'll have to explicitly annotate the return type
-as ``None`` to type-check this :py:meth:`__init__ <object.__init__>` method:
+arguments and no return type annotation.**
+
+This is basically a combination of the two cases above, in that ``__init__``
+without annotations can cause ``Any`` types leak into instance variables:
 
 .. code-block:: python
 
-    def foo(s: str) -> str:
-        return s
+    class Bad:
+        def __init__(self):
+            self.value = "asdf"
+            1 + "asdf"  # No error!
 
-    class A():
-        def __init__(self, value: str): # Return type inferred as None, considered as typed method
+    bad = Bad()
+    bad.value + 1           # No error!
+    reveal_type(bad)        # Revealed type is "__main__.Bad"
+    reveal_type(bad.value)  # Revealed type is "Any"
+
+    class Good:
+        def __init__(self) -> None:  # Explicitly return None
             self.value = value
-            foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 
-    class B():
-        def __init__(self):  # No argument is annotated, considered as untyped method
-            foo(1)  # No error!
 
-    class C():
-        def __init__(self) -> None:  # Must specify return type to type-check
-            foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+**Some imports may be silently ignored**.
 
-**Some imports may be silently ignored**.  Another source of
-unexpected ``Any`` values are the :option:`--ignore-missing-imports
-<mypy --ignore-missing-imports>` and :option:`--follow-imports=skip
-<mypy --follow-imports>` flags.  When you use :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`,
-any imported module that cannot be found is silently replaced with
-``Any``.  When using :option:`--follow-imports=skip <mypy --follow-imports>` the same is true for
-modules for which a ``.py`` file is found but that are not specified
-on the command line.  (If a ``.pyi`` stub is found it is always
-processed normally, regardless of the value of
-:option:`--follow-imports <mypy --follow-imports>`.)  To help debug the former situation (no
-module found at all) leave out :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`; to get
-clarity about the latter use :option:`--follow-imports=error <mypy --follow-imports>`.  You can
-read up about these and other useful flags in :ref:`command-line`.
+A common source of unexpected ``Any`` values is the
+:option:`--ignore-missing-imports <mypy --ignore-missing-imports>` flag.
+
+When you use :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`,
+any imported module that cannot be found is silently replaced with ``Any``.
+
+To help debug this, simply leave out
+:option:`--ignore-missing-imports <mypy --ignore-missing-imports>`.
+As mentioned in :ref:`fix-missing-imports`, setting ``ignore_missing_imports=True``
+on a per-module basis will make bad surprises less likely and is highly encouraged.
+
+Use of the :option:`--follow-imports=skip <mypy --follow-imports>` flags can also
+cause problems. Use of these flags is strongly discouraged and only required in
+relatively niche situations. See :ref:`follow-imports` for more information.
+
+**mypy considers some of your code unreachable**.
+
+See :ref:`unreachable` for more information.
 
 **A function annotated as returning a non-optional type returns 'None'
 and mypy doesn't complain**.
@@ -186,24 +184,16 @@ over ``.py`` files.
 Ignoring a whole file
 ---------------------
 
-A ``# type: ignore`` comment at the top of a module (before any statements,
+* To only ignore errors, use a top-level ``# mypy: ignore-errors`` comment instead.
+* To only ignore errors with a specific error code, use a top-level
+  ``# mypy: disable-error-code="..."`` comment. Example: ``# mypy: disable-error-code="truthy-bool, ignore-without-code"``
+* To replace the contents of a module with ``Any``, use a per-module ``follow_imports = skip``.
+  See :ref:`Following imports <follow-imports>` for details.
+
+Note that a ``# type: ignore`` comment at the top of a module (before any statements,
 including imports or docstrings) has the effect of ignoring the entire contents of the module.
 This behaviour can be surprising and result in
 "Module ... has no attribute ... [attr-defined]" errors.
-
-To only ignore errors, use a top-level ``# mypy: ignore-errors`` comment instead.
-To only ignore errors with a specific error code, use a top-level
-``# mypy: disable-error-code=...`` comment.
-To replace the contents of the module with ``Any``, use a per-module ``follow_imports = skip``.
-See :ref:`Following imports <follow-imports>` for details.
-
-.. code-block:: python
-
-    # type: ignore
-
-    import foo
-
-    foo.bar()
 
 Issues with code at runtime
 ---------------------------
@@ -262,20 +252,20 @@ Redefinitions with incompatible types
 
 Each name within a function only has a single 'declared' type. You can
 reuse for loop indices etc., but if you want to use a variable with
-multiple types within a single function, you may need to declare it
-with the ``Any`` type.
+multiple types within a single function, you may need to instead use
+multiple variables (or maybe declare the variable with an ``Any`` type).
 
 .. code-block:: python
 
    def f() -> None:
        n = 1
        ...
-       n = 'x'        # Type error: n has type int
+       n = 'x'  # error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 .. note::
 
-   This limitation could be lifted in a future mypy
-   release.
+   Using the :option:`--allow-redefinition <mypy --allow-redefinition>`
+   flag can suppress this error in several cases.
 
 Note that you can redefine a variable with a more *precise* or a more
 concrete type. For example, you can redefine a sequence (which does
@@ -288,6 +278,8 @@ not support ``sort()``) as a list and sort it in-place:
         x = list(x)
         # Type of x is List[int] here.
         x.sort()  # Okay!
+
+See :ref:`type-narrowing` for more information.
 
 .. _variance:
 
@@ -340,24 +332,24 @@ Declaring a supertype as variable type
 
 Sometimes the inferred type is a subtype (subclass) of the desired
 type. The type inference uses the first assignment to infer the type
-of a name (assume here that ``Shape`` is the base class of both
-``Circle`` and ``Triangle``):
+of a name:
 
 .. code-block:: python
 
-   shape = Circle()    # Infer shape to be Circle
-   ...
-   shape = Triangle()  # Type error: Triangle is not a Circle
+   class Shape: ...
+   class Circle(Shape): ...
+   class Triangle(Shape): ...
+
+   shape = Circle()    # mypy infers the type of shape to be Circle
+   shape = Triangle()  # error: Incompatible types in assignment (expression has type "Triangle", variable has type "Circle")
 
 You can just give an explicit type for the variable in cases such the
 above example:
 
 .. code-block:: python
 
-   shape = Circle() # type: Shape   # The variable s can be any Shape,
-                                    # not just Circle
-   ...
-   shape = Triangle()               # OK
+   shape: Shape = Circle()  # The variable s can be any Shape, not just Circle
+   shape = Triangle()       # OK
 
 Complex type tests
 ------------------
@@ -622,7 +614,10 @@ You can install the latest development version of mypy from source. Clone the
 
     git clone https://github.com/python/mypy.git
     cd mypy
-    sudo python3 -m pip install --upgrade .
+    python3 -m pip install --upgrade .
+
+To install a development version of mypy that is mypyc-compiled, see the
+instructions at the `mypyc wheels repo <https://github.com/mypyc/mypy_mypyc-wheels>`_.
 
 Variables vs type aliases
 -------------------------

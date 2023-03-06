@@ -13,13 +13,18 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     JsonDict,
+    Node,
     PassStmt,
     RefExpr,
     SymbolTableNode,
     Var,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
-from mypy.semanal_shared import ALLOW_INCOMPATIBLE_OVERRIDE, set_callable_name
+from mypy.semanal_shared import (
+    ALLOW_INCOMPATIBLE_OVERRIDE,
+    require_bool_literal_argument,
+    set_callable_name,
+)
 from mypy.typeops import (  # noqa: F401  # Part of public API
     try_getting_str_literals as try_getting_str_literals,
 )
@@ -53,11 +58,7 @@ def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr, name: str, default:
     """
     attr_value = _get_argument(expr, name)
     if attr_value:
-        ret = ctx.api.parse_bool(attr_value)
-        if ret is None:
-            ctx.api.fail(f'"{name}" argument must be True or False.', expr)
-            return default
-        return ret
+        return require_bool_literal_argument(ctx.api, attr_value, name, default)
     return default
 
 
@@ -68,19 +69,7 @@ def _get_argument(call: CallExpr, name: str) -> Expression | None:
     #
     # Note: I'm not hard-coding the index so that in the future we can support other
     # attrib and class makers.
-    if not isinstance(call.callee, RefExpr):
-        return None
-
-    callee_type = None
-    callee_node = call.callee.node
-    if isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES)) and callee_node.type:
-        callee_node_type = get_proper_type(callee_node.type)
-        if isinstance(callee_node_type, Overloaded):
-            # We take the last overload.
-            callee_type = callee_node_type.items[-1]
-        elif isinstance(callee_node_type, CallableType):
-            callee_type = callee_node_type
-
+    callee_type = _get_callee_type(call)
     if not callee_type:
         return None
 
@@ -94,6 +83,31 @@ def _get_argument(call: CallExpr, name: str) -> Expression | None:
             return attr_value
         if attr_name == argument.name:
             return attr_value
+
+    return None
+
+
+def _get_callee_type(call: CallExpr) -> CallableType | None:
+    """Return the type of the callee, regardless of its syntatic form."""
+
+    callee_node: Node | None = call.callee
+
+    if isinstance(callee_node, RefExpr):
+        callee_node = callee_node.node
+
+    # Some decorators may be using typing.dataclass_transform, which is itself a decorator, so we
+    # need to unwrap them to get at the true callee
+    if isinstance(callee_node, Decorator):
+        callee_node = callee_node.func
+
+    if isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES)) and callee_node.type:
+        callee_node_type = get_proper_type(callee_node.type)
+        if isinstance(callee_node_type, Overloaded):
+            # We take the last overload.
+            return callee_node_type.items[-1]
+        elif isinstance(callee_node_type, CallableType):
+            return callee_node_type
+
     return None
 
 

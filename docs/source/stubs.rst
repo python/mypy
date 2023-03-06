@@ -3,12 +3,15 @@
 Stub files
 ==========
 
+A *stub file* is a file containing a skeleton of the public interface
+of that Python module, including classes, variables, functions -- and
+most importantly, their types.
+
 Mypy uses stub files stored in the
 `typeshed <https://github.com/python/typeshed>`_ repository to determine
 the types of standard library and third-party library functions, classes,
 and other definitions. You can also create your own stubs that will be
-used to type check your code. The basic properties of stubs were introduced
-back in :ref:`stubs-intro`.
+used to type check your code.
 
 Creating a stub
 ***************

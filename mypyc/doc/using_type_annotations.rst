@@ -304,7 +304,7 @@ Example::
     def example() -> None:
         # A small integer uses the value (unboxed) representation
         x = 5
-        # A large integer the the heap (boxed) representation
+        # A large integer uses the heap (boxed) representation
         x = 2**500
         # Lists always contain boxed integers
         a = [55]

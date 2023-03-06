@@ -1456,3 +1456,18 @@ class C(Generic[T]): ...
 C[Callable[P, int]]()  # E: The first argument to Callable must be a list of types, parameter specification, or "..." \
                        # N: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas
 [builtins fixtures/paramspec.pyi]
+
+[case testConcatDeferralNoCrash]
+from typing import Callable, TypeVar
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T", bound="Defer")
+
+Alias = Callable[P, bool]
+Concat = Alias[Concatenate[T, P]]
+
+def test(f: Concat[T, ...]) -> None: ...
+
+class Defer: ...
+[builtins fixtures/paramspec.pyi]

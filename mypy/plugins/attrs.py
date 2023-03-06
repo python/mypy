@@ -6,6 +6,7 @@ from typing import Iterable, List, cast
 from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
+from mypy.errorcodes import LITERAL_REQ
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -246,7 +247,11 @@ def _get_decorator_optional_bool_argument(
                     return False
                 if attr_value.fullname == "builtins.None":
                     return None
-            ctx.api.fail(f'"{name}" argument must be True or False.', ctx.reason)
+            ctx.api.fail(
+                f'"{name}" argument must be a True, False, or None literal',
+                ctx.reason,
+                code=LITERAL_REQ,
+            )
             return default
         return default
     else:
@@ -828,7 +833,7 @@ def _add_attrs_magic_attribute(
         ctx.cls,
         MAGIC_ATTR_NAME,
         TupleType(attributes_types, fallback=attributes_type),
-        fullname=f"{ctx.cls.fullname}.{attr_name}",
+        fullname=f"{ctx.cls.fullname}.{MAGIC_ATTR_NAME}",
         override_allow_incompatible=True,
         is_classvar=True,
     )

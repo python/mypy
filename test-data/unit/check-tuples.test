@@ -774,6 +774,7 @@ class str: pass
 class bool: pass
 class type: pass
 class function: pass
+class dict: pass
 
 
 -- For loop over tuple

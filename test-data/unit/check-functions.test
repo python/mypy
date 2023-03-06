@@ -491,62 +491,61 @@ if int():
 
 [case testDefaultArgumentExpressions]
 import typing
+class B: pass
+class A: pass
+
 def f(x: 'A' = A()) -> None:
     b = x # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
-
-class B: pass
-class A: pass
 [out]
 
 [case testDefaultArgumentExpressions2]
 import typing
+class B: pass
+class A: pass
+
 def f(x: 'A' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
-
-class B: pass
-class A: pass
-
 [case testDefaultArgumentExpressionsGeneric]
 from typing import TypeVar
 T = TypeVar('T', bound='A')
-def f(x: T = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "T")
-    b = x # type: B      # E: Incompatible types in assignment (expression has type "T", variable has type "B")
-    a = x # type: A
 
 class B: pass
 class A: pass
 
+def f(x: T = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "T")
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "T", variable has type "B")
+    a = x # type: A
 [case testDefaultArgumentsWithSubtypes]
 import typing
+class A: pass
+class B(A): pass
+
 def f(x: 'B' = A()) -> None: # E: Incompatible default for argument "x" (default has type "A", argument has type "B")
     pass
 def g(x: 'A' = B()) -> None:
     pass
-
-class A: pass
-class B(A): pass
 [out]
 
 [case testMultipleDefaultArgumentExpressions]
 import typing
+class A: pass
+class B: pass
+
 def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
     pass
 def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
-
-class A: pass
-class B: pass
 [out]
 
 [case testMultipleDefaultArgumentExpressions2]
 import typing
-def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for argument "y" (default has type "A", argument has type "B")
-    pass
-
 class A: pass
 class B: pass
+
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for argument "y" (default has type "A", argument has type "B")
+    pass
 [out]
 
 [case testDefaultArgumentsAndSignatureAsComment]
@@ -2612,7 +2611,7 @@ def f() -> int: ...
 [case testLambdaDefaultTypeErrors]
 lambda a=(1 + 'asdf'): a  # E: Unsupported operand types for + ("int" and "str")
 lambda a=nonsense: a  # E: Name "nonsense" is not defined
-def f(x: int = i):  # E: Name "i" is not defined  # E: Name "i" is used before definition
+def f(x: int = i):  # E: Name "i" is not defined
     i = 42
 
 [case testRevealTypeOfCallExpressionReturningNoneWorks]

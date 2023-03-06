@@ -12,6 +12,7 @@ checker but we are moving away from this convention.
 from __future__ import annotations
 
 import difflib
+import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
@@ -122,8 +123,6 @@ ARG_CONSTRUCTOR_NAMES: Final = {
 # test-data/unit/fixtures/) that provides the definition. This is used for
 # generating better error messages when running mypy tests only.
 SUGGESTED_TEST_FIXTURES: Final = {
-    "builtins.list": "list.pyi",
-    "builtins.dict": "dict.pyi",
     "builtins.set": "set.pyi",
     "builtins.tuple": "tuple.pyi",
     "builtins.bool": "bool.pyi",
@@ -210,6 +209,7 @@ class MessageBuilder:
         origin: Context | None = None,
         offset: int = 0,
         allow_dups: bool = False,
+        secondary_context: Context | None = None,
     ) -> None:
         """Report an error or note (unless disabled).
 
@@ -217,7 +217,7 @@ class MessageBuilder:
         where # type: ignore comments have effect.
         """
 
-        def span_from_context(ctx: Context) -> tuple[int, int]:
+        def span_from_context(ctx: Context) -> Iterable[int]:
             """This determines where a type: ignore for a given context has effect.
 
             Current logic is a bit tricky, to keep as much backwards compatibility as
@@ -225,19 +225,24 @@ class MessageBuilder:
             simplify it) when we drop Python 3.7.
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
-                return ctx.deco_line or ctx.line, ctx.line
+                return range(ctx.deco_line or ctx.line, ctx.line + 1)
             elif not isinstance(ctx, Expression):
-                return ctx.line, ctx.line
+                return [ctx.line]
             else:
-                return ctx.line, ctx.end_line or ctx.line
+                return range(ctx.line, (ctx.end_line or ctx.line) + 1)
 
-        origin_span: tuple[int, int] | None
+        origin_span: Iterable[int] | None
         if origin is not None:
             origin_span = span_from_context(origin)
         elif context is not None:
             origin_span = span_from_context(context)
         else:
             origin_span = None
+
+        if secondary_context is not None:
+            assert origin_span is not None
+            origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
+
         self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
@@ -260,9 +265,18 @@ class MessageBuilder:
         code: ErrorCode | None = None,
         file: str | None = None,
         allow_dups: bool = False,
+        secondary_context: Context | None = None,
     ) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, "error", code=code, file=file, allow_dups=allow_dups)
+        self.report(
+            msg,
+            context,
+            "error",
+            code=code,
+            file=file,
+            allow_dups=allow_dups,
+            secondary_context=secondary_context,
+        )
 
     def note(
         self,
@@ -274,6 +288,7 @@ class MessageBuilder:
         allow_dups: bool = False,
         *,
         code: ErrorCode | None = None,
+        secondary_context: Context | None = None,
     ) -> None:
         """Report a note (unless disabled)."""
         self.report(
@@ -285,6 +300,7 @@ class MessageBuilder:
             offset=offset,
             allow_dups=allow_dups,
             code=code,
+            secondary_context=secondary_context,
         )
 
     def note_multiline(
@@ -295,11 +311,20 @@ class MessageBuilder:
         offset: int = 0,
         allow_dups: bool = False,
         code: ErrorCode | None = None,
+        *,
+        secondary_context: Context | None = None,
     ) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(
-                msg, context, "note", file=file, offset=offset, allow_dups=allow_dups, code=code
+                msg,
+                context,
+                "note",
+                file=file,
+                offset=offset,
+                allow_dups=allow_dups,
+                code=code,
+                secondary_context=secondary_context,
             )
 
     #
@@ -1153,6 +1178,7 @@ class MessageBuilder:
         arg_type_in_supertype: Type,
         supertype: str,
         context: Context,
+        secondary_context: Context,
     ) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         arg_type_in_supertype_f = format_type_bare(arg_type_in_supertype)
@@ -1163,17 +1189,26 @@ class MessageBuilder:
             ),
             context,
             code=codes.OVERRIDE,
+            secondary_context=secondary_context,
         )
-        self.note("This violates the Liskov substitution principle", context, code=codes.OVERRIDE)
+        self.note(
+            "This violates the Liskov substitution principle",
+            context,
+            code=codes.OVERRIDE,
+            secondary_context=secondary_context,
+        )
         self.note(
             "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
             context,
             code=codes.OVERRIDE,
+            secondary_context=secondary_context,
         )
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
-            self.note_multiline(multiline_msg, context, code=codes.OVERRIDE)
+            self.note_multiline(
+                multiline_msg, context, code=codes.OVERRIDE, secondary_context=secondary_context
+            )
 
     def comparison_method_example_msg(self, class_name: str) -> str:
         return dedent(
@@ -1404,7 +1439,7 @@ class MessageBuilder:
         )
 
     def cant_assign_to_method(self, context: Context) -> None:
-        self.fail(message_registry.CANNOT_ASSIGN_TO_METHOD, context, code=codes.ASSIGNMENT)
+        self.fail(message_registry.CANNOT_ASSIGN_TO_METHOD, context, code=codes.METHOD_ASSIGN)
 
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail(f'Cannot assign to class variable "{name}" via instance', context)
@@ -1654,7 +1689,7 @@ class MessageBuilder:
                         format_key_list(extra, short=True), format_type(typ)
                     ),
                     context,
-                    code=codes.TYPPEDICT_UNKNOWN_KEY,
+                    code=codes.TYPEDDICT_UNKNOWN_KEY,
                 )
             if missing or extra:
                 # No need to check for further errors
@@ -1695,7 +1730,7 @@ class MessageBuilder:
                 context,
             )
         else:
-            err_code = codes.TYPPEDICT_UNKNOWN_KEY if setitem else codes.TYPEDDICT_ITEM
+            err_code = codes.TYPEDDICT_UNKNOWN_KEY if setitem else codes.TYPEDDICT_ITEM
             self.fail(
                 f'TypedDict {format_type(typ)} has no key "{item_name}"', context, code=err_code
             )
@@ -1789,7 +1824,9 @@ class MessageBuilder:
 
     def concrete_only_assign(self, typ: Type, context: Context) -> None:
         self.fail(
-            f"Can only assign concrete classes to a variable of type {format_type(typ)}", context
+            f"Can only assign concrete classes to a variable of type {format_type(typ)}",
+            context,
+            code=codes.TYPE_ABSTRACT,
         )
 
     def concrete_only_call(self, typ: Type, context: Context) -> None:
@@ -2211,6 +2248,7 @@ def quote_type_string(type_string: str) -> str:
     no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
         type_string in ["Module", "overloaded function", "<nothing>", "<deleted>"]
+        or type_string.startswith("Module ")
         or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
     ):
@@ -2287,7 +2325,7 @@ def format_type_inner(
             # Make some common error messages simpler and tidier.
             base_str = "Module"
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
-                return f"{base_str} {itype.extra_attrs.mod_name}"
+                return f'{base_str} "{itype.extra_attrs.mod_name}"'
             return base_str
         if itype.type.fullname == "typing._SpecialForm":
             # This is not a real type but used for some typing-related constructs.
