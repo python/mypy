@@ -3632,7 +3632,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         infer_lvalue_type: bool = True,
     ) -> None:
         rvalue_type = get_proper_type(rvalue_type)
-        if self.type_is_iterable(rvalue_type) and isinstance(rvalue_type, Instance):
+        if self.type_is_iterable(rvalue_type) and isinstance(
+            rvalue_type, (Instance, CallableType, TypeType, Overloaded)
+        ):
             item_type = self.iterable_item_type(rvalue_type)
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
@@ -6387,15 +6389,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         self.msg.note(msg, context, offset=offset, code=code)
 
-    def iterable_item_type(self, instance: Instance) -> Type:
-        iterable = map_instance_to_supertype(instance, self.lookup_typeinfo("typing.Iterable"))
-        item_type = iterable.args[0]
-        if not isinstance(get_proper_type(item_type), AnyType):
-            # This relies on 'map_instance_to_supertype' returning 'Iterable[Any]'
-            # in case there is no explicit base class.
-            return item_type
+    def iterable_item_type(self, it: Instance | CallableType | TypeType | Overloaded) -> Type:
+        if isinstance(it, Instance):
+            iterable = map_instance_to_supertype(it, self.lookup_typeinfo("typing.Iterable"))
+            item_type = iterable.args[0]
+            if not isinstance(get_proper_type(item_type), AnyType):
+                # This relies on 'map_instance_to_supertype' returning 'Iterable[Any]'
+                # in case there is no explicit base class.
+                return item_type
         # Try also structural typing.
-        return self.analyze_iterable_item_type_without_expression(instance, instance)[1]
+        return self.analyze_iterable_item_type_without_expression(it, it)[1]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type("builtins.function"))

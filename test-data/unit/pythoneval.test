@@ -1878,6 +1878,23 @@ _testEnumIterMetaInference.py:8: note: Revealed type is "typing.Iterator[_E`-1]"
 _testEnumIterMetaInference.py:9: note: Revealed type is "_E`-1"
 _testEnumIterMetaInference.py:13: note: Revealed type is "socket.SocketKind"
 
+[case testEnumUnpackedViaMetaclass]
+from enum import Enum
+
+class FooEnum(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+a, b, c = FooEnum
+reveal_type(a)
+reveal_type(b)
+reveal_type(c)
+[out]
+_testEnumUnpackedViaMetaclass.py:9: note: Revealed type is "_testEnumUnpackedViaMetaclass.FooEnum"
+_testEnumUnpackedViaMetaclass.py:10: note: Revealed type is "_testEnumUnpackedViaMetaclass.FooEnum"
+_testEnumUnpackedViaMetaclass.py:11: note: Revealed type is "_testEnumUnpackedViaMetaclass.FooEnum"
+
 [case testNativeIntTypes]
 # Spot check various native int operations with full stubs.
 from mypy_extensions import i64, i32

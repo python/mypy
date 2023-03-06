@@ -270,6 +270,120 @@ def f() -> None:
 class A: pass
 [out]
 
+[case testClassObjectsNotUnpackableWithoutIterableMetaclass]
+from typing import Type
+
+class Foo: ...
+A: Type[Foo] = Foo
+a, b = Foo  # E: "Type[Foo]" object is not iterable
+c, d = A  # E: "Type[Foo]" object is not iterable
+
+class Meta(type): ...
+class Bar(metaclass=Meta): ...
+B: Type[Bar] = Bar
+e, f = Bar  # E: "Type[Bar]" object is not iterable
+g, h = B  # E: "Type[Bar]" object is not iterable
+
+reveal_type(a)  # E: Cannot determine type of "a"  # N: Revealed type is "Any"
+reveal_type(b)  # E: Cannot determine type of "b"  # N: Revealed type is "Any"
+reveal_type(c)  # E: Cannot determine type of "c"  # N: Revealed type is "Any"
+reveal_type(d)  # E: Cannot determine type of "d"  # N: Revealed type is "Any"
+reveal_type(e)  # E: Cannot determine type of "e"  # N: Revealed type is "Any"
+reveal_type(f)  # E: Cannot determine type of "f"  # N: Revealed type is "Any"
+reveal_type(g)  # E: Cannot determine type of "g"  # N: Revealed type is "Any"
+reveal_type(h)  # E: Cannot determine type of "h"  # N: Revealed type is "Any"
+[out]
+
+[case testInferringLvarTypesUnpackedFromIterableClassObject]
+from typing import Iterator, Type, TypeVar, Union, overload
+class Meta(type):
+    def __iter__(cls) -> Iterator[int]:
+        yield from [1, 2, 3]
+
+class Meta2(type):
+    def __iter__(cls) -> Iterator[str]:
+        yield from ["foo", "bar", "baz"]
+
+class Meta3(type): ...
+
+class Foo(metaclass=Meta): ...
+class Bar(metaclass=Meta2): ...
+class Baz(metaclass=Meta3): ...
+class Spam: ...
+
+class Eggs(metaclass=Meta):
+    @overload
+    def __init__(self, x: int) -> None: ...
+    @overload
+    def __init__(self, x: int, y: int, z: int) -> None: ...
+    def __init__(self, x: int, y: int = ..., z: int = ...) -> None: ...
+
+A: Type[Foo] = Foo
+B: Type[Union[Foo, Bar]] = Foo
+C: Union[Type[Foo], Type[Bar]] = Foo
+D: Type[Union[Foo, Baz]] = Foo
+E: Type[Union[Foo, Spam]] = Foo
+F: Type[Eggs] = Eggs
+G: Type[Union[Foo, Eggs]] = Foo
+
+a, b, c = Foo
+d, e, f = A
+g, h, i = B
+j, k, l = C
+m, n, o = D  # E: "Type[Baz]" object is not iterable
+p, q, r = E  # E: "Type[Spam]" object is not iterable
+s, t, u = Eggs
+v, w, x = F
+y, z, aa = G
+
+for var in [a, b, c, d, e, f, s, t, u, v, w, x, y, z, aa]:
+    reveal_type(var)  # N: Revealed type is "builtins.int"
+
+for var2 in [g, h, i, j, k, l]:
+    reveal_type(var2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+for var3 in [m, n, o, p, q, r]:
+    reveal_type(var3)  # N: Revealed type is "Union[builtins.int, Any]"
+
+T = TypeVar("T", bound=Type[Foo])
+
+def check(x: T) -> T:
+    a, b, c = x
+    for var in [a, b, c]:
+        reveal_type(var)  # N: Revealed type is "builtins.int"
+    return x
+
+T2 = TypeVar("T2", bound=Type[Union[Foo, Bar]])
+
+def check2(x: T2) -> T2:
+    a, b, c = x
+    for var in [a, b, c]:
+        reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    return x
+
+T3 = TypeVar("T3", bound=Union[Type[Foo], Type[Bar]])
+
+def check3(x: T3) -> T3:
+    a, b, c = x
+    for var in [a, b, c]:
+        reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    return x
+[out]
+
+[case testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter]
+from typing import Iterator, Type, TypeVar
+
+T = TypeVar("T")
+class Meta(type):
+    def __iter__(self: Type[T]) -> Iterator[T]: ...
+class Foo(metaclass=Meta): ...
+
+A, B, C = Foo
+reveal_type(A)  # N: Revealed type is "__main__.Foo"
+reveal_type(B)  # N: Revealed type is "__main__.Foo"
+reveal_type(C)  # N: Revealed type is "__main__.Foo"
+[out]
+
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
 from typing import Tuple
 t = None # type: Tuple[object, object, object]
