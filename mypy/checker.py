@@ -6763,6 +6763,7 @@ def conditional_types(
 def conditional_types_to_typemaps(
     expr: Expression, yes_type: Type | None, no_type: Type | None
 ) -> tuple[TypeMap, TypeMap]:
+    expr = collapse_walrus(expr)
     maps: list[TypeMap] = []
     for typ in (yes_type, no_type):
         proper_type = get_proper_type(typ)
