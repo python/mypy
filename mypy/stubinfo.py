@@ -20,8 +20,6 @@ def stub_package_name(prefix: str) -> str:
 # Package name can have one or two components ('a' or 'a.b').
 legacy_bundled_packages = {
     "aiofiles": "types-aiofiles",
-    "backports": "types-backports",
-    "backports_abc": "types-backports_abc",
     "bleach": "types-bleach",
     "boto": "types-boto",
     "cachetools": "types-cachetools",
