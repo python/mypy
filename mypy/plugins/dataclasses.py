@@ -826,4 +826,7 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
         arg_types=arg_types,
         ret_type=obj_type,
         name=f"{ctx.default_signature.name} of {inst_type_str}",
+        # prevent 'dataclasses.pyi:...: note: "replace" of "A" defined here' notes
+        # since they are misleading: the definition is dynamic, not from a definition
+        definition=None,
     )

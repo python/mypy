@@ -2018,6 +2018,7 @@ a = A(x=42, q=7)
 a2 = replace(a)  # E: Missing named argument "q" for "replace" of "A"
 a2 = replace(a, q=42)
 a2 = replace(a, x=42, q=42)
+a2 = replace(a, x=42, q=42, c=7)  # E: Unexpected keyword argument "c" for "replace" of "A"
 a2 = replace(a, x='42', q=42)  # E: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
 a2 = replace(a, q='42')  # E: Argument "q" to "replace" of "A" has incompatible type "str"; expected "int"
 reveal_type(a2)  # N: Revealed type is "__main__.A"
