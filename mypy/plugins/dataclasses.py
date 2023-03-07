@@ -7,6 +7,7 @@ from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type
+from mypy.messages import format_type_bare
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -35,7 +36,7 @@ from mypy.nodes import (
     TypeVarExpr,
     Var,
 )
-from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import ClassDefContext, FunctionSigContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_decorator_bool_argument,
     add_attribute_to_class,
@@ -769,3 +770,60 @@ def _is_dataclasses_decorator(node: Node) -> bool:
     if isinstance(node, RefExpr):
         return node.fullname in dataclass_makers
     return False
+
+
+def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
+    """
+    Generates a signature for the 'dataclasses.replace' function that's specific to the call site
+    and dependent on the type of the first argument.
+    """
+    if len(ctx.args) != 2:
+        # Ideally the name and context should be callee's, but we don't have it in FunctionSigContext.
+        ctx.api.fail(f'"{ctx.default_signature.name}" has unexpected type annotation', ctx.context)
+        return ctx.default_signature
+
+    if len(ctx.args[0]) != 1:
+        return ctx.default_signature  # leave it to the type checker to complain
+
+    inst_arg = ctx.args[0][0]
+
+    # <hack>
+    from mypy.checker import TypeChecker
+
+    assert isinstance(ctx.api, TypeChecker)
+    obj_type = ctx.api.expr_checker.accept(inst_arg)
+    # </hack>
+
+    obj_type = get_proper_type(obj_type)
+    if not isinstance(obj_type, Instance):
+        return ctx.default_signature
+    inst_type_str = format_type_bare(obj_type)
+
+    metadata = obj_type.type.metadata
+    dataclass = metadata.get("dataclass")
+    if not dataclass:
+        ctx.api.fail(
+            f'Argument 1 to "replace" has incompatible type "{inst_type_str}"; expected a dataclass',
+            ctx.context,
+        )
+        return ctx.default_signature
+
+    arg_names = [None]
+    arg_kinds = [ARG_POS]
+    arg_types = [obj_type]
+    for attr in dataclass["attributes"]:
+        if not attr["is_in_init"]:
+            continue
+        arg_names.append(attr["name"])
+        arg_kinds.append(
+            ARG_NAMED if not attr["has_default"] and attr["is_init_var"] else ARG_NAMED_OPT
+        )
+        arg_types.append(ctx.api.named_type(attr["type"]))
+
+    return ctx.default_signature.copy_modified(
+        arg_names=arg_names,
+        arg_kinds=arg_kinds,
+        arg_types=arg_types,
+        ret_type=obj_type,
+        name=f"{ctx.default_signature.name} of {inst_type_str}",
+    )

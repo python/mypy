@@ -32,3 +32,5 @@ def field(*,
 
 
 class Field(Generic[_T]): pass
+
+def replace(obj: _T, **changes: Any) -> _T: ...
