@@ -114,13 +114,13 @@ So one can e.g. enable some code globally, disable it for all tests in
 the corresponding config section, and then re-enable it with an inline
 comment in some specific test.
 
-Sub-error codes of other error codes
-------------------------------------
+Subcodes of error codes
+-----------------------
 
-In rare cases (mostly for backwards compatibility reasons), some error
-code may be covered by another, wider error code. For example, an error with
+In some cases, mostly for backwards compatibility reasons, an error
+code may be covered also by another, wider error code. For example, an error with
 code ``[method-assign]`` can be ignored by ``# type: ignore[assignment]``.
 Similar logic works for disabling error codes globally. If a given error code
-is a sub code of another one, it must mentioned in the docs for the narrower
-code. This hierarchy is not nested, there cannot be sub-error codes of other
-sub-error codes.
+is a subcode of another one, it will be mentioned in the documentation for the narrower
+code. This hierarchy is not nested: there cannot be subcodes of other
+subcodes.
