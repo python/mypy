@@ -337,10 +337,11 @@ class DataclassTransformer:
         return True
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
-        arg_types = [Instance(self._cls.info, [])]
+        arg_types: list[Type] = [Instance(self._cls.info, [])]
         arg_kinds = [ARG_POS]
-        arg_names = [None]
+        arg_names: list[str | None] = [None]
         for attr in attributes:
+            assert attr.type is not None
             arg_types.append(attr.type)
             arg_names.append(attr.name)
             arg_kinds.append(
@@ -834,6 +835,6 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
         )
         return ctx.default_signature
 
-    repl_type = repl.type
+    repl_type = get_proper_type(repl.type)
     assert isinstance(repl_type, CallableType)
     return repl_type
