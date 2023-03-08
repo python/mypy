@@ -1314,7 +1314,8 @@ class SemanticAnalyzer(
         """
         defn.is_property = True
         items = defn.items
-        first_item = cast(Decorator, defn.items[0])
+        first_item = defn.items[0]
+        assert isinstance(first_item, Decorator)
         deleted_items = []
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
@@ -1357,7 +1358,8 @@ class SemanticAnalyzer(
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
-                typ = cast(CallableType, defn.type)
+                typ = defn.type
+                assert isinstance(typ, CallableType)
                 a.bind_function_type_variables(typ, defn)
                 for i in range(len(typ.arg_types)):
                     store_argument_type(defn, i, typ, self.named_type)

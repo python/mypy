@@ -133,8 +133,9 @@ def freshen_function_type_vars(callee: F) -> F:
                 tv = ParamSpecType.new_unification_variable(v)
             tvs.append(tv)
             tvmap[v.id] = tv
-        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvs)
-        return cast(F, fresh)
+        expanded = expand_type(callee, tvmap)
+        assert isinstance(expanded, CallableType)
+        return cast(F, expanded.copy_modified(variables=tvs))
     else:
         assert isinstance(callee, Overloaded)
         fresh_overload = Overloaded([freshen_function_type_vars(item) for item in callee.items])

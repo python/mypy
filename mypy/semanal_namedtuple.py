@@ -373,7 +373,8 @@ class NamedTupleAnalyzer:
         if not isinstance(args[0], StrExpr):
             self.fail(f'"{type_name}()" expects a string literal as the first argument', call)
             return None
-        typename = cast(StrExpr, call.args[0]).value
+        assert isinstance(call.args[0], StrExpr)
+        typename = call.args[0].value
         types: list[Type] = []
         tvar_defs = []
         if not isinstance(args[1], (ListExpr, TupleExpr)):
