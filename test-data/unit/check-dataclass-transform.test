@@ -451,3 +451,187 @@ Foo(1)  # E: Too many arguments for "Foo"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformTypeCheckingInFunction]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+FunctionModel(string_="abc", integer_=1)
+FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInFunction]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+FunctionModel(string_="abc", integer_=1)
+FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformTypeCheckingInBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelBase:
+    ...
+
+class BaseClassModel(ModelBase):
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+BaseClassModel(string_="abc", integer_=1)
+BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelBase:
+    ...
+
+class BaseClassModel(ModelBase):
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+BaseClassModel(string_="abc", integer_=1)
+BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformTypeCheckingInMetaClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelMeta(type):
+    ...
+
+class ModelBaseWithMeta(metaclass=ModelMeta):
+    ...
+
+class MetaClassModel(ModelBaseWithMeta):
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+MetaClassModel(string_="abc", integer_=1)
+MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInMetaClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelMeta(type):
+    ...
+
+class ModelBaseWithMeta(metaclass=ModelMeta):
+    ...
+
+class MetaClassModel(ModelBaseWithMeta):
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+MetaClassModel(string_="abc", integer_=1)
+MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformConditionalAttributes]
+# flags: --python-version 3.11 --always-true TRUTH
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        present_1: int
+    else:
+        skipped_1: int
+    if True:
+        present_2: int
+    if not False:
+        present_3: int
+    if not TRUTH:
+        skipped_2: int
+    else:
+        present_4: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+)
+FunctionModel()  # E: Missing positional arguments "present_1", "present_2", "present_3", "present_4" in call to "FunctionModel"
+FunctionModel(   # E: Unexpected keyword argument "skipped_1" for "FunctionModel"
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    skipped_1=5,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
