@@ -12,6 +12,7 @@ checker but we are moving away from this convention.
 from __future__ import annotations
 
 import difflib
+import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
@@ -208,6 +209,7 @@ class MessageBuilder:
         origin: Context | None = None,
         offset: int = 0,
         allow_dups: bool = False,
+        secondary_context: Context | None = None,
     ) -> None:
         """Report an error or note (unless disabled).
 
@@ -215,7 +217,7 @@ class MessageBuilder:
         where # type: ignore comments have effect.
         """
 
-        def span_from_context(ctx: Context) -> tuple[int, int]:
+        def span_from_context(ctx: Context) -> Iterable[int]:
             """This determines where a type: ignore for a given context has effect.
 
             Current logic is a bit tricky, to keep as much backwards compatibility as
@@ -223,19 +225,24 @@ class MessageBuilder:
             simplify it) when we drop Python 3.7.
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
-                return ctx.deco_line or ctx.line, ctx.line
+                return range(ctx.deco_line or ctx.line, ctx.line + 1)
             elif not isinstance(ctx, Expression):
-                return ctx.line, ctx.line
+                return [ctx.line]
             else:
-                return ctx.line, ctx.end_line or ctx.line
+                return range(ctx.line, (ctx.end_line or ctx.line) + 1)
 
-        origin_span: tuple[int, int] | None
+        origin_span: Iterable[int] | None
         if origin is not None:
             origin_span = span_from_context(origin)
         elif context is not None:
             origin_span = span_from_context(context)
         else:
             origin_span = None
+
+        if secondary_context is not None:
+            assert origin_span is not None
+            origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
+
         self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
@@ -258,9 +265,18 @@ class MessageBuilder:
         code: ErrorCode | None = None,
         file: str | None = None,
         allow_dups: bool = False,
+        secondary_context: Context | None = None,
     ) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, "error", code=code, file=file, allow_dups=allow_dups)
+        self.report(
+            msg,
+            context,
+            "error",
+            code=code,
+            file=file,
+            allow_dups=allow_dups,
+            secondary_context=secondary_context,
+        )
 
     def note(
         self,
@@ -272,6 +288,7 @@ class MessageBuilder:
         allow_dups: bool = False,
         *,
         code: ErrorCode | None = None,
+        secondary_context: Context | None = None,
     ) -> None:
         """Report a note (unless disabled)."""
         self.report(
@@ -283,6 +300,7 @@ class MessageBuilder:
             offset=offset,
             allow_dups=allow_dups,
             code=code,
+            secondary_context=secondary_context,
         )
 
     def note_multiline(
@@ -293,11 +311,20 @@ class MessageBuilder:
         offset: int = 0,
         allow_dups: bool = False,
         code: ErrorCode | None = None,
+        *,
+        secondary_context: Context | None = None,
     ) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(
-                msg, context, "note", file=file, offset=offset, allow_dups=allow_dups, code=code
+                msg,
+                context,
+                "note",
+                file=file,
+                offset=offset,
+                allow_dups=allow_dups,
+                code=code,
+                secondary_context=secondary_context,
             )
 
     #
@@ -1151,6 +1178,7 @@ class MessageBuilder:
         arg_type_in_supertype: Type,
         supertype: str,
         context: Context,
+        secondary_context: Context,
     ) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         arg_type_in_supertype_f = format_type_bare(arg_type_in_supertype)
@@ -1161,17 +1189,26 @@ class MessageBuilder:
             ),
             context,
             code=codes.OVERRIDE,
+            secondary_context=secondary_context,
         )
-        self.note("This violates the Liskov substitution principle", context, code=codes.OVERRIDE)
+        self.note(
+            "This violates the Liskov substitution principle",
+            context,
+            code=codes.OVERRIDE,
+            secondary_context=secondary_context,
+        )
         self.note(
             "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
             context,
             code=codes.OVERRIDE,
+            secondary_context=secondary_context,
         )
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
-            self.note_multiline(multiline_msg, context, code=codes.OVERRIDE)
+            self.note_multiline(
+                multiline_msg, context, code=codes.OVERRIDE, secondary_context=secondary_context
+            )
 
     def comparison_method_example_msg(self, class_name: str) -> str:
         return dedent(

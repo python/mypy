@@ -1,8 +1,16 @@
+from _typeshed import StrOrBytesPath
 from collections.abc import Mapping
 from distutils.cmd import Command as Command
 from distutils.dist import Distribution as Distribution
 from distutils.extension import Extension as Extension
 from typing import Any
+
+USAGE: str
+
+def gen_usage(script_name: StrOrBytesPath) -> str: ...
+
+setup_keywords: tuple[str, ...]
+extension_keywords: tuple[str, ...]
 
 def setup(
     *,

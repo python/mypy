@@ -1775,7 +1775,7 @@ class CallableType(FunctionLike):
         self: CT,
         arg_types: Bogus[Sequence[Type]] = _dummy,
         arg_kinds: Bogus[list[ArgKind]] = _dummy,
-        arg_names: Bogus[list[str | None]] = _dummy,
+        arg_names: Bogus[Sequence[str | None]] = _dummy,
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,
         name: Bogus[str | None] = _dummy,

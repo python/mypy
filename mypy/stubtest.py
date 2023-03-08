@@ -129,10 +129,10 @@ class Error:
             stub_file = stub_node.path or None
 
         stub_loc_str = ""
-        if stub_line:
-            stub_loc_str += f" at line {stub_line}"
         if stub_file:
             stub_loc_str += f" in file {Path(stub_file)}"
+        if stub_line:
+            stub_loc_str += f"{':' if stub_file else ' at line '}{stub_line}"
 
         runtime_line = None
         runtime_file = None
@@ -147,10 +147,10 @@ class Error:
                 pass
 
         runtime_loc_str = ""
-        if runtime_line:
-            runtime_loc_str += f" at line {runtime_line}"
         if runtime_file:
             runtime_loc_str += f" in file {Path(runtime_file)}"
+        if runtime_line:
+            runtime_loc_str += f"{':' if runtime_file else ' at line '}{runtime_line}"
 
         output = [
             _style("error: ", color="red", bold=True),

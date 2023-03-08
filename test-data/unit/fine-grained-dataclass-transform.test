@@ -1,0 +1,92 @@
+[case updateDataclassTransformParameterViaDecorator]
+# flags: --python-version 3.11
+from m import my_dataclass
+
+@my_dataclass
+class Foo:
+    x: int
+
+foo = Foo(1)
+foo.x = 2
+
+[file m.py]
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=False)
+def my_dataclass(cls): return cls
+
+[file m.py.2]
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+def my_dataclass(cls): return cls
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[out]
+==
+main:9: error: Property "x" defined in "Foo" is read-only
+
+[case updateDataclassTransformParameterViaParentClass]
+# flags: --python-version 3.11
+from m import Dataclass
+
+class Foo(Dataclass):
+    x: int
+
+foo = Foo(1)
+foo.x = 2
+
+[file m.py]
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=False)
+class Dataclass: ...
+
+[file m.py.2]
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+class Dataclass: ...
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[out]
+==
+main:8: error: Property "x" defined in "Foo" is read-only
+
+[case updateBaseClassToUseDataclassTransform]
+# flags: --python-version 3.11
+from m import A
+
+class B(A):
+    y: int
+
+B(x=1, y=2)
+
+[file m.py]
+class Dataclass: ...
+
+class A(Dataclass):
+    x: int
+
+[file m.py.2]
+from typing import dataclass_transform
+
+@dataclass_transform()
+class Dataclass: ...
+
+class A(Dataclass):
+    x: int
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[out]
+main:7: error: Unexpected keyword argument "x" for "B"
+builtins.pyi:12: note: "B" defined here
+main:7: error: Unexpected keyword argument "y" for "B"
+builtins.pyi:12: note: "B" defined here
+==

@@ -2950,7 +2950,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 right_type = get_proper_type(right_type)
                 item_types: Sequence[Type] = [right_type]
                 if isinstance(right_type, UnionType):
-                    item_types = list(right_type.items)
+                    item_types = list(right_type.relevant_items())
 
                 sub_result = self.bool_type()
 

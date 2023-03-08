@@ -1841,3 +1841,25 @@ class D: pass
 X = None | C
 Y = None | D
 [builtins fixtures/type.pyi]
+
+[case testMatchStatementWalrus]
+class A:
+    a = 1
+
+def returns_a_or_none() -> A | None:
+    return A()
+
+def returns_a() -> A:
+    return A()
+
+def f() -> None:
+    match x := returns_a_or_none():
+        case A():
+            reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    match x := returns_a():
+        case A():
+            reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    y = returns_a_or_none()
+    match y:
+        case A():
+            reveal_type(y.a)  # N: Revealed type is "builtins.int"

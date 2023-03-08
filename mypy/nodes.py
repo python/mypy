@@ -701,18 +701,6 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(
-        self,
-        target: Context | int,
-        column: int | None = None,
-        end_line: int | None = None,
-        end_column: int | None = None,
-    ) -> None:
-        super().set_line(target, column, end_line, end_column)
-        for arg in self.arguments:
-            # TODO: set arguments line/column to their precise locations.
-            arg.set_line(self.line, self.column, self.end_line, end_column)
-
     def is_dynamic(self) -> bool:
         return self.type is None
 
@@ -913,6 +901,7 @@ class Decorator(SymbolNode, Statement):
 
 VAR_FLAGS: Final = [
     "is_self",
+    "is_cls",
     "is_initialized_in_class",
     "is_staticmethod",
     "is_classmethod",
@@ -947,6 +936,7 @@ class Var(SymbolNode):
         "type",
         "final_value",
         "is_self",
+        "is_cls",
         "is_ready",
         "is_inferred",
         "is_initialized_in_class",
@@ -979,6 +969,8 @@ class Var(SymbolNode):
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
+        # Is this the first argument to a classmethod (typically "cls")?
+        self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
         # Is this initialized explicitly to a non-None value in class body?
@@ -3919,7 +3911,7 @@ class DataclassTransformSpec:
             "order_default": self.order_default,
             "kw_only_default": self.kw_only_default,
             "frozen_only_default": self.frozen_default,
-            "field_specifiers": self.field_specifiers,
+            "field_specifiers": list(self.field_specifiers),
         }
 
     @classmethod
@@ -3929,7 +3921,7 @@ class DataclassTransformSpec:
             order_default=data.get("order_default"),
             kw_only_default=data.get("kw_only_default"),
             frozen_default=data.get("frozen_default"),
-            field_specifiers=data.get("field_specifiers"),
+            field_specifiers=tuple(data.get("field_specifiers", [])),
         )
 
 

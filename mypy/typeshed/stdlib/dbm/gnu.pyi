@@ -1,8 +1,8 @@
 import sys
-from _typeshed import ReadOnlyBuffer, Self
+from _typeshed import ReadOnlyBuffer
 from types import TracebackType
 from typing import TypeVar, overload
-from typing_extensions import TypeAlias
+from typing_extensions import Self, TypeAlias
 
 if sys.platform != "win32":
     _T = TypeVar("_T")
@@ -24,7 +24,7 @@ if sys.platform != "win32":
         def __delitem__(self, key: _KeyType) -> None: ...
         def __contains__(self, key: _KeyType) -> bool: ...
         def __len__(self) -> int: ...
-        def __enter__(self: Self) -> Self: ...
+        def __enter__(self) -> Self: ...
         def __exit__(
             self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
         ) -> None: ...

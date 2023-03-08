@@ -1,6 +1,6 @@
 import sys
-from _typeshed import Self
 from typing import Any
+from typing_extensions import Self
 
 MAXGROUPS: int
 
@@ -16,7 +16,7 @@ class error(Exception):
 
 class _NamedIntConstant(int):
     name: Any
-    def __new__(cls: type[Self], value: int, name: str) -> Self: ...
+    def __new__(cls, value: int, name: str) -> Self: ...
 
 MAXREPEAT: _NamedIntConstant
 OPCODES: list[_NamedIntConstant]

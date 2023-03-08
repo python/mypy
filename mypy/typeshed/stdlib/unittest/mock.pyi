@@ -1,10 +1,9 @@
 import sys
-from _typeshed import Self
 from collections.abc import Awaitable, Callable, Coroutine, Iterable, Mapping, Sequence
 from contextlib import _GeneratorContextManager
 from types import TracebackType
 from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Final, Literal, Self, TypeAlias
 
 _T = TypeVar("_T")
 _TT = TypeVar("_TT", bound=type[Any])
@@ -48,7 +47,7 @@ else:
         "seal",
     )
 
-__version__: str
+__version__: Final[str]
 
 FILTER_DIR: Any
 
@@ -68,12 +67,7 @@ _CallValue: TypeAlias = str | tuple[Any, ...] | Mapping[str, Any] | _ArgsKwargs 
 
 class _Call(tuple[Any, ...]):
     def __new__(
-        cls: type[Self],
-        value: _CallValue = ...,
-        name: str | None = "",
-        parent: Any | None = None,
-        two: bool = False,
-        from_kall: bool = True,
+        cls, value: _CallValue = ..., name: str | None = "", parent: Any | None = None, two: bool = False, from_kall: bool = True
     ) -> Self: ...
     name: Any
     parent: Any
@@ -87,7 +81,7 @@ class _Call(tuple[Any, ...]):
         from_kall: bool = True,
     ) -> None: ...
     def __eq__(self, other: object) -> bool: ...
-    def __ne__(self, __other: object) -> bool: ...
+    def __ne__(self, __value: object) -> bool: ...
     def __call__(self, *args: Any, **kwargs: Any) -> _Call: ...
     def __getattr__(self, attr: str) -> Any: ...
     def __getattribute__(self, attr: str) -> Any: ...
@@ -107,8 +101,10 @@ class _CallList(list[_Call]):
 class Base:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
+# We subclass with "Any" because mocks are explicitly designed to stand in for other types,
+# something that can't be expressed with our static type system.
 class NonCallableMock(Base, Any):
-    def __new__(__cls: type[Self], *args: Any, **kw: Any) -> Self: ...
+    def __new__(__cls, *args: Any, **kw: Any) -> Self: ...
     def __init__(
         self,
         spec: list[str] | object | type[object] | None = None,
@@ -437,10 +433,10 @@ def mock_open(mock: Any | None = None, read_data: Any = "") -> Any: ...
 
 class PropertyMock(Mock):
     if sys.version_info >= (3, 8):
-        def __get__(self: Self, obj: _T, obj_type: type[_T] | None = None) -> Self: ...
+        def __get__(self, obj: _T, obj_type: type[_T] | None = None) -> Self: ...
     else:
-        def __get__(self: Self, obj: _T, obj_type: type[_T] | None) -> Self: ...
+        def __get__(self, obj: _T, obj_type: type[_T] | None) -> Self: ...
 
-    def __set__(self, obj: Any, value: Any) -> None: ...
+    def __set__(self, obj: Any, val: Any) -> None: ...
 
 def seal(mock: Any) -> None: ...

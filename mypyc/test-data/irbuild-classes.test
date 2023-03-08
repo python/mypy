@@ -656,6 +656,75 @@ L0:
     r3 = CPyTagged_Add(r0, r2)
     return r3
 
+[case testCallClassMethodViaCls]
+class C:
+    @classmethod
+    def f(cls, x: int) -> int:
+        return cls.g(x)
+
+    @classmethod
+    def g(cls, x: int) -> int:
+        return x
+
+class D:
+    @classmethod
+    def f(cls, x: int) -> int:
+        # TODO: This could aso be optimized, since g is not ever overridden
+        return cls.g(x)
+
+    @classmethod
+    def g(cls, x: int) -> int:
+        return x
+
+class DD(D):
+    pass
+[out]
+def C.f(cls, x):
+    cls :: object
+    x :: int
+    r0 :: object
+    r1 :: int
+L0:
+    r0 = __main__.C :: type
+    r1 = C.g(r0, x)
+    return r1
+def C.g(cls, x):
+    cls :: object
+    x :: int
+L0:
+    return x
+def D.f(cls, x):
+    cls :: object
+    x :: int
+    r0 :: str
+    r1, r2 :: object
+    r3 :: int
+L0:
+    r0 = 'g'
+    r1 = box(int, x)
+    r2 = CPyObject_CallMethodObjArgs(cls, r0, r1, 0)
+    r3 = unbox(int, r2)
+    return r3
+def D.g(cls, x):
+    cls :: object
+    x :: int
+L0:
+    return x
+
+[case testCannotAssignToClsArgument]
+from typing import Any, cast
+
+class C:
+    @classmethod
+    def m(cls) -> None:
+        cls = cast(Any, D)  # E: Cannot assign to the first argument of classmethod
+        cls, x = cast(Any, D), 1  # E: Cannot assign to the first argument of classmethod
+        cls, x = cast(Any, [1, 2])  # E: Cannot assign to the first argument of classmethod
+        cls.m()
+
+class D:
+    pass
+
 [case testSuper1]
 class A:
     def __init__(self, x: int) -> None:

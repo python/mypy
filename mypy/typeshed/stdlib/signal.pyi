@@ -3,7 +3,7 @@ from _typeshed import structseq
 from collections.abc import Callable, Iterable
 from enum import IntEnum
 from types import FrameType
-from typing import Any, Union
+from typing import Any
 from typing_extensions import Final, Never, TypeAlias, final
 
 NSIG: int
@@ -62,7 +62,7 @@ SIG_DFL: Handlers
 SIG_IGN: Handlers
 
 _SIGNUM: TypeAlias = int | Signals
-_HANDLER: TypeAlias = Union[Callable[[int, FrameType | None], Any], int, Handlers, None]
+_HANDLER: TypeAlias = Callable[[int, FrameType | None], Any] | int | Handlers | None
 
 def default_int_handler(__signalnum: int, __frame: FrameType | None) -> Never: ...
 
@@ -113,7 +113,7 @@ else:
     SIGXCPU: Signals
     SIGXFSZ: Signals
 
-    class ItimerError(IOError): ...
+    class ItimerError(OSError): ...
     ITIMER_PROF: int
     ITIMER_REAL: int
     ITIMER_VIRTUAL: int
@@ -178,4 +178,4 @@ def set_wakeup_fd(fd: int, *, warn_on_full_buffer: bool = ...) -> int: ...
 
 if sys.version_info >= (3, 9):
     if sys.platform == "linux":
-        def pidfd_send_signal(__pidfd: int, __sig: int, __siginfo: None = ..., __flags: int = ...) -> None: ...
+        def pidfd_send_signal(__pidfd: int, __sig: int, __siginfo: None = None, __flags: int = ...) -> None: ...

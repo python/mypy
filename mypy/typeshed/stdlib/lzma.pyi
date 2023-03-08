@@ -1,8 +1,8 @@
 import io
-from _typeshed import ReadableBuffer, Self, StrOrBytesPath
+from _typeshed import ReadableBuffer, StrOrBytesPath
 from collections.abc import Mapping, Sequence
 from typing import IO, Any, TextIO, overload
-from typing_extensions import Literal, TypeAlias, final
+from typing_extensions import Literal, Self, TypeAlias, final
 
 __all__ = [
     "CHECK_NONE",
@@ -115,7 +115,7 @@ class LZMAFile(io.BufferedIOBase, IO[bytes]):
         preset: int | None = None,
         filters: _FilterChain | None = None,
     ) -> None: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def peek(self, size: int = -1) -> bytes: ...
     def read(self, size: int | None = -1) -> bytes: ...
     def read1(self, size: int = -1) -> bytes: ...

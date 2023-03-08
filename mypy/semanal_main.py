@@ -218,7 +218,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
             state = graph[next_id]
             assert state.tree is not None
             deferred, incomplete, progress = semantic_analyze_target(
-                next_id, state, state.tree, None, final_iteration, patches
+                next_id, next_id, state, state.tree, None, final_iteration, patches
             )
             all_deferred += deferred
             any_progress = any_progress or progress
@@ -289,7 +289,7 @@ def process_top_level_function(
             # OK, this is one last pass, now missing names will be reported.
             analyzer.incomplete_namespaces.discard(module)
         deferred, incomplete, progress = semantic_analyze_target(
-            target, state, node, active_type, final_iteration, patches
+            target, module, state, node, active_type, final_iteration, patches
         )
         if final_iteration:
             assert not deferred, "Must not defer during final iteration"
@@ -318,6 +318,7 @@ def get_all_leaf_targets(file: MypyFile) -> list[TargetInfo]:
 
 def semantic_analyze_target(
     target: str,
+    module: str,
     state: State,
     node: MypyFile | FuncDef | OverloadedFuncDef | Decorator,
     active_type: TypeInfo | None,
@@ -331,7 +332,7 @@ def semantic_analyze_target(
     - was some definition incomplete (need to run another pass)
     - were any new names defined (or placeholders replaced)
     """
-    state.manager.processed_targets.append(target)
+    state.manager.processed_targets.append((module, target))
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.semantic_analyzer

@@ -4,7 +4,7 @@ import tkinter
 from _typeshed import Incomplete
 from collections.abc import Callable
 from tkinter.font import _FontDescription
-from typing import Any, Union, overload
+from typing import Any, overload
 from typing_extensions import Literal, TypeAlias, TypedDict
 
 __all__ = [
@@ -38,13 +38,13 @@ __all__ = [
 def tclobjs_to_py(adict: dict[Any, Any]) -> dict[Any, Any]: ...
 def setup_master(master: Incomplete | None = None): ...
 
-_Padding: TypeAlias = Union[
-    tkinter._ScreenUnits,
-    tuple[tkinter._ScreenUnits],
-    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits],
-    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits],
-    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits],
-]
+_Padding: TypeAlias = (
+    tkinter._ScreenUnits
+    | tuple[tkinter._ScreenUnits]
+    | tuple[tkinter._ScreenUnits, tkinter._ScreenUnits]
+    | tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits]
+    | tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits]
+)
 
 # from ttk_widget (aka ttk::widget) manual page, differs from tkinter._Compound
 _TtkCompound: TypeAlias = Literal["text", "image", tkinter._Compound]

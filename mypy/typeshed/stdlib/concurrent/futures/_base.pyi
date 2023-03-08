@@ -1,11 +1,11 @@
 import sys
 import threading
-from _typeshed import Self, Unused
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from _typeshed import Unused
+from collections.abc import Callable, Iterable, Iterator
 from logging import Logger
 from types import TracebackType
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal, ParamSpec, SupportsIndex
+from typing import Any, Generic, NamedTuple, TypeVar
+from typing_extensions import Literal, ParamSpec, Self
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -62,27 +62,16 @@ class Executor:
     else:
         def shutdown(self, wait: bool = True) -> None: ...
 
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
 
 def as_completed(fs: Iterable[Future[_T]], timeout: float | None = None) -> Iterator[Future[_T]]: ...
 
-# Ideally this would be a namedtuple, but mypy doesn't support generic tuple types. See #1976
-class DoneAndNotDoneFutures(Sequence[set[Future[_T]]]):
-    if sys.version_info >= (3, 10):
-        __match_args__ = ("done", "not_done")
-    @property
-    def done(self) -> set[Future[_T]]: ...
-    @property
-    def not_done(self) -> set[Future[_T]]: ...
-    def __new__(_cls, done: set[Future[_T]], not_done: set[Future[_T]]) -> DoneAndNotDoneFutures[_T]: ...
-    def __len__(self) -> int: ...
-    @overload
-    def __getitem__(self, __i: SupportsIndex) -> set[Future[_T]]: ...
-    @overload
-    def __getitem__(self, __s: slice) -> DoneAndNotDoneFutures[_T]: ...
+class DoneAndNotDoneFutures(NamedTuple, Generic[_T]):
+    done: set[Future[_T]]
+    not_done: set[Future[_T]]
 
 def wait(
     fs: Iterable[Future[_T]], timeout: float | None = None, return_when: str = "ALL_COMPLETED"

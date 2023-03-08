@@ -1,5 +1,6 @@
+import _typeshed
 import sys
-from _typeshed import Self, SupportsWrite
+from _typeshed import SupportsWrite
 from collections.abc import Callable
 from typing import Any, Generic, TypeVar
 from typing_extensions import Literal
@@ -13,10 +14,12 @@ class ABCMeta(type):
     __abstractmethods__: frozenset[str]
     if sys.version_info >= (3, 11):
         def __new__(
-            __mcls: type[Self], __name: str, __bases: tuple[type, ...], __namespace: dict[str, Any], **kwargs: Any
-        ) -> Self: ...
+            __mcls: type[_typeshed.Self], __name: str, __bases: tuple[type, ...], __namespace: dict[str, Any], **kwargs: Any
+        ) -> _typeshed.Self: ...
     else:
-        def __new__(mcls: type[Self], name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kwargs: Any) -> Self: ...
+        def __new__(
+            mcls: type[_typeshed.Self], name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kwargs: Any
+        ) -> _typeshed.Self: ...
 
     def __instancecheck__(cls: ABCMeta, instance: Any) -> bool: ...
     def __subclasscheck__(cls: ABCMeta, subclass: type) -> bool: ...
