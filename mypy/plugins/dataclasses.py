@@ -817,28 +817,28 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     if len(ctx.args[0]) != 1:
         return ctx.default_signature  # leave it to the type checker to complain
 
-    inst_arg = ctx.args[0][0]
+    obj_arg = ctx.args[0][0]
 
     # <hack>
     from mypy.checker import TypeChecker
 
     assert isinstance(ctx.api, TypeChecker)
-    obj_type = ctx.api.expr_checker.accept(inst_arg)
+    obj_type = ctx.api.expr_checker.accept(obj_arg)
     # </hack>
 
     obj_type = get_proper_type(obj_type)
     if not isinstance(obj_type, Instance):
         return ctx.default_signature
 
-    obj_replace = obj_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
-    if obj_replace is None:
-        inst_type_str = format_type_bare(obj_type)
+    replace_func = obj_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
+    if replace_func is None:
+        obj_type_str = format_type_bare(obj_type)
         ctx.api.fail(
-            f'Argument 1 to "replace" has incompatible type "{inst_type_str}"; expected a dataclass',
+            f'Argument 1 to "replace" has incompatible type "{obj_type_str}"; expected a dataclass',
             ctx.context,
         )
         return ctx.default_signature
 
-    obj_replace_sig = get_proper_type(obj_replace.type)
-    assert isinstance(obj_replace_sig, CallableType)
-    return obj_replace_sig
+    signature = get_proper_type(replace_func.type)
+    assert isinstance(signature, CallableType)
+    return signature
