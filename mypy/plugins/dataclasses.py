@@ -339,7 +339,7 @@ class DataclassTransformer:
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
         """
         Stashes the signature of 'dataclasses.replace(...)' for this specific dataclass
-        to be used later if someone calls 'dataclasses.replace' on this dataclass.
+        to be used later whenever 'dataclasses.replace' is called for this dataclass.
         """
         arg_types: list[Type] = [Instance(self._cls.info, [])]
         arg_kinds = [ARG_POS]
