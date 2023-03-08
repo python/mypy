@@ -347,10 +347,10 @@ class DataclassTransformer:
         for attr in attributes:
             assert attr.type is not None
             arg_types.append(attr.type)
-            arg_names.append(attr.name)
             arg_kinds.append(
                 ARG_NAMED_OPT if attr.has_default or not attr.is_init_var else ARG_NAMED
             )
+            arg_names.append(attr.name)
 
         signature = CallableType(
             arg_types=arg_types,
