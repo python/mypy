@@ -108,8 +108,7 @@ class EnumCallAnalyzer:
             # Error. Construct dummy return value.
             info = self.build_enum_call_typeinfo(var_name, [], fullname, node.line)
         else:
-            assert isinstance(call.args[0], StrExpr)
-            name = call.args[0].value
+            name = cast(StrExpr, call.args[0]).value
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += "@" + str(call.line)
