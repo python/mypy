@@ -501,7 +501,7 @@ FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "Fun
 
 [case testDataclassTransformTypeCheckingInBaseClass]
 # flags: --python-version 3.11
-from typing import dataclass_transform, Type, TYPE_CHECKING
+from typing import dataclass_transform, TYPE_CHECKING
 
 @dataclass_transform()
 class ModelBase:
@@ -523,7 +523,7 @@ BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "Ba
 
 [case testDataclassTransformNegatedTypeCheckingInBaseClass]
 # flags: --python-version 3.11
-from typing import dataclass_transform, Type, TYPE_CHECKING
+from typing import dataclass_transform, TYPE_CHECKING
 
 @dataclass_transform()
 class ModelBase:
@@ -593,7 +593,7 @@ MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "Me
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
-[case testDataclassTransformConditionalAttributes]
+[case testDataclassTransformStaticConditionalAttributes]
 # flags: --python-version 3.11 --always-true TRUTH
 from typing import dataclass_transform, Type, TYPE_CHECKING
 
@@ -611,7 +611,7 @@ class FunctionModel:
         skipped_1: int
     if True:
         present_2: int
-    if not False:
+    if False:
         present_3: int
     if not TRUTH:
         skipped_2: int
@@ -632,6 +632,61 @@ FunctionModel(   # E: Unexpected keyword argument "skipped_1" for "FunctionModel
     present_4=4,
     skipped_1=5,
 )
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFunctionConditionalAttributes]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+def condition() -> bool:
+    return True
+
+@model
+class FunctionModel:
+    if condition():
+        x: int
+        y: int
+        z1: int
+    else:
+        x: str  # E: Name "x" already defined on line 14
+        y: int  # E: Name "y" already defined on line 15
+        z2: int
+
+FunctionModel(x=1, y=2, z1=3, z2=4)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformNegatedFunctionConditionalAttributes]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+def condition() -> bool:
+    return True
+
+@model
+class FunctionModel:
+    if not condition():
+        x: int
+        y: int
+        z1: int
+    else:
+        x: str  # E: Name "x" already defined on line 14
+        y: int  # E: Name "y" already defined on line 15
+        z2: int
+
+FunctionModel(x=1, y=2, z1=3, z2=4)
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
