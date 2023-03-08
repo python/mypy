@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Generator, Optional
+from typing import Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
@@ -384,16 +384,14 @@ class DataclassTransformer:
 
     def _get_assignment_statements_from_if_statement(
         self, stmt: IfStmt
-    ) -> Generator[AssignmentStmt, None, None]:
+    ) -> Iterator[AssignmentStmt]:
         for body in stmt.body:
             if not body.is_unreachable:
                 yield from self._get_assignment_statements_from_block(body)
         if stmt.else_body is not None and not stmt.else_body.is_unreachable:
             yield from self._get_assignment_statements_from_block(stmt.else_body)
 
-    def _get_assignment_statements_from_block(
-        self, block: Block
-    ) -> Generator[AssignmentStmt, None, None]:
+    def _get_assignment_statements_from_block(self, block: Block) -> Iterator[AssignmentStmt]:
         for stmt in block.body:
             if isinstance(stmt, AssignmentStmt):
                 yield stmt
