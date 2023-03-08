@@ -348,7 +348,7 @@ class DataclassTransformer:
             assert attr.type is not None
             arg_types.append(attr.type)
             arg_kinds.append(
-                ARG_NAMED_OPT if attr.has_default or not attr.is_init_var else ARG_NAMED
+                ARG_NAMED if attr.is_init_var and not attr.has_default else ARG_NAMED_OPT
             )
             arg_names.append(attr.name)
 
