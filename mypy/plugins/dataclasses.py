@@ -74,7 +74,7 @@ _TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
     frozen_default=False,
     field_specifiers=("dataclasses.Field", "dataclasses.field"),
 )
-_INTERNAL_REPLACE_METHOD = "__mypy_replace"
+_INTERNAL_REPLACE_SYM_NAME = "__mypy_replace"
 
 
 class DataclassAttribute:
@@ -337,6 +337,10 @@ class DataclassTransformer:
         return True
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
+        """
+        Stashes the signature of 'dataclasses.replace(...)' for this specific dataclass
+        to be used later if someone calls 'dataclasses.replace' on this dataclass.
+        """
         arg_types: list[Type] = [Instance(self._cls.info, [])]
         arg_kinds = [ARG_POS]
         arg_names: list[str | None] = [None]
@@ -357,7 +361,7 @@ class DataclassTransformer:
             name=f"replace of {self._cls.info.name}",
         )
 
-        self._cls.info.names[_INTERNAL_REPLACE_METHOD] = SymbolTableNode(
+        self._cls.info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
             kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
         )
 
@@ -802,8 +806,8 @@ def _is_dataclasses_decorator(node: Node) -> bool:
 
 def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     """
-    Generates a signature for the 'dataclasses.replace' function that's specific to the call site
-    and dependent on the type of the first argument.
+    Returns a signature for the 'dataclasses.replace' function that's dependent on the type
+    of the first positional argument.
     """
     if len(ctx.args) != 2:
         # Ideally the name and context should be callee's, but we don't have it in FunctionSigContext.
@@ -826,8 +830,8 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     if not isinstance(obj_type, Instance):
         return ctx.default_signature
 
-    repl = obj_type.type.get_method(_INTERNAL_REPLACE_METHOD)
-    if repl is None:
+    obj_replace = obj_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
+    if obj_replace is None:
         inst_type_str = format_type_bare(obj_type)
         ctx.api.fail(
             f'Argument 1 to "replace" has incompatible type "{inst_type_str}"; expected a dataclass',
@@ -835,6 +839,6 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
         )
         return ctx.default_signature
 
-    repl_type = get_proper_type(repl.type)
-    assert isinstance(repl_type, CallableType)
-    return repl_type
+    obj_replace_sig = get_proper_type(obj_replace.type)
+    assert isinstance(obj_replace_sig, CallableType)
+    return obj_replace_sig
