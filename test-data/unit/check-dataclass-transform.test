@@ -609,9 +609,9 @@ class FunctionModel:
         present_1: int
     else:
         skipped_1: int
-    if True:
+    if True:  # Mypy does not know if it is True or False, so the block is used
         present_2: int
-    if False:
+    if False:  # Mypy does not know if it is True or False, so the block is used
         present_3: int
     if not TRUTH:
         skipped_2: int
@@ -631,6 +631,93 @@ FunctionModel(   # E: Unexpected keyword argument "skipped_1" for "FunctionModel
     present_3=3,
     present_4=4,
     skipped_1=5,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformStaticDeterministicConditionalElifAttributes]
+# flags: --python-version 3.11 --always-true TRUTH --always-false LIE
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+LIE = True  # Is set to --always-false
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        present_1: int
+    elif TRUTH:
+        skipped_1: int
+    else:
+        skipped_2: int
+    if LIE:
+        skipped_3: int
+    elif TRUTH:
+        present_2: int
+    else:
+        skipped_4: int
+    if LIE:
+        skipped_5: int
+    elif LIE:
+        skipped_6: int
+    else:
+        present_3: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformStaticNotDeterministicConditionalElifAttributes]
+# flags: --python-version 3.11 --always-true TRUTH --always-false LIE
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+LIE = True  # Is set to --always-false
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if 123:  # Mypy does not know if it is True or False, so this block is used
+        present_1: int
+    elif TRUTH:  # Mypy does not know if previous condition is True or False, so it uses also this block
+        present_2: int
+    else:  # Previous block is for sure True, so this block is skipped
+        skipped_1: int
+    if 123:
+        present_3: int
+    elif 123:
+        present_4: int
+    else:
+        present_5: int
+    if 123:  # Mypy does not know if it is True or False, so this block is used
+        present_6: int
+    elif LIE:  # This is for sure False, so the block is skipped used
+        skipped_2: int
+    else:  # None of the conditions above for sure True, so this block is used
+        present_7: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    present_5=5,
+    present_6=6,
+    present_7=7,
 )
 
 [typing fixtures/typing-full.pyi]
