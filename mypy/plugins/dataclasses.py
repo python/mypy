@@ -23,6 +23,7 @@ from mypy.nodes import (
     Context,
     DataclassTransformSpec,
     Expression,
+    FuncDef,
     JsonDict,
     NameExpr,
     Node,
@@ -73,6 +74,7 @@ _TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
     frozen_default=False,
     field_specifiers=("dataclasses.Field", "dataclasses.field"),
 )
+_INTERNAL_REPLACE_METHOD = "__mypy_replace"
 
 
 class DataclassAttribute:
@@ -325,6 +327,7 @@ class DataclassTransformer:
             add_attribute_to_class(self._api, self._cls, "__match_args__", match_args_type)
 
         self._add_dataclass_fields_magic_attribute()
+        self._add_internal_replace_method(attributes)
 
         info.metadata["dataclass"] = {
             "attributes": [attr.serialize() for attr in attributes],
@@ -332,6 +335,30 @@ class DataclassTransformer:
         }
 
         return True
+
+    def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
+        arg_types = [Instance(self._cls.info, [])]
+        arg_kinds = [ARG_POS]
+        arg_names = [None]
+        for attr in attributes:
+            arg_types.append(attr.type)
+            arg_names.append(attr.name)
+            arg_kinds.append(
+                ARG_NAMED_OPT if attr.has_default or not attr.is_init_var else ARG_NAMED
+            )
+
+        signature = CallableType(
+            arg_types=arg_types,
+            arg_kinds=arg_kinds,
+            arg_names=arg_names,
+            ret_type=Instance(self._cls.info, []),
+            fallback=self._api.named_type("builtins.function"),
+            name=f"replace of {self._cls.info.name}",
+        )
+
+        self._cls.info.names[_INTERNAL_REPLACE_METHOD] = SymbolTableNode(
+            kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
+        )
 
     def add_slots(
         self, info: TypeInfo, attributes: list[DataclassAttribute], *, correct_version: bool
@@ -797,36 +824,16 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     obj_type = get_proper_type(obj_type)
     if not isinstance(obj_type, Instance):
         return ctx.default_signature
-    inst_type_str = format_type_bare(obj_type)
 
-    metadata = obj_type.type.metadata
-    dataclass = metadata.get("dataclass")
-    if not dataclass:
+    repl = obj_type.type.get_method(_INTERNAL_REPLACE_METHOD)
+    if repl is None:
+        inst_type_str = format_type_bare(obj_type)
         ctx.api.fail(
             f'Argument 1 to "replace" has incompatible type "{inst_type_str}"; expected a dataclass',
             ctx.context,
         )
         return ctx.default_signature
 
-    arg_names = [None]
-    arg_kinds = [ARG_POS]
-    arg_types = [obj_type]
-    for attr in dataclass["attributes"]:
-        if not attr["is_in_init"]:
-            continue
-        arg_names.append(attr["name"])
-        arg_kinds.append(
-            ARG_NAMED if not attr["has_default"] and attr["is_init_var"] else ARG_NAMED_OPT
-        )
-        arg_types.append(ctx.api.named_type(attr["type"]))
-
-    return ctx.default_signature.copy_modified(
-        arg_names=arg_names,
-        arg_kinds=arg_kinds,
-        arg_types=arg_types,
-        ret_type=obj_type,
-        name=f"{ctx.default_signature.name} of {inst_type_str}",
-        # prevent 'dataclasses.pyi:...: note: "replace" of "A" defined here' notes
-        # since they are misleading: the definition is dynamic, not from a definition
-        definition=None,
-    )
+    repl_type = repl.type
+    assert isinstance(repl_type, CallableType)
+    return repl_type

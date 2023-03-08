@@ -2024,3 +2024,14 @@ a2 = replace(a, q='42')  # E: Argument "q" to "replace" of "A" has incompatible 
 reveal_type(a2)  # N: Revealed type is "__main__.A"
 
 [builtins fixtures/dataclasses.pyi]
+[case testReplaceNotDataclass]
+from dataclasses import replace
+
+replace(5)  # E: Argument 1 to "replace" has incompatible type "int"; expected a dataclass
+
+class C:
+    pass
+
+replace(C())  # E: Argument 1 to "replace" has incompatible type "C"; expected a dataclass
+
+[builtins fixtures/dataclasses.pyi]
