@@ -382,25 +382,23 @@ class DataclassTransformer:
                             # recreate a symbol node for this attribute.
                             lvalue.node = None
 
-    @staticmethod
     def _get_assignment_statements_from_if_statement(
-        stmt: IfStmt,
+        self, stmt: IfStmt
     ) -> Generator[AssignmentStmt, None, None]:
         for body in stmt.body:
             if not body.is_unreachable:
-                yield from DataclassTransformer._get_assignment_statements_from_block(body)
+                yield from self._get_assignment_statements_from_block(body)
         if stmt.else_body is not None and not stmt.else_body.is_unreachable:
-            yield from DataclassTransformer._get_assignment_statements_from_block(stmt.else_body)
+            yield from self._get_assignment_statements_from_block(stmt.else_body)
 
-    @staticmethod
     def _get_assignment_statements_from_block(
-        block: Block,
+        self, block: Block
     ) -> Generator[AssignmentStmt, None, None]:
         for stmt in block.body:
             if isinstance(stmt, AssignmentStmt):
                 yield stmt
             elif isinstance(stmt, IfStmt):
-                yield from DataclassTransformer._get_assignment_statements_from_if_statement(stmt)
+                yield from self._get_assignment_statements_from_if_statement(stmt)
 
     def collect_attributes(self) -> list[DataclassAttribute] | None:
         """Collect all attributes declared in the dataclass and its parents.
