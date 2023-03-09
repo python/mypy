@@ -344,7 +344,7 @@ Check that assignment target is not a method [method-assign]
 
 In general, assigning to a method on class object or instance (a.k.a.
 monkey-patching) is ambiguous in terms of types, since Python's static type
-system cannot express difference between bound and unbound callable types.
+system cannot express the difference between bound and unbound callable types.
 Consider this example:
 
 .. code-block:: python
@@ -355,18 +355,18 @@ Consider this example:
 
    def h(self: A) -> None: pass
 
-   A.f = h  # type of h is Callable[[A], None]
-   A().f()  # this works
-   A.f = A().g  # type of A().g is Callable[[], None]
-   A().f()  # but this also works at runtime
+   A.f = h  # Type of h is Callable[[A], None]
+   A().f()  # This works
+   A.f = A().g  # Type of A().g is Callable[[], None]
+   A().f()  # ...but this also works at runtime
 
 To prevent the ambiguity, mypy will flag both assignments by default. If this
-error code is disabled, mypy will treat all method assignments r.h.s. as unbound,
-so the second assignment will still generate an error.
+error code is disabled, mypy will treat the assigned value in all method assignments as unbound,
+so only the second assignment will still generate an error.
 
 .. note::
 
-    This error code is a sub-error code of a wider ``[assignment]`` code.
+    This error code is a subcode of the more general ``[assignment]`` code.
 
 Check type variable values [type-var]
 -------------------------------------
@@ -456,11 +456,11 @@ Example:
 Check TypedDict items [typeddict-item]
 --------------------------------------
 
-When constructing a ``TypedDict`` object, mypy checks that each key and value is compatible
-with the ``TypedDict`` type that is inferred from the surrounding context.
+When constructing a TypedDict object, mypy checks that each key and value is compatible
+with the TypedDict type that is inferred from the surrounding context.
 
-When getting a ``TypedDict`` item, mypy checks that the key
-exists. When assigning to a ``TypedDict``, mypy checks that both the
+When getting a TypedDict item, mypy checks that the key
+exists. When assigning to a TypedDict, mypy checks that both the
 key and the value are valid.
 
 Example:
@@ -480,10 +480,13 @@ Example:
 Check TypedDict Keys [typeddict-unknown-key]
 --------------------------------------------
 
-When constructing a ``TypedDict`` object, mypy checks whether the definition
-contains unknown keys. For convenience's sake, mypy will not generate an error
-when a ``TypedDict`` has extra keys if it's passed to a function as an argument.
-However, it will generate an error when these are created. Example:
+When constructing a TypedDict object, mypy checks whether the
+definition contains unknown keys, to catch invalid keys and
+misspellings. On the other hand, mypy will not generate an error when
+a previously constructed TypedDict value with extra keys is passed
+to a function as an argument, since TypedDict values support
+structural subtyping ("static duck typing") and the keys are assumed
+to have been validated at the point of construction. Example:
 
 .. code-block:: python
 
@@ -502,13 +505,13 @@ However, it will generate an error when these are created. Example:
     a: Point = {"x": 1, "y": 4}
     b: Point3D = {"x": 2, "y": 5, "z": 6}
 
-    # OK
-    add_x_coordinates(a, b)
+    add_x_coordinates(a, b)  # OK
+
     # Error: Extra key "z" for TypedDict "Point"  [typeddict-unknown-key]
     add_x_coordinates(a, {"x": 1, "y": 4, "z": 5})
 
-
-Setting an unknown value on a ``TypedDict`` will also generate this error:
+Setting a TypedDict item using an unknown key will also generate this
+error, since it could be a misspelling:
 
 .. code-block:: python
 
@@ -516,9 +519,9 @@ Setting an unknown value on a ``TypedDict`` will also generate this error:
     # Error: Extra key "z" for TypedDict "Point"  [typeddict-unknown-key]
     a["z"] = 3
 
-
-Whereas reading an unknown value will generate the more generic/serious
-``typeddict-item``:
+Reading an unknown key will generate the more general (and serious)
+``typeddict-item`` error, which is likely to result in an exception at
+runtime:
 
 .. code-block:: python
 
@@ -528,7 +531,7 @@ Whereas reading an unknown value will generate the more generic/serious
 
 .. note::
 
-    This error code is a sub-error code of a wider ``[typeddict-item]`` code.
+    This error code is a subcode of the wider ``[typeddict-item]`` code.
 
 Check that type of target is known [has-type]
 ---------------------------------------------
@@ -810,8 +813,8 @@ Check that literal is used where expected [literal-required]
 There are some places where only a (string) literal value is expected for
 the purposes of static type checking, for example a ``TypedDict`` key, or
 a ``__match_args__`` item. Providing a ``str``-valued variable in such contexts
-will result in an error. Note however, in many cases you can use ``Final``,
-or ``Literal`` variables, for example:
+will result in an error. Note that in many cases you can also use ``Final``
+or ``Literal`` variables. Example:
 
 .. code-block:: python
 

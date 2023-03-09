@@ -25,7 +25,7 @@ import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Generic, Iterator, TypeVar, Union, cast
+from typing import Any, Generic, Iterator, TypeVar, Union
 from typing_extensions import get_origin
 
 import mypy.build
@@ -476,10 +476,7 @@ def verify_typeinfo(
     to_check = set(stub.names)
     # Check all public things on the runtime class
     to_check.update(
-        # cast to workaround mypyc complaints
-        m
-        for m in cast(Any, vars)(runtime)
-        if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
+        m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
     # Special-case the __init__ method for Protocols
     #
