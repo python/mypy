@@ -2413,7 +2413,9 @@ class State:
             self.update_fine_grained_deps(self.manager.fg_deps)
 
             if manager.options.export_ref_info:
-                write_undocumented_ref_info(self, manager.metastore, manager.options)
+                write_undocumented_ref_info(
+                    self, manager.metastore, manager.options, self.type_map()
+                )
 
             self.free_state()
             if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
@@ -3624,7 +3626,9 @@ def is_silent_import_module(manager: BuildManager, path: str) -> bool:
     )
 
 
-def write_undocumented_ref_info(state: State, metastore: MetadataStore, options: Options) -> None:
+def write_undocumented_ref_info(
+    state: State, metastore: MetadataStore, options: Options, type_map: dict[Expression, Type]
+) -> None:
     # This exports some dependency information in a rather ad-hoc fashion, which
     # can be helpful for some tools. This is all highly experimental and could be
     # removed at any time.
@@ -3639,5 +3643,5 @@ def write_undocumented_ref_info(state: State, metastore: MetadataStore, options:
     ref_info_file = ".".join(data_file.split(".")[:-2]) + ".refs.json"
     assert not ref_info_file.startswith(".")
 
-    deps_json = get_undocumented_ref_info_json(state.tree)
+    deps_json = get_undocumented_ref_info_json(state.tree, type_map)
     metastore.write(ref_info_file, json.dumps(deps_json, separators=(",", ":")))
