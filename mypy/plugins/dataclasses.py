@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
@@ -17,11 +17,13 @@ from mypy.nodes import (
     MDEF,
     Argument,
     AssignmentStmt,
+    Block,
     CallExpr,
     ClassDef,
     Context,
     DataclassTransformSpec,
     Expression,
+    IfStmt,
     JsonDict,
     NameExpr,
     Node,
@@ -380,6 +382,22 @@ class DataclassTransformer:
                             # recreate a symbol node for this attribute.
                             lvalue.node = None
 
+    def _get_assignment_statements_from_if_statement(
+        self, stmt: IfStmt
+    ) -> Iterator[AssignmentStmt]:
+        for body in stmt.body:
+            if not body.is_unreachable:
+                yield from self._get_assignment_statements_from_block(body)
+        if stmt.else_body is not None and not stmt.else_body.is_unreachable:
+            yield from self._get_assignment_statements_from_block(stmt.else_body)
+
+    def _get_assignment_statements_from_block(self, block: Block) -> Iterator[AssignmentStmt]:
+        for stmt in block.body:
+            if isinstance(stmt, AssignmentStmt):
+                yield stmt
+            elif isinstance(stmt, IfStmt):
+                yield from self._get_assignment_statements_from_if_statement(stmt)
+
     def collect_attributes(self) -> list[DataclassAttribute] | None:
         """Collect all attributes declared in the dataclass and its parents.
 
@@ -438,10 +456,10 @@ class DataclassTransformer:
         # Second, collect attributes belonging to the current class.
         current_attr_names: set[str] = set()
         kw_only = self._get_bool_arg("kw_only", self._spec.kw_only_default)
-        for stmt in cls.defs.body:
+        for stmt in self._get_assignment_statements_from_block(cls.defs):
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
-            if not (isinstance(stmt, AssignmentStmt) and stmt.new_syntax):
+            if not stmt.new_syntax:
                 continue
 
             # a: int, b: str = 1, 'foo' is not supported syntax so we
