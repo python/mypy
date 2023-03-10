@@ -1099,37 +1099,34 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def _get_namedtuple_fields(self, call: CallExpr) -> list[tuple[str, str]] | None:
         if self.is_namedtuple(call):
-            items: list[str]
-            if isinstance(call.args[1], StrExpr):
-                items = call.args[1].value.replace(",", " ").split()
-            elif isinstance(call.args[1], (ListExpr, TupleExpr)):
-                items = []
-                for item in call.args[1].items:
-                    if isinstance(item, StrExpr):
-                        items.append(item.value)
-                    else:
-                        return None  # Invalid namedtuple field type
+            fields_arg = call.args[1]
+            if isinstance(fields_arg, StrExpr):
+                field_names = fields_arg.value.replace(",", " ").split()
+            elif isinstance(fields_arg, (ListExpr, TupleExpr)):
+                field_names = []
+                for field in fields_arg.items:
+                    if not isinstance(field, StrExpr):
+                        return None
+                    field_names.append(field.value)
             else:
                 return None  # Invalid namedtuple fields type
-            if items:
+            if field_names:
                 self.import_tracker.require_name("Incomplete")
-            return [(item, "Incomplete") for item in items]
+            return [(field_name, "Incomplete") for field_name in field_names]
         elif self.is_typed_namedtuple(call):
-
-            if isinstance(call.args[1], (ListExpr, TupleExpr)):
-                fields: list[tuple[str, str]] = []
-                b = AliasPrinter(self)
-                for item in call.args[1].items:
-                    if isinstance(item, TupleExpr) and len(item.items) == 2:
-                        field_name, field_type = item.items
-                        if not isinstance(field_name, StrExpr):
-                            return None  # Invalid NamedTuple field name
-                        fields.append((field_name.value, field_type.accept(b)))
-                    else:
-                        return None  # Invalid NamedTuple field type
-                return fields
-            else:
-                return None  # Invalid NamedTuple fields type
+            fields_arg = call.args[1]
+            if not isinstance(fields_arg, (ListExpr, TupleExpr)):
+                return None
+            fields: list[tuple[str, str]] = []
+            b = AliasPrinter(self)
+            for field in fields_arg.items:
+                if not (isinstance(field, TupleExpr) and len(field.items) == 2):
+                    return None
+                field_name, field_type = field.items
+                if not isinstance(field_name, StrExpr):
+                    return None
+                fields.append((field_name.value, field_type.accept(b)))
+            return fields
         else:
             return None  # Not a named tuple call
 
