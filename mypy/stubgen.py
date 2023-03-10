@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping, cast
+from typing import Iterable, List, Mapping
 from typing_extensions import Final
 
 import mypy.build
@@ -996,6 +996,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # namedtuple(typename, fields), NamedTuple(typename, fields) calls can
                 # be used as a base class. The first argument is a string literal that
                 # is usually the same as the class name.
+                #
                 # Note:
                 # A call-based named tuple as a base class cannot be safely converted to
                 # a class-based NamedTuple definition because class attributes defined
@@ -1003,7 +1004,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # namedtuple fields at runtime.
                 if self.is_namedtuple(base):
                     nt_fields = self._get_namedtuple_fields(base)
-                    typename = cast(StrExpr, base.args[0]).value
+                    assert isinstance(base.args[0], StrExpr)
+                    typename = base.args[0].value
                     if nt_fields is not None:
                         # A valid namedtuple() call, use NamedTuple() instead with
                         # Incomplete as field types
@@ -1084,7 +1086,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         ) or (
             isinstance(callee, MemberExpr)
             and isinstance(callee.expr, NameExpr)
-            and f"{callee.expr.name}.{callee.name}" in "collections.namedtuple"
+            and f"{callee.expr.name}.{callee.name}" == "collections.namedtuple"
         )
 
     def is_typed_namedtuple(self, expr: CallExpr) -> bool:
@@ -1116,8 +1118,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.import_tracker.require_name("Incomplete")
             return [(item, "Incomplete") for item in items]
         elif self.is_typed_namedtuple(call):
-            fields: list[tuple[str, str]] = []
+
             if isinstance(call.args[1], (ListExpr, TupleExpr)):
+                fields: list[tuple[str, str]] = []
                 b = AliasPrinter(self)
                 for item in call.args[1].items:
                     if isinstance(item, TupleExpr) and len(item.items) == 2:
@@ -1127,9 +1130,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                         fields.append((field_name.value, field_type.accept(b)))
                     else:
                         return None  # Invalid NamedTuple field type
+                return fields
             else:
                 return None  # Invalid NamedTuple fields type
-            return fields
         else:
             return None  # Not a named tuple call
 
