@@ -742,8 +742,7 @@ class BuildManager:
                 else:
                     self.shadow_equivalence_map[path] = None
 
-        shadow_file = self.shadow_equivalence_map.get(path)
-        return shadow_file if shadow_file else path
+        return self.shadow_equivalence_map.get(path) or path
 
     def get_stat(self, path: str) -> os.stat_result:
         return self.fscache.stat(self.maybe_swap_for_shadow_path(path))

@@ -1844,13 +1844,12 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         name = t.name
         node = None
         # Special case P.args and P.kwargs for ParamSpecs only.
-        if name.endswith("args"):
-            if name.endswith(".args") or name.endswith(".kwargs"):
-                base = ".".join(name.split(".")[:-1])
-                n = self.api.lookup_qualified(base, t)
-                if n is not None and isinstance(n.node, ParamSpecExpr):
-                    node = n
-                    name = base
+        if name.endswith((".args", ".kwargs")):
+            base = ".".join(name.split(".")[:-1])
+            n = self.api.lookup_qualified(base, t)
+            if n is not None and isinstance(n.node, ParamSpecExpr):
+                node = n
+                name = base
         if node is None:
             node = self.api.lookup_qualified(name, t)
         if (
