@@ -750,17 +750,14 @@ class DataclassTransformer:
             return True
 
         specifier_type = _get_callee_type(call)
-        print("type", specifier_type, type(specifier_type))
         if specifier_type is None:
             return True
 
         parameter = specifier_type.argument_by_name("init")
-        print("parameter", parameter)
         if parameter is None:
             return True
 
         literals = try_getting_literals_from_type(parameter.typ, bool, "builtins.bool")
-        print("literals", literals)
         if literals is None or len(literals) != 1:
             return True
 
