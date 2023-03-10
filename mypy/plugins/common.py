@@ -152,7 +152,7 @@ def add_method_to_class(
     """Adds a new method to a class definition."""
 
     assert not (
-        is_classmethod is True and is_staticmethod is True
+        is_classmethod is is_staticmethod is True
     ), "Can't add a new method that's both staticmethod and classmethod."
 
     info = cls.info

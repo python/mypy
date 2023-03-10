@@ -1718,7 +1718,7 @@ def expand_type_alias(
             fail=fail,
             unexpanded_type=unexpanded_type,
         )
-    if exp_len == 0 and act_len == 0:
+    if exp_len == act_len == 0:
         if no_args:
             assert isinstance(node.target, Instance)  # type: ignore[misc]
             # Note: this is the only case where we use an eager expansion. See more info about

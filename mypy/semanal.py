@@ -1415,7 +1415,7 @@ class SemanticAnalyzer(
 
         args = func.var_arg()
         kwargs = func.kw_arg()
-        if args is None and kwargs is None:
+        if args is kwargs is None:
             return  # Looks like this function does not have starred args
 
         args_defn_type = None

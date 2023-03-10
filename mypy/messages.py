@@ -2877,15 +2877,13 @@ def append_invariance_notes(
     invariant_type = ""
     covariant_suggestion = ""
     if (
-        arg_type.type.fullname == "builtins.list"
-        and expected_type.type.fullname == "builtins.list"
+        arg_type.type.fullname == expected_type.type.fullname == "builtins.list"
         and is_subtype(arg_type.args[0], expected_type.args[0])
     ):
         invariant_type = "List"
         covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
     elif (
-        arg_type.type.fullname == "builtins.dict"
-        and expected_type.type.fullname == "builtins.dict"
+        arg_type.type.fullname == expected_type.type.fullname == "builtins.dict"
         and is_same_type(arg_type.args[0], expected_type.args[0])
         and is_subtype(arg_type.args[1], expected_type.args[1])
     ):

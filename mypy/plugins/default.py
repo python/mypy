@@ -170,8 +170,7 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
         and len(ctx.args[0]) == 1
         and isinstance(ctx.args[0][0], StrExpr)
         and len(signature.arg_types) == 2
-        and len(signature.variables) == 1
-        and len(ctx.args[1]) == 1
+        and len(signature.variables) == len(ctx.args[1]) == 1
     ):
         key = ctx.args[0][0].value
         value_type = get_proper_type(ctx.type.items.get(key))
@@ -216,7 +215,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
 
             if len(ctx.arg_types) == 1:
                 output_types.append(value_type)
-            elif len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1 and len(ctx.args[1]) == 1:
+            elif len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == len(ctx.args[1]) == 1:
                 default_arg = ctx.args[1][0]
                 if (
                     isinstance(default_arg, DictExpr)
@@ -249,8 +248,7 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
         and len(ctx.args[0]) == 1
         and isinstance(ctx.args[0][0], StrExpr)
         and len(signature.arg_types) == 2
-        and len(signature.variables) == 1
-        and len(ctx.args[1]) == 1
+        and len(signature.variables) == len(ctx.args[1]) == 1
     ):
         key = ctx.args[0][0].value
         value_type = ctx.type.items.get(key)
@@ -295,7 +293,7 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
 
         if len(ctx.args[1]) == 0:
             return make_simplified_union(value_types)
-        elif len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1 and len(ctx.args[1]) == 1:
+        elif len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == len(ctx.args[1]) == 1:
             return make_simplified_union([*value_types, ctx.arg_types[1][0]])
     return ctx.default_return_type
 
@@ -328,8 +326,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     if (
         isinstance(ctx.type, TypedDictType)
         and len(ctx.arg_types) == 2
-        and len(ctx.arg_types[0]) == 1
-        and len(ctx.arg_types[1]) == 1
+        and len(ctx.arg_types[0]) == len(ctx.arg_types[1]) == 1
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
@@ -368,11 +365,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
 
 def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     """Type check TypedDict.__delitem__."""
-    if (
-        isinstance(ctx.type, TypedDictType)
-        and len(ctx.arg_types) == 1
-        and len(ctx.arg_types[0]) == 1
-    ):
+    if isinstance(ctx.type, TypedDictType) and len(ctx.arg_types) == len(ctx.arg_types[0]) == 1:
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
             ctx.api.fail(

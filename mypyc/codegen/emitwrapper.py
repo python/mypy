@@ -182,7 +182,7 @@ def generate_wrapper_function(
     if not real_args:
         # No args
         parse_fn = "CPyArg_ParseStackAndKeywordsNoArgs"
-    elif len(real_args) == 1 and len(groups[ARG_POS]) == 1:
+    elif len(real_args) == len(groups[ARG_POS]) == 1:
         # Single positional arg
         parse_fn = "CPyArg_ParseStackAndKeywordsOneArg"
     elif len(real_args) == len(groups[ARG_POS]) + len(groups[ARG_OPT]):
@@ -680,7 +680,7 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
         emitter.emit_line("if (super == NULL) return -1;")
         emitter.emit_line("PyObject *result;")
 
-        if method_cls is None and cl.builtin_base is None:
+        if method_cls is cl.builtin_base is None:
             msg = f"'{cl.name}' object does not support item assignment"
             emitter.emit_line(f'PyErr_SetString(PyExc_TypeError, "{msg}");')
             emitter.emit_line("result = NULL;")

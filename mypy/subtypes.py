@@ -1624,7 +1624,7 @@ def are_parameters_compatible(
 
         # All *required* left-hand arguments must have a corresponding
         # right-hand argument.  Optional args do not matter.
-        if left_arg.required and right_by_pos is None and right_by_name is None:
+        if left_arg.required and right_by_pos is right_by_name is None:
             return False
 
     return True

@@ -209,7 +209,7 @@ def sequence_from_generator_preallocate_helper(
             See `new_list_set_item_op` and `new_tuple_set_item_op` for detailed
             implementation.
     """
-    if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
+    if len(gen.sequences) == len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
         rtype = builder.node_type(gen.sequences[0])
         if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype) or is_str_rprimitive(rtype):
             sequence = builder.accept(gen.sequences[0])

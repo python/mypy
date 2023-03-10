@@ -3035,7 +3035,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     compare_static = is_node_static(compare_type.definition)
 
                 # Compare against False, as is_node_static can return None
-                if base_static is False and compare_static is False:
+                if base_static is compare_static is False:
                     # Class-level function objects and classmethods become bound
                     # methods: the former to the instance, the latter to the
                     # class
@@ -5490,7 +5490,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # chain have custom __eq__ or __ne__ methods. But we (maybe optimistically)
                     # assume nobody would actually create a custom objects that considers itself
                     # equal to None.
-                    if if_map == {} and else_map == {}:
+                    if if_map == else_map == {}:
                         if_map, else_map = self.refine_away_none_in_comparison(
                             operands,
                             operand_types,
@@ -5500,7 +5500,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                     # If we haven't been able to narrow types yet, we might be dealing with a
                     # explicit type(x) == some_type check
-                    if if_map == {} and else_map == {}:
+                    if if_map == else_map == {}:
                         if_map, else_map = self.find_type_equals_check(node, expr_indices)
                 elif operator in {"in", "not in"}:
                     assert len(expr_indices) == 2

@@ -362,7 +362,7 @@ def callable_corresponding_argument(
 
     by_name = typ.argument_by_name(model.name)
     by_pos = typ.argument_by_position(model.pos)
-    if by_name is None and by_pos is None:
+    if by_name is by_pos is None:
         return None
     if by_name is not None and by_pos is not None:
         if by_name == by_pos:
@@ -377,8 +377,7 @@ def callable_corresponding_argument(
 
         if (
             not (by_name.required or by_pos.required)
-            and by_pos.name is None
-            and by_name.pos is None
+            and by_pos.name is by_name.pos is None
             and is_equivalent(by_name.typ, by_pos.typ)
         ):
             return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)

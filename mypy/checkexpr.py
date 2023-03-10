@@ -3616,7 +3616,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         with self.msg.filter_errors(filter_errors=right_map is None):
             right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
-        if left_map is None and right_map is None:
+        if left_map is right_map is None:
             return UninhabitedType()
 
         if right_map is None:

@@ -390,7 +390,7 @@ class Server:
         if not self.following_imports():
             messages = self.fine_grained_increment(sources, remove, update)
         else:
-            assert remove is None and update is None
+            assert remove is update is None
             messages = self.fine_grained_increment_follow_imports(sources)
         res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.flush_caches()
@@ -541,7 +541,7 @@ class Server:
         manager = self.fine_grained_manager.manager
 
         t0 = time.time()
-        if remove is None and update is None:
+        if remove is update is None:
             # Use the fswatcher to determine which files were changed
             # (updated or added) or removed.
             self.update_sources(sources)
