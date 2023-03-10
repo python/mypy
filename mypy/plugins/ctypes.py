@@ -69,8 +69,7 @@ def _autoconvertible_to_cdata(tp: Type, api: mypy.plugin.CheckerPluginInterface)
                 if t.type.has_base("ctypes._PointerLike"):
                     # Pointer-like _SimpleCData subclasses can also be converted from
                     # an int or None.
-                    allowed_types.append(api.named_generic_type("builtins.int", []))
-                    allowed_types.append(NoneType())
+                    allowed_types.extend((api.named_generic_type("builtins.int", []), NoneType()))
 
     return make_simplified_union(allowed_types)
 

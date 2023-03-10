@@ -116,8 +116,7 @@ def split_blocks_at_uninits(
         new_ops: list[Op] = []
         for reg in init_registers:
             err = LoadErrorValue(reg.type, undefines=True)
-            new_ops.append(err)
-            new_ops.append(Assign(reg, err))
+            new_ops.extend((err, Assign(reg, err)))
         for reg in bitmap_registers:
             new_ops.append(Assign(reg, Integer(0, bitmap_rprimitive)))
         new_blocks[0].ops[0:0] = new_ops
@@ -153,10 +152,10 @@ def check_for_uninit_using_bitmap(
         IntOp.AND,
         line,
     )
-    ops.append(masked)
     chk = ComparisonOp(masked, Integer(0, bitmap_rprimitive), ComparisonOp.EQ)
-    ops.append(chk)
-    ops.append(Branch(chk, error_block, ok_block, Branch.BOOL))
+    br = Branch(chk, error_block, ok_block, Branch.BOOL)
+
+    ops.extend((masked, chk, br))
 
 
 def update_register_assignments_to_set_bitmap(
@@ -183,8 +182,7 @@ def update_register_assignments_to_set_bitmap(
                         IntOp.OR,
                         op.line,
                     )
-                    new_ops.append(new)
-                    new_ops.append(Assign(reg, new))
+                    new_ops.extend((new, Assign(reg, new)))
                 else:
                     new_ops.append(op)
             block.ops = new_ops

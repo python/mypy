@@ -27,6 +27,5 @@ def frequently_executed_blocks(entry_point: BasicBlock) -> set[BasicBlock]:
             if t.rare or t.traceback_entry is not None:
                 worklist.append(t.false)
             else:
-                worklist.append(t.true)
-                worklist.append(t.false)
+                worklist.extend((t.true, t.false))
     return result

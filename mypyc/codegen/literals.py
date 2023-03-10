@@ -295,6 +295,5 @@ def _encode_complex_values(values: dict[complex, int]) -> list[str]:
     result.append(str(num))
     for i in range(num):
         value = value_by_index[i]
-        result.append(float_to_c(value.real))
-        result.append(float_to_c(value.imag))
+        result.extend((float_to_c(value.real), float_to_c(value.imag)))
     return result

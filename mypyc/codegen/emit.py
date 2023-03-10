@@ -320,13 +320,15 @@ class Emitter:
                 i += 1
         result.append(f"}} {rtuple.struct_name};")
         values = self.tuple_undefined_value_helper(rtuple)
-        result.append(
-            "static {} {} = {{ {} }};".format(
-                self.ctype(rtuple), self.tuple_undefined_value(rtuple), "".join(values)
+        result.extend(
+            (
+                "static {} {} = {{ {} }};".format(
+                    self.ctype(rtuple), self.tuple_undefined_value(rtuple), "".join(values)
+                ),
+                "#endif",
+                ""
             )
         )
-        result.append("#endif")
-        result.append("")
 
         return result
 

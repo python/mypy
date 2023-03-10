@@ -226,8 +226,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
                     # Special case '{}' as the default for a typed dict type.
                     output_types.append(value_type.copy_modified(required_keys=set()))
                 else:
-                    output_types.append(value_type)
-                    output_types.append(ctx.arg_types[1][0])
+                    output_types.extend((value_type, ctx.arg_types[1][0]))
 
         if len(ctx.arg_types) == 1:
             output_types.append(NoneType())

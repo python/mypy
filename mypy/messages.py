@@ -2894,11 +2894,9 @@ def append_invariance_notes(
             'Consider using "Mapping" instead, ' "which is covariant in the value type"
         )
     if invariant_type and covariant_suggestion:
-        notes.append(
-            f'"{invariant_type}" is invariant -- see '
-            + "https://mypy.readthedocs.io/en/stable/common_issues.html#variance"
-        )
-        notes.append(covariant_suggestion)
+        url = "https://mypy.readthedocs.io/en/stable/common_issues.html#variance"
+
+        notes.extend((f'"{invariant_type}" is invariant -- see {url}', covariant_suggestion))
     return notes
 
 
