@@ -1065,18 +1065,25 @@ class SemanticAnalyzer(
         assert self.type is not None
         info = self.type
         if info.self_type is not None:
-            if has_placeholder(info.self_type.upper_bound):
+            if has_placeholder(info.self_type.upper_bound) or has_placeholder(
+                info.self_type.default
+            ):
                 # Similar to regular (user defined) type variables.
                 self.process_placeholder(
                     None,
-                    "Self upper bound",
+                    "Self upper bound or default",
                     info,
                     force_progress=info.self_type.upper_bound != fill_typevars(info),
                 )
             else:
                 return
         info.self_type = TypeVarType(
-            "Self", f"{info.fullname}.Self", id=0, values=[], upper_bound=fill_typevars(info)
+            "Self",
+            f"{info.fullname}.Self",
+            id=0,
+            values=[],
+            upper_bound=fill_typevars(info),
+            default=AnyType(TypeOfAny.from_omitted_generics),
         )
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
@@ -1607,6 +1614,11 @@ class SemanticAnalyzer(
                 # Some type variable bounds or values are not ready, we need
                 # to re-analyze this class.
                 self.defer()
+            if has_placeholder(tvd.default):
+                # Placeholder values in TypeVarLikeTypes may get substituted in.
+                # Defer current target until they are ready.
+                self.mark_incomplete(defn.name, defn)
+                return
 
         self.analyze_class_keywords(defn)
         bases_result = self.analyze_base_classes(bases)
@@ -3981,7 +3993,7 @@ class SemanticAnalyzer(
         )
         if res is None:
             return False
-        variance, upper_bound = res
+        variance, upper_bound, default = res
 
         existing = self.current_symbol_table().get(name)
         if existing and not (
@@ -4003,7 +4015,7 @@ class SemanticAnalyzer(
                 prefix = "Upper bound of type variable"
                 self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
 
-        for t in values + [upper_bound]:
+        for t in values + [upper_bound, default]:
             check_for_explicit_any(
                 t, self.options, self.is_typeshed_stub_file, self.msg, context=s
             )
@@ -4016,18 +4028,29 @@ class SemanticAnalyzer(
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         if not call.analyzed:
-            type_var = TypeVarExpr(name, self.qualified_name(name), values, upper_bound, variance)
+            type_var = TypeVarExpr(
+                name, self.qualified_name(name), values, upper_bound, default, variance
+            )
             type_var.line = call.line
             call.analyzed = type_var
             updated = True
         else:
             assert isinstance(call.analyzed, TypeVarExpr)
-            updated = values != call.analyzed.values or upper_bound != call.analyzed.upper_bound
+            updated = (
+                values != call.analyzed.values
+                or upper_bound != call.analyzed.upper_bound
+                or default != call.analyzed.default
+            )
             call.analyzed.upper_bound = upper_bound
             call.analyzed.values = values
-        if any(has_placeholder(v) for v in values) or has_placeholder(upper_bound):
+            call.analyzed.default = default
+        if (
+            any(has_placeholder(v) for v in values)
+            or has_placeholder(upper_bound)
+            or has_placeholder(default)
+        ):
             self.process_placeholder(
-                None, f"TypeVar {'values' if values else 'upper bound'}", s, force_progress=updated
+                None, "TypeVar values, upper bound, or default", s, force_progress=updated
             )
 
         self.add_symbol(name, call.analyzed, s)
@@ -4077,11 +4100,12 @@ class SemanticAnalyzer(
         kinds: list[ArgKind],
         num_values: int,
         context: Context,
-    ) -> tuple[int, Type] | None:
+    ) -> tuple[int, Type, Type] | None:
         has_values = num_values > 0
         covariant = False
         contravariant = False
         upper_bound: Type = self.object_type()
+        default: Type = AnyType(TypeOfAny.from_omitted_generics)
         for param_value, param_name, param_kind in zip(args, names, kinds):
             if not param_kind.is_named():
                 self.fail(message_registry.TYPEVAR_UNEXPECTED_ARGUMENT, context)
@@ -4151,7 +4175,7 @@ class SemanticAnalyzer(
             variance = CONTRAVARIANT
         else:
             variance = INVARIANT
-        return variance, upper_bound
+        return variance, upper_bound, default
 
     def extract_typevarlike_name(self, s: AssignmentStmt, call: CallExpr) -> str | None:
         if not call:
@@ -4191,13 +4215,15 @@ class SemanticAnalyzer(
         if len(call.args) > 1:
             self.fail("Only the first argument to ParamSpec has defined semantics", s)
 
+        default: Type = AnyType(TypeOfAny.from_omitted_generics)
+
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
         # on the lines of process_typevar_parameters
 
         if not call.analyzed:
             paramspec_var = ParamSpecExpr(
-                name, self.qualified_name(name), self.object_type(), INVARIANT
+                name, self.qualified_name(name), self.object_type(), default, INVARIANT
             )
             paramspec_var.line = call.line
             call.analyzed = paramspec_var
@@ -4220,6 +4246,8 @@ class SemanticAnalyzer(
         if len(call.args) > 1:
             self.fail("Only the first argument to TypeVarTuple has defined semantics", s)
 
+        default: Type = AnyType(TypeOfAny.from_omitted_generics)
+
         if not self.incomplete_feature_enabled(TYPE_VAR_TUPLE, s):
             return False
 
@@ -4231,7 +4259,12 @@ class SemanticAnalyzer(
         if not call.analyzed:
             tuple_fallback = self.named_type("builtins.tuple", [self.object_type()])
             typevartuple_var = TypeVarTupleExpr(
-                name, self.qualified_name(name), self.object_type(), tuple_fallback, INVARIANT
+                name,
+                self.qualified_name(name),
+                self.object_type(),
+                tuple_fallback,
+                default,
+                INVARIANT,
             )
             typevartuple_var.line = call.line
             call.analyzed = typevartuple_var

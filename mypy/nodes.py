@@ -2439,13 +2439,14 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     Note that they are constructed by the semantic analyzer.
     """
 
-    __slots__ = ("_name", "_fullname", "upper_bound", "variance")
+    __slots__ = ("_name", "_fullname", "upper_bound", "default", "variance")
 
     _name: str
     _fullname: str
     # Upper bound: only subtypes of upper_bound are valid as values. By default
     # this is 'object', meaning no restriction.
     upper_bound: mypy.types.Type
+    default: mypy.types.Type
     # Variance of the type variable. Invariant is the default.
     # TypeVar(..., covariant=True) defines a covariant type variable.
     # TypeVar(..., contravariant=True) defines a contravariant type
@@ -2453,12 +2454,18 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     variance: int
 
     def __init__(
-        self, name: str, fullname: str, upper_bound: mypy.types.Type, variance: int = INVARIANT
+        self,
+        name: str,
+        fullname: str,
+        upper_bound: mypy.types.Type,
+        default: mypy.types.Type,
+        variance: int = INVARIANT,
     ) -> None:
         super().__init__()
         self._name = name
         self._fullname = fullname
         self.upper_bound = upper_bound
+        self.default = default
         self.variance = variance
 
     @property
@@ -2496,9 +2503,10 @@ class TypeVarExpr(TypeVarLikeExpr):
         fullname: str,
         values: list[mypy.types.Type],
         upper_bound: mypy.types.Type,
+        default: mypy.types.Type,
         variance: int = INVARIANT,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, variance)
+        super().__init__(name, fullname, upper_bound, default, variance)
         self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2511,6 +2519,7 @@ class TypeVarExpr(TypeVarLikeExpr):
             "fullname": self._fullname,
             "values": [t.serialize() for t in self.values],
             "upper_bound": self.upper_bound.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2522,6 +2531,7 @@ class TypeVarExpr(TypeVarLikeExpr):
             data["fullname"],
             [mypy.types.deserialize_type(v) for v in data["values"]],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 
@@ -2540,6 +2550,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
             "name": self._name,
             "fullname": self._fullname,
             "upper_bound": self.upper_bound.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2550,6 +2561,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
             data["name"],
             data["fullname"],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 
@@ -2569,9 +2581,10 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         fullname: str,
         upper_bound: mypy.types.Type,
         tuple_fallback: mypy.types.Instance,
+        default: mypy.types.Type,
         variance: int = INVARIANT,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, variance)
+        super().__init__(name, fullname, upper_bound, default, variance)
         self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2584,6 +2597,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             "fullname": self._fullname,
             "upper_bound": self.upper_bound.serialize(),
             "tuple_fallback": self.tuple_fallback.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2595,6 +2609,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             data["fullname"],
             mypy.types.deserialize_type(data["upper_bound"]),
             mypy.types.Instance.deserialize(data["tuple_fallback"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 

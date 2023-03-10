@@ -130,14 +130,7 @@ def freshen_function_type_vars(callee: F) -> F:
         tvs = []
         tvmap: dict[TypeVarId, Type] = {}
         for v in callee.variables:
-            if isinstance(v, TypeVarType):
-                tv: TypeVarLikeType = TypeVarType.new_unification_variable(v)
-            elif isinstance(v, TypeVarTupleType):
-                assert isinstance(v, TypeVarTupleType)
-                tv = TypeVarTupleType.new_unification_variable(v)
-            else:
-                assert isinstance(v, ParamSpecType)
-                tv = ParamSpecType.new_unification_variable(v)
+            tv = v.new_unification_variable(v)
             tvs.append(tv)
             tvmap[v.id] = tv
         fresh = expand_type(callee, tvmap).copy_modified(variables=tvs)
