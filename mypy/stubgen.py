@@ -397,10 +397,12 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_index_expr(self, node: IndexExpr) -> str:
         base = node.base.accept(self)
         index = node.index.accept(self)
+        if len(index) > 2 and index.startswith("(") and index.endswith(")"):
+            index = index[1:-1]
         return f"{base}[{index}]"
 
     def visit_tuple_expr(self, node: TupleExpr) -> str:
-        return ", ".join(n.accept(self) for n in node.items)
+        return f"({', '.join(n.accept(self) for n in node.items)})"
 
     def visit_list_expr(self, node: ListExpr) -> str:
         return f"[{', '.join(n.accept(self) for n in node.items)}]"
@@ -410,11 +412,6 @@ class AliasPrinter(NodeVisitor[str]):
 
     def visit_op_expr(self, o: OpExpr) -> str:
         return f"{o.left.accept(self)} {o.op} {o.right.accept(self)}"
-
-
-class NamedTuplePrinter(AliasPrinter):
-    def visit_tuple_expr(self, node: TupleExpr) -> str:
-        return f"({', '.join(n.accept(self) for n in node.items)})"
 
 
 class ImportTracker:
@@ -1016,7 +1013,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     base_types.append(f"NamedTuple({typename!r}, [{fields_str}])")
                     self.add_typing_import("NamedTuple")
                 elif self.is_typed_namedtuple(base):
-                    p = NamedTuplePrinter(self)
+                    p = AliasPrinter(self)
                     base_types.append(base.accept(p))
                 else:
                     # At this point, we don't know what the base class is, so we
