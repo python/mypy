@@ -2338,8 +2338,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         def has_shape(typ: Type) -> bool:
             typ = get_proper_type(typ)
             return (
-                isinstance(typ, TupleType)
-                or isinstance(typ, TypedDictType)
+                isinstance(typ, (TupleType, TypedDictType))
                 or (isinstance(typ, Instance) and typ.type.is_named_tuple)
             )
 
@@ -4921,14 +4920,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Is a type valid as a *args argument?"""
         typ = get_proper_type(typ)
         return (
-            isinstance(typ, TupleType)
+            isinstance(typ, (TupleType, AnyType, ParamSpecType, UnpackType))
             or is_subtype(
                 typ,
                 self.chk.named_generic_type("typing.Iterable", [AnyType(TypeOfAny.special_form)]),
             )
-            or isinstance(typ, AnyType)
-            or isinstance(typ, ParamSpecType)
-            or isinstance(typ, UnpackType)
         )
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:

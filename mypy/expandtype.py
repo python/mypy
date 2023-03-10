@@ -369,7 +369,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # must expand both of them with all the argument types,
             # kinds and names in the replacement. The return type in
             # the replacement is ignored.
-            if isinstance(repl, CallableType) or isinstance(repl, Parameters):
+            if isinstance(repl, (CallableType, Parameters)):
                 # Substitute *args: P.args, **kwargs: P.kwargs
                 prefix = param_spec.prefix
                 # we need to expand the types in the prefix, so might as well
