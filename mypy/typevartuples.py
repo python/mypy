@@ -119,8 +119,8 @@ def fully_split_with_mapped_and_template(
             tuple(mapped), mapped_prefix_len, mapped_suffix_len
         )
     else:
-        mapped_prefix = tuple()
-        mapped_suffix = tuple()
+        mapped_prefix = ()
+        mapped_suffix = ()
         mapped_middle = mapped
 
     template_prefix, template_middle, template_suffix = split_with_prefix_and_suffix(
