@@ -1045,7 +1045,7 @@ c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
 T = TypeVar(b'T')      # E: TypeVar() expects a string literal as first argument
 d = TypeVar('D')    # E: String argument 1 "D" to TypeVar(...) does not match variable name "d"
 e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to "TypeVar()": "x"
-f = TypeVar('f', (int, str), int) # E: Type expected
+f = TypeVar('f', (int, str), int) # E: Bracketed expression "(...)" is not valid as a type
 g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
 h = TypeVar('h', x=(int, str))    # E: Unexpected argument to "TypeVar()": "x"
 i = TypeVar('i', bound=1)         # E: TypeVar "bound" must be a type
@@ -1465,7 +1465,7 @@ TVariadic2 = TypeVarTuple('TVariadic2')
 TP = TypeVarTuple('?')  # E: String argument 1 "?" to TypeVarTuple(...) does not match variable name "TP"
 TP2: int = TypeVarTuple('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
 TP3 = TypeVarTuple()  # E: Too few arguments for TypeVarTuple()
-TP4 = TypeVarTuple('TP4', 'TP4')  # E: Only the first argument to TypeVarTuple has defined semantics
+TP4 = TypeVarTuple('TP4', 'TP4')  # E: Only the first positional argument to TypeVarTuple has defined semantics
 TP5 = TypeVarTuple(t='TP5')  # E: TypeVarTuple() expects a string literal as first argument
 
 x: TVariadic  # E: TypeVarTuple "TVariadic" is unbound

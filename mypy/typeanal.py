@@ -72,6 +72,7 @@ from mypy.types import (
     TypedDictType,
     TypeList,
     TypeOfAny,
+    TypeOfTypeList,
     TypeQuery,
     TypeType,
     TypeVarLikeType,
@@ -890,10 +891,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 return AnyType(TypeOfAny.from_error)
         else:
+            s = "[...]" if t.list_type == TypeOfTypeList.callable_args else "(...)"
             self.fail(
-                'Bracketed expression "[...]" is not valid as a type', t, code=codes.VALID_TYPE
+                f'Bracketed expression "{s}" is not valid as a type', t, code=codes.VALID_TYPE
             )
-            self.note('Did you mean "List[...]"?', t)
+            if t.list_type == TypeOfTypeList.callable_args:
+                self.note('Did you mean "List[...]"?', t)
             return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:

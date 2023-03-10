@@ -197,6 +197,17 @@ class TypeOfAny:
     suggestion_engine: Final = 9
 
 
+class TypeOfTypeList:
+    """This class describes the different types of TypeList."""
+
+    __slots__ = ()
+
+    # List expressions for callable args
+    callable_args: Final = 1
+    # Tuple expressions for ParamSpec defaults
+    param_spec_defaults: Final = 2
+
+
 def deserialize_type(data: JsonDict | str) -> Type:
     if isinstance(data, str):
         return Instance.deserialize(data)
@@ -1011,13 +1022,20 @@ class TypeList(ProperType):
     types before they are processed into Callable types.
     """
 
-    __slots__ = ("items",)
+    __slots__ = ("items", "list_type")
 
     items: list[Type]
 
-    def __init__(self, items: list[Type], line: int = -1, column: int = -1) -> None:
+    def __init__(
+        self,
+        items: list[Type],
+        list_type: int = TypeOfTypeList.callable_args,
+        line: int = -1,
+        column: int = -1,
+    ) -> None:
         super().__init__(line, column)
         self.items = items
+        self.list_type = list_type
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
@@ -1031,7 +1049,11 @@ class TypeList(ProperType):
         return hash(tuple(self.items))
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, TypeList) and self.items == other.items
+        return (
+            isinstance(other, TypeList)
+            and self.items == other.items
+            and self.list_type == other.list_type
+        )
 
 
 class UnpackType(ProperType):
@@ -3049,6 +3071,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s = f"{t.name}`{t.id}"
         if self.id_mapper and t.upper_bound:
             s += f"(upper_bound={t.upper_bound.accept(self)})"
+        if t.has_default():
+            s += f" = {t.default.accept(self)}"
         return s
 
     def visit_param_spec(self, t: ParamSpecType) -> str:
@@ -3064,6 +3088,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f"{t.name_with_suffix()}`{t.id}"
         if t.prefix.arg_types:
             s += "]"
+        if t.has_default():
+            s += f" = {t.default.accept(self)}"
         return s
 
     def visit_parameters(self, t: Parameters) -> str:
@@ -3102,6 +3128,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         else:
             # Named type variable type.
             s = f"{t.name}`{t.id}"
+        if t.has_default():
+            s += f" = {t.default.accept(self)}"
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:
@@ -3138,6 +3166,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if s:
                 s += ", "
             s += f"*{n}.args, **{n}.kwargs"
+            if param_spec.has_default():
+                s += f" = {param_spec.default.accept(self)}"
 
         s = f"({s})"
 
@@ -3156,12 +3186,18 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                         vals = f"({', '.join(val.accept(self) for val in var.values)})"
                         vs.append(f"{var.name} in {vals}")
                     elif not is_named_instance(var.upper_bound, "builtins.object"):
-                        vs.append(f"{var.name} <: {var.upper_bound.accept(self)}")
+                        vs.append(
+                            f"{var.name} <: {var.upper_bound.accept(self)}{f' = {var.default.accept(self)}' if var.has_default() else ''}"
+                        )
                     else:
-                        vs.append(var.name)
+                        vs.append(
+                            f"{var.name}{f' = {var.default.accept(self)}' if var.has_default()  else ''}"
+                        )
                 else:
-                    # For other TypeVarLikeTypes, just use the name
-                    vs.append(var.name)
+                    # For other TypeVarLikeTypes, use the name and default
+                    vs.append(
+                        f"{var.name}{f' = {var.default.accept(self)}' if var.has_default() else ''}"
+                    )
             s = f"[{', '.join(vs)}] {s}"
 
         return f"def {s}"
