@@ -281,7 +281,7 @@ class NamedTupleAnalyzer:
             #     two methods of a class can define a named tuple with the same name,
             #     and they will be stored in the same namespace (see below).
             name += "@" + str(call.line)
-        if len(defaults) > 0:
+        if defaults:
             default_items = {
                 arg_name: default for arg_name, default in zip(items[-len(defaults) :], defaults)
             }

@@ -1062,7 +1062,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         self.import_tracker.require_name("NamedTuple")
         self.add(f"{self._indent}class {lvalue.name}(NamedTuple):")
-        if len(items) == 0:
+        if not items:
             self.add(" ...\n")
         else:
             self.import_tracker.require_name("Incomplete")

@@ -2775,7 +2775,7 @@ def strip_quotes(s: str) -> str:
 
 
 def format_string_list(lst: list[str]) -> str:
-    assert len(lst) > 0
+    assert lst
     if len(lst) == 1:
         return lst[0]
     elif len(lst) <= 5:
@@ -2936,7 +2936,7 @@ def make_inferred_type_note(
 def format_key_list(keys: list[str], *, short: bool = False) -> str:
     formatted_keys = [f'"{key}"' for key in keys]
     td = "" if short else "TypedDict "
-    if len(keys) == 0:
+    if not keys:
         return f"no {td}keys"
     elif len(keys) == 1:
         return f"{td}key {formatted_keys[0]}"
