@@ -89,6 +89,7 @@ class DataclassAttribute:
         type: Type | None,
         info: TypeInfo,
         kw_only: bool,
+        is_neither_frozen_nor_nonfrozen: bool,
     ) -> None:
         self.name = name
         self.alias = alias
@@ -100,6 +101,7 @@ class DataclassAttribute:
         self.type = type
         self.info = info
         self.kw_only = kw_only
+        self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
 
     def to_argument(self, current_info: TypeInfo) -> Argument:
         arg_kind = ARG_POS
@@ -140,6 +142,7 @@ class DataclassAttribute:
             "column": self.column,
             "type": self.type.serialize(),
             "kw_only": self.kw_only,
+            "is_neither_frozen_nor_nonfrozen": self.is_neither_frozen_nor_nonfrozen,
         }
 
     @classmethod
@@ -292,7 +295,11 @@ class DataclassTransformer:
         parent_decorator_arguments = []
         for parent in info.mro[1:-1]:
             parent_args = parent.metadata.get("dataclass")
-            if parent_args:
+
+            # Ignore parent classes that directly specify a dataclass transform-decorated metaclass
+            # when searching for usage of the frozen parameter. PEP 681 states that a class that
+            # directly specifies such a metaclass must be treated as neither frozen nor non-frozen.
+            if parent_args and not _has_direct_dataclass_transform_metaclass(parent):
                 parent_decorator_arguments.append(parent_args)
 
         if decorator_arguments["frozen"]:
@@ -582,6 +589,9 @@ class DataclassTransformer:
                 type=sym.type,
                 info=cls.info,
                 kw_only=is_kw_only,
+                is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
+                    cls.info
+                ),
             )
 
         all_attrs = list(found_attrs.values())
@@ -624,6 +634,13 @@ class DataclassTransformer:
         """
         info = self._cls.info
         for attr in attributes:
+            # Classes that directly specify a dataclass_transform metaclass must be neither frozen
+            # non non-frozen per PEP681. Though it is surprising, this means that attributes from
+            # such a class must be writable even if the rest of the class heirarchy is frozen. This
+            # matches the behavior of Pyright (the reference implementation).
+            if attr.is_neither_frozen_nor_nonfrozen:
+                continue
+
             sym_node = info.names.get(attr.name)
             if sym_node is not None:
                 var = sym_node.node
@@ -787,3 +804,10 @@ def _is_dataclasses_decorator(node: Node) -> bool:
     if isinstance(node, RefExpr):
         return node.fullname in dataclass_makers
     return False
+
+
+def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
+    return (
+        info.declared_metaclass is not None
+        and info.declared_metaclass.type.dataclass_transform_spec is not None
+    )

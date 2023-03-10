@@ -415,7 +415,11 @@ from typing import dataclass_transform
 @dataclass_transform(frozen_default=True)
 class Dataclass(type): ...
 
-class Person(metaclass=Dataclass, kw_only=True):
+# Note that PEP 681 states that a class that directly specifies a dataclass_transform-decorated
+# metaclass should be treated as neither frozen nor unfrozen. For Person to have frozen semantics,
+# it may not directly specify the metaclass.
+class BaseDataclass(metaclass=Dataclass): ...
+class Person(BaseDataclass, kw_only=True):
     name: str
     age: int
 
@@ -774,6 +778,32 @@ class FunctionModel:
         z2: int
 
 FunctionModel(x=1, y=2, z1=3, z2=4)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformDirectMetaclassNeitherFrozenNorNotFrozen]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+class Meta(type): ...
+class Base(metaclass=Meta):
+    base: int
+class Foo(Base, frozen=True):
+    foo: int
+class Bar(Base, frozen=False):
+    bar: int
+
+
+foo = Foo(0, 1)
+foo.foo = 5  # E: Property "foo" defined in "Foo" is read-only
+foo.base = 6
+reveal_type(foo.base)  # N: Revealed type is "builtins.int"
+bar = Bar(0, 1)
+bar.bar = 5
+bar.base = 6
+reveal_type(bar.base)  # N: Revealed type is "builtins.int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
