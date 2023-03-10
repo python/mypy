@@ -922,7 +922,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if not always_defined:
         emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
+        emitter.emit_line(f'    "attribute {attr!r} of {cl.name!r} undefined");')
         emitter.emit_line("return NULL;")
         emitter.emit_line("}")
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
@@ -946,7 +946,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("if (value == NULL) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
         emitter.emit_line(
-            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");'
+            f'    "{cl.name!r} object attribute {attr!r} cannot be deleted");'
         )
         emitter.emit_line("return -1;")
         emitter.emit_line("}")

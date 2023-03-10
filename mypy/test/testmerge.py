@@ -168,7 +168,7 @@ class ASTMergeSuite(DataSuite):
                 return "UNBOUND_IMPORTED"
             return "None"
         if isinstance(node.node, Node):
-            s = f"{str(type(node.node).__name__)}<{self.id_mapper.id(node.node)}>"
+            s = f"{type(node.node).__name__}<{self.id_mapper.id(node.node)}>"
         else:
             s = f"? ({type(node.node)})"
         if (

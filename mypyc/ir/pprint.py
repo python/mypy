@@ -137,7 +137,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r.%s = %r; %r = is_error", op.obj, op.attr, op.src, op)
 
     def visit_load_static(self, op: LoadStatic) -> str:
-        ann = f"  ({repr(op.ann)})" if op.ann else ""
+        ann = f"  ({op.ann!r})" if op.ann else ""
         name = op.identifier
         if op.module_name is not None:
             name = f"{op.module_name}.{name}"
@@ -224,7 +224,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%r = extend%s %r: %t to %t", op, extra, op.src, op.src_type, op.type)
 
     def visit_load_global(self, op: LoadGlobal) -> str:
-        ann = f"  ({repr(op.ann)})" if op.ann else ""
+        ann = f"  ({op.ann!r})" if op.ann else ""
         return self.format("%r = load_global %s :: static%s", op, op.identifier, ann)
 
     def visit_int_op(self, op: IntOp) -> str:

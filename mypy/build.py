@@ -1092,7 +1092,7 @@ def read_quickstart_file(
             for file, (x, y, z) in raw_quickstart.items():
                 quickstart[file] = (x, y, z)
         except Exception as e:
-            print(f"Warning: Failed to load quickstart file: {str(e)}\n", file=stdout)
+            print(f"Warning: Failed to load quickstart file: {e}\n", file=stdout)
     return quickstart
 
 
@@ -1287,7 +1287,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     if meta is None:
         return None
     if not isinstance(meta, dict):
-        manager.log(f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}")
+        manager.log(f"Could not load cache for {id}: meta cache is not a dict: {meta!r}")
         return None
     m = cache_meta_from_dict(meta, data_json)
     t2 = time.time()
@@ -2168,7 +2168,7 @@ class State:
                     if self.path.endswith(".pyd"):
                         err = f"mypy: stubgen does not support .pyd files: '{self.path}'"
                     else:
-                        err = f"mypy: can't decode file '{self.path}': {str(decodeerr)}"
+                        err = f"mypy: can't decode file '{self.path}': {decodeerr}"
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
             elif self.path and self.manager.fscache.isdir(self.path):
                 source = ""

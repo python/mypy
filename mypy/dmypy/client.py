@@ -557,7 +557,7 @@ def check_output(
     try:
         out, err, status_code = response["out"], response["err"], response["status"]
     except KeyError:
-        fail(f"Response: {str(response)}")
+        fail(f"Response: {response}")
     sys.stdout.write(out)
     sys.stdout.flush()
     sys.stderr.write(err)

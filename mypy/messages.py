@@ -2214,9 +2214,9 @@ class MessageBuilder:
                     )
                 error_cnt += 1
 
-        info = f" ({str(error_cnt)} tuple items are incompatible"
+        info = f" ({error_cnt} tuple items are incompatible"
         if error_cnt - 3 > 0:
-            info += f"; {str(error_cnt - 3)} items are omitted)"
+            info += f"; {error_cnt - 3} items are omitted)"
         else:
             info += ")"
         msg = msg.with_additional_msg(info)
@@ -2276,7 +2276,7 @@ def format_callable_args(
             if arg_kind.is_star() or arg_name is None:
                 arg_strings.append(f"{constructor}({format(arg_type)})")
             else:
-                arg_strings.append(f"{constructor}({format(arg_type)}, {repr(arg_name)})")
+                arg_strings.append(f"{constructor}({format(arg_type)}, {arg_name!r})")
 
     return ", ".join(arg_strings)
 

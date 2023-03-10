@@ -1061,7 +1061,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if t.base_type_name in ("builtins.int", "builtins.bool"):
                 # The only time it makes sense to use an int or bool is inside of
                 # a literal type.
-                msg = f"Invalid type: try using Literal[{repr(t.literal_value)}] instead?"
+                msg = f"Invalid type: try using Literal[{t.literal_value!r}] instead?"
             elif t.base_type_name in ("builtins.float", "builtins.complex"):
                 # We special-case warnings for floats and complex numbers.
                 msg = f"Invalid type: {t.simple_name()} literals cannot be used as a type"

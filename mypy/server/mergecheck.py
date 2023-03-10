@@ -70,7 +70,7 @@ def path_to_str(path: list[tuple[object, object]]) -> str:
     for attr, obj in path:
         t = type(obj).__name__
         if t in ("dict", "tuple", "SymbolTable", "list"):
-            result += f"[{repr(attr)}]"
+            result += f"[{attr!r}]"
         else:
             if isinstance(obj, Var):
                 result += f".{attr}({t}:{obj.name})"
