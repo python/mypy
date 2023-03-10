@@ -98,7 +98,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
         for pkg in pkgs:
             install_package(pkg, python_executable, use_pip, editable)
 
-        cmd_line = list(mypy_args)
+        cmd_line = mypy_args.copy()
         has_program = not ("-p" in cmd_line or "--package" in cmd_line)
         if has_program:
             program = testcase.name + ".py"

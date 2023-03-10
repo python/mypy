@@ -649,7 +649,7 @@ def request(
     closed prematurely as well as invalid JSON received.
     """
     response: dict[str, str] = {}
-    args = dict(kwds)
+    args = kwds.copy()
     args["command"] = command
     # Tell the server whether this request was initiated from a human-facing terminal,
     # so that it can format the type checking output accordingly.

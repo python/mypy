@@ -395,7 +395,7 @@ def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list
                 else:
                     merged_option = None
                 merged_options.append(merged_option)
-            return any_constraints(list(merged_options), eager)
+            return any_constraints(merged_options.copy(), eager)
 
     # If normal logic didn't work, try excluding trivially unsatisfiable constraint (due to
     # upper bounds) from each option, and comparing them again.

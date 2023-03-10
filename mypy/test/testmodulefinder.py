@@ -153,7 +153,7 @@ class ModuleFinderSitePackagesSuite(Suite):
         self.search_paths = SearchPaths(
             python_path=(),
             mypy_path=(os.path.join(data_path, "pkg1"),),
-            package_path=tuple(package_paths),
+            package_path=package_paths,
             typeshed_path=(),
         )
         options = Options()

@@ -116,7 +116,7 @@ def fully_split_with_mapped_and_template(
     if mapped_prefix_len is not None:
         assert mapped_suffix_len is not None
         mapped_prefix, mapped_middle, mapped_suffix = split_with_prefix_and_suffix(
-            tuple(mapped), mapped_prefix_len, mapped_suffix_len
+            mapped, mapped_prefix_len, mapped_suffix_len
         )
     else:
         mapped_prefix = ()
@@ -124,7 +124,7 @@ def fully_split_with_mapped_and_template(
         mapped_middle = mapped
 
     template_prefix, template_middle, template_suffix = split_with_prefix_and_suffix(
-        tuple(template), template_prefix_len, template_suffix_len
+        template, template_prefix_len, template_suffix_len
     )
 
     unpack_prefix = find_unpack_in_list(template_middle)

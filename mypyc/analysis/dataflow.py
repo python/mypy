@@ -545,7 +545,7 @@ def run_analysis(
         block_kill[block] = kill
 
     # Set up initial state for worklist algorithm.
-    worklist = list(blocks)
+    worklist = blocks.copy()
     if not backward:
         worklist = worklist[::-1]  # Reverse for a small performance improvement
     workset = set(worklist)

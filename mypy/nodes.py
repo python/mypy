@@ -3847,7 +3847,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
                     value.fullname != "builtins"
                     and (value.fullname or "").split(".")[-1] not in implicit_module_attrs
                 ):
-                    a.append("  " + str(key) + " : " + str(value))
+                    a.append(f"  {key} : {value}")
             else:
                 a.append("  <invalid item>")
         a = sorted(a)

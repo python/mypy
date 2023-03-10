@@ -40,12 +40,12 @@ SIZEOF_SIZE_T: Final = (
     else (sys.maxsize + 1).bit_length() // 8
 )
 
-IS_32_BIT_PLATFORM: Final = int(SIZEOF_SIZE_T) == 4
+IS_32_BIT_PLATFORM: Final = SIZEOF_SIZE_T == 4
 
 PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 
 # Maximum value for a short tagged integer.
-MAX_SHORT_INT: Final = 2 ** (8 * int(SIZEOF_SIZE_T) - 2) - 1
+MAX_SHORT_INT: Final = 2 ** (8 * SIZEOF_SIZE_T - 2) - 1
 
 # Minimum value for a short tagged integer.
 MIN_SHORT_INT: Final = -(MAX_SHORT_INT) - 1
