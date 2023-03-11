@@ -49,6 +49,13 @@ from mypy.typevartuples import (
 
 @overload
 def expand_type(
+    typ: CallableType, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
+) -> CallableType:
+    ...
+
+
+@overload
+def expand_type(
     typ: ProperType, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
 ) -> ProperType:
     ...
@@ -68,6 +75,11 @@ def expand_type(
     environment.
     """
     return typ.accept(ExpandTypeVisitor(env, allow_erased_callables))
+
+
+@overload
+def expand_type_by_instance(typ: CallableType, instance: Instance) -> CallableType:
+    ...
 
 
 @overload
@@ -133,9 +145,8 @@ def freshen_function_type_vars(callee: F) -> F:
                 tv = ParamSpecType.new_unification_variable(v)
             tvs.append(tv)
             tvmap[v.id] = tv
-        expanded = expand_type(callee, tvmap)
-        assert isinstance(expanded, CallableType)
-        return cast(F, expanded.copy_modified(variables=tvs))
+        fresh = expand_type(callee, tvmap).copy_modified(variables=tvs)
+        return cast(F, fresh)
     else:
         assert isinstance(callee, Overloaded)
         fresh_overload = Overloaded([freshen_function_type_vars(item) for item in callee.items])
@@ -347,7 +358,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             )
         return (arg_names, arg_kinds, arg_types)
 
-    def visit_callable_type(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> CallableType:
         param_spec = t.param_spec()
         if param_spec is not None:
             repl = get_proper_type(self.variables.get(param_spec.id))

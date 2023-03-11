@@ -27,6 +27,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     Var,
+    is_StrExpr_list,
 )
 from mypy.options import Options
 from mypy.semanal_shared import SemanticAnalyzerInterface
@@ -177,8 +178,8 @@ class EnumCallAnalyzer:
                 items.append(field)
         elif isinstance(names, (TupleExpr, ListExpr)):
             seq_items = names.items
-            if all(isinstance(seq_item, StrExpr) for seq_item in seq_items):
-                items = [cast(StrExpr, seq_item).value for seq_item in seq_items]
+            if is_StrExpr_list(seq_items):
+                items = [seq_item.value for seq_item in seq_items]
             elif all(
                 isinstance(seq_item, (TupleExpr, ListExpr))
                 and len(seq_item.items) == 2

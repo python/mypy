@@ -442,9 +442,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 tv = v.copy_modified(id=tid)
             tvs.append(tv)
             tvmap[v.id] = tv
-        expanded = expand_type(typ, tvmap)
-        assert isinstance(expanded, CallableType)
-        return expanded.copy_modified(variables=tvs)
+        return expand_type(typ, tvmap).copy_modified(variables=tvs)
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))

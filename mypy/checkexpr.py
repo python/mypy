@@ -5518,9 +5518,7 @@ def merge_typevars_in_callables_by_name(
                     variables.append(tv)
                 rename[tv.id] = unique_typevars[name]
 
-            t = expand_type(target, rename)
-            assert isinstance(t, CallableType)
-            target = t
+            target = expand_type(target, rename)
         output.append(target)
 
     return output, variables
