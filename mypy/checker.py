@@ -1753,8 +1753,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             result: list[tuple[FuncItem, CallableType]] = []
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
-                expanded = cast(CallableType, expand_type(typ, mapping))
-                result.append((expand_func(defn, mapping), expanded))
+                result.append((expand_func(defn, mapping), expand_type(typ, mapping)))
             return result
         else:
             return [(defn, typ)]
@@ -7111,7 +7110,6 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
     exp_signature = expand_type(
         signature, {tvar.id: erase_def_to_union_or_bound(tvar) for tvar in signature.variables}
     )
-    assert isinstance(exp_signature, CallableType)
     return is_callable_compatible(
         exp_signature, other, is_compat=is_more_precise, ignore_return=True
     )
