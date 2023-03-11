@@ -451,3 +451,329 @@ Foo(1)  # E: Too many arguments for "Foo"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformTypeCheckingInFunction]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+FunctionModel(string_="abc", integer_=1)
+FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInFunction]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+FunctionModel(string_="abc", integer_=1)
+FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformTypeCheckingInBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelBase:
+    ...
+
+class BaseClassModel(ModelBase):
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+BaseClassModel(string_="abc", integer_=1)
+BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelBase:
+    ...
+
+class BaseClassModel(ModelBase):
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+BaseClassModel(string_="abc", integer_=1)
+BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformTypeCheckingInMetaClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelMeta(type):
+    ...
+
+class ModelBaseWithMeta(metaclass=ModelMeta):
+    ...
+
+class MetaClassModel(ModelBaseWithMeta):
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+MetaClassModel(string_="abc", integer_=1)
+MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInMetaClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelMeta(type):
+    ...
+
+class ModelBaseWithMeta(metaclass=ModelMeta):
+    ...
+
+class MetaClassModel(ModelBaseWithMeta):
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+MetaClassModel(string_="abc", integer_=1)
+MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformStaticConditionalAttributes]
+# flags: --python-version 3.11 --always-true TRUTH
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        present_1: int
+    else:
+        skipped_1: int
+    if True:  # Mypy does not know if it is True or False, so the block is used
+        present_2: int
+    if False:  # Mypy does not know if it is True or False, so the block is used
+        present_3: int
+    if not TRUTH:
+        skipped_2: int
+    else:
+        present_4: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+)
+FunctionModel()  # E: Missing positional arguments "present_1", "present_2", "present_3", "present_4" in call to "FunctionModel"
+FunctionModel(   # E: Unexpected keyword argument "skipped_1" for "FunctionModel"
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    skipped_1=5,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformStaticDeterministicConditionalElifAttributes]
+# flags: --python-version 3.11 --always-true TRUTH --always-false LIE
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+LIE = True  # Is set to --always-false
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        present_1: int
+    elif TRUTH:
+        skipped_1: int
+    else:
+        skipped_2: int
+    if LIE:
+        skipped_3: int
+    elif TRUTH:
+        present_2: int
+    else:
+        skipped_4: int
+    if LIE:
+        skipped_5: int
+    elif LIE:
+        skipped_6: int
+    else:
+        present_3: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformStaticNotDeterministicConditionalElifAttributes]
+# flags: --python-version 3.11 --always-true TRUTH --always-false LIE
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+LIE = True  # Is set to --always-false
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if 123:  # Mypy does not know if it is True or False, so this block is used
+        present_1: int
+    elif TRUTH:  # Mypy does not know if previous condition is True or False, so it uses also this block
+        present_2: int
+    else:  # Previous block is for sure True, so this block is skipped
+        skipped_1: int
+    if 123:
+        present_3: int
+    elif 123:
+        present_4: int
+    else:
+        present_5: int
+    if 123:  # Mypy does not know if it is True or False, so this block is used
+        present_6: int
+    elif LIE:  # This is for sure False, so the block is skipped used
+        skipped_2: int
+    else:  # None of the conditions above for sure True, so this block is used
+        present_7: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    present_5=5,
+    present_6=6,
+    present_7=7,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFunctionConditionalAttributes]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+def condition() -> bool:
+    return True
+
+@model
+class FunctionModel:
+    if condition():
+        x: int
+        y: int
+        z1: int
+    else:
+        x: str  # E: Name "x" already defined on line 14
+        y: int  # E: Name "y" already defined on line 15
+        z2: int
+
+FunctionModel(x=1, y=2, z1=3, z2=4)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformNegatedFunctionConditionalAttributes]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+def condition() -> bool:
+    return True
+
+@model
+class FunctionModel:
+    if not condition():
+        x: int
+        y: int
+        z1: int
+    else:
+        x: str  # E: Name "x" already defined on line 14
+        y: int  # E: Name "y" already defined on line 15
+        z2: int
+
+FunctionModel(x=1, y=2, z1=3, z2=4)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
