@@ -42,6 +42,9 @@ class TypeState:
     # We need the caches, since subtype checks for structural types are very slow.
     _subtype_caches: Final[SubtypeCache]
 
+    # Same as above but for negative subtyping results.
+    _negative_subtype_caches: Final[SubtypeCache]
+
     # This contains protocol dependencies generated after running a full build,
     # or after an update. These dependencies are special because:
     #   * They are a global property of the program; i.e. some dependencies for imported
@@ -158,7 +161,9 @@ class TypeState:
             return False
         return (left, right) in subcache
 
-    def is_cached_negative_subtype_check(self, kind: SubtypeKind, left: Instance, right: Instance) -> bool:
+    def is_cached_negative_subtype_check(
+        self, kind: SubtypeKind, left: Instance, right: Instance
+    ) -> bool:
         if left.last_known_value is not None or right.last_known_value is not None:
             # If there is a literal last known value, give up. There
             # will be an unbounded number of potential types to cache,
