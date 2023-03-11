@@ -1195,7 +1195,6 @@ class FloatOp(RegisterOp):
     MOD: Final = 4
 
     op_str: Final = {ADD: "+", SUB: "-", MUL: "*", DIV: "/", MOD: "%"}
-    op_to_id: Final = {op: op_id for op_id, op in op_str.items()}
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
@@ -1209,6 +1208,11 @@ class FloatOp(RegisterOp):
 
     def accept(self, visitor: "OpVisitor[T]") -> T:
         return visitor.visit_float_op(self)
+
+
+# We can't have this in the FloatOp class body, because of
+# https://github.com/mypyc/mypyc/issues/932.
+float_op_to_id: Final = {op: op_id for op_id, op in FloatOp.op_str.items()}
 
 
 class FloatNeg(RegisterOp):

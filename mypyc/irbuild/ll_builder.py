@@ -71,6 +71,7 @@ from mypyc.ir.ops import (
     Unbox,
     Unreachable,
     Value,
+    float_op_to_id,
     int_op_to_id,
 )
 from mypyc.ir.rtypes import (
@@ -1358,7 +1359,7 @@ class LowLevelIRBuilder:
                     base_op = op[:-1]
                 else:
                     base_op = op
-                if base_op in FloatOp.op_to_id:
+                if base_op in float_op_to_id:
                     return self.float_op(lreg, rreg, base_op, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
@@ -1941,7 +1942,7 @@ class LowLevelIRBuilder:
         Args:
             op: Binary operator (e.g. '+' or '*')
         """
-        op_id = FloatOp.op_to_id[op]
+        op_id = float_op_to_id[op]
         if op_id in (FloatOp.DIV, FloatOp.MOD):
             if not (isinstance(rhs, Float) and rhs.value != 0.0):
                 c = self.compare_floats(rhs, Float(0.0), FloatComparisonOp.EQ, line)
