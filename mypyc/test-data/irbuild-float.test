@@ -108,6 +108,23 @@ L0:
     x = r1
     return x
 
+[case testFloatOperatorAssignmentWithInt]
+def f(x: float, y: int) -> None:
+    x += y
+    x -= 5
+[out]
+def f(x, y):
+    x :: float
+    y :: int
+    r0, r1, r2 :: float
+L0:
+    r0 = CPyFloat_FromTagged(y)
+    r1 = x + r0
+    x = r1
+    r2 = x - 5.0
+    x = r2
+    return 1
+
 [case testFloatComparison]
 def lt(x: float, y: float) -> bool:
     return x < y
