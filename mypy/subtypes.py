@@ -445,6 +445,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
+            if type_state.is_cached_negative_subtype_check(self._subtype_kind, left, right):
+                return False
             if not self.subtype_context.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and any(
@@ -599,11 +601,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 nominal = False
                 if nominal:
                     type_state.record_subtype_cache_entry(self._subtype_kind, left, right)
+                else:
+                    type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(
                 left, right, proper_subtype=self.proper_subtype
             ):
                 return True
+            type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
             return False
         if isinstance(right, TypeType):
             item = right.item
