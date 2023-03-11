@@ -211,7 +211,7 @@ class J(A[int]):
 [case testSelfTypeOverrideCompatibilityGeneric]
 from typing import TypeVar, Generic, overload
 
-T = TypeVar("T", str, int)
+T = TypeVar("T", str, int, None)
 
 class A(Generic[T]):
     @overload
@@ -223,13 +223,11 @@ class A(Generic[T]):
 class B(A[int]):
     def f(self, s: int) -> int: ...
 
-class C(A[str]):
+class C(A[None]):
     def f(self, s: int) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
                                      # N:      Superclass:            \
                                      # N:          @overload          \
-                                     # N:          def f(self, s: str) -> str \
-                                     # N:          @overload          \
-                                     # N:          def f(self, s: bytes) -> str \
+                                     # N:          def f(self, s: None) -> None \
                                      # N:      Subclass:              \
                                      # N:          def f(self, s: int) -> int
 [builtins fixtures/tuple.pyi]
