@@ -421,3 +421,28 @@ L0:
     r0 = CPyFloat_FromTagged(y)
     r1 = CPyFloat_FloorDivide(x, r0)
     return r1
+
+[case testFloatNarrowToIntDisallowed]
+class C:
+    x: float
+
+def narrow_local(x: float, n: int) -> int:
+    x = n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
+    return x
+
+def narrow_tuple_lvalue(x: float, y: float, n: int) -> int:
+    x, y = 1.0, n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
+    return x
+
+def narrow_multiple_lvalues(x: float, y: float, n: int) -> int:
+    x = a = n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
+    a = y = n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
+    return x + y
+
+def narrow_attribute(c: C, n: int) -> int:
+    c.x = n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
+    return c.x
+
+def narrow_using_int_literal(x: float) -> int:
+    x = 1  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
+    return x
