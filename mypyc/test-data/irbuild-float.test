@@ -449,7 +449,7 @@ def narrow_local(x: float, n: int) -> int:
 
 def narrow_tuple_lvalue(x: float, y: float, n: int) -> int:
     x, y = 1.0, n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
-    return x
+    return y
 
 def narrow_multiple_lvalues(x: float, y: float, n: int) -> int:
     x = a = n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
