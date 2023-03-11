@@ -110,7 +110,7 @@ def test_boxing_and_unboxing() -> None:
     y: float = boxed
     assert y == x
     boxed_int: Any = 5
-    assert type(boxed_int) is int
+    assert [type(boxed_int)] == [int]  # Avoid mypy type narrowing
     z: float = boxed_int
     assert z == 5.0
     for xx in float_vals:
@@ -129,40 +129,38 @@ def test_unboxing_failure() -> None:
     with assertRaises(TypeError):
         x: float = boxed
 
+def identity(x: float) -> float:
+    return x
+
 def test_coerce_from_int_literal() -> None:
-    x: float = 34
-    assert x == 34.0
-    y: float = -1
-    assert y == -1.0
+    assert identity(34) == 34.0
+    assert identity(-1) == -1.0
 
 def test_coerce_from_short_tagged_int() -> None:
     n = int() - 17
-    x: float = n
-    assert x == -17.0
+    assert identity(n) == -17.0
     for i in range(-300, 300):
-        y: float = i
-        o: object = y
-        assert o == i
+        assert identity(i) == float(i)
 
 def test_coerce_from_long_tagged_int() -> None:
     n = int() + 2**100
-    x: float = n
+    x = identity(n)
     assert repr(x) == '1.2676506002282294e+30'
     n = int() - 2**100
-    y: float = n
+    y = identity(n)
     assert repr(y) == '-1.2676506002282294e+30'
 
 def test_coerce_from_very_long_tagged_int() -> None:
     n = int() + 10**1000
     with assertRaises(OverflowError, "int too large to convert to float"):
-        x: float = n
+        identity(n)
     with assertRaises(OverflowError, "int too large to convert to float"):
-        x2: float = int(n)
+        identity(int(n))
     n = int() - 10**1000
     with assertRaises(OverflowError, "int too large to convert to float"):
-        y: float = n
+        identity(n)
     with assertRaises(OverflowError, "int too large to convert to float"):
-        y2: float = int(n)
+        identity(int(n))
 
 def test_explicit_conversion_from_int() -> None:
     float_any: Any = float
@@ -424,7 +422,7 @@ class D(T):
 
 def test_read_only_property_in_trait_implemented_as_property() -> None:
     d = D()
-    d.xx = 5
+    d.xx = 5.0
     assert d.x == 5
     d.xx = MAGIC
     assert d.x == MAGIC
@@ -432,7 +430,7 @@ def test_read_only_property_in_trait_implemented_as_property() -> None:
         d.y
     t: T = d
     assert t.x == MAGIC
-    d.xx = 6
+    d.xx = 6.0
     assert t.x == 6
     with assertRaises(TypeError):
         t.y
@@ -460,7 +458,7 @@ def test_inherit_trait_attribute() -> None:
         t.y
     t = c
     assert t.x == MAGIC
-    c.x = 55
+    c.x = 55.0
     assert t.x == 55
     assert t.y == 6
     a: Any = c
@@ -488,7 +486,7 @@ def test_implement_trait_attribute() -> None:
     assert t.y == 4
     t = d
     assert t.x == MAGIC
-    d.x = 55
+    d.x = 55.0
     assert t.x == 55
     assert t.y == 6
     a: Any = d
