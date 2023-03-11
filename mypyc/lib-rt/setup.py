@@ -12,7 +12,7 @@ if sys.platform == "darwin":
     kwargs = {"language": "c++"}
     compile_args = []
 else:
-    kwargs = {}  # type: ignore
+    kwargs = {}  # type: ignore[var-annotated]
     compile_args = ["--std=c++11"]
 
 setup(
