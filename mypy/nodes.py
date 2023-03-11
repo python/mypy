@@ -20,7 +20,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 
@@ -1633,6 +1633,10 @@ class StrExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
+
+
+def is_StrExpr_list(seq: list[Expression]) -> TypeGuard[list[StrExpr]]:
+    return all(isinstance(item, StrExpr) for item in seq)
 
 
 class BytesExpr(Expression):
