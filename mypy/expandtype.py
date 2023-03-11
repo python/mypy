@@ -453,9 +453,10 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # After substituting for type variables in t.items, some resulting types
         # might be subtypes of others, however calling  make_simplified_union()
         # can cause recursion, so we just remove strict duplicates.
-        return UnionType.make_union(
+        simplified = UnionType.make_union(
             remove_trivial(flatten_nested_unions(expanded)), t.line, t.column
         )
+        return simplified
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
