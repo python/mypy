@@ -464,6 +464,11 @@ def narrow_using_int_literal(x: float) -> int:
     x = 1  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
     return x
 
+def narrow_using_declaration(n: int) -> int:
+    x: float
+    x = n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
+    return x
+
 [case testFloatInitializeFromInt]
 def init(n: int) -> None:
     # These are strictly speaking safe, since these don't narrow, but for consistency with
