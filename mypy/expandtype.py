@@ -456,7 +456,12 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         simplified = UnionType.make_union(
             remove_trivial(flatten_nested_unions(expanded)), t.line, t.column
         )
-        return simplified
+        # This call to get_proper_type() is unfortunate but is required to preserve
+        # the invariant that ProperType will stay ProperType after applying expand_type(),
+        # otherwise a single item union of a type alias will break it. Note this should not
+        # cause infinite recursion since pathological aliases like A = Union[A, B] are
+        # banned at the semantic analysis level.
+        return get_proper_type(simplified)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
