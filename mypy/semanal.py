@@ -2618,11 +2618,14 @@ class SemanticAnalyzer(
                 typing_extensions = self.modules.get("typing_extensions")
                 if typing_extensions and source_id in typing_extensions.names:
                     self.msg.note(
-                        f"Use `from typing_extensions import {source_id}` instead", context
+                        f"Use `from typing_extensions import {source_id}` instead",
+                        context,
+                        code=codes.ATTR_DEFINED,
                     )
                     self.msg.note(
                         "See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module",
                         context,
+                        code=codes.ATTR_DEFINED,
                     )
 
     def process_import_over_existing_name(
