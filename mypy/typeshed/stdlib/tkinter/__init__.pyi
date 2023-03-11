@@ -6,7 +6,7 @@ from enum import Enum
 from tkinter.constants import *
 from tkinter.font import _FontDescription
 from types import TracebackType
-from typing import Any, Generic, NamedTuple, Protocol, TypeVar, overload
+from typing import Any, Generic, NamedTuple, Protocol, TypeVar, overload, type_check_only
 from typing_extensions import Literal, TypeAlias, TypedDict
 
 if sys.version_info >= (3, 9):
@@ -666,7 +666,7 @@ class Wm:
     iconmask = wm_iconmask
     def wm_iconname(self, newName: Incomplete | None = None) -> str: ...
     iconname = wm_iconname
-    def wm_iconphoto(self, default: bool, __image1: Image, *args: Image) -> None: ...
+    def wm_iconphoto(self, default: bool, __image1: _PhotoImageLike | str, *args: _PhotoImageLike | str) -> None: ...
     iconphoto = wm_iconphoto
     def wm_iconposition(self, x: int | None = None, y: int | None = None) -> tuple[int, int] | None: ...
     iconposition = wm_iconposition
@@ -3206,12 +3206,19 @@ class OptionMenu(Menubutton):
     # configure, config, cget are inherited from Menubutton
     # destroy and __getitem__ are overridden, signature does not change
 
-class _Image(Protocol):
-    tk: _tkinter.TkappType
-    def height(self) -> int: ...
-    def width(self) -> int: ...
+# Marker to indicate that it is a valid bitmap/photo image. PIL implements compatible versions
+# which don't share a class hierarchy. The actual API is a __str__() which returns a valid name,
+# not something that type checkers can detect.
+@type_check_only
+class _Image: ...
 
-class Image:
+@type_check_only
+class _BitmapImageLike(_Image): ...
+
+@type_check_only
+class _PhotoImageLike(_Image): ...
+
+class Image(_Image):
     name: Incomplete
     tk: _tkinter.TkappType
     def __init__(
@@ -3226,7 +3233,8 @@ class Image:
     def type(self): ...
     def width(self) -> int: ...
 
-class PhotoImage(Image):
+class PhotoImage(Image, _PhotoImageLike):
+    # This should be kept in sync with PIL.ImageTK.PhotoImage.__init__()
     def __init__(
         self,
         name: str | None = None,
@@ -3278,7 +3286,8 @@ class PhotoImage(Image):
         def transparency_get(self, x: int, y: int) -> bool: ...
         def transparency_set(self, x: int, y: int, boolean: bool) -> None: ...
 
-class BitmapImage(Image):
+class BitmapImage(Image, _BitmapImageLike):
+    # This should be kept in sync with PIL.ImageTK.BitmapImage.__init__()
     def __init__(
         self,
         name: Incomplete | None = None,

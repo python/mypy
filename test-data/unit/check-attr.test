@@ -1867,3 +1867,81 @@ D(1, "").a = 2 # E: Cannot assign to final attribute "a"
 D(1, "").b = "2" # E: Cannot assign to final attribute "b"
 
 [builtins fixtures/property.pyi]
+
+[case testEvolve]
+import attr
+
+class Base:
+    pass
+
+class Derived(Base):
+    pass
+
+class Other:
+    pass
+
+@attr.s(auto_attribs=True)
+class C:
+    name: str
+    b: Base
+
+c = C(name='foo', b=Derived())
+c = attr.evolve(c)
+c = attr.evolve(c, name='foo')
+c = attr.evolve(c, 'foo')  # E: Too many positional arguments for "evolve" of "C"
+c = attr.evolve(c, b=Derived())
+c = attr.evolve(c, b=Base())
+c = attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" of "C" has incompatible type "Other"; expected "Base"
+c = attr.evolve(c, name=42)  # E: Argument "name" to "evolve" of "C" has incompatible type "int"; expected "str"
+c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "evolve" of "C"
+
+# test passing instance as 'inst' kw
+c = attr.evolve(inst=c, name='foo')
+c = attr.evolve(not_inst=c, name='foo')  # E: Missing positional argument "inst" in call to "evolve"
+
+# test determining type of first argument's expression from something that's not NameExpr
+def f() -> C:
+    return c
+
+c = attr.evolve(f(), name='foo')
+
+[builtins fixtures/attr.pyi]
+
+[case testEvolveFromNonAttrs]
+import attr
+
+attr.evolve(42, name='foo')  # E: Argument 1 to "evolve" has incompatible type "int"; expected an attrs class
+attr.evolve(None, name='foo')  # E: Argument 1 to "evolve" has incompatible type "None"; expected an attrs class
+[case testEvolveFromAny]
+from typing import Any
+import attr
+
+any: Any = 42
+ret = attr.evolve(any, name='foo')
+reveal_type(ret)  # N: Revealed type is "Any"
+
+[typing fixtures/typing-medium.pyi]
+
+[case testEvolveVariants]
+from typing import Any
+import attr
+import attrs
+
+
+@attr.s(auto_attribs=True)
+class C:
+    name: str
+
+c = C(name='foo')
+
+c = attr.assoc(c, name='test')
+c = attr.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompatible type "int"; expected "str"
+
+c = attrs.evolve(c, name='test')
+c = attrs.evolve(c, name=42)  # E: Argument "name" to "evolve" of "C" has incompatible type "int"; expected "str"
+
+c = attrs.assoc(c, name='test')
+c = attrs.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompatible type "int"; expected "str"
+
+[builtins fixtures/attr.pyi]
+[typing fixtures/typing-medium.pyi]

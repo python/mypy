@@ -48,6 +48,7 @@ class TypeExportSuite(DataSuite):
             # to simplify output.
             searcher = SkippedNodeSearcher()
             for file in result.files.values():
+                searcher.ignore_file = file.fullname not in testcase.test_modules
                 file.accept(searcher)
             ignored = searcher.nodes
 

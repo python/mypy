@@ -110,7 +110,7 @@ if sys.platform == "linux":
         def __exit__(
             self,
             __exc_type: type[BaseException] | None = None,
-            __exc_val: BaseException | None = ...,
+            __exc_value: BaseException | None = ...,
             __exc_tb: TracebackType | None = None,
         ) -> None: ...
         def close(self) -> None: ...

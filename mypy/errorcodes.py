@@ -132,6 +132,9 @@ EMPTY_BODY: Final[ErrorCode] = ErrorCode(
 SAFE_SUPER: Final = ErrorCode(
     "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
 )
+TOP_LEVEL_AWAIT: Final = ErrorCode(
+    "top-level-await", "Warn about top level await experessions", "General"
+)
 
 # These error codes aren't enabled by default.
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(

@@ -20,7 +20,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 
@@ -901,6 +901,7 @@ class Decorator(SymbolNode, Statement):
 
 VAR_FLAGS: Final = [
     "is_self",
+    "is_cls",
     "is_initialized_in_class",
     "is_staticmethod",
     "is_classmethod",
@@ -935,6 +936,7 @@ class Var(SymbolNode):
         "type",
         "final_value",
         "is_self",
+        "is_cls",
         "is_ready",
         "is_inferred",
         "is_initialized_in_class",
@@ -967,6 +969,8 @@ class Var(SymbolNode):
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
+        # Is this the first argument to a classmethod (typically "cls")?
+        self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
         # Is this initialized explicitly to a non-None value in class body?
@@ -1631,6 +1635,10 @@ class StrExpr(Expression):
         return visitor.visit_str_expr(self)
 
 
+def is_StrExpr_list(seq: list[Expression]) -> TypeGuard[list[StrExpr]]:
+    return all(isinstance(item, StrExpr) for item in seq)
+
+
 class BytesExpr(Expression):
     """Bytes literal"""
 
@@ -2175,7 +2183,8 @@ class LambdaExpr(FuncItem, Expression):
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
-        ret = cast(ReturnStmt, self.body.body[-1])
+        ret = self.body.body[-1]
+        assert isinstance(ret, ReturnStmt)
         expr = ret.expr
         assert expr is not None  # lambda can't have empty body
         return expr

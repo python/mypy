@@ -41,7 +41,7 @@ def reduce(function: Callable[[_T, _T], _T], sequence: Iterable[_T]) -> _T: ...
 class _CacheInfo(NamedTuple):
     hits: int
     misses: int
-    maxsize: int
+    maxsize: int | None
     currsize: int
 
 @final
@@ -148,6 +148,8 @@ if sys.version_info >= (3, 8):
         @overload
         def __get__(self, instance: object, owner: type[Any] | None = None) -> _T: ...
         def __set_name__(self, owner: type[Any], name: str) -> None: ...
+        # __set__ is not defined at runtime, but @cached_property is designed to be settable
+        def __set__(self, instance: object, value: _T) -> None: ...
         if sys.version_info >= (3, 9):
             def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 

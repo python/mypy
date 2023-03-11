@@ -281,7 +281,7 @@ FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(
 )
 TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
     "type ignore with error code is not supported for modules; "
-    "use `# mypy: disable-error-code=...`",
+    'use `# mypy: disable-error-code="{}"`',
     codes.SYNTAX,
 )
 INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)

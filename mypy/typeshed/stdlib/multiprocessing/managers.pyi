@@ -116,8 +116,8 @@ class BaseListProxy(BaseProxy, MutableSequence[_T]):
     def sort(self, *, key: Callable[[_T], SupportsRichComparison], reverse: bool = ...) -> None: ...
 
 class ListProxy(BaseListProxy[_T]):
-    def __iadd__(self, __x: Iterable[_T]) -> Self: ...  # type: ignore[override]
-    def __imul__(self, __n: SupportsIndex) -> Self: ...  # type: ignore[override]
+    def __iadd__(self, __value: Iterable[_T]) -> Self: ...  # type: ignore[override]
+    def __imul__(self, __value: SupportsIndex) -> Self: ...  # type: ignore[override]
 
 # Returned by BaseManager.get_server()
 class Server:

@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import sys
 from distutils.core import Extension, setup
+from typing import Any
 
+kwargs: dict[str, Any]
 if sys.platform == "darwin":
     kwargs = {"language": "c++"}
     compile_args = []
 else:
-    kwargs = {}  # type: ignore
+    kwargs = {}
     compile_args = ["--std=c++11"]
 
 setup(

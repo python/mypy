@@ -348,8 +348,7 @@ def parse_type_comment(
     else:
         extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment)
         if extra_ignore:
-            # Typeshed has a non-optional return type for group!
-            tag: str | None = cast(Any, extra_ignore).group(1)
+            tag: str | None = extra_ignore.group(1)
             ignored: list[str] | None = parse_type_ignore_tag(tag)
             if ignored is None:
                 if errors is not None:
@@ -478,9 +477,11 @@ class ASTConverter:
             and self.type_ignores
             and min(self.type_ignores) < self.get_lineno(stmts[0])
         ):
-            if self.type_ignores[min(self.type_ignores)]:
+            ignores = self.type_ignores[min(self.type_ignores)]
+            if ignores:
+                joined_ignores = ", ".join(ignores)
                 self.fail(
-                    message_registry.TYPE_IGNORE_WITH_ERRCODE_ON_MODULE,
+                    message_registry.TYPE_IGNORE_WITH_ERRCODE_ON_MODULE.format(joined_ignores),
                     line=min(self.type_ignores),
                     column=0,
                     blocker=False,
@@ -652,7 +653,9 @@ class ASTConverter:
                 if current_overload and current_overload_name == last_if_stmt_overload_name:
                     # Remove last stmt (IfStmt) from ret if the overload names matched
                     # Only happens if no executable block had been found in IfStmt
-                    skipped_if_stmts.append(cast(IfStmt, ret.pop()))
+                    popped = ret.pop()
+                    assert isinstance(popped, IfStmt)
+                    skipped_if_stmts.append(popped)
                 if current_overload and skipped_if_stmts:
                     # Add bare IfStmt (without overloads) to ret
                     # Required for mypy to be able to still check conditions
