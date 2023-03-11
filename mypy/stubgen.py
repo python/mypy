@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping, cast
+from typing import Iterable, List, Mapping
 from typing_extensions import Final
 
 import mypy.build
