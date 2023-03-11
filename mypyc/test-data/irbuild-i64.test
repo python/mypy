@@ -1925,6 +1925,34 @@ L2:
 L3:
     return r4
 
+[case testI64ConvertToFloat]
+from mypy_extensions import i64
+
+def i64_to_float(x: i64) -> float:
+    return float(x)
+[out]
+def i64_to_float(x):
+    x :: int64
+    r0, r1 :: bit
+    r2, r3, r4 :: int
+    r5 :: float
+L0:
+    r0 = x <= 4611686018427387903 :: signed
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = x >= -4611686018427387904 :: signed
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    r2 = CPyTagged_FromInt64(x)
+    r3 = r2
+    goto L4
+L3:
+    r4 = x << 1
+    r3 = r4
+L4:
+    r5 = CPyFloat_FromTagged(r3)
+    return r5
+
 [case testI64IsinstanceNarrowing]
 from typing import Union
 from mypy_extensions import i64
