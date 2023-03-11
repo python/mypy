@@ -13,7 +13,7 @@ requires = [
     # the following is from build-requirements.txt
     "types-psutil",
     "types-setuptools",
-    "types-typed-ast>=1.5.8,<1.6.0",
+    "types-typed-ast>=1.5.8.5,<1.6.0",
 ]
 build-backend = "setuptools.build_meta"
 
