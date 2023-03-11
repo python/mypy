@@ -1970,7 +1970,7 @@ class LowLevelIRBuilder:
         is_zero = self.add(FloatComparisonOp(res, Float(0.0), FloatComparisonOp.EQ, line))
         self.add(Branch(is_zero, copysign, tricky, Branch.BOOL))
         self.activate_block(tricky)
-        same_signs = self.is_same_float_signs(type, lhs, rhs, line)
+        same_signs = self.is_same_float_signs(lhs, rhs, line)
         self.add(Branch(same_signs, done, adjust, Branch.BOOL))
         self.activate_block(adjust)
         adj = self.float_op(res, rhs, "+", line)
@@ -2067,7 +2067,7 @@ class LowLevelIRBuilder:
         neg2 = self.add(ComparisonOp(b, Integer(0, type), ComparisonOp.SLT, line))
         return self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
 
-    def is_same_float_signs(self, type: RType, a: Value, b: Value, line: int) -> Value:
+    def is_same_float_signs(self, a: Value, b: Value, line: int) -> Value:
         neg1 = self.add(FloatComparisonOp(a, Float(0.0), FloatComparisonOp.LT, line))
         neg2 = self.add(FloatComparisonOp(b, Float(0.0), FloatComparisonOp.LT, line))
         return self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
