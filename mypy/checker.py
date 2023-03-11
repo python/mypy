@@ -629,7 +629,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if defn.is_property:
             # HACK: Infer the type of the property.
-            self.visit_decorator(cast(Decorator, defn.items[0]))
+            assert isinstance(defn.items[0], Decorator)
+            self.visit_decorator(defn.items[0])
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
@@ -2575,9 +2576,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if lvalue_type is None:
                 # TODO: This is broken.
                 lvalue_type = AnyType(TypeOfAny.special_form)
-            message = message_registry.INCOMPATIBLE_IMPORT_OF.format(
-                cast(NameExpr, assign.rvalue).name
-            )
+            assert isinstance(assign.rvalue, NameExpr)
+            message = message_registry.INCOMPATIBLE_IMPORT_OF.format(assign.rvalue.name)
             self.check_simple_assignment(
                 lvalue_type,
                 assign.rvalue,
@@ -3657,8 +3657,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
         ):
             if isinstance(lvalue, NameExpr):
-                inferred = cast(Var, lvalue.node)
-                assert isinstance(inferred, Var)
+                assert isinstance(lvalue.node, Var)
+                inferred = lvalue.node
             else:
                 assert isinstance(lvalue, MemberExpr)
                 self.expr_checker.accept(lvalue.expr)
@@ -4984,7 +4984,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # In order for this to work in incremental mode, the type we generate needs to
         # have a valid fullname and a corresponding entry in a symbol table. We generate
         # a unique name inside the symbol table of the current module.
-        cur_module = cast(MypyFile, self.scope.stack[0])
+        cur_module = self.scope.stack[0]
+        assert isinstance(cur_module, MypyFile)
         gen_name = gen_unique_name(f"<callable subtype of {typ.type.name}>", cur_module.names)
 
         # Synthesize a fake TypeInfo
@@ -6196,7 +6197,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             b = self.globals.get("__builtins__", None)
             if b:
-                table = cast(MypyFile, b.node).names
+                assert isinstance(b.node, MypyFile)
+                table = b.node.names
                 if name in table:
                     return table[name]
             raise KeyError(f"Failed lookup: {name}")
@@ -6210,7 +6212,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for i in range(1, len(parts) - 1):
                 sym = n.names.get(parts[i])
                 assert sym is not None, "Internal error: attempted lookup of unknown name"
-                n = cast(MypyFile, sym.node)
+                assert isinstance(sym.node, MypyFile)
+                n = sym.node
             last = parts[-1]
             if last in n.names:
                 return n.names[last]
@@ -6514,7 +6517,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return False
             return True
         elif isinstance(node, OverloadedFuncDef) and node.is_property:
-            first_item = cast(Decorator, node.items[0])
+            first_item = node.items[0]
+            assert isinstance(first_item, Decorator)
             return first_item.var.is_settable_property
         return False
 

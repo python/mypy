@@ -312,7 +312,8 @@ def analyze_instance_member_access(
 
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
-            first_item = cast(Decorator, method.items[0])
+            first_item = method.items[0]
+            assert isinstance(first_item, Decorator)
             return analyze_var(name, first_item.var, typ, info, mx)
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)

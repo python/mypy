@@ -6,7 +6,7 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
-from typing import Callable, Sequence, cast
+from typing import Callable, Sequence
 
 from mypy.nodes import (
     ARG_POS,
@@ -704,7 +704,9 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             lhs = e.operands[0]
             mypy_file = builder.graph["builtins"].tree
             assert mypy_file is not None
-            bool_type = Instance(cast(TypeInfo, mypy_file.names["bool"].node), [])
+            info = mypy_file.names["bool"].node
+            assert isinstance(info, TypeInfo)
+            bool_type = Instance(info, [])
             exprs = []
             for item in items:
                 expr = ComparisonExpr([cmp_op], [lhs, item])

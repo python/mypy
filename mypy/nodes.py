@@ -2183,7 +2183,8 @@ class LambdaExpr(FuncItem, Expression):
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
-        ret = cast(ReturnStmt, self.body.body[-1])
+        ret = self.body.body[-1]
+        assert isinstance(ret, ReturnStmt)
         expr = ret.expr
         assert expr is not None  # lambda can't have empty body
         return expr
