@@ -41,6 +41,7 @@ from mypy.nodes import (
     TypeInfo,
     TypeVarExpr,
     Var,
+    is_StrExpr_list,
 )
 from mypy.options import Options
 from mypy.semanal_shared import (
@@ -392,10 +393,10 @@ class NamedTupleAnalyzer:
             listexpr = args[1]
             if fullname == "collections.namedtuple":
                 # The fields argument contains just names, with implicit Any types.
-                if any(not isinstance(item, StrExpr) for item in listexpr.items):
+                if not is_StrExpr_list(listexpr.items):
                     self.fail('String literal expected as "namedtuple()" item', call)
                     return None
-                items = [cast(StrExpr, item).value for item in listexpr.items]
+                items = [item.value for item in listexpr.items]
             else:
                 type_exprs = [
                     t.items[1]
