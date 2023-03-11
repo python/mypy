@@ -18,6 +18,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
+    UninhabitedType,
     UnpackType,
     get_proper_type,
 )
@@ -32,13 +33,15 @@ def get_target_type(
     context: Context,
     skip_unsatisfied: bool,
 ) -> Type | None:
+    p_type = get_proper_type(type)
+    if isinstance(p_type, UninhabitedType) and tvar.has_default():
+        return tvar.default
     if isinstance(tvar, ParamSpecType):
         return type
     if isinstance(tvar, TypeVarTupleType):
         return type
     assert isinstance(tvar, TypeVarType)
     values = tvar.values
-    p_type = get_proper_type(type)
     if values:
         if isinstance(p_type, AnyType):
             return type
