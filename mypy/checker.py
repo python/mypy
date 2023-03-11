@@ -1876,23 +1876,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 original_class_or_static = False  # a variable can't be class or static
 
             if isinstance(original_type, FunctionLike):
-                active_self_type = self.scope.active_self_type()
-                if isinstance(original_type, Overloaded) and active_self_type:
-                    # If we have an overload, filter to overloads that match the self type.
-                    # This avoids false positives for concrete subclasses of generic classes,
-                    # see testSelfTypeOverrideCompatibility for an example.
-                    # It's possible we might want to do this as part of bind_and_map_method
-                    filtered_items = [
-                        item
-                        for item in original_type.items
-                        if not item.arg_types or is_subtype(active_self_type, item.arg_types[0])
-                    ]
-                    # If we don't have any filtered_items, maybe it's always a valid override
-                    # of the superclass? However if you get to that point you're in murky type
-                    # territory anyway, so we just preserve the type and have the behaviour match
-                    # that of older versions of mypy.
-                    if filtered_items:
-                        original_type = Overloaded(filtered_items)
                 original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
@@ -1964,10 +1947,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 is_class_method = sym.node.func.is_class
             else:
                 is_class_method = sym.node.is_class
-            bound = bind_self(typ, self.scope.active_self_type(), is_class_method)
+
+            mapped_typ = cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
+            active_self_type = self.scope.active_self_type()
+            if isinstance(mapped_typ, Overloaded) and active_self_type:
+                # If we have an overload, filter to overloads that match the self type.
+                # This avoids false positives for concrete subclasses of generic classes,
+                # see testSelfTypeOverrideCompatibility for an example.
+                filtered_items = [
+                    item
+                    for item in mapped_typ.items
+                    if not item.arg_types or is_subtype(active_self_type, item.arg_types[0])
+                ]
+                # If we don't have any filtered_items, maybe it's always a valid override
+                # of the superclass? However if you get to that point you're in murky type
+                # territory anyway, so we just preserve the type and have the behaviour match
+                # that of older versions of mypy.
+                if filtered_items:
+                    mapped_typ = Overloaded(filtered_items)
+
+            return bind_self(mapped_typ, active_self_type, is_class_method)
         else:
-            bound = typ
-        return cast(FunctionLike, map_type_from_supertype(bound, sub_info, super_info))
+            return cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
 
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
         if isinstance(tp, CallableType):
