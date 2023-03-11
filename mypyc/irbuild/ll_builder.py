@@ -71,6 +71,7 @@ from mypyc.ir.ops import (
     Unbox,
     Unreachable,
     Value,
+    float_comparison_op_to_id,
     float_op_to_id,
     int_op_to_id,
 )
@@ -1353,8 +1354,8 @@ class LowLevelIRBuilder:
             elif is_int_rprimitive(rreg.type):
                 rreg = self.int_to_float(rreg, line)
             if is_float_rprimitive(lreg.type) and is_float_rprimitive(rreg.type):
-                if op in FloatComparisonOp.op_to_id:
-                    return self.compare_floats(lreg, rreg, FloatComparisonOp.op_to_id[op], line)
+                if op in float_comparison_op_to_id:
+                    return self.compare_floats(lreg, rreg, float_comparison_op_to_id[op], line)
                 if op.endswith("="):
                     base_op = op[:-1]
                 else:

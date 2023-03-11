@@ -1246,8 +1246,6 @@ class FloatComparisonOp(RegisterOp):
 
     op_str: Final = {EQ: "==", NEQ: "!=", LT: "<", GT: ">", LE: "<=", GE: ">="}
 
-    op_to_id: Final = {op: op_id for op_id, op in op_str.items()}
-
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
         self.type = bit_rprimitive
@@ -1260,6 +1258,11 @@ class FloatComparisonOp(RegisterOp):
 
     def accept(self, visitor: "OpVisitor[T]") -> T:
         return visitor.visit_float_comparison_op(self)
+
+
+# We can't have this in the FloatOp class body, because of
+# https://github.com/mypyc/mypyc/issues/932.
+float_comparison_op_to_id: Final = {op: op_id for op_id, op in FloatComparisonOp.op_str.items()}
 
 
 class LoadMem(RegisterOp):
