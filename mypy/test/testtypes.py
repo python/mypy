@@ -561,9 +561,8 @@ class TypeOpsSuite(Suite):
 
     def test_simplify_very_large_union(self) -> None:
         fx = self.fx
-        literals = []
-        for i in range(5000):
-            literals.append(LiteralType("v%d" % i, fx.str_type))
+        literals = [LiteralType("v%d" % i, fx.str_type) for i in range(5000)]
+
         # This shouldn't be very slow, even if the union is big.
         self.assert_simplified_union([*literals, fx.str_type], fx.str_type)
 

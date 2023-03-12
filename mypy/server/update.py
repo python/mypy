@@ -746,11 +746,11 @@ def get_sources(
     changed_modules: list[tuple[str, str]],
     followed: bool,
 ) -> list[BuildSource]:
-    sources = []
-    for id, path in changed_modules:
-        if fscache.isfile(path):
-            sources.append(BuildSource(path, id, None, followed=followed))
-    return sources
+    return [
+        BuildSource(path, id, None, followed=followed)
+        for id, path in changed_modules
+        if fscache.isfile(path)
+    ]
 
 
 def calculate_active_triggers(

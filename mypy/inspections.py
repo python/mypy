@@ -458,9 +458,7 @@ class InspectionEngine:
             modules, reload_needed = self.modules_for_nodes(nodes, expression)
             assert not reload_needed
 
-        result = []
-        for node in modules:
-            result.append(self.format_node(modules[node], node))
+        result = [self.format_node(modules[node], node) for node in modules]
 
         if not result:
             return self.missing_node(expression), False

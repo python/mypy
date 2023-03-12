@@ -7362,11 +7362,9 @@ class DisjointDict(Generic[TKey, TValue]):
                 root_id_to_keys[root_id] = set()
             root_id_to_keys[root_id].add(key)
 
-        output = []
-        for root_id, keys in root_id_to_keys.items():
-            output.append((keys, self._root_id_to_values[root_id]))
-
-        return output
+        return [
+            (keys, self._root_id_to_values[root_id]) for root_id, keys in root_id_to_keys.items()
+        ]
 
     def _lookup_or_make_root_id(self, key: TKey) -> int:
         if key in self._key_to_id:

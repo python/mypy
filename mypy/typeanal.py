@@ -1495,9 +1495,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     ) -> list[Type]:
         old_allow_param_spec_literals = self.allow_param_spec_literals
         self.allow_param_spec_literals = allow_param_spec_literals
-        res: list[Type] = []
-        for t in a:
-            res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
+
+        res = [self.anal_type(t, nested, allow_param_spec=allow_param_spec) for t in a]
+
         self.allow_param_spec_literals = old_allow_param_spec_literals
         return self.check_unpacks_in_list(res)
 

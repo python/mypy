@@ -1960,10 +1960,7 @@ class CallableType(FunctionLike):
         return bool(self.variables)
 
     def type_var_ids(self) -> list[TypeVarId]:
-        a: list[TypeVarId] = []
-        for tv in self.variables:
-            a.append(tv.id)
-        return a
+        return [tv.id for tv in self.variables]
 
     def param_spec(self) -> ParamSpecType | None:
         """Return ParamSpec if callable can be called with one.
@@ -2158,10 +2155,7 @@ class Overloaded(FunctionLike):
         return self._items[0].type_object()
 
     def with_name(self, name: str) -> Overloaded:
-        ni: list[CallableType] = []
-        for it in self._items:
-            ni.append(it.with_name(name))
-        return Overloaded(ni)
+        return Overloaded([it.with_name(name) for it in self._items])
 
     def get_name(self) -> str | None:
         return self._items[0].name
@@ -3135,9 +3129,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"def {s}"
 
     def visit_overloaded(self, t: Overloaded) -> str:
-        a = []
-        for i in t.items:
-            a.append(i.accept(self))
+        a = [i.accept(self) for i in t.items]
+
         return f"Overload({', '.join(a)})"
 
     def visit_tuple_type(self, t: TupleType) -> str:
@@ -3207,10 +3200,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
         """
-        res = []
-        for t in a:
-            res.append(t.accept(self))
-        return ", ".join(res)
+        return ", ".join(t.accept(self) for t in a)
 
 
 class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type]):

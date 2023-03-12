@@ -297,10 +297,7 @@ def testfile_pyversion(path: str) -> tuple[int, int]:
 def normalize_error_messages(messages: list[str]) -> list[str]:
     """Translate an array of error messages to use / as path separator."""
 
-    a = []
-    for m in messages:
-        a.append(m.replace(os.sep, "/"))
-    return a
+    return [m.replace(os.sep, "/") for m in messages]
 
 
 def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:

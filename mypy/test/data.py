@@ -469,10 +469,8 @@ def strip_list(l: list[str]) -> list[str]:
     lines from the end of the array.
     """
 
-    r: list[str] = []
-    for s in l:
-        # Strip spaces at end of line
-        r.append(re.sub(r"\s+$", "", s))
+    # Strip spaces at end of line
+    r = [re.sub(r"\s+$", "", s) for s in l]
 
     while r and r[-1] == "":
         r.pop()

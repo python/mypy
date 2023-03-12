@@ -154,10 +154,11 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # Collect the final type
         #
-        types = []
-        for pattern_type in pattern_types:
-            if not is_uninhabited(pattern_type.type):
-                types.append(pattern_type.type)
+        types = [
+            pattern_type.type
+            for pattern_type in pattern_types
+            if not is_uninhabited(pattern_type.type)
+        ]
 
         #
         # Check the capture types

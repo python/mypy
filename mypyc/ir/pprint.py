@@ -427,11 +427,7 @@ def generate_names_for_ir(args: list[Register], blocks: list[BasicBlock]) -> dic
 
     for block in blocks:
         for op in block.ops:
-            values = []
-
-            for source in op.sources():
-                if source not in names:
-                    values.append(source)
+            values = [source for source in op.sources() if source not in names]
 
             if isinstance(op, (Assign, AssignMulti)):
                 values.append(op.dest)

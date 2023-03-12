@@ -75,9 +75,9 @@ def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
 
 
 def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
-    args = []
-    for arg in fn.sig.args:
-        args.append(f"{emitter.ctype_spaced(arg.type)}{REG_PREFIX}{arg.name}")
+    args = [
+        f"{emitter.ctype_spaced(arg.type)}{REG_PREFIX}{arg.name}" for arg in fn.sig.args
+    ]
 
     return "{ret_type}{name}({args})".format(
         ret_type=emitter.ctype_spaced(fn.sig.ret_type),

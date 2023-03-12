@@ -2459,13 +2459,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Assumes all of the given targets have argument counts compatible with the caller.
         """
-        matches: list[CallableType] = []
-        for typ in plausible_targets:
+
+        return [
+            typ
+            for typ in plausible_targets
             if self.erased_signature_similarity(
                 arg_types, arg_kinds, arg_names, args, typ, context
-            ):
-                matches.append(typ)
-        return matches
+            )
+        ]
 
     def union_overload_result(
         self,
@@ -3785,9 +3786,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return self.nonliteral_tuple_index_helper(left_type, slic)
             stride = stride_raw
 
-        items: list[Type] = []
-        for b, e, s in itertools.product(begin, end, stride):
-            items.append(left_type.slice(b, e, s))
+        items = [
+            left_type.slice(b, e, s) for b, e, s in itertools.product(begin, end, stride)
+        ]
+
         return make_simplified_union(items)
 
     def try_getting_int_literals(self, index: Expression) -> list[int] | None:

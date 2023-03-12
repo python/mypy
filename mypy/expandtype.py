@@ -484,10 +484,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t.copy_modified(args=self.expand_types(t.args))
 
     def expand_types(self, types: Iterable[Type]) -> list[Type]:
-        a: list[Type] = []
-        for t in types:
-            a.append(t.accept(self))
-        return a
+        return [t.accept(self) for t in types]
 
 
 def expand_unpack_with_variables(

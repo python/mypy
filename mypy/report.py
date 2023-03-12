@@ -425,12 +425,11 @@ class LineCoverageReporter(AbstractReporter):
         coverage_visitor = LineCoverageVisitor(tree_source)
         tree.accept(coverage_visitor)
 
-        covered_lines = []
-        for line_number, (_, typed) in enumerate(coverage_visitor.lines_covered):
-            if typed:
-                covered_lines.append(line_number + 1)
-
-        self.lines_covered[os.path.abspath(tree.path)] = covered_lines
+        self.lines_covered[os.path.abspath(tree.path)] = [
+            line_number + 1
+            for line_number, (_, typed) in enumerate(coverage_visitor.lines_covered)
+            if typed
+        ]
 
     def on_finish(self) -> None:
         with open(os.path.join(self.output_dir, "coverage.json"), "w") as f:

@@ -460,9 +460,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             )
             assert isinstance(fallback, Instance)
             if self.s.length() == t.length():
-                items: list[Type] = []
-                for i in range(t.length()):
-                    items.append(join_types(t.items[i], self.s.items[i]))
+                items = [join_types(t.items[i], self.s.items[i]) for i in range(t.length())]
+
                 return TupleType(items, fallback)
             else:
                 return fallback
@@ -572,9 +571,8 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
 def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.meet import meet_types
 
-    arg_types: list[Type] = []
-    for i in range(len(t.arg_types)):
-        arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
+    arg_types = [meet_types(t.arg_types[i], s.arg_types[i]) for i in range(len(t.arg_types))]
+
     # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
     # The result should always use 'function' as a fallback if either operands are using it.
@@ -592,9 +590,8 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    arg_types: list[Type] = []
-    for i in range(len(t.arg_types)):
-        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+    arg_types = [join_types(t.arg_types[i], s.arg_types[i]) for i in range(len(t.arg_types))]
+
     # TODO kinds and argument names
     # TODO what should happen if one fallback is 'type' and the other is a user-provided metaclass?
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.

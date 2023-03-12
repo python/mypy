@@ -708,13 +708,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, Instance):
             if t.type == self.s.type:
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
-                    # Combine type arguments. We could have used join below
-                    # equivalently.
-                    args: list[Type] = []
+                    # Combine type arguments. We could have used join below equivalently.
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
-                    for ta, sia in zip(t.args, self.s.args):
-                        args.append(self.meet(ta, sia))
+                    args = [self.meet(ta, sia) for ta, sia, in zip(t.args, self.s.args)]
+
                     return Instance(t.type, args)
                 else:
                     if state.strict_optional:
@@ -805,9 +803,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items: list[Type] = []
-            for i in range(t.length()):
-                items.append(self.meet(t.items[i], self.s.items[i]))
+            items: list[Type] = [
+                self.meet(t.items[i], self.s.items[i]) for i in range(t.length())
+            ]
+
             # TODO: What if the fallbacks are different?
             return TupleType(items, tuple_fallback(t))
         elif isinstance(self.s, Instance):
@@ -887,9 +886,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.join import join_types
 
-    arg_types: list[Type] = []
-    for i in range(len(t.arg_types)):
-        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+    arg_types = [join_types(t.arg_types[i], s.arg_types[i]) for i in range(len(t.arg_types))]
+
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.
