@@ -312,7 +312,8 @@ def analyze_instance_member_access(
 
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
-            first_item = cast(Decorator, method.items[0])
+            first_item = method.items[0]
+            assert isinstance(first_item, Decorator)
             return analyze_var(name, first_item.var, typ, info, mx)
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
@@ -1150,7 +1151,7 @@ def add_class_tvars(
             t = freshen_all_functions_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
-            t = cast(CallableType, expand_type_by_instance(t, isuper))
+            t = expand_type_by_instance(t, isuper)
             freeze_all_type_vars(t)
         return t.copy_modified(variables=list(tvars) + list(t.variables))
     elif isinstance(t, Overloaded):

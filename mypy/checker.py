@@ -629,7 +629,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if defn.is_property:
             # HACK: Infer the type of the property.
-            self.visit_decorator(cast(Decorator, defn.items[0]))
+            assert isinstance(defn.items[0], Decorator)
+            self.visit_decorator(defn.items[0])
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
@@ -1753,8 +1754,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             result: list[tuple[FuncItem, CallableType]] = []
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
-                expanded = cast(CallableType, expand_type(typ, mapping))
-                result.append((expand_func(defn, mapping), expanded))
+                result.append((expand_func(defn, mapping), expand_type(typ, mapping)))
             return result
         else:
             return [(defn, typ)]
@@ -1876,23 +1876,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 original_class_or_static = False  # a variable can't be class or static
 
             if isinstance(original_type, FunctionLike):
-                active_self_type = self.scope.active_self_type()
-                if isinstance(original_type, Overloaded) and active_self_type:
-                    # If we have an overload, filter to overloads that match the self type.
-                    # This avoids false positives for concrete subclasses of generic classes,
-                    # see testSelfTypeOverrideCompatibility for an example.
-                    # It's possible we might want to do this as part of bind_and_map_method
-                    filtered_items = [
-                        item
-                        for item in original_type.items
-                        if not item.arg_types or is_subtype(active_self_type, item.arg_types[0])
-                    ]
-                    # If we don't have any filtered_items, maybe it's always a valid override
-                    # of the superclass? However if you get to that point you're in murky type
-                    # territory anyway, so we just preserve the type and have the behaviour match
-                    # that of older versions of mypy.
-                    if filtered_items:
-                        original_type = Overloaded(filtered_items)
                 original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
@@ -1964,10 +1947,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 is_class_method = sym.node.func.is_class
             else:
                 is_class_method = sym.node.is_class
-            bound = bind_self(typ, self.scope.active_self_type(), is_class_method)
+
+            mapped_typ = cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
+            active_self_type = self.scope.active_self_type()
+            if isinstance(mapped_typ, Overloaded) and active_self_type:
+                # If we have an overload, filter to overloads that match the self type.
+                # This avoids false positives for concrete subclasses of generic classes,
+                # see testSelfTypeOverrideCompatibility for an example.
+                filtered_items = [
+                    item
+                    for item in mapped_typ.items
+                    if not item.arg_types or is_subtype(active_self_type, item.arg_types[0])
+                ]
+                # If we don't have any filtered_items, maybe it's always a valid override
+                # of the superclass? However if you get to that point you're in murky type
+                # territory anyway, so we just preserve the type and have the behaviour match
+                # that of older versions of mypy.
+                if filtered_items:
+                    mapped_typ = Overloaded(filtered_items)
+
+            return bind_self(mapped_typ, active_self_type, is_class_method)
         else:
-            bound = typ
-        return cast(FunctionLike, map_type_from_supertype(bound, sub_info, super_info))
+            return cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
 
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
         if isinstance(tp, CallableType):
@@ -2576,9 +2577,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if lvalue_type is None:
                 # TODO: This is broken.
                 lvalue_type = AnyType(TypeOfAny.special_form)
-            message = message_registry.INCOMPATIBLE_IMPORT_OF.format(
-                cast(NameExpr, assign.rvalue).name
-            )
+            assert isinstance(assign.rvalue, NameExpr)
+            message = message_registry.INCOMPATIBLE_IMPORT_OF.format(assign.rvalue.name)
             self.check_simple_assignment(
                 lvalue_type,
                 assign.rvalue,
@@ -3658,8 +3658,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
         ):
             if isinstance(lvalue, NameExpr):
-                inferred = cast(Var, lvalue.node)
-                assert isinstance(inferred, Var)
+                assert isinstance(lvalue.node, Var)
+                inferred = lvalue.node
             else:
                 assert isinstance(lvalue, MemberExpr)
                 self.expr_checker.accept(lvalue.expr)
@@ -4985,7 +4985,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # In order for this to work in incremental mode, the type we generate needs to
         # have a valid fullname and a corresponding entry in a symbol table. We generate
         # a unique name inside the symbol table of the current module.
-        cur_module = cast(MypyFile, self.scope.stack[0])
+        cur_module = self.scope.stack[0]
+        assert isinstance(cur_module, MypyFile)
         gen_name = gen_unique_name(f"<callable subtype of {typ.type.name}>", cur_module.names)
 
         # Synthesize a fake TypeInfo
@@ -6197,7 +6198,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             b = self.globals.get("__builtins__", None)
             if b:
-                table = cast(MypyFile, b.node).names
+                assert isinstance(b.node, MypyFile)
+                table = b.node.names
                 if name in table:
                     return table[name]
             raise KeyError(f"Failed lookup: {name}")
@@ -6211,7 +6213,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for i in range(1, len(parts) - 1):
                 sym = n.names.get(parts[i])
                 assert sym is not None, "Internal error: attempted lookup of unknown name"
-                n = cast(MypyFile, sym.node)
+                assert isinstance(sym.node, MypyFile)
+                n = sym.node
             last = parts[-1]
             if last in n.names:
                 return n.names[last]
@@ -6515,7 +6518,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return False
             return True
         elif isinstance(node, OverloadedFuncDef) and node.is_property:
-            first_item = cast(Decorator, node.items[0])
+            first_item = node.items[0]
+            assert isinstance(first_item, Decorator)
             return first_item.var.is_settable_property
         return False
 
@@ -7111,7 +7115,6 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
     exp_signature = expand_type(
         signature, {tvar.id: erase_def_to_union_or_bound(tvar) for tvar in signature.variables}
     )
-    assert isinstance(exp_signature, CallableType)
     return is_callable_compatible(
         exp_signature, other, is_compat=is_more_precise, ignore_return=True
     )

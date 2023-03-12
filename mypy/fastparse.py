@@ -665,7 +665,9 @@ class ASTConverter:
                 if current_overload and current_overload_name == last_if_stmt_overload_name:
                     # Remove last stmt (IfStmt) from ret if the overload names matched
                     # Only happens if no executable block had been found in IfStmt
-                    skipped_if_stmts.append(cast(IfStmt, ret.pop()))
+                    popped = ret.pop()
+                    assert isinstance(popped, IfStmt)
+                    skipped_if_stmts.append(popped)
                 if current_overload and skipped_if_stmts:
                     # Add bare IfStmt (without overloads) to ret
                     # Required for mypy to be able to still check conditions
@@ -842,7 +844,7 @@ class ASTConverter:
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
         for ti in mod.type_ignores:
-            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
+            parsed = parse_type_ignore_tag(ti.tag)
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
