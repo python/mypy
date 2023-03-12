@@ -622,8 +622,8 @@ PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
                                   _Py_Identifier *method);
 
-PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
-                               PyObject *import_name, PyObject *as_name);
+PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
+                                   PyObject *globals);
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
                                              PyObject *func);

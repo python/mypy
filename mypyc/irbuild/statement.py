@@ -43,13 +43,16 @@ from mypy.nodes import (
     YieldFromExpr,
 )
 from mypyc.ir.ops import (
+    NAMESPACE_MODULE,
     NO_TRACEBACK_LINE_NO,
     Assign,
     BasicBlock,
     Branch,
+    InitStatic,
     Integer,
     LoadAddress,
     LoadErrorValue,
+    LoadLiteral,
     MethodCall,
     RaiseStandardError,
     Register,
@@ -96,7 +99,7 @@ from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
-    import_from_op,
+    import_from_many_op,
     send_op,
     type_op,
     yield_from_except_op,
@@ -258,29 +261,25 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
         module_package = ""
 
     id = importlib.util.resolve_name("." * node.relative + node.id, module_package)
+    builder.imports[id] = None
 
-    globals = builder.load_globals_dict()
-    imported_names = [name for name, _ in node.names]
-    module = builder.gen_import_from(id, globals, imported_names, node.line)
-
-    # Copy everything into our module's dict.
+    names = [name for name, _ in node.names]
+    as_names = [as_name for _, as_name in node.names]
+    names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
+    if all(n is None for n in as_names):
+        # Reuse names tuple to reduce verbosity.
+        as_names_literal = names_literal
+    else:
+        as_names_literal = builder.add(LoadLiteral(tuple(as_names), object_rprimitive))
     # Note that we miscompile import from inside of functions here,
-    # since that case *shouldn't* load it into the globals dict.
+    # since that case *shouldn't* load everything into the globals dict.
     # This probably doesn't matter much and the code runs basically right.
-    for name, maybe_as_name in node.names:
-        as_name = maybe_as_name or name
-        obj = builder.call_c(
-            import_from_op,
-            [module, builder.load_str(id), builder.load_str(name), builder.load_str(as_name)],
-            node.line,
-        )
-        builder.gen_method_call(
-            globals,
-            "__setitem__",
-            [builder.load_str(as_name), obj],
-            result_type=None,
-            line=node.line,
-        )
+    module = builder.call_c(
+        import_from_many_op,
+        [builder.load_str(id), names_literal, as_names_literal, builder.load_globals_dict()],
+        node.line,
+    )
+    builder.add(InitStatic(module, id, namespace=NAMESPACE_MODULE))
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:

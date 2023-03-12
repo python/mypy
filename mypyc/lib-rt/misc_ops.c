@@ -670,8 +670,8 @@ CPy_Super(PyObject *builtins, PyObject *self) {
 }
 
 // This helper function is a simplification of cpython/ceval.c/import_from()
-PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
-                               PyObject *import_name, PyObject *as_name) {
+static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
+                                      PyObject *import_name, PyObject *as_name) {
     // check if the imported module has an attribute by that name
     PyObject *x = PyObject_GetAttr(module, import_name);
     if (x == NULL) {
@@ -700,6 +700,34 @@ fail:
     Py_DECREF(package_path);
     Py_DECREF(errmsg);
     return NULL;
+}
+
+PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
+                                   PyObject *globals) {
+    PyObject *mod = PyImport_ImportModuleLevelObject(mod_id, globals, 0, names, 0);
+    if (mod == NULL) {
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(names); i++) {
+        PyObject *name = PyTuple_GET_ITEM(names, i);
+        PyObject *as_name = PyTuple_GET_ITEM(as_names, i);
+        if (as_name == Py_None) {
+            as_name = name;
+        }
+        PyObject *obj = CPyImport_ImportFrom(mod, mod_id, name, as_name);
+        if (obj == NULL) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+        int ret = CPyDict_SetItem(globals, as_name, obj);
+        Py_DECREF(obj);
+        if (ret < 0) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+    }
+    return mod;
 }
 
 // From CPython
