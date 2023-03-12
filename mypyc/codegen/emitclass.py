@@ -399,8 +399,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
                     if isinstance(rtype, RTuple):
                         emitter.declare_tuple_struct(rtype)
 
-    lines.append(f"}} {cl.struct_name(emitter.names)};")
-    lines.append("")
+    lines.extend((f"}} {cl.struct_name(emitter.names)};", ""))
     emitter.context.declarations[cl.struct_name(emitter.names)] = HeaderDeclaration(
         lines, is_type=True
     )

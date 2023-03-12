@@ -378,11 +378,11 @@ def find_unique_signatures(sigs: Sequence[Sig]) -> list[Sig]:
     for name, sig in sigs:
         sig_map.setdefault(name, []).append(sig)
 
-    result = []
-    for name, name_sigs in sig_map.items():
-        if len(set(name_sigs)) == 1:
-            result.append((name, name_sigs[0]))
-    return sorted(result)
+    return sorted(
+        (name, name_sigs[0])
+        for name, name_sigs in sig_map.items()
+        if len(set(name_sigs)) == 1
+    )
 
 
 def infer_prop_type_from_docstring(docstr: str | None) -> str | None:

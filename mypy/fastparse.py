@@ -783,8 +783,8 @@ class ASTConverter:
             return None, None
         if (
             stmt.else_body is None
-            or stmt.body[0].is_unreachable is False
-            and stmt.else_body.is_unreachable is False
+            or not stmt.body[0].is_unreachable
+            and not stmt.else_body.is_unreachable
         ):
             # The truth value is unknown, thus not conclusive
             return None, stmt

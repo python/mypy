@@ -1084,8 +1084,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_union_type(self, t: UnionType) -> Type:
         if (
-            t.uses_pep604_syntax is True
-            and t.is_evaluated is True
+            t.uses_pep604_syntax
+            and t.is_evaluated
             and not self.always_allow_new_syntax
             and not self.options.python_version >= (3, 10)
         ):

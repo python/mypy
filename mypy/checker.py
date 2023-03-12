@@ -1967,8 +1967,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     mapped_typ = Overloaded(filtered_items)
 
             return bind_self(mapped_typ, active_self_type, is_class_method)
-        else:
-            return cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
+
+        return cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
 
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
         if isinstance(tp, CallableType):

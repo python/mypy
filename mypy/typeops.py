@@ -156,9 +156,12 @@ def type_object_type_from_function(
     else:
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
-        items: list[CallableType] = []
-        for item, orig_self in zip(signature.items, orig_self_types):
-            items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
+
+        items = [
+            class_callable(item, info, fallback, special_sig, is_new, orig_self)
+            for item, orig_self in zip(signature.items, orig_self_types)
+        ]
+
         return Overloaded(items)
 
 

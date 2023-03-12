@@ -883,8 +883,8 @@ class IRBuilder:
         assert isinstance(target_type, Instance), target_type
         if target_type.type.fullname == "builtins.str":
             return str_rprimitive
-        else:
-            return self.type_to_rtype(target_type.args[0])
+
+        return self.type_to_rtype(target_type.args[0])
 
     def get_dict_base_type(self, expr: Expression) -> list[Instance]:
         """Find dict type of a dict-like expression.
