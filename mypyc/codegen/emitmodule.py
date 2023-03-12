@@ -296,11 +296,11 @@ def compile_ir_to_c(
     # compiled into a separate extension module.
     ctext: dict[str | None, list[tuple[str, str]]] = {}
     for group_sources, group_name in groups:
-        group_modules = [
-            (source.module, modules[source.module])
+        group_modules = {
+            source.module: modules[source.module]
             for source in group_sources
             if source.module in modules
-        ]
+        }
         if not group_modules:
             ctext[group_name] = []
             continue
@@ -465,7 +465,7 @@ def group_dir(group_name: str) -> str:
 class GroupGenerator:
     def __init__(
         self,
-        modules: list[tuple[str, ModuleIR]],
+        modules: dict[str, ModuleIR],
         source_paths: dict[str, str],
         group_name: str | None,
         group_map: dict[str, str | None],
@@ -512,7 +512,7 @@ class GroupGenerator:
         multi_file = self.use_shared_lib and self.multi_file
 
         # Collect all literal refs in IR.
-        for _, module in self.modules:
+        for module in self.modules.values():
             for fn in module.functions:
                 collect_literals(fn, self.context.literals)
 
@@ -528,7 +528,7 @@ class GroupGenerator:
 
         self.generate_literal_tables()
 
-        for module_name, module in self.modules:
+        for module_name, module in self.modules.items():
             if multi_file:
                 emitter = Emitter(self.context)
                 emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
@@ -582,7 +582,7 @@ class GroupGenerator:
         declarations.emit_line("int CPyGlobalsInit(void);")
         declarations.emit_line()
 
-        for module_name, module in self.modules:
+        for module_name, module in self.modules.items():
             self.declare_finals(module_name, module.final_names, declarations)
             for cl in module.classes:
                 generate_class_type_decl(cl, emitter, ext_declarations, declarations)
@@ -790,7 +790,7 @@ class GroupGenerator:
             "",
         )
 
-        for mod, _ in self.modules:
+        for mod in self.modules:
             name = exported_name(mod)
             emitter.emit_lines(
                 f"extern PyObject *CPyInit_{name}(void);",
@@ -1023,12 +1023,13 @@ class GroupGenerator:
         return emitter.static_name(module_name + "_internal", None, prefix=MODULE_PREFIX)
 
     def declare_module(self, module_name: str, emitter: Emitter) -> None:
-        # We declare two globals for each module:
+        # We declare two globals for each compiled module:
         # one used internally in the implementation of module init to cache results
         # and prevent infinite recursion in import cycles, and one used
         # by other modules to refer to it.
-        internal_static_name = self.module_internal_static_name(module_name, emitter)
-        self.declare_global("CPyModule *", internal_static_name, initializer="NULL")
+        if module_name in self.modules:
+            internal_static_name = self.module_internal_static_name(module_name, emitter)
+            self.declare_global("CPyModule *", internal_static_name, initializer="NULL")
         static_name = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
         self.declare_global("CPyModule *", static_name)
         self.simple_inits.append((static_name, "Py_None"))
