@@ -6403,3 +6403,29 @@ def g(d: Dict[TValue]) -> TValue:
 tmp/b.py:6: error: TypedDict "a.Dict[TValue]" has no key "x"
 [out2]
 tmp/b.py:6: error: TypedDict "a.Dict[TValue]" has no key "y"
+
+[case testParamSpecNoCrash]
+import m
+[file m.py]
+from typing import Callable, TypeVar
+from lib import C
+
+T = TypeVar("T")
+def test(x: Callable[..., T]) -> T: ...
+test(C)  # type: ignore
+
+[file m.py.2]
+from typing import Callable, TypeVar
+from lib import C
+
+T = TypeVar("T")
+def test(x: Callable[..., T]) -> T: ...
+test(C)  # type: ignore
+# touch
+[file lib.py]
+from typing import ParamSpec, Generic, Callable
+
+P = ParamSpec("P")
+class C(Generic[P]):
+    def __init__(self, fn: Callable[P, int]) -> None: ...
+[builtins fixtures/dict.pyi]
