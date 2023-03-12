@@ -18,7 +18,7 @@ import os
 import re
 import sys
 import unittest
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
@@ -169,7 +169,8 @@ class FineGrainedSuite(DataSuite):
 
     def run_check(self, server: Server, sources: list[BuildSource]) -> list[str]:
         response = server.check(sources, export_types=True, is_tty=False, terminal_width=-1)
-        out = cast(str, response["out"] or response["err"])
+        out = response["out"] or response["err"]
+        assert isinstance(out, str)
         return out.splitlines()
 
     def build(self, options: Options, sources: list[BuildSource]) -> list[str]:
