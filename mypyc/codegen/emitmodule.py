@@ -26,7 +26,7 @@ from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration
+from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_type_decl
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -1124,37 +1124,6 @@ def collect_literals(fn: FuncIR, literals: Literals) -> None:
         for op in block.ops:
             if isinstance(op, LoadLiteral):
                 literals.record_literal(op.value)
-
-
-def c_array_initializer(components: list[str]) -> str:
-    """Construct an initializer for a C array variable.
-
-    Components are C expressions valid in an initializer.
-
-    For example, if components are ["1", "2"], the result
-    would be "{1, 2}", which can be used like this:
-
-        int a[] = {1, 2};
-
-    If the result is long, split it into multiple lines.
-    """
-    res = []
-    current: list[str] = []
-    cur_len = 0
-    for c in components:
-        if not current or cur_len + 2 + len(c) < 70:
-            current.append(c)
-            cur_len += len(c) + 2
-        else:
-            res.append(", ".join(current))
-            current = [c]
-            cur_len = len(c)
-    if not res:
-        # Result fits on a single line
-        return "{%s}" % ", ".join(current)
-    # Multi-line result
-    res.append(", ".join(current))
-    return "{\n    " + ",\n    ".join(res) + "\n}"
 
 
 def c_string_array_initializer(components: list[bytes]) -> str:

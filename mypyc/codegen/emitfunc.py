@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing_extensions import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
-from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler
+from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import MODULE_PREFIX, NATIVE_PREFIX, REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
@@ -262,12 +262,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # RArray values can only be assigned to once, so we can always
         # declare them on initialization.
         self.emit_line(
-            "%s%s[%d] = {%s};"
+            "%s%s[%d] = %s;"
             % (
                 self.emitter.ctype_spaced(typ.item_type),
                 dest,
                 len(op.src),
-                ", ".join(self.reg(s) for s in op.src),
+                c_array_initializer([self.reg(s) for s in op.src], indented=True),
             )
         )
 
