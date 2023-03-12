@@ -257,7 +257,7 @@ class LowLevelIRBuilder:
 
     def flush_keep_alives(self) -> None:
         if self.keep_alives:
-            self.add(KeepAlive(self.keep_alives[:]))
+            self.add(KeepAlive(self.keep_alives.copy()))
             self.keep_alives = []
 
     # Type conversions

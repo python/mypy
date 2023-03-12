@@ -279,7 +279,7 @@ class AssignMulti(BaseAssign):
         self.src = src
 
     def sources(self) -> list[Value]:
-        return self.src[:]
+        return self.src.copy()
 
     def stolen(self) -> list[Value]:
         return []
@@ -522,7 +522,7 @@ class Call(RegisterOp):
         super().__init__(line)
 
     def sources(self) -> list[Value]:
-        return list(self.args[:])
+        return list(self.args.copy())
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_call(self)
@@ -550,7 +550,7 @@ class MethodCall(RegisterOp):
         super().__init__(line)
 
     def sources(self) -> list[Value]:
-        return self.args[:] + [self.obj]
+        return self.args.copy() + [self.obj]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_method_call(self)
@@ -770,7 +770,7 @@ class TupleSet(RegisterOp):
         self.type = self.tuple_type
 
     def sources(self) -> list[Value]:
-        return self.items[:]
+        return self.items.copy()
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_set(self)
@@ -1285,7 +1285,7 @@ class KeepAlive(RegisterOp):
         self.src = src
 
     def sources(self) -> list[Value]:
-        return self.src[:]
+        return self.src.copy()
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_keep_alive(self)

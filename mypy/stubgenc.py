@@ -215,7 +215,7 @@ def add_typing_import(output: list[str]) -> list[str]:
     if names:
         return [f"from typing import {', '.join(names)}", ""] + output
 
-    return output[:]
+    return output.copy()
 
 
 def is_c_function(obj: object) -> bool:
