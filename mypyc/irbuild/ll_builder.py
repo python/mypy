@@ -68,6 +68,7 @@ from mypyc.ir.ops import (
     SetMem,
     Truncate,
     TupleGet,
+    TupleSet,
     Unbox,
     Unreachable,
     Value,
@@ -354,11 +355,33 @@ class LowLevelIRBuilder:
                 return Float(float(src.value))
             elif is_tagged(src_type) and is_float_rprimitive(target_type):
                 return self.int_to_float(src, line)
-            else:
-                # To go from one unboxed type to another, we go through a boxed
-                # in-between value, for simplicity.
-                tmp = self.box(src)
-                return self.unbox_or_cast(tmp, target_type, line)
+            elif (
+                isinstance(src_type, RTuple)
+                and isinstance(target_type, RTuple)
+                and len(src_type.types) == len(target_type.types)
+            ):
+                # Coerce between two tuple types by coercing each item separately
+                values = []
+                for i in range(len(src_type.types)):
+                    v = None
+                    if isinstance(src, TupleSet):
+                        item = src.items[i]
+                        # We can't reuse register values, since they can be modified.
+                        if not isinstance(item, Register):
+                            v = item
+                    if v is None:
+                        v = TupleGet(src, i)
+                        self.add(v)
+                    values.append(v)
+                return self.add(
+                    TupleSet(
+                        [self.coerce(v, t, line) for v, t in zip(values, target_type.types)], line
+                    )
+                )
+            # To go between any other unboxed types, we go through a boxed
+            # in-between value, for simplicity.
+            tmp = self.box(src)
+            return self.unbox_or_cast(tmp, target_type, line)
         if (not src_type.is_unboxed and target_type.is_unboxed) or not is_subtype(
             src_type, target_type
         ):
