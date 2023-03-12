@@ -649,3 +649,22 @@ bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code
 [file bar.py]
 from foo.empty import *
 a = 1  # type: ignore
+
+[case testPossiblyUndefinedVarsPreservedAfterRerun]
+-- Regression test for https://github.com/python/mypy/issues/9655
+$ dmypy start -- --enable-error-code possibly-undefined --no-error-summary
+Daemon started
+$ dmypy check -- bar.py
+bar.py:4: error: Name "a" may be undefined  [possibly-undefined]
+== Return code: 1
+$ dmypy check -- bar.py
+bar.py:4: error: Name "a" may be undefined  [possibly-undefined]
+== Return code: 1
+
+[file foo/__init__.py]
+[file foo/empty.py]
+[file bar.py]
+from foo.empty import *
+if False:
+    a = 1
+a
