@@ -596,7 +596,7 @@ class ASTConverter:
             if_overload_name: str | None = None
             if_block_with_overload: Block | None = None
             if_unknown_truth_value: IfStmt | None = None
-            if isinstance(stmt, IfStmt) and seen_unconditional_func_def is False:
+            if isinstance(stmt, IfStmt) and not seen_unconditional_func_def:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
