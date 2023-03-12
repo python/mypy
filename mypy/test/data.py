@@ -216,7 +216,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     case.expected_stale_modules = stale_modules
     case.expected_rechecked_modules = rechecked_modules
     case.deleted_paths = deleted_paths
-    case.triggered = triggered or []
+    case.triggered = triggered
     case.normalize_output = normalize_output
     case.expected_fine_grained_targets = targets
     case.test_modules = test_modules
