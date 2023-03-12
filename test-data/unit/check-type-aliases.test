@@ -1029,7 +1029,7 @@ WrongTypeElement = str | tuple[float, 1]  # E: Invalid type: try using Literal[1
 WrongEllipsis = str | tuple[float, float, ...]  # E: Unexpected "..."
 [builtins fixtures/tuple.pyi]
 
-[case testNoCompiledCrashOnSingleItemUnion]
+[case testCompiledNoCrashOnSingleItemUnion]
 # flags: --no-strict-optional
 from typing import Callable, Union, Generic, TypeVar
 
