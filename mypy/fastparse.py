@@ -844,7 +844,7 @@ class ASTConverter:
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
         for ti in mod.type_ignores:
-            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
+            parsed = parse_type_ignore_tag(ti.tag)
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
