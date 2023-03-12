@@ -1853,6 +1853,7 @@ Represents a sequence of values. Updates itself by next, which is a new value.
 Traceback (most recent call last):
   File "driver.py", line 5, in <module>
     print (x.rankine)
+           ^^^^^^^^^
   File "native.py", line 16, in rankine
     raise NotImplementedError
 NotImplementedError
