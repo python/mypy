@@ -609,10 +609,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(object_type, TupleType):
             type_name = tuple_fallback(object_type).type.fullname
 
-        if type_name:
-            return f"{type_name}.{method_name}"
-        else:
-            return None
+        return f"{type_name}.{method_name}" if type_name else None
 
     def always_returns_none(self, node: Expression) -> bool:
         """Check if `node` refers to something explicitly annotated as only returning None."""
@@ -744,8 +741,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
         if validated_kwargs is not None:
             return callee.required_keys <= set(validated_kwargs.keys()) <= set(callee.items.keys())
-        else:
-            return False
+
+        return False
 
     def check_typeddict_call_with_dict(
         self, callee: TypedDictType, kwargs: DictExpr, context: Context, orig_callee: Type | None
@@ -755,8 +752,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.check_typeddict_call_with_kwargs(
                 callee, kwargs=validated_kwargs, context=context, orig_callee=orig_callee
             )
-        else:
-            return AnyType(TypeOfAny.from_error)
+
+        return AnyType(TypeOfAny.from_error)
 
     def typeddict_callable(self, info: TypeInfo) -> CallableType:
         """Construct a reasonable type for a TypedDict type in runtime context.
@@ -1299,15 +1296,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callable_name,
                 object_type,
             )
-        elif isinstance(callee, Overloaded):
+        if isinstance(callee, Overloaded):
             return self.check_overload_call(
                 callee, args, arg_kinds, arg_names, callable_name, object_type, context
             )
-        elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
+        if isinstance(callee, AnyType) or not self.chk.in_checked_function():
             return self.check_any_type_call(args, callee)
-        elif isinstance(callee, UnionType):
+        if isinstance(callee, UnionType):
             return self.check_union_call(callee, args, arg_kinds, arg_names, context)
-        elif isinstance(callee, Instance):
+        if isinstance(callee, Instance):
             call_function = analyze_member_access(
                 "__call__",
                 callee,
@@ -1340,14 +1337,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Override the type.
                 self.chk.store_type(callable_node, callee)
             return result
-        elif isinstance(callee, TypeVarType):
+        if isinstance(callee, TypeVarType):
             return self.check_call(
                 callee.upper_bound, args, arg_kinds, context, arg_names, callable_node
             )
-        elif isinstance(callee, TypeType):
+        if isinstance(callee, TypeType):
             item = self.analyze_type_type_callee(callee.item, context)
             return self.check_call(item, args, arg_kinds, context, arg_names, callable_node)
-        elif isinstance(callee, TupleType):
+        if isinstance(callee, TupleType):
             return self.check_call(
                 tuple_fallback(callee),
                 args,
@@ -1358,8 +1355,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callable_name,
                 object_type,
             )
-        else:
-            return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
+
+        return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
 
     def check_callable_call(
         self,
@@ -2744,8 +2741,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 AnyType(TypeOfAny.from_another_any, source_any=callee),
                 AnyType(TypeOfAny.from_another_any, source_any=callee),
             )
-        else:
-            return AnyType(TypeOfAny.special_form), AnyType(TypeOfAny.special_form)
+
+        return AnyType(TypeOfAny.special_form), AnyType(TypeOfAny.special_form)
 
     def check_union_call(
         self,
@@ -2847,12 +2844,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         typ = self.named_type(fallback_name)
         if self.is_literal_context():
             return LiteralType(value=value, fallback=typ)
-        else:
-            return typ.copy_modified(
-                last_known_value=LiteralType(
-                    value=value, fallback=typ, line=typ.line, column=typ.column
-                )
+
+        return typ.copy_modified(
+            last_known_value=LiteralType(
+                value=value, fallback=typ, line=typ.line, column=typ.column
             )
+        )
 
     def concat_tuples(self, left: TupleType, right: TupleType) -> TupleType:
         """Concatenate two fixed length tuples."""
@@ -3556,14 +3553,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             results_final = make_simplified_union(all_results)
             inferred_final = self.combine_function_signatures(get_proper_types(all_inferred))
             return results_final, inferred_final
-        else:
-            return self.check_method_call_by_name(
-                method=method,
-                base_type=base_type,
-                args=[arg],
-                arg_kinds=[ARG_POS],
-                context=context,
-            )
+
+        return self.check_method_call_by_name(
+            method=method,
+            base_type=base_type,
+            args=[arg],
+            arg_kinds=[ARG_POS],
+            context=context,
+        )
 
     def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
@@ -3638,11 +3635,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(restricted_left_type, UninhabitedType):
             # The left operand can never be the result
             return right_type
-        elif result_is_left:
+        if result_is_left:
             # The left operand is always the result
             return left_type
-        else:
-            return make_simplified_union([restricted_left_type, right_type])
+
+        return make_simplified_union([restricted_left_type, right_type])
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.
@@ -4964,12 +4961,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return typ.type.has_readable_member(member)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             return typ.fallback.type.has_readable_member(member)
-        elif isinstance(typ, AnyType):
+        if isinstance(typ, AnyType):
             return True
-        elif isinstance(typ, UnionType):
+        if isinstance(typ, UnionType):
             result = all(self.has_member(x, member) for x in typ.relevant_items())
             return result
-        elif isinstance(typ, TypeType):
+        if isinstance(typ, TypeType):
             # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
             # so we don't need to care about unions here.
             item = typ.item
@@ -4981,9 +4978,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return self.has_member(item.type.metaclass_type, member)
             if isinstance(item, AnyType):
                 return True
-            return False
-        else:
-            return False
+
+        return False
 
     def not_ready_callback(self, name: str, context: Context) -> None:
         """Called when we can't infer the type of a variable because it's not ready yet.

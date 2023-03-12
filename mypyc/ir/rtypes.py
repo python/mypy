@@ -818,8 +818,8 @@ class RUnion(RType):
                 seen.add(item)
         if len(new_items) > 1:
             return RUnion(new_items)
-        else:
-            return new_items[0]
+
+        return new_items[0]
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)

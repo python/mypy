@@ -737,8 +737,8 @@ class StubgenPythonSuite(DataSuite):
         modules = re.search("# modules: (.*)$", program_text, flags=re.MULTILINE)
         if modules:
             return modules.group(1).split()
-        else:
-            return ["main"]
+
+        return ["main"]
 
     def add_file(self, path: str, result: list[str], header: bool) -> None:
         if not os.path.exists(path):

@@ -347,8 +347,8 @@ class FindModuleCache:
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
-        else:
-            return ModuleNotFoundReason.NOT_FOUND
+
+        return ModuleNotFoundReason.NOT_FOUND
 
     def _update_ns_ancestors(self, components: list[str], match: tuple[str, bool]) -> None:
         path, verify = match
@@ -564,8 +564,8 @@ class FindModuleCache:
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         elif found_possible_third_party_missing_type_hints:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
-        else:
-            return ModuleNotFoundReason.NOT_FOUND
+
+        return ModuleNotFoundReason.NOT_FOUND
 
     def _is_compatible_stub_package(self, stub_dir: str) -> bool:
         """Does a stub package support the target Python version?

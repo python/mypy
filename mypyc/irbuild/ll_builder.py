@@ -267,8 +267,8 @@ class LowLevelIRBuilder:
             if isinstance(src, Integer) and is_tagged(src.type):
                 return self.add(LoadLiteral(src.value >> 1, rtype=object_rprimitive))
             return self.add(Box(src))
-        else:
-            return src
+
+        return src
 
     def unbox_or_cast(
         self, src: Value, target_type: RType, line: int, *, can_borrow: bool = False
@@ -524,10 +524,10 @@ class LowLevelIRBuilder:
             if op.is_borrowed:
                 self.keep_alives.append(obj)
             return self.add(op)
-        elif isinstance(obj.type, RUnion):
+        if isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
-        else:
-            return self.py_get_attr(obj, attr, line)
+
+        return self.py_get_attr(obj, attr, line)
 
     def union_get_attr(
         self, obj: Value, rtype: RUnion, attr: str, result_type: RType, line: int
@@ -1161,8 +1161,8 @@ class LowLevelIRBuilder:
         """Load a tagged (Python) integer literal value."""
         if value > MAX_LITERAL_SHORT_INT or value < MIN_LITERAL_SHORT_INT:
             return self.add(LoadLiteral(value, int_rprimitive))
-        else:
-            return Integer(value)
+
+        return Integer(value)
 
     def load_float(self, value: float) -> Value:
         """Load a float literal value."""
@@ -2021,8 +2021,8 @@ class LowLevelIRBuilder:
         # generic case
         if use_pyssize_t:
             return self.call_c(generic_ssize_t_len_op, [val], line)
-        else:
-            return self.call_c(generic_len_op, [val], line)
+
+        return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
         size: Value = Integer(len(items), c_pyssize_t_rprimitive)
@@ -2184,8 +2184,8 @@ class LowLevelIRBuilder:
             # merge keys and values
             items = [i for t in list(zip(keys, values)) for i in t]
             return self.call_c(dict_build_op, [size_value] + items, line)
-        else:
-            return self.call_c(dict_new_op, [], line)
+
+        return self.call_c(dict_new_op, [], line)
 
 
 def num_positional_args(arg_values: list[Value], arg_kinds: list[ArgKind] | None) -> int:

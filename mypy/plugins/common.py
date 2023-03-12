@@ -48,8 +48,8 @@ def _get_decorator_bool_argument(ctx: ClassDefContext, name: str, default: bool)
     """
     if isinstance(ctx.reason, CallExpr):
         return _get_bool_argument(ctx, ctx.reason, name, default)
-    else:
-        return default
+
+    return default
 
 
 def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr, name: str, default: bool) -> bool:

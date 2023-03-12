@@ -1542,8 +1542,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 var_def.variance,
                 var_def.line,
             )
-        else:
-            return var_def
+
+        return var_def
 
     def anal_var_defs(self, var_defs: Sequence[TypeVarLikeType]) -> list[TypeVarLikeType]:
         return [self.anal_var_def(vd) for vd in var_defs]
@@ -1859,21 +1859,18 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         ):
             assert isinstance(node.node, TypeVarLikeExpr)
             return [(name, node.node)]
-        elif not self.include_callables and self._seems_like_callable(t):
+        if not self.include_callables and self._seems_like_callable(t):
             return []
-        elif node and node.fullname in LITERAL_TYPE_NAMES:
+        if node and node.fullname in LITERAL_TYPE_NAMES:
             return []
-        elif node and node.fullname in ANNOTATED_TYPE_NAMES and t.args:
+        if node and node.fullname in ANNOTATED_TYPE_NAMES and t.args:
             # Don't query the second argument to Annotated for TypeVars
             return self.query_types([t.args[0]])
-        else:
-            return super().visit_unbound_type(t)
+
+        return super().visit_unbound_type(t)
 
     def visit_callable_type(self, t: CallableType) -> TypeVarLikeList:
-        if self.include_callables:
-            return super().visit_callable_type(t)
-        else:
-            return []
+        return super().visit_callable_type(t) if self.include_callables else []
 
 
 class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
@@ -2010,7 +2007,7 @@ def make_optional_type(t: Type) -> Type:
     p_t = get_proper_type(t)
     if isinstance(p_t, NoneType):
         return t
-    elif isinstance(p_t, UnionType):
+    if isinstance(p_t, UnionType):
         # Eagerly expanding aliases is not safe during semantic analysis.
         items = [
             item
@@ -2018,8 +2015,8 @@ def make_optional_type(t: Type) -> Type:
             if not isinstance(get_proper_type(item), NoneType)
         ]
         return UnionType(items + [NoneType()], t.line, t.column)
-    else:
-        return UnionType([t, NoneType()], t.line, t.column)
+
+    return UnionType([t, NoneType()], t.line, t.column)
 
 
 def fix_instance_types(

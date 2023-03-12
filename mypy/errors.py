@@ -603,12 +603,12 @@ class Errors:
 
         if error_code in current_mod_disabled:
             return False
-        elif error_code in current_mod_enabled:
+        if error_code in current_mod_enabled:
             return True
-        elif error_code.sub_code_of is not None and error_code.sub_code_of in current_mod_disabled:
+        if error_code.sub_code_of is not None and error_code.sub_code_of in current_mod_disabled:
             return False
-        else:
-            return error_code.default_enabled
+
+        return error_code.default_enabled
 
     def clear_errors_in_targets(self, path: str, targets: set[str]) -> None:
         """Remove errors in specific fine-grained targets within a file."""
@@ -1111,8 +1111,8 @@ def remove_path_prefix(path: str, prefix: str | None) -> str:
     """
     if prefix is not None and path.startswith(prefix):
         return path[len(prefix) :]
-    else:
-        return path
+
+    return path
 
 
 def report_internal_error(

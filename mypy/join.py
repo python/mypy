@@ -196,10 +196,10 @@ def trivial_join(s: Type, t: Type) -> Type:
     """Return one of types (expanded) if it is a supertype of other, otherwise top type."""
     if is_subtype(s, t):
         return t
-    elif is_subtype(t, s):
+    if is_subtype(t, s):
         return s
-    else:
-        return object_or_any_from_type(get_proper_type(t))
+
+    return object_or_any_from_type(get_proper_type(t))
 
 
 @overload
@@ -278,8 +278,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_union_type(self, t: UnionType) -> ProperType:
         if is_proper_subtype(self.s, t):
             return t
-        else:
-            return mypy.typeops.make_simplified_union([self.s, t])
+
+        return mypy.typeops.make_simplified_union([self.s, t])
 
     def visit_any(self, t: AnyType) -> ProperType:
         return t
@@ -307,8 +307,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
         if self.s == t:
@@ -324,10 +324,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         raise NotImplementedError
 
     def visit_parameters(self, t: Parameters) -> ProperType:
-        if self.s == t:
-            return t
-        else:
-            return self.default(self.s)
+        return t if self.s == t else self.default(self.s)
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
@@ -345,22 +342,22 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if not structural or is_better(nominal, structural):
                 return nominal
             return structural
-        elif isinstance(self.s, FunctionLike):
+        if isinstance(self.s, FunctionLike):
             if t.type.is_protocol:
                 call = unpack_callback_protocol(t)
                 if call:
                     return join_types(call, self.s)
             return join_types(t, self.s.fallback)
-        elif isinstance(self.s, TypeType):
+        if isinstance(self.s, TypeType):
             return join_types(t, self.s)
-        elif isinstance(self.s, TypedDictType):
+        if isinstance(self.s, TypedDictType):
             return join_types(t, self.s)
-        elif isinstance(self.s, TupleType):
+        if isinstance(self.s, TupleType):
             return join_types(t, self.s)
-        elif isinstance(self.s, LiteralType):
+        if isinstance(self.s, LiteralType):
             return join_types(t, self.s)
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
@@ -487,10 +484,10 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             # self.s might be missing from the join if the types are incompatible.
             required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
-        elif isinstance(self.s, Instance):
+        if isinstance(self.s, Instance):
             return join_types(self.s, t.fallback)
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType):
@@ -499,8 +496,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if self.s.fallback.type.is_enum and t.fallback.type.is_enum:
                 return mypy.typeops.make_simplified_union([self.s, t])
             return join_types(self.s.fallback, t.fallback)
-        else:
-            return join_types(self.s, t.fallback)
+
+        return join_types(self.s, t.fallback)
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
         # We only have partial information so we can't decide the join result. We should
@@ -510,10 +507,10 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_type_type(self, t: TypeType) -> ProperType:
         if isinstance(self.s, TypeType):
             return TypeType.make_normalized(join_types(t.item, self.s.item), line=t.line)
-        elif isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":
+        if isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":
             return self.s
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         assert False, f"This should be never called, got {t}"
@@ -522,20 +519,20 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
             return object_from_instance(typ)
-        elif isinstance(typ, UnboundType):
+        if isinstance(typ, UnboundType):
             return AnyType(TypeOfAny.special_form)
-        elif isinstance(typ, TupleType):
+        if isinstance(typ, TupleType):
             return self.default(mypy.typeops.tuple_fallback(typ))
-        elif isinstance(typ, TypedDictType):
+        if isinstance(typ, TypedDictType):
             return self.default(typ.fallback)
-        elif isinstance(typ, FunctionLike):
+        if isinstance(typ, FunctionLike):
             return self.default(typ.fallback)
-        elif isinstance(typ, TypeVarType):
+        if isinstance(typ, TypeVarType):
             return self.default(typ.upper_bound)
-        elif isinstance(typ, ParamSpecType):
+        if isinstance(typ, ParamSpecType):
             return self.default(typ.upper_bound)
-        else:
-            return AnyType(TypeOfAny.special_form)
+
+        return AnyType(TypeOfAny.special_form)
 
 
 def is_better(t: Type, s: Type) -> bool:

@@ -409,8 +409,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # None is also compatible with `SupportsStr` protocol.
                 return not members or all(member in ("__hash__", "__str__") for member in members)
             return False
-        else:
-            return True
+
+        return True
 
     def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
         # We ignore this for unsafe overload checks, so that and empty list and
@@ -621,9 +621,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             call = find_member("__call__", left, left, is_operator=True)
             if call:
                 return self._is_subtype(call, right)
-            return False
-        else:
-            return False
+
+        return False
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
@@ -667,8 +666,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 is_compat=self._is_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
             )
-        else:
-            return False
+
+        return False
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
@@ -687,9 +686,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                 strict_concatenate=self.options.strict_concatenate if self.options else True,
             )
-        elif isinstance(right, Overloaded):
+        if isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
-        elif isinstance(right, Instance):
+        if isinstance(right, Instance):
             if right.type.is_protocol and "__call__" in right.type.protocol_members:
                 # OK, a callable can implement a protocol with a `__call__` member.
                 # TODO: we should probably explicitly exclude self-types in this case.
@@ -709,10 +708,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 ):
                     return True
             return self._is_subtype(left.fallback, right)
-        elif isinstance(right, TypeType):
+        if isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
-        elif isinstance(right, Parameters):
+        if isinstance(right, Parameters):
             # this doesn't check return types.... but is needed for is_equivalent
             return are_parameters_compatible(
                 left.with_unpacked_kwargs(),
@@ -720,8 +719,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 is_compat=self._is_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
             )
-        else:
-            return False
+
+        return False
 
     def visit_tuple_type(self, left: TupleType) -> bool:
         right = self.right
@@ -745,7 +744,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             elif self._is_subtype(mypy.typeops.tuple_fallback(left), right):
                 return True
             return False
-        elif isinstance(right, TupleType):
+        if isinstance(right, TupleType):
             if len(left.items) != len(right.items):
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
@@ -759,14 +758,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             lfallback = mypy.typeops.tuple_fallback(left)
             return self._is_subtype(lfallback, rfallback)
-        else:
-            return False
+
+        return False
 
     def visit_typeddict_type(self, left: TypedDictType) -> bool:
         right = self.right
         if isinstance(right, Instance):
             return self._is_subtype(left.fallback, right)
-        elif isinstance(right, TypedDictType):
+        if isinstance(right, TypedDictType):
             if not left.names_are_wider_than(right):
                 return False
             for name, l, r in left.zip(right):
@@ -795,14 +794,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True
-        else:
-            return False
+
+        return False
 
     def visit_literal_type(self, left: LiteralType) -> bool:
         if isinstance(self.right, LiteralType):
             return left == self.right
-        else:
-            return self._is_subtype(left.fallback, self.right)
+
+        return self._is_subtype(left.fallback, self.right)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
@@ -817,12 +816,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
                         return True
             return self._is_subtype(left.fallback, right)
-        elif isinstance(right, CallableType):
+        if isinstance(right, CallableType):
             for item in left.items:
                 if self._is_subtype(item, right):
                     return True
             return False
-        elif isinstance(right, Overloaded):
+        if isinstance(right, Overloaded):
             if left == self.right:
                 # When it is the same overload, then the types are equal.
                 return True
@@ -871,15 +870,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if not found_match:
                     return False
             return True
-        elif isinstance(right, UnboundType):
+        if isinstance(right, UnboundType):
             return True
-        elif isinstance(right, TypeType):
+        if isinstance(right, TypeType):
             # All the items must have the same type object status, so
             # it's sufficient to query only (any) one of them.
             # This is unsound, we don't check all the __init__ signatures.
             return left.is_type_obj() and self._is_subtype(left.items[0], right)
-        else:
-            return False
+
+        return False
 
     def visit_union_type(self, left: UnionType) -> bool:
         if isinstance(self.right, Instance):
@@ -1773,10 +1772,10 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
                 if (isinstance(get_proper_type(item), AnyType) or not covers_at_runtime(item, s))
             ]
         return UnionType.make_union(new_items)
-    elif covers_at_runtime(t, s):
+    if covers_at_runtime(t, s):
         return UninhabitedType()
-    else:
-        return t
+
+    return t
 
 
 def covers_at_runtime(item: Type, supertype: Type) -> bool:

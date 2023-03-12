@@ -961,9 +961,9 @@ class WrapperGenerator:
         if self.cleanups or self.traceback_code:
             # We'll have a label at the end with error handling code.
             return GotoHandler("fail")
-        else:
-            # Nothing special needs to done to handle errors, so just return.
-            return ReturnHandler("NULL")
+
+        # Nothing special needs to done to handle errors, so just return.
+        return ReturnHandler("NULL")
 
     def emit_error_handling(self) -> None:
         """Emit error handling block at the end of the wrapper, if needed."""

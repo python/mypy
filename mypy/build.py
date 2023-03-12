@@ -321,8 +321,8 @@ def normpath(path: str, options: Options) -> str:
     # name without changing its size, mtime or hash.)
     if options.bazel:
         return os.path.relpath(path)
-    else:
-        return os.path.abspath(path)
+
+    return os.path.abspath(path)
 
 
 class CacheMeta(NamedTuple):
@@ -755,8 +755,8 @@ class BuildManager:
         """
         if self.options.bazel:
             return 0
-        else:
-            return int(self.metastore.getmtime(path))
+
+        return int(self.metastore.getmtime(path))
 
     def all_imported_modules_in_file(self, file: MypyFile) -> list[tuple[int, str, int]]:
         """Find all reachable import statements in a file.
@@ -1516,8 +1516,8 @@ def compute_hash(text: str) -> str:
 def json_dumps(obj: Any, debug_cache: bool) -> str:
     if debug_cache:
         return json.dumps(obj, indent=2, sort_keys=True)
-    else:
-        return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
 def write_cache(

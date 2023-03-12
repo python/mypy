@@ -284,14 +284,14 @@ def num_skipped_suffix_lines(a1: list[str], a2: list[str]) -> int:
 def testfile_pyversion(path: str) -> tuple[int, int]:
     if path.endswith("python311.test"):
         return 3, 11
-    elif path.endswith("python310.test"):
+    if path.endswith("python310.test"):
         return 3, 10
-    elif path.endswith("python39.test"):
+    if path.endswith("python39.test"):
         return 3, 9
-    elif path.endswith("python38.test"):
+    if path.endswith("python38.test"):
         return 3, 8
-    else:
-        return defaults.PYTHON3_VERSION
+
+    return defaults.PYTHON3_VERSION
 
 
 def normalize_error_messages(messages: list[str]) -> list[str]:
@@ -347,8 +347,8 @@ def assert_equal(a: object, b: object, fmt: str = "{} != {}") -> None:
 def typename(t: type) -> str:
     if "." in str(t):
         return str(t).split(".")[-1].rstrip("'>")
-    else:
-        return str(t)[8:-2]
+
+    return str(t)[8:-2]
 
 
 def assert_type(typ: type, value: object) -> None:

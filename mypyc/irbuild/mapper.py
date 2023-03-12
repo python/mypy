@@ -145,10 +145,10 @@ class Mapper:
     def get_arg_rtype(self, typ: Type, kind: ArgKind) -> RType:
         if kind == ARG_STAR:
             return tuple_rprimitive
-        elif kind == ARG_STAR2:
+        if kind == ARG_STAR2:
             return dict_rprimitive
-        else:
-            return self.type_to_rtype(typ)
+
+        return self.type_to_rtype(typ)
 
     def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
         if isinstance(fdef.type, CallableType):

@@ -206,8 +206,8 @@ def analyze_member_access(
         and possible_literal.last_known_value is not None
     ):
         return possible_literal.last_known_value
-    else:
-        return result
+
+    return result
 
 
 def _analyze_member_access(
@@ -338,9 +338,9 @@ def analyze_instance_member_access(
         member_type = expand_type_by_instance(signature, typ)
         freeze_all_type_vars(member_type)
         return member_type
-    else:
-        # Not a method.
-        return analyze_member_var_access(name, typ, info, mx)
+
+    # Not a method.
+    return analyze_member_var_access(name, typ, info, mx)
 
 
 def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
@@ -463,8 +463,8 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
             ret_type=literal_false,
             fallback=mx.named_type("builtins.function"),
         )
-    else:
-        return _analyze_member_access(name, mx.named_type("builtins.object"), mx)
+
+    return _analyze_member_access(name, mx.named_type("builtins.object"), mx)
 
 
 def analyze_member_var_access(
@@ -590,8 +590,8 @@ def analyze_member_var_access(
     if mx.is_super:
         mx.msg.undefined_in_superclass(name, mx.context)
         return AnyType(TypeOfAny.from_error)
-    else:
-        return report_missing_attribute(mx.original_type, itype, name, mx)
+
+    return report_missing_attribute(mx.original_type, itype, name, mx)
 
 
 def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Context) -> None:
@@ -815,10 +815,8 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) ->
     """Find the attribute/accessor node that refers to a member of a type."""
     # TODO handle lvalues
     node = info.get(name)
-    if node:
-        return node.node
-    else:
-        return None
+
+    return node.node if node else None
 
 
 def check_self_arg(

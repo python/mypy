@@ -55,13 +55,12 @@ def trivial_meet(s: Type, t: Type) -> ProperType:
     """Return one of types (expanded) if it is a subtype of other, otherwise bottom type."""
     if is_subtype(s, t):
         return get_proper_type(s)
-    elif is_subtype(t, s):
+    if is_subtype(t, s):
         return get_proper_type(t)
-    else:
-        if state.strict_optional:
-            return UninhabitedType()
-        else:
-            return NoneType()
+    if state.strict_optional:
+        return UninhabitedType()
+
+    return NoneType()
 
 
 def meet_types(s: Type, t: Type) -> ProperType:
@@ -682,20 +681,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
-        if self.s == t:
-            return self.s
-        else:
-            return self.default(self.s)
+        return self.s if self.s == t else self.default(self.s)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
-        if self.s == t:
-            return self.s
-        else:
-            return self.default(self.s)
+        return self.s if self.s == t else self.default(self.s)
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
         raise NotImplementedError
@@ -708,8 +701,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return t.copy_modified(
                 arg_types=[meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
             )
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
@@ -845,18 +838,18 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
-        elif isinstance(self.s, Instance) and is_subtype(t, self.s):
+        if isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType) and self.s == t:
             return t
-        elif isinstance(self.s, Instance) and is_subtype(t.fallback, self.s):
+        if isinstance(self.s, Instance) and is_subtype(t.fallback, self.s):
             return t
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
         # We can't determine the meet of partial types. We should never get here.
@@ -868,12 +861,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             if not isinstance(typ, NoneType):
                 typ = TypeType.make_normalized(typ, line=t.line)
             return typ
-        elif isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":
+        if isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":
             return t
-        elif isinstance(self.s, CallableType):
+        if isinstance(self.s, CallableType):
             return self.meet(t, self.s)
-        else:
-            return self.default(self.s)
+
+        return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         assert False, f"This should be never called, got {t}"
@@ -884,11 +877,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def default(self, typ: Type) -> ProperType:
         if isinstance(typ, UnboundType):
             return AnyType(TypeOfAny.special_form)
-        else:
-            if state.strict_optional:
-                return UninhabitedType()
-            else:
-                return NoneType()
+
+        if state.strict_optional:
+            return UninhabitedType()
+
+        return NoneType()
 
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:

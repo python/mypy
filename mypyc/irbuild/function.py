@@ -567,8 +567,8 @@ def gen_glue(
     """
     if fdef.is_property:
         return gen_glue_property(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
-    else:
-        return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
+
+    return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
 
 
 class ArgInfo(NamedTuple):

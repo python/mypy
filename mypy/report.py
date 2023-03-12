@@ -537,8 +537,8 @@ class MemoryXmlReporter(AbstractReporter):
             for any_type, occurrences in counter.items():
                 result += f"\n{type_of_any_name_map[any_type]} (x{occurrences})"
             return result
-        else:
-            return "No Anys on this line!"
+
+        return "No Anys on this line!"
 
     def on_finish(self) -> None:
         self.last_xml = None
@@ -573,8 +573,8 @@ register_reporter("memory-xml", MemoryXmlReporter, needs_lxml=True)
 def get_line_rate(covered_lines: int, total_lines: int) -> str:
     if total_lines == 0:
         return str(1.0)
-    else:
-        return f"{covered_lines / total_lines:.4f}"
+
+    return f"{covered_lines / total_lines:.4f}"
 
 
 class CoberturaPackage:

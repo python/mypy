@@ -215,8 +215,8 @@ class TransformVisitor(NodeVisitor[Node]):
             result = self.func_placeholder_map[node]
             replace_object_state(result, new)
             return result
-        else:
-            return new
+
+        return new
 
     def visit_lambda_expr(self, node: LambdaExpr) -> LambdaExpr:
         new = LambdaExpr(
@@ -543,9 +543,9 @@ class TransformVisitor(NodeVisitor[Node]):
         if node.kind == REVEAL_TYPE:
             assert node.expr is not None
             return RevealExpr(kind=REVEAL_TYPE, expr=self.expr(node.expr))
-        else:
-            # Reveal locals expressions don't have any sub expressions
-            return node
+
+        # Reveal locals expressions don't have any sub expressions
+        return node
 
     def visit_super_expr(self, node: SuperExpr) -> SuperExpr:
         call = self.expr(node.call)
@@ -717,10 +717,7 @@ class TransformVisitor(NodeVisitor[Node]):
     # All the node helpers also propagate line numbers.
 
     def optional_expr(self, expr: Expression | None) -> Expression | None:
-        if expr:
-            return self.expr(expr)
-        else:
-            return None
+        return self.expr(expr) if expr else None
 
     def block(self, block: Block) -> Block:
         new = self.visit_block(block)
@@ -728,10 +725,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def optional_block(self, block: Block | None) -> Block | None:
-        if block:
-            return self.block(block)
-        else:
-            return None
+        return self.block(block) if block else None
 
     def statements(self, statements: list[Statement]) -> list[Statement]:
         return [self.stmt(stmt) for stmt in statements]
@@ -764,10 +758,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return type
 
     def optional_type(self, type: Type | None) -> Type | None:
-        if type:
-            return self.type(type)
-        else:
-            return None
+        return self.type(type) if type else None
 
     def types(self, types: list[Type]) -> list[Type]:
         return [self.type(type) for type in types]

@@ -31,5 +31,5 @@ class SplitNamespace(argparse.Namespace):
     def __getattr__(self, name: str) -> Any:
         if name.startswith(self._alt_prefix):
             return getattr(self._alt_namespace, name[len(self._alt_prefix) :])
-        else:
-            return getattr(self._standard_namespace, name)
+
+        return getattr(self._standard_namespace, name)

@@ -325,8 +325,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if isinstance(t, TupleType):
                 t = tuple_fallback(t)
             return self.chk.iterable_item_type(t)
-        else:
-            return None
+        return None
 
     def contract_starred_pattern_types(
         self, types: list[Type], star_pos: int | None, num_patterns: int
@@ -664,8 +663,8 @@ class PatternChecker(PatternVisitor[PatternType]):
             empty_type = fill_typevars(proper_type.type)
             partial_type = expand_type_by_instance(empty_type, sequence)
             return expand_type_by_instance(partial_type, proper_type)
-        else:
-            return sequence
+
+        return sequence
 
     def early_non_match(self) -> PatternType:
         return PatternType(UninhabitedType(), self.type_context[-1], {})

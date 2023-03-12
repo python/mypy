@@ -713,8 +713,8 @@ def add_test_name_suffix(name: str, suffix: str) -> str:
         # are using endswith() checks.
         magic_suffix = m.group(0)
         return name[: -len(magic_suffix)] + suffix + magic_suffix
-    else:
-        return name + suffix
+
+    return name + suffix
 
 
 def is_incremental(testcase: DataDrivenTestCase) -> bool:

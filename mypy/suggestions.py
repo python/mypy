@@ -110,16 +110,10 @@ class SuggestionPlugin(Plugin):
         self.mystery_hits: list[Callsite] = []
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        if fullname == self.target:
-            return self.log
-        else:
-            return None
+        return self.log if fullname == self.target else None
 
     def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
-        if fullname == self.target:
-            return self.log
-        else:
-            return None
+        return self.log if fullname == self.target else None
 
     def log(self, ctx: FunctionContext | MethodContext) -> Type:
         self.mystery_hits.append(
@@ -268,8 +262,8 @@ class SuggestionEngine:
 
         if self.give_json:
             return self.json_suggestion(mod, func_name, node, suggestion)
-        else:
-            return self.format_signature(suggestion)
+
+        return self.format_signature(suggestion)
 
     def suggest_callsites(self, function: str) -> str:
         """Find a list of call sites of function."""
@@ -326,8 +320,8 @@ class SuggestionEngine:
     def get_starting_type(self, fdef: FuncDef) -> CallableType:
         if isinstance(fdef.type, CallableType):
             return make_suggestion_anys(fdef.type)
-        else:
-            return self.get_trivial_type(fdef)
+
+        return self.get_trivial_type(fdef)
 
     def get_args(
         self,
@@ -817,8 +811,8 @@ class TypeFormatter(TypeStrVisitor):
     def visit_any(self, t: AnyType) -> str:
         if t.missing_import_name:
             return t.missing_import_name
-        else:
-            return "Any"
+
+        return "Any"
 
     def visit_instance(self, t: Instance) -> str:
         s = t.type.fullname or t.type.name or None
@@ -870,8 +864,8 @@ class TypeFormatter(TypeStrVisitor):
     def visit_union_type(self, t: UnionType) -> str:
         if len(t.items) == 2 and is_optional(t):
             return f"Optional[{remove_optional(t).accept(self)}]"
-        else:
-            return super().visit_union_type(t)
+
+        return super().visit_union_type(t)
 
     def visit_callable_type(self, t: CallableType) -> str:
         # TODO: use extended callables?
@@ -904,8 +898,8 @@ class MakeSuggestionAny(TypeTranslator):
     def visit_any(self, t: AnyType) -> Type:
         if not t.missing_import_name:
             return t.copy_modified(type_of_any=TypeOfAny.suggestion_engine)
-        else:
-            return t
+
+        return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         return t.copy_modified(args=[a.accept(self) for a in t.args])
@@ -921,8 +915,8 @@ def generate_type_combinations(types: list[Type]) -> list[Type]:
     union_type = make_simplified_union(types)
     if joined_type == union_type:
         return [joined_type]
-    else:
-        return [joined_type, union_type]
+
+    return [joined_type, union_type]
 
 
 def count_errors(msgs: list[str]) -> int:

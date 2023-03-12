@@ -132,10 +132,10 @@ class TypeVarLikeScope:
         assert fullname
         if fullname in self.scope:
             return self.scope[fullname]
-        elif self.parent is not None:
+        if self.parent is not None:
             return self.parent.get_binding(fullname)
-        else:
-            return None
+
+        return None
 
     def __str__(self) -> str:
         me = ", ".join(f"{k}: {v.name}`{v.id}" for k, v in self.scope.items())

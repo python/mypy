@@ -949,8 +949,8 @@ class CallC(RegisterOp):
         if isinstance(self.steals, list):
             assert len(self.steals) == len(self.args)
             return [arg for arg, steal in zip(self.args, self.steals) if steal]
-        else:
-            return [] if not self.steals else self.sources()
+
+        return [] if not self.steals else self.sources()
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_call_c(self)
@@ -1253,8 +1253,8 @@ class LoadAddress(RegisterOp):
     def sources(self) -> list[Value]:
         if isinstance(self.src, Register):
             return [self.src]
-        else:
-            return []
+
+        return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_address(self)

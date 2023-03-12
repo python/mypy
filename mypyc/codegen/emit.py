@@ -249,8 +249,8 @@ class Emitter:
         if target_group_name and target_group_name != self.context.group_name:
             self.context.group_deps.add(target_group_name)
             return f"exports_{exported_name(target_group_name)}."
-        else:
-            return ""
+
+        return ""
 
     def get_group_prefix(self, obj: ClassIR | FuncDecl) -> str:
         """Get the group prefix for an object."""
@@ -285,8 +285,8 @@ class Emitter:
         ctype = self.ctype(rtype)
         if ctype[-1] == "*":
             return ctype
-        else:
-            return ctype + " "
+
+        return ctype + " "
 
     def c_undefined_value(self, rtype: RType) -> str:
         if not rtype.is_unboxed:
@@ -408,8 +408,8 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 rtype, value, self.c_error_value, compare, check_exception=False
             )
-        else:
-            return f"{value} {compare} {self.c_error_value(rtype)}"
+
+        return f"{value} {compare} {self.c_error_value(rtype)}"
 
     def tuple_undefined_check_cond(
         self,

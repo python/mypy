@@ -167,8 +167,8 @@ def remove_misplaced_type_comments(source: str | bytes) -> str | bytes:
 
     if isinstance(source, bytes):
         return text.encode("latin1")
-    else:
-        return text
+
+    return text
 
 
 def common_dir_prefix(paths: list[str]) -> str:

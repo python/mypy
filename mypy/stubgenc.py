@@ -79,8 +79,8 @@ class ExternalSignatureGenerator(SignatureGenerator):
                     ret_type="Any",
                 )
             ]
-        else:
-            return None
+
+        return None
 
     def get_method_sig(
         self, func: object, module_name: str, class_name: str, name: str, self_var: str
@@ -214,8 +214,8 @@ def add_typing_import(output: list[str]) -> list[str]:
             names.append(name)
     if names:
         return [f"from typing import {', '.join(names)}", ""] + output
-    else:
-        return output[:]
+
+    return output[:]
 
 
 def is_c_function(obj: object) -> bool:
@@ -389,8 +389,8 @@ def generate_c_property_stub(
             if not inferred:
                 inferred = infer_prop_type_from_docstring(docstr)
             return inferred
-        else:
-            return None
+
+        return None
 
     # Ignore special properties/attributes.
     if is_skipped_attribute(name):

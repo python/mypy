@@ -230,8 +230,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         args = self.expand_types_with_unpack(list(t.args))
         if isinstance(args, list):
             return t.copy_modified(args=args)
-        else:
-            return args
+        return args
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         # Normally upper bounds can't contain other type variables, the only exception is
@@ -251,11 +250,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.
             return repl
-        elif isinstance(repl, (ParamSpecType, Parameters, CallableType)):
+        if isinstance(repl, (ParamSpecType, Parameters, CallableType)):
             return expand_param_spec(t, repl)
-        else:
-            # TODO: should this branch be removed? better not to fail silently
-            return repl
+
+        # TODO: should this branch be removed? better not to fail silently
+        return repl
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         raise NotImplementedError
@@ -446,8 +445,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             if not isinstance(fallback, Instance):
                 fallback = t.partial_fallback
             return t.copy_modified(items=items, fallback=fallback)
-        else:
-            return items
+
+        return items
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         fallback = t.fallback.accept(self)

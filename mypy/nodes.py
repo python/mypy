@@ -3741,20 +3741,17 @@ class SymbolTableNode:
 
     @property
     def fullname(self) -> str | None:
-        if self.node is not None:
-            return self.node.fullname
-        else:
-            return None
+        return self.node.fullname if self.node else None
 
     @property
     def type(self) -> mypy.types.Type | None:
         node = self.node
         if isinstance(node, (Var, SYMBOL_FUNCBASE_TYPES)) and node.type is not None:
             return node.type
-        elif isinstance(node, Decorator):
+        if isinstance(node, Decorator):
             return node.var.type
-        else:
-            return None
+
+        return None
 
     def copy(self) -> SymbolTableNode:
         new = SymbolTableNode(

@@ -42,7 +42,7 @@ def is_trait(cdef: ClassDef) -> bool:
 def dataclass_decorator_type(d: Expression) -> str | None:
     if isinstance(d, RefExpr) and d.fullname in DATACLASS_DECORATORS:
         return d.fullname.split(".")[0]
-    elif (
+    if (
         isinstance(d, CallExpr)
         and isinstance(d.callee, RefExpr)
         and d.callee.fullname in DATACLASS_DECORATORS
@@ -55,8 +55,8 @@ def dataclass_decorator_type(d: Expression) -> str | None:
             if isinstance(auto, NameExpr) and auto.name == "True":
                 return "attr-auto"
         return name
-    else:
-        return None
+
+    return None
 
 
 def is_dataclass_decorator(d: Expression) -> bool:
@@ -149,10 +149,10 @@ def concrete_arg_kind(kind: ArgKind) -> ArgKind:
     """Find the concrete version of an arg kind that is being passed."""
     if kind == ARG_OPT:
         return ARG_POS
-    elif kind == ARG_NAMED_OPT:
+    if kind == ARG_NAMED_OPT:
         return ARG_NAMED
-    else:
-        return kind
+
+    return kind
 
 
 def is_constant(e: Expression) -> bool:

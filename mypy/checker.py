@@ -852,33 +852,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
-        elif isinstance(return_type, UnionType):
+        if isinstance(return_type, UnionType):
             return make_simplified_union(
                 [self.get_generator_yield_type(item, is_coroutine) for item in return_type.items]
             )
-        elif not self.is_generator_return_type(
+        if not self.is_generator_return_type(
             return_type, is_coroutine
         ) and not self.is_async_generator_return_type(return_type):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
             return AnyType(TypeOfAny.from_error)
-        elif not isinstance(return_type, Instance):
+        if not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType(TypeOfAny.from_error)
-        elif return_type.type.fullname == "typing.Awaitable":
+        if return_type.type.fullname == "typing.Awaitable":
             # Awaitable: ty is Any.
             return AnyType(TypeOfAny.special_form)
-        elif return_type.args:
+        if return_type.args:
             # AwaitableGenerator, Generator, AsyncGenerator, Iterator, or Iterable; ty is args[0].
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
             return ret_type
-        else:
-            # If the function's declared supertype of Generator has no type
-            # parameters (i.e. is `object`), then the yielded values can't
-            # be accessed so any type is acceptable.  IOW, ty is Any.
-            # (However, see https://github.com/python/mypy/issues/1933)
-            return AnyType(TypeOfAny.special_form)
+
+        # If the function's declared supertype of Generator has no type
+        # parameters (i.e. is `object`), then the yielded values can't
+        # be accessed so any type is acceptable.  IOW, ty is Any.
+        # (However, see https://github.com/python/mypy/issues/1933)
+        return AnyType(TypeOfAny.special_form)
 
     def get_generator_receive_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given a declared generator return type (t), return the type its yield receives (tc)."""
@@ -886,34 +886,34 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
-        elif isinstance(return_type, UnionType):
+        if isinstance(return_type, UnionType):
             return make_simplified_union(
                 [self.get_generator_receive_type(item, is_coroutine) for item in return_type.items]
             )
-        elif not self.is_generator_return_type(
+        if not self.is_generator_return_type(
             return_type, is_coroutine
         ) and not self.is_async_generator_return_type(return_type):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
             return AnyType(TypeOfAny.from_error)
-        elif not isinstance(return_type, Instance):
+        if not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType(TypeOfAny.from_error)
-        elif return_type.type.fullname == "typing.Awaitable":
+        if return_type.type.fullname == "typing.Awaitable":
             # Awaitable, AwaitableGenerator: tc is Any.
             return AnyType(TypeOfAny.special_form)
-        elif (
+        if (
             return_type.type.fullname in ("typing.Generator", "typing.AwaitableGenerator")
             and len(return_type.args) >= 3
         ):
             # Generator: tc is args[1].
             return return_type.args[1]
-        elif return_type.type.fullname == "typing.AsyncGenerator" and len(return_type.args) >= 2:
+        if return_type.type.fullname == "typing.AsyncGenerator" and len(return_type.args) >= 2:
             return return_type.args[1]
-        else:
-            # `return_type` is a supertype of Generator, so callers won't be able to send it
-            # values.  IOW, tc is None.
-            return NoneType()
+
+        # `return_type` is a supertype of Generator, so callers won't be able to send it
+        # values.  IOW, tc is None.
+        return NoneType()
 
     def get_coroutine_return_type(self, return_type: Type) -> Type:
         return_type = get_proper_type(return_type)
@@ -929,29 +929,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
-        elif isinstance(return_type, UnionType):
+        if isinstance(return_type, UnionType):
             return make_simplified_union(
                 [self.get_generator_return_type(item, is_coroutine) for item in return_type.items]
             )
-        elif not self.is_generator_return_type(return_type, is_coroutine):
+        if not self.is_generator_return_type(return_type, is_coroutine):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
             return AnyType(TypeOfAny.from_error)
-        elif not isinstance(return_type, Instance):
+        if not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType(TypeOfAny.from_error)
-        elif return_type.type.fullname == "typing.Awaitable" and len(return_type.args) == 1:
+        if return_type.type.fullname == "typing.Awaitable" and len(return_type.args) == 1:
             # Awaitable: tr is args[0].
             return return_type.args[0]
-        elif (
+        if (
             return_type.type.fullname in ("typing.Generator", "typing.AwaitableGenerator")
             and len(return_type.args) >= 3
         ):
             # AwaitableGenerator, Generator: tr is args[2].
             return return_type.args[2]
-        else:
-            # Supertype of Generator (Iterator, Iterable, object): tr is any.
-            return AnyType(TypeOfAny.special_form)
+
+        # Supertype of Generator (Iterator, Iterable, object): tr is any.
+        return AnyType(TypeOfAny.special_form)
 
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
@@ -1756,8 +1756,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 mapping = dict(substitutions)
                 result.append((expand_func(defn, mapping), expand_type(typ, mapping)))
             return result
-        else:
-            return [(defn, typ)]
+
+        return [(defn, typ)]
 
     def check_method_override(self, defn: FuncDef | OverloadedFuncDef | Decorator) -> None:
         """Check if function definition is compatible with base classes.
@@ -4457,17 +4457,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
             return typ.items
-        elif isinstance(typ, UnionType):
+        if isinstance(typ, UnionType):
             return [
                 union_typ
                 for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
-        elif is_named_instance(typ, "builtins.tuple"):
+        if is_named_instance(typ, "builtins.tuple"):
             # variadic tuple
             return [typ.args[0]]
-        else:
-            return [typ]
+
+        return [typ]
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         """Type check a for statement."""
@@ -4506,9 +4506,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for item in iterable.items:
                 joined = join_types(joined, item)
             return iterator, joined
-        else:
-            # Non-tuple iterable.
-            return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
+
+        # Non-tuple iterable.
+        return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
 
     def analyze_iterable_item_type_without_expression(
         self, type: Type, context: Context
@@ -4523,12 +4523,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for item in iterable.items:
                 joined = join_types(joined, item)
             return iterator, joined
-        else:
-            # Non-tuple iterable.
-            return (
-                iterator,
-                echk.check_method_call_by_name("__next__", iterator, [], [], context)[0],
-            )
+
+        # Non-tuple iterable.
+        return (
+            iterator, echk.check_method_call_by_name("__next__", iterator, [], [], context)[0]
+        )
 
     def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
         """Try to infer native int item type from arguments to range(...).
@@ -5100,9 +5099,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if unsound_partition:
             return [], [typ]
-        else:
-            # We don't know how properly make the type callable.
-            return [typ], [typ]
+
+        # We don't know how properly make the type callable.
+        return [typ], [typ]
 
     def conditional_callable_type_map(
         self, expr: Expression, current_type: Type | None
@@ -5201,16 +5200,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             typ = format_type(t)
             if isinstance(expr, MemberExpr):
                 return f'Member "{expr.name}" has type {typ}'
-            elif isinstance(expr, RefExpr) and expr.fullname:
+            if isinstance(expr, RefExpr) and expr.fullname:
                 return f'"{expr.fullname}" has type {typ}'
-            elif isinstance(expr, CallExpr):
+            if isinstance(expr, CallExpr):
                 if isinstance(expr.callee, MemberExpr):
                     return f'"{expr.callee.name}" returns {typ}'
-                elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
+                if isinstance(expr.callee, RefExpr) and expr.callee.fullname:
                     return f'"{expr.callee.fullname}" returns {typ}'
                 return f"Call returns {typ}"
-            else:
-                return f"Expression has type {typ}"
+
+            return f"Expression has type {typ}"
 
         if isinstance(t, FunctionLike):
             self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
@@ -5690,10 +5689,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             chk=self,
                             in_literal_context=False,
                         )
-                    if w.has_new_errors():
-                        return None
-                    else:
-                        return member_type
+
+                    return None if w.has_new_errors() else member_type
 
             elif isinstance(expr, IndexExpr):
                 parent_expr = collapse_walrus(expr.base)
@@ -6960,10 +6957,10 @@ def flatten(t: Expression) -> list[Expression]:
     """Flatten a nested sequence of tuples/lists into one list of nodes."""
     if isinstance(t, (TupleExpr, ListExpr)):
         return [b for a in t.items for b in flatten(a)]
-    elif isinstance(t, StarExpr):
+    if isinstance(t, StarExpr):
         return flatten(t.expr)
-    else:
-        return [t]
+
+    return [t]
 
 
 def flatten_types(t: Type) -> list[Type]:
@@ -6971,8 +6968,8 @@ def flatten_types(t: Type) -> list[Type]:
     t = get_proper_type(t)
     if isinstance(t, TupleType):
         return [b for a in t.items for b in flatten_types(a)]
-    else:
-        return [t]
+
+    return [t]
 
 
 def expand_func(defn: FuncItem, map: dict[TypeVarId, Type]) -> FuncItem:

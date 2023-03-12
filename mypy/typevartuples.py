@@ -31,8 +31,8 @@ def split_with_prefix_and_suffix(
 ) -> tuple[tuple[T, ...], tuple[T, ...], tuple[T, ...]]:
     if suffix:
         return (types[:prefix], types[prefix:-suffix], types[-suffix:])
-    else:
-        return (types[:prefix], types[prefix:], ())
+
+    return (types[:prefix], types[prefix:], ())
 
 
 def split_with_instance(

@@ -226,10 +226,10 @@ class MessageBuilder:
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
                 return range(ctx.deco_line or ctx.line, ctx.line + 1)
-            elif not isinstance(ctx, Expression):
+            if not isinstance(ctx, Expression):
                 return [ctx.line]
-            else:
-                return range(ctx.line, (ctx.end_line or ctx.line) + 1)
+
+            return range(ctx.line, (ctx.end_line or ctx.line) + 1)
 
         origin_span: Iterable[int] | None
         if origin is not None:
@@ -2191,8 +2191,8 @@ class MessageBuilder:
             return "Tuple[{}, {}, ... <{} more items>]".format(
                 format_type_bare(typ.items[0]), format_type_bare(typ.items[1]), str(item_cnt - 2)
             )
-        else:
-            return format_type_bare(typ)
+
+        return format_type_bare(typ)
 
     def generate_incompatible_tuple_error(
         self,
@@ -2302,8 +2302,8 @@ def format_type_inner(
         if typ.is_enum_literal():
             underlying_type = format(typ.fallback)
             return f"{underlying_type}.{typ.value}"
-        else:
-            return typ.value_repr()
+
+        return typ.value_repr()
 
     if isinstance(typ, TypeAliasType) and typ.is_recursive:
         # TODO: find balance here, str(typ) doesn't support custom verbosity, and may be
@@ -2558,8 +2558,8 @@ def format_type_distinctly(*types: Type, bare: bool = False) -> tuple[str, ...]:
             break
     if bare:
         return tuple(strs)
-    else:
-        return tuple(quote_type_string(s) for s in strs)
+
+    return tuple(quote_type_string(s) for s in strs)
 
 
 def pretty_class_or_static_decorator(tp: CallableType) -> str | None:
@@ -2672,10 +2672,10 @@ def pretty_callable(tp: CallableType, skip_self: bool = False) -> str:
 def variance_string(variance: int) -> str:
     if variance == COVARIANT:
         return "covariant"
-    elif variance == CONTRAVARIANT:
+    if variance == CONTRAVARIANT:
         return "contravariant"
-    else:
-        return "invariant"
+
+    return "invariant"
 
 
 def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str]) -> list[str]:
@@ -2752,10 +2752,7 @@ def get_bad_protocol_flags(
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
-    if s == "":
-        return ""
-    else:
-        return s[0].upper() + s[1:]
+    return "" if s == "" else s[0].upper() + s[1:]
 
 
 def extract_type(name: str) -> str:
@@ -2778,22 +2775,22 @@ def format_string_list(lst: list[str]) -> str:
     assert lst
     if len(lst) == 1:
         return lst[0]
-    elif len(lst) <= 5:
+    if len(lst) <= 5:
         return f"{', '.join(lst[:-1])} and {lst[-1]}"
-    else:
-        return "%s, ... and %s (%i methods suppressed)" % (
-            ", ".join(lst[:2]),
-            lst[-1],
-            len(lst) - 3,
-        )
+
+    return "%s, ... and %s (%i methods suppressed)" % (
+        ", ".join(lst[:2]),
+        lst[-1],
+        len(lst) - 3,
+    )
 
 
 def format_item_name_list(s: Iterable[str]) -> str:
     lst = list(s)
     if len(lst) <= 5:
         return "(" + ", ".join([f'"{name}"' for name in lst]) + ")"
-    else:
-        return "(" + ", ".join([f'"{name}"' for name in lst[:5]]) + ", ...)"
+
+    return "(" + ", ".join([f'"{name}"' for name in lst[:5]]) + ", ...)"
 
 
 def callable_name(type: FunctionLike) -> str | None:
@@ -2936,7 +2933,7 @@ def format_key_list(keys: list[str], *, short: bool = False) -> str:
     td = "" if short else "TypedDict "
     if not keys:
         return f"no {td}keys"
-    elif len(keys) == 1:
+    if len(keys) == 1:
         return f"{td}key {formatted_keys[0]}"
-    else:
-        return f"{td}keys ({', '.join(formatted_keys)})"
+
+    return f"{td}keys ({', '.join(formatted_keys)})"

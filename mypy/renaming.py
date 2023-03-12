@@ -401,12 +401,12 @@ class VariableRenameVisitor(TraverserVisitor):
                 # This doesn't support arbitrary redefinition.
                 var_blocks[name] = -1
             return True
-        elif var_blocks[name] == block:
+        if var_blocks[name] == block:
             # Redefinition -- defines a new variable with the same name.
             return True
-        else:
-            # Assigns to an existing variable.
-            return False
+
+        # Assigns to an existing variable.
+        return False
 
 
 class LimitedVariableRenameVisitor(TraverserVisitor):

@@ -1769,10 +1769,7 @@ class TypeConverter:
         Column numbers are sometimes incorrect in the AST and the column
         override can be used to work around that.
         """
-        if self.override_column < 0:
-            return column
-        else:
-            return self.override_column
+        return column if self.override_column < 0 else self.override_column
 
     def invalid_type(self, node: AST, note: str | None = None) -> RawExpressionType:
         """Constructs a type representing some expression that normally forms an invalid type.
@@ -1920,8 +1917,8 @@ class TypeConverter:
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
             return RawExpressionType(n.value, "builtins.bool", line=self.line)
-        else:
-            return UnboundType(str(n.value), line=self.line, column=n.col_offset)
+
+        return UnboundType(str(n.value), line=self.line, column=n.col_offset)
 
     # Only for 3.8 and newer
     def visit_Constant(self, n: Constant) -> Type:
@@ -2043,8 +2040,8 @@ class TypeConverter:
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
-        else:
-            return self.invalid_type(n)
+
+        return self.invalid_type(n)
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(
@@ -2061,8 +2058,8 @@ class TypeConverter:
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
             return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line)
-        else:
-            return self.invalid_type(n)
+
+        return self.invalid_type(n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3_Ellipsis) -> Type:

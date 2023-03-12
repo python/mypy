@@ -40,8 +40,8 @@ class StrConv(NodeVisitor[str]):
     def format_id(self, o: object) -> str:
         if self.id_mapper:
             return f"<{self.get_id(o)}>"
-        else:
-            return ""
+
+        return ""
 
     def dump(self, nodes: Sequence[object], obj: mypy.nodes.Context) -> str:
         """Convert a list of items to a multiline pretty-printed string.
@@ -247,8 +247,8 @@ class StrConv(NodeVisitor[str]):
 
         if not o.else_body:
             return self.dump(a, o)
-        else:
-            return self.dump([a, ("Else", o.else_body.body)], o)
+
+        return self.dump([a, ("Else", o.else_body.body)], o)
 
     def visit_break_stmt(self, o: mypy.nodes.BreakStmt) -> str:
         return self.dump([], o)
@@ -265,8 +265,8 @@ class StrConv(NodeVisitor[str]):
     def visit_assert_stmt(self, o: mypy.nodes.AssertStmt) -> str:
         if o.msg is not None:
             return self.dump([o.expr, o.msg], o)
-        else:
-            return self.dump([o.expr], o)
+
+        return self.dump([o.expr], o)
 
     def visit_await_expr(self, o: mypy.nodes.AwaitExpr) -> str:
         return self.dump([o.expr], o)
@@ -390,8 +390,8 @@ class StrConv(NodeVisitor[str]):
     def visit_yield_from_expr(self, o: mypy.nodes.YieldFromExpr) -> str:
         if o.expr:
             return self.dump([o.expr.accept(self)], o)
-        else:
-            return self.dump([], o)
+
+        return self.dump([], o)
 
     def visit_call_expr(self, o: mypy.nodes.CallExpr) -> str:
         if o.analyzed:
@@ -429,9 +429,9 @@ class StrConv(NodeVisitor[str]):
     def visit_reveal_expr(self, o: mypy.nodes.RevealExpr) -> str:
         if o.kind == mypy.nodes.REVEAL_TYPE:
             return self.dump([o.expr], o)
-        else:
-            # REVEAL_LOCALS
-            return self.dump([o.local_nodes], o)
+
+        # REVEAL_LOCALS
+        return self.dump([o.local_nodes], o)
 
     def visit_assignment_expr(self, o: mypy.nodes.AssignmentExpr) -> str:
         return self.dump([o.target, o.value], o)

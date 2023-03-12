@@ -665,8 +665,8 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # so we just check manually.
     if is_list_rprimitive(target.type):
         return builder.call_c(list_get_item_unsafe_op, [target, index], line)
-    else:
-        return builder.gen_method_call(target, "__getitem__", [index], None, line)
+
+    return builder.gen_method_call(target, "__getitem__", [index], None, line)
 
 
 class ForSequence(ForGenerator):

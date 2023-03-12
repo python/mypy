@@ -452,9 +452,9 @@ def pointerize(decl: str, name: str) -> str:
     if "(" in decl:
         # Function pointer. Stick an * in front of the name and wrap it in parens.
         return decl.replace(name, f"(*{name})")
-    else:
-        # Non-function pointer. Just stick an * in front of the name.
-        return decl.replace(name, f"*{name}")
+
+    # Non-function pointer. Just stick an * in front of the name.
+    return decl.replace(name, f"*{name}")
 
 
 def group_dir(group_name: str) -> str:

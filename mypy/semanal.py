@@ -1038,8 +1038,8 @@ class SemanticAnalyzer(
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
-        else:
-            return False
+
+        return False
 
     def update_function_type_variables(self, fun_type: CallableType, defn: FuncItem) -> bool:
         """Make any type variables in the signature of defn explicit.
@@ -4650,10 +4650,9 @@ class SemanticAnalyzer(
     def is_valid_del_target(self, s: Expression) -> bool:
         if isinstance(s, (IndexExpr, NameExpr, MemberExpr)):
             return True
-        elif isinstance(s, (TupleExpr, ListExpr)):
+        if isinstance(s, (TupleExpr, ListExpr)):
             return all(self.is_valid_del_target(item) for item in s.items)
-        else:
-            return False
+        return False
 
     def visit_global_decl(self, g: GlobalDecl) -> None:
         self.statement = g
@@ -5412,10 +5411,10 @@ class SemanticAnalyzer(
         # but it is fine because we want an overloaded function to be treated as a single unit.
         if self.is_overloaded_item(node, self.statement):
             return False
-        elif isinstance(node, Decorator) and not node.is_overload:
+        if isinstance(node, Decorator) and not node.is_overload:
             return line_diff > len(node.original_decorators)
-        else:
-            return line_diff > 0
+
+        return line_diff > 0
 
     def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
         """Check whether the function belongs to the overloaded variants"""
@@ -5641,10 +5640,10 @@ class SemanticAnalyzer(
     def lookup_current_scope(self, name: str) -> SymbolTableNode | None:
         if self.locals[-1] is not None:
             return self.locals[-1].get(name)
-        elif self.type is not None:
+        if self.type is not None:
             return self.type.names.get(name)
-        else:
-            return self.globals.get(name)
+
+        return self.globals.get(name)
 
     #
     # Adding symbols
@@ -6034,10 +6033,10 @@ class SemanticAnalyzer(
     def qualified_name(self, name: str) -> str:
         if self.type is not None:
             return self.type._fullname + "." + name
-        elif self.is_func_scope():
+        if self.is_func_scope():
             return name
-        else:
-            return self.cur_mod_id + "." + name
+
+        return self.cur_mod_id + "." + name
 
     @contextmanager
     def enter(

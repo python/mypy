@@ -139,9 +139,9 @@ def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     if emitter.use_vectorcall():
         # Use vectorcall wrapper if supported (PEP 590).
         return "PyVectorcall_Call"
-    else:
-        # On older Pythons use the legacy wrapper.
-        return wrapper_slot(cl, fn, emitter)
+
+    # On older Pythons use the legacy wrapper.
+    return wrapper_slot(cl, fn, emitter)
 
 
 def slot_key(attr: str) -> str:

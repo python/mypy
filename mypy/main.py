@@ -220,10 +220,9 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
         if "\n" in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
-        else:
-            # Assume we want argparse to manage wrapping, indenting, and
-            # formatting the text for us.
-            return argparse.HelpFormatter._fill_text(self, text, width, indent)
+
+        # Assume we want argparse to manage wrapping, indenting, and formatting the text for us.
+        return argparse.HelpFormatter._fill_text(self, text, width, indent)
 
 
 # Define pairs of flag prefixes with inverse meaning.
@@ -257,8 +256,8 @@ def python_executable_prefix(v: str) -> list[str]:
         # execute an installed Python 3.8 interpreter. See also:
         # https://docs.python.org/3/using/windows.html#python-launcher-for-windows
         return ["py", f"-{v}"]
-    else:
-        return [f"python{v}"]
+
+    return [f"python{v}"]
 
 
 def _python_executable_from_version(python_version: tuple[int, int]) -> str:

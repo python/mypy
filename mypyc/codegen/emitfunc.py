@@ -489,8 +489,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def get_dest_assign(self, dest: Value) -> str:
         if not dest.is_void:
             return self.reg(dest) + " = "
-        else:
-            return ""
+
+        return ""
 
     def visit_call(self, op: Call) -> None:
         """Call native function."""
@@ -732,8 +732,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif val <= -(1 << 31):
                 s += "LL"
             return s
-        else:
-            return self.emitter.reg(reg)
+
+        return self.emitter.reg(reg)
 
     def ctype(self, rtype: RType) -> str:
         return self.emitter.ctype(rtype)
@@ -781,15 +781,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
     def emit_signed_int_cast(self, type: RType) -> str:
-        if is_tagged(type):
-            return "(Py_ssize_t)"
-        else:
-            return ""
+        return "(Py_ssize_t)" if is_tagged(type) else ""
 
     def emit_unsigned_int_cast(self, type: RType) -> str:
         if is_int32_rprimitive(type):
             return "(uint32_t)"
-        elif is_int64_rprimitive(type):
+        if is_int64_rprimitive(type):
             return "(uint64_t)"
-        else:
-            return ""
+
+        return ""

@@ -507,8 +507,8 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         ret = t.ret_type.accept(self)
         if self.strategy == ANY_STRATEGY:
             return args or ret
-        else:
-            return args and ret
+
+        return args and ret
 
     def visit_tuple_type(self, t: TupleType) -> bool:
         return self.query_types(t.items)

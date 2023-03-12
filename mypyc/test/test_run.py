@@ -364,8 +364,8 @@ class TestRun(MypycDataSuite):
             m = re.search(template.format(""), program_text, flags=re.MULTILINE)
         if m:
             return ast.literal_eval(m.group(1))
-        else:
-            return True
+
+        return True
 
 
 class TestRunMultiFile(TestRun):

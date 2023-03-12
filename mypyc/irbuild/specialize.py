@@ -226,10 +226,10 @@ def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) 
     # generic logic.
     if attr == "keys":
         return builder.call_c(dict_keys_op, [obj], expr.line)
-    elif attr == "values":
+    if attr == "values":
         return builder.call_c(dict_values_op, [obj], expr.line)
-    else:
-        return builder.call_c(dict_items_op, [obj], expr.line)
+
+    return builder.call_c(dict_items_op, [obj], expr.line)
 
 
 @specialize_function("builtins.list")

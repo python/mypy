@@ -1263,8 +1263,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if name in self.defined_names:
             # Avoid name clash between name from typing and a name defined in stub.
             return "_" + name
-        else:
-            return name
+
+        return name
 
     def add_typing_import(self, name: str) -> None:
         """Add a name to be imported from typing, unless it's imported already.
@@ -1341,8 +1341,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if can_be_any:
             self.add_typing_import("Incomplete")
             return self.typing_name("Incomplete")
-        else:
-            return ""
+
+        return ""
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)
@@ -1406,10 +1406,10 @@ def find_self_initializers(fdef: FuncBase) -> list[tuple[str, Expression]]:
 def get_qualified_name(o: Expression) -> str:
     if isinstance(o, NameExpr):
         return o.name
-    elif isinstance(o, MemberExpr):
+    if isinstance(o, MemberExpr):
         return f"{get_qualified_name(o.expr)}.{o.name}"
-    else:
-        return ERROR_MARKER
+
+    return ERROR_MARKER
 
 
 def remove_blacklisted_modules(modules: list[StubSource]) -> list[StubSource]:

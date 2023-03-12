@@ -274,10 +274,10 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
     callee = expr.callee
     if isinstance(expr.analyzed, CastExpr):
         return translate_cast_expr(builder, expr.analyzed)
-    elif isinstance(expr.analyzed, AssertTypeExpr):
+    if isinstance(expr.analyzed, AssertTypeExpr):
         # Compile to a no-op.
         return builder.accept(expr.analyzed.expr)
-    elif (
+    if (
         isinstance(callee, (NameExpr, MemberExpr))
         and isinstance(callee.node, TypeInfo)
         and callee.node.is_newtype
@@ -292,10 +292,10 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         return apply_method_specialization(builder, expr, callee) or translate_method_call(
             builder, expr, callee
         )
-    elif isinstance(callee, SuperExpr):
+    if isinstance(callee, SuperExpr):
         return translate_super_method_call(builder, expr, callee)
-    else:
-        return translate_call(builder, expr, callee)
+
+    return translate_call(builder, expr, callee)
 
 
 def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Value:
@@ -1020,8 +1020,8 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
     def get_arg(arg: Expression | None) -> Value:
         if arg is None:
             return builder.none_object()
-        else:
-            return builder.accept(arg)
+
+        return builder.accept(arg)
 
     args = [get_arg(expr.begin_index), get_arg(expr.end_index), get_arg(expr.stride)]
     return builder.call_c(new_slice_op, args, expr.line)

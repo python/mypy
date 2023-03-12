@@ -1184,11 +1184,13 @@ def target_from_node(module: str, node: FuncDef | MypyFile | OverloadedFuncDef) 
             # Actually a reference to another module -- likely a stale dependency.
             return None
         return module
-    else:  # OverloadedFuncDef or FuncDef
-        if node.info:
-            return f"{node.info.fullname}.{node.name}"
-        else:
-            return f"{module}.{node.name}"
+
+    # OverloadedFuncDef or FuncDef
+
+    if node.info:
+        return f"{node.info.fullname}.{node.name}"
+
+    return f"{module}.{node.name}"
 
 
 if sys.platform != "win32":

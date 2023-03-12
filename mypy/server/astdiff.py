@@ -305,10 +305,7 @@ def snapshot_type(typ: Type) -> SnapshotItem:
 
 
 def snapshot_optional_type(typ: Type | None) -> SnapshotItem:
-    if typ:
-        return snapshot_type(typ)
-    else:
-        return ("<not set>",)
+    return snapshot_type(typ) if typ else ("<not set>",)
 
 
 def snapshot_types(types: Sequence[Type]) -> SnapshotItem:
@@ -320,10 +317,7 @@ def snapshot_simple_type(typ: Type) -> SnapshotItem:
 
 
 def encode_optional_str(s: str | None) -> str:
-    if s is None:
-        return "<None>"
-    else:
-        return s
+    return "<None>" if s is None else s
 
 
 class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):

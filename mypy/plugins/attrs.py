@@ -255,10 +255,8 @@ def _get_decorator_optional_bool_argument(
                 ctx.reason,
                 code=LITERAL_REQ,
             )
-            return default
-        return default
-    else:
-        return default
+
+    return default
 
 
 def attr_tag_callback(ctx: mypy.plugin.ClassDefContext) -> None:

@@ -120,10 +120,8 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
     a dictionary key. This is usually the fullname of the function, but this is different in that
     it handles the case where the function is named '_', in which case multiple different functions
     could have the same name."""
-    if unnamed_function(name):
-        return f"{fullname}.{line}"
-    else:
-        return fullname
+
+    return f"{fullname}.{line}" if unnamed_function(name) else fullname
 
 
 def short_id_from_name(func_name: str, shortname: str, line: int | None) -> str:

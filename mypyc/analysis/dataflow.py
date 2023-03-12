@@ -297,8 +297,8 @@ class DefinedVisitor(BaseAnalysisVisitor[Value]):
         # Loading an error value may undefine the register.
         if isinstance(op.src, LoadErrorValue) and (op.src.undefines or self.strict_errors):
             return set(), {op.dest}
-        else:
-            return {op.dest}, set()
+
+        return {op.dest}, set()
 
     def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
         # Array registers are special and we don't track the definedness of them.
@@ -457,8 +457,8 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
     def visit_return(self, op: Return) -> GenAndKill[Value]:
         if not isinstance(op.value, Integer):
             return {op.value}, set()
-        else:
-            return set(), set()
+
+        return set(), set()
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
         return set(), set()
@@ -467,8 +467,8 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         gen = non_trivial_sources(op)
         if not op.is_void:
             return gen, {op}
-        else:
-            return gen, set()
+
+        return gen, set()
 
     def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         return non_trivial_sources(op), {op.dest}

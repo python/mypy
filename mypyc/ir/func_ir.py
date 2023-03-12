@@ -89,8 +89,8 @@ class FuncSignature:
     def bound_sig(self) -> "FuncSignature":
         if self.num_bitmap_args:
             return FuncSignature(self.args[1 : -self.num_bitmap_args], self.ret_type)
-        else:
-            return FuncSignature(self.args[1:], self.ret_type)
+
+        return FuncSignature(self.args[1:], self.ret_type)
 
     def __repr__(self) -> str:
         return f"FuncSignature(args={self.args!r}, ret={self.ret_type!r})"
@@ -293,8 +293,8 @@ class FuncIR:
     def __repr__(self) -> str:
         if self.class_name:
             return f"<FuncIR {self.class_name}.{self.name}>"
-        else:
-            return f"<FuncIR {self.name}>"
+
+        return f"<FuncIR {self.name}>"
 
     def serialize(self) -> JsonDict:
         # We don't include blocks in the serialized version

@@ -695,8 +695,8 @@ def transform_with(
 
         if is_async:
             return emit_await(builder, exit_val, line)
-        else:
-            return exit_val
+
+        return exit_val
 
     def try_body() -> None:
         if target:

@@ -903,25 +903,24 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, Instance):
             member = f"{typ.type.fullname}.{name}"
             return [make_trigger(member)]
-        elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
             member = f"{typ.type_object().fullname}.{name}"
             triggers = [make_trigger(member)]
             triggers.extend(self.attribute_triggers(typ.fallback, name))
             return triggers
-        elif isinstance(typ, UnionType):
+        if isinstance(typ, UnionType):
             targets = []
             for item in typ.items:
                 targets.extend(self.attribute_triggers(item, name))
             return targets
-        elif isinstance(typ, TypeType):
+        if isinstance(typ, TypeType):
             triggers = self.attribute_triggers(typ.item, name)
             if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
                 triggers.append(
                     make_trigger(f"{typ.item.type.metaclass_type.type.fullname}.{name}")
                 )
             return triggers
-        else:
-            return []
+        return []
 
     def add_attribute_dependency_for_expr(self, e: Expression, name: str) -> None:
         typ = self.type_map.get(e)

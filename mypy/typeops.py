@@ -113,10 +113,10 @@ def tuple_fallback(typ: TupleType) -> Instance:
 def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
     if isinstance(get_proper_type(func.ret_type), UninhabitedType):
         return func.ret_type
-    elif func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
+    if func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
         return func.arg_types[0]
-    else:
-        return None
+
+    return None
 
 
 def type_object_type_from_function(
@@ -664,15 +664,15 @@ def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
     assert isinstance(tdef, TypeVarType)
     if tdef.values:
         return make_simplified_union(tdef.values)
-    else:
-        return tdef.upper_bound
+
+    return tdef.upper_bound
 
 
 def erase_to_union_or_bound(typ: TypeVarType) -> ProperType:
     if typ.values:
         return make_simplified_union(typ.values)
-    else:
-        return get_proper_type(typ.upper_bound)
+
+    return get_proper_type(typ.upper_bound)
 
 
 def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
@@ -810,16 +810,16 @@ def is_literal_type_like(t: Type | None) -> bool:
     t = get_proper_type(t)
     if t is None:
         return False
-    elif isinstance(t, LiteralType):
+    if isinstance(t, LiteralType):
         return True
-    elif isinstance(t, UnionType):
+    if isinstance(t, UnionType):
         return any(is_literal_type_like(item) for item in t.items)
-    elif isinstance(t, TypeVarType):
+    if isinstance(t, TypeVarType):
         return is_literal_type_like(t.upper_bound) or any(
             is_literal_type_like(item) for item in t.values
         )
-    else:
-        return False
+
+    return False
 
 
 def is_singleton_type(typ: Type) -> bool:
@@ -1047,5 +1047,5 @@ def fixup_partial_type(typ: Type) -> Type:
         return typ
     if typ.type is None:
         return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
-    else:
-        return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
+
+    return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))

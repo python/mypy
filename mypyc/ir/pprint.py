@@ -133,8 +133,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         if op.error_kind == ERR_NEVER:
             # Initialization and direct struct access can never fail
             return self.format("%r.%s = %r", op.obj, op.attr, op.src)
-        else:
-            return self.format("%r.%s = %r; %r = is_error", op.obj, op.attr, op.src, op)
+
+        return self.format("%r.%s = %r; %r = is_error", op.obj, op.attr, op.src, op)
 
     def visit_load_static(self, op: LoadStatic) -> str:
         ann = f"  ({op.ann!r})" if op.ann else ""
@@ -210,8 +210,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         args_str = ", ".join(self.format("%r", arg) for arg in op.args)
         if op.is_void:
             return self.format("%s(%s)", op.function_name, args_str)
-        else:
-            return self.format("%r = %s(%s)", op, op.function_name, args_str)
+
+        return self.format("%r = %s(%s)", op, op.function_name, args_str)
 
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
@@ -253,8 +253,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_load_address(self, op: LoadAddress) -> str:
         if isinstance(op.src, Register):
             return self.format("%r = load_address %r", op, op.src)
-        else:
-            return self.format("%r = load_address %s", op, op.src)
+
+        return self.format("%r = load_address %s", op, op.src)
 
     def visit_keep_alive(self, op: KeepAlive) -> str:
         return self.format("keep_alive %s" % ", ".join(self.format("%r", v) for v in op.src))

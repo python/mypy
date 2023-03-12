@@ -303,5 +303,5 @@ class TypeCheckSuite(DataSuite):
                     program_text = f.read()
                 out.append((module_name, path, program_text))
             return out
-        else:
-            return [("__main__", "main", program_text)]
+
+        return [("__main__", "main", program_text)]

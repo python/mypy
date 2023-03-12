@@ -485,10 +485,8 @@ def _is_similar_constraints(x: list[Constraint], y: list[Constraint]) -> bool:
 
 def simplify_away_incomplete_types(types: Iterable[Type]) -> list[Type]:
     complete = [typ for typ in types if is_complete_type(typ)]
-    if complete:
-        return complete
-    else:
-        return list(types)
+
+    return complete or list(types)
 
 
 def is_complete_type(typ: Type) -> bool:
@@ -1054,10 +1052,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         infer_constraints(template_items[i], actual_items[i], self.direction)
                     )
             return res
-        elif isinstance(actual, AnyType):
+
+        if isinstance(actual, AnyType):
             return self.infer_against_any(template.items, actual)
-        else:
-            return []
+
+        return []
 
     def visit_typeddict_type(self, template: TypedDictType) -> list[Constraint]:
         actual = self.actual
@@ -1068,10 +1067,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             for (item_name, template_item_type, actual_item_type) in template.zip(actual):
                 res.extend(infer_constraints(template_item_type, actual_item_type, self.direction))
             return res
-        elif isinstance(actual, AnyType):
+
+        if isinstance(actual, AnyType):
             return self.infer_against_any(template.items.values(), actual)
-        else:
-            return []
+
+        return []
 
     def visit_union_type(self, template: UnionType) -> list[Constraint]:
         assert False, (
@@ -1107,14 +1107,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_type_type(self, template: TypeType) -> list[Constraint]:
         if isinstance(self.actual, CallableType):
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
-        elif isinstance(self.actual, Overloaded):
+        if isinstance(self.actual, Overloaded):
             return infer_constraints(template.item, self.actual.items[0].ret_type, self.direction)
-        elif isinstance(self.actual, TypeType):
+        if isinstance(self.actual, TypeType):
             return infer_constraints(template.item, self.actual.item, self.direction)
-        elif isinstance(self.actual, AnyType):
+        if isinstance(self.actual, AnyType):
             return infer_constraints(template.item, self.actual, self.direction)
-        else:
-            return []
+
+        return []
 
 
 def neg_op(op: int) -> int:

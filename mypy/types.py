@@ -429,8 +429,8 @@ class RequiredType(Type):
     def __repr__(self) -> str:
         if self.required:
             return f"Required[{self.item}]"
-        else:
-            return f"NotRequired[{self.item}]"
+
+        return f"NotRequired[{self.item}]"
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return self.item.accept(visitor)
@@ -1613,22 +1613,22 @@ class Parameters(ProperType):
         )
         if kind.is_positional():
             return FormalArgument(name, position, typ, kind == ARG_POS)
-        else:
-            return self.try_synthesizing_arg_from_vararg(position)
+
+        return self.try_synthesizing_arg_from_vararg(position)
 
     def try_synthesizing_arg_from_kwarg(self, name: str | None) -> FormalArgument | None:
         kw_arg = self.kw_arg()
         if kw_arg is not None:
             return FormalArgument(name, None, kw_arg.typ, False)
-        else:
-            return None
+
+        return None
 
     def try_synthesizing_arg_from_vararg(self, position: int | None) -> FormalArgument | None:
         var_arg = self.var_arg()
         if var_arg is not None:
             return FormalArgument(None, position, var_arg.typ, False)
-        else:
-            return None
+
+        return None
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_parameters(self)
@@ -1670,8 +1670,8 @@ class Parameters(ProperType):
                 and self.arg_kinds == other.arg_kinds
                 and self.is_ellipsis_args == other.is_ellipsis_args
             )
-        else:
-            return NotImplemented
+
+        return NotImplemented
 
 
 CT = TypeVar("CT", bound="CallableType")
@@ -1935,22 +1935,22 @@ class CallableType(FunctionLike):
         )
         if kind.is_positional():
             return FormalArgument(name, position, typ, kind == ARG_POS)
-        else:
-            return self.try_synthesizing_arg_from_vararg(position)
+
+        return self.try_synthesizing_arg_from_vararg(position)
 
     def try_synthesizing_arg_from_kwarg(self, name: str | None) -> FormalArgument | None:
         kw_arg = self.kw_arg()
         if kw_arg is not None:
             return FormalArgument(name, None, kw_arg.typ, False)
-        else:
-            return None
+
+        return None
 
     def try_synthesizing_arg_from_vararg(self, position: int | None) -> FormalArgument | None:
         var_arg = self.var_arg()
         if var_arg is not None:
             return FormalArgument(None, position, var_arg.typ, False)
-        else:
-            return None
+
+        return None
 
     @property
     def items(self) -> list[CallableType]:
@@ -2006,14 +2006,14 @@ class CallableType(FunctionLike):
                 is_ellipsis_args=c.is_ellipsis_args,
                 variables=[*variables, *self.variables],
             )
-        else:
-            return self.copy_modified(
-                arg_types=self.arg_types[:-2] + c.arg_types,
-                arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-                arg_names=self.arg_names[:-2] + c.arg_names,
-                is_ellipsis_args=c.is_ellipsis_args,
-                variables=[*variables, *self.variables],
-            )
+
+        return self.copy_modified(
+            arg_types=self.arg_types[:-2] + c.arg_types,
+            arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
+            arg_names=self.arg_names[:-2] + c.arg_names,
+            is_ellipsis_args=c.is_ellipsis_args,
+            variables=[*variables, *self.variables],
+        )
 
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
@@ -2067,8 +2067,8 @@ class CallableType(FunctionLike):
                 and self.is_ellipsis_args == other.is_ellipsis_args
                 and self.fallback == other.fallback
             )
-        else:
-            return NotImplemented
+
+        return NotImplemented
 
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
@@ -2506,8 +2506,8 @@ class RawExpressionType(ProperType):
                 self.base_type_name == other.base_type_name
                 and self.literal_value == other.literal_value
             )
-        else:
-            return NotImplemented
+
+        return NotImplemented
 
 
 class LiteralType(ProperType):
@@ -2553,8 +2553,8 @@ class LiteralType(ProperType):
     def __eq__(self, other: object) -> bool:
         if isinstance(other, LiteralType):
             return self.fallback == other.fallback and self.value == other.value
-        else:
-            return NotImplemented
+
+        return NotImplemented
 
     def is_enum_literal(self) -> bool:
         return self.fallback.type.is_enum
@@ -2577,11 +2577,11 @@ class LiteralType(ProperType):
             # Note: 'builtins.bytes' only appears in Python 3, so we want to
             # explicitly prefix with a "b"
             return "b" + raw
-        else:
-            # 'builtins.str' could mean either depending on context, but either way
-            # we don't prefix: it's the "native" string. And of course, if value is
-            # some other type, we just return that string repr directly.
-            return raw
+
+        # 'builtins.str' could mean either depending on context, but either way
+        # we don't prefix: it's the "native" string. And of course, if value is
+        # some other type, we just return that string repr directly.
+        return raw
 
     def serialize(self) -> JsonDict | str:
         return {
@@ -2649,10 +2649,10 @@ class UnionType(ProperType):
     def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
         if len(items) > 1:
             return UnionType(items, line, column)
-        elif len(items) == 1:
+        if len(items) == 1:
             return items[0]
-        else:
-            return UninhabitedType()
+
+        return UninhabitedType()
 
     def length(self) -> int:
         return len(self.items)
@@ -2676,8 +2676,8 @@ class UnionType(ProperType):
         """Removes NoneTypes from Unions when strict Optional checking is off."""
         if state.strict_optional:
             return self.items
-        else:
-            return [i for i in self.items if not isinstance(get_proper_type(i), NoneType)]
+
+        return [i for i in self.items if not isinstance(get_proper_type(i), NoneType)]
 
     def serialize(self) -> JsonDict:
         return {".class": "UnionType", "items": [t.serialize() for t in self.items]}
@@ -2918,8 +2918,8 @@ def get_proper_types(
         ):
             return cast("list[ProperType]", typelist)
         return [get_proper_type(t) for t in typelist]
-    else:
-        return [get_proper_type(t) for t in types]
+
+    return [get_proper_type(t) for t in types]
 
 
 # We split off the type visitor base classes to another module
@@ -2967,8 +2967,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         typ = t.typ.accept(self)
         if t.name is None:
             return f"{t.constructor}({typ})"
-        else:
-            return f"{t.constructor}({typ}, {t.name})"
+
+        return f"{t.constructor}({typ}, {t.name})"
 
     def visit_any(self, t: AnyType) -> str:
         if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
@@ -2987,8 +2987,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_deleted_type(self, t: DeletedType) -> str:
         if t.source is None:
             return "<Deleted>"
-        else:
-            return f"<Deleted '{t.source}'>"
+
+        return f"<Deleted '{t.source}'>"
 
     def visit_instance(self, t: Instance) -> str:
         if t.last_known_value and not t.args:
@@ -3152,8 +3152,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         def item_str(name: str, typ: str) -> str:
             if name in t.required_keys:
                 return f"{name!r}: {typ}"
-            else:
-                return f"{name!r}?: {typ}"
+
+            return f"{name!r}?: {typ}"
 
         s = (
             "{"
@@ -3179,8 +3179,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:
             return "<partial None>"
-        else:
-            return "<partial {}[{}]>".format(t.type.name, ", ".join(["?"] * len(t.type.type_vars)))
+
+        return "<partial {}[{}]>".format(t.type.name, ", ".join(["?"] * len(t.type.type_vars)))
 
     def visit_ellipsis_type(self, t: EllipsisType) -> str:
         return "..."
@@ -3258,10 +3258,10 @@ def strip_type(typ: Type) -> Type:
     typ = get_proper_type(typ)
     if isinstance(typ, CallableType):
         return typ.copy_modified(name=None)
-    elif isinstance(typ, Overloaded):
+    if isinstance(typ, Overloaded):
         return Overloaded([cast(CallableType, strip_type(item)) for item in typ.items])
-    else:
-        return orig_typ
+
+    return orig_typ
 
 
 def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[Instance]:
@@ -3475,8 +3475,8 @@ def remove_optional(typ: Type) -> Type:
         return UnionType.make_union(
             [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
         )
-    else:
-        return typ
+
+    return typ
 
 
 def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue) -> bool:

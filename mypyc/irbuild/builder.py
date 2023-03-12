@@ -866,10 +866,10 @@ class IRBuilder:
     def extract_int(self, e: Expression) -> int | None:
         if isinstance(e, IntExpr):
             return e.value
-        elif isinstance(e, UnaryExpr) and e.op == "-" and isinstance(e.expr, IntExpr):
+        if isinstance(e, UnaryExpr) and e.op == "-" and isinstance(e.expr, IntExpr):
             return -e.expr.value
-        else:
-            return None
+
+        return None
 
     def get_sequence_type(self, expr: Expression) -> RType:
         return self.get_sequence_type_from_type(self.types[expr])
@@ -943,9 +943,9 @@ class IRBuilder:
             for item in iterable.items:
                 joined = join_types(joined, item)
             return joined
-        else:
-            # Non-tuple iterable.
-            return echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
+
+        # Non-tuple iterable.
+        return echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
 
     def is_native_module(self, module: str) -> bool:
         """Is the given module one compiled by mypyc?"""
@@ -1011,10 +1011,10 @@ class IRBuilder:
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
             return self.load_final_literal_value(final_var.final_value, line)
-        elif native:
+        if native:
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
-        else:
-            return None
+
+        return None
 
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
         return isinstance(expr.expr, RefExpr) and isinstance(expr.expr.node, MypyFile)

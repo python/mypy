@@ -257,8 +257,8 @@ class ClassIR:
                 if subc.method_decl(name) != method_decl:
                     return False
             return True
-        else:
-            return not any(subc.has_method(name) for subc in subs)
+
+        return not any(subc.has_method(name) for subc in subs)
 
     def has_attr(self, name: str) -> bool:
         try:

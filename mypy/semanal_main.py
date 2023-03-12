@@ -369,8 +369,8 @@ def semantic_analyze_target(
 
     if analyzer.deferred:
         return [target], analyzer.incomplete, analyzer.progress
-    else:
-        return [], analyzer.incomplete, analyzer.progress
+
+    return [], analyzer.incomplete, analyzer.progress
 
 
 def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:

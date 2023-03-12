@@ -716,17 +716,17 @@ class FancyFormatter:
                 + self.highlight_quote_groups(msg)
                 + self.style(code, "yellow")
             )
-        elif ": note:" in error:
+        if ": note:" in error:
             loc, msg = error.split("note:", maxsplit=1)
             formatted = self.highlight_quote_groups(self.underline_link(msg))
             return loc + self.style("note:", "blue") + formatted
-        elif error.startswith(" " * DEFAULT_SOURCE_OFFSET):
+        if error.startswith(" " * DEFAULT_SOURCE_OFFSET):
             # TODO: detecting source code highlights through an indent can be surprising.
             if "^" not in error:
                 return self.style(error, "none", dim=True)
             return self.style(error, "red")
-        else:
-            return error
+
+        return error
 
     def highlight_quote_groups(self, msg: str) -> str:
         """Make groups quoted with double quotes bold (including quotes).
@@ -816,7 +816,5 @@ def time_spent_us(t0: int) -> int:
 
 def plural_s(s: int | Sized) -> str:
     count = s if isinstance(s, int) else len(s)
-    if count != 1:
-        return "s"
-    else:
-        return ""
+
+    return "" if count == 1 else "s"

@@ -13,8 +13,8 @@ def extract_module_names(type_name: str | None) -> list[str]:
         # Discard the first one, which is just the qualified name of the type
         possible_module_names = split_module_names(type_name)
         return possible_module_names[1:]
-    else:
-        return []
+
+    return []
 
 
 class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
