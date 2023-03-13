@@ -3299,14 +3299,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         rvalues.extend([TempNode(typ) for typ in typs.items])
                     elif self.type_is_iterable(typs) and isinstance(typs, Instance):
                         if iterable_type is not None and iterable_type != self.iterable_item_type(
-                            typs
+                            typs, rvalue
                         ):
                             self.fail(message_registry.CONTIGUOUS_ITERABLE_EXPECTED, context)
                         else:
                             if last_idx is None or last_idx + 1 == idx_rval:
                                 rvalues.append(rval)
                                 last_idx = idx_rval
-                                iterable_type = self.iterable_item_type(typs)
+                                iterable_type = self.iterable_item_type(typs, rvalue)
                             else:
                                 self.fail(message_registry.CONTIGUOUS_ITERABLE_EXPECTED, context)
                     else:
@@ -3635,7 +3635,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self.type_is_iterable(rvalue_type) and isinstance(
             rvalue_type, (Instance, CallableType, TypeType, Overloaded)
         ):
-            item_type = self.iterable_item_type(rvalue_type)
+            item_type = self.iterable_item_type(rvalue_type, context)
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
                     items_type = self.named_generic_type("builtins.list", [item_type])
@@ -6392,7 +6392,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         self.msg.note(msg, context, offset=offset, code=code)
 
-    def iterable_item_type(self, it: Instance | CallableType | TypeType | Overloaded) -> Type:
+    def iterable_item_type(
+        self, it: Instance | CallableType | TypeType | Overloaded, context: Context
+    ) -> Type:
         if isinstance(it, Instance):
             iterable = map_instance_to_supertype(it, self.lookup_typeinfo("typing.Iterable"))
             item_type = iterable.args[0]
@@ -6401,7 +6403,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # in case there is no explicit base class.
                 return item_type
         # Try also structural typing.
-        return self.analyze_iterable_item_type_without_expression(it, it)[1]
+        return self.analyze_iterable_item_type_without_expression(it, context)[1]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type("builtins.function"))
