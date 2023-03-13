@@ -1,5 +1,5 @@
 [codespell]
-skip = .git,*.pdf,*.svg,*.test
+skip = .git,*.pdf,*.svg,*.test,typeshed
 # fo,ot,statics,ans,alo,haa -- variables used
 # hax -- HAX, initials,
 # SEH,NAMS,WONT -- abbreviations but codespell is case incensitive
