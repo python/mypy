@@ -1351,18 +1351,10 @@ def is_probably_private(name: str) -> bool:
 
 
 def is_probably_a_function(runtime: Any) -> bool:
-    return (
-        isinstance(
-            runtime,
-            (
-                types.FunctionType,
-                types.BuiltinFunctionType,
-                types.MethodType,
-                types.BuiltinMethodType,
-            )
-        )
-        or (inspect.ismethoddescriptor(runtime) and callable(runtime))
-    )
+    return isinstance(
+        runtime,
+        (types.FunctionType, types.BuiltinFunctionType, types.MethodType, types.BuiltinMethodType),
+    ) or (inspect.ismethoddescriptor(runtime) and callable(runtime))
 
 
 def is_read_only_property(runtime: object) -> bool:

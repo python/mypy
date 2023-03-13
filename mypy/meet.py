@@ -803,9 +803,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items: list[Type] = [
-                self.meet(t.items[i], self.s.items[i]) for i in range(t.length())
-            ]
+            items: list[Type] = [self.meet(t.items[i], self.s.items[i]) for i in range(t.length())]
 
             # TODO: What if the fallbacks are different?
             return TupleType(items, tuple_fallback(t))

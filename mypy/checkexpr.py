@@ -2334,9 +2334,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         def has_shape(typ: Type) -> bool:
             typ = get_proper_type(typ)
-            return (
-                isinstance(typ, (TupleType, TypedDictType))
-                or (isinstance(typ, Instance) and typ.type.is_named_tuple)
+            return isinstance(typ, (TupleType, TypedDictType)) or (
+                isinstance(typ, Instance) and typ.type.is_named_tuple
             )
 
         matches: list[CallableType] = []
@@ -3556,11 +3555,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return results_final, inferred_final
 
         return self.check_method_call_by_name(
-            method=method,
-            base_type=base_type,
-            args=[arg],
-            arg_kinds=[ARG_POS],
-            context=context,
+            method=method, base_type=base_type, args=[arg], arg_kinds=[ARG_POS], context=context
         )
 
     def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
@@ -3786,9 +3781,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return self.nonliteral_tuple_index_helper(left_type, slic)
             stride = stride_raw
 
-        items = [
-            left_type.slice(b, e, s) for b, e, s in itertools.product(begin, end, stride)
-        ]
+        items = [left_type.slice(b, e, s) for b, e, s in itertools.product(begin, end, stride)]
 
         return make_simplified_union(items)
 
@@ -4918,12 +4911,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def is_valid_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a *args argument?"""
         typ = get_proper_type(typ)
-        return (
-            isinstance(typ, (TupleType, AnyType, ParamSpecType, UnpackType))
-            or is_subtype(
-                typ,
-                self.chk.named_generic_type("typing.Iterable", [AnyType(TypeOfAny.special_form)]),
-            )
+        return isinstance(typ, (TupleType, AnyType, ParamSpecType, UnpackType)) or is_subtype(
+            typ, self.chk.named_generic_type("typing.Iterable", [AnyType(TypeOfAny.special_form)])
         )
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:

@@ -326,7 +326,7 @@ class Emitter:
                     self.ctype(rtuple), self.tuple_undefined_value(rtuple), "".join(values)
                 ),
                 "#endif",
-                ""
+                "",
             )
         )
 

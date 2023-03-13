@@ -379,9 +379,7 @@ def find_unique_signatures(sigs: Sequence[Sig]) -> list[Sig]:
         sig_map.setdefault(name, []).append(sig)
 
     return sorted(
-        (name, name_sigs[0])
-        for name, name_sigs in sig_map.items()
-        if len(set(name_sigs)) == 1
+        (name, name_sigs[0]) for name, name_sigs in sig_map.items() if len(set(name_sigs)) == 1
     )
 
 

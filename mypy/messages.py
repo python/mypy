@@ -2778,11 +2778,7 @@ def format_string_list(lst: list[str]) -> str:
     if len(lst) <= 5:
         return f"{', '.join(lst[:-1])} and {lst[-1]}"
 
-    return "%s, ... and %s (%i methods suppressed)" % (
-        ", ".join(lst[:2]),
-        lst[-1],
-        len(lst) - 3,
-    )
+    return "%s, ... and %s (%i methods suppressed)" % (", ".join(lst[:2]), lst[-1], len(lst) - 3)
 
 
 def format_item_name_list(s: Iterable[str]) -> str:
@@ -2873,9 +2869,8 @@ def append_invariance_notes(
     """Explain that the type is invariant and give notes for how to solve the issue."""
     invariant_type = ""
     covariant_suggestion = ""
-    if (
-        arg_type.type.fullname == expected_type.type.fullname == "builtins.list"
-        and is_subtype(arg_type.args[0], expected_type.args[0])
+    if arg_type.type.fullname == expected_type.type.fullname == "builtins.list" and is_subtype(
+        arg_type.args[0], expected_type.args[0]
     ):
         invariant_type = "List"
         covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'

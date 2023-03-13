@@ -944,9 +944,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if not deletable:
         emitter.emit_line("if (value == NULL) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(
-            f'    "{cl.name!r} object attribute {attr!r} cannot be deleted");'
-        )
+        emitter.emit_line(f'    "{cl.name!r} object attribute {attr!r} cannot be deleted");')
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 

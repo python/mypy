@@ -228,9 +228,7 @@ def get_mypy_comments(source: str) -> list[tuple[int, str]]:
     lines = source.split("\n")
 
     return [
-        (i + 1, line[len(PREFIX) :])
-        for i, line in enumerate(lines)
-        if line.startswith(PREFIX)
+        (i + 1, line[len(PREFIX) :]) for i, line in enumerate(lines) if line.startswith(PREFIX)
     ]
 
 

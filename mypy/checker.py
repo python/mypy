@@ -4525,9 +4525,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return iterator, joined
 
         # Non-tuple iterable.
-        return (
-            iterator, echk.check_method_call_by_name("__next__", iterator, [], [], context)[0]
-        )
+        return (iterator, echk.check_method_call_by_name("__next__", iterator, [], [], context)[0])
 
     def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
         """Try to infer native int item type from arguments to range(...).
@@ -5123,9 +5121,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if callables and uncallables:
             callable_map = {expr: UnionType.make_union(callables)} if callables else None
-            uncallable_map = (
-                {expr: UnionType.make_union(uncallables)} if uncallables else None
-            )
+            uncallable_map = {expr: UnionType.make_union(uncallables)} if uncallables else None
             return callable_map, uncallable_map
 
         elif callables:
