@@ -7797,3 +7797,19 @@ class Element(Generic[_T]):
 class Bar(Foo): ...
 e: Element[Bar]
 reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
+
+[case testIterableUnpackingWithGetAttr]
+from typing import Union, Tuple
+
+class C:
+    def __getattr__(self, name):
+        pass
+
+class D:
+    def f(self) -> C:
+        return C()
+
+    def g(self) -> None:
+        # TODO: This is a false positive
+        a, b = self.f()  # E: "C" has no attribute "__iter__" (not iterable)
+[builtins fixtures/tuple.pyi]
