@@ -5,18 +5,20 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     FuncItem,
+    Import,
     LambdaExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
+    Node,
     SymbolNode,
     Var,
 )
-from mypy.traverser import TraverserVisitor
+from mypy.traverser import ExtendedTraverserVisitor
 from mypyc.errors import Errors
 
 
-class PreBuildVisitor(TraverserVisitor):
+class PreBuildVisitor(ExtendedTraverserVisitor):
     """Mypy file AST visitor run before building the IR.
 
     This collects various things, including:
@@ -26,6 +28,7 @@ class PreBuildVisitor(TraverserVisitor):
     * Find non-local variables (free variables)
     * Find property setters
     * Find decorators of functions
+    * Find module import groups
 
     The main IR build pass uses this information.
     """
@@ -68,9 +71,28 @@ class PreBuildVisitor(TraverserVisitor):
         # Map function to indices of decorators to remove
         self.decorators_to_remove: dict[FuncDef, list[int]] = decorators_to_remove
 
+        # A mapping of import groups (a series of Import nodes with
+        # nothing inbetween) where each group is keyed by its first
+        # import node.
+        self.module_import_groups: dict[Import, list[Import]] = {}
+        self._current_import_group: Import | None = None
+
         self.errors: Errors = errors
 
         self.current_file: MypyFile = current_file
+
+    def visit(self, o: Node) -> bool:
+        if isinstance(o, Import):
+            if self._current_import_group is not None:
+                self.module_import_groups[self._current_import_group].append(o)
+            else:
+                self.module_import_groups[o] = [o]
+                self._current_import_group = o
+            # Don't recurse into the import's assignments.
+            return False
+
+        self._current_import_group = None
+        return True
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:

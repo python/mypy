@@ -669,6 +669,68 @@ CPy_Super(PyObject *builtins, PyObject *self) {
     return result;
 }
 
+static bool import_single(PyObject *mod_id,
+                                  PyObject *as_name,
+                                  PyObject **mod_static,
+                                  PyObject *globals_base,
+                                  PyObject *globals) {
+    if (*mod_static == Py_None) {
+        CPyModule *mod = PyImport_Import(mod_id);
+        if (mod == NULL) {
+            return false;
+        }
+        *mod_static = mod;
+    }
+
+    if (as_name == Py_None) {
+        as_name = mod_id;
+    }
+    PyObject *globals_id, *globals_name;
+    if (globals_base == Py_None) {
+        globals_id = mod_id;
+        globals_name = as_name;
+    } else {
+        globals_id = globals_name = globals_base;
+    }
+    PyObject *mod_dict = PyImport_GetModuleDict();
+    CPyModule *globals_mod = CPyDict_GetItem(mod_dict, globals_id);
+    if (globals_mod == NULL) {
+        return false;
+    }
+    int ret = CPyDict_SetItem(globals, globals_name, globals_mod);
+    Py_DECREF(globals_mod);
+    if (ret < 0) {
+        return false;
+    }
+
+    return true;
+}
+
+// Table-driven import helper. See transform_import() in irbuild for the details.
+bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
+                          PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines) {
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(modules); i++) {
+        PyObject *module = PyTuple_GET_ITEM(modules, i);
+        PyObject *mod_id = PyTuple_GET_ITEM(module, 0);
+        PyObject *as_name = PyTuple_GET_ITEM(module, 1);
+        PyObject *globals_base = PyTuple_GET_ITEM(module, 2);
+
+        if (!import_single(mod_id, as_name, statics[i], globals_base, globals)) {
+            const char *path = PyUnicode_AsUTF8(tb_path);
+            if (path == NULL) {
+                path = "<unable to display>";
+            }
+            const char *function = PyUnicode_AsUTF8(tb_function);
+            if (function == NULL) {
+                function = "<unable to display>";
+            }
+            CPy_AddTraceback(path, function, tb_lines[i], globals);
+            return false;
+        }
+    }
+    return true;
+}
+
 // This helper function is a simplification of cpython/ceval.c/import_from()
 static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                       PyObject *import_name, PyObject *as_name) {

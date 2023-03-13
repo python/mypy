@@ -727,7 +727,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
         dest = self.reg(op)
-        src = self.reg(op.src) if isinstance(op.src, Register) else op.src
+        if isinstance(op.src, Register):
+            src = self.reg(op.src)
+        elif isinstance(op.src, LoadStatic):
+            prefix = self.PREFIX_MAP[op.src.namespace]
+            src = self.emitter.static_name(op.src.identifier, op.src.module_name, prefix)
+        else:
+            src = op.src
         self.emit_line(f"{dest} = ({typ._ctype})&{src};")
 
     def visit_keep_alive(self, op: KeepAlive) -> None:

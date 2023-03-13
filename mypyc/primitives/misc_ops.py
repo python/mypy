@@ -7,6 +7,7 @@ from mypyc.ir.rtypes import (
     bit_rprimitive,
     bool_rprimitive,
     c_int_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -111,12 +112,27 @@ py_calc_meta_op = custom_op(
     is_borrowed=True,
 )
 
-# Import a module
+# Import a module (plain)
 import_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyImport_Import",
     error_kind=ERR_MAGIC,
+)
+
+# Import helper op (handles globals/statics & can import multiple modules)
+import_many_op = custom_op(
+    arg_types=[
+        object_rprimitive,
+        c_pointer_rprimitive,
+        object_rprimitive,
+        object_rprimitive,
+        object_rprimitive,
+        c_pointer_rprimitive,
+    ],
+    return_type=bit_rprimitive,
+    c_function_name="CPyImport_ImportMany",
+    error_kind=ERR_FALSE,
 )
 
 # From import helper op

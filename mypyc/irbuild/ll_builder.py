@@ -1693,6 +1693,12 @@ class LowLevelIRBuilder:
     def new_set_op(self, values: list[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)
 
+    def setup_rarray(self, item_type: RType, values: Sequence[Value]) -> Value:
+        """Declare and initialize a new RArray, returning its address."""
+        array = Register(RArray(item_type, len(values)))
+        self.add(AssignMulti(array, list(values)))
+        return self.add(LoadAddress(c_pointer_rprimitive, array))
+
     def shortcircuit_helper(
         self,
         op: str,

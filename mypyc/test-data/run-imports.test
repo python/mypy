@@ -18,10 +18,12 @@ def test_import_submodule_within_function() -> None:
     import pkg.mod
     assert pkg.x == 1
     assert pkg.mod.y == 2
+    assert "pkg.mod" not in globals(), "the root module should be in globals!"
 
 def test_import_as_submodule_within_function() -> None:
     import pkg.mod as mm
     assert mm.y == 2
+    assert "pkg.mod" not in globals(), "the root module should be in globals!"
 
 # TODO: Don't add local imports to globals()
 #
@@ -192,3 +194,44 @@ a.x = 10
 x = 20
 [file driver.py]
 import native
+
+[case testLazyImport]
+import shared
+
+def do_import() -> None:
+    import a
+
+assert shared.counter == 0
+do_import()
+assert shared.counter == 1
+
+[file a.py]
+import shared
+shared.counter += 1
+
+[file shared.py]
+counter = 0
+
+[case testDelayedImport]
+import a
+print("inbetween")
+import b
+
+[file a.py]
+print("first")
+
+[file b.py]
+print("last")
+
+[out]
+first
+inbetween
+last
+
+[case testImportErrorLineNumber]
+try:
+    import enum
+    import dataclasses, missing  # type: ignore[import]
+except ImportError as e:
+    line = e.__traceback__.tb_lineno # type: ignore[attr-defined]
+    assert line == 3, f"traceback's line number is {line}, expected 3"
