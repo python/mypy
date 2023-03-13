@@ -680,7 +680,7 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
         emitter.emit_line("if (super == NULL) return -1;")
         emitter.emit_line("PyObject *result;")
 
-        if method_cls is cl.builtin_base is None:
+        if method_cls is None and cl.builtin_base is None:
             msg = f"'{cl.name}' object does not support item assignment"
             emitter.emit_line(f'PyErr_SetString(PyExc_TypeError, "{msg}");')
             emitter.emit_line("result = NULL;")
