@@ -53,8 +53,8 @@ def get_revealed_type(line: str, relevant_file: str, relevant_line: int) -> str 
     m = re.match(r'(.+?):(\d+): note: Revealed type is "(.*)"$', line)
     if m and int(m.group(2)) == relevant_line and os.path.samefile(relevant_file, m.group(1)):
         return m.group(3)
-    else:
-        return None
+
+    return None
 
 
 def process_output(output: str, filename: str, start_line: int) -> tuple[str | None, bool]:

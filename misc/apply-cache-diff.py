@@ -20,8 +20,8 @@ from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadat
 def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
     if sqlite:
         return SqliteMetadataStore(input_dir)
-    else:
-        return FilesystemMetadataStore(input_dir)
+
+    return FilesystemMetadataStore(input_dir)
 
 
 def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:

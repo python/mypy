@@ -22,8 +22,8 @@ from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadat
 def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
     if sqlite:
         return SqliteMetadataStore(input_dir)
-    else:
-        return FilesystemMetadataStore(input_dir)
+
+    return FilesystemMetadataStore(input_dir)
 
 
 def merge_deps(all: dict[str, set[str]], new: dict[str, set[str]]) -> None:
