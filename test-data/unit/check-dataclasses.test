@@ -2002,6 +2002,42 @@ e: Element[Bar]
 reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
 [builtins fixtures/dataclasses.pyi]
 
+[case testIfConditionsInDefinition]
+# flags: --python-version 3.11 --always-true TRUTH
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+
+@dataclass
+class Foo:
+    if TYPE_CHECKING:
+        present_1: int
+    else:
+        skipped_1: int
+    if True:  # Mypy does not know if it is True or False, so the block is used
+        present_2: int
+    if False:  # Mypy does not know if it is True or False, so the block is used
+        present_3: int
+    if not TRUTH:
+        skipped_2: int
+    elif 123:
+        present_4: int
+    elif TRUTH:
+        present_5: int
+    else:
+        skipped_3: int
+
+Foo(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    present_5=5,
+)
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testReplace]
 from dataclasses import dataclass, replace, InitVar
 from typing import ClassVar
@@ -2024,6 +2060,7 @@ a2 = replace(a, q='42')  # E: Argument "q" to "replace" of "A" has incompatible 
 reveal_type(a2)  # N: Revealed type is "__main__.A"
 
 [builtins fixtures/dataclasses.pyi]
+
 [case testReplaceNotDataclass]
 from dataclasses import replace
 
@@ -2033,5 +2070,3 @@ class C:
     pass
 
 replace(C())  # E: Argument 1 to "replace" has incompatible type "C"; expected a dataclass
-
-[builtins fixtures/dataclasses.pyi]
