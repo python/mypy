@@ -1984,3 +1984,23 @@ def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P
 
 [out]
 _testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")
+
+[case testDataclassReplace]
+from dataclasses import dataclass, replace
+
+@dataclass
+class A:
+    x: int
+
+
+a = A(x=42)
+a2 = replace(a, x=42)
+reveal_type(a2)
+a2 = replace()
+a2 = replace(a, x='spam')
+a2 = replace(a, x=42, q=42)
+[out]
+_testDataclassReplace.py:10: note: Revealed type is "_testDataclassReplace.A"
+_testDataclassReplace.py:11: error: Too few arguments for "replace"
+_testDataclassReplace.py:12: error: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
+_testDataclassReplace.py:13: error: Unexpected keyword argument "q" for "replace" of "A"
