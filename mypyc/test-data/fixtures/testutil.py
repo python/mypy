@@ -15,13 +15,29 @@ FLOAT_MAGIC: Final = -113.0
 float_vals = [
     float(n) * 0.25 for n in range(-10, 10)
 ] + [
-    -0.0, 1.0/3.0, math.sqrt(2.0), 1.23e200, -2.34e200, 5.43e-100, -6.532e-200,
-    float('inf'), -float('inf'), float('nan'), FLOAT_MAGIC, math.pi, 2.0 * math.pi, math.pi / 2.0,
+    -0.0,
+    1.0/3.0,
+    math.sqrt(2.0),
+    1.23e200,
+    -2.34e200,
+    5.43e-100,
+    -6.532e-200,
+    float('inf'),
+    -float('inf'),
+    float('nan'),
+    FLOAT_MAGIC,
+    math.pi,
+    2.0 * math.pi,
+    math.pi / 2.0,
     -math.pi / 2.0,
-    -1.7976931348623158e+308,
-    -2.2250738585072014e-308,
-    1.7976931348623158e+308,
-    2.2250738585072014e-308,
+    -1.7976931348623158e+308,  # Smallest finite value
+    -2.2250738585072014e-308,  # Closest to zero negative normal value
+    -7.5491e-312,              # Arbitrary negative subnormal value
+    -5e-324,                   # Closest to zero negative subnormal value
+    1.7976931348623158e+308,   # Largest finite value
+    2.2250738585072014e-308,   # Closest to zero positive normal value
+    -6.3492e-312,              # Arbitrary positive subnormal value
+    5e-324,                    # Closest to zero positive subnormal value
 ]
 
 @contextmanager
