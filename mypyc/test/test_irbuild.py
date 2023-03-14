@@ -31,6 +31,7 @@ files = [
     "irbuild-set.test",
     "irbuild-str.test",
     "irbuild-bytes.test",
+    "irbuild-float.test",
     "irbuild-statements.test",
     "irbuild-nested.test",
     "irbuild-classes.test",
