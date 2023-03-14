@@ -2079,7 +2079,7 @@ L2:
     keep_alive x
     return r6
 
-[case testI64ConvertBetweenTuples]
+[case testI64ConvertBetweenTuples_64bit]
 from __future__ import annotations
 from mypy_extensions import i64
 
