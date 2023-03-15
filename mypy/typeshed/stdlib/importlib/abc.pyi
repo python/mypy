@@ -1,3 +1,4 @@
+import _ast
 import sys
 import types
 from _typeshed import (
@@ -7,6 +8,7 @@ from _typeshed import (
     OpenBinaryModeWriting,
     OpenTextMode,
     ReadableBuffer,
+    StrPath,
 )
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence
@@ -52,7 +54,9 @@ class InspectLoader(Loader):
     def get_source(self, fullname: str) -> str | None: ...
     def exec_module(self, module: types.ModuleType) -> None: ...
     @staticmethod
-    def source_to_code(data: ReadableBuffer | str, path: str = "<string>") -> types.CodeType: ...
+    def source_to_code(
+        data: ReadableBuffer | str | _ast.Module | _ast.Expression | _ast.Interactive, path: ReadableBuffer | StrPath = "<string>"
+    ) -> types.CodeType: ...
 
 class ExecutionLoader(InspectLoader):
     @abstractmethod
