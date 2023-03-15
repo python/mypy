@@ -25,7 +25,7 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -41,11 +41,17 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
 if TYPE_CHECKING:
-    from distutils.core import Extension
+    from distutils.core import Extension as _distutils_Extension
+    from typing_extensions import TypeAlias
+
+    from setuptools import Extension as _setuptools_Extension
+
+    Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools  # noqa: F401
+    import setuptools
 except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
@@ -57,13 +63,16 @@ def get_extension() -> type[Extension]:
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
+    extension_class: type[Extension]
 
     if not use_setuptools:
-        from distutils.core import Extension
-    else:
-        from setuptools import Extension
+        import distutils.core
 
-    return Extension
+        extension_class = distutils.core.Extension
+    else:
+        extension_class = setuptools.Extension
+
+    return extension_class
 
 
 def setup_mypycify_vars() -> None:

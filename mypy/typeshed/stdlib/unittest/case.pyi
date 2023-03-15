@@ -48,7 +48,7 @@ else:
         def __init__(self, test_case: TestCase, logger_name: str, level: int) -> None: ...
         def __enter__(self) -> _LoggingWatcher: ...
         def __exit__(
-            self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+            self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
         ) -> bool | None: ...
 
 if sys.version_info >= (3, 8):
@@ -68,10 +68,13 @@ class SkipTest(Exception):
 
 class _SupportsAbsAndDunderGE(SupportsDunderGE[Any], SupportsAbs[Any], Protocol): ...
 
+# Keep this alias in sync with builtins._ClassInfo
+# We can't import it from builtins or pytype crashes,
+# due to the fact that pytype uses a custom builtins stub rather than typeshed's builtins stub
 if sys.version_info >= (3, 10):
-    _IsInstanceClassInfo: TypeAlias = type | UnionType | tuple[type | UnionType | tuple[Any, ...], ...]
+    _ClassInfo: TypeAlias = type | UnionType | tuple[_ClassInfo, ...]
 else:
-    _IsInstanceClassInfo: TypeAlias = type | tuple[type | tuple[Any, ...], ...]
+    _ClassInfo: TypeAlias = type | tuple[_ClassInfo, ...]
 
 class TestCase:
     failureException: type[BaseException]
@@ -107,8 +110,8 @@ class TestCase:
     def assertIsNotNone(self, obj: object, msg: Any = None) -> None: ...
     def assertIn(self, member: Any, container: Iterable[Any] | Container[Any], msg: Any = None) -> None: ...
     def assertNotIn(self, member: Any, container: Iterable[Any] | Container[Any], msg: Any = None) -> None: ...
-    def assertIsInstance(self, obj: object, cls: _IsInstanceClassInfo, msg: Any = None) -> None: ...
-    def assertNotIsInstance(self, obj: object, cls: _IsInstanceClassInfo, msg: Any = None) -> None: ...
+    def assertIsInstance(self, obj: object, cls: _ClassInfo, msg: Any = None) -> None: ...
+    def assertNotIsInstance(self, obj: object, cls: _ClassInfo, msg: Any = None) -> None: ...
     @overload
     def assertGreater(self, a: SupportsDunderGT[_T], b: _T, msg: Any = None) -> None: ...
     @overload
@@ -129,7 +132,7 @@ class TestCase:
     # are not using `ParamSpec` intentionally,
     # because they might be used with explicitly wrong arg types to raise some error in tests.
     @overload
-    def assertRaises(  # type: ignore[misc]
+    def assertRaises(
         self,
         expected_exception: type[BaseException] | tuple[type[BaseException], ...],
         callable: Callable[..., Any],
@@ -141,7 +144,7 @@ class TestCase:
         self, expected_exception: type[_E] | tuple[type[_E], ...], *, msg: Any = ...
     ) -> _AssertRaisesContext[_E]: ...
     @overload
-    def assertRaisesRegex(  # type: ignore[misc]
+    def assertRaisesRegex(
         self,
         expected_exception: type[BaseException] | tuple[type[BaseException], ...],
         expected_regex: str | Pattern[str],
@@ -154,7 +157,7 @@ class TestCase:
         self, expected_exception: type[_E] | tuple[type[_E], ...], expected_regex: str | Pattern[str], *, msg: Any = ...
     ) -> _AssertRaisesContext[_E]: ...
     @overload
-    def assertWarns(  # type: ignore[misc]
+    def assertWarns(
         self,
         expected_warning: type[Warning] | tuple[type[Warning], ...],
         callable: Callable[_P, Any],
@@ -166,7 +169,7 @@ class TestCase:
         self, expected_warning: type[Warning] | tuple[type[Warning], ...], *, msg: Any = ...
     ) -> _AssertWarnsContext: ...
     @overload
-    def assertWarnsRegex(  # type: ignore[misc]
+    def assertWarnsRegex(
         self,
         expected_warning: type[Warning] | tuple[type[Warning], ...],
         expected_regex: str | Pattern[str],

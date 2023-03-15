@@ -208,6 +208,30 @@ class J(A[int]):
 
 [builtins fixtures/tuple.pyi]
 
+[case testSelfTypeOverrideCompatibilityGeneric]
+from typing import TypeVar, Generic, overload
+
+T = TypeVar("T", str, int, None)
+
+class A(Generic[T]):
+    @overload
+    def f(self, s: T) -> T: ...
+    @overload
+    def f(self: A[str], s: bytes) -> str: ...
+    def f(self, s: object): ...
+
+class B(A[int]):
+    def f(self, s: int) -> int: ...
+
+class C(A[None]):
+    def f(self, s: int) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
+                                     # N:      Superclass:            \
+                                     # N:          @overload          \
+                                     # N:          def f(self, s: None) -> None \
+                                     # N:      Subclass:              \
+                                     # N:          def f(self, s: int) -> int
+[builtins fixtures/tuple.pyi]
+
 [case testSelfTypeOverrideCompatibilityTypeVar-xfail]
 from typing import overload, TypeVar, Union
 

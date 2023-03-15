@@ -6,8 +6,10 @@ from typing import Iterable, List, cast
 from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
+from mypy.checker import TypeChecker
 from mypy.errorcodes import LITERAL_REQ
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.messages import format_type_bare
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -77,6 +79,7 @@ attr_optional_converters: Final = {"attr.converters.optional", "attrs.converters
 SELF_TVAR_NAME: Final = "_AT"
 MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
 MAGIC_ATTR_CLS_NAME_TEMPLATE: Final = "__{}_AttrsAttributes__"  # The tuple subclass pattern.
+ATTRS_INIT_NAME: Final = "__attrs_init__"
 
 
 class Converter:
@@ -330,7 +333,7 @@ def attr_class_maker_callback(
 
     adder = MethodAdder(ctx)
     # If  __init__ is not being generated, attrs still generates it as __attrs_init__ instead.
-    _add_init(ctx, attributes, adder, "__init__" if init else "__attrs_init__")
+    _add_init(ctx, attributes, adder, "__init__" if init else ATTRS_INIT_NAME)
     if order:
         _add_order(ctx, adder)
     if frozen:
@@ -888,3 +891,64 @@ class MethodAdder:
         """
         self_type = self_type if self_type is not None else self.self_type
         add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
+
+
+def _get_attrs_init_type(typ: Type) -> CallableType | None:
+    """
+    If `typ` refers to an attrs class, gets the type of its initializer method.
+    """
+    typ = get_proper_type(typ)
+    if not isinstance(typ, Instance):
+        return None
+    magic_attr = typ.type.get(MAGIC_ATTR_NAME)
+    if magic_attr is None or not magic_attr.plugin_generated:
+        return None
+    init_method = typ.type.get_method("__init__") or typ.type.get_method(ATTRS_INIT_NAME)
+    if not isinstance(init_method, FuncDef) or not isinstance(init_method.type, CallableType):
+        return None
+    return init_method.type
+
+
+def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
+    """
+    Generates a signature for the 'attr.evolve' function that's specific to the call site
+    and dependent on the type of the first argument.
+    """
+    if len(ctx.args) != 2:
+        # Ideally the name and context should be callee's, but we don't have it in FunctionSigContext.
+        ctx.api.fail(f'"{ctx.default_signature.name}" has unexpected type annotation', ctx.context)
+        return ctx.default_signature
+
+    if len(ctx.args[0]) != 1:
+        return ctx.default_signature  # leave it to the type checker to complain
+
+    inst_arg = ctx.args[0][0]
+
+    # <hack>
+    assert isinstance(ctx.api, TypeChecker)
+    inst_type = ctx.api.expr_checker.accept(inst_arg)
+    # </hack>
+
+    inst_type = get_proper_type(inst_type)
+    if isinstance(inst_type, AnyType):
+        return ctx.default_signature
+    inst_type_str = format_type_bare(inst_type)
+
+    attrs_init_type = _get_attrs_init_type(inst_type)
+    if not attrs_init_type:
+        ctx.api.fail(
+            f'Argument 1 to "evolve" has incompatible type "{inst_type_str}"; expected an attrs class',
+            ctx.context,
+        )
+        return ctx.default_signature
+
+    # AttrClass.__init__ has the following signature (or similar, if having kw-only & defaults):
+    #   def __init__(self, attr1: Type1, attr2: Type2) -> None:
+    # We want to generate a signature for evolve that looks like this:
+    #   def evolve(inst: AttrClass, *, attr1: Type1 = ..., attr2: Type2 = ...) -> AttrClass:
+    return attrs_init_type.copy_modified(
+        arg_names=["inst"] + attrs_init_type.arg_names[1:],
+        arg_kinds=[ARG_POS] + [ARG_NAMED_OPT for _ in attrs_init_type.arg_kinds[1:]],
+        ret_type=inst_type,
+        name=f"{ctx.default_signature.name} of {inst_type_str}",
+    )

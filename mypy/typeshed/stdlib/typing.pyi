@@ -20,6 +20,11 @@ from types import (
 )
 from typing_extensions import Never as _Never, ParamSpec as _ParamSpec, final as _final
 
+if sys.version_info >= (3, 10):
+    from types import UnionType
+if sys.version_info >= (3, 9):
+    from types import GenericAlias
+
 __all__ = [
     "AbstractSet",
     "Any",
@@ -254,7 +259,7 @@ _T_contra = TypeVar("_T_contra", contravariant=True)  # Ditto contravariant.
 _TC = TypeVar("_TC", bound=Type[object])
 
 def no_type_check(arg: _F) -> _F: ...
-def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...  # type: ignore[misc]
+def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...
 
 # Type aliases and type constructors
 
@@ -588,7 +593,7 @@ class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     def items(self) -> ItemsView[_KT, _VT_co]: ...
     def keys(self) -> KeysView[_KT]: ...
     def values(self) -> ValuesView[_VT_co]: ...
-    def __contains__(self, __o: object) -> bool: ...
+    def __contains__(self, __key: object) -> bool: ...
 
 class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
     @abstractmethod
@@ -693,7 +698,7 @@ class IO(Iterator[AnyStr], Generic[AnyStr]):
     def __enter__(self) -> IO[AnyStr]: ...
     @abstractmethod
     def __exit__(
-        self, __t: Type[BaseException] | None, __value: BaseException | None, __traceback: TracebackType | None
+        self, __type: Type[BaseException] | None, __value: BaseException | None, __traceback: TracebackType | None
     ) -> None: ...
 
 class BinaryIO(IO[bytes]):
@@ -745,8 +750,20 @@ else:
     ) -> dict[str, Any]: ...
 
 if sys.version_info >= (3, 8):
-    def get_origin(tp: Any) -> Any | None: ...
     def get_args(tp: Any) -> tuple[Any, ...]: ...
+
+    if sys.version_info >= (3, 10):
+        @overload
+        def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
+        @overload
+        def get_origin(tp: UnionType) -> type[UnionType]: ...
+    if sys.version_info >= (3, 9):
+        @overload
+        def get_origin(tp: GenericAlias) -> type: ...
+        @overload
+        def get_origin(tp: Any) -> Any | None: ...
+    else:
+        def get_origin(tp: Any) -> Any | None: ...
 
 @overload
 def cast(typ: Type[_T], val: Any) -> _T: ...
@@ -766,6 +783,7 @@ if sys.version_info >= (3, 11):
         eq_default: bool = True,
         order_default: bool = False,
         kw_only_default: bool = False,
+        frozen_default: bool = False,  # on 3.11, runtime accepts it as part of kwargs
         field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
         **kwargs: Any,
     ) -> IdentityFunction: ...

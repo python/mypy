@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
@@ -17,11 +17,13 @@ from mypy.nodes import (
     MDEF,
     Argument,
     AssignmentStmt,
+    Block,
     CallExpr,
     ClassDef,
     Context,
     DataclassTransformSpec,
     Expression,
+    IfStmt,
     JsonDict,
     NameExpr,
     Node,
@@ -380,6 +382,22 @@ class DataclassTransformer:
                             # recreate a symbol node for this attribute.
                             lvalue.node = None
 
+    def _get_assignment_statements_from_if_statement(
+        self, stmt: IfStmt
+    ) -> Iterator[AssignmentStmt]:
+        for body in stmt.body:
+            if not body.is_unreachable:
+                yield from self._get_assignment_statements_from_block(body)
+        if stmt.else_body is not None and not stmt.else_body.is_unreachable:
+            yield from self._get_assignment_statements_from_block(stmt.else_body)
+
+    def _get_assignment_statements_from_block(self, block: Block) -> Iterator[AssignmentStmt]:
+        for stmt in block.body:
+            if isinstance(stmt, AssignmentStmt):
+                yield stmt
+            elif isinstance(stmt, IfStmt):
+                yield from self._get_assignment_statements_from_if_statement(stmt)
+
     def collect_attributes(self) -> list[DataclassAttribute] | None:
         """Collect all attributes declared in the dataclass and its parents.
 
@@ -438,10 +456,10 @@ class DataclassTransformer:
         # Second, collect attributes belonging to the current class.
         current_attr_names: set[str] = set()
         kw_only = self._get_bool_arg("kw_only", self._spec.kw_only_default)
-        for stmt in cls.defs.body:
+        for stmt in self._get_assignment_statements_from_block(cls.defs):
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
-            if not (isinstance(stmt, AssignmentStmt) and stmt.new_syntax):
+            if not stmt.new_syntax:
                 continue
 
             # a: int, b: str = 1, 'foo' is not supported syntax so we
@@ -648,17 +666,18 @@ class DataclassTransformer:
         return node_type.type.fullname == "dataclasses.KW_ONLY"
 
     def _add_dataclass_fields_magic_attribute(self) -> None:
-        # Only add if the class is a dataclasses dataclass, and omit it for dataclass_transform
-        # classes.
-        # It would be nice if this condition were reified rather than using an `is` check.
-        # Only add if the class is a dataclasses dataclass, and omit it for dataclass_transform
-        # classes.
-        if self._spec is not _TRANSFORM_SPEC_FOR_DATACLASSES:
-            return
-
         attr_name = "__dataclass_fields__"
         any_type = AnyType(TypeOfAny.explicit)
-        field_type = self._api.named_type_or_none("dataclasses.Field", [any_type]) or any_type
+        # For `dataclasses`, use the type `dict[str, Field[Any]]` for accuracy. For dataclass
+        # transforms, it's inaccurate to use `Field` since a given transform may use a completely
+        # different type (or none); fall back to `Any` there.
+        #
+        # In either case, we're aiming to match the Typeshed stub for `is_dataclass`, which expects
+        # the instance to have a `__dataclass_fields__` attribute of type `dict[str, Field[Any]]`.
+        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+            field_type = self._api.named_type_or_none("dataclasses.Field", [any_type]) or any_type
+        else:
+            field_type = any_type
         attr_type = self._api.named_type(
             "builtins.dict", [self._api.named_type("builtins.str"), field_type]
         )

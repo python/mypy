@@ -32,6 +32,11 @@ from typing import (  # noqa: Y022,Y039
     type_check_only,
 )
 
+if sys.version_info >= (3, 10):
+    from types import UnionType
+if sys.version_info >= (3, 9):
+    from types import GenericAlias
+
 __all__ = [
     "Any",
     "ClassVar",
@@ -155,6 +160,18 @@ def get_type_hints(
     include_extras: bool = False,
 ) -> dict[str, Any]: ...
 def get_args(tp: Any) -> tuple[Any, ...]: ...
+
+if sys.version_info >= (3, 10):
+    @overload
+    def get_origin(tp: UnionType) -> type[UnionType]: ...
+
+if sys.version_info >= (3, 9):
+    @overload
+    def get_origin(tp: GenericAlias) -> type: ...
+
+@overload
+def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
+@overload
 def get_origin(tp: Any) -> Any | None: ...
 
 Annotated: _SpecialForm
@@ -226,6 +243,7 @@ else:
         eq_default: bool = True,
         order_default: bool = False,
         kw_only_default: bool = False,
+        frozen_default: bool = False,
         field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
         **kwargs: object,
     ) -> IdentityFunction: ...

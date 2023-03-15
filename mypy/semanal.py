@@ -1314,7 +1314,8 @@ class SemanticAnalyzer(
         """
         defn.is_property = True
         items = defn.items
-        first_item = cast(Decorator, defn.items[0])
+        first_item = defn.items[0]
+        assert isinstance(first_item, Decorator)
         deleted_items = []
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
@@ -1357,7 +1358,8 @@ class SemanticAnalyzer(
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
-                typ = cast(CallableType, defn.type)
+                typ = defn.type
+                assert isinstance(typ, CallableType)
                 a.bind_function_type_variables(typ, defn)
                 for i in range(len(typ.arg_types)):
                     store_argument_type(defn, i, typ, self.named_type)
@@ -1369,8 +1371,11 @@ class SemanticAnalyzer(
                 # The first argument of a non-static, non-class method is like 'self'
                 # (though the name could be different), having the enclosing class's
                 # instance type.
-                if is_method and not defn.is_static and not defn.is_class and defn.arguments:
-                    defn.arguments[0].variable.is_self = True
+                if is_method and not defn.is_static and defn.arguments:
+                    if not defn.is_class:
+                        defn.arguments[0].variable.is_self = True
+                    else:
+                        defn.arguments[0].variable.is_cls = True
 
                 defn.body.accept(self)
             self.function_stack.pop()
@@ -2613,11 +2618,14 @@ class SemanticAnalyzer(
                 typing_extensions = self.modules.get("typing_extensions")
                 if typing_extensions and source_id in typing_extensions.names:
                     self.msg.note(
-                        f"Use `from typing_extensions import {source_id}` instead", context
+                        f"Use `from typing_extensions import {source_id}` instead",
+                        context,
+                        code=codes.ATTR_DEFINED,
                     )
                     self.msg.note(
                         "See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module",
                         context,
+                        code=codes.ATTR_DEFINED,
                     )
 
     def process_import_over_existing_name(
@@ -5249,7 +5257,9 @@ class SemanticAnalyzer(
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope() or not self.function_stack:
             # We check both because is_function_scope() returns True inside comprehensions.
-            self.fail('"await" outside function', expr, serious=True, blocker=True)
+            # This is not a blocker, because some enviroments (like ipython)
+            # support top level awaits.
+            self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:
             self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
         expr.expr.accept(self)
@@ -5812,7 +5822,7 @@ class SemanticAnalyzer(
         # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
         # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
         # See also https://github.com/mypyc/mypyc/issues/892
-        f = cast(Any, lambda x: x)
+        f: Callable[[object], Any] = lambda x: x
         if isinstance(f(symbol_node), (Decorator, FuncBase, Var)):
             # For imports in class scope, we construct a new node to represent the symbol and
             # set its `info` attribute to `self.type`.

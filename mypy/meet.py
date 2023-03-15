@@ -342,7 +342,22 @@ def is_overlapping_types(
     left_possible = get_possible_variants(left)
     right_possible = get_possible_variants(right)
 
-    # We start by checking multi-variant types like Unions first. We also perform
+    # First handle special cases relating to PEP 612:
+    # - comparing a `Parameters` to a `Parameters`
+    # - comparing a `Parameters` to a `ParamSpecType`
+    # - comparing a `ParamSpecType` to a `ParamSpecType`
+    #
+    # These should all always be considered overlapping equality checks.
+    # These need to be done before we move on to other TypeVarLike comparisons.
+    if isinstance(left, (Parameters, ParamSpecType)) and isinstance(
+        right, (Parameters, ParamSpecType)
+    ):
+        return True
+    # A `Parameters` does not overlap with anything else, however
+    if isinstance(left, Parameters) or isinstance(right, Parameters):
+        return False
+
+    # Now move on to checking multi-variant types like Unions. We also perform
     # the same logic if either type happens to be a TypeVar/ParamSpec/TypeVarTuple.
     #
     # Handling the TypeVarLikes now lets us simulate having them bind to the corresponding

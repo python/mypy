@@ -952,7 +952,8 @@ class CallableArgument(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_callable_argument(self))
+        ret: T = visitor.visit_callable_argument(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -977,7 +978,8 @@ class TypeList(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_type_list(self))
+        ret: T = visitor.visit_type_list(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -1777,7 +1779,7 @@ class CallableType(FunctionLike):
         self: CT,
         arg_types: Bogus[Sequence[Type]] = _dummy,
         arg_kinds: Bogus[list[ArgKind]] = _dummy,
-        arg_names: Bogus[list[str | None]] = _dummy,
+        arg_names: Bogus[Sequence[str | None]] = _dummy,
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,
         name: Bogus[str | None] = _dummy,
@@ -2496,7 +2498,8 @@ class RawExpressionType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_raw_expression_type(self))
+        ret: T = visitor.visit_raw_expression_type(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2743,7 +2746,8 @@ class EllipsisType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_ellipsis_type(self))
+        ret: T = visitor.visit_ellipsis_type(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2852,7 +2856,8 @@ class PlaceholderType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_placeholder_type(self))
+        ret: T = visitor.visit_placeholder_type(self)
+        return ret
 
     def __hash__(self) -> int:
         return hash((self.fullname, tuple(self.args)))
