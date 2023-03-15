@@ -40,7 +40,7 @@ skip_glob = [
 ]
 
 [tool.codespell]
-skip = ".git,*.pdf,*.svg,*.test,typeshed,.tox,*.egg-info"
+skip = ".git,*.pdf,*.svg,*.test,googletest,typeshed,.tox,*.egg-info"
 # fo,ot,statics,ans,alo,haa -- variables used
 # hax -- HAX, initials,
 # SEH,NAMS,WONT -- abbreviations but codespell is case insensitive
