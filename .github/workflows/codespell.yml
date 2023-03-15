@@ -1,3 +1,5 @@
+# A dedicated workflow which would react to all changes to be codespelled,
+# not only to the code as test.yml does.
 ---
 name: Codespell
 
