@@ -88,7 +88,7 @@ def _get_argument(call: CallExpr, name: str) -> Expression | None:
 
 
 def _get_callee_type(call: CallExpr) -> CallableType | None:
-    """Return the type of the callee, regardless of its syntatic form."""
+    """Return the type of the callee, regardless of its syntactic form."""
 
     callee_node: Node | None = call.callee
 

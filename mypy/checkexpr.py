@@ -2087,7 +2087,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             inner_unpack = get_proper_type(unpacked_type.items[inner_unpack_index])
                             assert isinstance(inner_unpack, UnpackType)
                             inner_unpacked_type = get_proper_type(inner_unpack.type)
-                            # We assume heterogenous tuples are desugared earlier
+                            # We assume heterogeneous tuples are desugared earlier
                             assert isinstance(inner_unpacked_type, Instance)
                             assert inner_unpacked_type.type.fullname == "builtins.tuple"
                             callee_arg_types = (
