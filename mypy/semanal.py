@@ -2262,7 +2262,7 @@ class SemanticAnalyzer(
                     break
 
         metas = {defn.metaclass, with_meta_expr, add_meta_expr} - {None}
-        if not metas:
+        if len(metas) == 0:
             return
         if len(metas) > 1:
             self.fail("Multiple metaclass definitions", defn)
@@ -4602,7 +4602,7 @@ class SemanticAnalyzer(
         if s.unanalyzed_type:
             assert isinstance(s.unanalyzed_type, ProperType)
             actual_targets = [t for t in s.target if t is not None]
-            if not actual_targets:
+            if len(actual_targets) == 0:
                 # We have a type for no targets
                 self.fail('Invalid type comment: "with" statement has no targets', s)
             elif len(actual_targets) == 1:
@@ -6707,7 +6707,7 @@ def is_trivial_body(block: Block) -> bool:
     if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
         body = block.body[1:]
 
-    if not body:
+    if len(body) == 0:
         # There's only a docstring (or no body at all).
         return True
     elif len(body) > 1:

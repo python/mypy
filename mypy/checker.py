@@ -5920,7 +5920,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 non_optional_types.append(typ)
 
         # Make sure we have a mixture of optional and non-optional types.
-        if not non_optional_types or len(non_optional_types) == len(chain_indices):
+        if len(non_optional_types) == 0 or len(non_optional_types) == len(chain_indices):
             return {}, {}
 
         if_map = {}
@@ -6927,7 +6927,7 @@ def reduce_conditional_maps(type_maps: list[tuple[TypeMap, TypeMap]]) -> tuple[T
     We only retain the shared expression in the 'else' case because we don't actually know
     whether x was refined or y was refined -- only just that one of the two was refined.
     """
-    if not type_maps:
+    if len(type_maps) == 0:
         return {}, {}
     elif len(type_maps) == 1:
         return type_maps[0]
