@@ -686,7 +686,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         context: Context,
         orig_callee: Type | None,
     ) -> Type:
-        if len(args) >= 1 and all([ak == ARG_NAMED for ak in arg_kinds]):
+        if args and all([ak == ARG_NAMED for ak in arg_kinds]):
             # ex: Point(x=42, y=1337)
             assert all(arg_name is not None for arg_name in arg_names)
             item_names = cast(List[str], arg_names)
@@ -708,7 +708,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee, unique_arg.analyzed, context, orig_callee
                 )
 
-        if len(args) == 0:
+        if not args:
             # ex: EmptyDict()
             return self.check_typeddict_call_with_kwargs(callee, {}, context, orig_callee)
 
@@ -2423,8 +2423,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 inferred_types.append(infer_type)
                 type_maps.append(m)
 
-        if len(matches) == 0:
-            # No match was found
+        if not matches:
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
@@ -3015,7 +3014,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if not encountered_partial_type and not failed_out:
                     iterable_type = UnionType.make_union(iterable_types)
                     if not is_subtype(left_type, iterable_type):
-                        if len(container_types) == 0:
+                        if not container_types:
                             self.msg.unsupported_operand_types("in", left_type, right_type, e)
                         else:
                             container_type = UnionType.make_union(container_types)
@@ -5478,7 +5477,7 @@ def any_causes_overload_ambiguity(
 
 
 def all_same_types(types: list[Type]) -> bool:
-    if len(types) == 0:
+    if not types:
         return True
     return all(is_same_type(t, types[0]) for t in types[1:])
 

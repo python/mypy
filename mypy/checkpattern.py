@@ -316,7 +316,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         if isinstance(t, UnionType):
             items = [self.get_sequence_type(item, context) for item in t.items]
             not_none_items = [item for item in items if item is not None]
-            if len(not_none_items) > 0:
+            if not_none_items:
                 return make_simplified_union(not_none_items)
             else:
                 return None

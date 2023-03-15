@@ -556,7 +556,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.items = items
         self.unanalyzed_items = items.copy()
         self.impl = None
-        if len(items) > 0:
+        if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
         self.is_final = False

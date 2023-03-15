@@ -474,7 +474,7 @@ def strip_list(l: list[str]) -> list[str]:
         # Strip spaces at end of line
         r.append(re.sub(r"\s+$", "", s))
 
-    while len(r) > 0 and r[-1] == "":
+    while r and r[-1] == "":
         r.pop()
 
     return r
