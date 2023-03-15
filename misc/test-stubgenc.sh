@@ -3,7 +3,7 @@
 set -e
 set -x
 
-cd "$(dirname $0)/.."
+cd "$(dirname "$0")/.."
 
 # Install dependencies, demo project and mypy
 python -m pip install -r test-requirements.txt

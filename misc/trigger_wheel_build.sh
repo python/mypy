@@ -14,10 +14,10 @@ pip install -r mypy-requirements.txt
 V=$(python3 -m mypy --version)
 V=$(echo "$V" | cut -d" " -f2)
 
-git clone --depth 1 https://${WHEELS_PUSH_TOKEN}@github.com/mypyc/mypy_mypyc-wheels.git build
+git clone --depth 1 https://"${WHEELS_PUSH_TOKEN}"@github.com/mypyc/mypy_mypyc-wheels.git build
 cd build
-echo $COMMIT > mypy_commit
+echo "$COMMIT" > mypy_commit
 git commit -am "Build wheels for mypy $V"
-git tag v$V
+git tag v"$V"
 # Push a tag, but no need to push the change to master
 git push --tags
