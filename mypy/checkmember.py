@@ -413,6 +413,13 @@ def analyze_type_type_member_access(
         upper_bound = get_proper_type(typ.item.upper_bound)
         if isinstance(upper_bound, Instance):
             item = upper_bound
+        elif isinstance(upper_bound, UnionType):
+            return _analyze_member_access(
+                name,
+                TypeType.make_normalized(upper_bound, line=typ.line, column=typ.column),
+                mx,
+                override_info,
+            )
         elif isinstance(upper_bound, TupleType):
             item = tuple_fallback(upper_bound)
         elif isinstance(upper_bound, AnyType):
