@@ -147,9 +147,9 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 PyObject *CPyTagged_Str(CPyTagged n);
+CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
-PyObject *CPyLong_FromFloat(PyObject *o);
 PyObject *CPyBool_Str(bool b);
 int64_t CPyLong_AsInt64(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
@@ -158,6 +158,7 @@ int32_t CPyLong_AsInt32(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 void CPyInt32_Overflow(void);
+double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;
@@ -281,6 +282,24 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
         return !CPyTagged_IsLt_(right, left);
     }
 }
+
+
+// Float operations
+
+
+double CPyFloat_FloorDivide(double x, double y);
+double CPyFloat_Pow(double x, double y);
+double CPyFloat_Sin(double x);
+double CPyFloat_Cos(double x);
+double CPyFloat_Tan(double x);
+double CPyFloat_Sqrt(double x);
+double CPyFloat_Exp(double x);
+double CPyFloat_Log(double x);
+CPyTagged CPyFloat_Floor(double x);
+CPyTagged CPyFloat_Ceil(double x);
+double CPyFloat_FromTagged(CPyTagged x);
+bool CPyFloat_IsInf(double x);
+bool CPyFloat_IsNaN(double x);
 
 
 // Generic operations (that work with arbitrary types)
@@ -450,7 +469,6 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);
-
 
 
 // Set operations

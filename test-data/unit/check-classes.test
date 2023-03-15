@@ -3464,9 +3464,9 @@ class ProUser(User): pass
 class BasicUser(User): pass
 U = TypeVar('U', bound=Union[ProUser, BasicUser])
 def process(cls: Type[U]):
-    cls.foo()  # E: "Type[U]" has no attribute "foo"
+    cls.foo()
     obj = cls()
-    cls.bar(obj)  # E: "Type[U]" has no attribute "bar"
+    cls.bar(obj)
     cls.mro()  # Defined in class type
     cls.error  # E: "Type[U]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
@@ -7797,3 +7797,25 @@ class Element(Generic[_T]):
 class Bar(Foo): ...
 e: Element[Bar]
 reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
+
+[case testIterableUnpackingWithGetAttr]
+from typing import Union, Tuple
+
+class C:
+    def __getattr__(self, name):
+        pass
+
+class D:
+    def f(self) -> C:
+        return C()
+
+    def g(self) -> None:
+        # iter(x) looks up `__iter__` on the type of x rather than x itself,
+        # so this is correct behaviour.
+        # Instances of C should not be treated as being iterable,
+        # despite having a __getattr__ method
+        # that could allow for arbitrary attributes to be accessed on instances,
+        # since `type(C()).__iter__` still raises AttributeError at runtime,
+        # and that's what matters.
+        a, b = self.f()  # E: "C" has no attribute "__iter__" (not iterable)
+[builtins fixtures/tuple.pyi]

@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping, cast
+from typing import Iterable, List, Mapping
 from typing_extensions import Final
 
 import mypy.build
@@ -102,6 +102,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     UnaryExpr,
+    is_StrExpr_list,
 )
 from mypy.options import Options as MypyOptions
 from mypy.stubdoc import Sig, find_unique_signatures, parse_all_signatures
@@ -1052,7 +1053,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(rvalue.args[1], StrExpr):
             items = rvalue.args[1].value.replace(",", " ").split()
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
-            list_items = cast(List[StrExpr], rvalue.args[1].items)
+            list_items = rvalue.args[1].items
+            assert is_StrExpr_list(list_items)
             items = [item.value for item in list_items]
         else:
             self.add(f"{self._indent}{lvalue.name}: Incomplete")

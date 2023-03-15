@@ -23,6 +23,7 @@ from mypyc.ir.ops import (
     Branch,
     CallC,
     ComparisonOp,
+    Float,
     GetAttr,
     Integer,
     LoadErrorValue,
@@ -33,7 +34,7 @@ from mypyc.ir.ops import (
     TupleGet,
     Value,
 )
-from mypyc.ir.rtypes import RTuple, bool_rprimitive
+from mypyc.ir.rtypes import RTuple, bool_rprimitive, is_float_rprimitive
 from mypyc.primitives.exc_ops import err_occurred_op
 from mypyc.primitives.registry import CFunctionDescription
 
@@ -173,7 +174,11 @@ def insert_overlapping_error_value_check(ops: list[Op], target: Value) -> Compar
         ops.append(item)
         return insert_overlapping_error_value_check(ops, item)
     else:
-        errvalue = Integer(int(typ.c_undefined), rtype=typ)
+        errvalue: Value
+        if is_float_rprimitive(target.type):
+            errvalue = Float(float(typ.c_undefined))
+        else:
+            errvalue = Integer(int(typ.c_undefined), rtype=typ)
         op = ComparisonOp(target, errvalue, ComparisonOp.EQ)
         ops.append(op)
         return op

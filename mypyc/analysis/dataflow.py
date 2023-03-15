@@ -18,6 +18,10 @@ from mypyc.ir.ops import (
     ComparisonOp,
     ControlOp,
     Extend,
+    Float,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -245,7 +249,16 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_int_op(self, op: IntOp) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
+    def visit_float_op(self, op: FloatOp) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_float_neg(self, op: FloatNeg) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
     def visit_load_mem(self, op: LoadMem) -> GenAndKill[T]:
@@ -444,7 +457,7 @@ def analyze_undefined_regs(
 def non_trivial_sources(op: Op) -> set[Value]:
     result = set()
     for source in op.sources():
-        if not isinstance(source, Integer):
+        if not isinstance(source, (Integer, Float)):
             result.add(source)
     return result
 
@@ -454,7 +467,7 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         return non_trivial_sources(op), set()
 
     def visit_return(self, op: Return) -> GenAndKill[Value]:
-        if not isinstance(op.value, Integer):
+        if not isinstance(op.value, (Integer, Float)):
             return {op.value}, set()
         else:
             return set(), set()

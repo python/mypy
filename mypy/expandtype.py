@@ -49,6 +49,13 @@ from mypy.typevartuples import (
 
 @overload
 def expand_type(
+    typ: CallableType, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
+) -> CallableType:
+    ...
+
+
+@overload
+def expand_type(
     typ: ProperType, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
 ) -> ProperType:
     ...
@@ -68,6 +75,11 @@ def expand_type(
     environment.
     """
     return typ.accept(ExpandTypeVisitor(env, allow_erased_callables))
+
+
+@overload
+def expand_type_by_instance(typ: CallableType, instance: Instance) -> CallableType:
+    ...
 
 
 @overload
@@ -133,7 +145,7 @@ def freshen_function_type_vars(callee: F) -> F:
                 tv = ParamSpecType.new_unification_variable(v)
             tvs.append(tv)
             tvmap[v.id] = tv
-        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvs)
+        fresh = expand_type(callee, tvmap).copy_modified(variables=tvs)
         return cast(F, fresh)
     else:
         assert isinstance(callee, Overloaded)
@@ -234,7 +246,10 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
-        repl = get_proper_type(self.variables.get(t.id, t))
+        # set prefix to something empty so we don't duplicate it
+        repl = get_proper_type(
+            self.variables.get(t.id, t.copy_modified(prefix=Parameters([], [], [])))
+        )
         if isinstance(repl, Instance):
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.
@@ -346,7 +361,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             )
         return (arg_names, arg_kinds, arg_types)
 
-    def visit_callable_type(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> CallableType:
         param_spec = t.param_spec()
         if param_spec is not None:
             repl = get_proper_type(self.variables.get(param_spec.id))
@@ -357,7 +372,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # must expand both of them with all the argument types,
             # kinds and names in the replacement. The return type in
             # the replacement is ignored.
-            if isinstance(repl, CallableType) or isinstance(repl, Parameters):
+            if isinstance(repl, (CallableType, Parameters)):
                 # Substitute *args: P.args, **kwargs: P.kwargs
                 prefix = param_spec.prefix
                 # we need to expand the types in the prefix, so might as well
@@ -369,6 +384,23 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                     arg_names=prefix.arg_names + t.arg_names,
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+                )
+            # TODO: Conceptually, the "len(t.arg_types) == 2" should not be here. However, this
+            #       errors without it. Either figure out how to eliminate this or place an
+            #       explanation for why this is necessary.
+            elif isinstance(repl, ParamSpecType) and len(t.arg_types) == 2:
+                # We're substituting one paramspec for another; this can mean that the prefix
+                # changes. (e.g. sub Concatenate[int, P] for Q)
+                prefix = repl.prefix
+                old_prefix = param_spec.prefix
+
+                # Check assumptions. I'm not sure what order to place new prefix vs old prefix:
+                assert not old_prefix.arg_types or not prefix.arg_types
+
+                t = t.copy_modified(
+                    arg_types=prefix.arg_types + old_prefix.arg_types + t.arg_types,
+                    arg_kinds=prefix.arg_kinds + old_prefix.arg_kinds + t.arg_kinds,
+                    arg_names=prefix.arg_names + old_prefix.arg_names + t.arg_names,
                 )
 
         var_arg = t.var_arg()

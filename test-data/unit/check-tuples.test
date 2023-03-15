@@ -1248,7 +1248,7 @@ t = (0, "")
 x = 0
 y = ""
 reveal_type(t[x:])  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
-t[y:]  # E: Slice index must be an integer or None
+t[y:]  # E: Slice index must be an integer, SupportsIndex or None
 [builtins fixtures/tuple.pyi]
 
 [case testInferTupleTypeFallbackAgainstInstance]

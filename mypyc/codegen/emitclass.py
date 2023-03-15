@@ -1004,6 +1004,7 @@ def generate_readonly_getter(
                 emitter.ctype_spaced(rtype), NATIVE_PREFIX, func_ir.cname(emitter.names)
             )
         )
+        emitter.emit_error_check("retval", rtype, "return NULL;")
         emitter.emit_box("retval", "retbox", rtype, declare_dest=True)
         emitter.emit_line("return retbox;")
     else:

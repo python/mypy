@@ -111,14 +111,24 @@ class str:
 class float:
     def __init__(self, x: object) -> None: pass
     def __add__(self, n: float) -> float: pass
+    def __radd__(self, n: float) -> float: pass
     def __sub__(self, n: float) -> float: pass
+    def __rsub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __floordiv__(self, n: float) -> float: pass
+    def __mod__(self, n: float) -> float: pass
     def __pow__(self, n: float) -> float: pass
     def __neg__(self) -> float: pass
     def __pos__(self) -> float: pass
     def __abs__(self) -> float: pass
     def __invert__(self) -> float: pass
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
+    def __lt__(self, x: float) -> bool: ...
+    def __le__(self, x: float) -> bool: ...
+    def __gt__(self, x: float) -> bool: ...
+    def __ge__(self, x: float) -> bool: ...
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
@@ -288,6 +298,7 @@ class ValueError(Exception): pass
 class AttributeError(Exception): pass
 class ImportError(Exception): pass
 class NameError(Exception): pass
+class UnboundLocalError(NameError): pass
 class LookupError(Exception): pass
 class KeyError(LookupError): pass
 class IndexError(LookupError): pass

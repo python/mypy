@@ -52,7 +52,7 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union, cast
+from typing import Sequence, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.expandtype import expand_type
@@ -442,7 +442,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 tv = v.copy_modified(id=tid)
             tvs.append(tv)
             tvmap[v.id] = tv
-        return cast(CallableType, expand_type(typ, tvmap)).copy_modified(variables=tvs)
+        return expand_type(typ, tvmap).copy_modified(variables=tvs)
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))

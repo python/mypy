@@ -93,9 +93,11 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_float_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_tagged,
     is_tuple_rprimitive,
     none_rprimitive,
     object_rprimitive,
@@ -665,13 +667,13 @@ class IRBuilder:
 
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
-            self.add(Assign(target, self.coerce(rvalue_reg, target.type, line)))
+            self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line)))
         elif isinstance(target, AssignmentTargetRegister):
-            rvalue_reg = self.coerce(rvalue_reg, target.type, line)
+            rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
             self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                rvalue_reg = self.coerce(rvalue_reg, target.type, line)
+                rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
                 self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_str(target.attr)
@@ -697,6 +699,18 @@ class IRBuilder:
                 self.process_iterator_tuple_assignment(target, rvalue_reg, line)
         else:
             assert False, "Unsupported assignment target"
+
+    def coerce_rvalue(self, rvalue: Value, rtype: RType, line: int) -> Value:
+        if is_float_rprimitive(rtype) and is_tagged(rvalue.type):
+            typename = rvalue.type.short_name()
+            if typename == "short_int":
+                typename = "int"
+            self.error(
+                "Incompatible value representations in assignment "
+                + f'(expression has type "{typename}", variable has type "float")',
+                line,
+            )
+        return self.coerce(rvalue, rtype, line)
 
     def process_sequence_assignment(
         self, target: AssignmentTargetTuple, rvalue: Value, line: int
