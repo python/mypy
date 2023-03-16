@@ -282,15 +282,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         index = self.literals.literal_index(op.value)
-        s = repr(op.value)
-        if not any(x in s for x in ("/*", "*/", "\0")):
-            ann = " /* %s */" % s
-        else:
-            ann = ""
         if not is_int_rprimitive(op.type):
-            self.emit_line("%s = CPyStatics[%d];%s" % (self.reg(op), index, ann))
+            self.emit_line("%s = CPyStatics[%d];" % (self.reg(op), index), ann=op.value)
         else:
-            self.emit_line("%s = (CPyTagged)CPyStatics[%d] | 1;%s" % (self.reg(op), index, ann))
+            self.emit_line(
+                "%s = (CPyTagged)CPyStatics[%d] | 1;" % (self.reg(op), index), ann=op.value
+            )
 
     def get_attr_expr(self, obj: str, op: GetAttr | SetAttr, decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.
@@ -468,12 +465,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             name = "(PyObject *)%s" % name
-        ann = ""
-        if op.ann:
-            s = repr(op.ann)
-            if not any(x in s for x in ("/*", "*/", "\0")):
-                ann = " /* %s */" % s
-        self.emit_line(f"{dest} = {name};{ann}")
+        self.emit_line(f"{dest} = {name};", ann=op.ann)
 
     def visit_init_static(self, op: InitStatic) -> None:
         value = self.reg(op.value)
@@ -636,12 +628,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.reg(op)
-        ann = ""
-        if op.ann:
-            s = repr(op.ann)
-            if not any(x in s for x in ("/*", "*/", "\0")):
-                ann = " /* %s */" % s
-        self.emit_line(f"{dest} = {op.identifier};{ann}")
+        self.emit_line(f"{dest} = {op.identifier};", ann=op.ann)
 
     def visit_int_op(self, op: IntOp) -> None:
         dest = self.reg(op)
@@ -782,8 +769,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def c_undefined_value(self, rtype: RType) -> str:
         return self.emitter.c_undefined_value(rtype)
 
-    def emit_line(self, line: str) -> None:
-        self.emitter.emit_line(line)
+    def emit_line(self, line: str, *, ann: object = None) -> None:
+        self.emitter.emit_line(line, ann=ann)
 
     def emit_lines(self, *lines: str) -> None:
         self.emitter.emit_lines(*lines)

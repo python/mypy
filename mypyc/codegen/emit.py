@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import pprint
 import sys
+import textwrap
 from typing import Callable
 from typing_extensions import Final
 
@@ -191,10 +193,25 @@ class Emitter:
     def attr(self, name: str) -> str:
         return ATTR_PREFIX + name
 
-    def emit_line(self, line: str = "") -> None:
+    def emit_line(self, line: str = "", *, ann: object = None) -> None:
         if line.startswith("}"):
             self.dedent()
-        self.fragments.append(self._indent * " " + line + "\n")
+
+        comment = comment_continued = ""
+        if ann is not None:
+            line_width = self._indent + len(line)
+            formatted = pprint.pformat(ann, compact=True, width=max(90 - line_width, 20))
+            if not any(x in formatted for x in ("/*", "*/", "\0")):
+                if "\n" in formatted:
+                    first_line, rest = formatted.split("\n", maxsplit=1)
+                    comment = f" /* {first_line}"
+                    comment_continued = textwrap.indent(rest, (line_width + 3) * " ") + " */\n"
+                else:
+                    comment = f" /* {formatted} */"
+        self.fragments.append(self._indent * " " + line + comment + "\n")
+        if comment_continued:
+            self.fragments.extend(comment_continued.splitlines(keepends=True))
+
         if line.endswith("{"):
             self.indent()
 
