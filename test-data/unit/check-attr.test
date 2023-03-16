@@ -470,7 +470,7 @@ A([1], '2')  # E: Cannot infer type argument 1 of "A"
 [builtins fixtures/list.pyi]
 
 [case testAttrsGenericWithConverter]
-from typing import TypeVar, Generic, List, Iterable, Iterator
+from typing import TypeVar, Generic, List, Iterable, Iterator, Callable
 import attr
 T = TypeVar('T')
 
@@ -501,13 +501,24 @@ reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 reveal_type(a2.x)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(a2.y)  # N: Revealed type is "builtins.int"
 
-# Leaving this as a sanity check
-class B(Generic[T]):
-    def __init__(self, x: Iterable[T], y: T) -> None:
+
+def get_int() -> int:
+    return 1
+
+class Other(Generic[T]):
+    def __init__(self, x: T) -> None:
         pass
 
-B(['str'], 7)
-B([1], '2')
+def other_converter(x: Callable[..., T]) -> Other[Callable[..., T]]:
+    return Other(x)
+
+@attr.s(auto_attribs=True)
+class B(Generic[T]):
+    x: Other[Callable[..., T]] = attr.ib(converter=other_converter)
+
+b1 = B(get_int)
+reveal_type(b1)  # N: Revealed type is "__main__.B[builtins.int]"
+reveal_type(b1.x)  # N: Revealed type is "__main__.Other[def (*Any, **Any) -> builtins.int]"
 
 [builtins fixtures/list.pyi]
 
