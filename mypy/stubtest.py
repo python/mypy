@@ -25,7 +25,7 @@ import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Generic, Iterator, TypeVar, Union, cast
+from typing import Any, Generic, Iterator, TypeVar, Union
 from typing_extensions import get_origin
 
 import mypy.build
@@ -129,10 +129,10 @@ class Error:
             stub_file = stub_node.path or None
 
         stub_loc_str = ""
-        if stub_line:
-            stub_loc_str += f" at line {stub_line}"
         if stub_file:
             stub_loc_str += f" in file {Path(stub_file)}"
+        if stub_line:
+            stub_loc_str += f"{':' if stub_file else ' at line '}{stub_line}"
 
         runtime_line = None
         runtime_file = None
@@ -147,10 +147,10 @@ class Error:
                 pass
 
         runtime_loc_str = ""
-        if runtime_line:
-            runtime_loc_str += f" at line {runtime_line}"
         if runtime_file:
             runtime_loc_str += f" in file {Path(runtime_file)}"
+        if runtime_line:
+            runtime_loc_str += f"{':' if runtime_file else ' at line '}{runtime_line}"
 
         output = [
             _style("error: ", color="red", bold=True),
@@ -476,10 +476,7 @@ def verify_typeinfo(
     to_check = set(stub.names)
     # Check all public things on the runtime class
     to_check.update(
-        # cast to workaround mypyc complaints
-        m
-        for m in cast(Any, vars)(runtime)
-        if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
+        m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
     # Special-case the __init__ method for Protocols
     #
@@ -493,7 +490,7 @@ def verify_typeinfo(
     for entry in sorted(to_check):
         mangled_entry = entry
         if entry.startswith("__") and not entry.endswith("__"):
-            mangled_entry = f"_{stub.name}{entry}"
+            mangled_entry = f"_{stub.name.lstrip('_')}{entry}"
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
         try:

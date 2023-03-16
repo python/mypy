@@ -41,6 +41,7 @@ from mypy.nodes import (
     Statement,
     SymbolNode,
     TupleExpr,
+    TypeAlias,
     TypeInfo,
     UnaryExpr,
     Var,
@@ -92,9 +93,11 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_float_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_tagged,
     is_tuple_rprimitive,
     none_rprimitive,
     object_rprimitive,
@@ -567,7 +570,11 @@ class IRBuilder:
         else:
             assert False, "Unsupported final literal value"
 
-    def get_assignment_target(self, lvalue: Lvalue, line: int = -1) -> AssignmentTarget:
+    def get_assignment_target(
+        self, lvalue: Lvalue, line: int = -1, *, for_read: bool = False
+    ) -> AssignmentTarget:
+        if line == -1:
+            line = lvalue.line
         if isinstance(lvalue, NameExpr):
             # If we are visiting a decorator, then the SymbolNode we really want to be looking at
             # is the function that is decorated, not the entire Decorator node itself.
@@ -578,6 +585,8 @@ class IRBuilder:
                 # New semantic analyzer doesn't create ad-hoc Vars for special forms.
                 assert lvalue.is_special_form
                 symbol = Var(lvalue.name)
+            if not for_read and isinstance(symbol, Var) and symbol.is_cls:
+                self.error("Cannot assign to the first argument of classmethod", line)
             if lvalue.kind == LDEF:
                 if symbol not in self.symtables[-1]:
                     # If the function is a generator function, then first define a new variable
@@ -658,13 +667,13 @@ class IRBuilder:
 
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
-            self.add(Assign(target, self.coerce(rvalue_reg, target.type, line)))
+            self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line)))
         elif isinstance(target, AssignmentTargetRegister):
-            rvalue_reg = self.coerce(rvalue_reg, target.type, line)
+            rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
             self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                rvalue_reg = self.coerce(rvalue_reg, target.type, line)
+                rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
                 self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_str(target.attr)
@@ -690,6 +699,18 @@ class IRBuilder:
                 self.process_iterator_tuple_assignment(target, rvalue_reg, line)
         else:
             assert False, "Unsupported assignment target"
+
+    def coerce_rvalue(self, rvalue: Value, rtype: RType, line: int) -> Value:
+        if is_float_rprimitive(rtype) and is_tagged(rvalue.type):
+            typename = rvalue.type.short_name()
+            if typename == "short_int":
+                typename = "int"
+            self.error(
+                "Incompatible value representations in assignment "
+                + f'(expression has type "{typename}", variable has type "float")',
+                line,
+            )
+        return self.coerce(rvalue, rtype, line)
 
     def process_sequence_assignment(
         self, target: AssignmentTargetTuple, rvalue: Value, line: int
@@ -879,23 +900,39 @@ class IRBuilder:
         else:
             return self.type_to_rtype(target_type.args[0])
 
-    def get_dict_base_type(self, expr: Expression) -> Instance:
+    def get_dict_base_type(self, expr: Expression) -> list[Instance]:
         """Find dict type of a dict-like expression.
 
         This is useful for dict subclasses like SymbolTable.
         """
         target_type = get_proper_type(self.types[expr])
-        assert isinstance(target_type, Instance), target_type
-        dict_base = next(base for base in target_type.type.mro if base.fullname == "builtins.dict")
-        return map_instance_to_supertype(target_type, dict_base)
+        if isinstance(target_type, UnionType):
+            types = [get_proper_type(item) for item in target_type.items]
+        else:
+            types = [target_type]
+
+        dict_types = []
+        for t in types:
+            assert isinstance(t, Instance), t
+            dict_base = next(base for base in t.type.mro if base.fullname == "builtins.dict")
+            dict_types.append(map_instance_to_supertype(t, dict_base))
+        return dict_types
 
     def get_dict_key_type(self, expr: Expression) -> RType:
-        dict_base_type = self.get_dict_base_type(expr)
-        return self.type_to_rtype(dict_base_type.args[0])
+        dict_base_types = self.get_dict_base_type(expr)
+        if len(dict_base_types) == 1:
+            return self.type_to_rtype(dict_base_types[0].args[0])
+        else:
+            rtypes = [self.type_to_rtype(t.args[0]) for t in dict_base_types]
+            return RUnion.make_simplified_union(rtypes)
 
     def get_dict_value_type(self, expr: Expression) -> RType:
-        dict_base_type = self.get_dict_base_type(expr)
-        return self.type_to_rtype(dict_base_type.args[1])
+        dict_base_types = self.get_dict_base_type(expr)
+        if len(dict_base_types) == 1:
+            return self.type_to_rtype(dict_base_types[0].args[1])
+        else:
+            rtypes = [self.type_to_rtype(t.args[1]) for t in dict_base_types]
+            return RUnion.make_simplified_union(rtypes)
 
     def get_dict_item_type(self, expr: Expression) -> RType:
         key_type = self.get_dict_key_type(expr)
@@ -1002,7 +1039,8 @@ class IRBuilder:
 
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
-            call_c_ops_candidates = function_ops.get(callee.fullname, [])
+            fullname = get_call_target_fullname(callee)
+            call_c_ops_candidates = function_ops.get(fullname, [])
             target = self.builder.matching_call_c(
                 call_c_ops_candidates, arg_values, expr.line, self.node_type(expr)
             )
@@ -1333,3 +1371,12 @@ def remangle_redefinition_name(name: str) -> str:
     lookups.
     """
     return name.replace("'", "__redef__")
+
+
+def get_call_target_fullname(ref: RefExpr) -> str:
+    if isinstance(ref.node, TypeAlias):
+        # Resolve simple type aliases. In calls they evaluate to the type they point to.
+        target = get_proper_type(ref.node.target)
+        if isinstance(target, Instance):
+            return target.type.fullname
+    return ref.fullname

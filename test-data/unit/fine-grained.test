@@ -1809,8 +1809,8 @@ def f() -> Iterator[None]:
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b>, __main__
-3: <b>, __main__, a
+2: <b>, <b[wildcard]>, __main__
+3: <b>, <b[wildcard]>, __main__, a
 [out]
 main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
@@ -3124,7 +3124,6 @@ whatever: int
 [out]
 ==
 b.py:2: error: Name "c.M" is not defined
-a.py:3: error: "Type[B]" has no attribute "x"
 
 [case testFixMissingMetaclass]
 import a
@@ -3143,7 +3142,6 @@ class M(type):
     x: int
 [out]
 b.py:2: error: Name "c.M" is not defined
-a.py:3: error: "Type[B]" has no attribute "x"
 ==
 
 [case testGoodMetaclassSpoiled]
@@ -9977,7 +9975,7 @@ def update() -> str: ...
 [out]
 ==
 m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
-m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+m.py:9: note: Following member(s) of Module "default_config" have conflicts:
 m.py:9: note:     Expected:
 m.py:9: note:         def update() -> bool
 m.py:9: note:     Got:
@@ -10315,3 +10313,31 @@ a.py:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#varia
 a.py:4: note: Revealed type is "A?"
 ==
 a.py:4: note: Revealed type is "Union[builtins.str, builtins.int]"
+
+[case testUnionOfSimilarCallablesCrash]
+import b
+
+[file b.py]
+from a import x
+
+[file m.py]
+from typing import Union, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def foo(x: T, y: S) -> Union[T, S]: ...
+def f(x: int) -> int: ...
+def g(*x: int) -> int: ...
+
+[file a.py]
+from m import f, g, foo
+x = foo(f, g)
+
+[file a.py.2]
+from m import f, g, foo
+x = foo(f, g)
+reveal_type(x)
+[builtins fixtures/tuple.pyi]
+[out]
+==
+a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"

@@ -25,6 +25,10 @@ from mypyc.ir.ops import (
     ComparisonOp,
     DecRef,
     Extend,
+    Float,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -330,7 +334,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
-        if cl.get_method(op.attr):
+        prefer_method = cl.is_trait and attr_rtype.error_overlap
+        if cl.get_method(op.attr, prefer_method=prefer_method):
             # Properties are essentially methods, so use vtable access for them.
             version = "_TRAIT" if cl.is_trait else ""
             self.emit_line(
@@ -431,7 +436,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if not op.is_init and attr_rtype.is_refcounted:
-                # This is not an initalization (where we know that the attribute was
+                # This is not an initialization (where we know that the attribute was
                 # previously undefined), so decref the old value.
                 always_defined = cl.is_always_defined(op.attr)
                 if not always_defined:
@@ -670,6 +675,27 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
         self.emit_line(f"{dest} = {lhs_cast}{lhs} {op.op_str[op.op]} {rhs_cast}{rhs};")
 
+    def visit_float_op(self, op: FloatOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
+        if op.op != FloatOp.MOD:
+            self.emit_line("%s = %s %s %s;" % (dest, lhs, op.op_str[op.op], rhs))
+        else:
+            # TODO: This may set errno as a side effect, that is a little sketchy.
+            self.emit_line("%s = fmod(%s, %s);" % (dest, lhs, rhs))
+
+    def visit_float_neg(self, op: FloatNeg) -> None:
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        self.emit_line(f"{dest} = -{src};")
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
+        self.emit_line("%s = %s %s %s;" % (dest, lhs, op.op_str[op.op], rhs))
+
     def visit_load_mem(self, op: LoadMem) -> None:
         dest = self.reg(op)
         src = self.reg(op.src)
@@ -731,6 +757,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif val <= -(1 << 31):
                 s += "LL"
             return s
+        elif isinstance(reg, Float):
+            r = repr(reg.value)
+            if r == "inf":
+                return "INFINITY"
+            elif r == "-inf":
+                return "-INFINITY"
+            return r
         else:
             return self.emitter.reg(reg)
 

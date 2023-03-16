@@ -49,18 +49,18 @@ def dictConfig(config: _DictConfigArgs | dict[str, Any]) -> None: ...
 if sys.version_info >= (3, 10):
     def fileConfig(
         fname: StrOrBytesPath | IO[str] | RawConfigParser,
-        defaults: dict[str, str] | None = ...,
-        disable_existing_loggers: bool = ...,
-        encoding: str | None = ...,
+        defaults: dict[str, str] | None = None,
+        disable_existing_loggers: bool = True,
+        encoding: str | None = None,
     ) -> None: ...
 
 else:
     def fileConfig(
         fname: StrOrBytesPath | IO[str] | RawConfigParser,
-        defaults: dict[str, str] | None = ...,
-        disable_existing_loggers: bool = ...,
+        defaults: dict[str, str] | None = None,
+        disable_existing_loggers: bool = True,
     ) -> None: ...
 
 def valid_ident(s: str) -> Literal[True]: ...  # undocumented
-def listen(port: int = ..., verify: Callable[[bytes], bytes | None] | None = ...) -> Thread: ...
+def listen(port: int = 9030, verify: Callable[[bytes], bytes | None] | None = None) -> Thread: ...
 def stopListening() -> None: ...

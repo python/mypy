@@ -268,7 +268,9 @@ def bin(f: IO[bytes]) -> None:
 txt(sys.stdout)
 bin(sys.stdout)
 [out]
-_program.py:5: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
+_program.py:5: error: No overload variant of "write" of "IO" matches argument type "bytes"
+_program.py:5: note: Possible overload variants:
+_program.py:5: note:     def write(self, str, /) -> int
 _program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected "IO[bytes]"
 
 [case testBuiltinOpen]
@@ -1858,3 +1860,129 @@ _testTupleWithDifferentArgsPy310.py:20: note: Revealed type is "builtins.list[Tu
 _testTupleWithDifferentArgsPy310.py:26: error: Invalid type: try using Literal[1] instead?
 _testTupleWithDifferentArgsPy310.py:27: error: Unexpected "..."
 _testTupleWithDifferentArgsPy310.py:30: note: Revealed type is "builtins.tuple[builtins.object, ...]"
+
+[case testEnumIterMetaInference]
+import socket
+from enum import Enum
+from typing import Iterable, Iterator, Type, TypeVar
+
+_E = TypeVar("_E", bound=Enum)
+
+def enum_iter(cls: Type[_E]) -> Iterable[_E]:
+    reveal_type(iter(cls))
+    reveal_type(next(iter(cls)))
+    return iter(cls)
+
+for value in enum_iter(socket.SocketKind):
+    reveal_type(value)
+[out]
+_testEnumIterMetaInference.py:8: note: Revealed type is "typing.Iterator[_E`-1]"
+_testEnumIterMetaInference.py:9: note: Revealed type is "_E`-1"
+_testEnumIterMetaInference.py:13: note: Revealed type is "socket.SocketKind"
+
+[case testEnumUnpackedViaMetaclass]
+from enum import Enum
+
+class FooEnum(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+a, b, c = FooEnum
+reveal_type(a)
+reveal_type(b)
+reveal_type(c)
+[out]
+_testEnumUnpackedViaMetaclass.py:9: note: Revealed type is "_testEnumUnpackedViaMetaclass.FooEnum"
+_testEnumUnpackedViaMetaclass.py:10: note: Revealed type is "_testEnumUnpackedViaMetaclass.FooEnum"
+_testEnumUnpackedViaMetaclass.py:11: note: Revealed type is "_testEnumUnpackedViaMetaclass.FooEnum"
+
+[case testNativeIntTypes]
+# Spot check various native int operations with full stubs.
+from mypy_extensions import i64, i32
+
+x: i64 = 0
+y: int = x
+x = i64(0)
+y = int(x)
+i64()
+i64("12")
+i64("ab", 16)
+i64(1.2)
+float(i64(1))
+
+i64(1) + i32(2)  # Error
+reveal_type(x + y)
+reveal_type(y + x)
+a = [0]
+a[x]
+[out]
+_testNativeIntTypes.py:14: error: Unsupported operand types for + ("i64" and "i32")
+_testNativeIntTypes.py:15: note: Revealed type is "mypy_extensions.i64"
+_testNativeIntTypes.py:16: note: Revealed type is "mypy_extensions.i64"
+
+[case testStarUnpackNestedUnderscore]
+from typing import Tuple, Dict, List
+
+def crash() -> None:
+    d: Dict[int, Tuple[str, int, str]] = {}
+    k, (v1, *_) = next(iter(d.items()))
+
+def test1() -> None:
+    vs: List[str]
+    d: Dict[int, Tuple[str, int, int]] = {}
+    k, (v1, *vs) = next(iter(d.items()))
+    reveal_type(vs)
+
+def test2() -> None:
+    d: Dict[int, Tuple[str, int, str]] = {}
+    k, (v1, *vs) = next(iter(d.items()))
+    reveal_type(vs)
+[out]
+_testStarUnpackNestedUnderscore.py:10: error: List item 0 has incompatible type "int"; expected "str"
+_testStarUnpackNestedUnderscore.py:10: error: List item 1 has incompatible type "int"; expected "str"
+_testStarUnpackNestedUnderscore.py:11: note: Revealed type is "builtins.list[builtins.str]"
+_testStarUnpackNestedUnderscore.py:16: note: Revealed type is "builtins.list[builtins.object]"
+
+[case testStrictEqualitywithParamSpec]
+# flags: --strict-equality
+from typing import Generic
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec("P")
+
+class Foo(Generic[P]): ...
+class Bar(Generic[P]): ...
+
+def bad(foo: Foo[[int]], bar: Bar[[int]]) -> bool:
+    return foo == bar
+
+def good1(foo1: Foo[[int]], foo2: Foo[[str]]) -> bool:
+    return foo1 == foo2
+
+def good2(foo1: Foo[[int, str]], foo2: Foo[[int, bytes]]) -> bool:
+    return foo1 == foo2
+
+def good3(foo1: Foo[[int]], foo2: Foo[[int, int]]) -> bool:
+    return foo1 == foo2
+
+def good4(foo1: Foo[[int]], foo2: Foo[[int]]) -> bool:
+    return foo1 == foo2
+
+def good5(foo1: Foo[[int]], foo2: Foo[[bool]]) -> bool:
+    return foo1 == foo2
+
+def good6(foo1: Foo[[int, int]], foo2: Foo[[bool, bool]]) -> bool:
+    return foo1 == foo2
+
+def good7(foo1: Foo[[int]], foo2: Foo[P], *args: P.args, **kwargs: P.kwargs) -> bool:
+    return foo1 == foo2
+
+def good8(foo1: Foo[P], foo2: Foo[[int, str, bytes]], *args: P.args, **kwargs: P.kwargs) -> bool:
+    return foo1 == foo2
+
+def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P.args, **kwargs: P.kwargs) -> bool:
+    return foo1 == foo2
+
+[out]
+_testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")

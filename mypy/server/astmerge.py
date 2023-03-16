@@ -95,7 +95,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     SyntheticTypeVisitor,
     TupleType,
     Type,
@@ -359,7 +358,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         if node in self.replacements:
             # The subclass relationships may change, so reset all caches relevant to the
             # old MRO.
-            new = cast(TypeInfo, self.replacements[node])
+            new = self.replacements[node]
+            assert isinstance(new, TypeInfo)
             type_state.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 
@@ -518,9 +518,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_ellipsis_type(self, typ: EllipsisType) -> None:
         pass
-
-    def visit_star_type(self, typ: StarType) -> None:
-        typ.type.accept(self)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass

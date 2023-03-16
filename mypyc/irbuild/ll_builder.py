@@ -46,6 +46,10 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     Extend,
+    Float,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -67,6 +71,8 @@ from mypyc.ir.ops import (
     Unbox,
     Unreachable,
     Value,
+    float_comparison_op_to_id,
+    float_op_to_id,
     int_op_to_id,
 )
 from mypyc.ir.rtypes import (
@@ -96,6 +102,7 @@ from mypyc.ir.rtypes import (
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
+    is_float_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -126,6 +133,7 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op,
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
+from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     generic_len_op,
     generic_ssize_t_len_op,
@@ -198,6 +206,9 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
     "<<=",
     ">>=",
 }
+
+# Binary operations on bools that are specialized and don't just promote operands to int
+BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
 
 
 class LowLevelIRBuilder:
@@ -326,17 +337,23 @@ class LowLevelIRBuilder:
             ):
                 # Equivalent types
                 return src
-            elif (
-                is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
-            ) and is_int_rprimitive(target_type):
+            elif (is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)) and is_tagged(
+                target_type
+            ):
                 shifted = self.int_op(
                     bool_rprimitive, src, Integer(1, bool_rprimitive), IntOp.LEFT_SHIFT
                 )
-                return self.add(Extend(shifted, int_rprimitive, signed=False))
+                return self.add(Extend(shifted, target_type, signed=False))
             elif (
                 is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
             ) and is_fixed_width_rtype(target_type):
                 return self.add(Extend(src, target_type, signed=False))
+            elif isinstance(src, Integer) and is_float_rprimitive(target_type):
+                if is_tagged(src_type):
+                    return Float(float(src.value // 2))
+                return Float(float(src.value))
+            elif is_tagged(src_type) and is_float_rprimitive(target_type):
+                return self.int_to_float(src, line)
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -1024,6 +1041,8 @@ class LowLevelIRBuilder:
             elif not lst:
                 if is_fixed_width_rtype(arg.type):
                     output_arg = Integer(0, arg.type)
+                elif is_float_rprimitive(arg.type):
+                    output_arg = Float(0.0)
                 else:
                     output_arg = self.add(LoadErrorValue(arg.type, is_borrowed=True))
             else:
@@ -1163,7 +1182,7 @@ class LowLevelIRBuilder:
 
     def load_float(self, value: float) -> Value:
         """Load a float literal value."""
-        return self.add(LoadLiteral(value, float_rprimitive))
+        return Float(value)
 
     def load_str(self, value: str) -> Value:
         """Load a str literal value.
@@ -1245,48 +1264,45 @@ class LowLevelIRBuilder:
             return self.compare_bytes(lreg, rreg, op, line)
         if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping:
             return self.compare_tagged(lreg, rreg, op, line)
-        if (
-            is_bool_rprimitive(ltype)
-            and is_bool_rprimitive(rtype)
-            and op in ("&", "&=", "|", "|=", "^", "^=")
-        ):
-            return self.bool_bitwise_op(lreg, rreg, op[0], line)
+        if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in BOOL_BINARY_OPS:
+            if op in ComparisonOp.signed_ops:
+                return self.bool_comparison_op(lreg, rreg, op, line)
+            else:
+                return self.bool_bitwise_op(lreg, rreg, op[0], line)
         if isinstance(rtype, RInstance) and op in ("in", "not in"):
             return self.translate_instance_contains(rreg, lreg, op, line)
         if is_fixed_width_rtype(ltype):
             if op in FIXED_WIDTH_INT_BINARY_OPS:
                 if op.endswith("="):
                     op = op[:-1]
+                if op != "//":
+                    op_id = int_op_to_id[op]
+                else:
+                    op_id = IntOp.DIV
+                if is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype):
+                    rreg = self.coerce(rreg, ltype, line)
+                    rtype = ltype
                 if is_fixed_width_rtype(rtype) or is_tagged(rtype):
-                    if op != "//":
-                        op_id = int_op_to_id[op]
-                    else:
-                        op_id = IntOp.DIV
                     return self.fixed_width_int_op(ltype, lreg, rreg, op_id, line)
                 if isinstance(rreg, Integer):
                     # TODO: Check what kind of Integer
-                    if op != "//":
-                        op_id = int_op_to_id[op]
-                    else:
-                        op_id = IntOp.DIV
                     return self.fixed_width_int_op(
                         ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line
                     )
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(rtype):
                     rreg = self.coerce_int_to_fixed_width(rreg, ltype, line)
+                elif is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype):
+                    rreg = self.coerce(rreg, ltype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if is_fixed_width_rtype(rreg.type):
                     return self.comparison_op(lreg, rreg, op_id, line)
                 if isinstance(rreg, Integer):
                     return self.comparison_op(lreg, Integer(rreg.value >> 1, ltype), op_id, line)
         elif is_fixed_width_rtype(rtype):
-            if (
-                isinstance(lreg, Integer) or is_tagged(ltype)
-            ) and op in FIXED_WIDTH_INT_BINARY_OPS:
+            if op in FIXED_WIDTH_INT_BINARY_OPS:
                 if op.endswith("="):
                     op = op[:-1]
-                # TODO: Support comparison ops (similar to above)
                 if op != "//":
                     op_id = int_op_to_id[op]
                 else:
@@ -1296,15 +1312,56 @@ class LowLevelIRBuilder:
                     return self.fixed_width_int_op(
                         rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line
                     )
-                else:
+                if is_tagged(ltype):
+                    return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
+                if is_bool_rprimitive(ltype) or is_bit_rprimitive(ltype):
+                    lreg = self.coerce(lreg, rtype, line)
                     return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(ltype):
                     lreg = self.coerce_int_to_fixed_width(lreg, rtype, line)
+                elif is_bool_rprimitive(ltype) or is_bit_rprimitive(ltype):
+                    lreg = self.coerce(lreg, rtype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if isinstance(lreg, Integer):
                     return self.comparison_op(Integer(lreg.value >> 1, rtype), rreg, op_id, line)
+                if is_fixed_width_rtype(lreg.type):
+                    return self.comparison_op(lreg, rreg, op_id, line)
+
+        # Mixed int comparisons
+        if op in ("==", "!="):
+            op_id = ComparisonOp.signed_ops[op]
+            if is_tagged(ltype) and is_subtype(rtype, ltype):
+                rreg = self.coerce(rreg, int_rprimitive, line)
                 return self.comparison_op(lreg, rreg, op_id, line)
+            if is_tagged(rtype) and is_subtype(ltype, rtype):
+                lreg = self.coerce(lreg, int_rprimitive, line)
+                return self.comparison_op(lreg, rreg, op_id, line)
+        elif op in op in int_comparison_op_mapping:
+            if is_tagged(ltype) and is_subtype(rtype, ltype):
+                rreg = self.coerce(rreg, short_int_rprimitive, line)
+                return self.compare_tagged(lreg, rreg, op, line)
+            if is_tagged(rtype) and is_subtype(ltype, rtype):
+                lreg = self.coerce(lreg, short_int_rprimitive, line)
+                return self.compare_tagged(lreg, rreg, op, line)
+        if is_float_rprimitive(ltype) or is_float_rprimitive(rtype):
+            if isinstance(lreg, Integer):
+                lreg = Float(float(lreg.numeric_value()))
+            elif isinstance(rreg, Integer):
+                rreg = Float(float(rreg.numeric_value()))
+            elif is_int_rprimitive(lreg.type):
+                lreg = self.int_to_float(lreg, line)
+            elif is_int_rprimitive(rreg.type):
+                rreg = self.int_to_float(rreg, line)
+            if is_float_rprimitive(lreg.type) and is_float_rprimitive(rreg.type):
+                if op in float_comparison_op_to_id:
+                    return self.compare_floats(lreg, rreg, float_comparison_op_to_id[op], line)
+                if op.endswith("="):
+                    base_op = op[:-1]
+                else:
+                    base_op = op
+                if base_op in float_op_to_id:
+                    return self.float_op(lreg, rreg, base_op, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -1363,7 +1420,7 @@ class LowLevelIRBuilder:
     ) -> None:
         """Compare two tagged integers using given operator (conditional context).
 
-        Assume lhs and and rhs are tagged integers.
+        Assume lhs and rhs are tagged integers.
 
         Args:
             lhs: Left operand
@@ -1509,14 +1566,21 @@ class LowLevelIRBuilder:
             assert False, op
         return self.add(IntOp(bool_rprimitive, lreg, rreg, code, line))
 
+    def bool_comparison_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
+        op_id = ComparisonOp.signed_ops[op]
+        return self.comparison_op(lreg, rreg, op_id, line)
+
     def unary_not(self, value: Value, line: int) -> Value:
         mask = Integer(1, value.type, line)
         return self.int_op(value.type, value, mask, IntOp.XOR, line)
 
     def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
         typ = value.type
-        if (is_bool_rprimitive(typ) or is_bit_rprimitive(typ)) and expr_op == "not":
-            return self.unary_not(value, line)
+        if is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+            if expr_op == "not":
+                return self.unary_not(value, line)
+            if expr_op == "+":
+                return value
         if is_fixed_width_rtype(typ):
             if expr_op == "-":
                 # Translate to '0 - x'
@@ -1526,12 +1590,22 @@ class LowLevelIRBuilder:
                 return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
             elif expr_op == "+":
                 return value
+        if is_float_rprimitive(typ):
+            if expr_op == "-":
+                return self.add(FloatNeg(value, line))
+            elif expr_op == "+":
+                return value
+
         if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?
             num = value.value
             if is_short_int_rprimitive(typ):
                 num >>= 1
             return Integer(-num, typ, value.line)
+        if is_tagged(typ) and expr_op == "+":
+            return value
+        if isinstance(value, Float):
+            return Float(-value.value, value.line)
         if isinstance(typ, RInstance):
             if expr_op == "-":
                 method = "__neg__"
@@ -1681,6 +1755,8 @@ class LowLevelIRBuilder:
         ):
             # Directly call the __bool__ method on classes that have it.
             result = self.gen_method_call(value, "__bool__", [], bool_rprimitive, value.line)
+        elif is_float_rprimitive(value.type):
+            result = self.compare_floats(value, Float(0.0), FloatComparisonOp.NEQ, value.line)
         else:
             value_type = optional_value_type(value.type)
             if value_type is not None:
@@ -1858,6 +1934,62 @@ class LowLevelIRBuilder:
         """
         return self.add(IntOp(type, lhs, rhs, op, line))
 
+    def float_op(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        """Generate a native float binary arithmetic operation.
+
+        This follows Python semantics (e.g. raise exception on division by zero).
+        Add a FloatOp directly if you want low-level semantics.
+
+        Args:
+            op: Binary operator (e.g. '+' or '*')
+        """
+        op_id = float_op_to_id[op]
+        if op_id in (FloatOp.DIV, FloatOp.MOD):
+            if not (isinstance(rhs, Float) and rhs.value != 0.0):
+                c = self.compare_floats(rhs, Float(0.0), FloatComparisonOp.EQ, line)
+                err, ok = BasicBlock(), BasicBlock()
+                self.add(Branch(c, err, ok, Branch.BOOL, rare=True))
+                self.activate_block(err)
+                if op_id == FloatOp.DIV:
+                    msg = "float division by zero"
+                else:
+                    msg = "float modulo"
+                self.add(RaiseStandardError(RaiseStandardError.ZERO_DIVISION_ERROR, msg, line))
+                self.add(Unreachable())
+                self.activate_block(ok)
+        if op_id == FloatOp.MOD:
+            # Adjust the result to match Python semantics (FloatOp follows C semantics).
+            return self.float_mod(lhs, rhs, line)
+        else:
+            return self.add(FloatOp(lhs, rhs, op_id, line))
+
+    def float_mod(self, lhs: Value, rhs: Value, line: int) -> Value:
+        """Perform x % y on floats using Python semantics."""
+        mod = self.add(FloatOp(lhs, rhs, FloatOp.MOD, line))
+        res = Register(float_rprimitive)
+        self.add(Assign(res, mod))
+        tricky, adjust, copysign, done = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+        is_zero = self.add(FloatComparisonOp(res, Float(0.0), FloatComparisonOp.EQ, line))
+        self.add(Branch(is_zero, copysign, tricky, Branch.BOOL))
+        self.activate_block(tricky)
+        same_signs = self.is_same_float_signs(lhs, rhs, line)
+        self.add(Branch(same_signs, done, adjust, Branch.BOOL))
+        self.activate_block(adjust)
+        adj = self.float_op(res, rhs, "+", line)
+        self.add(Assign(res, adj))
+        self.add(Goto(done))
+        self.activate_block(copysign)
+        # If the remainder is zero, CPython ensures the result has the
+        # same sign as the denominator.
+        adj = self.call_c(copysign_op, [Float(0.0), rhs], line)
+        self.add(Assign(res, adj))
+        self.add(Goto(done))
+        self.activate_block(done)
+        return res
+
+    def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        return self.add(FloatComparisonOp(lhs, rhs, op, line))
+
     def fixed_width_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         """Generate a binary op using Python fixed-width integer semantics.
 
@@ -1900,13 +2032,12 @@ class LowLevelIRBuilder:
         res = Register(type)
         div = self.int_op(type, lhs, rhs, IntOp.DIV, line)
         self.add(Assign(res, div))
-        diff_signs = self.is_different_native_int_signs(type, lhs, rhs, line)
+        same_signs = self.is_same_native_int_signs(type, lhs, rhs, line)
         tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
-        self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+        self.add(Branch(same_signs, done, tricky, Branch.BOOL))
         self.activate_block(tricky)
         mul = self.int_op(type, res, rhs, IntOp.MUL, line)
         mul_eq = self.add(ComparisonOp(mul, lhs, ComparisonOp.EQ, line))
-        adjust = BasicBlock()
         self.add(Branch(mul_eq, done, adjust, Branch.BOOL))
         self.activate_block(adjust)
         adj = self.int_op(type, res, Integer(1, type), IntOp.SUB, line)
@@ -1920,12 +2051,11 @@ class LowLevelIRBuilder:
         res = Register(type)
         mod = self.int_op(type, lhs, rhs, IntOp.MOD, line)
         self.add(Assign(res, mod))
-        diff_signs = self.is_different_native_int_signs(type, lhs, rhs, line)
+        same_signs = self.is_same_native_int_signs(type, lhs, rhs, line)
         tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
-        self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+        self.add(Branch(same_signs, done, tricky, Branch.BOOL))
         self.activate_block(tricky)
         is_zero = self.add(ComparisonOp(res, Integer(0, type), ComparisonOp.EQ, line))
-        adjust = BasicBlock()
         self.add(Branch(is_zero, done, adjust, Branch.BOOL))
         self.activate_block(adjust)
         adj = self.int_op(type, res, rhs, IntOp.ADD, line)
@@ -1934,9 +2064,14 @@ class LowLevelIRBuilder:
         self.activate_block(done)
         return res
 
-    def is_different_native_int_signs(self, type: RType, a: Value, b: Value, line: int) -> Value:
+    def is_same_native_int_signs(self, type: RType, a: Value, b: Value, line: int) -> Value:
         neg1 = self.add(ComparisonOp(a, Integer(0, type), ComparisonOp.SLT, line))
         neg2 = self.add(ComparisonOp(b, Integer(0, type), ComparisonOp.SLT, line))
+        return self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
+
+    def is_same_float_signs(self, a: Value, b: Value, line: int) -> Value:
+        neg1 = self.add(FloatComparisonOp(a, Float(0.0), FloatComparisonOp.LT, line))
+        neg2 = self.add(FloatComparisonOp(b, Float(0.0), FloatComparisonOp.LT, line))
         return self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
 
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
@@ -2009,6 +2144,9 @@ class LowLevelIRBuilder:
             line: line number
         """
         return self.call_c(new_tuple_with_length_op, [length], line)
+
+    def int_to_float(self, n: Value, line: int) -> Value:
+        return self.call_c(int_to_float_op, [n], line)
 
     # Internal helpers
 

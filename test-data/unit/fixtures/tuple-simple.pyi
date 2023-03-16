@@ -18,3 +18,4 @@ class function: pass
 # We need int for indexing tuples.
 class int: pass
 class str: pass # For convenience
+class dict: pass

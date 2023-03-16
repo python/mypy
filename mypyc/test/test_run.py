@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Any, Iterator, cast
+from typing import Any, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
@@ -42,6 +42,7 @@ files = [
     "run-i64.test",
     "run-i32.test",
     "run-floats.test",
+    "run-math.test",
     "run-bools.test",
     "run-strings.test",
     "run-bytes.test",
@@ -108,15 +109,13 @@ def run_setup(script_name: str, script_args: list[str]) -> bool:
         finally:
             sys.argv = save_argv
     except SystemExit as e:
-        # typeshed reports code as being an int but that is wrong
-        code = cast(Any, e).code
         # distutils converts KeyboardInterrupt into a SystemExit with
         # "interrupted" as the argument. Convert it back so that
         # pytest will exit instead of just failing the test.
-        if code == "interrupted":
+        if e.code == "interrupted":
             raise KeyboardInterrupt from e
 
-        return code == 0 or code is None
+        return e.code == 0 or e.code is None
 
     return True
 
@@ -255,7 +254,7 @@ class TestRun(MypycDataSuite):
             assert False, "Compile error"
 
         # Check that serialization works on this IR. (Only on the first
-        # step because the the returned ir only includes updated code.)
+        # step because the returned ir only includes updated code.)
         if incremental_step == 1:
             check_serialization_roundtrip(ir)
 

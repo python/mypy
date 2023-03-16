@@ -705,8 +705,8 @@ class BuildManager:
         self.quickstart_state = read_quickstart_file(options, self.stdout)
         # Fine grained targets (module top levels and top level functions) processed by
         # the semantic analyzer, used only for testing. Currently used only by the new
-        # semantic analyzer.
-        self.processed_targets: list[str] = []
+        # semantic analyzer. Tuple of module and target name.
+        self.processed_targets: list[tuple[str, str]] = []
         # Missing stub packages encountered.
         self.missing_stub_packages: set[str] = set()
         # Cache for mypy ASTs that have completed semantic analysis
@@ -919,7 +919,7 @@ class BuildManager:
 
 
 def deps_to_json(x: dict[str, set[str]]) -> str:
-    return json.dumps({k: list(v) for k, v in x.items()})
+    return json.dumps({k: list(v) for k, v in x.items()}, separators=(",", ":"))
 
 
 # File for storing metadata about all the fine-grained dependency caches
@@ -987,7 +987,7 @@ def write_deps_cache(
 
     meta = {"snapshot": meta_snapshot, "deps_meta": fg_deps_meta}
 
-    if not metastore.write(DEPS_META_FILE, json.dumps(meta)):
+    if not metastore.write(DEPS_META_FILE, json.dumps(meta, separators=(",", ":"))):
         manager.log(f"Error writing fine-grained deps meta JSON file {DEPS_META_FILE}")
         error = True
 
@@ -1055,7 +1055,8 @@ PLUGIN_SNAPSHOT_FILE: Final = "@plugins_snapshot.json"
 
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
-    if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, json.dumps(manager.plugins_snapshot)):
+    snapshot = json.dumps(manager.plugins_snapshot, separators=(",", ":"))
+    if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, snapshot):
         manager.errors.set_file(_cache_dir_prefix(manager.options), None, manager.options)
         manager.errors.report(0, 0, "Error writing plugins snapshot", blocker=True)
 
@@ -1487,7 +1488,7 @@ def validate_meta(
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
             else:
-                meta_str = json.dumps(meta_dict)
+                meta_str = json.dumps(meta_dict, separators=(",", ":"))
             meta_json, _, _ = get_cache_names(id, path, manager.options)
             manager.log(
                 "Updating mtime for {}: file {}, meta {}, mtime {}".format(
@@ -1517,7 +1518,7 @@ def json_dumps(obj: Any, debug_cache: bool) -> str:
     if debug_cache:
         return json.dumps(obj, indent=2, sort_keys=True)
     else:
-        return json.dumps(obj, sort_keys=True)
+        return json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
 def write_cache(
@@ -2359,7 +2360,10 @@ class State:
         ) or manager.errors.is_error_code_enabled(codes.USED_BEFORE_DEF):
             self.tree.accept(
                 PossiblyUndefinedVariableVisitor(
-                    MessageBuilder(manager.errors, manager.modules), self.type_map(), self.options
+                    MessageBuilder(manager.errors, manager.modules),
+                    self.type_map(),
+                    self.options,
+                    self.tree.names,
                 )
             )
 
@@ -2407,6 +2411,12 @@ class State:
             manager.report_file(self.tree, self.type_map(), self.options)
 
             self.update_fine_grained_deps(self.manager.fg_deps)
+
+            if manager.options.export_ref_info:
+                write_undocumented_ref_info(
+                    self, manager.metastore, manager.options, self.type_map()
+                )
+
             self.free_state()
             if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
                 free_tree(self.tree)
@@ -2938,6 +2948,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         dump_all_dependencies(
             manager.modules, manager.all_types, manager.options.python_version, manager.options
         )
+
     return graph
 
 
@@ -3613,3 +3624,24 @@ def is_silent_import_module(manager: BuildManager, path: str) -> bool:
         is_sub_path(path, dir)
         for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path
     )
+
+
+def write_undocumented_ref_info(
+    state: State, metastore: MetadataStore, options: Options, type_map: dict[Expression, Type]
+) -> None:
+    # This exports some dependency information in a rather ad-hoc fashion, which
+    # can be helpful for some tools. This is all highly experimental and could be
+    # removed at any time.
+
+    from mypy.refinfo import get_undocumented_ref_info_json
+
+    if not state.tree:
+        # We need a full AST for this.
+        return
+
+    _, data_file, _ = get_cache_names(state.id, state.xpath, options)
+    ref_info_file = ".".join(data_file.split(".")[:-2]) + ".refs.json"
+    assert not ref_info_file.startswith(".")
+
+    deps_json = get_undocumented_ref_info_json(state.tree, type_map)
+    metastore.write(ref_info_file, json.dumps(deps_json, separators=(",", ":")))

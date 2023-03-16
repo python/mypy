@@ -702,3 +702,12 @@ class Indexable:
 
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
+
+[case testTypeVarWithValueDeferral]
+from typing import TypeVar, Callable
+
+T = TypeVar("T", "A", "B")
+Func = Callable[[], T]
+
+class A: ...
+class B: ...

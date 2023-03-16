@@ -27,6 +27,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.state import state
 from mypy.types import (
+    MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
@@ -103,11 +104,7 @@ class SubtypeContext:
         # Historically proper and non-proper subtypes were defined using different helpers
         # and different visitors. Check if flag values are such that we definitely support.
         if proper_subtype:
-            assert (
-                not self.ignore_type_params
-                and not self.ignore_pos_arg_names
-                and not self.ignore_declared_variance
-            )
+            assert not self.ignore_pos_arg_names and not self.ignore_declared_variance
         else:
             assert not self.erase_instances and not self.keep_erased_types
 
@@ -391,8 +388,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_proper_subtype(left, right, subtype_context=self.subtype_context)
         return is_subtype(left, right, subtype_context=self.subtype_context)
 
-    # visit_x(left) means: is left (which is an instance of X) a subtype of
-    # right?
+    # visit_x(left) means: is left (which is an instance of X) a subtype of right?
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         # This can be called if there is a bad type annotation. The result probably
@@ -458,7 +454,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # Special case: Low-level integer types are compatible with 'int'. We can't
                 # use promotions, since 'int' is already promoted to low-level integer types,
                 # and we can't have circular promotions.
-                if left.type.alt_promote is right.type:
+                if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
             # Always try a nominal check if possible,
@@ -1171,7 +1167,7 @@ def find_member(
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
                     return getattr_type
-        if itype.type.fallback_to_any:
+        if itype.type.fallback_to_any or class_obj and itype.type.meta_fallback_to_any:
             return AnyType(TypeOfAny.special_form)
         if isinstance(v, TypeInfo):
             # PEP 544 doesn't specify anything about such use cases. So we just try
@@ -1797,14 +1793,19 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
         erase_type(item), supertype, ignore_promotions=True, erase_instances=True
     ):
         return True
-    if isinstance(supertype, Instance) and supertype.type.is_protocol:
-        # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
-        if is_proper_subtype(item, supertype, ignore_promotions=True):
-            return True
-    if isinstance(item, TypedDictType) and isinstance(supertype, Instance):
-        # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
-        if supertype.type.fullname == "builtins.dict":
-            return True
+    if isinstance(supertype, Instance):
+        if supertype.type.is_protocol:
+            # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
+            if is_proper_subtype(item, supertype, ignore_promotions=True):
+                return True
+        if isinstance(item, TypedDictType):
+            # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
+            if supertype.type.fullname == "builtins.dict":
+                return True
+        elif isinstance(item, Instance) and supertype.type.fullname == "builtins.int":
+            # "int" covers all native int types
+            if item.type.fullname in MYPYC_NATIVE_INT_NAMES:
+                return True
     # TODO: Add more special cases.
     return False
 

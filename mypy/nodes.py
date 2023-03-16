@@ -20,7 +20,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 
@@ -461,20 +461,17 @@ class ImportFrom(ImportBase):
 class ImportAll(ImportBase):
     """from m import *"""
 
-    __slots__ = ("id", "relative", "imported_names")
+    __slots__ = ("id", "relative")
 
     __match_args__ = ("id", "relative")
 
     id: str
     relative: int
-    # NOTE: Only filled and used by old semantic analyzer.
-    imported_names: list[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
-        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
@@ -704,18 +701,6 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(
-        self,
-        target: Context | int,
-        column: int | None = None,
-        end_line: int | None = None,
-        end_column: int | None = None,
-    ) -> None:
-        super().set_line(target, column, end_line, end_column)
-        for arg in self.arguments:
-            # TODO: set arguments line/column to their precise locations.
-            arg.set_line(self.line, self.column, self.end_line, end_column)
-
     def is_dynamic(self) -> bool:
         return self.type is None
 
@@ -750,6 +735,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "deco_line",
         "is_trivial_body",
         "is_mypy_only",
+        # Present only when a function is decorated with @typing.datasclass_transform or similar
+        "dataclass_transform_spec",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -777,6 +764,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.deco_line: int | None = None
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
+        self.dataclass_transform_spec: DataclassTransformSpec | None = None
 
     @property
     def name(self) -> str:
@@ -802,6 +790,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             "flags": get_flags(self, FUNCDEF_FLAGS),
             "abstract_status": self.abstract_status,
             # TODO: Do we need expanded, original_def?
+            "dataclass_transform_spec": (
+                None
+                if self.dataclass_transform_spec is None
+                else self.dataclass_transform_spec.serialize()
+            ),
         }
 
     @classmethod
@@ -824,6 +817,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         ret.arg_names = data["arg_names"]
         ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
+        ret.dataclass_transform_spec = (
+            DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
+            if data["dataclass_transform_spec"] is not None
+            else None
+        )
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -903,6 +901,7 @@ class Decorator(SymbolNode, Statement):
 
 VAR_FLAGS: Final = [
     "is_self",
+    "is_cls",
     "is_initialized_in_class",
     "is_staticmethod",
     "is_classmethod",
@@ -937,6 +936,7 @@ class Var(SymbolNode):
         "type",
         "final_value",
         "is_self",
+        "is_cls",
         "is_ready",
         "is_inferred",
         "is_initialized_in_class",
@@ -969,6 +969,8 @@ class Var(SymbolNode):
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
+        # Is this the first argument to a classmethod (typically "cls")?
+        self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
         # Is this initialized explicitly to a non-None value in class body?
@@ -1633,6 +1635,10 @@ class StrExpr(Expression):
         return visitor.visit_str_expr(self)
 
 
+def is_StrExpr_list(seq: list[Expression]) -> TypeGuard[list[StrExpr]]:
+    return all(isinstance(item, StrExpr) for item in seq)
+
+
 class BytesExpr(Expression):
     """Bytes literal"""
 
@@ -2177,7 +2183,8 @@ class LambdaExpr(FuncItem, Expression):
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
-        ret = cast(ReturnStmt, self.body.body[-1])
+        ret = self.body.body[-1]
+        assert isinstance(ret, ReturnStmt)
         expr = ret.expr
         assert expr is not None  # lambda can't have empty body
         return expr
@@ -2800,6 +2807,7 @@ class TypeInfo(SymbolNode):
         "inferring",
         "is_enum",
         "fallback_to_any",
+        "meta_fallback_to_any",
         "type_vars",
         "has_param_spec_type",
         "bases",
@@ -2816,6 +2824,7 @@ class TypeInfo(SymbolNode):
         "type_var_tuple_prefix",
         "type_var_tuple_suffix",
         "self_type",
+        "dataclass_transform_spec",
     )
 
     _fullname: str  # Fully qualified name
@@ -2894,6 +2903,10 @@ class TypeInfo(SymbolNode):
     # (and __setattr__), but without the __getattr__ method.
     fallback_to_any: bool
 
+    # Same as above but for cases where metaclass has type Any. This will suppress
+    # all attribute errors only for *class object* access.
+    meta_fallback_to_any: bool
+
     # Information related to type annotations.
 
     # Generic type variable names (full names)
@@ -2919,7 +2932,7 @@ class TypeInfo(SymbolNode):
     # This results in some unintuitive results, such as that even
     # though i64 is compatible with int and int is compatible with
     # float, i64 is *not* compatible with float.
-    alt_promote: TypeInfo | None
+    alt_promote: mypy.types.Instance | None
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
@@ -2959,10 +2972,14 @@ class TypeInfo(SymbolNode):
     # Shared type variable for typing.Self in this class (if used, otherwise None).
     self_type: mypy.types.TypeVarType | None
 
+    # Added if the corresponding class is directly decorated with `typing.dataclass_transform`
+    dataclass_transform_spec: DataclassTransformSpec | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
         "fallback_to_any",
+        "meta_fallback_to_any",
         "is_named_tuple",
         "is_newtype",
         "is_protocol",
@@ -3002,6 +3019,7 @@ class TypeInfo(SymbolNode):
         self.is_final = False
         self.is_enum = False
         self.fallback_to_any = False
+        self.meta_fallback_to_any = False
         self._promote = []
         self.alt_promote = None
         self.tuple_type = None
@@ -3012,6 +3030,7 @@ class TypeInfo(SymbolNode):
         self.is_intersection = False
         self.metadata = {}
         self.self_type = None
+        self.dataclass_transform_spec = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3215,6 +3234,7 @@ class TypeInfo(SymbolNode):
             "bases": [b.serialize() for b in self.bases],
             "mro": [c.fullname for c in self.mro],
             "_promote": [p.serialize() for p in self._promote],
+            "alt_promote": None if self.alt_promote is None else self.alt_promote.serialize(),
             "declared_metaclass": (
                 None if self.declared_metaclass is None else self.declared_metaclass.serialize()
             ),
@@ -3230,6 +3250,11 @@ class TypeInfo(SymbolNode):
             "slots": list(sorted(self.slots)) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
             "self_type": self.self_type.serialize() if self.self_type is not None else None,
+            "dataclass_transform_spec": (
+                self.dataclass_transform_spec.serialize()
+                if self.dataclass_transform_spec is not None
+                else None
+            ),
         }
         return data
 
@@ -3251,6 +3276,11 @@ class TypeInfo(SymbolNode):
             assert isinstance(t, mypy.types.ProperType)
             _promote.append(t)
         ti._promote = _promote
+        ti.alt_promote = (
+            None
+            if data["alt_promote"] is None
+            else mypy.types.Instance.deserialize(data["alt_promote"])
+        )
         ti.declared_metaclass = (
             None
             if data["declared_metaclass"] is None
@@ -3288,6 +3318,10 @@ class TypeInfo(SymbolNode):
         set_flags(ti, data["flags"])
         st = data["self_type"]
         ti.self_type = mypy.types.TypeVarType.deserialize(st) if st is not None else None
+        if data.get("dataclass_transform_spec") is not None:
+            ti.dataclass_transform_spec = DataclassTransformSpec.deserialize(
+                data["dataclass_transform_spec"]
+            )
         return ti
 
 
@@ -3458,8 +3492,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_tuple_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the tuple type described by a given TypeInfo."""
+        """Generate an alias to the tuple type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic tuple types),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.tuple_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, info.defn.type_vars)),
             info.fullname,
@@ -3469,8 +3508,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_typeddict_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the TypedDict type described by a given TypeInfo."""
+        """Generate an alias to the TypedDict type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic TypedDicts),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.typeddict_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.typeddict_type.copy_modified(
                 fallback=mypy.types.Instance(info, info.defn.type_vars)
@@ -3834,6 +3878,56 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             if key != ".class":
                 st[key] = SymbolTableNode.deserialize(value)
         return st
+
+
+class DataclassTransformSpec:
+    """Specifies how a dataclass-like transform should be applied. The fields here are based on the
+    parameters accepted by `typing.dataclass_transform`."""
+
+    __slots__ = (
+        "eq_default",
+        "order_default",
+        "kw_only_default",
+        "frozen_default",
+        "field_specifiers",
+    )
+
+    def __init__(
+        self,
+        *,
+        eq_default: bool | None = None,
+        order_default: bool | None = None,
+        kw_only_default: bool | None = None,
+        field_specifiers: tuple[str, ...] | None = None,
+        # Specified outside of PEP 681:
+        # frozen_default was added to CPythonin https://github.com/python/cpython/pull/99958 citing
+        # positive discussion in typing-sig
+        frozen_default: bool | None = None,
+    ):
+        self.eq_default = eq_default if eq_default is not None else True
+        self.order_default = order_default if order_default is not None else False
+        self.kw_only_default = kw_only_default if kw_only_default is not None else False
+        self.frozen_default = frozen_default if frozen_default is not None else False
+        self.field_specifiers = field_specifiers if field_specifiers is not None else ()
+
+    def serialize(self) -> JsonDict:
+        return {
+            "eq_default": self.eq_default,
+            "order_default": self.order_default,
+            "kw_only_default": self.kw_only_default,
+            "frozen_only_default": self.frozen_default,
+            "field_specifiers": list(self.field_specifiers),
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> DataclassTransformSpec:
+        return DataclassTransformSpec(
+            eq_default=data.get("eq_default"),
+            order_default=data.get("order_default"),
+            kw_only_default=data.get("kw_only_default"),
+            frozen_default=data.get("frozen_default"),
+            field_specifiers=tuple(data.get("field_specifiers", [])),
+        )
 
 
 def get_flags(node: Node, names: list[str]) -> list[str]:

@@ -15,7 +15,7 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Expression, NameExpr, TypeAlias, TypeInfo, Var
+from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, TypeInfo, Var
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -242,7 +242,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             elif size_diff > 0 and star_position is None:
                 return self.early_non_match()
         else:
-            inner_type = self.get_sequence_type(current_type)
+            inner_type = self.get_sequence_type(current_type, o)
             if inner_type is None:
                 inner_type = self.chk.named_type("builtins.object")
             inner_types = [inner_type] * len(o.patterns)
@@ -309,12 +309,12 @@ class PatternChecker(PatternVisitor[PatternType]):
                 new_type = current_type
         return PatternType(new_type, rest_type, captures)
 
-    def get_sequence_type(self, t: Type) -> Type | None:
+    def get_sequence_type(self, t: Type, context: Context) -> Type | None:
         t = get_proper_type(t)
         if isinstance(t, AnyType):
             return AnyType(TypeOfAny.from_another_any, t)
         if isinstance(t, UnionType):
-            items = [self.get_sequence_type(item) for item in t.items]
+            items = [self.get_sequence_type(item, context) for item in t.items]
             not_none_items = [item for item in items if item is not None]
             if len(not_none_items) > 0:
                 return make_simplified_union(not_none_items)
@@ -324,7 +324,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         if self.chk.type_is_iterable(t) and isinstance(t, (Instance, TupleType)):
             if isinstance(t, TupleType):
                 t = tuple_fallback(t)
-            return self.chk.iterable_item_type(t)
+            return self.chk.iterable_item_type(t, context)
         else:
             return None
 

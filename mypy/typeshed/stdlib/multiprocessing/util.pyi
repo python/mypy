@@ -1,5 +1,5 @@
 import threading
-from _typeshed import Incomplete, ReadableBuffer, SupportsTrunc
+from _typeshed import Incomplete, ReadableBuffer, SupportsTrunc, Unused
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from logging import Logger, _Level as _LoggingLevel
 from typing import Any, SupportsInt
@@ -37,7 +37,7 @@ def debug(msg: object, *args: object) -> None: ...
 def info(msg: object, *args: object) -> None: ...
 def sub_warning(msg: object, *args: object) -> None: ...
 def get_logger() -> Logger: ...
-def log_to_stderr(level: _LoggingLevel | None = ...) -> Logger: ...
+def log_to_stderr(level: _LoggingLevel | None = None) -> Logger: ...
 def is_abstract_socket_namespace(address: str | bytes | None) -> bool: ...
 
 abstract_sockets_supported: bool
@@ -51,12 +51,12 @@ class Finalize:
         obj: Incomplete | None,
         callback: Callable[..., Incomplete],
         args: Sequence[Any] = ...,
-        kwargs: Mapping[str, Any] | None = ...,
-        exitpriority: int | None = ...,
+        kwargs: Mapping[str, Any] | None = None,
+        exitpriority: int | None = None,
     ) -> None: ...
     def __call__(
         self,
-        wr: object = ...,
+        wr: Unused = None,
         _finalizer_registry: MutableMapping[Incomplete, Incomplete] = ...,
         sub_debug: Callable[..., object] = ...,
         getpid: Callable[[], int] = ...,
@@ -70,7 +70,7 @@ class ForkAwareThreadLock:
     acquire: Callable[[bool, float], bool]
     release: Callable[[], None]
     def __enter__(self) -> bool: ...
-    def __exit__(self, *args: object) -> None: ...
+    def __exit__(self, *args: Unused) -> None: ...
 
 class ForkAwareLocal(threading.local): ...
 

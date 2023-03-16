@@ -3,12 +3,14 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable
 
+import mypy.errorcodes as codes
 from mypy import message_registry
 from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
     FunctionContext,
+    FunctionSigContext,
     MethodContext,
     MethodSigContext,
     Plugin,
@@ -43,6 +45,15 @@ class DefaultPlugin(Plugin):
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+        return None
+
+    def get_function_signature_hook(
+        self, fullname: str
+    ) -> Callable[[FunctionSigContext], FunctionLike] | None:
+        from mypy.plugins import attrs
+
+        if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
+            return attrs.evolve_function_sig_callback
         return None
 
     def get_method_signature_hook(
@@ -264,7 +275,11 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         value_types = []
@@ -319,7 +334,11 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         default_type = ctx.arg_types[1][0]
@@ -357,7 +376,11 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         for key in keys:

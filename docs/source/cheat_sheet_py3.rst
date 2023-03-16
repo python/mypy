@@ -34,7 +34,9 @@ Useful built-in types
 
 .. code-block:: python
 
-   # For most types, just use the name of the type
+   # For most types, just use the name of the type.
+   # Note that mypy can usually infer the type of a variable from its value,
+   # so technically these annotations are redundant
    x: int = 1
    x: float = 1.0
    x: bool = True
@@ -100,12 +102,18 @@ Functions
    def show(value: str, excitement: int = 10) -> None:
        print(value + "!" * excitement)
 
+    # Note that arguments without a type are dynamically typed (treated as Any)
+    # and that functions without any annotations not checked
+    def untyped(x):
+        x.anything() + 1 + "string"  # no errors
+
    # This is how you annotate a callable (function) value
    x: Callable[[int, float], float] = f
+   def register(callback: Callable[[str], int]) -> None: ...
 
    # A generator function that yields ints is secretly just a function that
    # returns an iterator of ints, so that's how we annotate it
-   def g(n: int) -> Iterator[int]:
+   def gen(n: int) -> Iterator[int]:
        i = 0
        while i < n:
            yield i
@@ -143,28 +151,49 @@ Classes
 
 .. code-block:: python
 
-   class MyClass:
-       # You can optionally declare instance variables in the class body
-       attr: int
-       # This is an instance variable with a default value
-       charge_percent: int = 100
-
+   class BankAccount:
        # The "__init__" method doesn't return anything, so it gets return
        # type "None" just like any other method that doesn't return anything
-       def __init__(self) -> None:
-           ...
+       def __init__(self, account_name: str, initial_balance: int = 0) -> None:
+           # mypy will infer the correct types for these instance variables
+           # based on the types of the parameters.
+           self.account_name = account_name
+           self.balance = initial_balance
 
        # For instance methods, omit type for "self"
-       def my_method(self, num: int, str1: str) -> str:
-           return num * str1
+       def deposit(self, amount: int) -> None:
+           self.balance += amount
+
+       def withdraw(self, amount: int) -> None:
+           self.balance -= amount
 
    # User-defined classes are valid as types in annotations
-   x: MyClass = MyClass()
+   account: BankAccount = BankAccount("Alice", 400)
+   def transfer(src: BankAccount, dst: BankAccount, amount: int) -> None:
+       src.withdraw(amount)
+       dst.deposit(amount)
 
-   # You can also declare the type of an attribute in "__init__"
-   class Box:
-       def __init__(self) -> None:
-           self.items: list[str] = []
+   # Functions that accept BankAccount also accept any subclass of BankAccount!
+   class AuditedBankAccount(BankAccount):
+       # You can optionally declare instance variables in the class body
+       audit_log: list[str]
+       # This is an instance variable with a default value
+       auditor_name: str = "The Spanish Inquisition"
+
+       def __init__(self, account_name: str, initial_balance: int = 0) -> None:
+           super().__init__(account_name, initial_balance)
+           self.audit_log: list[str] = []
+
+       def deposit(self, amount: int) -> None:
+           self.audit_log.append(f"Deposited {amount}")
+           self.balance += amount
+
+       def withdraw(self, amount: int) -> None:
+           self.audit_log.append(f"Withdrew {amount}")
+           self.balance -= amount
+
+   audited = AuditedBankAccount("Bob", 300)
+   transfer(audited, account, 100)  # type checks!
 
    # You can use the ClassVar annotation to declare a class variable
    class Car:
@@ -172,9 +201,7 @@ Classes
        passengers: ClassVar[list[str]]
 
    # If you want dynamic attributes on your class, have it
-   # override "__setattr__" or "__getattr__":
-   # - "__getattr__" allows for dynamic access to names
-   # - "__setattr__" allows for dynamic assignment to names
+   # override "__setattr__" or "__getattr__"
    class A:
        # This will allow assignment to any A.x, if x is the same type as "value"
        # (use "value: Any" to allow arbitrary types)
