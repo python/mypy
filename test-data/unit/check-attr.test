@@ -509,12 +509,9 @@ class Other(Generic[T]):
     def __init__(self, x: T) -> None:
         pass
 
-def other_converter(x: Callable[..., T]) -> Other[Callable[..., T]]:
-    return Other(x)
-
 @attr.s(auto_attribs=True)
 class B(Generic[T]):
-    x: Other[Callable[..., T]] = attr.ib(converter=other_converter)
+    x: Other[Callable[..., T]] = attr.ib(converter=Other[Callable[..., T]])
 
 b1 = B(get_int)
 reveal_type(b1)  # N: Revealed type is "__main__.B[builtins.int]"

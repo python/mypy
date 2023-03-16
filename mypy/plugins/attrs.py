@@ -6,6 +6,7 @@ from typing import Iterable, List, cast
 from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
+from mypy.applytype import apply_generic_arguments
 from mypy.checker import TypeChecker
 from mypy.errorcodes import LITERAL_REQ
 from mypy.expandtype import expand_type
@@ -24,6 +25,7 @@ from mypy.nodes import (
     Decorator,
     Expression,
     FuncDef,
+    IndexExpr,
     JsonDict,
     LambdaExpr,
     ListExpr,
@@ -35,6 +37,7 @@ from mypy.nodes import (
     SymbolTableNode,
     TempNode,
     TupleExpr,
+    TypeApplication,
     TypeInfo,
     TypeVarExpr,
     Var,
@@ -664,6 +667,26 @@ def _parse_converter(
             from mypy.checkmember import type_object_type  # To avoid import cycle.
 
             converter_type = type_object_type(converter_expr.node, ctx.api.named_type)
+    elif (
+        isinstance(converter_expr, IndexExpr)
+        and isinstance(converter_expr.analyzed, TypeApplication)
+        and isinstance(converter_expr.base, RefExpr)
+        and isinstance(converter_expr.base.node, TypeInfo)
+    ):
+        # The converter is a generic type.
+        from mypy.checkmember import type_object_type  # To avoid import cycle.
+
+        converter_type = type_object_type(converter_expr.base.node, ctx.api.named_type)
+        if isinstance(converter_type, CallableType):
+            converter_type = apply_generic_arguments(
+                converter_type,
+                converter_expr.analyzed.types,
+                ctx.api.msg.incompatible_typevar_value,
+                converter_type,
+            )
+        else:
+            converter_type = None
+
     if isinstance(converter_expr, LambdaExpr):
         # TODO: should we send a fail if converter_expr.min_args > 1?
         converter_info.init_type = AnyType(TypeOfAny.unannotated)
