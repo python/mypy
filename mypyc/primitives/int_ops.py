@@ -50,8 +50,8 @@ for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32"):
     function_op(
         name=int_name,
         arg_types=[float_rprimitive],
-        return_type=object_rprimitive,
-        c_function_name="CPyLong_FromFloat",
+        return_type=int_rprimitive,
+        c_function_name="CPyTagged_FromFloat",
         error_kind=ERR_MAGIC,
     )
 
@@ -125,6 +125,10 @@ int_binary_op("%", "CPyTagged_Remainder", error_kind=ERR_MAGIC)
 # Negative shift counts raise an exception
 int_binary_op(">>", "CPyTagged_Rshift", error_kind=ERR_MAGIC)
 int_binary_op("<<", "CPyTagged_Lshift", error_kind=ERR_MAGIC)
+
+int_binary_op(
+    "/", "CPyTagged_TrueDivide", return_type=float_rprimitive, error_kind=ERR_MAGIC_OVERLAPPING
+)
 
 # This should work because assignment operators are parsed differently
 # and the code in irbuild that handles it does the assignment

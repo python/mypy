@@ -183,7 +183,7 @@ class TypeOfAny:
     # Does this Any come from an error?
     from_error: Final = 5
     # Is this a type that can't be represented in mypy's type system? For instance, type of
-    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
+    # call to NewType(...). Even though these types aren't real Anys, we treat them as such.
     # Also used for variables named '_'.
     special_form: Final = 6
     # Does this Any come from interaction with another Any?
@@ -1978,20 +1978,15 @@ class CallableType(FunctionLike):
         arg_type = self.arg_types[-2]
         if not isinstance(arg_type, ParamSpecType):
             return None
+
         # sometimes paramspectypes are analyzed in from mysterious places,
         # e.g. def f(prefix..., *args: P.args, **kwargs: P.kwargs) -> ...: ...
         prefix = arg_type.prefix
         if not prefix.arg_types:
             # TODO: confirm that all arg kinds are positional
             prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
-        return ParamSpecType(
-            arg_type.name,
-            arg_type.fullname,
-            arg_type.id,
-            ParamSpecFlavor.BARE,
-            arg_type.upper_bound,
-            prefix=prefix,
-        )
+
+        return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
     def expand_param_spec(
         self, c: CallableType | Parameters, no_prefix: bool = False

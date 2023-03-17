@@ -20,7 +20,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 
@@ -1635,6 +1635,10 @@ class StrExpr(Expression):
         return visitor.visit_str_expr(self)
 
 
+def is_StrExpr_list(seq: list[Expression]) -> TypeGuard[list[StrExpr]]:
+    return all(isinstance(item, StrExpr) for item in seq)
+
+
 class BytesExpr(Expression):
     """Bytes literal"""
 
@@ -2179,7 +2183,8 @@ class LambdaExpr(FuncItem, Expression):
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
-        ret = cast(ReturnStmt, self.body.body[-1])
+        ret = self.body.body[-1]
+        assert isinstance(ret, ReturnStmt)
         expr = ret.expr
         assert expr is not None  # lambda can't have empty body
         return expr

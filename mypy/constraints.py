@@ -949,7 +949,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 )
 
                 # TODO: see above "FIX" comments for param_spec is None case
-                # TODO: this assume positional arguments
+                # TODO: this assumes positional arguments
                 for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
                     res.extend(infer_constraints(t, a, neg_op(self.direction)))
 
