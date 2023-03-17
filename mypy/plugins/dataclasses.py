@@ -845,6 +845,7 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
         and info.declared_metaclass.type.dataclass_transform_spec is not None
     )
 
+
 def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     """
     Returns a signature for the 'dataclasses.replace' function that's dependent on the type
