@@ -2536,9 +2536,9 @@ L2:
     r64 = get_element_ptr r60 ob_item :: PyListObject
     r65 = load_mem r64 :: ptr*
     set_mem r65, r61 :: builtins.object*
-    r66 = r65 + 8
+    r66 = r65 + WORD_SIZE*1
     set_mem r66, r62 :: builtins.object*
-    r67 = r65 + 16
+    r67 = r65 + WORD_SIZE*2
     set_mem r67, r63 :: builtins.object*
     keep_alive r60
     r68 = __main__.globals :: static
