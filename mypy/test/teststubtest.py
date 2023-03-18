@@ -1140,6 +1140,45 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_has_runtime_final_decorator(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing_extensions import final",
+            runtime="from typing_extensions import final",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @final
+            class A: ...
+            """,
+            runtime="""
+            @final
+            class A: ...
+            """,
+            error=None,
+        )
+        yield Case(  # Runtime can miss `@final` decorator
+            stub="""
+            @final
+            class B: ...
+            """,
+            runtime="""
+            class B: ...
+            """,
+            error=None,
+        )
+        yield Case(  # Stub cannot miss `@final` decorator
+            stub="""
+            class C: ...
+            """,
+            runtime="""
+            @final
+            class C: ...
+            """,
+            error="C",
+        )
+
+    @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
         yield Case(
             stub="""
