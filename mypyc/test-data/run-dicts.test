@@ -95,7 +95,13 @@ assert get_content_set(od) == ({1, 3}, {2, 4}, {(1, 2), (3, 4)})
 [typing fixtures/typing-full.pyi]
 
 [case testDictIterationMethodsRun]
-from typing import Dict
+from typing import Dict, Union
+from typing_extensions import TypedDict
+
+class ExtensionDict(TypedDict):
+    python: str
+    c: str
+
 def print_dict_methods(d1: Dict[int, int],
                        d2: Dict[int, int],
                        d3: Dict[int, int]) -> None:
@@ -107,13 +113,27 @@ def print_dict_methods(d1: Dict[int, int],
     for v in d3.values():
         print(v)
 
+def print_dict_methods_special(d1: Union[Dict[int, int], Dict[str, str]],
+                               d2: ExtensionDict) -> None:
+    for k in d1.keys():
+        print(k)
+    for k, v in d1.items():
+        print(k)
+        print(v)
+    for v2 in d2.values():
+        print(v2)
+    for k2, v2 in d2.items():
+        print(k2)
+        print(v2)
+
+
 def clear_during_iter(d: Dict[int, int]) -> None:
     for k in d:
         d.clear()
 
 class Custom(Dict[int, int]): pass
 [file driver.py]
-from native import print_dict_methods, Custom, clear_during_iter
+from native import print_dict_methods, print_dict_methods_special, Custom, clear_during_iter
 from collections import OrderedDict
 print_dict_methods({}, {}, {})
 print_dict_methods({1: 2}, {3: 4, 5: 6}, {7: 8})
@@ -124,6 +144,7 @@ print('==')
 d = OrderedDict([(1, 2), (3, 4)])
 print_dict_methods(d, d, d)
 print('==')
+print_dict_methods_special({1: 2}, {"python": ".py", "c": ".c"})
 d.move_to_end(1)
 print_dict_methods(d, d, d)
 clear_during_iter({})  # OK
@@ -185,6 +206,15 @@ else:
 2
 4
 ==
+1
+1
+2
+.py
+.c
+python
+.py
+c
+.c
 3
 1
 3
