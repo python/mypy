@@ -11,8 +11,11 @@ Construction
 ------------
 
 * Float literal
-* ``float(integer)``
-* ``float(string)``
+* ``float(x: int)``
+* ``float(x: i64)``
+* ``float(x: i32)``
+* ``float(x: str)``
+* ``float(x: float)`` (no-op)
 
 Operators
 ---------
@@ -25,8 +28,8 @@ Functions
 ---------
 
 * ``int(f)``
-* ``i32(f)``
-* ``i64(f)``
+* ``i32(f)`` (convert to ``i32``)
+* ``i64(f)`` (convert to ``i64``)
 * ``abs(f)``
 * ``math.sin(f)``
 * ``math.cos(f)``

@@ -30,6 +30,8 @@ mypyc, and many operations on these types have efficient
 implementations:
 
 * ``int`` (:ref:`native operations <int-ops>`)
+* ``i64`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
+* ``i32`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``float`` (:ref:`native operations <float-ops>`)
 * ``bool`` (:ref:`native operations <bool-ops>`)
 * ``str`` (:ref:`native operations <str-ops>`)
@@ -271,8 +273,8 @@ Value and heap types
 In CPython, memory for all objects is dynamically allocated on the
 heap. All Python types are thus *heap types*. In compiled code, some
 types are *value types* -- no object is (necessarily) allocated on the
-heap.  ``bool``, ``float``, ``None`` and fixed-length tuples are value
-types.
+heap.  ``bool``, ``float``, ``None``, :ref:`native integer types <native-ints>`
+and fixed-length tuples are value types.
 
 ``int`` is a hybrid. For typical integer values, it is a value
 type. Large enough integer values, those that require more than 63
@@ -334,3 +336,60 @@ Examples::
             y = n  # Error
         if f():
             y = float(n)  # Ok
+
+.. _native-ints:
+
+Native integer types
+--------------------
+
+You can use the native integer types ``i64`` (64-bit signed integer)
+and ``i32`` (32-bit signed integer) if you know that integer values
+will always fit within fixed bounds. These types are faster than the
+arbitrary-precision ``int`` type, since they don't require overflow
+checks on operations. ``i32`` may also use less memory than ``int``
+values. The types are imported from the ``mypy_extensions`` module
+(installed via ``pip install mypy_extensions``).
+
+Example::
+
+    from mypy_extensions import i64
+
+    def sum_list(l: list[i64]) -> i64:
+        s: i64 = 0
+        for n in l:
+            s += n
+        return s
+
+    # Implicit conversions from int to i64
+    print(sum_list([1, 3, 5]))
+
+.. note::
+
+  Since there are no overflow checks when performing native integer
+  arithmetic, the above function could result in an overflow or other
+  undefined behavior if the sum might not fit within 64 bits.
+
+  The behavior when running as interpreted Python program will be
+  different if there are overflows. Declaring native integer types
+  have no effect unless code is compiled. Native integer types are
+  effectively equivalent to ``int`` when interpreted.
+
+Native integer types have these additional properties:
+
+* Values can be implicitly converted between ``int`` and a native
+  integer type (both ways).
+
+* Conversions between different native integer types must be explicit.
+  A conversion to a narrower native integer type truncates the value
+  without a runtime overflow check.
+
+* If a binary operation (such as ``+``) or an augmented assignment
+  (such as ``+=``) mixes native integer and ``int`` values, the
+  ``int`` operand is implicitly coerced to the native integer type
+  (native integer types are "sticky").
+
+* You can't mix different native integer types in binary
+  operations. Instead, convert between types explicitly.
+
+For more information about native integer types, refer to
+:ref:`native integer operations <int-ops>`.
