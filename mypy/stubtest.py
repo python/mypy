@@ -420,7 +420,12 @@ def _verify_final(
         pass
 
     # Runtime class might be annotated with `@final`:
-    if getattr(runtime, "__final__", False) and not stub.is_final:
+    try:
+        runtime_final = getattr(runtime, "__final__", False)
+    except Exception:
+        runtime_final = False
+
+    if runtime_final and not stub.is_final:
         yield Error(
             object_path,
             "has `__final__` attribute, but isn't marked with @final in the stub",
@@ -1349,7 +1354,7 @@ IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
         "__origin__",
         "__args__",
         "__orig_bases__",
-        "__final__",
+        "__final__",  # Has a specialized check
         # Consider removing __slots__?
         "__slots__",
     }
