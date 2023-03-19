@@ -19,7 +19,7 @@ Construction
 Operators
 ---------
 
-* Arithmetic (``+``, ``-``, ``*``, ``//``, ``%``)
+* Arithmetic (``+``, ``-``, ``*``, ``//``, ``/``, ``%``)
 * Bitwise operations (``&``, ``|``, ``^``, ``<<``, ``>>``, ``~``)
 * Comparisons (``==``, ``!=``, ``<``, etc.)
 * Augmented assignment (``x += y``, etc.)

@@ -271,7 +271,8 @@ Value and heap types
 In CPython, memory for all objects is dynamically allocated on the
 heap. All Python types are thus *heap types*. In compiled code, some
 types are *value types* -- no object is (necessarily) allocated on the
-heap.  ``bool``, ``None`` and fixed-length tuples are value types.
+heap.  ``bool``, ``float``, ``None`` and fixed-length tuples are value
+types.
 
 ``int`` is a hybrid. For typical integer values, it is a value
 type. Large enough integer values, those that require more than 63
@@ -287,9 +288,9 @@ Value types have a few differences from heap types:
 * Similarly, mypyc transparently changes from a heap-based
   representation to a value representation (unboxing).
 
-* Object identity of integers and tuples is not preserved. You should
-  use ``==`` instead of ``is`` if you are comparing two integers or
-  fixed-length tuples.
+* Object identity of integers, floating point values and tuples is not
+  preserved. You should use ``==`` instead of ``is`` if you are comparing
+  two integers, floats or fixed-length tuples.
 
 * When an instance of a subclass of a value type is converted to the
   base type, it is implicitly converted to an instance of the target
@@ -312,3 +313,24 @@ Example::
         x = a[0]
         # True is converted to 1 on assignment
         x = True
+
+Since integers and floating point values have a different runtime
+representations and neither can represent all the values of the other
+type, type narrowing of floating point values through assignment is
+disallowed in compiled code. For consistency, mypyc rejects assigning
+an integer value to a float variable even in variable initialization.
+An explicit conversion is required.
+
+Examples::
+
+    def narrowing(n: int) -> None:
+        # Error: Incompatible value representations in assignment
+        # (expression has type "int", variable has type "float")
+        x: float = 0
+
+        y: float = 0.0  # Ok
+
+        if f():
+            y = n  # Error
+        if f():
+            y = float(n)  # Ok
