@@ -3083,7 +3083,7 @@ class TypeInfo(SymbolNode):
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
                 for name, node in base.names.items():
-                    if isinstance(node.node, (TypeAlias, TypeVarExpr)):
+                    if isinstance(node.node, (TypeAlias, TypeVarExpr, MypyFile)):
                         # These are auxiliary definitions (and type aliases are prohibited).
                         continue
                     members.add(name)
