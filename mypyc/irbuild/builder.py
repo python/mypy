@@ -52,6 +52,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypedDictType,
     TypeOfAny,
     UninhabitedType,
     UnionType,
@@ -913,8 +914,12 @@ class IRBuilder:
 
         dict_types = []
         for t in types:
-            assert isinstance(t, Instance), t
-            dict_base = next(base for base in t.type.mro if base.fullname == "builtins.dict")
+            if isinstance(t, TypedDictType):
+                t = t.fallback
+                dict_base = next(base for base in t.type.mro if base.fullname == "typing.Mapping")
+            else:
+                assert isinstance(t, Instance), t
+                dict_base = next(base for base in t.type.mro if base.fullname == "builtins.dict")
             dict_types.append(map_instance_to_supertype(t, dict_base))
         return dict_types
 
