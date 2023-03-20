@@ -650,7 +650,6 @@ def f(x: i64, y: i64) -> Tuple[i64, i64]:
     return x, y
 
 def g() -> Tuple[i64, i64]:
-    # TODO: Avoid boxing and unboxing
     return 1, 2
 
 def h() -> i64:
@@ -666,13 +665,11 @@ L0:
     return r0
 def g():
     r0 :: tuple[int, int]
-    r1 :: object
-    r2 :: tuple[int64, int64]
+    r1 :: tuple[int64, int64]
 L0:
     r0 = (2, 4)
-    r1 = box(tuple[int, int], r0)
-    r2 = unbox(tuple[int64, int64], r1)
-    return r2
+    r1 = (1, 2)
+    return r1
 def h():
     r0 :: tuple[int64, int64]
     r1, x, r2, y :: int64
@@ -2081,3 +2078,78 @@ L2:
     r6 = r5.a
     keep_alive x
     return r6
+
+[case testI64ConvertBetweenTuples_64bit]
+from __future__ import annotations
+from mypy_extensions import i64
+
+def f(t: tuple[int, i64, int]) -> None:
+    tt: tuple[int, i64, i64] = t
+
+def g(n: int) -> None:
+    t: tuple[i64, i64] = (1, n)
+[out]
+def f(t):
+    t :: tuple[int, int64, int]
+    r0 :: int
+    r1 :: int64
+    r2 :: int
+    r3 :: native_int
+    r4 :: bit
+    r5, r6 :: int64
+    r7 :: ptr
+    r8 :: c_ptr
+    r9 :: int64
+    r10, tt :: tuple[int, int64, int64]
+L0:
+    r0 = t[0]
+    r1 = t[1]
+    r2 = t[2]
+    r3 = r2 & 1
+    r4 = r3 == 0
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = r2 >> 1
+    r6 = r5
+    goto L3
+L2:
+    r7 = r2 ^ 1
+    r8 = r7
+    r9 = CPyLong_AsInt64(r8)
+    r6 = r9
+    keep_alive r2
+L3:
+    r10 = (r0, r1, r6)
+    tt = r10
+    return 1
+def g(n):
+    n :: int
+    r0 :: tuple[int, int]
+    r1 :: int
+    r2 :: native_int
+    r3 :: bit
+    r4, r5 :: int64
+    r6 :: ptr
+    r7 :: c_ptr
+    r8 :: int64
+    r9, t :: tuple[int64, int64]
+L0:
+    r0 = (2, n)
+    r1 = r0[1]
+    r2 = r1 & 1
+    r3 = r2 == 0
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = r1 >> 1
+    r5 = r4
+    goto L3
+L2:
+    r6 = r1 ^ 1
+    r7 = r6
+    r8 = CPyLong_AsInt64(r7)
+    r5 = r8
+    keep_alive r1
+L3:
+    r9 = (1, r5)
+    t = r9
+    return 1

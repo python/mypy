@@ -1,6 +1,7 @@
 # Test cases for floats (compile and run)
 
 [case testFloatOps]
+from __future__ import annotations
 from typing import Any, cast
 from typing_extensions import Final
 from testutil import assertRaises, float_vals, FLOAT_MAGIC
@@ -328,6 +329,13 @@ def test_undefined_local_var() -> None:
         y2 = -1.0
     with assertRaises(UnboundLocalError, 'local variable "y2" referenced before assignment'):
         print(y2)
+
+def test_tuples() -> None:
+    t1: tuple[float, float] = (1.5, 2.5)
+    assert t1 == tuple([1.5, 2.5])
+    n = int() + 5
+    t2: tuple[float, float, float, float] = (n, 1.5, -7, -113)
+    assert t2 == tuple([5.0, 1.5, -7.0, -113.0])
 
 [case testFloatGlueMethodsAndInheritance]
 from typing import Any
