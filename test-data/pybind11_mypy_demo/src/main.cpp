@@ -112,6 +112,13 @@ const Point Point::y_axis = Point(0, 1);
 Point::LengthUnit Point::length_unit = Point::LengthUnit::mm;
 Point::AngleUnit Point::angle_unit = Point::AngleUnit::radian;
 
+struct Foo
+{
+  static int some_static_method(int a, int b) { return a * 42 + b; }
+  static int overloaded_static_method(int value) { return value * 42; }
+  static double overloaded_static_method(double value) { return value * 42; }
+};
+
 } // namespace: basics
 
 void bind_basics(py::module& basics) {
@@ -158,6 +165,14 @@ void bind_basics(py::module& basics) {
   pyAngleUnit
     .value("radian", Point::AngleUnit::radian)
     .value("degree", Point::AngleUnit::degree);
+
+  // Static methods
+  py::class_<Foo> pyFoo(basics, "Foo");
+  
+  pyFoo
+    .def_static("some_static_method", &Foo::some_static_method, R"#(None)#", py::arg("a"), py::arg("b"))
+    .def_static("overloaded_static_method", py::overload_cast<int>(&Foo::overloaded_static_method), py::arg("value"))
+    .def_static("overloaded_static_method", py::overload_cast<double>(&Foo::overloaded_static_method), py::arg("value"));
 
   // Module-level attributes
   basics.attr("PI") = std::acos(-1);
