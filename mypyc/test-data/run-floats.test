@@ -185,6 +185,16 @@ def test_explicit_conversion_to_int() -> None:
         else:
             assert repr(int(x)) == repr(int_any(x))
 
+    # Test some edge cases
+    assert 2**30 == int(2.0**30 + int())
+    assert 2**30 - 1 == int(1073741823.9999999 + int())  # math.nextafter(2.0**30, 0))
+    assert -2**30 - 1 == int(-2.0**30 - 1 + int())
+    assert -2**30 == int(-1073741824.9999998 + int())  # math.nextafter(-2.0**30 - 1, 0)
+    assert 2**62 == int(2.0**62 + int())
+    assert 2**62 == int(2.0**62 - 1 + int())
+    assert -2**62 == int(-2.0**62 + int())
+    assert -2**62 == int(-2.0**62 - 1 + int())
+
 def str_to_float(x: str) -> float:
     return float(x)
 
