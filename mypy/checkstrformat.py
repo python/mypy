@@ -430,17 +430,7 @@ class StringFormatterChecker:
             if isinstance(c_typ, LiteralType) and isinstance(c_typ.value, str):
                 if len(c_typ.value) != 1:
                     self.msg.requires_int_or_char(call, format_call=True)
-        if (not spec.conv_type or spec.conv_type == "s") and not spec.conversion:
-            if has_type_component(actual_type, "builtins.bytes") and not custom_special_method(
-                actual_type, "__str__"
-            ):
-                self.msg.fail(
-                    'On Python 3 formatting "b\'abc\'" with "{}" '
-                    'produces "b\'abc\'", not "abc"; '
-                    'use "{!r}" if this is desired behavior',
-                    call,
-                    code=codes.STR_BYTES_PY3,
-                )
+
         if spec.flags:
             numeric_types = UnionType(
                 [self.named_type("builtins.int"), self.named_type("builtins.float")]
@@ -942,17 +932,6 @@ class StringFormatterChecker:
 
     def check_s_special_cases(self, expr: FormatStringExpr, typ: Type, context: Context) -> bool:
         """Additional special cases for %s in bytes vs string context."""
-        if isinstance(expr, StrExpr):
-            # Couple special cases for string formatting.
-            if has_type_component(typ, "builtins.bytes"):
-                self.msg.fail(
-                    'On Python 3 formatting "b\'abc\'" with "%s" '
-                    'produces "b\'abc\'", not "abc"; '
-                    'use "%r" if this is desired behavior',
-                    context,
-                    code=codes.STR_BYTES_PY3,
-                )
-                return False
         if isinstance(expr, BytesExpr):
             # A special case for bytes formatting: b'%s' actually requires bytes on Python 3.
             if has_type_component(typ, "builtins.str"):
