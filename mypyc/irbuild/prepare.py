@@ -85,7 +85,7 @@ def build_type_map(
         )
         class_ir.is_ext_class = is_extension_class(cdef)
         if class_ir.is_ext_class:
-            class_ir.deletable = cdef.info.deletable_attributes[:]
+            class_ir.deletable = cdef.info.deletable_attributes.copy()
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
             class_ir.children = None

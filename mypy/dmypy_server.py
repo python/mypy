@@ -600,7 +600,7 @@ class Server:
         messages = fine_grained_manager.update(changed, [], followed=True)
 
         # Follow deps from changed modules (still within graph).
-        worklist = changed[:]
+        worklist = changed.copy()
         while worklist:
             module = worklist.pop()
             if module[0] not in graph:
@@ -707,7 +707,7 @@ class Server:
         """
         changed = []
         new_files = []
-        worklist = roots[:]
+        worklist = roots.copy()
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
