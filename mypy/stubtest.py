@@ -564,6 +564,8 @@ def _verify_static_class_methods(
         yield "runtime is a staticmethod but stub is not"
     if not isinstance(static_runtime, staticmethod) and stub.is_static:
         yield "stub is a staticmethod but runtime is not"
+    if isinstance(stub, nodes.FuncDef):
+        yield from _verify_final_method(stub, static_runtime)
 
 
 def _verify_arg_name(
@@ -1115,6 +1117,7 @@ def verify_paramspecexpr(
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
+        yield from _verify_final_method(stub.func, runtime.fget)
         return
     if inspect.isdatadescriptor(runtime):
         # It's enough like a property...
@@ -1141,6 +1144,11 @@ def _verify_abstract_status(stub: nodes.FuncDef, runtime: Any) -> Iterator[str]:
     if runtime_abstract and not stub_abstract:
         item_type = "property" if stub.is_property else "method"
         yield f"is inconsistent, runtime {item_type} is abstract but stub is not"
+
+
+def _verify_final_method(stub: nodes.FuncDef, runtime: Any) -> Iterator[str]:
+    if getattr(runtime, "__final__", False) and not stub.is_final:
+        yield "is decorated with @final at runtime, but not in the stub"
 
 
 def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem | None:
