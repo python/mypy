@@ -6,12 +6,12 @@
 #include "CPy.h"
 
 
-static double CPy_DomainError() {
+static double CPy_DomainError(void) {
     PyErr_SetString(PyExc_ValueError, "math domain error");
     return CPY_FLOAT_ERROR;
 }
 
-static double CPy_MathRangeError() {
+static double CPy_MathRangeError(void) {
     PyErr_SetString(PyExc_OverflowError, "math range error");
     return CPY_FLOAT_ERROR;
 }
