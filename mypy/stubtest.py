@@ -953,7 +953,7 @@ def verify_funcitem(
     if isinstance(stub, nodes.FuncDef):
         for error_text in _verify_abstract_status(stub, runtime):
             yield Error(object_path, error_text, stub, runtime)
-        for error_text in _verify_final_method(stub, static_runtime):
+        for error_text in _verify_final_method(stub, runtime, static_runtime):
             yield Error(object_path, error_text, stub, runtime)
 
     for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
@@ -1125,7 +1125,7 @@ def verify_paramspecexpr(
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
-        yield from _verify_final_method(stub.func, runtime.fget)
+        yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
     if inspect.isdatadescriptor(runtime):
         # It's enough like a property...
@@ -1154,8 +1154,16 @@ def _verify_abstract_status(stub: nodes.FuncDef, runtime: Any) -> Iterator[str]:
         yield f"is inconsistent, runtime {item_type} is abstract but stub is not"
 
 
-def _verify_final_method(stub: nodes.FuncDef, runtime: Any) -> Iterator[str]:
-    if getattr(runtime, "__final__", False) and not stub.is_final:
+def _verify_final_method(stub: nodes.FuncDef, runtime: Any, static_runtime: MaybeMissing[Any]) -> Iterator[str]:
+    if stub.is_final:
+        return
+    if (
+        getattr(runtime, "__final__", False)
+        or (
+            static_runtime is not MISSING
+            and getattr(static_runtime, "__final__", False)
+        )
+    ):
         yield "is decorated with @final at runtime, but not in the stub"
 
 

@@ -1311,43 +1311,71 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             class H:
-                @classmethod
-                def foo(cls) -> None: ...
+                @staticmethod
+                def foo() -> None: ...
             """,
             runtime="""
             class H:
+                @staticmethod
                 @final
-                @classmethod
-                def foo(cls): pass
+                def foo(): pass
             """,
             error="H.foo",
         )
         yield Case(
             stub="""
             class I:
-                @property
-                def foo(self) -> int: ...
+                @classmethod
+                def foo(cls) -> None: ...
             """,
             runtime="""
             class I:
-                @property
                 @final
-                def foo(self): return 42
+                @classmethod
+                def foo(cls): pass
             """,
             error="I.foo",
         )
         yield Case(
             stub="""
             class J:
-                def foo(self, obj: int) -> int: ...
+                @classmethod
+                def foo(cls) -> None: ...
             """,
             runtime="""
             class J:
+                @classmethod
+                @final
+                def foo(cls): pass
+            """,
+            error="J.foo",
+        )
+        yield Case(
+            stub="""
+            class K:
+                @property
+                def foo(self) -> int: ...
+            """,
+            runtime="""
+            class K:
+                @property
+                @final
+                def foo(self): return 42
+            """,
+            error="K.foo",
+        )
+        yield Case(
+            stub="""
+            class L:
+                def foo(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class L:
                 @final
                 @functools.lru_cache()
                 def foo(self, obj): return obj * 2
             """,
-            error="J.foo",
+            error="L.foo",
         )
 
     @collect_cases
