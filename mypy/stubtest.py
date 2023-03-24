@@ -529,8 +529,21 @@ def verify_typeinfo(
             yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
 
+def _static_lookup_runtime(object_path: list[str]) -> MaybeMissing[Any]:
+    static_runtime = importlib.import_module(object_path[0])
+    for entry in object_path[1:]:
+        try:
+            static_runtime = inspect.getattr_static(static_runtime, entry)
+        except AttributeError:
+            # This can happen with mangled names, ignore for now.
+            # TODO: pass more information about ancestors of nodes/objects to verify, so we don't
+            # have to do this hacky lookup. Would be useful in several places.
+            return MISSING
+    return static_runtime
+
+
 def _verify_static_class_methods(
-    stub: nodes.FuncBase, runtime: Any, object_path: list[str]
+    stub: nodes.FuncBase, runtime: Any, static_runtime: MaybeMissing[Any], object_path: list[str]
 ) -> Iterator[str]:
     if stub.name in ("__new__", "__init_subclass__", "__class_getitem__"):
         # Special cased by Python, so don't bother checking
@@ -545,17 +558,6 @@ def _verify_static_class_methods(
             yield "stub is a classmethod but runtime is not"
         return
 
-    # Look the object up statically, to avoid binding by the descriptor protocol
-    static_runtime = importlib.import_module(object_path[0])
-    for entry in object_path[1:]:
-        try:
-            static_runtime = inspect.getattr_static(static_runtime, entry)
-        except AttributeError:
-            # This can happen with mangled names, ignore for now.
-            # TODO: pass more information about ancestors of nodes/objects to verify, so we don't
-            # have to do this hacky lookup. Would be useful in a couple other places too.
-            return
-
     if isinstance(static_runtime, classmethod) and not stub.is_class:
         yield "runtime is a classmethod but stub is not"
     if not isinstance(static_runtime, classmethod) and stub.is_class:
@@ -564,8 +566,6 @@ def _verify_static_class_methods(
         yield "runtime is a staticmethod but stub is not"
     if not isinstance(static_runtime, staticmethod) and stub.is_static:
         yield "stub is a staticmethod but runtime is not"
-    if isinstance(stub, nodes.FuncDef):
-        yield from _verify_final_method(stub, static_runtime)
 
 
 def _verify_arg_name(
@@ -947,11 +947,16 @@ def verify_funcitem(
         if not callable(runtime):
             return
 
+    # Look the object up statically, to avoid binding by the descriptor protocol
+    static_runtime = _static_lookup_runtime(object_path)
+
     if isinstance(stub, nodes.FuncDef):
         for error_text in _verify_abstract_status(stub, runtime):
             yield Error(object_path, error_text, stub, runtime)
+        for error_text in _verify_final_method(stub, static_runtime):
+            yield Error(object_path, error_text, stub, runtime)
 
-    for message in _verify_static_class_methods(stub, runtime, object_path):
+    for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
     signature = safe_inspect_signature(runtime)
@@ -1054,7 +1059,10 @@ def verify_overloadedfuncdef(
         if not callable(runtime):
             return
 
-    for message in _verify_static_class_methods(stub, runtime, object_path):
+    # Look the object up statically, to avoid binding by the descriptor protocol
+    static_runtime = _static_lookup_runtime(object_path)
+
+    for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
     signature = safe_inspect_signature(runtime)
