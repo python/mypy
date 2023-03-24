@@ -602,7 +602,15 @@ def func(names: Tuple[str, ...]):
 from typing_extensions import TypeGuard
 
 class Z:
-    def typeguard(self, *, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
+    def typeguard1(self, *, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
+        ...
+    
+    @staticmethod
+    def typeguard2(x: object) -> TypeGuard[int]:
+        ...
+    
+    @staticmethod
+    def typeguard3(*, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
         ...
 
 def bad_typeguard(*, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
