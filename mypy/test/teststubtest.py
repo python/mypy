@@ -1188,12 +1188,21 @@ class StubtestUnit(unittest.TestCase):
                 @final
                 @staticmethod
                 def bar() -> None: ...
+                @staticmethod
+                @final
+                def bar2() -> None: ...
                 @final
                 @classmethod
                 def baz(cls) -> None: ...
+                @classmethod
+                @final
+                def baz2(cls) -> None: ...
                 @property
                 @final
                 def eggs(self) -> int: ...
+                @final
+                @property
+                def eggs2(self) -> int: ...
                 @final
                 def ham(self, obj: int) -> int: ...
             """,
@@ -1204,12 +1213,21 @@ class StubtestUnit(unittest.TestCase):
                 @final
                 @staticmethod
                 def bar(): pass
+                @staticmethod
+                @final
+                def bar2(): pass
                 @final
                 @classmethod
                 def baz(cls): pass
+                @classmethod
+                @final
+                def baz2(cls): pass
                 @property
                 @final
                 def eggs(self): return 42
+                @final
+                @property
+                def eggs2(self): pass
                 @final
                 @functools.lru_cache()
                 def ham(self, obj): return obj * 2
@@ -1225,12 +1243,21 @@ class StubtestUnit(unittest.TestCase):
                 @final
                 @staticmethod
                 def bar() -> None: ...
+                @staticmethod
+                @final
+                def bar2() -> None: ...
                 @final
                 @classmethod
                 def baz(cls) -> None: ...
+                @classmethod
+                @final
+                def baz2(cls) -> None: ...
                 @property
                 @final
                 def eggs(self) -> int: ...
+                @final
+                @property
+                def eggs2(self) -> int: ...
                 @final
                 def ham(self, obj: int) -> int: ...
             """,
@@ -1239,10 +1266,16 @@ class StubtestUnit(unittest.TestCase):
                 def foo(self): pass
                 @staticmethod
                 def bar(): pass
+                @staticmethod
+                def bar2(): pass
                 @classmethod
                 def baz(cls): pass
+                @classmethod
+                def baz2(cls): pass
                 @property
                 def eggs(self): return 42
+                @property
+                def eggs2(self): return 42
                 @functools.lru_cache()
                 def ham(self, obj): return obj * 2
             """,
