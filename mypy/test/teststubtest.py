@@ -1475,7 +1475,10 @@ class StubtestUnit(unittest.TestCase):
     @collect_cases
     def test_abstract_methods(self) -> Iterator[Case]:
         yield Case(
-            stub="from abc import abstractmethod",
+            stub="""
+            from abc import abstractmethod
+            from typing import overload
+            """,
             runtime="from abc import abstractmethod",
             error=None,
         )
@@ -1504,15 +1507,64 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
-        # Runtime can miss `@abstractmethod`:
         yield Case(
             stub="""
             class A3:
+                @overload
+                def some(self, other: int) -> str: ...
+                @overload
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A3:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error="A3.some",
+        )
+        yield Case(
+            stub="""
+            class A4:
+                @overload
+                @abstractmethod
+                def some(self, other: int) -> str: ...
+                @overload
+                @abstractmethod
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A4:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class A5:
+                @abstractmethod
+                @overload
+                def some(self, other: int) -> str: ...
+                @abstractmethod
+                @overload
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A5:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error=None,
+        )
+        # Runtime can miss `@abstractmethod`:
+        yield Case(
+            stub="""
+            class A6:
                 @abstractmethod
                 def some(self) -> None: ...
             """,
             runtime="""
-            class A3:
+            class A6:
                 def some(self) -> None: ...
             """,
             error=None,
