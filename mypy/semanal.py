@@ -867,7 +867,7 @@ class SemanticAnalyzer(
                 assert isinstance(result, ProperType)
                 if isinstance(result, CallableType):
                     # type guards need to have a positional argument, to spec
-                    skip_self = self.is_class_scope() and not defn.is_static 
+                    skip_self = self.is_class_scope() and not defn.is_static
                     if (
                         result.type_guard
                         and ARG_POS not in result.arg_kinds[skip_self:]
