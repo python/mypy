@@ -558,6 +558,9 @@ def _verify_static_class_methods(
             yield "stub is a classmethod but runtime is not"
         return
 
+    if static_runtime is MISSING:
+        return
+
     if isinstance(static_runtime, classmethod) and not stub.is_class:
         yield "runtime is a classmethod but stub is not"
     if not isinstance(static_runtime, classmethod) and stub.is_class:
@@ -1065,7 +1068,8 @@ def verify_overloadedfuncdef(
     for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
-    # TODO: Should call _verify_final_method here, but it crashes stubtest: see #14950
+    # TODO: Should call _verify_final_method here,
+    # but overloaded final methods in stubs cause a stubtest crash: see #14950
 
     signature = safe_inspect_signature(runtime)
     if not signature:
