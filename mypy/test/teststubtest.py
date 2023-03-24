@@ -1364,6 +1364,24 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="K.foo",
         )
+        # This test wouldn't pass,
+        # because the runtime can't set __final__ on instances of builtins.property,
+        # so stubtest has non way of knowing that the runtime was decorated with @final:
+        #
+        # yield Case(
+        #     stub="""
+        #     class K2:
+        #         @property
+        #         def foo(self) -> int: ...
+        #     """,
+        #     runtime="""
+        #     class K2:
+        #         @final
+        #         @property
+        #         def foo(self): return 42
+        #     """,
+        #     error="K2.foo",
+        # )
         yield Case(
             stub="""
             class L:

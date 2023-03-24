@@ -1065,6 +1065,8 @@ def verify_overloadedfuncdef(
     for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
+    # TODO: Should call _verify_final_method here, but it crashes stubtest: see #14950
+
     signature = safe_inspect_signature(runtime)
     if not signature:
         return
@@ -1154,15 +1156,13 @@ def _verify_abstract_status(stub: nodes.FuncDef, runtime: Any) -> Iterator[str]:
         yield f"is inconsistent, runtime {item_type} is abstract but stub is not"
 
 
-def _verify_final_method(stub: nodes.FuncDef, runtime: Any, static_runtime: MaybeMissing[Any]) -> Iterator[str]:
+def _verify_final_method(
+    stub: nodes.FuncDef, runtime: Any, static_runtime: MaybeMissing[Any]
+) -> Iterator[str]:
     if stub.is_final:
         return
-    if (
-        getattr(runtime, "__final__", False)
-        or (
-            static_runtime is not MISSING
-            and getattr(static_runtime, "__final__", False)
-        )
+    if getattr(runtime, "__final__", False) or (
+        static_runtime is not MISSING and getattr(static_runtime, "__final__", False)
     ):
         yield "is decorated with @final at runtime, but not in the stub"
 
