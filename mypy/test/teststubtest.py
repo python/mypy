@@ -1143,7 +1143,10 @@ class StubtestUnit(unittest.TestCase):
     def test_has_runtime_final_decorator(self) -> Iterator[Case]:
         yield Case(
             stub="from typing_extensions import final",
-            runtime="from typing_extensions import final",
+            runtime="""
+            import functools
+            from typing_extensions import final
+            """,
             error=None,
         )
         yield Case(
@@ -1176,6 +1179,221 @@ class StubtestUnit(unittest.TestCase):
             class C: ...
             """,
             error="C",
+        )
+        yield Case(
+            stub="""
+            class D:
+                @final
+                def foo(self) -> None: ...
+                @final
+                @staticmethod
+                def bar() -> None: ...
+                @staticmethod
+                @final
+                def bar2() -> None: ...
+                @final
+                @classmethod
+                def baz(cls) -> None: ...
+                @classmethod
+                @final
+                def baz2(cls) -> None: ...
+                @property
+                @final
+                def eggs(self) -> int: ...
+                @final
+                @property
+                def eggs2(self) -> int: ...
+                @final
+                def ham(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class D:
+                @final
+                def foo(self): pass
+                @final
+                @staticmethod
+                def bar(): pass
+                @staticmethod
+                @final
+                def bar2(): pass
+                @final
+                @classmethod
+                def baz(cls): pass
+                @classmethod
+                @final
+                def baz2(cls): pass
+                @property
+                @final
+                def eggs(self): return 42
+                @final
+                @property
+                def eggs2(self): pass
+                @final
+                @functools.lru_cache()
+                def ham(self, obj): return obj * 2
+            """,
+            error=None,
+        )
+        # Stub methods are allowed to have @final even if the runtime doesn't...
+        yield Case(
+            stub="""
+            class E:
+                @final
+                def foo(self) -> None: ...
+                @final
+                @staticmethod
+                def bar() -> None: ...
+                @staticmethod
+                @final
+                def bar2() -> None: ...
+                @final
+                @classmethod
+                def baz(cls) -> None: ...
+                @classmethod
+                @final
+                def baz2(cls) -> None: ...
+                @property
+                @final
+                def eggs(self) -> int: ...
+                @final
+                @property
+                def eggs2(self) -> int: ...
+                @final
+                def ham(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class E:
+                def foo(self): pass
+                @staticmethod
+                def bar(): pass
+                @staticmethod
+                def bar2(): pass
+                @classmethod
+                def baz(cls): pass
+                @classmethod
+                def baz2(cls): pass
+                @property
+                def eggs(self): return 42
+                @property
+                def eggs2(self): return 42
+                @functools.lru_cache()
+                def ham(self, obj): return obj * 2
+            """,
+            error=None,
+        )
+        # ...But if the runtime has @final, the stub must have it as well
+        yield Case(
+            stub="""
+            class F:
+                def foo(self) -> None: ...
+            """,
+            runtime="""
+            class F:
+                @final
+                def foo(self): pass
+            """,
+            error="F.foo",
+        )
+        yield Case(
+            stub="""
+            class G:
+                @staticmethod
+                def foo() -> None: ...
+            """,
+            runtime="""
+            class G:
+                @final
+                @staticmethod
+                def foo(): pass
+            """,
+            error="G.foo",
+        )
+        yield Case(
+            stub="""
+            class H:
+                @staticmethod
+                def foo() -> None: ...
+            """,
+            runtime="""
+            class H:
+                @staticmethod
+                @final
+                def foo(): pass
+            """,
+            error="H.foo",
+        )
+        yield Case(
+            stub="""
+            class I:
+                @classmethod
+                def foo(cls) -> None: ...
+            """,
+            runtime="""
+            class I:
+                @final
+                @classmethod
+                def foo(cls): pass
+            """,
+            error="I.foo",
+        )
+        yield Case(
+            stub="""
+            class J:
+                @classmethod
+                def foo(cls) -> None: ...
+            """,
+            runtime="""
+            class J:
+                @classmethod
+                @final
+                def foo(cls): pass
+            """,
+            error="J.foo",
+        )
+        yield Case(
+            stub="""
+            class K:
+                @property
+                def foo(self) -> int: ...
+            """,
+            runtime="""
+            class K:
+                @property
+                @final
+                def foo(self): return 42
+            """,
+            error="K.foo",
+        )
+        # This test wouldn't pass,
+        # because the runtime can't set __final__ on instances of builtins.property,
+        # so stubtest has non way of knowing that the runtime was decorated with @final:
+        #
+        # yield Case(
+        #     stub="""
+        #     class K2:
+        #         @property
+        #         def foo(self) -> int: ...
+        #     """,
+        #     runtime="""
+        #     class K2:
+        #         @final
+        #         @property
+        #         def foo(self): return 42
+        #     """,
+        #     error="K2.foo",
+        # )
+        yield Case(
+            stub="""
+            class L:
+                def foo(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class L:
+                @final
+                @functools.lru_cache()
+                def foo(self, obj): return obj * 2
+            """,
+            error="L.foo",
         )
 
     @collect_cases
