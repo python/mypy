@@ -616,6 +616,7 @@ class Z:
 def bad_typeguard(*, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
     ...
 [builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]
 
 [case testTypeGuardWithKeywordArg]
 from typing_extensions import TypeGuard
