@@ -1052,6 +1052,17 @@ def verify_overloadedfuncdef(
         if not callable(runtime):
             return
 
+    # mypy doesn't allow overloads where one overload is abstract but another isn't,
+    # so it should be okay to just check whether the first overload is abstract or not.
+    #
+    # TODO: Mypy *does* allow properties where e.g. the getter is abstract but the setter is not;
+    # and any property with a setter is represented as an OverloadedFuncDef internally;
+    # not sure exactly what (if anything) we should do about that.
+    first_part = stub.items[0]
+    if isinstance(first_part, nodes.Decorator) and first_part.is_overload:
+        for msg in _verify_abstract_status(first_part.func, runtime):
+            yield Error(object_path, msg, stub, runtime)
+
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
