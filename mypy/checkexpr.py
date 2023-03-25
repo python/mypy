@@ -1783,7 +1783,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # into
                 # def () -> def [T] (T) -> T
                 for i, argument in enumerate(inferred_args):
-                    if isinstance(get_proper_type(argument), UninhabitedType):
+                    # NOTE: I'm not too sure about my concept of meta variables. Maybe we
+                    # shouldn't skip them, but instead make them non-meta?
+                    if (
+                        isinstance(get_proper_type(argument), UninhabitedType)
+                        and not callee_type.variables[i].id.is_meta_var()
+                    ):
                         inferred_args[i] = callee_type.variables[i]
 
                         # handle multiple type variables

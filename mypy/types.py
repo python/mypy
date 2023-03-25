@@ -1997,6 +1997,7 @@ class CallableType(FunctionLike):
                 arg_types=[any_type, any_type],
                 arg_kinds=[ARG_STAR, ARG_STAR2],
                 arg_names=[None, None],
+                is_ellipsis_args=True,
             ),
         )
 
