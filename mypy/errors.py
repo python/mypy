@@ -637,14 +637,14 @@ class Errors:
             used_ignored_codes = used_ignored_lines[line]
             unused_ignored_codes = set(ignored_codes) - set(used_ignored_codes)
             # `ignore` is used
-            if len(ignored_codes) == 0 and len(used_ignored_codes) > 0:
+            if not ignored_codes and used_ignored_codes:
                 continue
             # All codes appearing in `ignore[...]` are used
-            if len(ignored_codes) > 0 and len(unused_ignored_codes) == 0:
+            if ignored_codes and not unused_ignored_codes:
                 continue
             # Display detail only when `ignore[...]` specifies more than one error code
             unused_codes_message = ""
-            if len(ignored_codes) > 1 and len(unused_ignored_codes) > 0:
+            if len(ignored_codes) > 1 and unused_ignored_codes:
                 unused_codes_message = f"[{', '.join(sorted(unused_ignored_codes))}]"
             message = f'Unused "type: ignore{unused_codes_message}" comment'
             for unused in unused_ignored_codes:

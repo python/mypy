@@ -1696,7 +1696,7 @@ class LowLevelIRBuilder:
         # for-loop and inline the SetMem operation, which is faster
         # than list_build_op, however generates more code.
         result_list = self.call_c(new_list_op, length, line)
-        if len(values) == 0:
+        if not values:
             return result_list
         args = [self.coerce(item, object_rprimitive, line) for item in values]
         ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, "ob_item", line))

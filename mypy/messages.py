@@ -2781,7 +2781,7 @@ def strip_quotes(s: str) -> str:
 
 
 def format_string_list(lst: list[str]) -> str:
-    assert len(lst) > 0
+    assert lst
     if len(lst) == 1:
         return lst[0]
     elif len(lst) <= 5:

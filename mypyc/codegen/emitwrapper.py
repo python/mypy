@@ -179,7 +179,7 @@ def generate_wrapper_function(
         nargs = "nargs"
     parse_fn = "CPyArg_ParseStackAndKeywords"
     # Special case some common signatures
-    if len(real_args) == 0:
+    if not real_args:
         # No args
         parse_fn = "CPyArg_ParseStackAndKeywordsNoArgs"
     elif len(real_args) == 1 and len(groups[ARG_POS]) == 1:
