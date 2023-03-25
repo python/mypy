@@ -1429,6 +1429,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             need_refresh = any(
                 isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
             )
+            old_callee = callee
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
             if need_refresh:
@@ -1443,7 +1444,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     lambda i: self.accept(args[i]),
                 )
             callee = self.infer_function_type_arguments(
-                callee, args, arg_kinds, formal_to_actual, context
+                callee, args, arg_kinds, formal_to_actual, context, old_callee
             )
             if need_refresh:
                 formal_to_actual = map_actuals_to_formals(
@@ -1733,6 +1734,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_kinds: list[ArgKind],
         formal_to_actual: list[list[int]],
         context: Context,
+        unfreshened_callee_type: CallableType,
     ) -> CallableType:
         """Infer the type arguments for a generic callee type.
 
@@ -1783,17 +1785,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # into
                 # def () -> def [T] (T) -> T
                 for i, argument in enumerate(inferred_args):
-                    # NOTE: I'm not too sure about my concept of meta variables. Maybe we
-                    # shouldn't skip them, but instead make them non-meta?
-                    if (
-                        isinstance(get_proper_type(argument), UninhabitedType)
-                        and not callee_type.variables[i].id.is_meta_var()
-                    ):
-                        inferred_args[i] = callee_type.variables[i]
+                    if isinstance(get_proper_type(argument), UninhabitedType):
+                        # un-"freshen" the type variable :^)
+                        variable = unfreshened_callee_type.variables[i]
+                        inferred_args[i] = variable
 
                         # handle multiple type variables
                         return_type = return_type.copy_modified(
-                            variables=[*return_type.variables, callee_type.variables[i]]
+                            variables=[*return_type.variables, variable]
                         )
 
                 callee_type = callee_type.copy_modified(

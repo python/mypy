@@ -3105,9 +3105,9 @@ def f(x: Optional[T] = None) -> Callable[..., T]: ...
 
 # TODO: should this warn about needed an annotation? This behavior still _works_...
 x = f()
-reveal_type(x)  # N: Revealed type is "def [T] (*Any, **Any) -> T`1"
+reveal_type(x)  # N: Revealed type is "def [T] (*Any, **Any) -> T`-1"
 y = x
-reveal_type(y)  # N: Revealed type is "def [T] (*Any, **Any) -> T`1"
+reveal_type(y)  # N: Revealed type is "def [T] (*Any, **Any) -> T`-1"
 
 [case testDontNeedAnnotationForCallable]
 from typing import TypeVar, Optional, Callable, NoReturn
