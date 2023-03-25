@@ -91,7 +91,7 @@ main:7: error: Unexpected keyword argument "y" for "B"
 builtins.pyi:12: note: "B" defined here
 ==
 
-[case frozenStays]
+[case frozenInheritanceViaDefault]
 # flags: --python-version 3.11
 from foo import Foo
 
