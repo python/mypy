@@ -130,5 +130,12 @@ class Foo(Base):
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+# If the frozen parameter is being maintained correctly, we *don't* expect to see issues; if it's
+# broken in incremental mode, then we'll see an error about inheriting a non-frozen class from a
+# frozen one.
+#
+# Ideally we'd also add a `foo.foo = 2` to confirm that frozen semantics are actually being
+# enforced, but incremental tests currently can't start with an error, which makes it tricky to
+# write such a test case.
 [out]
 ==
