@@ -616,7 +616,7 @@ class Z:
 def bad_typeguard(*, x: object) -> TypeGuard[int]: # line 15
     ...
 
-# seperated outputs are due to a parsing difference (?)
+# separated outputs are due to a parsing difference (?)
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
 [out]
