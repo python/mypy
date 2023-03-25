@@ -359,11 +359,13 @@ class DataDrivenTestCase(pytest.Item):
         return self.file, self.line, self.name
 
     def repr_failure(self, excinfo: Any, style: Any | None = None) -> str:
-        if excinfo.errisinstance(SystemExit):
+        if isinstance(excinfo.value, SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.
             # In particular, uncaught exceptions during semantic analysis or type checking
             # call exit() and they already print out a stack trace.
+            excrepr = excinfo.exconly()
+        elif isinstance(excinfo.value, pytest.fail.Exception) and not excinfo.value.pytrace:
             excrepr = excinfo.exconly()
         else:
             self.parent._prunetraceback(excinfo)
