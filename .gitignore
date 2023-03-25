@@ -45,7 +45,7 @@ htmlcov
 .Python
 bin/
 lib/
-include/
+/include/
 .python-version
 pyvenv.cfg
 

@@ -329,7 +329,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             )
         else:
             # If Unpack[Ts] simplest form still has an unpack or is a
-            # homogenous tuple, then only the prefix can be represented as
+            # homogeneous tuple, then only the prefix can be represented as
             # positional arguments, and we pass Tuple[Unpack[Ts-1], Y1, Y2]
             # as the star arg, for example.
             expanded_unpack = get_proper_type(expanded_items[expanded_unpack_index])
