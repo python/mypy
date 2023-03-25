@@ -41,6 +41,10 @@ stubs and implementation or to check for stub completeness. It's used to
 test Python's official collection of library stubs,
 `typeshed <https://github.com/python/typeshed>`_.
 
+.. warning::
+
+    stubtest will import and execute Python code from the packages it checks.
+
 Example
 *******
 
@@ -65,7 +69,7 @@ Here's a quick example of what stubtest can do:
     error: library.foo is inconsistent, runtime argument "x" has a default value but stub argument does not
     Stub: at line 3
     def (x: builtins.int)
-    Runtime: at line 3 in file ~/library.py
+    Runtime: in file ~/library.py:3
     def (x=None)
 
     error: library.x variable differs from runtime type Literal['hello, stubtest']

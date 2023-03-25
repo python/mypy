@@ -187,6 +187,66 @@ reveal_type(C)  # N: Revealed type is "def (some_int: builtins.int, some_str: bu
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassIncompatibleOverrides]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass
+class Base:
+    foo: int
+
+@dataclass
+class BadDerived1(Base):
+    def foo(self) -> int:  # E: Dataclass attribute may only be overridden by another attribute \
+                           # E: Signature of "foo" incompatible with supertype "Base"
+        return 1
+
+@dataclass
+class BadDerived2(Base):
+    @property              # E: Dataclass attribute may only be overridden by another attribute
+    def foo(self) -> int:  # E: Cannot override writeable attribute with read-only property
+        return 2
+
+@dataclass
+class BadDerived3(Base):
+    class foo: pass  # E: Dataclass attribute may only be overridden by another attribute
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassMultipleInheritance]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+class Unrelated:
+    foo: str
+
+@dataclass
+class Base:
+    bar: int
+
+@dataclass
+class Derived(Base, Unrelated):
+    pass
+
+d = Derived(3)
+reveal_type(d.foo)  # N: Revealed type is "builtins.str"
+reveal_type(d.bar)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassIncompatibleFrozenOverride]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Base:
+    foo: int
+
+@dataclass(frozen=True)
+class BadDerived(Base):
+    @property  # E: Dataclass attribute may only be overridden by another attribute
+    def foo(self) -> int:
+        return 3
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesFreezing]
 # flags: --python-version 3.7
 from dataclasses import dataclass
@@ -197,6 +257,28 @@ class Person:
 
 john = Person('John')
 john.name = 'Ben'  # E: Property "name" defined in "Person" is read-only
+
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesInconsistentFreezing]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class FrozenBase:
+    pass
+
+@dataclass
+class BadNormalDerived(FrozenBase):  # E: Cannot inherit non-frozen dataclass from a frozen one
+    pass
+
+@dataclass
+class NormalBase:
+    pass
+
+@dataclass(frozen=True)
+class BadFrozenDerived(NormalBase):  # E: Cannot inherit frozen dataclass from a non-frozen one
+    pass
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -550,9 +632,10 @@ class Two:
     S: TypeAlias = Callable[[int], str]  # E: Type aliases inside dataclass definitions are not supported at runtime
 
 c = Two()
-x = c.S  # E: Member "S" is not assignable
-reveal_type(x)  # N: Revealed type is "Any"
+x = c.S
+reveal_type(x)  # N: Revealed type is "typing._SpecialForm"
 [builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testDataclassOrdering]
 # flags: --python-version 3.7
@@ -589,8 +672,8 @@ app1 >= app3
 # flags: --python-version 3.7
 from dataclasses import dataclass
 
-@dataclass(eq=False, order=True)
-class Application:  # E: eq must be True if order is True
+@dataclass(eq=False, order=True)  # E: "eq" must be True if "order" is True
+class Application:
    ...
 
 [builtins fixtures/dataclasses.pyi]
@@ -601,7 +684,7 @@ from dataclasses import dataclass
 
 @dataclass(order=True)
 class Application:
-  def __lt__(self, other: 'Application') -> bool: # E: You may not have a custom __lt__ method when order=True
+  def __lt__(self, other: 'Application') -> bool: # E: You may not have a custom "__lt__" method when "order" is True
     ...
 
 [builtins fixtures/dataclasses.pyi]
@@ -1283,10 +1366,10 @@ from dataclasses import dataclass
 class A:
     foo: int
 
-@dataclass
+@dataclass(frozen=True)
 class B(A):
-    @property
-    def foo(self) -> int: pass  # E: Signature of "foo" incompatible with supertype "A"
+    @property  # E: Dataclass attribute may only be overridden by another attribute
+    def foo(self) -> int: pass
 
 reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
 
@@ -1559,7 +1642,7 @@ A(a=func).a = func  # E: Property "a" defined in "A" is read-only
 # flags: --python-version 3.7
 from dataclasses import dataclass
 
-def foo():
+def foo() -> None:
     @dataclass
     class Foo:
         foo: int
@@ -1737,10 +1820,10 @@ c.x  # E: "C" has no attribute "x"
 [case testDataclassCheckTypeVarBounds]
 # flags: --python-version 3.7
 from dataclasses import dataclass
-from typing import Protocol, Dict, TypeVar, Generic
+from typing import ClassVar, Protocol, Dict, TypeVar, Generic
 
 class DataclassProtocol(Protocol):
-    __dataclass_fields__: Dict
+    __dataclass_fields__: ClassVar[Dict]
 
 T = TypeVar("T", bound=DataclassProtocol)
 
@@ -1795,4 +1878,162 @@ class Two:
 t: Two
 reveal_type(t.__match_args__)  # E: "Two" has no attribute "__match_args__" \
                                # N: Revealed type is "Any"
+[builtins fixtures/dataclasses.pyi]
+
+[case testFinalInDataclass]
+from dataclasses import dataclass
+from typing import Final
+
+@dataclass
+class FirstClass:
+    FIRST_CONST: Final = 3  # OK
+
+@dataclass
+class SecondClass:
+    SECOND_CONST: Final = FirstClass.FIRST_CONST  # E: Need type argument for Final[...] with non-literal default in dataclass
+
+reveal_type(FirstClass().FIRST_CONST)  # N: Revealed type is "Literal[3]?"
+FirstClass().FIRST_CONST = 42  # E: Cannot assign to final attribute "FIRST_CONST"
+reveal_type(SecondClass().SECOND_CONST)  # N: Revealed type is "Literal[3]?"
+SecondClass().SECOND_CONST = 42  # E: Cannot assign to final attribute "SECOND_CONST"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassFieldsProtocol]
+# flags: --python-version 3.9
+from dataclasses import dataclass
+from typing import Any, Protocol
+
+class ConfigProtocol(Protocol):
+    __dataclass_fields__: dict[str, Any]
+
+def takes_cp(cp: ConfigProtocol): ...
+
+@dataclass
+class MyDataclass:
+    x: int = 3
+
+takes_cp(MyDataclass)
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTypeAnnotationAliasUpdated]
+import a
+[file a.py]
+from dataclasses import dataclass
+from b import B
+
+@dataclass
+class D:
+    x: B
+
+reveal_type(D)  # N: Revealed type is "def (x: builtins.list[b.C]) -> a.D"
+[file b.py]
+from typing import List
+import a
+class CC: ...
+class C(CC): ...
+B = List[C]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassSelfType]
+# flags: --strict-optional
+from dataclasses import dataclass
+from typing import Self, TypeVar, Generic, Optional
+
+T = TypeVar("T")
+
+@dataclass
+class LinkedList(Generic[T]):
+    value: T
+    next: Optional[Self] = None
+
+    def meth(self) -> None:
+        reveal_type(self.next)  # N: Revealed type is "Union[Self`0, None]"
+
+l_int: LinkedList[int] = LinkedList(1, LinkedList("no", None))  # E: Argument 1 to "LinkedList" has incompatible type "str"; expected "int"
+
+@dataclass
+class SubLinkedList(LinkedList[int]): ...
+
+lst = SubLinkedList(1, LinkedList(2))  # E: Argument 2 to "SubLinkedList" has incompatible type "LinkedList[int]"; expected "Optional[SubLinkedList]"
+reveal_type(lst.next)  # N: Revealed type is "Union[__main__.SubLinkedList, None]"
+reveal_type(SubLinkedList)  # N: Revealed type is "def (value: builtins.int, next: Union[__main__.SubLinkedList, None] =) -> __main__.SubLinkedList"
+[builtins fixtures/dataclasses.pyi]
+
+[case testNoCrashOnNestedGenericCallable]
+from dataclasses import dataclass
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar('T')
+R = TypeVar('R')
+X = TypeVar('X')
+
+@dataclass
+class Box(Generic[T]):
+    inner: T
+
+@dataclass
+class Cont(Generic[R]):
+    run: Box[Callable[[X], R]]
+
+def const_two(x: T) -> str:
+    return "two"
+
+c = Cont(Box(const_two))
+reveal_type(c)  # N: Revealed type is "__main__.Cont[builtins.str]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testNoCrashOnSelfWithForwardRefGenericDataclass]
+from typing import Generic, Sequence, TypeVar, Self
+from dataclasses import dataclass
+
+_T = TypeVar('_T', bound="Foo")
+
+@dataclass
+class Foo:
+    foo: int
+
+@dataclass
+class Element(Generic[_T]):
+    elements: Sequence[Self]
+
+@dataclass
+class Bar(Foo): ...
+e: Element[Bar]
+reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testIfConditionsInDefinition]
+# flags: --python-version 3.11 --always-true TRUTH
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+
+@dataclass
+class Foo:
+    if TYPE_CHECKING:
+        present_1: int
+    else:
+        skipped_1: int
+    if True:  # Mypy does not know if it is True or False, so the block is used
+        present_2: int
+    if False:  # Mypy does not know if it is True or False, so the block is used
+        present_3: int
+    if not TRUTH:
+        skipped_2: int
+    elif 123:
+        present_4: int
+    elif TRUTH:
+        present_5: int
+    else:
+        skipped_3: int
+
+Foo(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    present_5=5,
+)
 [builtins fixtures/dataclasses.pyi]

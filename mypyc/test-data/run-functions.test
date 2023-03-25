@@ -430,9 +430,11 @@ def nested_funcs(n: int) -> List[Callable[..., Any]]:
         ls.append(f)
     return ls
 
+def bool_default(x: bool = False, y: bool = True) -> str:
+    return str(x) + '-' + str(y)
 
 [file driver.py]
-from native import f, g, h, same, nested_funcs, a_lambda
+from native import f, g, h, same, nested_funcs, a_lambda, bool_default
 g()
 assert f(2) == (5, "test")
 assert f(s = "123", x = -2) == (1, "123")
@@ -446,6 +448,10 @@ assert [f() for f in nested_funcs(10)] == list(range(10))
 
 assert a_lambda(10) == 10
 assert a_lambda() == 20
+
+assert bool_default() == 'False-True'
+assert bool_default(True) == 'True-True'
+assert bool_default(True, False) == 'True-False'
 
 [case testMethodCallWithDefaultArgs]
 from typing import Tuple, List
@@ -1235,3 +1241,18 @@ def g() -> None:
         a.pop()
 
 g()
+
+[case testUnpackKwargsCompiled]
+from typing_extensions import Unpack, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+def foo(**kwargs: Unpack[Person]) -> None:
+    print(kwargs["name"])
+
+# This is not really supported yet, just test that we behave reasonably.
+foo(name='Jennifer', age=38)
+[out]
+Jennifer

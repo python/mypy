@@ -7,11 +7,13 @@ from importlib.machinery import ModuleSpec
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
 from typing import Any, NoReturn, Protocol, TextIO, TypeVar, overload
-from typing_extensions import Literal, TypeAlias, final
+from typing_extensions import Final, Literal, TypeAlias, final
 
 _T = TypeVar("_T")
 
-_OptExcInfo: TypeAlias = OptExcInfo  # TODO: obsolete, remove fall 2022 or later
+# see https://github.com/python/typeshed/issues/8513#issue-1333671093 for the rationale behind this alias
+_ExitCode: TypeAlias = str | int | None
+_OptExcInfo: TypeAlias = OptExcInfo  # noqa: Y047  # TODO: obsolete, remove fall 2022 or later
 
 # Intentionally omits one deprecated and one optional method of `importlib.abc.MetaPathFinder`
 class _MetaPathFinder(Protocol):
@@ -60,9 +62,10 @@ stdout: TextIO
 stderr: TextIO
 if sys.version_info >= (3, 10):
     stdlib_module_names: frozenset[str]
-__stdin__: TextIOWrapper
-__stdout__: TextIOWrapper
-__stderr__: TextIOWrapper
+
+__stdin__: Final[TextIOWrapper]  # Contains the original value of stdin
+__stdout__: Final[TextIOWrapper]  # Contains the original value of stdout
+__stderr__: Final[TextIOWrapper]  # Contains the original value of stderr
 tracebacklimit: int
 version: str
 api_version: int
@@ -188,11 +191,15 @@ class _implementation:
 int_info: _int_info
 
 @final
-class _int_info(structseq[int], tuple[int, int]):
+class _int_info(structseq[int], tuple[int, int, int, int]):
     @property
     def bits_per_digit(self) -> int: ...
     @property
     def sizeof_digit(self) -> int: ...
+    @property
+    def default_max_str_digits(self) -> int: ...
+    @property
+    def str_digits_check_threshold(self) -> int: ...
 
 @final
 class _version_info(_UninstantiableStructseq, tuple[int, int, int, str, int]):
@@ -212,17 +219,16 @@ version_info: _version_info
 def call_tracing(__func: Callable[..., _T], __args: Any) -> _T: ...
 def _clear_type_cache() -> None: ...
 def _current_frames() -> dict[int, FrameType]: ...
-def _getframe(__depth: int = ...) -> FrameType: ...
+def _getframe(__depth: int = 0) -> FrameType: ...
 def _debugmallocstats() -> None: ...
-def __displayhook__(__value: object) -> None: ...
+def __displayhook__(__object: object) -> None: ...
 def __excepthook__(__exctype: type[BaseException], __value: BaseException, __traceback: TracebackType | None) -> None: ...
 def exc_info() -> OptExcInfo: ...
 
 if sys.version_info >= (3, 11):
     def exception() -> BaseException | None: ...
 
-# sys.exit() accepts an optional argument of anything printable
-def exit(__status: object = ...) -> NoReturn: ...
+def exit(__status: _ExitCode = None) -> NoReturn: ...
 def getallocatedblocks() -> int: ...
 def getdefaultencoding() -> str: ...
 
@@ -272,10 +278,9 @@ if sys.platform == "win32":
 
 def intern(__string: str) -> str: ...
 def is_finalizing() -> bool: ...
-
-__breakpointhook__: Any  # contains the original value of breakpointhook
-
 def breakpointhook(*args: Any, **kwargs: Any) -> Any: ...
+
+__breakpointhook__ = breakpointhook  # Contains the original value of breakpointhook
 
 if sys.platform != "win32":
     def setdlopenflags(__flags: int) -> None: ...
@@ -299,7 +304,7 @@ if sys.version_info >= (3, 8):
         exc_value: BaseException | None
         exc_traceback: TracebackType | None
         err_msg: str | None
-        object: _object | None
+        object: _object
     unraisablehook: Callable[[UnraisableHookArgs], Any]
     def __unraisablehook__(__unraisable: UnraisableHookArgs) -> Any: ...
     def addaudithook(hook: Callable[[str, tuple[Any, ...]], Any]) -> None: ...
@@ -327,3 +332,8 @@ if sys.version_info < (3, 8):
     _CoroWrapper: TypeAlias = Callable[[Coroutine[Any, Any, Any]], Any]
     def set_coroutine_wrapper(__wrapper: _CoroWrapper) -> None: ...
     def get_coroutine_wrapper() -> _CoroWrapper: ...
+
+# The following two functions were added in 3.11.0, 3.10.7, 3.9.14, 3.8.14, & 3.7.14,
+# as part of the response to CVE-2020-10735
+def set_int_max_str_digits(maxdigits: int) -> None: ...
+def get_int_max_str_digits() -> int: ...

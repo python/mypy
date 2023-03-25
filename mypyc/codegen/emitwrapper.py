@@ -12,12 +12,20 @@ or methods in a single compilation unit.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence
+from typing import Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
 from mypyc.codegen.emit import AssignHandler, Emitter, ErrorHandler, GotoHandler, ReturnHandler
-from mypyc.common import DUNDER_PREFIX, NATIVE_PREFIX, PREFIX, use_vectorcall
+from mypyc.common import (
+    BITMAP_BITS,
+    BITMAP_TYPE,
+    DUNDER_PREFIX,
+    NATIVE_PREFIX,
+    PREFIX,
+    bitmap_name,
+    use_vectorcall,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
 from mypyc.ir.rtypes import (
@@ -78,22 +86,22 @@ def generate_traceback_code(
     return traceback_code
 
 
-def make_arg_groups(args: List[RuntimeArg]) -> Dict[ArgKind, List[RuntimeArg]]:
+def make_arg_groups(args: list[RuntimeArg]) -> dict[ArgKind, list[RuntimeArg]]:
     """Group arguments by kind."""
     return {k: [arg for arg in args if arg.kind == k] for k in ArgKind}
 
 
-def reorder_arg_groups(groups: Dict[ArgKind, List[RuntimeArg]]) -> List[RuntimeArg]:
+def reorder_arg_groups(groups: dict[ArgKind, list[RuntimeArg]]) -> list[RuntimeArg]:
     """Reorder argument groups to match their order in a format string."""
     return groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
 
 
-def make_static_kwlist(args: List[RuntimeArg]) -> str:
+def make_static_kwlist(args: list[RuntimeArg]) -> str:
     arg_names = "".join(f'"{arg.name}", ' for arg in args)
     return f"static const char * const kwlist[] = {{{arg_names}0}};"
 
 
-def make_format_string(func_name: Optional[str], groups: Dict[ArgKind, List[RuntimeArg]]) -> str:
+def make_format_string(func_name: str | None, groups: dict[ArgKind, list[RuntimeArg]]) -> str:
     """Return a format string that specifies the accepted arguments.
 
     The format string is an extended subset of what is supported by
@@ -135,6 +143,8 @@ def generate_wrapper_function(
 
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
+    if fn.sig.num_bitmap_args:
+        real_args = real_args[: -fn.sig.num_bitmap_args]
     if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
@@ -157,7 +167,7 @@ def generate_wrapper_function(
 
     cleanups = [f"CPy_DECREF(obj_{arg.name});" for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_ptrs: List[str] = []
+    arg_ptrs: list[str] = []
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         arg_ptrs += [f"&obj_{groups[ARG_STAR][0].name}" if groups[ARG_STAR] else "NULL"]
         arg_ptrs += [f"&obj_{groups[ARG_STAR2][0].name}" if groups[ARG_STAR2] else "NULL"]
@@ -185,6 +195,9 @@ def generate_wrapper_function(
         "return NULL;",
         "}",
     )
+    for i in range(fn.sig.num_bitmap_args):
+        name = bitmap_name(i)
+        emitter.emit_line(f"{BITMAP_TYPE} {name} = 0;")
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(
         fn,
@@ -223,6 +236,8 @@ def generate_legacy_wrapper_function(
 
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
+    if fn.sig.num_bitmap_args:
+        real_args = real_args[: -fn.sig.num_bitmap_args]
     if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
@@ -241,7 +256,7 @@ def generate_legacy_wrapper_function(
 
     cleanups = [f"CPy_DECREF(obj_{arg.name});" for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_ptrs: List[str] = []
+    arg_ptrs: list[str] = []
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         arg_ptrs += [f"&obj_{groups[ARG_STAR][0].name}" if groups[ARG_STAR] else "NULL"]
         arg_ptrs += [f"&obj_{groups[ARG_STAR2][0].name}" if groups[ARG_STAR2] else "NULL"]
@@ -254,6 +269,9 @@ def generate_legacy_wrapper_function(
         "return NULL;",
         "}",
     )
+    for i in range(fn.sig.num_bitmap_args):
+        name = bitmap_name(i)
+        emitter.emit_line(f"{BITMAP_TYPE} {name} = 0;")
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(
         fn,
@@ -283,6 +301,32 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return gen.wrapper_name()
 
 
+def generate_ipow_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generate a wrapper for native __ipow__.
+
+    Since __ipow__ fills a ternary slot, but almost no one defines __ipow__ to take three
+    arguments, the wrapper needs to tweaked to force it to accept three arguments.
+    """
+    gen = WrapperGenerator(cl, emitter)
+    gen.set_target(fn)
+    assert len(fn.args) in (2, 3), "__ipow__ should only take 2 or 3 arguments"
+    gen.arg_names = ["self", "exp", "mod"]
+    gen.emit_header()
+    gen.emit_arg_processing()
+    handle_third_pow_argument(
+        fn,
+        emitter,
+        gen,
+        if_unsupported=[
+            'PyErr_SetString(PyExc_TypeError, "__ipow__ takes 2 positional arguments but 3 were given");',
+            "return NULL;",
+        ],
+    )
+    gen.emit_call()
+    gen.finish()
+    return gen.wrapper_name()
+
+
 def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for a native binary dunder method.
 
@@ -293,13 +337,16 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """
     gen = WrapperGenerator(cl, emitter)
     gen.set_target(fn)
-    gen.arg_names = ["left", "right"]
+    if fn.name in ("__pow__", "__rpow__"):
+        gen.arg_names = ["left", "right", "mod"]
+    else:
+        gen.arg_names = ["left", "right"]
     wrapper_name = gen.wrapper_name()
 
     gen.emit_header()
     if fn.name not in reverse_op_methods and fn.name in reverse_op_method_names:
         # There's only a reverse operator method.
-        generate_bin_op_reverse_only_wrapper(emitter, gen)
+        generate_bin_op_reverse_only_wrapper(fn, emitter, gen)
     else:
         rmethod = reverse_op_methods[fn.name]
         fn_rev = cl.get_method(rmethod)
@@ -316,6 +363,7 @@ def generate_bin_op_forward_only_wrapper(
     fn: FuncIR, emitter: Emitter, gen: WrapperGenerator
 ) -> None:
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
+    handle_third_pow_argument(fn, emitter, gen, if_unsupported=["goto typefail;"])
     gen.emit_call(not_implemented_handler="goto typefail;")
     gen.emit_error_handling()
     emitter.emit_label("typefail")
@@ -334,19 +382,16 @@ def generate_bin_op_forward_only_wrapper(
     #        if not isinstance(other, int):
     #            return NotImplemented
     #        ...
-    rmethod = reverse_op_methods[fn.name]
-    emitter.emit_line(f"_Py_IDENTIFIER({rmethod});")
-    emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
-            op_methods_to_symbols[fn.name], rmethod
-        )
-    )
+    generate_bin_op_reverse_dunder_call(fn, emitter, reverse_op_methods[fn.name])
     gen.finish()
 
 
-def generate_bin_op_reverse_only_wrapper(emitter: Emitter, gen: WrapperGenerator) -> None:
+def generate_bin_op_reverse_only_wrapper(
+    fn: FuncIR, emitter: Emitter, gen: WrapperGenerator
+) -> None:
     gen.arg_names = ["right", "left"]
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
+    handle_third_pow_argument(fn, emitter, gen, if_unsupported=["goto typefail;"])
     gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_label("typefail")
@@ -372,7 +417,14 @@ def generate_bin_op_both_wrappers(
         )
     )
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
-    gen.emit_call(not_implemented_handler="goto typefail;")
+    handle_third_pow_argument(fn, emitter, gen, if_unsupported=["goto typefail2;"])
+    # Ternary __rpow__ calls aren't a thing so immediately bail
+    # if ternary __pow__ returns NotImplemented.
+    if fn.name == "__pow__" and len(fn.args) == 3:
+        fwd_not_implemented_handler = "goto typefail2;"
+    else:
+        fwd_not_implemented_handler = "goto typefail;"
+    gen.emit_call(not_implemented_handler=fwd_not_implemented_handler)
     gen.emit_error_handling()
     emitter.emit_line("}")
     emitter.emit_label("typefail")
@@ -384,20 +436,57 @@ def generate_bin_op_both_wrappers(
     gen.set_target(fn_rev)
     gen.arg_names = ["right", "left"]
     gen.emit_arg_processing(error=GotoHandler("typefail2"), raise_exception=False)
+    handle_third_pow_argument(fn_rev, emitter, gen, if_unsupported=["goto typefail2;"])
     gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_line("} else {")
-    emitter.emit_line(f"_Py_IDENTIFIER({fn_rev.name});")
-    emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
-            op_methods_to_symbols[fn.name], fn_rev.name
-        )
-    )
+    generate_bin_op_reverse_dunder_call(fn, emitter, fn_rev.name)
     emitter.emit_line("}")
     emitter.emit_label("typefail2")
     emitter.emit_line("Py_INCREF(Py_NotImplemented);")
     emitter.emit_line("return Py_NotImplemented;")
     gen.finish()
+
+
+def generate_bin_op_reverse_dunder_call(fn: FuncIR, emitter: Emitter, rmethod: str) -> None:
+    if fn.name in ("__pow__", "__rpow__"):
+        # Ternary pow() will never call the reverse dunder.
+        emitter.emit_line("if (obj_mod == Py_None) {")
+    emitter.emit_line(f"_Py_IDENTIFIER({rmethod});")
+    emitter.emit_line(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
+            op_methods_to_symbols[fn.name], rmethod
+        )
+    )
+    if fn.name in ("__pow__", "__rpow__"):
+        emitter.emit_line("} else {")
+        emitter.emit_line("Py_INCREF(Py_NotImplemented);")
+        emitter.emit_line("return Py_NotImplemented;")
+        emitter.emit_line("}")
+
+
+def handle_third_pow_argument(
+    fn: FuncIR, emitter: Emitter, gen: WrapperGenerator, *, if_unsupported: list[str]
+) -> None:
+    if fn.name not in ("__pow__", "__rpow__", "__ipow__"):
+        return
+
+    if (fn.name in ("__pow__", "__ipow__") and len(fn.args) == 2) or fn.name == "__rpow__":
+        # If the power dunder only supports two arguments and the third
+        # argument (AKA mod) is set to a non-default value, simply bail.
+        #
+        # Importantly, this prevents any ternary __rpow__ calls from
+        # happening (as per the language specification).
+        emitter.emit_line("if (obj_mod != Py_None) {")
+        for line in if_unsupported:
+            emitter.emit_line(line)
+        emitter.emit_line("}")
+        # The slot wrapper will receive three arguments, but the call only
+        # supports two so make sure that the third argument isn't passed
+        # along. This is needed as two-argument __(i)pow__ is allowed and
+        # rather common.
+        if len(gen.arg_names) == 3:
+            gen.arg_names.pop()
 
 
 RICHCOMPARE_OPS = {
@@ -410,7 +499,7 @@ RICHCOMPARE_OPS = {
 }
 
 
-def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> Optional[str]:
+def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> str | None:
     """Generates a wrapper for richcompare dunder methods."""
     # Sort for determinism on Python 3.5
     matches = sorted(name for name in RICHCOMPARE_OPS if cl.has_method(name))
@@ -656,10 +745,10 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 def generate_wrapper_core(
     fn: FuncIR,
     emitter: Emitter,
-    optional_args: Optional[List[RuntimeArg]] = None,
-    arg_names: Optional[List[str]] = None,
-    cleanups: Optional[List[str]] = None,
-    traceback_code: Optional[str] = None,
+    optional_args: list[RuntimeArg] | None = None,
+    arg_names: list[str] | None = None,
+    cleanups: list[str] | None = None,
+    traceback_code: str | None = None,
 ) -> None:
     """Generates the core part of a wrapper function for a native function.
 
@@ -669,7 +758,8 @@ def generate_wrapper_core(
     """
     gen = WrapperGenerator(None, emitter)
     gen.set_target(fn)
-    gen.arg_names = arg_names or [arg.name for arg in fn.args]
+    if arg_names:
+        gen.arg_names = arg_names
     gen.cleanups = cleanups or []
     gen.optional_args = optional_args or []
     gen.traceback_code = traceback_code or ""
@@ -684,10 +774,11 @@ def generate_arg_check(
     name: str,
     typ: RType,
     emitter: Emitter,
-    error: Optional[ErrorHandler] = None,
+    error: ErrorHandler | None = None,
     *,
     optional: bool = False,
     raise_exception: bool = True,
+    bitmap_arg_index: int = 0,
 ) -> None:
     """Insert a runtime check for argument and unbox if necessary.
 
@@ -697,17 +788,35 @@ def generate_arg_check(
     """
     error = error or AssignHandler()
     if typ.is_unboxed:
-        # Borrow when unboxing to avoid reference count manipulation.
-        emitter.emit_unbox(
-            f"obj_{name}",
-            f"arg_{name}",
-            typ,
-            declare_dest=True,
-            raise_exception=raise_exception,
-            error=error,
-            borrow=True,
-            optional=optional,
-        )
+        if typ.error_overlap and optional:
+            # Update bitmap is value is provided.
+            init = emitter.c_undefined_value(typ)
+            emitter.emit_line(f"{emitter.ctype(typ)} arg_{name} = {init};")
+            emitter.emit_line(f"if (obj_{name} != NULL) {{")
+            bitmap = bitmap_name(bitmap_arg_index // BITMAP_BITS)
+            emitter.emit_line(f"{bitmap} |= 1 << {bitmap_arg_index & (BITMAP_BITS - 1)};")
+            emitter.emit_unbox(
+                f"obj_{name}",
+                f"arg_{name}",
+                typ,
+                declare_dest=False,
+                raise_exception=raise_exception,
+                error=error,
+                borrow=True,
+            )
+            emitter.emit_line("}")
+        else:
+            # Borrow when unboxing to avoid reference count manipulation.
+            emitter.emit_unbox(
+                f"obj_{name}",
+                f"arg_{name}",
+                typ,
+                declare_dest=True,
+                raise_exception=raise_exception,
+                error=error,
+                borrow=True,
+                optional=optional,
+            )
     elif is_object_rprimitive(typ):
         # Object is trivial since any object is valid
         if optional:
@@ -734,11 +843,11 @@ class WrapperGenerator:
 
     # TODO: Use this for more wrappers
 
-    def __init__(self, cl: Optional[ClassIR], emitter: Emitter) -> None:
+    def __init__(self, cl: ClassIR | None, emitter: Emitter) -> None:
         self.cl = cl
         self.emitter = emitter
-        self.cleanups: List[str] = []
-        self.optional_args: List[RuntimeArg] = []
+        self.cleanups: list[str] = []
+        self.optional_args: list[RuntimeArg] = []
         self.traceback_code = ""
 
     def set_target(self, fn: FuncIR) -> None:
@@ -749,8 +858,12 @@ class WrapperGenerator:
         """
         self.target_name = fn.name
         self.target_cname = fn.cname(self.emitter.names)
-        self.arg_names = [arg.name for arg in fn.args]
-        self.args = fn.args[:]
+        self.num_bitmap_args = fn.sig.num_bitmap_args
+        if self.num_bitmap_args:
+            self.args = fn.args[: -self.num_bitmap_args]
+        else:
+            self.args = fn.args
+        self.arg_names = [arg.name for arg in self.args]
         self.ret_type = fn.ret_type
 
     def wrapper_name(self) -> str:
@@ -775,21 +888,26 @@ class WrapperGenerator:
         )
 
     def emit_arg_processing(
-        self, error: Optional[ErrorHandler] = None, raise_exception: bool = True
+        self, error: ErrorHandler | None = None, raise_exception: bool = True
     ) -> None:
         """Emit validation and unboxing of arguments."""
         error = error or self.error()
+        bitmap_arg_index = 0
         for arg_name, arg in zip(self.arg_names, self.args):
             # Suppress the argument check for *args/**kwargs, since we know it must be right.
             typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
+            optional = arg in self.optional_args
             generate_arg_check(
                 arg_name,
                 typ,
                 self.emitter,
                 error,
                 raise_exception=raise_exception,
-                optional=arg in self.optional_args,
+                optional=optional,
+                bitmap_arg_index=bitmap_arg_index,
             )
+            if optional and typ.error_overlap:
+                bitmap_arg_index += 1
 
     def emit_call(self, not_implemented_handler: str = "") -> None:
         """Emit call to the wrapper function.
@@ -798,6 +916,12 @@ class WrapperGenerator:
         a NotImplemented return value (if it's possible based on the return type).
         """
         native_args = ", ".join(f"arg_{arg}" for arg in self.arg_names)
+        if self.num_bitmap_args:
+            bitmap_args = ", ".join(
+                [bitmap_name(i) for i in reversed(range(self.num_bitmap_args))]
+            )
+            native_args = f"{native_args}, {bitmap_args}"
+
         ret_type = self.ret_type
         emitter = self.emitter
         if ret_type.is_unboxed or self.use_goto():

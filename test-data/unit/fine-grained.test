@@ -24,7 +24,7 @@
 -- as changed in the initial run with the cache while modules that depended on them
 -- should be.
 --
--- Modules that are require a full-module reprocessing by update can be checked with
+-- Modules that require a full-module reprocessing by update can be checked with
 -- [rechecked ...]. This should include any files detected as having changed as well
 -- as any files that contain targets that need to be reprocessed but which haven't
 -- been loaded yet. If there is no [rechecked...] directive, it inherits the value of
@@ -1586,11 +1586,11 @@ class A:
 [file b.py.3]
 2
 [out]
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:3: error: Method must have at least one argument
+a.py:3: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testBaseClassDeleted]
 import m
@@ -1809,14 +1809,14 @@ def f() -> Iterator[None]:
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b>, __main__
-3: <b>, __main__, a
+2: <b>, <b[wildcard]>, __main__
+3: <b>, <b[wildcard]>, __main__, a
 [out]
 main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
+main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 a.py:3: error: Cannot find implementation or library stub for module named "b"
 a.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
 main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 
@@ -2007,11 +2007,11 @@ class A:
 class A:
     def foo(self) -> int: pass
 [out]
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
-a.py:2: error: Method must have at least one argument
+a.py:2: error: Method must have at least one argument. Did you forget the "self" argument?
 ==
 
 [case testPreviousErrorInMethodSemanal2]
@@ -2968,7 +2968,7 @@ class M(type):
     pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for "D"
+a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
 [case testFineMetaclassDeclaredUpdate]
 import a
@@ -2984,7 +2984,7 @@ class M(type): pass
 class M2(type): pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for "D"
+a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
 [case testFineMetaclassRemoveFromClass]
 import a
@@ -3124,7 +3124,6 @@ whatever: int
 [out]
 ==
 b.py:2: error: Name "c.M" is not defined
-a.py:3: error: "Type[B]" has no attribute "x"
 
 [case testFixMissingMetaclass]
 import a
@@ -3143,7 +3142,6 @@ class M(type):
     x: int
 [out]
 b.py:2: error: Name "c.M" is not defined
-a.py:3: error: "Type[B]" has no attribute "x"
 ==
 
 [case testGoodMetaclassSpoiled]
@@ -3449,7 +3447,6 @@ f(a.x)
 ==
 
 [case testNamedTupleUpdate5]
-# flags: --enable-recursive-aliases
 import b
 [file a.py]
 from typing import NamedTuple, Optional
@@ -3472,8 +3469,38 @@ f(a.x)
 [out]
 ==
 
+[case testNamedTupleUpdateGeneric]
+import b
+[file a.py]
+from typing import NamedTuple
+class Point(NamedTuple):
+    x: int
+    y: int
+[file a.py.2]
+from typing import Generic, TypeVar, NamedTuple
+
+T = TypeVar("T")
+class Point(NamedTuple, Generic[T]):
+    x: int
+    y: T
+[file b.py]
+from a import Point
+def foo() -> None:
+    p = Point(x=0, y=1)
+    i: int = p.y
+[file b.py.3]
+from a import Point
+def foo() -> None:
+    p = Point(x=0, y="no")
+    i: int = p.y
+[builtins fixtures/tuple.pyi]
+[out]
+==
+==
+b.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testNamedTupleUpdateNonRecursiveToRecursiveFine]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -3516,7 +3543,7 @@ c.py:5: error: Incompatible types in assignment (expression has type "Optional[N
 c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveFine]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -3549,7 +3576,7 @@ c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveFine]
-# flags: --enable-recursive-aliases
+# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -3638,7 +3665,6 @@ def foo(x: Point) -> int:
 b.py:3: error: Unsupported operand types for + ("int" and "str")
 
 [case testTypedDictUpdate3]
-# flags: --enable-recursive-aliases
 import b
 [file a.py]
 from mypy_extensions import TypedDict
@@ -3665,6 +3691,37 @@ def foo(x: Point) -> int:
 [out]
 ==
 b.py:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testTypedDictUpdateGeneric]
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: int
+[file a.py.2]
+from mypy_extensions import TypedDict
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+class Point(TypedDict, Generic[T]):
+    x: int
+    y: T
+[file b.py]
+from a import Point
+def foo() -> None:
+    p = Point(x=0, y=1)
+    i: int = p["y"]
+[file b.py.3]
+from a import Point
+def foo() -> None:
+    p = Point(x=0, y="no")
+    i: int = p["y"]
+[builtins fixtures/dict.pyi]
+[out]
+==
+==
+b.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testBasicAliasUpdate]
 import b
@@ -4244,9 +4301,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType2]
 import a
@@ -4262,9 +4319,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 ==
-main:4: error: Need type annotation for "x"
+main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 [case testNonePartialType3]
 import a
@@ -4276,7 +4333,7 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 
 [case testNonePartialType4]
 import a
@@ -4292,7 +4349,7 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for "y"
+a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
 ==
 
 [case testSkippedClass1]
@@ -5466,11 +5523,13 @@ a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5483,25 +5542,27 @@ def T() -> None:
     pass
 [out]
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Function "a.T" is not valid as a type
-main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:6: error: Free type variable expected in Generic[...]
-main:7: error: Function "a.T" is not valid as a type
-main:7: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:10: error: Function "a.T" is not valid as a type
-main:10: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:6: error: Function "a.T" is not valid as a type
+main:6: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:9: error: "C" expects no type arguments, but 1 given
+main:9: error: Function "a.T" is not valid as a type
+main:9: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:12: error: Function "a.T" is not valid as a type
+main:12: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeVarToModule]
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5515,12 +5576,15 @@ import T
 [out]
 ==
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Module "T" is not valid as a type
-main:6: error: Free type variable expected in Generic[...]
-main:7: error: Module "T" is not valid as a type
-main:10: error: Module "T" is not valid as a type
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:6: error: Module "T" is not valid as a type
+main:6: note: Perhaps you meant to use a protocol matching the module structure?
+main:9: error: "C" expects no type arguments, but 1 given
+main:9: error: Module "T" is not valid as a type
+main:9: note: Perhaps you meant to use a protocol matching the module structure?
+main:12: error: Module "T" is not valid as a type
+main:12: note: Perhaps you meant to use a protocol matching the module structure?
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeClassToModule]
 
@@ -5543,18 +5607,22 @@ import C
 ==
 ==
 main:3: error: Module "C" is not valid as a type
+main:3: note: Perhaps you meant to use a protocol matching the module structure?
 main:5: error: Module not callable
 main:8: error: Module "C" is not valid as a type
+main:8: note: Perhaps you meant to use a protocol matching the module structure?
 
 [case testChangeTypeVarToTypeAlias]
 
 import a
 from typing import Generic
-Alias = C[C[a.T]]
 
 class C(Generic[a.T]):
     def meth(self, x: a.T) -> None:
         pass
+
+Alias = C[C[a.T]]
+
 def outer() -> None:
     def func(x: a.T) -> Alias[a.T]:
         pass
@@ -5566,9 +5634,9 @@ from typing import TypeVar
 T = int
 [out]
 ==
-main:4: error: "C" expects no type arguments, but 1 given
-main:6: error: Free type variable expected in Generic[...]
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:5: error: Free type variable expected in Generic[...]
+main:9: error: "C" expects no type arguments, but 1 given
+main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeAliasToModule]
 
@@ -5594,8 +5662,10 @@ import D
 ==
 ==
 main:3: error: Module "D" is not valid as a type
+main:3: note: Perhaps you meant to use a protocol matching the module structure?
 main:5: error: Module not callable
 main:8: error: Module "D" is not valid as a type
+main:8: note: Perhaps you meant to use a protocol matching the module structure?
 
 [case testChangeTypeAliasToModuleUnqualified]
 
@@ -5621,8 +5691,10 @@ import D
 ==
 ==
 main:3: error: Module "D" is not valid as a type
+main:3: note: Perhaps you meant to use a protocol matching the module structure?
 main:5: error: Module not callable
 main:8: error: Module "D" is not valid as a type
+main:8: note: Perhaps you meant to use a protocol matching the module structure?
 
 [case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
 import a
@@ -7881,7 +7953,7 @@ class Foo(a.I):
 ==
 
 [case testImplicitOptionalRefresh1]
-# flags: --strict-optional
+# flags: --strict-optional --implicit-optional
 from x import f
 def foo(x: int = None) -> None:
     f()
@@ -8133,6 +8205,7 @@ x = 1
 ==
 
 [case testIdLikeDecoForwardCrashAlias]
+# flags: --disable-error-code used-before-def
 import b
 [file b.py]
 from typing import Callable, Any, TypeVar
@@ -8630,8 +8703,8 @@ main:2: note: Revealed type is "builtins.int"
 ==
 main:2: note: Revealed type is "Literal[1]"
 ==
-mod.py:2: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:2: note: Revealed type is "Literal[1]"
+mod.py:2: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 [case testLiteralFineGrainedFunctionConversion]
 from mod import foo
@@ -9119,10 +9192,10 @@ a.py:1: error: Type signature has too few arguments
 a.py:5: error: Type signature has too few arguments
 a.py:11: error: Type signature has too few arguments
 ==
+c.py:1: error: Type signature has too few arguments
 a.py:1: error: Type signature has too few arguments
 a.py:5: error: Type signature has too few arguments
 a.py:11: error: Type signature has too few arguments
-c.py:1: error: Type signature has too few arguments
 
 [case testErrorReportingNewAnalyzer]
 # flags: --disallow-any-generics
@@ -9734,11 +9807,11 @@ class ExampleClass(Generic[T]):
 [case testDataclassCheckTypeVarBoundsInReprocess]
 # flags: --python-version 3.7
 from dataclasses import dataclass
-from typing import Protocol, Dict, TypeVar, Generic
+from typing import ClassVar, Protocol, Dict, TypeVar, Generic
 from m import x
 
 class DataclassProtocol(Protocol):
-    __dataclass_fields__: Dict
+    __dataclass_fields__: ClassVar[Dict]
 
 T = TypeVar("T", bound=DataclassProtocol)
 
@@ -9757,3 +9830,514 @@ x: str
 [builtins fixtures/dataclasses.pyi]
 [out]
 ==
+
+[case testParamSpecCached]
+import a
+
+[file a.py]
+import b
+
+def f(x: int) -> str: return 'x'
+
+b.foo(f)
+
+[file a.py.2]
+import b
+
+def f(x: int) -> str: return 'x'
+
+reveal_type(b.foo(f))
+
+[file b.py]
+from typing import TypeVar, Callable, Union
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def foo(f: Callable[P, T]) -> Callable[P, Union[T, None]]:
+    return f
+
+[file b.py.2]
+from typing import TypeVar, Callable, Union
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def foo(f: Callable[P, T]) -> Callable[P, Union[T, None]]:
+    return f
+
+x = 0  # Arbitrary change to trigger reprocessing
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+a.py:5: note: Revealed type is "def (x: builtins.int) -> builtins.str"
+
+[case testTypeVarTupleCached]
+import a
+
+[file a.py]
+import b
+
+def f(x: int) -> str: return 'x'
+
+b.foo((1, 'x'))
+
+[file a.py.2]
+import b
+
+reveal_type(b.foo((1, 'x')))
+
+[file b.py]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+def foo(t: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    return t
+
+[file b.py.2]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+def foo(t: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    return t
+
+x = 0  # Arbitrary change to trigger reprocessing
+[builtins fixtures/dict.pyi]
+[out]
+==
+a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
+
+[case testUnpackKwargsUpdateFine]
+import m
+[file shared.py]
+from typing_extensions import TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+[file shared.py.2]
+from typing_extensions import TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: str
+
+[file lib.py]
+from typing_extensions import Unpack
+from shared import Person
+
+def foo(**kwargs: Unpack[Person]):
+    ...
+[file m.py]
+from lib import foo
+foo(name='Jennifer', age=38)
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+m.py:2: error: Argument "age" to "foo" has incompatible type "int"; expected "str"
+
+[case testModuleAsProtocolImplementationFine]
+import m
+[file m.py]
+from typing import Protocol
+from lib import C
+
+class Options(Protocol):
+    timeout: int
+    def update(self) -> bool: ...
+
+def setup(options: Options) -> None: ...
+setup(C().config)
+
+[file lib.py]
+import default_config
+
+class C:
+    config = default_config
+
+[file default_config.py]
+timeout = 100
+def update() -> bool: ...
+
+[file default_config.py.2]
+timeout = 100
+def update() -> str: ...
+[builtins fixtures/module.pyi]
+[out]
+==
+m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
+m.py:9: note: Following member(s) of Module "default_config" have conflicts:
+m.py:9: note:     Expected:
+m.py:9: note:         def update() -> bool
+m.py:9: note:     Got:
+m.py:9: note:         def update() -> str
+
+[case testBoundGenericMethodFine]
+import main
+[file main.py]
+import lib
+[file main.py.3]
+import lib
+reveal_type(lib.foo(42))
+[file lib/__init__.pyi]
+from lib import context
+foo = context.test.foo
+[file lib/context.pyi]
+from typing import TypeVar
+import lib.other
+
+T = TypeVar("T")
+class Test:
+    def foo(self, x: T, n: lib.other.C = ...) -> T: ...
+test: Test
+
+[file lib/other.pyi]
+class C: ...
+[file lib/other.pyi.2]
+class B: ...
+class C(B): ...
+[out]
+==
+==
+main.py:2: note: Revealed type is "builtins.int"
+
+[case testBoundGenericMethodParamSpecFine]
+import main
+[file main.py]
+import lib
+[file main.py.3]
+from typing import Callable
+import lib
+f: Callable[[], int]
+reveal_type(lib.foo(f))
+[file lib/__init__.pyi]
+from lib import context
+foo = context.test.foo
+[file lib/context.pyi]
+from typing_extensions import ParamSpec
+from typing import Callable
+import lib.other
+
+P = ParamSpec("P")
+class Test:
+    def foo(self, x: Callable[P, int], n: lib.other.C = ...) -> Callable[P, str]: ...
+test: Test
+
+[file lib/other.pyi]
+class C: ...
+[file lib/other.pyi.2]
+class B: ...
+class C(B): ...
+[builtins fixtures/dict.pyi]
+[out]
+==
+==
+main.py:4: note: Revealed type is "def () -> builtins.str"
+
+[case testAbstractBodyTurnsEmpty]
+# flags: --strict-optional
+from b import Base
+
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()
+
+[file b.py]
+from abc import abstractmethod
+class Base:
+    @abstractmethod
+    def meth(self) -> int: return 0
+
+[file b.py.2]
+from abc import abstractmethod
+class Base:
+    @abstractmethod
+    def meth(self) -> int: ...
+[out]
+==
+main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+
+[case testAbstractBodyTurnsEmptyProtocol]
+# flags: --strict-optional
+from b import Base
+
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()
+
+[file b.py]
+from typing import Protocol
+class Base(Protocol):
+    def meth(self) -> int: return 0
+[file b.py.2]
+from typing import Protocol
+class Base(Protocol):
+    def meth(self) -> int: ...
+[out]
+==
+main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+
+[case testPrettyMessageSorting]
+# flags: --pretty
+import a
+
+[file a.py]
+1 + ''
+import b
+
+[file b.py]
+object + 1
+
+[file b.py.2]
+object + 1
+1()
+
+[out]
+b.py:1: error: Unsupported left operand type for + ("Type[object]")
+    object + 1
+    ^
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+    1 + ''
+        ^
+==
+b.py:1: error: Unsupported left operand type for + ("Type[object]")
+    object + 1
+    ^
+b.py:2: error: "int" not callable
+    1()
+    ^
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+    1 + ''
+        ^
+[out version>=3.8]
+b.py:1: error: Unsupported left operand type for + ("Type[object]")
+    object + 1
+    ^~~~~~~~~~
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+    1 + ''
+        ^~
+==
+b.py:1: error: Unsupported left operand type for + ("Type[object]")
+    object + 1
+    ^~~~~~~~~~
+b.py:2: error: "int" not callable
+    1()
+    ^~~
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+    1 + ''
+        ^~
+
+[case testTypingSelfFine]
+import m
+[file lib.py]
+from typing import Any
+
+class C:
+    def meth(self, other: Any) -> C: ...
+[file lib.py.2]
+from typing import Self
+
+class C:
+    def meth(self, other: Self) -> Self: ...
+
+[file n.py]
+import lib
+class D(lib.C): ...
+[file m.py]
+from n import D
+d = D()
+def test() -> None:
+    d.meth(42)
+[out]
+==
+m.py:4: error: Argument 1 to "meth" of "C" has incompatible type "int"; expected "D"
+
+[case testNoNestedDefinitionCrash]
+import m
+[file m.py]
+from typing import Any, TYPE_CHECKING
+
+class C:
+    if TYPE_CHECKING:
+        def __init__(self, **kw: Any): ...
+
+C
+[file m.py.2]
+from typing import Any, TYPE_CHECKING
+
+class C:
+    if TYPE_CHECKING:
+        def __init__(self, **kw: Any): ...
+
+C
+# change
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testNoNestedDefinitionCrash2]
+import m
+[file m.py]
+from typing import Any
+
+class C:
+    try:
+        def __init__(self, **kw: Any): ...
+    except:
+        pass
+
+C
+[file m.py.2]
+from typing import Any
+
+class C:
+    try:
+        def __init__(self, **kw: Any): ...
+    except:
+        pass
+
+C
+# change
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testNamedTupleNestedCrash]
+import m
+[file m.py]
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: int
+
+[file m.py.2]
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: int
+# change
+[builtins fixtures/tuple.pyi]
+[out]
+m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+==
+m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+
+[case testNamedTupleNestedClassRecheck]
+import n
+[file n.py]
+import m
+x: m.NT
+[file m.py]
+from typing import NamedTuple
+from f import A
+
+class NT(NamedTuple):
+    class C: ...
+    x: int
+    y: A
+
+[file f.py]
+A = int
+[file f.py.2]
+A = str
+[builtins fixtures/tuple.pyi]
+[out]
+m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+==
+m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+
+[case testTypedDictNestedClassRecheck]
+import n
+[file n.py]
+import m
+x: m.TD
+[file m.py]
+from typing_extensions import TypedDict
+from f import A
+
+class TD(TypedDict):
+    class C: ...
+    x: int
+    y: A
+
+[file f.py]
+A = int
+[file f.py.2]
+A = str
+[builtins fixtures/dict.pyi]
+[out]
+m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
+==
+m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
+
+[case testTypeAliasWithNewStyleUnionChangedToVariable]
+# flags: --python-version 3.10
+import a
+
+[file a.py]
+from b import C, D
+A = C | D
+a: A
+reveal_type(a)
+
+[file b.py]
+C = int
+D = str
+
+[file b.py.2]
+C = "x"
+D = "y"
+
+[file b.py.3]
+C = str
+D = int
+[out]
+a.py:4: note: Revealed type is "Union[builtins.int, builtins.str]"
+==
+a.py:2: error: Unsupported left operand type for | ("str")
+a.py:3: error: Variable "a.A" is not valid as a type
+a.py:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a.py:4: note: Revealed type is "A?"
+==
+a.py:4: note: Revealed type is "Union[builtins.str, builtins.int]"
+
+[case testUnionOfSimilarCallablesCrash]
+import b
+
+[file b.py]
+from a import x
+
+[file m.py]
+from typing import Union, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def foo(x: T, y: S) -> Union[T, S]: ...
+def f(x: int) -> int: ...
+def g(*x: int) -> int: ...
+
+[file a.py]
+from m import f, g, foo
+x = foo(f, g)
+
+[file a.py.2]
+from m import f, g, foo
+x = foo(f, g)
+reveal_type(x)
+[builtins fixtures/tuple.pyi]
+[out]
+==
+a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"

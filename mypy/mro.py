@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Callable, List, Optional
+from typing import Callable
 
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 
 
-def calculate_mro(info: TypeInfo, obj_type: Optional[Callable[[], Instance]] = None) -> None:
+def calculate_mro(info: TypeInfo, obj_type: Callable[[], Instance] | None = None) -> None:
     """Calculate and set mro (method resolution order).
 
     Raise MroError if cannot determine mro.
@@ -17,7 +17,7 @@ def calculate_mro(info: TypeInfo, obj_type: Optional[Callable[[], Instance]] = N
     info.mro = mro
     # The property of falling back to Any is inherited.
     info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in info.mro)
-    TypeState.reset_all_subtype_caches_for(info)
+    type_state.reset_all_subtype_caches_for(info)
 
 
 class MroError(Exception):
@@ -25,8 +25,8 @@ class MroError(Exception):
 
 
 def linearize_hierarchy(
-    info: TypeInfo, obj_type: Optional[Callable[[], Instance]] = None
-) -> List[TypeInfo]:
+    info: TypeInfo, obj_type: Callable[[], Instance] | None = None
+) -> list[TypeInfo]:
     # TODO describe
     if info.mro:
         return info.mro
@@ -43,9 +43,9 @@ def linearize_hierarchy(
     return [info] + merge(lin_bases)
 
 
-def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
+def merge(seqs: list[list[TypeInfo]]) -> list[TypeInfo]:
     seqs = [s[:] for s in seqs]
-    result: List[TypeInfo] = []
+    result: list[TypeInfo] = []
     while True:
         seqs = [s for s in seqs if s]
         if not seqs:

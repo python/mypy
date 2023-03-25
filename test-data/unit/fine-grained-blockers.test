@@ -317,8 +317,8 @@ a.py:1: error: invalid syntax
 ==
 a.py:1: error: invalid syntax
 ==
-b.py:3: error: Too many arguments for "f"
 a.py:3: error: Too many arguments for "g"
+b.py:3: error: Too many arguments for "f"
 
 [case testDeleteFileWithBlockingError-only_when_nocache]
 -- Different cache/no-cache tests because:

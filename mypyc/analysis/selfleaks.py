@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Set, Tuple
+from typing import Set, Tuple
 
 from mypyc.analysis.dataflow import CFG, MAYBE_ANALYSIS, AnalysisResult, run_analysis
 from mypyc.ir.ops import (
@@ -14,6 +14,9 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     Extend,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -160,6 +163,15 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
         return CLEAN
 
+    def visit_float_op(self, op: FloatOp) -> GenAndKill:
+        return CLEAN
+
+    def visit_float_neg(self, op: FloatNeg) -> GenAndKill:
+        return CLEAN
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> GenAndKill:
+        return CLEAN
+
     def visit_load_mem(self, op: LoadMem) -> GenAndKill:
         return CLEAN
 
@@ -179,7 +191,7 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
 
 
 def analyze_self_leaks(
-    blocks: List[BasicBlock], self_reg: Register, cfg: CFG
+    blocks: list[BasicBlock], self_reg: Register, cfg: CFG
 ) -> AnalysisResult[None]:
     return run_analysis(
         blocks=blocks,

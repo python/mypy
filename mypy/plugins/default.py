@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, List, Optional
+from typing import Callable
 
+import mypy.errorcodes as codes
 from mypy import message_registry
 from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
     FunctionContext,
+    FunctionSigContext,
     MethodContext,
     MethodSigContext,
     Plugin,
@@ -36,20 +38,27 @@ from mypy.types import (
 class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
-    def get_function_hook(self, fullname: str) -> Optional[Callable[[FunctionContext], Type]]:
+    def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         from mypy.plugins import ctypes, singledispatch
 
-        if fullname in ("contextlib.contextmanager", "contextlib.asynccontextmanager"):
-            return contextmanager_callback
-        elif fullname == "ctypes.Array":
+        if fullname == "ctypes.Array":
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
         return None
 
+    def get_function_signature_hook(
+        self, fullname: str
+    ) -> Callable[[FunctionSigContext], FunctionLike] | None:
+        from mypy.plugins import attrs
+
+        if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
+            return attrs.evolve_function_sig_callback
+        return None
+
     def get_method_signature_hook(
         self, fullname: str
-    ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
+    ) -> Callable[[MethodSigContext], FunctionLike] | None:
         from mypy.plugins import ctypes, singledispatch
 
         if fullname == "typing.Mapping.get":
@@ -66,7 +75,7 @@ class DefaultPlugin(Plugin):
             return singledispatch.call_singledispatch_function_callback
         return None
 
-    def get_method_hook(self, fullname: str) -> Optional[Callable[[MethodContext], Type]]:
+    def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
         from mypy.plugins import ctypes, singledispatch
 
         if fullname == "typing.Mapping.get":
@@ -93,7 +102,7 @@ class DefaultPlugin(Plugin):
             return singledispatch.call_singledispatch_function_after_register_argument
         return None
 
-    def get_attribute_hook(self, fullname: str) -> Optional[Callable[[AttributeContext], Type]]:
+    def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         from mypy.plugins import ctypes, enums
 
         if fullname == "ctypes.Array.value":
@@ -106,9 +115,7 @@ class DefaultPlugin(Plugin):
             return enums.enum_value_callback
         return None
 
-    def get_class_decorator_hook(
-        self, fullname: str
-    ) -> Optional[Callable[[ClassDefContext], None]]:
+    def get_class_decorator_hook(self, fullname: str) -> Callable[[ClassDefContext], None] | None:
         from mypy.plugins import attrs, dataclasses
 
         # These dataclass and attrs hooks run in the main semantic analysis pass
@@ -129,7 +136,7 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook_2(
         self, fullname: str
-    ) -> Optional[Callable[[ClassDefContext], bool]]:
+    ) -> Callable[[ClassDefContext], bool] | None:
         from mypy.plugins import attrs, dataclasses, functools
 
         if fullname in dataclasses.dataclass_makers:
@@ -148,25 +155,6 @@ class DefaultPlugin(Plugin):
             return partial(attrs.attr_class_maker_callback, auto_attribs_default=None)
 
         return None
-
-
-def contextmanager_callback(ctx: FunctionContext) -> Type:
-    """Infer a better return type for 'contextlib.contextmanager'."""
-    # Be defensive, just in case.
-    if ctx.arg_types and len(ctx.arg_types[0]) == 1:
-        arg_type = get_proper_type(ctx.arg_types[0][0])
-        default_return = get_proper_type(ctx.default_return_type)
-        if isinstance(arg_type, CallableType) and isinstance(default_return, CallableType):
-            # The stub signature doesn't preserve information about arguments so
-            # add them back here.
-            return default_return.copy_modified(
-                arg_types=arg_type.arg_types,
-                arg_kinds=arg_type.arg_kinds,
-                arg_names=arg_type.arg_names,
-                variables=arg_type.variables,
-                is_ellipsis_args=arg_type.is_ellipsis_args,
-            )
-    return ctx.default_return_type
 
 
 def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
@@ -220,7 +208,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if keys is None:
             return ctx.default_return_type
 
-        output_types: List[Type] = []
+        output_types: list[Type] = []
         for key in keys:
             value_type = get_proper_type(ctx.type.items.get(key))
             if value_type is None:
@@ -287,7 +275,11 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         value_types = []
@@ -342,7 +334,11 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         default_type = ctx.arg_types[1][0]
@@ -380,7 +376,11 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         for key in keys:

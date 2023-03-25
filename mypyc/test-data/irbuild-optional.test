@@ -527,14 +527,10 @@ class B:
 
 [out]
 def f(o):
-    o :: union[object, object]
-    r0 :: object
-    r1 :: str
-    r2, r3 :: object
+    o :: object
+    r0 :: str
+    r1 :: object
 L0:
-    r0 = o
-    r1 = 'x'
-    r2 = CPyObject_GetAttr(r0, r1)
-    r3 = r2
-L1:
+    r0 = 'x'
+    r1 = CPyObject_GetAttr(o, r0)
     return 1

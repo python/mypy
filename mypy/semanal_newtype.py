@@ -5,8 +5,6 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -137,9 +135,7 @@ class NewTypeAnalyzer:
         newtype_class_info.line = s.line
         return True
 
-    def analyze_newtype_declaration(
-        self, s: AssignmentStmt
-    ) -> Tuple[Optional[str], Optional[CallExpr]]:
+    def analyze_newtype_declaration(self, s: AssignmentStmt) -> tuple[str | None, CallExpr | None]:
         """Return the NewType call expression if `s` is a newtype declaration or None otherwise."""
         name, call = None, None
         if (
@@ -173,7 +169,7 @@ class NewTypeAnalyzer:
 
     def check_newtype_args(
         self, name: str, call: CallExpr, context: Context
-    ) -> Tuple[Optional[Type], bool]:
+    ) -> tuple[Type | None, bool]:
         """Ananlyze base type in NewType call.
 
         Return a tuple (type, should defer).
@@ -207,7 +203,7 @@ class NewTypeAnalyzer:
             self.api.anal_type(
                 unanalyzed_type,
                 report_invalid_types=False,
-                allow_placeholder=self.options.enable_recursive_aliases
+                allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
             )
         )
@@ -231,7 +227,7 @@ class NewTypeAnalyzer:
         old_type: Type,
         base_type: Instance,
         line: int,
-        existing_info: Optional[TypeInfo],
+        existing_info: TypeInfo | None,
     ) -> TypeInfo:
         info = existing_info or self.api.basic_new_typeinfo(name, base_type, line)
         info.bases = [base_type]  # Update in case there were nested placeholders.
@@ -253,10 +249,16 @@ class NewTypeAnalyzer:
         init_func = FuncDef("__init__", args, Block([]), typ=signature)
         init_func.info = info
         init_func._fullname = info.fullname + ".__init__"
+        if not existing_info:
+            updated = True
+        else:
+            previous_sym = info.names["__init__"].node
+            assert isinstance(previous_sym, FuncDef)
+            updated = old_type != previous_sym.arguments[1].variable.type
         info.names["__init__"] = SymbolTableNode(MDEF, init_func)
 
-        if has_placeholder(old_type) or info.tuple_type and has_placeholder(info.tuple_type):
-            self.api.defer(force_progress=True)
+        if has_placeholder(old_type):
+            self.api.process_placeholder(None, "NewType base", info, force_progress=updated)
         return info
 
     # Helpers
@@ -264,5 +266,5 @@ class NewTypeAnalyzer:
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
         self.api.fail(msg, ctx, code=code)

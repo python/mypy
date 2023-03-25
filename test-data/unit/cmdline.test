@@ -130,17 +130,13 @@ two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_myp
 two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
-[case testFlagsFile-skip]
+-- Note that we use `----`, because this is how `--` is escaped while `--` is a comment starter.
+[case testFlagsFile]
 # cmd: mypy @flagsfile
 [file flagsfile]
---always-true=FLAG
+----always-true=FLAG
 main.py
 [file main.py]
-# TODO: this test case passes if you try the exact same thing
-# outside of the test suite. what's going on? it's not related
-# to the extra flags that testcmdline adds. and things work
-# in the test suite with py2 (perhaps because it's a
-# special option)
 x: int
 FLAG = False
 if not FLAG:
@@ -429,6 +425,7 @@ follow_imports = skip
 [out]
 main.py:2: note: Revealed type is "Any"
 main.py:4: note: Revealed type is "Any"
+== Return code: 0
 
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
@@ -521,7 +518,7 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = True
 [out]
 main.py:2: note: Revealed type is "Any"
-
+== Return code: 0
 
 [case testFailedImportOnWrongCWD]
 # cmd: mypy main.py
@@ -658,15 +655,26 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is "Literal[1]"
-reveal_type(a**1) # N: Revealed type is "builtins.int"
-reveal_type(a**2) # N: Revealed type is "builtins.int"
-reveal_type(a**-0) # N: Revealed type is "Literal[1]"
-reveal_type(a**-1) # N: Revealed type is "builtins.float"
-reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
-reveal_type(a**b) # N: Revealed type is "Any"
-reveal_type(a.__pow__(2)) # N: Revealed type is "builtins.int"
-reveal_type(a.__pow__(a)) # N: Revealed type is "Any"
+reveal_type(a**0)
+reveal_type(a**1)
+reveal_type(a**2)
+reveal_type(a**-0)
+reveal_type(a**-1)
+reveal_type(a**(-2))
+reveal_type(a**b)
+reveal_type(a.__pow__(2))
+reveal_type(a.__pow__(a))
+[out]
+int_pow.py:3: note: Revealed type is "Literal[1]"
+int_pow.py:4: note: Revealed type is "builtins.int"
+int_pow.py:5: note: Revealed type is "builtins.int"
+int_pow.py:6: note: Revealed type is "Literal[1]"
+int_pow.py:7: note: Revealed type is "builtins.float"
+int_pow.py:8: note: Revealed type is "builtins.float"
+int_pow.py:9: note: Revealed type is "Any"
+int_pow.py:10: note: Revealed type is "builtins.int"
+int_pow.py:11: note: Revealed type is "Any"
+== Return code: 0
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
@@ -1423,7 +1431,6 @@ exclude = (?x)(
 [out]
 c/cpkg.py:1: error: "int" not callable
 
-
 [case testCmdlineTimingStats]
 # cmd: mypy --timing-stats timing.txt .
 [file b/__init__.py]
@@ -1439,6 +1446,9 @@ b\.c \d+
 # cmd: mypy --enable-incomplete-features a.py
 [file a.py]
 pass
+[out]
+Warning: --enable-incomplete-features is deprecated, use --enable-incomplete-feature=FEATURE instead
+== Return code: 0
 
 [case testShadowTypingModuleEarlyLoad]
 # cmd: mypy dir
@@ -1478,3 +1488,113 @@ note: A user-defined top-level module with name "typing" is not supported
 [out]
 Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
 == Return code: 2
+
+[case testRecursiveAliasesFlagDeprecated]
+# cmd: mypy --enable-recursive-aliases a.py
+[file a.py]
+pass
+[out]
+Warning: --enable-recursive-aliases is deprecated; recursive types are enabled by default
+== Return code: 0
+
+[case testNotesOnlyResultInExitSuccess]
+# cmd: mypy a.py
+[file a.py]
+def f():
+    x: int = "no"
+[out]
+a.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+== Return code: 0
+
+[case testCustomTypeshedDirFilePassedExplicitly]
+# cmd: mypy --custom-typeshed-dir dir m.py dir/stdlib/foo.pyi
+[file m.py]
+1()
+[file dir/stdlib/abc.pyi]
+1()  # Errors are not reported from typeshed by default
+[file dir/stdlib/builtins.pyi]
+class object: pass
+class str(object): pass
+class int(object): pass
+class list: pass
+class dict: pass
+[file dir/stdlib/sys.pyi]
+[file dir/stdlib/types.pyi]
+[file dir/stdlib/typing.pyi]
+[file dir/stdlib/mypy_extensions.pyi]
+[file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/foo.pyi]
+1()  # Errors are reported if the file was explicitly passed on the command line
+[file dir/stdlib/VERSIONS]
+[out]
+dir/stdlib/foo.pyi:1: error: "int" not callable
+m.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly1]
+# cmd: mypy $CWD/pypath/foo.py
+[file pypath/foo.py]
+1()
+[out]
+pypath/foo.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly2]
+# cmd: mypy pypath/foo.py
+[file pypath/foo.py]
+1()
+[out]
+pypath/foo.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly3]
+# cmd: mypy -p foo
+# cwd: pypath
+[file pypath/foo/__init__.py]
+1()
+[file pypath/foo/m.py]
+1()
+[out]
+foo/m.py:1: error: "int" not callable
+foo/__init__.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly4]
+# cmd: mypy -m foo
+# cwd: pypath
+[file pypath/foo.py]
+1()
+[out]
+foo.py:1: error: "int" not callable
+
+[case testFileInPythonPathPassedExplicitly5]
+# cmd: mypy -m foo.m
+# cwd: pypath
+[file pypath/foo/__init__.py]
+1()  # TODO: Maybe this should generate errors as well? But how would we decide?
+[file pypath/foo/m.py]
+1()
+[out]
+foo/m.py:1: error: "int" not callable
+
+[case testCmdlineCfgEnableErrorCodeTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+enable_error_code =
+  truthy-bool,
+  redundant-expr,
+[out]
+
+[case testCmdlineCfgDisableErrorCodeTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+disable_error_code =
+  misc,
+  override,
+[out]
+
+[case testCmdlineCfgAlwaysTrueTrailingComma]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+always_true =
+  MY_VAR,
+[out]

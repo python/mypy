@@ -5,7 +5,7 @@ Subclass TransformVisitor to perform non-trivial transformations.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, cast
+from typing import Iterable, Optional, cast
 
 from mypy.nodes import (
     GDEF,
@@ -49,6 +49,7 @@ from mypy.nodes import (
     LambdaExpr,
     ListComprehension,
     ListExpr,
+    MatchStmt,
     MemberExpr,
     MypyFile,
     NamedTupleExpr,
@@ -90,6 +91,17 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypy.patterns import (
+    AsPattern,
+    ClassPattern,
+    MappingPattern,
+    OrPattern,
+    Pattern,
+    SequencePattern,
+    SingletonPattern,
+    StarredPattern,
+    ValuePattern,
+)
 from mypy.traverser import TraverserVisitor
 from mypy.types import FunctionLike, ProperType, Type
 from mypy.util import replace_object_state
@@ -123,12 +135,12 @@ class TransformVisitor(NodeVisitor[Node]):
         self.test_only = False
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
-        self.var_map: Dict[Var, Var] = {}
+        self.var_map: dict[Var, Var] = {}
         # These are uninitialized placeholder nodes used temporarily for nested
         # functions while we are transforming a top-level function. This maps an
         # untransformed node to a placeholder (which will later become the
         # transformed node).
-        self.func_placeholder_map: Dict[FuncDef, FuncDef] = {}
+        self.func_placeholder_map: dict[FuncDef, FuncDef] = {}
 
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
         assert self.test_only, "This visitor should not be used for whole files."
@@ -361,7 +373,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return RaiseStmt(self.optional_expr(node.expr), self.optional_expr(node.from_expr))
 
     def visit_try_stmt(self, node: TryStmt) -> TryStmt:
-        return TryStmt(
+        new = TryStmt(
             self.block(node.body),
             self.optional_names(node.vars),
             self.optional_expressions(node.types),
@@ -369,6 +381,8 @@ class TransformVisitor(NodeVisitor[Node]):
             self.optional_block(node.else_body),
             self.optional_block(node.finally_body),
         )
+        new.is_star = node.is_star
+        return new
 
     def visit_with_stmt(self, node: WithStmt) -> WithStmt:
         new = WithStmt(
@@ -380,6 +394,52 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_async = node.is_async
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
+
+    def visit_as_pattern(self, p: AsPattern) -> AsPattern:
+        return AsPattern(
+            pattern=self.pattern(p.pattern) if p.pattern is not None else None,
+            name=self.duplicate_name(p.name) if p.name is not None else None,
+        )
+
+    def visit_or_pattern(self, p: OrPattern) -> OrPattern:
+        return OrPattern([self.pattern(pat) for pat in p.patterns])
+
+    def visit_value_pattern(self, p: ValuePattern) -> ValuePattern:
+        return ValuePattern(self.expr(p.expr))
+
+    def visit_singleton_pattern(self, p: SingletonPattern) -> SingletonPattern:
+        return SingletonPattern(p.value)
+
+    def visit_sequence_pattern(self, p: SequencePattern) -> SequencePattern:
+        return SequencePattern([self.pattern(pat) for pat in p.patterns])
+
+    def visit_starred_pattern(self, p: StarredPattern) -> StarredPattern:
+        return StarredPattern(self.duplicate_name(p.capture) if p.capture is not None else None)
+
+    def visit_mapping_pattern(self, p: MappingPattern) -> MappingPattern:
+        return MappingPattern(
+            keys=[self.expr(expr) for expr in p.keys],
+            values=[self.pattern(pat) for pat in p.values],
+            rest=self.duplicate_name(p.rest) if p.rest is not None else None,
+        )
+
+    def visit_class_pattern(self, p: ClassPattern) -> ClassPattern:
+        class_ref = p.class_ref.accept(self)
+        assert isinstance(class_ref, RefExpr)
+        return ClassPattern(
+            class_ref=class_ref,
+            positionals=[self.pattern(pat) for pat in p.positionals],
+            keyword_keys=list(p.keyword_keys),
+            keyword_values=[self.pattern(pat) for pat in p.keyword_values],
+        )
+
+    def visit_match_stmt(self, o: MatchStmt) -> MatchStmt:
+        return MatchStmt(
+            subject=self.expr(o.subject),
+            patterns=[self.pattern(p) for p in o.patterns],
+            guards=self.optional_expressions(o.guards),
+            bodies=self.blocks(o.bodies),
+        )
 
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
         return StarExpr(node.expr)
@@ -459,7 +519,12 @@ class TransformVisitor(NodeVisitor[Node]):
         )
 
     def visit_op_expr(self, node: OpExpr) -> OpExpr:
-        new = OpExpr(node.op, self.expr(node.left), self.expr(node.right))
+        new = OpExpr(
+            node.op,
+            self.expr(node.left),
+            self.expr(node.right),
+            cast(Optional[TypeAliasExpr], self.optional_expr(node.analyzed)),
+        )
         new.method_type = self.optional_type(node.method_type)
         return new
 
@@ -490,7 +555,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
-        return AssignmentExpr(node.target, node.value)
+        return AssignmentExpr(self.expr(node.target), self.expr(node.value))
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))
@@ -588,7 +653,11 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_type_var_tuple_expr(self, node: TypeVarTupleExpr) -> TypeVarTupleExpr:
         return TypeVarTupleExpr(
-            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+            node.name,
+            node.fullname,
+            self.type(node.upper_bound),
+            node.tuple_fallback,
+            variance=node.variance,
         )
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
@@ -637,11 +706,17 @@ class TransformVisitor(NodeVisitor[Node]):
         new.set_line(stmt)
         return new
 
+    def pattern(self, pattern: Pattern) -> Pattern:
+        new = pattern.accept(self)
+        assert isinstance(new, Pattern)
+        new.set_line(pattern)
+        return new
+
     # Helpers
     #
     # All the node helpers also propagate line numbers.
 
-    def optional_expr(self, expr: Optional[Expression]) -> Optional[Expression]:
+    def optional_expr(self, expr: Expression | None) -> Expression | None:
         if expr:
             return self.expr(expr)
         else:
@@ -652,31 +727,31 @@ class TransformVisitor(NodeVisitor[Node]):
         new.line = block.line
         return new
 
-    def optional_block(self, block: Optional[Block]) -> Optional[Block]:
+    def optional_block(self, block: Block | None) -> Block | None:
         if block:
             return self.block(block)
         else:
             return None
 
-    def statements(self, statements: List[Statement]) -> List[Statement]:
+    def statements(self, statements: list[Statement]) -> list[Statement]:
         return [self.stmt(stmt) for stmt in statements]
 
-    def expressions(self, expressions: List[Expression]) -> List[Expression]:
+    def expressions(self, expressions: list[Expression]) -> list[Expression]:
         return [self.expr(expr) for expr in expressions]
 
     def optional_expressions(
-        self, expressions: Iterable[Optional[Expression]]
-    ) -> List[Optional[Expression]]:
+        self, expressions: Iterable[Expression | None]
+    ) -> list[Expression | None]:
         return [self.optional_expr(expr) for expr in expressions]
 
-    def blocks(self, blocks: List[Block]) -> List[Block]:
+    def blocks(self, blocks: list[Block]) -> list[Block]:
         return [self.block(block) for block in blocks]
 
-    def names(self, names: List[NameExpr]) -> List[NameExpr]:
+    def names(self, names: list[NameExpr]) -> list[NameExpr]:
         return [self.duplicate_name(name) for name in names]
 
-    def optional_names(self, names: Iterable[Optional[NameExpr]]) -> List[Optional[NameExpr]]:
-        result: List[Optional[NameExpr]] = []
+    def optional_names(self, names: Iterable[NameExpr | None]) -> list[NameExpr | None]:
+        result: list[NameExpr | None] = []
         for name in names:
             if name:
                 result.append(self.duplicate_name(name))
@@ -688,13 +763,13 @@ class TransformVisitor(NodeVisitor[Node]):
         # Override this method to transform types.
         return type
 
-    def optional_type(self, type: Optional[Type]) -> Optional[Type]:
+    def optional_type(self, type: Type | None) -> Type | None:
         if type:
             return self.type(type)
         else:
             return None
 
-    def types(self, types: List[Type]) -> List[Type]:
+    def types(self, types: list[Type]) -> list[Type]:
         return [self.type(type) for type in types]
 
 

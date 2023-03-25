@@ -1,14 +1,23 @@
-
 [case testUnboundTypeVar]
 from typing import TypeVar
 
 T = TypeVar('T')
 
-def f() -> T: # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def f() -> T: # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
     ...
-
 f()
 
+U = TypeVar('U', bound=int)
+
+def g() -> U: # E: A function returning TypeVar should receive at least one argument containing the same TypeVar \
+              # N: Consider using the upper bound "int" instead
+    ...
+
+V = TypeVar('V', int, str)
+
+# TODO: this should also give an error
+def h() -> V:
+    ...
 
 [case testInnerFunctionTypeVar]
 
@@ -21,7 +30,6 @@ def g(a: T) -> T:
         ...
     return f()
 
-
 [case testUnboundIterableOfTypeVars]
 from typing import Iterable, TypeVar
 
@@ -29,7 +37,6 @@ T = TypeVar('T')
 
 def f() -> Iterable[T]:
     ...
-
 f()
 
 [case testBoundTypeVar]
@@ -39,7 +46,6 @@ T = TypeVar('T')
 
 def f(a: T, b: T, c: int) -> T:
     ...
-
 
 [case testNestedBoundTypeVar]
 from typing import Callable, List, Union, Tuple, TypeVar
@@ -58,3 +64,9 @@ def h(a: List[Union[Callable[..., T]]]) -> T:
 def j(a: List[Union[Callable[..., Tuple[T, T]], int]]) -> T:
     ...
 [builtins fixtures/tuple.pyi]
+
+[case testUnboundedTypevarUnpacking]
+from typing import TypeVar
+T = TypeVar("T")
+def f(t: T) -> None:
+    a, *b = t  # E: "object" object is not iterable

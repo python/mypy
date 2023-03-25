@@ -1321,8 +1321,7 @@ def f(x: Union[A, B]) -> None:
         f(x)
 [builtins fixtures/isinstance.pyi]
 
-[case testIsinstanceWithOverlappingPromotionTypes-skip]
-# Currently disabled: see https://github.com/python/mypy/issues/6060 for context
+[case testIsinstanceWithOverlappingPromotionTypes]
 from typing import Union
 
 class FloatLike: pass
@@ -1751,11 +1750,8 @@ def f(cls: Type[object]) -> None:
 [case testIsinstanceTypeArgs]
 from typing import Iterable, TypeVar
 x = 1
-T = TypeVar('T')
-
 isinstance(x, Iterable)
 isinstance(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
-isinstance(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
 isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
 isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstancelist.pyi]
@@ -1784,13 +1780,42 @@ isinstance(x, It2)  # E: Parameterized generics cannot be used with class or ins
 [case testIssubclassTypeArgs]
 from typing import Iterable, TypeVar
 x = int
-T = TypeVar('T')
 issubclass(x, Iterable)
 issubclass(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
-issubclass(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
 issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testIssubclassWithMetaclasses]
+class FooMetaclass(type): ...
+class Foo(metaclass=FooMetaclass): ...
+class Bar: ...
+
+fm: FooMetaclass
+reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
+if issubclass(fm, Foo):
+    reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
+if issubclass(fm, Bar):
+    reveal_type(fm)  # N: Revealed type is "None"
+[builtins fixtures/isinstance.pyi]
+
+[case testIssubclassWithMetaclassesStrictOptional]
+# flags: --strict-optional
+class FooMetaclass(type): ...
+class BarMetaclass(type): ...
+class Foo(metaclass=FooMetaclass): ...
+class Bar(metaclass=BarMetaclass): ...
+class Baz: ...
+
+fm: FooMetaclass
+reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
+if issubclass(fm, Foo):
+    reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
+if issubclass(fm, Bar):
+    reveal_type(fm)  # N: Revealed type is "<nothing>"
+if issubclass(fm, Baz):
+    reveal_type(fm)  # N: Revealed type is "<nothing>"
+[builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndNarrowTypeVariable]
 from typing import TypeVar
@@ -2362,7 +2387,7 @@ class B:
             x1: Literal[1] = self.f()
 
     def t2(self) -> None:
-        if isinstance(self, (A0, A1)):  # E: Subclass of "B" and "A0" cannot exist: would have incompatible method signatures
+        if isinstance(self, (A0, A1)):
             reveal_type(self)           # N: Revealed type is "__main__.<subclass of "A1" and "B">1"
             x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[0]")
             x1: Literal[1] = self.f()
@@ -2698,3 +2723,189 @@ if type(x) is not C:
     reveal_type(x)  # N: Revealed type is "__main__.D"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.C"
+
+[case testHasAttrExistingAttribute]
+class C:
+    x: int
+c: C
+if hasattr(c, "x"):
+    reveal_type(c.x)  # N: Revealed type is "builtins.int"
+else:
+    # We don't mark this unreachable since people may check for deleted attributes
+    reveal_type(c.x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeInstance]
+class B: ...
+b: B
+if hasattr(b, "x"):
+    reveal_type(b.x)  # N: Revealed type is "Any"
+else:
+    b.x  # E: "B" has no attribute "x"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeFunction]
+def foo(x: int) -> None: ...
+if hasattr(foo, "x"):
+    reveal_type(foo.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeClassObject]
+class C: ...
+if hasattr(C, "x"):
+    reveal_type(C.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeTypeType]
+from typing import Type
+class C: ...
+c: Type[C]
+if hasattr(c, "x"):
+    reveal_type(c.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeTypeVar]
+from typing import TypeVar
+
+T = TypeVar("T")
+def foo(x: T) -> T:
+    if hasattr(x, "x"):
+        reveal_type(x.x)  # N: Revealed type is "Any"
+        return x
+    else:
+        return x
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeChained]
+class B: ...
+b: B
+if hasattr(b, "x"):
+    reveal_type(b.x)  # N: Revealed type is "Any"
+elif hasattr(b, "y"):
+    reveal_type(b.y)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeNested]
+class A: ...
+class B: ...
+
+x: A
+if hasattr(x, "x"):
+    if isinstance(x, B):
+        reveal_type(x.x)  # N: Revealed type is "Any"
+
+if hasattr(x, "x") and hasattr(x, "y"):
+    reveal_type(x.x)  # N: Revealed type is "Any"
+    reveal_type(x.y)  # N: Revealed type is "Any"
+
+if hasattr(x, "x"):
+    if hasattr(x, "y"):
+        reveal_type(x.x)  # N: Revealed type is "Any"
+        reveal_type(x.y)  # N: Revealed type is "Any"
+
+if hasattr(x, "x") or hasattr(x, "y"):
+    x.x  # E: "A" has no attribute "x"
+    x.y  # E: "A" has no attribute "y"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrPreciseType]
+class A: ...
+
+x: A
+if hasattr(x, "a") and isinstance(x.a, int):
+    reveal_type(x.a)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeUnion]
+from typing import Union
+
+class A: ...
+class B:
+    x: int
+
+xu: Union[A, B]
+if hasattr(xu, "x"):
+    reveal_type(xu)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+    reveal_type(xu.x)  # N: Revealed type is "Union[Any, builtins.int]"
+else:
+    reveal_type(xu)  # N: Revealed type is "__main__.A"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeOuterUnion]
+from typing import Union
+
+class A: ...
+class B: ...
+xu: Union[A, B]
+if isinstance(xu, B):
+    if hasattr(xu, "x"):
+        reveal_type(xu.x)  # N: Revealed type is "Any"
+
+if isinstance(xu, B) and hasattr(xu, "x"):
+        reveal_type(xu.x)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrDoesntInterfereGetAttr]
+class C:
+    def __getattr__(self, attr: str) -> str: ...
+
+c: C
+if hasattr(c, "foo"):
+    reveal_type(c.foo)  # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrMissingAttributeLiteral]
+from typing import Final
+class B: ...
+b: B
+ATTR: Final = "x"
+if hasattr(b, ATTR):
+    reveal_type(b.x)  # N: Revealed type is "Any"
+else:
+    b.x  # E: "B" has no attribute "x"
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrDeferred]
+def foo() -> str: ...
+
+class Test:
+    def stream(self) -> None:
+        if hasattr(self, "_body"):
+            reveal_type(self._body)  # N: Revealed type is "builtins.str"
+
+    def body(self) -> str:
+        if not hasattr(self, "_body"):
+            self._body = foo()
+        return self._body
+[builtins fixtures/isinstance.pyi]
+
+[case testHasAttrModule]
+import mod
+
+if hasattr(mod, "y"):
+    reveal_type(mod.y)  # N: Revealed type is "Any"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+else:
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+
+if hasattr(mod, "x"):
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+else:
+    mod.y  # E: Module has no attribute "y"
+    reveal_type(mod.x)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+x: int
+[builtins fixtures/module.pyi]
+
+[case testHasAttrDoesntInterfereModuleGetAttr]
+import mod
+
+if hasattr(mod, "y"):
+    reveal_type(mod.y)  # N: Revealed type is "builtins.str"
+
+[file mod.py]
+def __getattr__(attr: str) -> str: ...
+[builtins fixtures/module.pyi]

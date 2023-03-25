@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import shutil
-from typing import Dict, List, Optional, Tuple
 
 from mypy import build
 from mypy.build import BuildResult
@@ -35,18 +34,6 @@ SYMTABLE = "SYMTABLE"
 TYPEINFO = " TYPEINFO"
 TYPES = "TYPES"
 AST = "AST"
-
-
-NOT_DUMPED_MODULES = (
-    "builtins",
-    "typing",
-    "abc",
-    "contextlib",
-    "sys",
-    "mypy_extensions",
-    "typing_extensions",
-    "enum",
-)
 
 
 class ASTMergeSuite(DataSuite):
@@ -85,13 +72,13 @@ class ASTMergeSuite(DataSuite):
         target_path = os.path.join(test_temp_dir, "target.py")
         shutil.copy(os.path.join(test_temp_dir, "target.py.next"), target_path)
 
-        a.extend(self.dump(fine_grained_manager, kind))
+        a.extend(self.dump(fine_grained_manager, kind, testcase.test_modules))
         old_subexpr = get_subexpressions(result.manager.modules["target"])
 
         a.append("==>")
 
         new_file, new_types = self.build_increment(fine_grained_manager, "target", target_path)
-        a.extend(self.dump(fine_grained_manager, kind))
+        a.extend(self.dump(fine_grained_manager, kind, testcase.test_modules))
 
         for expr in old_subexpr:
             if isinstance(expr, TypeVarExpr):
@@ -107,13 +94,14 @@ class ASTMergeSuite(DataSuite):
             testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
         )
 
-    def build(self, source: str, testcase: DataDrivenTestCase) -> Optional[BuildResult]:
+    def build(self, source: str, testcase: DataDrivenTestCase) -> BuildResult | None:
         options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.fine_grained_incremental = True
         options.use_builtins_fixtures = True
         options.export_types = True
         options.show_traceback = True
+        options.allow_empty_bodies = True
         main_path = os.path.join(test_temp_dir, "main")
         with open(main_path, "w", encoding="utf8") as f:
             f.write(source)
@@ -130,15 +118,19 @@ class ASTMergeSuite(DataSuite):
 
     def build_increment(
         self, manager: FineGrainedBuildManager, module_id: str, path: str
-    ) -> Tuple[MypyFile, Dict[Expression, Type]]:
+    ) -> tuple[MypyFile, dict[Expression, Type]]:
         manager.flush_cache()
         manager.update([(module_id, path)], [])
         module = manager.manager.modules[module_id]
         type_map = manager.graph[module_id].type_map()
         return module, type_map
 
-    def dump(self, manager: FineGrainedBuildManager, kind: str) -> List[str]:
-        modules = manager.manager.modules
+    def dump(
+        self, manager: FineGrainedBuildManager, kind: str, test_modules: list[str]
+    ) -> list[str]:
+        modules = {
+            name: file for name, file in manager.manager.modules.items() if name in test_modules
+        }
         if kind == AST:
             return self.dump_asts(modules)
         elif kind == TYPEINFO:
@@ -146,29 +138,23 @@ class ASTMergeSuite(DataSuite):
         elif kind == SYMTABLE:
             return self.dump_symbol_tables(modules)
         elif kind == TYPES:
-            return self.dump_types(manager)
+            return self.dump_types(modules, manager)
         assert False, f"Invalid kind {kind}"
 
-    def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
+    def dump_asts(self, modules: dict[str, MypyFile]) -> list[str]:
         a = []
         for m in sorted(modules):
-            if m in NOT_DUMPED_MODULES:
-                # We don't support incremental checking of changes to builtins, etc.
-                continue
             s = modules[m].accept(self.str_conv)
             a.extend(s.splitlines())
         return a
 
-    def dump_symbol_tables(self, modules: Dict[str, MypyFile]) -> List[str]:
+    def dump_symbol_tables(self, modules: dict[str, MypyFile]) -> list[str]:
         a = []
         for id in sorted(modules):
-            if not is_dumped_module(id):
-                # We don't support incremental checking of changes to builtins, etc.
-                continue
             a.extend(self.dump_symbol_table(id, modules[id].names))
         return a
 
-    def dump_symbol_table(self, module_id: str, symtable: SymbolTable) -> List[str]:
+    def dump_symbol_table(self, module_id: str, symtable: SymbolTable) -> list[str]:
         a = [f"{module_id}:"]
         for name in sorted(symtable):
             if name.startswith("__"):
@@ -194,15 +180,13 @@ class ASTMergeSuite(DataSuite):
             s += f"({typestr})"
         return s
 
-    def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
+    def dump_typeinfos(self, modules: dict[str, MypyFile]) -> list[str]:
         a = []
         for id in sorted(modules):
-            if not is_dumped_module(id):
-                continue
             a.extend(self.dump_typeinfos_recursive(modules[id].names))
         return a
 
-    def dump_typeinfos_recursive(self, names: SymbolTable) -> List[str]:
+    def dump_typeinfos_recursive(self, names: SymbolTable) -> list[str]:
         a = []
         for name, node in sorted(names.items(), key=lambda x: x[0]):
             if isinstance(node.node, TypeInfo):
@@ -210,20 +194,20 @@ class ASTMergeSuite(DataSuite):
                 a.extend(self.dump_typeinfos_recursive(node.node.names))
         return a
 
-    def dump_typeinfo(self, info: TypeInfo) -> List[str]:
+    def dump_typeinfo(self, info: TypeInfo) -> list[str]:
         if info.fullname == "enum.Enum":
             # Avoid noise
             return []
         s = info.dump(str_conv=self.str_conv, type_str_conv=self.type_str_conv)
         return s.splitlines()
 
-    def dump_types(self, manager: FineGrainedBuildManager) -> List[str]:
+    def dump_types(
+        self, modules: dict[str, MypyFile], manager: FineGrainedBuildManager
+    ) -> list[str]:
         a = []
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
-        for module_id in sorted(manager.manager.modules):
-            if not is_dumped_module(module_id):
-                continue
+        for module_id in sorted(modules):
             all_types = manager.manager.all_types
             # Compute a module type map from the global type map
             tree = manager.graph[module_id].tree
@@ -242,7 +226,3 @@ class ASTMergeSuite(DataSuite):
 
     def format_type(self, typ: Type) -> str:
         return typ.accept(self.type_str_conv)
-
-
-def is_dumped_module(id: str) -> bool:
-    return id not in NOT_DUMPED_MODULES and (not id.startswith("_") or id == "__main__")

@@ -273,6 +273,22 @@ class SubtypingSuite(Suite):
             Instance(self.fx.gvi, [self.fx.a, UnpackType(self.fx.ss), self.fx.b, self.fx.c]),
         )
 
+    def test_type_var_tuple_unpacked_varlength_tuple(self) -> None:
+        self.assert_subtype(
+            Instance(
+                self.fx.gvi,
+                [
+                    UnpackType(
+                        TupleType(
+                            [self.fx.a, self.fx.b],
+                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
+                        )
+                    )
+                ],
+            ),
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+        )
+
     def test_type_var_tuple_unpacked_tuple(self) -> None:
         self.assert_subtype(
             Instance(
@@ -333,7 +349,7 @@ class SubtypingSuite(Suite):
         )
 
     def test_type_var_tuple_unpacked_variable_length_tuple(self) -> None:
-        self.assert_strict_subtype(
+        self.assert_equivalent(
             Instance(self.fx.gvi, [self.fx.a, self.fx.a]),
             Instance(self.fx.gvi, [UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))]),
         )

@@ -163,6 +163,15 @@ reveal_type(f())  # N: Revealed type is "builtins.int"
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/customentry.py:register
 
+[case testCustomPluginEntryPointFileTrailingComma]
+# flags: --config-file tmp/mypy.ini
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+plugins =
+    <ROOT>/test-data/unit/plugins/customentry.py:register,
+
 [case testCustomPluginEntryPoint]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
@@ -991,3 +1000,17 @@ class Cls:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
+
+[case testAddClassMethodPlugin]
+# flags: --config-file tmp/mypy.ini
+class BaseAddMethod: pass
+
+class MyClass(BaseAddMethod):
+    pass
+
+my_class = MyClass()
+reveal_type(MyClass.foo_classmethod)  # N: Revealed type is "def ()"
+reveal_type(MyClass.foo_staticmethod)  # N: Revealed type is "def (builtins.int) -> builtins.str"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import sys
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Callable
 from typing_extensions import Final
 
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     ATTR_PREFIX,
+    BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     NATIVE_PREFIX,
     REG_PREFIX,
@@ -73,10 +74,10 @@ class HeaderDeclaration:
 
     def __init__(
         self,
-        decl: Union[str, List[str]],
-        defn: Optional[List[str]] = None,
+        decl: str | list[str],
+        defn: list[str] | None = None,
         *,
-        dependencies: Optional[Set[str]] = None,
+        dependencies: set[str] | None = None,
         is_type: bool = False,
         needs_export: bool = False,
     ) -> None:
@@ -93,8 +94,8 @@ class EmitterContext:
     def __init__(
         self,
         names: NameGenerator,
-        group_name: Optional[str] = None,
-        group_map: Optional[Dict[str, Optional[str]]] = None,
+        group_name: str | None = None,
+        group_map: dict[str, str | None] | None = None,
     ) -> None:
         """Setup shared emitter state.
 
@@ -108,7 +109,7 @@ class EmitterContext:
         self.group_name = group_name
         self.group_map = group_map or {}
         # Groups that this group depends on
-        self.group_deps: Set[str] = set()
+        self.group_deps: set[str] = set()
 
         # The map below is used for generating declarations and
         # definitions at the top of the C file. The main idea is that they can
@@ -117,7 +118,7 @@ class EmitterContext:
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
-        self.declarations: Dict[str, HeaderDeclaration] = {}
+        self.declarations: dict[str, HeaderDeclaration] = {}
 
         self.literals = Literals()
 
@@ -141,7 +142,7 @@ class TracebackAndGotoHandler(ErrorHandler):
     """Add traceback item and goto label on error."""
 
     def __init__(
-        self, label: str, source_path: str, module_name: str, traceback_entry: Tuple[str, int]
+        self, label: str, source_path: str, module_name: str, traceback_entry: tuple[str, int]
     ) -> None:
         self.label = label
         self.source_path = source_path
@@ -162,14 +163,14 @@ class Emitter:
     def __init__(
         self,
         context: EmitterContext,
-        value_names: Optional[Dict[Value, str]] = None,
-        capi_version: Optional[Tuple[int, int]] = None,
+        value_names: dict[Value, str] | None = None,
+        capi_version: tuple[int, int] | None = None,
     ) -> None:
         self.context = context
         self.capi_version = capi_version or sys.version_info[:2]
         self.names = context.names
         self.value_names = value_names or {}
-        self.fragments: List[str] = []
+        self.fragments: list[str] = []
         self._indent = 0
 
     # Low-level operations
@@ -201,7 +202,7 @@ class Emitter:
         for line in lines:
             self.emit_line(line)
 
-    def emit_label(self, label: Union[BasicBlock, str]) -> None:
+    def emit_label(self, label: BasicBlock | str) -> None:
         if isinstance(label, str):
             text = label
         else:
@@ -251,12 +252,12 @@ class Emitter:
         else:
             return ""
 
-    def get_group_prefix(self, obj: Union[ClassIR, FuncDecl]) -> str:
+    def get_group_prefix(self, obj: ClassIR | FuncDecl) -> str:
         """Get the group prefix for an object."""
         # See docs above
         return self.get_module_group_prefix(obj.module_name)
 
-    def static_name(self, id: str, module: Optional[str], prefix: str = STATIC_PREFIX) -> str:
+    def static_name(self, id: str, module: str | None, prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
 
         These are used for literals and imported modules, among other
@@ -302,7 +303,7 @@ class Emitter:
     def native_function_name(self, fn: FuncDecl) -> str:
         return f"{NATIVE_PREFIX}{fn.cname(self.names)}"
 
-    def tuple_c_declaration(self, rtuple: RTuple) -> List[str]:
+    def tuple_c_declaration(self, rtuple: RTuple) -> list[str]:
         result = [
             f"#ifndef MYPYC_DECLARED_{rtuple.struct_name}",
             f"#define MYPYC_DECLARED_{rtuple.struct_name}",
@@ -329,21 +330,84 @@ class Emitter:
 
         return result
 
+    def bitmap_field(self, index: int) -> str:
+        """Return C field name used for attribute bitmap."""
+        n = index // BITMAP_BITS
+        if n == 0:
+            return "bitmap"
+        return f"bitmap{n + 1}"
+
+    def attr_bitmap_expr(self, obj: str, cl: ClassIR, index: int) -> str:
+        """Return reference to the attribute definedness bitmap."""
+        cast = f"({cl.struct_name(self.names)} *)"
+        attr = self.bitmap_field(index)
+        return f"({cast}{obj})->{attr}"
+
+    def emit_attr_bitmap_set(
+        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str
+    ) -> None:
+        """Mark an attribute as defined in the attribute bitmap.
+
+        Assumes that the attribute is tracked in the bitmap (only some attributes
+        use the bitmap). If 'value' is not equal to the error value, do nothing.
+        """
+        self._emit_attr_bitmap_update(value, obj, rtype, cl, attr, clear=False)
+
+    def emit_attr_bitmap_clear(self, obj: str, rtype: RType, cl: ClassIR, attr: str) -> None:
+        """Mark an attribute as undefined in the attribute bitmap.
+
+        Unlike emit_attr_bitmap_set, clear unconditionally.
+        """
+        self._emit_attr_bitmap_update("", obj, rtype, cl, attr, clear=True)
+
+    def _emit_attr_bitmap_update(
+        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str, clear: bool
+    ) -> None:
+        if value:
+            check = self.error_value_check(rtype, value, "==")
+            self.emit_line(f"if (unlikely({check})) {{")
+        index = cl.bitmap_attrs.index(attr)
+        mask = 1 << (index & (BITMAP_BITS - 1))
+        bitmap = self.attr_bitmap_expr(obj, cl, index)
+        if clear:
+            self.emit_line(f"{bitmap} &= ~{mask};")
+        else:
+            self.emit_line(f"{bitmap} |= {mask};")
+        if value:
+            self.emit_line("}")
+
     def use_vectorcall(self) -> bool:
         return use_vectorcall(self.capi_version)
 
     def emit_undefined_attr_check(
-        self, rtype: RType, attr_expr: str, compare: str, unlikely: bool = False
+        self,
+        rtype: RType,
+        attr_expr: str,
+        compare: str,
+        obj: str,
+        attr: str,
+        cl: ClassIR,
+        *,
+        unlikely: bool = False,
     ) -> None:
+        check = self.error_value_check(rtype, attr_expr, compare)
+        if unlikely:
+            check = f"unlikely({check})"
+        if rtype.error_overlap:
+            index = cl.bitmap_attrs.index(attr)
+            bit = 1 << (index & (BITMAP_BITS - 1))
+            attr = self.bitmap_field(index)
+            obj_expr = f"({cl.struct_name(self.names)} *){obj}"
+            check = f"{check} && !(({obj_expr})->{attr} & {bit})"
+        self.emit_line(f"if ({check}) {{")
+
+    def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
         if isinstance(rtype, RTuple):
-            check = "({})".format(
-                self.tuple_undefined_check_cond(rtype, attr_expr, self.c_undefined_value, compare)
+            return self.tuple_undefined_check_cond(
+                rtype, value, self.c_error_value, compare, check_exception=False
             )
         else:
-            check = f"({attr_expr} {compare} {self.c_undefined_value(rtype)})"
-        if unlikely:
-            check = f"(unlikely{check})"
-        self.emit_line(f"if {check} {{")
+            return f"{value} {compare} {self.c_error_value(rtype)}"
 
     def tuple_undefined_check_cond(
         self,
@@ -351,24 +415,38 @@ class Emitter:
         tuple_expr_in_c: str,
         c_type_compare_val: Callable[[RType], str],
         compare: str,
+        *,
+        check_exception: bool = True,
     ) -> str:
         if len(rtuple.types) == 0:
             # empty tuple
             return "{}.empty_struct_error_flag {} {}".format(
                 tuple_expr_in_c, compare, c_type_compare_val(int_rprimitive)
             )
-        item_type = rtuple.types[0]
+        if rtuple.error_overlap:
+            i = 0
+            item_type = rtuple.types[0]
+        else:
+            for i, typ in enumerate(rtuple.types):
+                if not typ.error_overlap:
+                    item_type = rtuple.types[i]
+                    break
+            else:
+                assert False, "not expecting tuple with error overlap"
         if isinstance(item_type, RTuple):
             return self.tuple_undefined_check_cond(
-                item_type, tuple_expr_in_c + ".f0", c_type_compare_val, compare
+                item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
         else:
-            return f"{tuple_expr_in_c}.f0 {compare} {c_type_compare_val(item_type)}"
+            check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
+            if rtuple.error_overlap and check_exception:
+                check += " && PyErr_Occurred()"
+            return check
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
         return "tuple_undefined_" + rtuple.unique_id
 
-    def tuple_undefined_value_helper(self, rtuple: RTuple) -> List[str]:
+    def tuple_undefined_value_helper(self, rtuple: RTuple) -> list[str]:
         res = []
         # see tuple_c_declaration()
         if len(rtuple.types) == 0:
@@ -460,10 +538,10 @@ class Emitter:
         typ: RType,
         *,
         declare_dest: bool = False,
-        error: Optional[ErrorHandler] = None,
+        error: ErrorHandler | None = None,
         raise_exception: bool = True,
         optional: bool = False,
-        src_type: Optional[RType] = None,
+        src_type: RType | None = None,
         likely: bool = True,
     ) -> None:
         """Emit code for casting a value of given type.
@@ -652,7 +730,7 @@ class Emitter:
         declare_dest: bool,
         error: ErrorHandler,
         optional: bool,
-        src_type: Optional[RType],
+        src_type: RType | None,
         raise_exception: bool,
     ) -> None:
         """Emit cast to a union type.
@@ -689,7 +767,7 @@ class Emitter:
         typ: RTuple,
         declare_dest: bool,
         error: ErrorHandler,
-        src_type: Optional[RType],
+        src_type: RType | None,
     ) -> None:
         """Emit cast to a tuple type.
 
@@ -740,7 +818,7 @@ class Emitter:
         typ: RType,
         *,
         declare_dest: bool = False,
-        error: Optional[ErrorHandler] = None,
+        error: ErrorHandler | None = None,
         raise_exception: bool = True,
         optional: bool = False,
         borrow: bool = False,
@@ -815,6 +893,16 @@ class Emitter:
             if declare_dest:
                 self.emit_line(f"int32_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
+            # TODO: Handle 'optional'
+            # TODO: Handle 'failure'
+        elif is_float_rprimitive(typ):
+            if declare_dest:
+                self.emit_line("double {};".format(dest))
+            # TODO: Don't use __float__ and __index__
+            self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
+            self.emit_lines(
+                f"if ({dest} == -1.0 && PyErr_Occurred()) {{", f"{dest} = -113.0;", "}"
+            )
             # TODO: Handle 'optional'
             # TODO: Handle 'failure'
         elif isinstance(typ, RTuple):
@@ -905,6 +993,8 @@ class Emitter:
             self.emit_line(f"{declaration}{dest} = PyLong_FromLong({src});")
         elif is_int64_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLongLong({src});")
+        elif is_float_rprimitive(typ):
+            self.emit_line(f"{declaration}{dest} = PyFloat_FromDouble({src});")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
@@ -925,14 +1015,18 @@ class Emitter:
 
     def emit_error_check(self, value: str, rtype: RType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""
-        if not isinstance(rtype, RTuple):
-            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
-        else:
+        if isinstance(rtype, RTuple):
             if len(rtype.types) == 0:
                 return  # empty tuples can't fail.
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif rtype.error_overlap:
+            # The error value is also valid as a normal value, so we need to also check
+            # for a raised exception.
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
+        else:
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
         self.emit_lines(failure, "}")
 
     def emit_gc_visit(self, target: str, rtype: RType) -> None:
@@ -982,7 +1076,7 @@ class Emitter:
             assert False, "emit_gc_clear() not implemented for %s" % repr(rtype)
 
     def emit_traceback(
-        self, source_path: str, module_name: str, traceback_entry: Tuple[str, int]
+        self, source_path: str, module_name: str, traceback_entry: tuple[str, int]
     ) -> None:
         return self._emit_traceback("CPy_AddTraceback", source_path, module_name, traceback_entry)
 
@@ -990,7 +1084,7 @@ class Emitter:
         self,
         source_path: str,
         module_name: str,
-        traceback_entry: Tuple[str, int],
+        traceback_entry: tuple[str, int],
         *,
         typ: RType,
         src: str,
@@ -1006,7 +1100,7 @@ class Emitter:
         func: str,
         source_path: str,
         module_name: str,
-        traceback_entry: Tuple[str, int],
+        traceback_entry: tuple[str, int],
         type_str: str = "",
         src: str = "",
     ) -> None:

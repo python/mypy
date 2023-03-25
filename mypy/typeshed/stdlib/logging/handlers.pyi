@@ -2,7 +2,7 @@ import datetime
 import http.client
 import ssl
 import sys
-from _typeshed import StrPath
+from _typeshed import ReadableBuffer, StrPath
 from collections.abc import Callable
 from logging import FileHandler, Handler, LogRecord
 from queue import Queue, SimpleQueue
@@ -22,10 +22,10 @@ class WatchedFileHandler(FileHandler):
     ino: int  # undocumented
     if sys.version_info >= (3, 9):
         def __init__(
-            self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ..., errors: str | None = ...
+            self, filename: StrPath, mode: str = "a", encoding: str | None = None, delay: bool = False, errors: str | None = None
         ) -> None: ...
     else:
-        def __init__(self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ...) -> None: ...
+        def __init__(self, filename: StrPath, mode: str = "a", encoding: str | None = None, delay: bool = False) -> None: ...
 
     def _statstream(self) -> None: ...  # undocumented
     def reopenIfNeeded(self) -> None: ...
@@ -35,10 +35,10 @@ class BaseRotatingHandler(FileHandler):
     rotator: Callable[[str, str], None] | None
     if sys.version_info >= (3, 9):
         def __init__(
-            self, filename: StrPath, mode: str, encoding: str | None = ..., delay: bool = ..., errors: str | None = ...
+            self, filename: StrPath, mode: str, encoding: str | None = None, delay: bool = False, errors: str | None = None
         ) -> None: ...
     else:
-        def __init__(self, filename: StrPath, mode: str, encoding: str | None = ..., delay: bool = ...) -> None: ...
+        def __init__(self, filename: StrPath, mode: str, encoding: str | None = None, delay: bool = False) -> None: ...
 
     def rotation_filename(self, default_name: str) -> str: ...
     def rotate(self, source: str, dest: str) -> None: ...
@@ -50,22 +50,22 @@ class RotatingFileHandler(BaseRotatingHandler):
         def __init__(
             self,
             filename: StrPath,
-            mode: str = ...,
-            maxBytes: int = ...,
-            backupCount: int = ...,
-            encoding: str | None = ...,
-            delay: bool = ...,
-            errors: str | None = ...,
+            mode: str = "a",
+            maxBytes: int = 0,
+            backupCount: int = 0,
+            encoding: str | None = None,
+            delay: bool = False,
+            errors: str | None = None,
         ) -> None: ...
     else:
         def __init__(
             self,
             filename: StrPath,
-            mode: str = ...,
-            maxBytes: int = ...,
-            backupCount: int = ...,
-            encoding: str | None = ...,
-            delay: bool = ...,
+            mode: str = "a",
+            maxBytes: int = 0,
+            backupCount: int = 0,
+            encoding: str | None = None,
+            delay: bool = False,
         ) -> None: ...
 
     def doRollover(self) -> None: ...
@@ -85,26 +85,26 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
         def __init__(
             self,
             filename: StrPath,
-            when: str = ...,
-            interval: int = ...,
-            backupCount: int = ...,
-            encoding: str | None = ...,
-            delay: bool = ...,
-            utc: bool = ...,
-            atTime: datetime.time | None = ...,
-            errors: str | None = ...,
+            when: str = "h",
+            interval: int = 1,
+            backupCount: int = 0,
+            encoding: str | None = None,
+            delay: bool = False,
+            utc: bool = False,
+            atTime: datetime.time | None = None,
+            errors: str | None = None,
         ) -> None: ...
     else:
         def __init__(
             self,
             filename: StrPath,
-            when: str = ...,
-            interval: int = ...,
-            backupCount: int = ...,
-            encoding: str | None = ...,
-            delay: bool = ...,
-            utc: bool = ...,
-            atTime: datetime.time | None = ...,
+            when: str = "h",
+            interval: int = 1,
+            backupCount: int = 0,
+            encoding: str | None = None,
+            delay: bool = False,
+            utc: bool = False,
+            atTime: datetime.time | None = None,
         ) -> None: ...
 
     def doRollover(self) -> None: ...
@@ -123,9 +123,9 @@ class SocketHandler(Handler):
     retryFactor: float  # undocumented
     retryMax: float  # undocumented
     def __init__(self, host: str, port: int | None) -> None: ...
-    def makeSocket(self, timeout: float = ...) -> socket: ...  # timeout is undocumented
+    def makeSocket(self, timeout: float = 1) -> socket: ...  # timeout is undocumented
     def makePickle(self, record: LogRecord) -> bytes: ...
-    def send(self, s: bytes) -> None: ...
+    def send(self, s: ReadableBuffer) -> None: ...
     def createSocket(self) -> None: ...
 
 class DatagramHandler(SocketHandler):
@@ -177,7 +177,7 @@ class SysLogHandler(Handler):
     priority_names: ClassVar[dict[str, int]]  # undocumented
     facility_names: ClassVar[dict[str, int]]  # undocumented
     priority_map: ClassVar[dict[str, str]]  # undocumented
-    def __init__(self, address: tuple[str, int] | str = ..., facility: int = ..., socktype: SocketKind | None = ...) -> None: ...
+    def __init__(self, address: tuple[str, int] | str = ..., facility: int = 1, socktype: SocketKind | None = None) -> None: ...
     if sys.version_info >= (3, 11):
         def createSocket(self) -> None: ...
 
@@ -185,7 +185,7 @@ class SysLogHandler(Handler):
     def mapPriority(self, levelName: str) -> str: ...
 
 class NTEventLogHandler(Handler):
-    def __init__(self, appname: str, dllname: str | None = ..., logtype: str = ...) -> None: ...
+    def __init__(self, appname: str, dllname: str | None = None, logtype: str = "Application") -> None: ...
     def getEventCategory(self, record: LogRecord) -> int: ...
     # TODO correct return value?
     def getEventType(self, record: LogRecord) -> int: ...
@@ -208,9 +208,9 @@ class SMTPHandler(Handler):
         fromaddr: str,
         toaddrs: str | list[str],
         subject: str,
-        credentials: tuple[str, str] | None = ...,
-        secure: tuple[()] | tuple[str] | tuple[str, str] | None = ...,
-        timeout: float = ...,
+        credentials: tuple[str, str] | None = None,
+        secure: tuple[()] | tuple[str] | tuple[str, str] | None = None,
+        timeout: float = 5.0,
     ) -> None: ...
     def getSubject(self, record: LogRecord) -> str: ...
 
@@ -224,7 +224,7 @@ class MemoryHandler(BufferingHandler):
     flushLevel: int  # undocumented
     target: Handler | None  # undocumented
     flushOnClose: bool  # undocumented
-    def __init__(self, capacity: int, flushLevel: int = ..., target: Handler | None = ..., flushOnClose: bool = ...) -> None: ...
+    def __init__(self, capacity: int, flushLevel: int = 40, target: Handler | None = None, flushOnClose: bool = True) -> None: ...
     def setTarget(self, target: Handler | None) -> None: ...
 
 class HTTPHandler(Handler):
@@ -238,10 +238,10 @@ class HTTPHandler(Handler):
         self,
         host: str,
         url: str,
-        method: str = ...,
-        secure: bool = ...,
-        credentials: tuple[str, str] | None = ...,
-        context: ssl.SSLContext | None = ...,
+        method: str = "GET",
+        secure: bool = False,
+        credentials: tuple[str, str] | None = None,
+        context: ssl.SSLContext | None = None,
     ) -> None: ...
     def mapLogRecord(self, record: LogRecord) -> dict[str, Any]: ...
     if sys.version_info >= (3, 9):
@@ -257,7 +257,7 @@ class QueueListener:
     handlers: tuple[Handler, ...]  # undocumented
     respect_handler_level: bool  # undocumented
     queue: SimpleQueue[Any] | Queue[Any]  # undocumented
-    def __init__(self, queue: SimpleQueue[Any] | Queue[Any], *handlers: Handler, respect_handler_level: bool = ...) -> None: ...
+    def __init__(self, queue: SimpleQueue[Any] | Queue[Any], *handlers: Handler, respect_handler_level: bool = False) -> None: ...
     def dequeue(self, block: bool) -> LogRecord: ...
     def prepare(self, record: LogRecord) -> Any: ...
     def start(self) -> None: ...

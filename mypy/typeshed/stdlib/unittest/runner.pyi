@@ -16,22 +16,21 @@ class TextTestResult(unittest.result.TestResult):
     stream: TextIO  # undocumented
     def __init__(self, stream: TextIO, descriptions: bool, verbosity: int) -> None: ...
     def getDescription(self, test: unittest.case.TestCase) -> str: ...
-    def printErrors(self) -> None: ...
     def printErrorList(self, flavour: str, errors: Iterable[tuple[unittest.case.TestCase, str]]) -> None: ...
 
 class TextTestRunner:
     resultclass: _ResultClassType
     def __init__(
         self,
-        stream: TextIO | None = ...,
-        descriptions: bool = ...,
-        verbosity: int = ...,
-        failfast: bool = ...,
-        buffer: bool = ...,
-        resultclass: _ResultClassType | None = ...,
-        warnings: type[Warning] | None = ...,
+        stream: TextIO | None = None,
+        descriptions: bool = True,
+        verbosity: int = 1,
+        failfast: bool = False,
+        buffer: bool = False,
+        resultclass: _ResultClassType | None = None,
+        warnings: type[Warning] | None = None,
         *,
-        tb_locals: bool = ...,
+        tb_locals: bool = False,
     ) -> None: ...
     def _makeResult(self) -> unittest.result.TestResult: ...
     def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase) -> unittest.result.TestResult: ...

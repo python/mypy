@@ -3,14 +3,12 @@ from __future__ import annotations
 import pprint
 import re
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, Tuple
+from typing import Any, Callable, Dict, Mapping, Pattern
 from typing_extensions import Final
 
 from mypy import defaults
+from mypy.errorcodes import ErrorCode, error_codes
 from mypy.util import get_class_descriptors, replace_object_state
-
-if TYPE_CHECKING:
-    from mypy.errorcodes import ErrorCode
 
 
 class BuildType:
@@ -27,6 +25,8 @@ PER_MODULE_OPTIONS: Final = {
     "always_true",
     "check_untyped_defs",
     "debug_cache",
+    "disable_error_code",
+    "disabled_error_codes",
     "disallow_any_decorated",
     "disallow_any_explicit",
     "disallow_any_expr",
@@ -37,28 +37,40 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_calls",
     "disallow_untyped_decorators",
     "disallow_untyped_defs",
-    "follow_imports",
+    "enable_error_code",
+    "enabled_error_codes",
     "follow_imports_for_stubs",
+    "follow_imports",
     "ignore_errors",
     "ignore_missing_imports",
+    "implicit_optional",
     "implicit_reexport",
     "local_partial_types",
     "mypyc",
-    "no_implicit_optional",
-    "show_none_errors",
     "strict_concatenate",
     "strict_equality",
     "strict_optional",
-    "strict_optional_whitelist",
     "warn_no_return",
     "warn_return_any",
     "warn_unreachable",
     "warn_unused_ignores",
 }
 
-OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "plugins"}) - {
-    "debug_cache"
-}
+OPTIONS_AFFECTING_CACHE: Final = (
+    PER_MODULE_OPTIONS
+    | {
+        "platform",
+        "bazel",
+        "plugins",
+        "disable_bytearray_promotion",
+        "disable_memoryview_promotion",
+    }
+) - {"debug_cache"}
+
+# Features that are currently incomplete/experimental
+TYPE_VAR_TUPLE: Final = "TypeVarTuple"
+UNPACK: Final = "Unpack"
+INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
 class Options:
@@ -66,19 +78,21 @@ class Options:
 
     def __init__(self) -> None:
         # Cache for clone_for_module()
-        self._per_module_cache: Optional[Dict[str, Options]] = None
+        self._per_module_cache: dict[str, Options] | None = None
 
         # -- build options --
         self.build_type = BuildType.STANDARD
-        self.python_version: Tuple[int, int] = sys.version_info[:2]
+        self.python_version: tuple[int, int] = sys.version_info[:2]
         # The executable used to search for PEP 561 packages. If this is None,
         # then mypy does not search for PEP 561 packages.
-        self.python_executable: Optional[str] = sys.executable
+        self.python_executable: str | None = sys.executable
         self.platform = sys.platform
-        self.custom_typing_module: Optional[str] = None
-        self.custom_typeshed_dir: Optional[str] = None
-        self.mypy_path: List[str] = []
-        self.report_dirs: Dict[str, str] = {}
+        self.custom_typing_module: str | None = None
+        self.custom_typeshed_dir: str | None = None
+        # The abspath() version of the above, we compute it once as an optimization.
+        self.abs_custom_typeshed_dir: str | None = None
+        self.mypy_path: list[str] = []
+        self.report_dirs: dict[str, str] = {}
         # Show errors in PEP 561 packages/site-packages modules
         self.no_silence_site_packages = False
         self.no_site_packages = False
@@ -93,7 +107,7 @@ class Options:
         # This allows definitions of packages without __init__.py and allows packages to span
         # multiple directories. This flag affects both import discovery and the association of
         # input files/modules/packages to the relevant file and fully qualified module name.
-        self.namespace_packages = False
+        self.namespace_packages = True
         # Use current directory and MYPYPATH to determine fully qualified module names of files
         # passed by automatically considering their subdirectories as packages. This is only
         # relevant if namespace packages are enabled, since otherwise examining __init__.py's is
@@ -101,7 +115,7 @@ class Options:
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
-        self.exclude: List[str] = []
+        self.exclude: list[str] = []
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -160,15 +174,8 @@ class Options:
         self.color_output = True
         self.error_summary = True
 
-        # Files in which to allow strict-Optional related errors
-        # TODO: Kill this in favor of show_none_errors
-        self.strict_optional_whitelist: Optional[List[str]] = None
-
-        # Alternate way to show/hide strict-None-checking related errors
-        self.show_none_errors = True
-
-        # Don't assume arguments with default values of None are Optional
-        self.no_implicit_optional = False
+        # Assume arguments with default values of None are Optional
+        self.implicit_optional = False
 
         # Don't re-export names unless they are imported with `from ... as ...`
         self.implicit_reexport = True
@@ -192,36 +199,42 @@ class Options:
         self.warn_unreachable = False
 
         # Variable names considered True
-        self.always_true: List[str] = []
+        self.always_true: list[str] = []
 
         # Variable names considered False
-        self.always_false: List[str] = []
+        self.always_false: list[str] = []
 
         # Error codes to disable
-        self.disable_error_code: List[str] = []
-        self.disabled_error_codes: Set[ErrorCode] = set()
+        self.disable_error_code: list[str] = []
+        self.disabled_error_codes: set[ErrorCode] = set()
 
         # Error codes to enable
-        self.enable_error_code: List[str] = []
-        self.enabled_error_codes: Set[ErrorCode] = set()
+        self.enable_error_code: list[str] = []
+        self.enabled_error_codes: set[ErrorCode] = set()
 
         # Use script name instead of __main__
         self.scripts_are_modules = False
 
         # Config file name
-        self.config_file: Optional[str] = None
+        self.config_file: str | None = None
 
         # A filename containing a JSON mapping from filenames to
         # mtime/size/hash arrays, used to avoid having to recalculate
         # source hashes as often.
-        self.quickstart_file: Optional[str] = None
+        self.quickstart_file: str | None = None
 
         # A comma-separated list of files/directories for mypy to type check;
         # supports globbing
-        self.files: Optional[List[str]] = None
+        self.files: list[str] | None = None
+
+        # A list of packages for mypy to type check
+        self.packages: list[str] | None = None
+
+        # A list of modules for mypy to type check
+        self.modules: list[str] | None = None
 
         # Write junit.xml to given file
-        self.junit_xml: Optional[str] = None
+        self.junit_xml: str | None = None
 
         # Caching and incremental checking options
         self.incremental = True
@@ -235,6 +248,9 @@ class Options:
         self.cache_fine_grained = False
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
+
+        # Run tree.serialize() even if cache generation is disabled
+        self.debug_serialize = False
 
         # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
         # in modules being compiled. Not in the config file or command line.
@@ -252,12 +268,12 @@ class Options:
         self.preserve_asts = False
 
         # Paths of user plugins
-        self.plugins: List[str] = []
+        self.plugins: list[str] = []
 
         # Per-module options (raw)
-        self.per_module_options: Dict[str, Dict[str, object]] = {}
-        self._glob_options: List[Tuple[str, Pattern[str]]] = []
-        self.unused_configs: Set[str] = set()
+        self.per_module_options: dict[str, dict[str, object]] = {}
+        self._glob_options: list[tuple[str, Pattern[str]]] = []
+        self.unused_configs: set[str] = set()
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -267,8 +283,10 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_features = False
-        self.timing_stats: Optional[str] = None
+        self.enable_incomplete_features = False  # deprecated
+        self.enable_incomplete_feature: list[str] = []
+        self.timing_stats: str | None = None
+        self.line_checking_stats: str | None = None
 
         # -- test options --
         # Stop after the semantic analysis phase
@@ -278,10 +296,10 @@ class Options:
         self.use_builtins_fixtures = False
 
         # -- experimental options --
-        self.shadow_file: Optional[List[List[str]]] = None
+        self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
-        self.show_error_codes = False
+        self.hide_error_codes = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
@@ -295,15 +313,17 @@ class Options:
         self.export_types = False
         # List of package roots -- directories under these are packages even
         # if they don't have __init__.py.
-        self.package_root: List[str] = []
-        self.cache_map: Dict[str, Tuple[str, str]] = {}
+        self.package_root: list[str] = []
+        self.cache_map: dict[str, tuple[str, str]] = {}
         # Don't properly free objects on exit, just kill the current process.
         self.fast_exit = True
         # fast path for finding modules from source set
         self.fast_module_lookup = False
+        # Allow empty function bodies even if it is not safe, used for testing only.
+        self.allow_empty_bodies = False
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
-        self.transform_source: Optional[Callable[[Any], Any]] = None
+        self.transform_source: Callable[[Any], Any] | None = None
         # Print full path to each file in the report.
         self.show_absolute_path: bool = False
         # Install missing stub packages if True
@@ -315,8 +335,16 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Enable recursive type aliases (currently experimental)
+        # Disable recursive type aliases (currently experimental)
+        self.disable_recursive_aliases = False
+        # Deprecated reverse version of the above, do not use.
         self.enable_recursive_aliases = False
+        # Export line-level, limited, fine-grained dependency information in cache data
+        # (undocumented feature).
+        self.export_ref_info = False
+
+        self.disable_bytearray_promotion = False
+        self.disable_memoryview_promotion = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
@@ -337,7 +365,7 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
-    def apply_changes(self, changes: Dict[str, object]) -> Options:
+    def apply_changes(self, changes: dict[str, object]) -> Options:
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         replace_object_state(new_options, self, copy_dict=True)
@@ -347,6 +375,20 @@ class Options:
             # This is the only option for which a per-module and a global
             # option sometimes beheave differently.
             new_options.ignore_missing_imports_per_module = True
+
+        # These two act as overrides, so apply them when cloning.
+        # Similar to global codes enabling overrides disabling, so we start from latter.
+        new_options.disabled_error_codes = self.disabled_error_codes.copy()
+        new_options.enabled_error_codes = self.enabled_error_codes.copy()
+        for code_str in new_options.disable_error_code:
+            code = error_codes[code_str]
+            new_options.disabled_error_codes.add(code)
+            new_options.enabled_error_codes.discard(code)
+        for code_str in new_options.enable_error_code:
+            code = error_codes[code_str]
+            new_options.enabled_error_codes.add(code)
+            new_options.disabled_error_codes.discard(code)
+
         return new_options
 
     def build_per_module_cache(self) -> None:
@@ -446,4 +488,10 @@ class Options:
         return re.compile(expr + "\\Z")
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        return {opt: getattr(self, opt) for opt in OPTIONS_AFFECTING_CACHE}
+        result: Dict[str, object] = {}
+        for opt in OPTIONS_AFFECTING_CACHE:
+            val = getattr(self, opt)
+            if opt in ("disabled_error_codes", "enabled_error_codes"):
+                val = sorted([code.code for code in val])
+            result[opt] = val
+        return result

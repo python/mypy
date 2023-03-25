@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, List, Optional
 
 from mypy.constraints import SUPERTYPE_OF, Constraint
 from mypy.join import join_types
@@ -19,12 +18,12 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 
 
 def solve_constraints(
-    vars: List[TypeVarId], constraints: List[Constraint], strict: bool = True
-) -> List[Optional[Type]]:
+    vars: list[TypeVarId], constraints: list[Constraint], strict: bool = True
+) -> list[Type | None]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable
@@ -35,17 +34,17 @@ def solve_constraints(
     pick AnyType.
     """
     # Collect a list of constraints for each type variable.
-    cmap: Dict[TypeVarId, List[Constraint]] = defaultdict(list)
+    cmap: dict[TypeVarId, list[Constraint]] = defaultdict(list)
     for con in constraints:
         cmap[con.type_var].append(con)
 
-    res: List[Optional[Type]] = []
+    res: list[Type | None] = []
 
     # Solve each type variable separately.
     for tvar in vars:
-        bottom: Optional[Type] = None
-        top: Optional[Type] = None
-        candidate: Optional[Type] = None
+        bottom: Type | None = None
+        top: Type | None = None
+        candidate: Type | None = None
 
         # Process each constraint separately, and calculate the lower and upper
         # bounds based on constraints. Note that we assume that the constraint
@@ -55,7 +54,7 @@ def solve_constraints(
                 if bottom is None:
                     bottom = c.target
                 else:
-                    if TypeState.infer_unions:
+                    if type_state.infer_unions:
                         # This deviates from the general mypy semantics because
                         # recursive types are union-heavy in 95% of cases.
                         bottom = UnionType.make_union([bottom, c.target])

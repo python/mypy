@@ -12,14 +12,14 @@ semanal_enum.py).
 """
 from __future__ import annotations
 
-from typing import Iterable, Optional, Sequence, TypeVar, cast
+from typing import Iterable, Sequence, TypeVar, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
-from mypy.typeops import make_simplified_union
+from mypy.typeops import fixup_partial_type, make_simplified_union
 from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
@@ -57,7 +57,7 @@ def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
 _T = TypeVar("_T")
 
 
-def _first(it: Iterable[_T]) -> Optional[_T]:
+def _first(it: Iterable[_T]) -> _T | None:
     """Return the first value from any iterable.
 
     Returns ``None`` if the iterable is empty.
@@ -68,8 +68,8 @@ def _first(it: Iterable[_T]) -> Optional[_T]:
 
 
 def _infer_value_type_with_auto_fallback(
-    ctx: mypy.plugin.AttributeContext, proper_type: Optional[ProperType]
-) -> Optional[Type]:
+    ctx: mypy.plugin.AttributeContext, proper_type: ProperType | None
+) -> Type | None:
     """Figure out the type of an enum value accounting for `auto()`.
 
     This method is a no-op for a `None` proper_type and also in the case where
@@ -77,6 +77,7 @@ def _infer_value_type_with_auto_fallback(
     """
     if proper_type is None:
         return None
+    proper_type = get_proper_type(fixup_partial_type(proper_type))
     if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
         return proper_type
     assert isinstance(ctx.type, Instance), "An incorrect ctx.type was passed."
@@ -229,7 +230,7 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     return underlying_type
 
 
-def _extract_underlying_field_name(typ: Type) -> Optional[str]:
+def _extract_underlying_field_name(typ: Type) -> str | None:
     """If the given type corresponds to some Enum instance, returns the
     original name of that enum. For example, if we receive in the type
     corresponding to 'SomeEnum.FOO', we return the string "SomeEnum.Foo".

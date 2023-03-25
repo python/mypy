@@ -22,7 +22,6 @@ extern "C" {
 
 /////////////////////////////////////////
 // Adapted from bltinmodule.c in Python 3.7.0
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 7
 _Py_IDENTIFIER(__mro_entries__);
 static PyObject*
 update_bases(PyObject *bases)
@@ -96,16 +95,8 @@ error:
     Py_XDECREF(new_bases);
     return NULL;
 }
-#else
-static PyObject*
-update_bases(PyObject *bases)
-{
-    return bases;
-}
-#endif
 
 // From Python 3.7's typeobject.c
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
 _Py_IDENTIFIER(__init_subclass__);
 static int
 init_subclass(PyTypeObject *type, PyObject *kwds)
@@ -133,14 +124,6 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     Py_DECREF(result);
     return 0;
 }
-
-#else
-static int
-init_subclass(PyTypeObject *type, PyObject *kwds)
-{
-    return 0;
-}
-#endif
 
 // Adapted from longobject.c in Python 3.7.0
 
@@ -306,7 +289,7 @@ list_count(PyListObject *self, PyObject *value)
     return CPyTagged_ShortFromSsize_t(count);
 }
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 8
+#if PY_VERSION_HEX < 0x03080000
 static PyObject *
 _PyDict_GetItemStringWithError(PyObject *v, const char *key)
 {
@@ -321,13 +304,7 @@ _PyDict_GetItemStringWithError(PyObject *v, const char *key)
 }
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 6
-/* _PyUnicode_EqualToASCIIString got added in 3.5.3 (argh!) so we can't actually know
- * whether it will be present at runtime, so we just assume we don't have it in 3.5. */
-#define CPyUnicode_EqualToASCIIString(x, y) (PyUnicode_CompareWithASCIIString((x), (y)) == 0)
-#elif PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
 #define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
-#endif
 
 // Adapted from genobject.c in Python 3.7.2
 // Copied because it wasn't in 3.5.2 and it is undocumented anyways.
@@ -390,7 +367,7 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 }
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >=10
+#if PY_VERSION_HEX >= 0x030A0000  // 3.10
 static int
 _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     PyObject *tmp = NULL;
@@ -404,12 +381,76 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
 #define _CPyObject_HasAttrId _PyObject_HasAttrId
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 9
+#if PY_VERSION_HEX < 0x03090000
 // OneArgs and NoArgs functions got added in 3.9
 #define _PyObject_CallMethodIdNoArgs(self, name) \
     _PyObject_CallMethodIdObjArgs((self), (name), NULL)
 #define _PyObject_CallMethodIdOneArg(self, name, arg) \
     _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
 #endif
+
+// Copied from genobject.c in Python 3.10
+static int
+gen_is_coroutine(PyObject *o)
+{
+    if (PyGen_CheckExact(o)) {
+        PyCodeObject *code = (PyCodeObject *)((PyGenObject*)o)->gi_code;
+        if (code->co_flags & CO_ITERABLE_COROUTINE) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/*
+ *   This helper function returns an awaitable for `o`:
+ *     - `o` if `o` is a coroutine-object;
+ *     - `type(o)->tp_as_async->am_await(o)`
+ *
+ *   Raises a TypeError if it's not possible to return
+ *   an awaitable and returns NULL.
+ */
+static PyObject *
+CPyCoro_GetAwaitableIter(PyObject *o)
+{
+    unaryfunc getter = NULL;
+    PyTypeObject *ot;
+
+    if (PyCoro_CheckExact(o) || gen_is_coroutine(o)) {
+        /* 'o' is a coroutine. */
+        Py_INCREF(o);
+        return o;
+    }
+
+    ot = Py_TYPE(o);
+    if (ot->tp_as_async != NULL) {
+        getter = ot->tp_as_async->am_await;
+    }
+    if (getter != NULL) {
+        PyObject *res = (*getter)(o);
+        if (res != NULL) {
+            if (PyCoro_CheckExact(res) || gen_is_coroutine(res)) {
+                /* __await__ must return an *iterator*, not
+                   a coroutine or another awaitable (see PEP 492) */
+                PyErr_SetString(PyExc_TypeError,
+                                "__await__() returned a coroutine");
+                Py_CLEAR(res);
+            } else if (!PyIter_Check(res)) {
+                PyErr_Format(PyExc_TypeError,
+                             "__await__() returned non-iterator "
+                             "of type '%.100s'",
+                             Py_TYPE(res)->tp_name);
+                Py_CLEAR(res);
+            }
+        }
+        return res;
+    }
+
+    PyErr_Format(PyExc_TypeError,
+                 "object %.100s can't be used in 'await' expression",
+                 ot->tp_name);
+    return NULL;
+}
+
 
 #endif

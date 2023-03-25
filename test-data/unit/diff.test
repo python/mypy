@@ -1484,3 +1484,16 @@ C = ParamSpec('C')
 [out]
 __main__.B
 __main__.C
+
+[case testEmptyBodySuper]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def meth(self) -> int: ...
+[file next.py]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def meth(self) -> int: return 0
+[out]
+__main__.C.meth

@@ -13,8 +13,11 @@ on:
     - 'mypy/stubgen.py'
     - 'mypy/stubgenc.py'
     - 'mypy/test/**'
-    - 'scripts/**'
     - 'test-data/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   mypy_primer:
@@ -24,7 +27,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        shard-index: [0, 1, 2]
+        shard-index: [0, 1, 2, 3, 4]
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -45,7 +48,7 @@ jobs:
           echo "new commit"
           git rev-list --format=%s --max-count=1 $GITHUB_SHA
 
-          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/master)
+          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/$GITHUB_BASE_REF)
           git checkout -b base_commit $MERGE_BASE
           echo "base commit"
           git rev-list --format=%s --max-count=1 base_commit
@@ -57,8 +60,9 @@ jobs:
             mypy_primer \
             --repo mypy_to_test \
             --new $GITHUB_SHA --old base_commit \
-            --num-shards 3 --shard-index ${{ matrix.shard-index }} \
+            --num-shards 5 --shard-index ${{ matrix.shard-index }} \
             --debug \
+            --additional-flags="--debug-serialize" \
             --output concise \
             | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]

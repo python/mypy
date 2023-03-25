@@ -1,12 +1,21 @@
 from __future__ import annotations
 
 import unittest
-from typing import List, Optional
 
 from mypyc.analysis.ircheck import FnError, can_coerce_to, check_func_ir
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
-from mypyc.ir.ops import Assign, BasicBlock, Goto, Integer, LoadLiteral, Op, Register, Return
+from mypyc.ir.ops import (
+    Assign,
+    BasicBlock,
+    Goto,
+    Integer,
+    LoadAddress,
+    LoadLiteral,
+    Op,
+    Register,
+    Return,
+)
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
     RInstance,
@@ -17,6 +26,7 @@ from mypyc.ir.rtypes import (
     int64_rprimitive,
     none_rprimitive,
     object_rprimitive,
+    pointer_rprimitive,
     str_rprimitive,
 )
 
@@ -37,13 +47,13 @@ class TestIrcheck(unittest.TestCase):
     def setUp(self) -> None:
         self.label = 0
 
-    def basic_block(self, ops: List[Op]) -> BasicBlock:
+    def basic_block(self, ops: list[Op]) -> BasicBlock:
         self.label += 1
         block = BasicBlock(self.label)
         block.ops = ops
         return block
 
-    def func_decl(self, name: str, ret_type: Optional[RType] = None) -> FuncDecl:
+    def func_decl(self, name: str, ret_type: RType | None = None) -> FuncDecl:
         if ret_type is None:
             ret_type = none_rprimitive
         return FuncDecl(
@@ -89,7 +99,7 @@ class TestIrcheck(unittest.TestCase):
         ret = Return(value=Register(type=none_rprimitive, name="r1"))
         block = self.basic_block([ret])
         fn = FuncIR(decl=self.func_decl(name="func_1"), arg_regs=[], blocks=[block])
-        assert_has_error(fn, FnError(source=ret, desc="Invalid op reference to register r1"))
+        assert_has_error(fn, FnError(source=ret, desc="Invalid op reference to register 'r1'"))
 
     def test_invalid_op_source(self) -> None:
         ret = Return(value=LoadLiteral(value="foo", rtype=str_rprimitive))
@@ -171,3 +181,19 @@ class TestIrcheck(unittest.TestCase):
             "    goto L1",
             "  ERR: Invalid control operation target: 1",
         ]
+
+    def test_load_address_declares_register(self) -> None:
+        rx = Register(str_rprimitive, "x")
+        ry = Register(pointer_rprimitive, "y")
+        load_addr = LoadAddress(pointer_rprimitive, rx)
+        assert_no_errors(
+            FuncIR(
+                decl=self.func_decl(name="func_1"),
+                arg_regs=[],
+                blocks=[
+                    self.basic_block(
+                        ops=[load_addr, Assign(ry, load_addr), Return(value=NONE_VALUE)]
+                    )
+                ],
+            )
+        )

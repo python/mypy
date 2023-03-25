@@ -17,13 +17,11 @@ non-locals is via an instance of an environment class. Example:
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Union
-
-from mypy.nodes import FuncDef, SymbolNode
-from mypyc.common import ENV_ATTR_NAME, SELF_NAME
+from mypy.nodes import Argument, FuncDef, SymbolNode, Var
+from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME, bitmap_name
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, object_rprimitive
+from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
@@ -114,7 +112,7 @@ def load_env_registers(builder: IRBuilder) -> None:
 
 
 def load_outer_env(
-    builder: IRBuilder, base: Value, outer_env: Dict[SymbolNode, SymbolTarget]
+    builder: IRBuilder, base: Value, outer_env: dict[SymbolNode, SymbolTarget]
 ) -> Value:
     """Load the environment class for a given base into a register.
 
@@ -161,19 +159,32 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
         index -= 1
 
 
+def num_bitmap_args(builder: IRBuilder, args: list[Argument]) -> int:
+    n = 0
+    for arg in args:
+        t = builder.type_to_rtype(arg.variable.type)
+        if t.error_overlap and arg.kind.is_optional():
+            n += 1
+    return (n + (BITMAP_BITS - 1)) // BITMAP_BITS
+
+
 def add_args_to_env(
     builder: IRBuilder,
     local: bool = True,
-    base: Optional[Union[FuncInfo, ImplicitClass]] = None,
+    base: FuncInfo | ImplicitClass | None = None,
     reassign: bool = True,
 ) -> None:
     fn_info = builder.fn_info
+    args = fn_info.fitem.arguments
+    nb = num_bitmap_args(builder, args)
     if local:
-        for arg in fn_info.fitem.arguments:
+        for arg in args:
             rtype = builder.type_to_rtype(arg.variable.type)
             builder.add_local_reg(arg.variable, rtype, is_arg=True)
+        for i in reversed(range(nb)):
+            builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
     else:
-        for arg in fn_info.fitem.arguments:
+        for arg in args:
             if is_free_variable(builder, arg.variable) or fn_info.is_generator:
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"

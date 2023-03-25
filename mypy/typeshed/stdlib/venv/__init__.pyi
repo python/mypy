@@ -1,7 +1,10 @@
-from collections.abc import Sequence
+import logging
 import sys
 from _typeshed import StrOrBytesPath
+from collections.abc import Sequence
 from types import SimpleNamespace
+
+logger: logging.Logger
 
 if sys.version_info >= (3, 9):
     CORE_VENV_DEPS: tuple[str, ...]
@@ -17,23 +20,23 @@ class EnvBuilder:
     if sys.version_info >= (3, 9):
         def __init__(
             self,
-            system_site_packages: bool = ...,
-            clear: bool = ...,
-            symlinks: bool = ...,
-            upgrade: bool = ...,
-            with_pip: bool = ...,
-            prompt: str | None = ...,
-            upgrade_deps: bool = ...,
+            system_site_packages: bool = False,
+            clear: bool = False,
+            symlinks: bool = False,
+            upgrade: bool = False,
+            with_pip: bool = False,
+            prompt: str | None = None,
+            upgrade_deps: bool = False,
         ) -> None: ...
     else:
         def __init__(
             self,
-            system_site_packages: bool = ...,
-            clear: bool = ...,
-            symlinks: bool = ...,
-            upgrade: bool = ...,
-            with_pip: bool = ...,
-            prompt: str | None = ...,
+            system_site_packages: bool = False,
+            clear: bool = False,
+            symlinks: bool = False,
+            upgrade: bool = False,
+            with_pip: bool = False,
+            prompt: str | None = None,
         ) -> None: ...
 
     def create(self, env_dir: StrOrBytesPath) -> None: ...
@@ -41,7 +44,7 @@ class EnvBuilder:
     def ensure_directories(self, env_dir: StrOrBytesPath) -> SimpleNamespace: ...
     def create_configuration(self, context: SimpleNamespace) -> None: ...
     def symlink_or_copy(
-        self, src: StrOrBytesPath, dst: StrOrBytesPath, relative_symlinks_ok: bool = ...
+        self, src: StrOrBytesPath, dst: StrOrBytesPath, relative_symlinks_ok: bool = False
     ) -> None: ...  # undocumented
     def setup_python(self, context: SimpleNamespace) -> None: ...
     def _setup_pip(self, context: SimpleNamespace) -> None: ...  # undocumented
@@ -55,22 +58,22 @@ class EnvBuilder:
 if sys.version_info >= (3, 9):
     def create(
         env_dir: StrOrBytesPath,
-        system_site_packages: bool = ...,
-        clear: bool = ...,
-        symlinks: bool = ...,
-        with_pip: bool = ...,
-        prompt: str | None = ...,
-        upgrade_deps: bool = ...,
+        system_site_packages: bool = False,
+        clear: bool = False,
+        symlinks: bool = False,
+        with_pip: bool = False,
+        prompt: str | None = None,
+        upgrade_deps: bool = False,
     ) -> None: ...
 
 else:
     def create(
         env_dir: StrOrBytesPath,
-        system_site_packages: bool = ...,
-        clear: bool = ...,
-        symlinks: bool = ...,
-        with_pip: bool = ...,
-        prompt: str | None = ...,
+        system_site_packages: bool = False,
+        clear: bool = False,
+        symlinks: bool = False,
+        with_pip: bool = False,
+        prompt: str | None = None,
     ) -> None: ...
 
-def main(args: Sequence[str] | None = ...) -> None: ...
+def main(args: Sequence[str] | None = None) -> None: ...

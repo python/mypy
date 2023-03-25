@@ -1,14 +1,14 @@
 import sys
 import threading
-from _typeshed import Self, StrPath, SupportsWrite
+from _typeshed import StrPath, SupportsWrite
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from io import TextIOWrapper
 from re import Pattern
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Generic, TextIO, TypeVar, Union, overload
-from typing_extensions import Literal, TypeAlias
+from typing import Any, ClassVar, Generic, TextIO, TypeVar, overload
+from typing_extensions import Literal, Self, TypeAlias
 
 if sys.version_info >= (3, 11):
     from types import GenericAlias
@@ -61,10 +61,10 @@ __all__ = [
 if sys.version_info >= (3, 11):
     __all__ += ["getLevelNamesMapping"]
 
-_SysExcInfoType: TypeAlias = Union[tuple[type[BaseException], BaseException, TracebackType | None], tuple[None, None, None]]
+_SysExcInfoType: TypeAlias = tuple[type[BaseException], BaseException, TracebackType | None] | tuple[None, None, None]
 _ExcInfoType: TypeAlias = None | bool | _SysExcInfoType | BaseException
 _ArgsType: TypeAlias = tuple[object, ...] | Mapping[str, object]
-_FilterType: TypeAlias = Filter | Callable[[LogRecord], int]
+_FilterType: TypeAlias = Filter | Callable[[LogRecord], bool]
 _Level: TypeAlias = int | str
 _FormatStyle: TypeAlias = Literal["%", "{", "$"]
 
@@ -81,7 +81,6 @@ _nameToLevel: dict[str, int]
 
 class Filterer:
     filters: list[Filter]
-    def __init__(self) -> None: ...
     def addFilter(self, filter: _FilterType) -> None: ...
     def removeFilter(self, filter: _FilterType) -> None: ...
     def filter(self, record: LogRecord) -> bool: ...
@@ -107,178 +106,177 @@ class Logger(Filterer):
     disabled: bool  # undocumented
     root: ClassVar[RootLogger]  # undocumented
     manager: Manager  # undocumented
-    def __init__(self, name: str, level: _Level = ...) -> None: ...
+    def __init__(self, name: str, level: _Level = 0) -> None: ...
     def setLevel(self, level: _Level) -> None: ...
     def isEnabledFor(self, level: int) -> bool: ...
     def getEffectiveLevel(self) -> int: ...
-    def getChild(self: Self, suffix: str) -> Self: ...  # see python/typing#980
+    def getChild(self, suffix: str) -> Self: ...  # see python/typing#980
     if sys.version_info >= (3, 8):
         def debug(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def info(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def warning(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def warn(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def error(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def exception(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = True,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def critical(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def log(
             self,
             level: int,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def _log(
             self,
             level: int,
             msg: object,
             args: _ArgsType,
-            exc_info: _ExcInfoType | None = ...,
-            extra: Mapping[str, object] | None = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
+            exc_info: _ExcInfoType | None = None,
+            extra: Mapping[str, object] | None = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
         ) -> None: ...  # undocumented
     else:
         def debug(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def info(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def warning(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def warn(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def error(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def critical(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def log(
             self,
             level: int,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def exception(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = True,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
         ) -> None: ...
         def _log(
             self,
             level: int,
             msg: object,
             args: _ArgsType,
-            exc_info: _ExcInfoType | None = ...,
-            extra: Mapping[str, object] | None = ...,
-            stack_info: bool = ...,
+            exc_info: _ExcInfoType | None = None,
+            extra: Mapping[str, object] | None = None,
+            stack_info: bool = False,
         ) -> None: ...  # undocumented
     fatal = critical
-    def filter(self, record: LogRecord) -> bool: ...
     def addHandler(self, hdlr: Handler) -> None: ...
     def removeHandler(self, hdlr: Handler) -> None: ...
     if sys.version_info >= (3, 8):
-        def findCaller(self, stack_info: bool = ..., stacklevel: int = ...) -> tuple[str, int, str, str | None]: ...
+        def findCaller(self, stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, str | None]: ...
     else:
-        def findCaller(self, stack_info: bool = ...) -> tuple[str, int, str, str | None]: ...
+        def findCaller(self, stack_info: bool = False) -> tuple[str, int, str, str | None]: ...
 
     def handle(self, record: LogRecord) -> None: ...
     def makeRecord(
@@ -290,9 +288,9 @@ class Logger(Filterer):
         msg: object,
         args: _ArgsType,
         exc_info: _SysExcInfoType | None,
-        func: str | None = ...,
-        extra: Mapping[str, object] | None = ...,
-        sinfo: str | None = ...,
+        func: str | None = None,
+        extra: Mapping[str, object] | None = None,
+        sinfo: str | None = None,
     ) -> LogRecord: ...
     def hasHandlers(self) -> bool: ...
     def callHandlers(self, record: LogRecord) -> None: ...  # undocumented
@@ -311,7 +309,7 @@ class Handler(Filterer):
     formatter: Formatter | None  # undocumented
     lock: threading.Lock | None  # undocumented
     name: str | None  # undocumented
-    def __init__(self, level: _Level = ...) -> None: ...
+    def __init__(self, level: _Level = 0) -> None: ...
     def get_name(self) -> str: ...  # undocumented
     def set_name(self, name: str) -> None: ...  # undocumented
     def createLock(self) -> None: ...
@@ -319,7 +317,6 @@ class Handler(Filterer):
     def release(self) -> None: ...
     def setLevel(self, level: _Level) -> None: ...
     def setFormatter(self, fmt: Formatter | None) -> None: ...
-    def filter(self, record: LogRecord) -> bool: ...
     def flush(self) -> None: ...
     def close(self) -> None: ...
     def handle(self, record: LogRecord) -> bool: ...
@@ -341,22 +338,22 @@ class Formatter:
     if sys.version_info >= (3, 10):
         def __init__(
             self,
-            fmt: str | None = ...,
-            datefmt: str | None = ...,
-            style: _FormatStyle = ...,
-            validate: bool = ...,
+            fmt: str | None = None,
+            datefmt: str | None = None,
+            style: _FormatStyle = "%",
+            validate: bool = True,
             *,
-            defaults: Mapping[str, Any] | None = ...,
+            defaults: Mapping[str, Any] | None = None,
         ) -> None: ...
     elif sys.version_info >= (3, 8):
         def __init__(
-            self, fmt: str | None = ..., datefmt: str | None = ..., style: _FormatStyle = ..., validate: bool = ...
+            self, fmt: str | None = None, datefmt: str | None = None, style: _FormatStyle = "%", validate: bool = True
         ) -> None: ...
     else:
-        def __init__(self, fmt: str | None = ..., datefmt: str | None = ..., style: _FormatStyle = ...) -> None: ...
+        def __init__(self, fmt: str | None = None, datefmt: str | None = None, style: _FormatStyle = "%") -> None: ...
 
     def format(self, record: LogRecord) -> str: ...
-    def formatTime(self, record: LogRecord, datefmt: str | None = ...) -> str: ...
+    def formatTime(self, record: LogRecord, datefmt: str | None = None) -> str: ...
     def formatException(self, ei: _SysExcInfoType) -> str: ...
     def formatMessage(self, record: LogRecord) -> str: ...  # undocumented
     def formatStack(self, stack_info: str) -> str: ...
@@ -364,7 +361,7 @@ class Formatter:
 
 class BufferingFormatter:
     linefmt: Formatter
-    def __init__(self, linefmt: Formatter | None = ...) -> None: ...
+    def __init__(self, linefmt: Formatter | None = None) -> None: ...
     def formatHeader(self, records: Sequence[LogRecord]) -> str: ...
     def formatFooter(self, records: Sequence[LogRecord]) -> str: ...
     def format(self, records: Sequence[LogRecord]) -> str: ...
@@ -372,7 +369,7 @@ class BufferingFormatter:
 class Filter:
     name: str  # undocumented
     nlen: int  # undocumented
-    def __init__(self, name: str = ...) -> None: ...
+    def __init__(self, name: str = "") -> None: ...
     def filter(self, record: LogRecord) -> bool: ...
 
 class LogRecord:
@@ -410,8 +407,8 @@ class LogRecord:
         msg: object,
         args: _ArgsType | None,
         exc_info: _SysExcInfoType | None,
-        func: str | None = ...,
-        sinfo: str | None = ...,
+        func: str | None = None,
+        sinfo: str | None = None,
     ) -> None: ...
     def getMessage(self) -> str: ...
     # Allows setting contextual information on LogRecord objects as per the docs, see #7833
@@ -424,7 +421,7 @@ class LoggerAdapter(Generic[_L]):
     manager: Manager  # undocumented
     if sys.version_info >= (3, 10):
         extra: Mapping[str, object] | None
-        def __init__(self, logger: _L, extra: Mapping[str, object] | None = ...) -> None: ...
+        def __init__(self, logger: _L, extra: Mapping[str, object] | None = None) -> None: ...
     else:
         extra: Mapping[str, object]
         def __init__(self, logger: _L, extra: Mapping[str, object]) -> None: ...
@@ -435,70 +432,70 @@ class LoggerAdapter(Generic[_L]):
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def info(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def warning(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def warn(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def error(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def exception(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = True,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def critical(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def log(
@@ -506,10 +503,10 @@ class LoggerAdapter(Generic[_L]):
             level: int,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            stacklevel: int = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            stacklevel: int = 1,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
     else:
@@ -517,63 +514,63 @@ class LoggerAdapter(Generic[_L]):
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def info(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def warning(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def warn(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def error(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def exception(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = True,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def critical(
             self,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
         def log(
@@ -581,9 +578,9 @@ class LoggerAdapter(Generic[_L]):
             level: int,
             msg: object,
             *args: object,
-            exc_info: _ExcInfoType = ...,
-            stack_info: bool = ...,
-            extra: Mapping[str, object] | None = ...,
+            exc_info: _ExcInfoType = None,
+            stack_info: bool = False,
+            extra: Mapping[str, object] | None = None,
             **kwargs: object,
         ) -> None: ...
 
@@ -596,16 +593,16 @@ class LoggerAdapter(Generic[_L]):
         level: int,
         msg: object,
         args: _ArgsType,
-        exc_info: _ExcInfoType | None = ...,
-        extra: Mapping[str, object] | None = ...,
-        stack_info: bool = ...,
+        exc_info: _ExcInfoType | None = None,
+        extra: Mapping[str, object] | None = None,
+        stack_info: bool = False,
     ) -> None: ...  # undocumented
     @property
     def name(self) -> str: ...  # undocumented
     if sys.version_info >= (3, 11):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-def getLogger(name: str | None = ...) -> Logger: ...
+def getLogger(name: str | None = None) -> Logger: ...
 def getLoggerClass() -> type[Logger]: ...
 def getLogRecordFactory() -> Callable[..., LogRecord]: ...
 
@@ -613,103 +610,131 @@ if sys.version_info >= (3, 8):
     def debug(
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        stacklevel: int = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def info(
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        stacklevel: int = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def warning(
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        stacklevel: int = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def warn(
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        stacklevel: int = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def error(
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        stacklevel: int = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def critical(
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        stacklevel: int = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def exception(
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        stacklevel: int = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = True,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def log(
         level: int,
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        stacklevel: int = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
 
 else:
     def debug(
-        msg: object, *args: object, exc_info: _ExcInfoType = ..., stack_info: bool = ..., extra: Mapping[str, object] | None = ...
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def info(
-        msg: object, *args: object, exc_info: _ExcInfoType = ..., stack_info: bool = ..., extra: Mapping[str, object] | None = ...
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def warning(
-        msg: object, *args: object, exc_info: _ExcInfoType = ..., stack_info: bool = ..., extra: Mapping[str, object] | None = ...
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def warn(
-        msg: object, *args: object, exc_info: _ExcInfoType = ..., stack_info: bool = ..., extra: Mapping[str, object] | None = ...
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def error(
-        msg: object, *args: object, exc_info: _ExcInfoType = ..., stack_info: bool = ..., extra: Mapping[str, object] | None = ...
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def critical(
-        msg: object, *args: object, exc_info: _ExcInfoType = ..., stack_info: bool = ..., extra: Mapping[str, object] | None = ...
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def exception(
-        msg: object, *args: object, exc_info: _ExcInfoType = ..., stack_info: bool = ..., extra: Mapping[str, object] | None = ...
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = True,
+        stack_info: bool = False,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
     def log(
         level: int,
         msg: object,
         *args: object,
-        exc_info: _ExcInfoType = ...,
-        stack_info: bool = ...,
-        extra: Mapping[str, object] | None = ...,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        extra: Mapping[str, object] | None = None,
     ) -> None: ...
 
 fatal = critical
 
-def disable(level: int = ...) -> None: ...
+def disable(level: int = 50) -> None: ...
 def addLevelName(level: int, levelName: str) -> None: ...
 def getLevelName(level: _Level) -> Any: ...
 
@@ -774,7 +799,7 @@ class StreamHandler(Handler, Generic[_StreamT]):
     stream: _StreamT  # undocumented
     terminator: str
     @overload
-    def __init__(self: StreamHandler[TextIO], stream: None = ...) -> None: ...
+    def __init__(self: StreamHandler[TextIO], stream: None = None) -> None: ...
     @overload
     def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...
     def setStream(self, stream: _StreamT) -> _StreamT | None: ...
@@ -789,10 +814,10 @@ class FileHandler(StreamHandler[TextIOWrapper]):
     if sys.version_info >= (3, 9):
         errors: str | None  # undocumented
         def __init__(
-            self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ..., errors: str | None = ...
+            self, filename: StrPath, mode: str = "a", encoding: str | None = None, delay: bool = False, errors: str | None = None
         ) -> None: ...
     else:
-        def __init__(self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ...) -> None: ...
+        def __init__(self, filename: StrPath, mode: str = "a", encoding: str | None = None, delay: bool = False) -> None: ...
 
     def _open(self) -> TextIOWrapper: ...  # undocumented
 
@@ -818,7 +843,7 @@ class PercentStyle:  # undocumented
         validation_pattern: Pattern[str]
     _fmt: str
     if sys.version_info >= (3, 10):
-        def __init__(self, fmt: str, *, defaults: Mapping[str, Any] | None = ...) -> None: ...
+        def __init__(self, fmt: str, *, defaults: Mapping[str, Any] | None = None) -> None: ...
     else:
         def __init__(self, fmt: str) -> None: ...
 

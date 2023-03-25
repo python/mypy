@@ -89,6 +89,23 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
     x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
+
+Check that a variable is not used before it's defined [used-before-def]
+-----------------------------------------------------------------------
+
+Mypy will generate an error if a name is used before it's defined.
+While the name-defined check will catch issues with names that are undefined,
+it will not flag if a variable is used and then defined later in the scope.
+used-before-def check will catch such cases.
+
+Example:
+
+.. code-block:: python
+
+    print(x)  # Error: Name "x" is used before definition [used-before-def]
+    x = 123
+
+
 Check arguments in calls [call-arg]
 -----------------------------------
 
@@ -322,6 +339,35 @@ Example:
     #        variable has type "str")  [assignment]
     r.name = 5
 
+Check that assignment target is not a method [method-assign]
+------------------------------------------------------------
+
+In general, assigning to a method on class object or instance (a.k.a.
+monkey-patching) is ambiguous in terms of types, since Python's static type
+system cannot express the difference between bound and unbound callable types.
+Consider this example:
+
+.. code-block:: python
+
+   class A:
+       def f(self) -> None: pass
+       def g(self) -> None: pass
+
+   def h(self: A) -> None: pass
+
+   A.f = h  # Type of h is Callable[[A], None]
+   A().f()  # This works
+   A.f = A().g  # Type of A().g is Callable[[], None]
+   A().f()  # ...but this also works at runtime
+
+To prevent the ambiguity, mypy will flag both assignments by default. If this
+error code is disabled, mypy will treat the assigned value in all method assignments as unbound,
+so only the second assignment will still generate an error.
+
+.. note::
+
+    This error code is a subcode of the more general ``[assignment]`` code.
+
 Check type variable values [type-var]
 -------------------------------------
 
@@ -410,11 +456,11 @@ Example:
 Check TypedDict items [typeddict-item]
 --------------------------------------
 
-When constructing a ``TypedDict`` object, mypy checks that each key and value is compatible
-with the ``TypedDict`` type that is inferred from the surrounding context.
+When constructing a TypedDict object, mypy checks that each key and value is compatible
+with the TypedDict type that is inferred from the surrounding context.
 
-When getting a ``TypedDict`` item, mypy checks that the key
-exists. When assigning to a ``TypedDict``, mypy checks that both the
+When getting a TypedDict item, mypy checks that the key
+exists. When assigning to a TypedDict, mypy checks that both the
 key and the value are valid.
 
 Example:
@@ -430,6 +476,62 @@ Example:
     # Error: Incompatible types (expression has type "float",
     #        TypedDict item "x" has type "int")  [typeddict-item]
     p: Point = {'x': 1.2, 'y': 4}
+
+Check TypedDict Keys [typeddict-unknown-key]
+--------------------------------------------
+
+When constructing a TypedDict object, mypy checks whether the
+definition contains unknown keys, to catch invalid keys and
+misspellings. On the other hand, mypy will not generate an error when
+a previously constructed TypedDict value with extra keys is passed
+to a function as an argument, since TypedDict values support
+structural subtyping ("static duck typing") and the keys are assumed
+to have been validated at the point of construction. Example:
+
+.. code-block:: python
+
+    from typing_extensions import TypedDict
+
+    class Point(TypedDict):
+        x: int
+        y: int
+
+    class Point3D(Point):
+        z: int
+
+    def add_x_coordinates(a: Point, b: Point) -> int:
+        return a["x"] + b["x"]
+
+    a: Point = {"x": 1, "y": 4}
+    b: Point3D = {"x": 2, "y": 5, "z": 6}
+
+    add_x_coordinates(a, b)  # OK
+
+    # Error: Extra key "z" for TypedDict "Point"  [typeddict-unknown-key]
+    add_x_coordinates(a, {"x": 1, "y": 4, "z": 5})
+
+Setting a TypedDict item using an unknown key will also generate this
+error, since it could be a misspelling:
+
+.. code-block:: python
+
+    a: Point = {"x": 1, "y": 2}
+    # Error: Extra key "z" for TypedDict "Point"  [typeddict-unknown-key]
+    a["z"] = 3
+
+Reading an unknown key will generate the more general (and serious)
+``typeddict-item`` error, which is likely to result in an exception at
+runtime:
+
+.. code-block:: python
+
+    a: Point = {"x": 1, "y": 2}
+    # Error: TypedDict "Point" has no key "z"  [typeddict-item]
+    _ = a["z"]
+
+.. note::
+
+    This error code is a subcode of the wider ``[typeddict-item]`` code.
 
 Check that type of target is known [has-type]
 ---------------------------------------------
@@ -564,6 +666,54 @@ Example:
     # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
+Safe handling of abstract type object types [type-abstract]
+-----------------------------------------------------------
+
+Mypy always allows instantiating (calling) type objects typed as ``Type[t]``,
+even if it is not known that ``t`` is non-abstract, since it is a common
+pattern to create functions that act as object factories (custom constructors).
+Therefore, to prevent issues described in the above section, when an abstract
+type object is passed where ``Type[t]`` is expected, mypy will give an error.
+Example:
+
+.. code-block:: python
+
+   from abc import ABCMeta, abstractmethod
+   from typing import List, Type, TypeVar
+
+   class Config(metaclass=ABCMeta):
+       @abstractmethod
+       def get_value(self, attr: str) -> str: ...
+
+   T = TypeVar("T")
+   def make_many(typ: Type[T], n: int) -> List[T]:
+       return [typ() for _ in range(n)]  # This will raise if typ is abstract
+
+   # Error: Only concrete class can be given where "Type[Config]" is expected [type-abstract]
+   make_many(Config, 5)
+
+Check that call to an abstract method via super is valid [safe-super]
+---------------------------------------------------------------------
+
+Abstract methods often don't have any default implementation, i.e. their
+bodies are just empty. Calling such methods in subclasses via ``super()``
+will cause runtime errors, so mypy prevents you from doing so:
+
+.. code-block:: python
+
+   from abc import abstractmethod
+   class Base:
+       @abstractmethod
+       def foo(self) -> int: ...
+   class Sub(Base):
+       def foo(self) -> int:
+           return super().foo() + 1  # error: Call to abstract method "foo" of "Base" with
+                                     # trivial body via super() is unsafe  [safe-super]
+   Sub().foo()  # This will crash at runtime.
+
+Mypy considers the following as trivial bodies: a ``pass`` statement, a literal
+ellipsis ``...``, a docstring, and a ``raise NotImplementedError`` statement.
+
 Check the target of NewType [valid-newtype]
 -------------------------------------------
 
@@ -657,6 +807,35 @@ consistently when using the call-based syntax. Example:
     # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
 
+Check that literal is used where expected [literal-required]
+------------------------------------------------------------
+
+There are some places where only a (string) literal value is expected for
+the purposes of static type checking, for example a ``TypedDict`` key, or
+a ``__match_args__`` item. Providing a ``str``-valued variable in such contexts
+will result in an error. Note that in many cases you can also use ``Final``
+or ``Literal`` variables. Example:
+
+.. code-block:: python
+
+   from typing import Final, Literal, TypedDict
+
+   class Point(TypedDict):
+       x: int
+       y: int
+
+   def test(p: Point) -> None:
+       X: Final = "x"
+       p[X]  # OK
+
+       Y: Literal["y"] = "y"
+       p[Y]  # OK
+
+       key = "x"  # Inferred type of key is `str`
+       # Error: TypedDict key must be a string literal;
+       #   expected one of ("x", "y")  [literal-required]
+       p[key]
+
 Check that overloaded functions have an implementation [no-overload-impl]
 -------------------------------------------------------------------------
 
@@ -715,6 +894,19 @@ the provided type.
    assert_type([1], list[int])  # OK
 
    assert_type([1], list[str])  # Error
+
+Check that function isn't used in boolean context [truthy-function]
+-------------------------------------------------------------------
+
+Functions will always evaluate to true in boolean contexts.
+
+.. code-block:: python
+
+    def f():
+        ...
+
+    if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+        pass
 
 Report syntax errors [syntax]
 -----------------------------

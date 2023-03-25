@@ -1,6 +1,6 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Type
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type
 
 T = TypeVar("T")
 Tco = TypeVar('Tco', covariant=True)
@@ -23,8 +23,10 @@ class tuple(Sequence[Tco], Generic[Tco]):
     def __rmul__(self, n: int) -> Tuple[Tco, ...]: pass
     def __add__(self, x: Tuple[Tco, ...]) -> Tuple[Tco, ...]: pass
     def count(self, obj: object) -> int: pass
-class function: pass
+class function:
+    __name__: str
 class ellipsis: pass
+class classmethod: pass
 
 # We need int and slice for indexing tuples.
 class int:
@@ -34,7 +36,7 @@ class slice: pass
 class bool(int): pass
 class str: pass # For convenience
 class bytes: pass
-class unicode: pass
+class bytearray: pass
 
 class list(Sequence[T], Generic[T]):
     @overload
@@ -46,6 +48,8 @@ class list(Sequence[T], Generic[T]):
 
 def isinstance(x: object, t: type) -> bool: pass
 
-def sum(iterable: Iterable[T], start: T = None) -> T: pass
+def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
 
 class BaseException: pass
+
+class dict: pass

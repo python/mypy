@@ -18,3 +18,4 @@ class str: pass # for convenience
 
 class list(Iterable[t], Generic[t]):
     def __iter__(self) -> Iterator[t]: pass
+class dict: pass

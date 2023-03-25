@@ -43,6 +43,9 @@ class TestCommandLine(MypycDataSuite):
         with open(program_path, "w") as f:
             f.write(text)
 
+        env = os.environ.copy()
+        env["PYTHONPATH"] = base_path
+
         out = b""
         try:
             # Compile program
@@ -51,9 +54,15 @@ class TestCommandLine(MypycDataSuite):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd="tmp",
+                env=env,
             )
             if "ErrorOutput" in testcase.name or cmd.returncode != 0:
                 out += cmd.stdout
+            elif "WarningOutput" in testcase.name:
+                # Strip out setuptools build related output since we're only
+                # interested in the messages emitted during compilation.
+                messages, _, _ = cmd.stdout.partition(b"running build_ext")
+                out += messages
 
             if cmd.returncode == 0:
                 # Run main program

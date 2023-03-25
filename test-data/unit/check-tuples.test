@@ -164,10 +164,10 @@ class C(B): pass
 
 [case testVoidValueInTuple]
 import typing
+def f() -> None: pass
+
 (None, f()) # E: "f" does not return a value
 (f(), None) # E: "f" does not return a value
-
-def f() -> None: pass
 [builtins fixtures/tuple.pyi]
 
 
@@ -247,15 +247,16 @@ class B: pass
 
 [case testAssigningToTupleItems]
 from typing import Tuple
+
+class A: pass
+class B: pass
+
 t = None # type: Tuple[A, B]
 n = 0
 
 t[0] = A() # E: Unsupported target for indexed assignment ("Tuple[A, B]")
 t[2] = A() # E: Unsupported target for indexed assignment ("Tuple[A, B]")
 t[n] = A() # E: Unsupported target for indexed assignment ("Tuple[A, B]")
-
-class A: pass
-class B: pass
 [builtins fixtures/tuple.pyi]
 
 
@@ -532,13 +533,12 @@ if int():
 
 [case testAssignmentToStarFromAny]
 from typing import Any, cast
+class C: pass
+
 a, c = cast(Any, 1), C()
 p, *q = a
 c = a
 c = q
-
-class C: pass
-
 [case testAssignmentToComplexStar]
 from typing import List
 li = None # type: List[int]
@@ -572,6 +572,7 @@ class A: pass
 
 [case testAssignmentToStarFromTupleInference]
 from typing import List
+class A: pass
 li = None # type: List[int]
 la = None # type: List[A]
 a, *l = A(), A()
@@ -579,13 +580,14 @@ if int():
     l = li  # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[A]")
 if int():
     l = la
-
-class A: pass
 [builtins fixtures/list.pyi]
 [out]
 
 [case testAssignmentToStarFromListInference]
 from typing import List
+
+class A: pass
+
 li = None # type: List[int]
 la = None # type: List[A]
 a, *l = [A(), A()]
@@ -593,8 +595,6 @@ if int():
     l = li  # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[A]")
 if int():
     l = la
-
-class A: pass
 [builtins fixtures/list.pyi]
 [out]
 
@@ -710,6 +710,9 @@ class C: pass
 
 
 [case testTupleErrorMessages]
+class A:
+    def __add__(self, x: 'A') -> 'A': pass
+def f(x: 'A') -> None: pass
 
 a = None # type: A
 
@@ -717,11 +720,6 @@ a = None # type: A
 a + (a, a)  # E: Unsupported operand types for + ("A" and "Tuple[A, A]")
 f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"; expected "A"
 (a, a).foo  # E: "Tuple[A, A]" has no attribute "foo"
-
-def f(x: 'A') -> None: pass
-
-class A:
-    def __add__(self, x: 'A') -> 'A': pass
 [builtins fixtures/tuple.pyi]
 
 [case testLargeTuplesInErrorMessages]
@@ -776,6 +774,7 @@ class str: pass
 class bool: pass
 class type: pass
 class function: pass
+class dict: pass
 
 
 -- For loop over tuple
@@ -883,9 +882,9 @@ from typing import TypeVar, Generic, Tuple
 T = TypeVar('T')
 class Test(Generic[T], Tuple[T]): pass
 x = Test() # type: Test[int]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.Test[builtins.int]]"
 [builtins fixtures/tuple.pyi]
 [out]
-main:4: error: Generic tuple types not supported
 
 
 -- Variable-length tuples (Tuple[t, ...] with literal '...')
@@ -970,6 +969,17 @@ reveal_type(c)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
 a = (1, 1, 'x', 'x')
 b = (1, 'x')
 a = (0, *b, '')
+[builtins fixtures/tuple.pyi]
+
+[case testUnpackSyntaxError]
+*foo  # E: Can use starred expression only as assignment target
+[builtins fixtures/tuple.pyi]
+
+[case testUnpackBases]
+class A: ...
+class B: ...
+bases = (A, B)
+class C(*bases): ...  # E: Invalid base class
 [builtins fixtures/tuple.pyi]
 
 [case testTupleMeetTupleAny]
@@ -1228,8 +1238,8 @@ y = ""
 reveal_type(t[x])  # N: Revealed type is "Union[builtins.int, builtins.str]"
 t[y]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
       # N: Possible overload variants: \
-      # N:     def __getitem__(self, int) -> object \
-      # N:     def __getitem__(self, slice) -> Tuple[object, ...]
+      # N:     def __getitem__(self, int, /) -> object \
+      # N:     def __getitem__(self, slice, /) -> Tuple[object, ...]
 
 [builtins fixtures/tuple.pyi]
 
@@ -1238,7 +1248,7 @@ t = (0, "")
 x = 0
 y = ""
 reveal_type(t[x:])  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
-t[y:]  # E: Slice index must be an integer or None
+t[y:]  # E: Slice index must be an integer, SupportsIndex or None
 [builtins fixtures/tuple.pyi]
 
 [case testInferTupleTypeFallbackAgainstInstance]

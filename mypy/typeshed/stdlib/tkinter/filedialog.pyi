@@ -1,8 +1,8 @@
 import sys
-from _typeshed import StrOrBytesPath
+from _typeshed import Incomplete, StrOrBytesPath
 from collections.abc import Iterable
 from tkinter import Button, Entry, Frame, Listbox, Misc, Scrollbar, StringVar, Toplevel, commondialog
-from typing import IO, Any, ClassVar
+from typing import IO, ClassVar
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -22,12 +22,12 @@ if sys.version_info >= (3, 9):
         "askdirectory",
     ]
 
-dialogstates: dict[Any, tuple[Any, Any]]
+dialogstates: dict[Incomplete, tuple[Incomplete, Incomplete]]
 
 class FileDialog:
     title: str
-    master: Any
-    directory: Any | None
+    master: Incomplete
+    directory: Incomplete | None
     top: Toplevel
     botframe: Frame
     selection: Entry
@@ -41,21 +41,21 @@ class FileDialog:
     filter_button: Button
     cancel_button: Button
     def __init__(
-        self, master, title: Any | None = ...
+        self, master, title: Incomplete | None = None
     ) -> None: ...  # title is usually a str or None, but e.g. int doesn't raise en exception either
-    how: Any | None
-    def go(self, dir_or_file: Any = ..., pattern: str = ..., default: str = ..., key: Any | None = ...): ...
-    def quit(self, how: Any | None = ...) -> None: ...
+    how: Incomplete | None
+    def go(self, dir_or_file=".", pattern: str = "*", default: str = "", key: Incomplete | None = None): ...
+    def quit(self, how: Incomplete | None = None) -> None: ...
     def dirs_double_event(self, event) -> None: ...
     def dirs_select_event(self, event) -> None: ...
     def files_double_event(self, event) -> None: ...
     def files_select_event(self, event) -> None: ...
     def ok_event(self, event) -> None: ...
     def ok_command(self) -> None: ...
-    def filter_command(self, event: Any | None = ...) -> None: ...
+    def filter_command(self, event: Incomplete | None = None) -> None: ...
     def get_filter(self): ...
     def get_selection(self): ...
-    def cancel_command(self, event: Any | None = ...) -> None: ...
+    def cancel_command(self, event: Incomplete | None = None) -> None: ...
     def set_filter(self, dir, pat) -> None: ...
     def set_selection(self, file) -> None: ...
 
@@ -116,7 +116,7 @@ def askdirectory(
 
 # TODO: If someone actually uses these, overload to have the actual return type of open(..., mode)
 def asksaveasfile(
-    mode: str = ...,
+    mode: str = "w",
     *,
     confirmoverwrite: bool | None = ...,
     defaultextension: str | None = ...,
@@ -126,9 +126,9 @@ def asksaveasfile(
     parent: Misc | None = ...,
     title: str | None = ...,
     typevariable: StringVar | str | None = ...,
-) -> IO[Any] | None: ...
+) -> IO[Incomplete] | None: ...
 def askopenfile(
-    mode: str = ...,
+    mode: str = "r",
     *,
     defaultextension: str | None = ...,
     filetypes: Iterable[tuple[str, str | list[str] | tuple[str, ...]]] | None = ...,
@@ -137,9 +137,9 @@ def askopenfile(
     parent: Misc | None = ...,
     title: str | None = ...,
     typevariable: StringVar | str | None = ...,
-) -> IO[Any] | None: ...
+) -> IO[Incomplete] | None: ...
 def askopenfiles(
-    mode: str = ...,
+    mode: str = "r",
     *,
     defaultextension: str | None = ...,
     filetypes: Iterable[tuple[str, str | list[str] | tuple[str, ...]]] | None = ...,
@@ -148,5 +148,5 @@ def askopenfiles(
     parent: Misc | None = ...,
     title: str | None = ...,
     typevariable: StringVar | str | None = ...,
-) -> tuple[IO[Any], ...]: ...  # can be empty tuple
+) -> tuple[IO[Incomplete], ...]: ...  # can be empty tuple
 def test() -> None: ...

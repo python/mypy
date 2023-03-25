@@ -9,7 +9,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from typing import Any, Callable, Iterator, List, Optional
+from typing import Any, Callable, Iterator
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs
@@ -54,6 +54,7 @@ class TypeVar:
 class ParamSpec:
     def __init__(self, name: str) -> None: ...
 
+AnyStr = TypeVar("AnyStr", str, bytes)
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _K = TypeVar("_K")
@@ -64,7 +65,7 @@ _R = TypeVar("_R", covariant=True)
 class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
 class Mapping(Generic[_K, _V]): ...
-class Match(Generic[_T]): ...
+class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
 def overload(func: _T) -> _T: ...
@@ -104,7 +105,7 @@ def staticmethod(f: T) -> T: ...
 
 
 def run_stubtest(
-    stub: str, runtime: str, options: List[str], config_file: Optional[str] = None
+    stub: str, runtime: str, options: list[str], config_file: str | None = None
 ) -> str:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
@@ -131,7 +132,7 @@ def run_stubtest(
 
 
 class Case:
-    def __init__(self, stub: str, runtime: str, error: Optional[str]):
+    def __init__(self, stub: str, runtime: str, error: str | None):
         self.stub = stub
         self.runtime = runtime
         self.error = error
@@ -301,7 +302,7 @@ class StubtestUnit(unittest.TestCase):
             )
 
     @collect_cases
-    def test_default_value(self) -> Iterator[Case]:
+    def test_default_presence(self) -> Iterator[Case]:
         yield Case(
             stub="def f1(text: str = ...) -> None: ...",
             runtime="def f1(text = 'asdf'): pass",
@@ -333,6 +334,59 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="def f6(text = None): pass",
             error="f6",
+        )
+
+    @collect_cases
+    def test_default_value(self) -> Iterator[Case]:
+        yield Case(
+            stub="def f1(text: str = 'x') -> None: ...",
+            runtime="def f1(text = 'y'): pass",
+            error="f1",
+        )
+        yield Case(
+            stub='def f2(text: bytes = b"x\'") -> None: ...',
+            runtime='def f2(text = b"x\'"): pass',
+            error=None,
+        )
+        yield Case(
+            stub='def f3(text: bytes = b"y\'") -> None: ...',
+            runtime='def f3(text = b"x\'"): pass',
+            error="f3",
+        )
+        yield Case(
+            stub="def f4(text: object = 1) -> None: ...",
+            runtime="def f4(text = 1.0): pass",
+            error="f4",
+        )
+        yield Case(
+            stub="def f5(text: object = True) -> None: ...",
+            runtime="def f5(text = 1): pass",
+            error="f5",
+        )
+        yield Case(
+            stub="def f6(text: object = True) -> None: ...",
+            runtime="def f6(text = True): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f7(text: object = not True) -> None: ...",
+            runtime="def f7(text = False): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f8(text: object = not True) -> None: ...",
+            runtime="def f8(text = True): pass",
+            error="f8",
+        )
+        yield Case(
+            stub="def f9(text: object = {1: 2}) -> None: ...",
+            runtime="def f9(text = {1: 3}): pass",
+            error="f9",
+        )
+        yield Case(
+            stub="def f10(text: object = [1, 2]) -> None: ...",
+            runtime="def f10(text = [1, 2]): pass",
+            error=None,
         )
 
     @collect_cases
@@ -974,7 +1028,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
-        # We *should* emit an error with the module name itself,
+        # We *should* emit an error with the module name itself + __all__,
         # if the stub *does* define __all__,
         # but the stub's __all__ is inconsistent with the runtime's __all__
         yield Case(
@@ -986,7 +1040,7 @@ class StubtestUnit(unittest.TestCase):
             __all__ = []
             foo = 'foo'
             """,
-            error="",
+            error="__all__",
         )
 
     @collect_cases
@@ -1028,6 +1082,9 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
         yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
+        yield Case(stub="", runtime="import re; constant = re.compile('foo')", error="constant")
+        yield Case(stub="", runtime="from json.scanner import NUMBER_RE", error=None)
+        yield Case(stub="", runtime="from string import ascii_letters", error=None)
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
@@ -1083,6 +1140,263 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_has_runtime_final_decorator(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing_extensions import final",
+            runtime="""
+            import functools
+            from typing_extensions import final
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @final
+            class A: ...
+            """,
+            runtime="""
+            @final
+            class A: ...
+            """,
+            error=None,
+        )
+        yield Case(  # Runtime can miss `@final` decorator
+            stub="""
+            @final
+            class B: ...
+            """,
+            runtime="""
+            class B: ...
+            """,
+            error=None,
+        )
+        yield Case(  # Stub cannot miss `@final` decorator
+            stub="""
+            class C: ...
+            """,
+            runtime="""
+            @final
+            class C: ...
+            """,
+            error="C",
+        )
+        yield Case(
+            stub="""
+            class D:
+                @final
+                def foo(self) -> None: ...
+                @final
+                @staticmethod
+                def bar() -> None: ...
+                @staticmethod
+                @final
+                def bar2() -> None: ...
+                @final
+                @classmethod
+                def baz(cls) -> None: ...
+                @classmethod
+                @final
+                def baz2(cls) -> None: ...
+                @property
+                @final
+                def eggs(self) -> int: ...
+                @final
+                @property
+                def eggs2(self) -> int: ...
+                @final
+                def ham(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class D:
+                @final
+                def foo(self): pass
+                @final
+                @staticmethod
+                def bar(): pass
+                @staticmethod
+                @final
+                def bar2(): pass
+                @final
+                @classmethod
+                def baz(cls): pass
+                @classmethod
+                @final
+                def baz2(cls): pass
+                @property
+                @final
+                def eggs(self): return 42
+                @final
+                @property
+                def eggs2(self): pass
+                @final
+                @functools.lru_cache()
+                def ham(self, obj): return obj * 2
+            """,
+            error=None,
+        )
+        # Stub methods are allowed to have @final even if the runtime doesn't...
+        yield Case(
+            stub="""
+            class E:
+                @final
+                def foo(self) -> None: ...
+                @final
+                @staticmethod
+                def bar() -> None: ...
+                @staticmethod
+                @final
+                def bar2() -> None: ...
+                @final
+                @classmethod
+                def baz(cls) -> None: ...
+                @classmethod
+                @final
+                def baz2(cls) -> None: ...
+                @property
+                @final
+                def eggs(self) -> int: ...
+                @final
+                @property
+                def eggs2(self) -> int: ...
+                @final
+                def ham(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class E:
+                def foo(self): pass
+                @staticmethod
+                def bar(): pass
+                @staticmethod
+                def bar2(): pass
+                @classmethod
+                def baz(cls): pass
+                @classmethod
+                def baz2(cls): pass
+                @property
+                def eggs(self): return 42
+                @property
+                def eggs2(self): return 42
+                @functools.lru_cache()
+                def ham(self, obj): return obj * 2
+            """,
+            error=None,
+        )
+        # ...But if the runtime has @final, the stub must have it as well
+        yield Case(
+            stub="""
+            class F:
+                def foo(self) -> None: ...
+            """,
+            runtime="""
+            class F:
+                @final
+                def foo(self): pass
+            """,
+            error="F.foo",
+        )
+        yield Case(
+            stub="""
+            class G:
+                @staticmethod
+                def foo() -> None: ...
+            """,
+            runtime="""
+            class G:
+                @final
+                @staticmethod
+                def foo(): pass
+            """,
+            error="G.foo",
+        )
+        yield Case(
+            stub="""
+            class H:
+                @staticmethod
+                def foo() -> None: ...
+            """,
+            runtime="""
+            class H:
+                @staticmethod
+                @final
+                def foo(): pass
+            """,
+            error="H.foo",
+        )
+        yield Case(
+            stub="""
+            class I:
+                @classmethod
+                def foo(cls) -> None: ...
+            """,
+            runtime="""
+            class I:
+                @final
+                @classmethod
+                def foo(cls): pass
+            """,
+            error="I.foo",
+        )
+        yield Case(
+            stub="""
+            class J:
+                @classmethod
+                def foo(cls) -> None: ...
+            """,
+            runtime="""
+            class J:
+                @classmethod
+                @final
+                def foo(cls): pass
+            """,
+            error="J.foo",
+        )
+        yield Case(
+            stub="""
+            class K:
+                @property
+                def foo(self) -> int: ...
+            """,
+            runtime="""
+            class K:
+                @property
+                @final
+                def foo(self): return 42
+            """,
+            error="K.foo",
+        )
+        # This test wouldn't pass,
+        # because the runtime can't set __final__ on instances of builtins.property,
+        # so stubtest has non way of knowing that the runtime was decorated with @final:
+        #
+        # yield Case(
+        #     stub="""
+        #     class K2:
+        #         @property
+        #         def foo(self) -> int: ...
+        #     """,
+        #     runtime="""
+        #     class K2:
+        #         @final
+        #         @property
+        #         def foo(self): return 42
+        #     """,
+        #     error="K2.foo",
+        # )
+        yield Case(
+            stub="""
+            class L:
+                def foo(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class L:
+                @final
+                @functools.lru_cache()
+                def foo(self, obj): return obj * 2
+            """,
+            error="L.foo",
+        )
+
+    @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
         yield Case(
             stub="""
@@ -1096,6 +1410,49 @@ class StubtestUnit(unittest.TestCase):
                 def __mangle_bad(self, text): pass
             """,
             error="X.__mangle_bad",
+        )
+        yield Case(
+            stub="""
+            class Klass:
+                class __Mangled1:
+                    class __Mangled2:
+                        def __mangle_good(self, text: str) -> None: ...
+                        def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class Klass:
+                class __Mangled1:
+                    class __Mangled2:
+                        def __mangle_good(self, text): pass
+                        def __mangle_bad(self, text): pass
+            """,
+            error="Klass.__Mangled1.__Mangled2.__mangle_bad",
+        )
+        yield Case(
+            stub="""
+            class __Dunder__:
+                def __mangle_good(self, text: str) -> None: ...
+                def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class __Dunder__:
+                def __mangle_good(self, text): pass
+                def __mangle_bad(self, text): pass
+            """,
+            error="__Dunder__.__mangle_bad",
+        )
+        yield Case(
+            stub="""
+            class _Private:
+                def __mangle_good(self, text: str) -> None: ...
+                def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class _Private:
+                def __mangle_good(self, text): pass
+                def __mangle_bad(self, text): pass
+            """,
+            error="_Private.__mangle_bad",
         )
 
     @collect_cases
@@ -1271,9 +1628,75 @@ class StubtestUnit(unittest.TestCase):
             yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
 
     @collect_cases
+    def test_metaclass_match(self) -> Iterator[Case]:
+        yield Case(stub="class Meta(type): ...", runtime="class Meta(type): ...", error=None)
+        yield Case(stub="class A0: ...", runtime="class A0: ...", error=None)
+        yield Case(
+            stub="class A1(metaclass=Meta): ...",
+            runtime="class A1(metaclass=Meta): ...",
+            error=None,
+        )
+        yield Case(stub="class A2: ...", runtime="class A2(metaclass=Meta): ...", error="A2")
+        yield Case(stub="class A3(metaclass=Meta): ...", runtime="class A3: ...", error="A3")
+
+        # Explicit `type` metaclass can always be added in any part:
+        yield Case(
+            stub="class T1(metaclass=type): ...",
+            runtime="class T1(metaclass=type): ...",
+            error=None,
+        )
+        yield Case(stub="class T2: ...", runtime="class T2(metaclass=type): ...", error=None)
+        yield Case(stub="class T3(metaclass=type): ...", runtime="class T3: ...", error=None)
+
+        # Explicit check that `_protected` names are also supported:
+        yield Case(stub="class _P1(type): ...", runtime="class _P1(type): ...", error=None)
+        yield Case(stub="class P2: ...", runtime="class P2(metaclass=_P1): ...", error="P2")
+
+        # With inheritance:
+        yield Case(
+            stub="""
+            class I1(metaclass=Meta): ...
+            class S1(I1): ...
+            """,
+            runtime="""
+            class I1(metaclass=Meta): ...
+            class S1(I1): ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class I2(metaclass=Meta): ...
+            class S2: ...  # missing inheritance
+            """,
+            runtime="""
+            class I2(metaclass=Meta): ...
+            class S2(I2): ...
+            """,
+            error="S2",
+        )
+
+    @collect_cases
+    def test_metaclass_abcmeta(self) -> Iterator[Case]:
+        # Handling abstract metaclasses is special:
+        yield Case(stub="from abc import ABCMeta", runtime="from abc import ABCMeta", error=None)
+        yield Case(
+            stub="class A1(metaclass=ABCMeta): ...",
+            runtime="class A1(metaclass=ABCMeta): ...",
+            error=None,
+        )
+        # Stubs cannot miss abstract metaclass:
+        yield Case(stub="class A2: ...", runtime="class A2(metaclass=ABCMeta): ...", error="A2")
+        # But, stubs can add extra abstract metaclass, this might be a typing hack:
+        yield Case(stub="class A3(metaclass=ABCMeta): ...", runtime="class A3: ...", error=None)
+
+    @collect_cases
     def test_abstract_methods(self) -> Iterator[Case]:
         yield Case(
-            stub="from abc import abstractmethod",
+            stub="""
+            from abc import abstractmethod
+            from typing import overload
+            """,
             runtime="from abc import abstractmethod",
             error=None,
         )
@@ -1302,15 +1725,64 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
-        # Runtime can miss `@abstractmethod`:
         yield Case(
             stub="""
             class A3:
+                @overload
+                def some(self, other: int) -> str: ...
+                @overload
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A3:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error="A3.some",
+        )
+        yield Case(
+            stub="""
+            class A4:
+                @overload
+                @abstractmethod
+                def some(self, other: int) -> str: ...
+                @overload
+                @abstractmethod
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A4:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class A5:
+                @abstractmethod
+                @overload
+                def some(self, other: int) -> str: ...
+                @abstractmethod
+                @overload
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A5:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error=None,
+        )
+        # Runtime can miss `@abstractmethod`:
+        yield Case(
+            stub="""
+            class A6:
                 @abstractmethod
                 def some(self) -> None: ...
             """,
             runtime="""
-            class A3:
+            class A6:
                 def some(self) -> None: ...
             """,
             error=None,
@@ -1318,6 +1790,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_abstract_properties(self) -> Iterator[Case]:
+        # TODO: test abstract properties with setters
         yield Case(
             stub="from abc import abstractmethod",
             runtime="from abc import abstractmethod",
@@ -1327,6 +1800,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             class AP1:
+                @property
                 def some(self) -> int: ...
             """,
             runtime="""
@@ -1336,6 +1810,19 @@ class StubtestUnit(unittest.TestCase):
                 def some(self) -> int: ...
             """,
             error="AP1.some",
+        )
+        yield Case(
+            stub="""
+            class AP1_2:
+                def some(self) -> int: ...  # missing `@property` decorator
+            """,
+            runtime="""
+            class AP1_2:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            error="AP1_2.some",
         )
         yield Case(
             stub="""
@@ -1383,9 +1870,9 @@ class StubtestMiscUnit(unittest.TestCase):
         expected = (
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
             'from runtime argument "num"\n'
-            f"Stub: at line 1 in file {TEST_MODULE_NAME}.pyi\n"
+            f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
             "def (number: builtins.int, text: builtins.str)\n"
-            f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
+            f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
         assert remove_color_code(output) == expected
@@ -1480,13 +1967,13 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub="+", runtime="", options=[])
         assert remove_color_code(output) == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
-            "error: invalid syntax\n".format(TEST_MODULE_NAME)
+            "error: invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
         assert remove_color_code(output) == (
             "error: not checking stubs due to mypy build errors:\n{}.pyi:2: "
-            'error: Name "f" already defined on line 1\n'.format(TEST_MODULE_NAME)
+            'error: Name "f" already defined on line 1  [no-redef]\n'.format(TEST_MODULE_NAME)
         )
 
     def test_missing_stubs(self) -> None:
@@ -1543,7 +2030,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
             f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"
-            f"Stub: at line 2 in file {TEST_MODULE_NAME}.pyi\n_decimal.Decimal\nRuntime:\n5\n\n"
+            f"Stub: in file {TEST_MODULE_NAME}.pyi:2\n_decimal.Decimal\nRuntime:\n5\n\n"
             "Found 1 error (checked 1 module)\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)

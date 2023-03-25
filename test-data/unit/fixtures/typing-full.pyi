@@ -160,8 +160,8 @@ class SupportsAbs(Protocol[T_co]):
 def runtime_checkable(cls: T) -> T:
     return cls
 
-class ContextManager(Generic[T]):
-    def __enter__(self) -> T: pass
+class ContextManager(Generic[T_co]):
+    def __enter__(self) -> T_co: pass
     # Use Any because not all the precise types are in the fixtures.
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
 
@@ -179,3 +179,14 @@ class _TypedDict(Mapping[str, object]):
     def pop(self, k: NoReturn, default: T = ...) -> object: ...
     def update(self: T, __m: T) -> None: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+
+class _SpecialForm: pass
+
+def dataclass_transform(
+    *,
+    eq_default: bool = ...,
+    order_default: bool = ...,
+    kw_only_default: bool = ...,
+    field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: Any,
+) -> Callable[[T], T]: ...

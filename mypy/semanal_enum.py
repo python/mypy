@@ -5,7 +5,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, cast
+from typing import cast
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -27,6 +27,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     Var,
+    is_StrExpr_list,
 )
 from mypy.options import Options
 from mypy.semanal_shared import SemanticAnalyzerInterface
@@ -81,7 +82,7 @@ class EnumCallAnalyzer:
 
     def check_enum_call(
         self, node: Expression, var_name: str, is_func_scope: bool
-    ) -> Optional[TypeInfo]:
+    ) -> TypeInfo | None:
         """Check if a call defines an Enum.
 
         Example:
@@ -122,7 +123,7 @@ class EnumCallAnalyzer:
         return info
 
     def build_enum_call_typeinfo(
-        self, name: str, items: List[str], fullname: str, line: int
+        self, name: str, items: list[str], fullname: str, line: int
     ) -> TypeInfo:
         base = self.api.named_type_or_none(fullname)
         assert base is not None
@@ -139,7 +140,7 @@ class EnumCallAnalyzer:
 
     def parse_enum_call_args(
         self, call: CallExpr, class_name: str
-    ) -> Tuple[List[str], List[Optional[Expression]], bool]:
+    ) -> tuple[list[str], list[Expression | None], bool]:
         """Parse arguments of an Enum call.
 
         Return a tuple of fields, values, was there an error.
@@ -170,15 +171,15 @@ class EnumCallAnalyzer:
                 f"{class_name}() expects a string literal as the first argument", call
             )
         items = []
-        values: List[Optional[Expression]] = []
+        values: list[Expression | None] = []
         if isinstance(names, StrExpr):
             fields = names.value
             for field in fields.replace(",", " ").split():
                 items.append(field)
         elif isinstance(names, (TupleExpr, ListExpr)):
             seq_items = names.items
-            if all(isinstance(seq_item, StrExpr) for seq_item in seq_items):
-                items = [cast(StrExpr, seq_item).value for seq_item in seq_items]
+            if is_StrExpr_list(seq_items):
+                items = [seq_item.value for seq_item in seq_items]
             elif all(
                 isinstance(seq_item, (TupleExpr, ListExpr))
                 and len(seq_item.items) == 2
@@ -220,14 +221,14 @@ class EnumCallAnalyzer:
                     items.append(field)
             else:
                 return self.fail_enum_call_arg(
-                    "%s() expects a string, tuple, list or dict literal as the second argument"
+                    "Second argument of %s() must be string, tuple, list or dict literal for mypy to determine Enum members"
                     % class_name,
                     call,
                 )
         else:
             # TODO: Allow dict(x=1, y=2) as a substitute for {'x': 1, 'y': 2}?
             return self.fail_enum_call_arg(
-                "%s() expects a string, tuple, list or dict literal as the second argument"
+                "Second argument of %s() must be string, tuple, list or dict literal for mypy to determine Enum members"
                 % class_name,
                 call,
             )
@@ -240,7 +241,7 @@ class EnumCallAnalyzer:
 
     def fail_enum_call_arg(
         self, message: str, context: Context
-    ) -> Tuple[List[str], List[Optional[Expression]], bool]:
+    ) -> tuple[list[str], list[Expression | None], bool]:
         self.fail(message, context)
         return [], [], False
 

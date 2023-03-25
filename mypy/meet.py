@@ -1,14 +1,21 @@
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Tuple
+from typing import Callable
 
 from mypy import join
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
-from mypy.subtypes import is_callable_compatible, is_equivalent, is_proper_subtype, is_subtype
+from mypy.subtypes import (
+    is_callable_compatible,
+    is_equivalent,
+    is_proper_subtype,
+    is_same_type,
+    is_subtype,
+)
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
+    MYPYC_NATIVE_INT_NAMES,
     AnyType,
     CallableType,
     DeletedType,
@@ -61,10 +68,24 @@ def meet_types(s: Type, t: Type) -> ProperType:
     """Return the greatest lower bound of two types."""
     if is_recursive_pair(s, t):
         # This case can trigger an infinite recursion, general support for this will be
-        # tricky so we use a trivial meet (like for protocols).
+        # tricky, so we use a trivial meet (like for protocols).
         return trivial_meet(s, t)
     s = get_proper_type(s)
     t = get_proper_type(t)
+
+    if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
+        # Code in checker.py should merge any extra_items where possible, so we
+        # should have only compatible extra_items here. We check this before
+        # the below subtype check, so that extra_attrs will not get erased.
+        if (s.extra_attrs or t.extra_attrs) and is_same_type(s, t):
+            if s.extra_attrs and t.extra_attrs:
+                if len(s.extra_attrs.attrs) > len(t.extra_attrs.attrs):
+                    # Return the one that has more precise information.
+                    return s
+                return t
+            if s.extra_attrs:
+                return s
+            return t
 
     if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
         if is_proper_subtype(s, t, ignore_promotions=True):
@@ -78,6 +99,10 @@ def meet_types(s: Type, t: Type) -> ProperType:
         return t
     if isinstance(s, UnionType) and not isinstance(t, UnionType):
         s, t = t, s
+
+    # Meets/joins require callable type normalization.
+    s, t = join.normalize_callables(s, t)
+
     return t.accept(TypeMeetVisitor(s))
 
 
@@ -97,7 +122,19 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return original_declared
     if isinstance(declared, UnionType):
         return make_simplified_union(
-            [narrow_declared_type(x, narrowed) for x in declared.relevant_items()]
+            [
+                narrow_declared_type(x, narrowed)
+                for x in declared.relevant_items()
+                # This (ugly) special-casing is needed to support checking
+                # branches like this:
+                # x: Union[float, complex]
+                # if isinstance(x, int):
+                #     ...
+                if (
+                    is_overlapping_types(x, narrowed, ignore_promotions=True)
+                    or is_subtype(narrowed, x, ignore_promotions=False)
+                )
+            ]
         )
     if is_enum_overlapping_union(declared, narrowed):
         return original_narrowed
@@ -127,6 +164,14 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         if declared.type.alt_promote:
             # Special case: low-level integer type can't be narrowed
             return original_declared
+        if (
+            isinstance(narrowed, Instance)
+            and narrowed.type.alt_promote
+            and narrowed.type.alt_promote.type is declared.type
+        ):
+            # Special case: 'int' can't be narrowed down to a native int type such as
+            # i64, since they have different runtime representations.
+            return original_declared
         return meet_types(original_declared, original_narrowed)
     elif isinstance(declared, (TupleType, TypeType, LiteralType)):
         return meet_types(original_declared, original_narrowed)
@@ -140,7 +185,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     return original_narrowed
 
 
-def get_possible_variants(typ: Type) -> List[Type]:
+def get_possible_variants(typ: Type) -> list[Type]:
     """This function takes any "Union-like" type and returns a list of the available "options".
 
     Specifically, there are currently exactly three different types that can have
@@ -211,6 +256,7 @@ def is_overlapping_types(
     right: Type,
     ignore_promotions: bool = False,
     prohibit_none_typevar_overlap: bool = False,
+    ignore_uninhabited: bool = False,
 ) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
 
@@ -235,6 +281,7 @@ def is_overlapping_types(
             right,
             ignore_promotions=ignore_promotions,
             prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
+            ignore_uninhabited=ignore_uninhabited,
         )
 
     # We should never encounter this type.
@@ -282,8 +329,10 @@ def is_overlapping_types(
     ):
         return True
 
-    if is_proper_subtype(left, right, ignore_promotions=ignore_promotions) or is_proper_subtype(
-        right, left, ignore_promotions=ignore_promotions
+    if is_proper_subtype(
+        left, right, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
+    ) or is_proper_subtype(
+        right, left, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
     ):
         return True
 
@@ -293,7 +342,22 @@ def is_overlapping_types(
     left_possible = get_possible_variants(left)
     right_possible = get_possible_variants(right)
 
-    # We start by checking multi-variant types like Unions first. We also perform
+    # First handle special cases relating to PEP 612:
+    # - comparing a `Parameters` to a `Parameters`
+    # - comparing a `Parameters` to a `ParamSpecType`
+    # - comparing a `ParamSpecType` to a `ParamSpecType`
+    #
+    # These should all always be considered overlapping equality checks.
+    # These need to be done before we move on to other TypeVarLike comparisons.
+    if isinstance(left, (Parameters, ParamSpecType)) and isinstance(
+        right, (Parameters, ParamSpecType)
+    ):
+        return True
+    # A `Parameters` does not overlap with anything else, however
+    if isinstance(left, Parameters) or isinstance(right, Parameters):
+        return False
+
+    # Now move on to checking multi-variant types like Unions. We also perform
     # the same logic if either type happens to be a TypeVar/ParamSpec/TypeVarTuple.
     #
     # Handling the TypeVarLikes now lets us simulate having them bind to the corresponding
@@ -390,18 +454,13 @@ def is_overlapping_types(
         return _type_object_overlap(left, right) or _type_object_overlap(right, left)
 
     if isinstance(left, CallableType) and isinstance(right, CallableType):
-
-        def _callable_overlap(left: CallableType, right: CallableType) -> bool:
-            return is_callable_compatible(
-                left,
-                right,
-                is_compat=_is_overlapping_types,
-                ignore_pos_arg_names=True,
-                allow_partial_overlap=True,
-            )
-
-        # Compare both directions to handle type objects.
-        return _callable_overlap(left, right) or _callable_overlap(right, left)
+        return is_callable_compatible(
+            left,
+            right,
+            is_compat=_is_overlapping_types,
+            ignore_pos_arg_names=True,
+            allow_partial_overlap=True,
+        )
     elif isinstance(left, CallableType):
         left = left.fallback
     elif isinstance(right, CallableType):
@@ -425,9 +484,14 @@ def is_overlapping_types(
     if isinstance(left, Instance) and isinstance(right, Instance):
         # First we need to handle promotions and structural compatibility for instances
         # that came as fallbacks, so simply call is_subtype() to avoid code duplication.
-        if is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
-            right, left, ignore_promotions=ignore_promotions
+        if is_subtype(
+            left, right, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
+        ) or is_subtype(
+            right, left, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
         ):
+            return True
+
+        if right.type.fullname == "builtins.int" and left.type.fullname in MYPYC_NATIVE_INT_NAMES:
             return True
 
         # Two unrelated types cannot be partially overlapping: they're disjoint.
@@ -467,7 +531,7 @@ def is_overlapping_types(
     # Note: it's unclear however, whether returning False is the right thing
     # to do when inferring reachability -- see  https://github.com/python/mypy/issues/5529
 
-    assert type(left) != type(right)
+    assert type(left) != type(right), f"{type(left)} vs {type(right)}"
     return False
 
 
@@ -544,7 +608,7 @@ def are_tuples_overlapping(
     )
 
 
-def adjust_tuple(left: ProperType, r: ProperType) -> Optional[TupleType]:
+def adjust_tuple(left: ProperType, r: ProperType) -> TupleType | None:
     """Find out if `left` is a Tuple[A, ...], and adjust its length to `right`"""
     if isinstance(left, Instance) and left.type.fullname == "builtins.tuple":
         n = r.length() if isinstance(r, TupleType) else 1
@@ -579,7 +643,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         if isinstance(self.s, UnionType):
-            meets: List[Type] = []
+            meets: list[Type] = []
             for x in t.items:
                 for y in self.s.items:
                     meets.append(meet_types(x, y))
@@ -653,7 +717,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
-                    args: List[Type] = []
+                    args: list[Type] = []
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
                     for ta, sia in zip(t.args, self.s.args):
@@ -666,10 +730,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                         return NoneType()
             else:
                 alt_promote = t.type.alt_promote
-                if alt_promote and alt_promote is self.s.type:
+                if alt_promote and alt_promote.type is self.s.type:
                     return t
                 alt_promote = self.s.type.alt_promote
-                if alt_promote and alt_promote is t.type:
+                if alt_promote and alt_promote.type is t.type:
                     return self.s
                 if is_subtype(t, self.s):
                     return t
@@ -748,7 +812,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items: List[Type] = []
+            items: list[Type] = []
             for i in range(t.length()):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
@@ -769,7 +833,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     name in self.s.required_keys
                 ):
                     return self.default(self.s)
-            item_list: List[Tuple[str, Type]] = []
+            item_list: list[tuple[str, Type]] = []
             for (item_name, s_item_type, t_item_type) in self.s.zipall(t):
                 if s_item_type is not None:
                     item_list.append((item_name, s_item_type))
@@ -830,7 +894,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.join import join_types
 
-    arg_types: List[Type] = []
+    arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)
@@ -848,7 +912,7 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     )
 
 
-def meet_type_list(types: List[Type]) -> Type:
+def meet_type_list(types: list[Type]) -> Type:
     if not types:
         # This should probably be builtins.object but that is hard to get and
         # it doesn't matter for any current users.

@@ -1,5 +1,5 @@
+from _typeshed import Incomplete
 from tkinter import Frame, Misc, Scrollbar, Text
-from typing import Any
 
 __all__ = ["ScrolledText"]
 
@@ -7,4 +7,4 @@ __all__ = ["ScrolledText"]
 class ScrolledText(Text):
     frame: Frame
     vbar: Scrollbar
-    def __init__(self, master: Misc | None = ..., **kwargs: Any) -> None: ...
+    def __init__(self, master: Misc | None = None, **kwargs: Incomplete) -> None: ...

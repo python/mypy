@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 from gettext import gettext
-from typing import IO, Any, Dict, List, NoReturn, Optional, Sequence, TextIO, Tuple, Union
+from typing import IO, Any, NoReturn, Sequence, TextIO
 from typing_extensions import Final
 
 from mypy import build, defaults, state, util
@@ -18,7 +18,7 @@ from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import BuildType, Options
+from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -42,7 +42,7 @@ def stat_proxy(path: str) -> os.stat_result:
 
 def main(
     *,
-    args: Optional[List[str]] = None,
+    args: list[str] | None = None,
     stdout: TextIO = sys.stdout,
     stderr: TextIO = sys.stderr,
     clean_exit: bool = False,
@@ -67,7 +67,7 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -110,10 +110,10 @@ def main(
         print_memory_profile()
 
     code = 0
-    if messages:
+    n_errors, n_notes, n_files = util.count_stats(messages)
+    if messages and n_notes < len(messages):
         code = 2 if blockers else 1
     if options.error_summary:
-        n_errors, n_notes, n_files = util.count_stats(messages)
         if n_errors:
             summary = formatter.format_error(
                 n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
@@ -144,18 +144,18 @@ def main(
 
 
 def run_build(
-    sources: List[BuildSource],
+    sources: list[BuildSource],
     options: Options,
     fscache: FileSystemCache,
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
-) -> Tuple[Optional[build.BuildResult], List[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+) -> tuple[build.BuildResult | None, list[str], bool]:
+    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
 
-    def flush_errors(new_messages: List[str], serious: bool) -> None:
+    def flush_errors(new_messages: list[str], serious: bool) -> None:
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
@@ -202,7 +202,7 @@ def run_build(
 
 
 def show_messages(
-    messages: List[str], f: TextIO, formatter: util.FancyFormatter, options: Options
+    messages: list[str], f: TextIO, formatter: util.FancyFormatter, options: Options
 ) -> None:
     for msg in messages:
         if options.color_output:
@@ -228,7 +228,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 
 # Define pairs of flag prefixes with inverse meaning.
 flag_prefix_pairs: Final = [("allow", "disallow"), ("show", "hide")]
-flag_prefix_map: Final[Dict[str, str]] = {}
+flag_prefix_map: Final[dict[str, str]] = {}
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a
@@ -250,7 +250,7 @@ class PythonExecutableInferenceError(Exception):
     """Represents a failure to infer the version or executable while searching."""
 
 
-def python_executable_prefix(v: str) -> List[str]:
+def python_executable_prefix(v: str) -> list[str]:
     if sys.platform == "win32":
         # on Windows, all Python executables are named `python`. To handle this, there
         # is the `py` launcher, which can be passed a version e.g. `py -3.8`, and it will
@@ -261,7 +261,7 @@ def python_executable_prefix(v: str) -> List[str]:
         return [f"python{v}"]
 
 
-def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
+def _python_executable_from_version(python_version: tuple[int, int]) -> str:
     if sys.version_info[:2] == python_version:
         return sys.executable
     str_ver = ".".join(map(str, python_version))
@@ -350,17 +350,17 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # =====================
     # Help-printing methods
     # =====================
-    def print_usage(self, file: Optional[IO[str]] = None) -> None:
+    def print_usage(self, file: IO[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_usage(), file)
 
-    def print_help(self, file: Optional[IO[str]] = None) -> None:
+    def print_help(self, file: IO[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_help(), file)
 
-    def _print_message(self, message: str, file: Optional[IO[str]] = None) -> None:
+    def _print_message(self, message: str, file: IO[str] | None = None) -> None:
         if message:
             if file is None:
                 file = self.stderr
@@ -369,7 +369,7 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # ===============
     # Exiting methods
     # ===============
-    def exit(self, status: int = 0, message: Optional[str] = None) -> NoReturn:
+    def exit(self, status: int = 0, message: str | None = None) -> NoReturn:
         if message:
             self._print_message(message, self.stderr)
         sys.exit(status)
@@ -407,7 +407,7 @@ class CapturableVersionAction(argparse.Action):
         dest: str = argparse.SUPPRESS,
         default: str = argparse.SUPPRESS,
         help: str = "show program's version number and exit",
-        stdout: Optional[IO[str]] = None,
+        stdout: IO[str] | None = None,
     ):
         super().__init__(
             option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
@@ -419,8 +419,8 @@ class CapturableVersionAction(argparse.Action):
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values: Union[str, Sequence[Any], None],
-        option_string: Optional[str] = None,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
     ) -> NoReturn:
         formatter = parser._get_formatter()
         formatter.add_text(self.version)
@@ -429,15 +429,15 @@ class CapturableVersionAction(argparse.Action):
 
 
 def process_options(
-    args: List[str],
-    stdout: Optional[TextIO] = None,
-    stderr: Optional[TextIO] = None,
+    args: list[str],
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
     require_targets: bool = True,
     server_options: bool = False,
-    fscache: Optional[FileSystemCache] = None,
+    fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
-) -> Tuple[List[BuildSource], Options]:
+) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
@@ -458,18 +458,18 @@ def process_options(
         stderr=stderr,
     )
 
-    strict_flag_names: List[str] = []
-    strict_flag_assignments: List[Tuple[str, bool]] = []
+    strict_flag_names: list[str] = []
+    strict_flag_assignments: list[tuple[str, bool]] = []
 
     def add_invertible_flag(
         flag: str,
         *,
-        inverse: Optional[str] = None,
+        inverse: str | None = None,
         default: bool,
-        dest: Optional[str] = None,
+        dest: str | None = None,
         help: str,
         strict_flag: bool = False,
-        group: Optional[argparse._ActionsContainer] = None,
+        group: argparse._ActionsContainer | None = None,
     ) -> None:
         if inverse is None:
             inverse = invert_flag_name(flag)
@@ -544,8 +544,9 @@ def process_options(
         title="Import discovery", description="Configure how imports are discovered and followed."
     )
     add_invertible_flag(
-        "--namespace-packages",
-        default=False,
+        "--no-namespace-packages",
+        dest="namespace_packages",
+        default=True,
         help="Support namespace packages (PEP 420, __init__.py-less)",
         group=imports_group,
     )
@@ -657,7 +658,7 @@ def process_options(
         "--disallow-any-generics",
         default=False,
         strict_flag=True,
-        help="Disallow usage of generic types that do not specify explicit type " "parameters",
+        help="Disallow usage of generic types that do not specify explicit type parameters",
         group=disallow_any_group,
     )
     add_invertible_flag(
@@ -720,10 +721,9 @@ def process_options(
         "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional",
     )
     add_invertible_flag(
-        "--no-implicit-optional",
+        "--implicit-optional",
         default=False,
-        strict_flag=True,
-        help="Don't assume arguments with default values of None are Optional",
+        help="Assume arguments with default values of None are Optional",
         group=none_group,
     )
     none_group.add_argument("--strict-optional", action="store_true", help=argparse.SUPPRESS)
@@ -732,9 +732,6 @@ def process_options(
         action="store_false",
         dest="strict_optional",
         help="Disable strict Optional checks (inverse: --strict-optional)",
-    )
-    none_group.add_argument(
-        "--strict-optional-whitelist", metavar="GLOB", nargs="*", help=argparse.SUPPRESS
     )
 
     lint_group = parser.add_argument_group(
@@ -874,9 +871,9 @@ def process_options(
         group=error_group,
     )
     add_invertible_flag(
-        "--show-error-codes",
+        "--hide-error-codes",
         default=False,
-        help="Show error codes in error messages",
+        help="Hide error codes in error messages",
         group=error_group,
     )
     add_invertible_flag(
@@ -978,9 +975,19 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--enable-recursive-aliases",
+        "--disable-recursive-aliases",
         action="store_true",
-        help="Experimental support for recursive type aliases",
+        help="Disable experimental support for recursive type aliases",
+    )
+    # Deprecated reverse variant of the above.
+    internals_group.add_argument(
+        "--enable-recursive-aliases", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--enable-incomplete-feature",
+        action="append",
+        metavar="FEATURE",
+        help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
@@ -1001,7 +1008,17 @@ def process_options(
         help="When encountering SOURCE_FILE, read and type check "
         "the contents of SHADOW_FILE instead.",
     )
-    add_invertible_flag("--fast-exit", default=True, help=argparse.SUPPRESS, group=internals_group)
+    internals_group.add_argument("--fast-exit", action="store_true", help=argparse.SUPPRESS)
+    internals_group.add_argument(
+        "--no-fast-exit", action="store_false", dest="fast_exit", help=argparse.SUPPRESS
+    )
+    # This flag is useful for mypy tests, where function bodies may be omitted. Plugin developers
+    # may want to use this as well in their tests.
+    add_invertible_flag(
+        "--allow-empty-bodies", default=False, help=argparse.SUPPRESS, group=internals_group
+    )
+    # This undocumented feature exports limited line-level dependency information.
+    internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."
@@ -1070,8 +1087,14 @@ def process_options(
         "--inferstats", action="store_true", dest="dump_inference_stats", help=argparse.SUPPRESS
     )
     parser.add_argument("--dump-build-stats", action="store_true", help=argparse.SUPPRESS)
-    # dump timing  stats for each processed file into the given output file
+    # Dump timing stats for each processed file into the given output file
     parser.add_argument("--timing-stats", dest="timing_stats", help=argparse.SUPPRESS)
+    # Dump per line type checking timing stats for each processed file into the given
+    # output file. Only total time spent in each top level expression will be shown.
+    # Times are show in microseconds.
+    parser.add_argument(
+        "--line-checking-stats", dest="line_checking_stats", help=argparse.SUPPRESS
+    )
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
@@ -1105,8 +1128,18 @@ def process_options(
     parser.add_argument(
         "--cache-map", nargs="+", dest="special-opts:cache_map", help=argparse.SUPPRESS
     )
+    # --debug-serialize will run tree.serialize() even if cache generation is disabled.
+    # Useful for mypy_primer to detect serialize errors earlier.
+    parser.add_argument("--debug-serialize", action="store_true", help=argparse.SUPPRESS)
+    # This one is deprecated, but we will keep it for few releases.
     parser.add_argument(
         "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--disable-bytearray-promotion", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
     )
 
     # options specifying code to check
@@ -1220,8 +1253,13 @@ def process_options(
 
     # Paths listed in the config file will be ignored if any paths, modules or packages
     # are passed on the command line.
-    if options.files and not (special_opts.files or special_opts.packages or special_opts.modules):
-        special_opts.files = options.files
+    if not (special_opts.files or special_opts.packages or special_opts.modules):
+        if options.files:
+            special_opts.files = options.files
+        if options.packages:
+            special_opts.packages = options.packages
+        if options.modules:
+            special_opts.modules = options.modules
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -1266,10 +1304,22 @@ def process_options(
     # Enabling an error code always overrides disabling
     options.disabled_error_codes -= options.enabled_error_codes
 
+    # Validate incomplete features.
+    for feature in options.enable_incomplete_feature:
+        if feature not in INCOMPLETE_FEATURES:
+            parser.error(f"Unknown incomplete feature: {feature}")
+    if options.enable_incomplete_features:
+        print(
+            "Warning: --enable-incomplete-features is deprecated, use"
+            " --enable-incomplete-feature=FEATURE instead"
+        )
+        options.enable_incomplete_feature = list(INCOMPLETE_FEATURES)
+
+    # Compute absolute path for custom typeshed (if present).
+    if options.custom_typeshed_dir is not None:
+        options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
+
     # Set build flags.
-    if options.strict_optional_whitelist is not None:
-        # TODO: Deprecate, then kill this flag
-        options.strict_optional = True
     if special_opts.find_occurrences:
         state.find_occurrences = special_opts.find_occurrences.split(".")
         assert state.find_occurrences is not None
@@ -1309,6 +1359,12 @@ def process_options(
     if options.logical_deps:
         options.cache_fine_grained = True
 
+    if options.enable_recursive_aliases:
+        print(
+            "Warning: --enable-recursive-aliases is deprecated;"
+            " recursive types are enabled by default"
+        )
+
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
@@ -1345,7 +1401,7 @@ def process_options(
 
 
 def process_package_roots(
-    fscache: Optional[FileSystemCache], parser: argparse.ArgumentParser, options: Options
+    fscache: FileSystemCache | None, parser: argparse.ArgumentParser, options: Options
 ) -> None:
     """Validate and normalize package_root."""
     if fscache is None:
@@ -1403,7 +1459,7 @@ def process_cache_map(
         options.cache_map[source] = (meta_file, data_file)
 
 
-def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options: Options) -> None:
+def maybe_write_junit_xml(td: float, serious: bool, messages: list[str], options: Options) -> None:
     if options.junit_xml:
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         util.write_junit_xml(
@@ -1418,7 +1474,7 @@ def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     sys.exit(2)
 
 
-def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]:
+def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]:
     if not os.path.isdir(cache_dir):
         if not after_run:
             sys.stderr.write(

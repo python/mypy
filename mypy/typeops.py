@@ -8,20 +8,7 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type as TypingType,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Any, Iterable, List, Sequence, TypeVar, cast
 
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -46,6 +33,7 @@ from mypy.types import (
     ENUM_REMOVED_PROPS,
     AnyType,
     CallableType,
+    ExtraAttrs,
     FormalArgument,
     FunctionLike,
     Instance,
@@ -54,10 +42,12 @@ from mypy.types import (
     Overloaded,
     Parameters,
     ParamSpecType,
+    PartialType,
     ProperType,
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeQuery,
     TypeType,
@@ -83,13 +73,13 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
     """
     if isinstance(s, TypeAliasType) and s.is_recursive:
         return (
-            isinstance(get_proper_type(t), Instance)
+            isinstance(get_proper_type(t), (Instance, UnionType))
             or isinstance(t, TypeAliasType)
             and t.is_recursive
         )
     if isinstance(t, TypeAliasType) and t.is_recursive:
         return (
-            isinstance(get_proper_type(s), Instance)
+            isinstance(get_proper_type(s), (Instance, UnionType))
             or isinstance(s, TypeAliasType)
             and s.is_recursive
         )
@@ -117,7 +107,16 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    return Instance(info, [join_type_list(items)])
+    return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
+
+
+def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
+    if isinstance(get_proper_type(func.ret_type), UninhabitedType):
+        return func.ret_type
+    elif func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
+        return func.arg_types[0]
+    else:
+        return None
 
 
 def type_object_type_from_function(
@@ -130,14 +129,7 @@ def type_object_type_from_function(
     # classes such as subprocess.Popen.
     default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
-        orig_self_types = [
-            (
-                it.arg_types[0]
-                if it.arg_types and it.arg_types[0] != default_self and it.arg_kinds[0] == ARG_POS
-                else None
-            )
-            for it in signature.items
-        ]
+        orig_self_types = [get_self_type(it, default_self) for it in signature.items]
     else:
         orig_self_types = [None] * len(signature.items)
 
@@ -154,7 +146,7 @@ def type_object_type_from_function(
     signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
-    special_sig: Optional[str] = None
+    special_sig: str | None = None
     if def_info.fullname == "builtins.dict":
         # Special signature!
         special_sig = "dict"
@@ -164,7 +156,7 @@ def type_object_type_from_function(
     else:
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
-        items: List[CallableType] = []
+        items: list[CallableType] = []
         for item, orig_self in zip(signature.items, orig_self_types):
             items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
         return Overloaded(items)
@@ -174,12 +166,12 @@ def class_callable(
     init_type: CallableType,
     info: TypeInfo,
     type_type: Instance,
-    special_sig: Optional[str],
+    special_sig: str | None,
     is_new: bool,
-    orig_self_type: Optional[Type] = None,
+    orig_self_type: Type | None = None,
 ) -> CallableType:
     """Create a type object type based on the signature of __init__."""
-    variables: List[TypeVarLikeType] = []
+    variables: list[TypeVarLikeType] = []
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
@@ -190,7 +182,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -259,7 +251,7 @@ def supported_self_type(typ: ProperType) -> bool:
 F = TypeVar("F", bound=FunctionLike)
 
 
-def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: bool = False) -> F:
+def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool = False) -> F:
     """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to original_type.
 
@@ -364,8 +356,8 @@ def erase_to_bound(t: Type) -> Type:
 
 
 def callable_corresponding_argument(
-    typ: Union[CallableType, Parameters], model: FormalArgument
-) -> Optional[FormalArgument]:
+    typ: CallableType | Parameters, model: FormalArgument
+) -> FormalArgument | None:
     """Return the argument a function that corresponds to `model`"""
 
     by_name = typ.argument_by_name(model.name)
@@ -393,7 +385,7 @@ def callable_corresponding_argument(
     return by_name if by_name is not None else by_pos
 
 
-def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
+def simple_literal_value_key(t: ProperType) -> tuple[str, ...] | None:
     """Return a hashable description of simple literal type.
 
     Return None if not a simple literal type.
@@ -412,7 +404,7 @@ def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
     return None
 
 
-def simple_literal_type(t: Optional[ProperType]) -> Optional[Instance]:
+def simple_literal_type(t: ProperType | None) -> Instance | None:
     """Extract the underlying fallback Instance type for a simple Literal"""
     if isinstance(t, Instance) and t.last_known_value is not None:
         t = t.last_known_value
@@ -449,6 +441,7 @@ def make_simplified_union(
     * [int, int] -> int
     * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
     * [Any, Any] -> Any
+    * [int, Union[bytes, str]] -> Union[int, bytes, str]
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
@@ -463,24 +456,52 @@ def make_simplified_union(
     # Step 1: expand all nested unions
     items = flatten_nested_unions(items)
 
-    # Step 2: remove redundant unions
+    # Step 2: fast path for single item
+    if len(items) == 1:
+        return get_proper_type(items[0])
+
+    # Step 3: remove redundant unions
     simplified_set: Sequence[Type] = _remove_redundant_union_items(items, keep_erased)
 
-    # Step 3: If more than one literal exists in the union, try to simplify
+    # Step 4: If more than one literal exists in the union, try to simplify
     if (
         contract_literals
         and sum(isinstance(get_proper_type(item), LiteralType) for item in simplified_set) > 1
     ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return get_proper_type(UnionType.make_union(simplified_set, line, column))
+    result = get_proper_type(UnionType.make_union(simplified_set, line, column))
+
+    nitems = len(items)
+    if nitems > 1 and (
+        nitems > 2 or not (type(items[0]) is NoneType or type(items[1]) is NoneType)
+    ):
+        # Step 5: At last, we erase any (inconsistent) extra attributes on instances.
+
+        # Initialize with None instead of an empty set as a micro-optimization. The set
+        # is needed very rarely, so we try to avoid constructing it.
+        extra_attrs_set: set[ExtraAttrs] | None = None
+        for item in items:
+            instance = try_getting_instance_fallback(item)
+            if instance and instance.extra_attrs:
+                if extra_attrs_set is None:
+                    extra_attrs_set = {instance.extra_attrs}
+                else:
+                    extra_attrs_set.add(instance.extra_attrs)
+
+        if extra_attrs_set is not None and len(extra_attrs_set) > 1:
+            fallback = try_getting_instance_fallback(result)
+            if fallback:
+                fallback.extra_attrs = None
+
+    return result
 
 
-def _remove_redundant_union_items(items: List[Type], keep_erased: bool) -> List[Type]:
+def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
     from mypy.subtypes import is_proper_subtype
 
-    removed: Set[int] = set()
-    seen: Set[Tuple[str, ...]] = set()
+    removed: set[int] = set()
+    seen: set[tuple[str, ...]] = set()
 
     # NB: having a separate fast path for Union of Literal and slow path for other things
     # would arguably be cleaner, however it breaks down when simplifying the Union of two
@@ -528,7 +549,7 @@ def _remove_redundant_union_items(items: List[Type], keep_erased: bool) -> List[
                 continue
             # actual redundancy checks (XXX?)
             if is_redundant_literal_instance(proper_item, proper_tj) and is_proper_subtype(
-                tj, item, keep_erased_types=keep_erased
+                tj, item, keep_erased_types=keep_erased, ignore_promotions=True
             ):
                 # We found a redundant item in the union.
                 removed.add(j)
@@ -543,7 +564,7 @@ def _remove_redundant_union_items(items: List[Type], keep_erased: bool) -> List[
     return [items[i] for i in range(len(items)) if i not in removed]
 
 
-def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
+def _get_type_special_method_bool_ret_type(t: Type) -> Type | None:
     t = get_proper_type(t)
 
     if isinstance(t, Instance):
@@ -683,7 +704,7 @@ def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
 
 
 def callable_type(
-    fdef: FuncItem, fallback: Instance, ret_type: Optional[Type] = None
+    fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
     if fdef.info and not fdef.is_static and fdef.arg_names:
@@ -709,7 +730,7 @@ def callable_type(
     )
 
 
-def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]:
+def try_getting_str_literals(expr: Expression, typ: Type) -> list[str] | None:
     """If the given expression or type corresponds to a string literal
     or a union of string literals, returns a list of the underlying strings.
     Otherwise, returns None.
@@ -728,7 +749,7 @@ def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]
     return try_getting_str_literals_from_type(typ)
 
 
-def try_getting_str_literals_from_type(typ: Type) -> Optional[List[str]]:
+def try_getting_str_literals_from_type(typ: Type) -> list[str] | None:
     """If the given expression or type corresponds to a string Literal
     or a union of string Literals, returns a list of the underlying strings.
     Otherwise, returns None.
@@ -739,7 +760,7 @@ def try_getting_str_literals_from_type(typ: Type) -> Optional[List[str]]:
     return try_getting_literals_from_type(typ, str, "builtins.str")
 
 
-def try_getting_int_literals_from_type(typ: Type) -> Optional[List[int]]:
+def try_getting_int_literals_from_type(typ: Type) -> list[int] | None:
     """If the given expression or type corresponds to an int Literal
     or a union of int Literals, returns a list of the underlying ints.
     Otherwise, returns None.
@@ -754,8 +775,8 @@ T = TypeVar("T")
 
 
 def try_getting_literals_from_type(
-    typ: Type, target_literal_type: TypingType[T], target_fullname: str
-) -> Optional[List[T]]:
+    typ: Type, target_literal_type: type[T], target_fullname: str
+) -> list[T] | None:
     """If the given expression or type corresponds to a Literal or
     union of Literals where the underlying values correspond to the given
     target type, returns a list of those underlying values. Otherwise,
@@ -764,13 +785,13 @@ def try_getting_literals_from_type(
     typ = get_proper_type(typ)
 
     if isinstance(typ, Instance) and typ.last_known_value is not None:
-        possible_literals: List[Type] = [typ.last_known_value]
+        possible_literals: list[Type] = [typ.last_known_value]
     elif isinstance(typ, UnionType):
         possible_literals = list(typ.items)
     else:
         possible_literals = [typ]
 
-    literals: List[T] = []
+    literals: list[T] = []
     for lit in get_proper_types(possible_literals):
         if isinstance(lit, LiteralType) and lit.fallback.type.fullname == target_fullname:
             val = lit.value
@@ -783,7 +804,7 @@ def try_getting_literals_from_type(
     return literals
 
 
-def is_literal_type_like(t: Optional[Type]) -> bool:
+def is_literal_type_like(t: Type | None) -> bool:
     """Returns 'true' if the given type context is potentially either a LiteralType,
     a Union of LiteralType, or something similar.
     """
@@ -867,7 +888,7 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     return typ
 
 
-def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]:
+def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]:
     """Contracts any literal types back into a sum type if possible.
 
     Will replace the first instance of the literal with the sum type and
@@ -879,7 +900,7 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]
     We also treat `Literal[True, False]` as `bool`.
     """
     proper_types = [get_proper_type(typ) for typ in types]
-    sum_types: Dict[str, Tuple[Set[Any], List[int]]] = {}
+    sum_types: dict[str, tuple[set[Any], list[int]]] = {}
     marked_for_deletion = set()
     for idx, typ in enumerate(proper_types):
         if isinstance(typ, LiteralType):
@@ -925,7 +946,7 @@ def coerce_to_literal(typ: Type) -> Type:
     return original_type
 
 
-def get_type_vars(tp: Type) -> List[TypeVarType]:
+def get_type_vars(tp: Type) -> list[TypeVarType]:
     return tp.accept(TypeVarExtractor())
 
 
@@ -933,13 +954,13 @@ class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
     def __init__(self) -> None:
         super().__init__(self._merge)
 
-    def _merge(self, iter: Iterable[List[TypeVarType]]) -> List[TypeVarType]:
+    def _merge(self, iter: Iterable[list[TypeVarType]]) -> list[TypeVarType]:
         out = []
         for item in iter:
             out.extend(item)
         return out
 
-    def visit_type_var(self, t: TypeVarType) -> List[TypeVarType]:
+    def visit_type_var(self, t: TypeVarType) -> list[TypeVarType]:
         return [t]
 
 
@@ -982,7 +1003,7 @@ def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> 
     return False
 
 
-def separate_union_literals(t: UnionType) -> Tuple[Sequence[LiteralType], Sequence[Type]]:
+def separate_union_literals(t: UnionType) -> tuple[Sequence[LiteralType], Sequence[Type]]:
     """Separate literals from other members in a union type."""
     literal_items = []
     union_items = []
@@ -995,3 +1016,37 @@ def separate_union_literals(t: UnionType) -> Tuple[Sequence[LiteralType], Sequen
             union_items.append(item)
 
     return literal_items, union_items
+
+
+def try_getting_instance_fallback(typ: Type) -> Instance | None:
+    """Returns the Instance fallback for this type if one exists or None."""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return typ
+    elif isinstance(typ, LiteralType):
+        return typ.fallback
+    elif isinstance(typ, NoneType):
+        return None  # Fast path for None, which is common
+    elif isinstance(typ, FunctionLike):
+        return typ.fallback
+    elif isinstance(typ, TupleType):
+        return typ.partial_fallback
+    elif isinstance(typ, TypedDictType):
+        return typ.fallback
+    elif isinstance(typ, TypeVarType):
+        return try_getting_instance_fallback(typ.upper_bound)
+    return None
+
+
+def fixup_partial_type(typ: Type) -> Type:
+    """Convert a partial type that we couldn't resolve into something concrete.
+
+    This means, for None we make it Optional[Any], and for anything else we
+    fill in all of the type arguments with Any.
+    """
+    if not isinstance(typ, PartialType):
+        return typ
+    if typ.type is None:
+        return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
+    else:
+        return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))

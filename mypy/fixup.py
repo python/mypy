@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 from typing_extensions import Final
 
 from mypy.lookup import lookup_fully_qualified
@@ -13,10 +13,12 @@ from mypy.nodes import (
     FuncDef,
     MypyFile,
     OverloadedFuncDef,
+    ParamSpecExpr,
     SymbolTable,
     TypeAlias,
     TypeInfo,
     TypeVarExpr,
+    TypeVarTupleExpr,
     Var,
 )
 from mypy.types import (
@@ -46,16 +48,16 @@ from mypy.visitor import NodeVisitor
 # N.B: we do a allow_missing fixup when fixing up a fine-grained
 # incremental cache load (since there may be cross-refs into deleted
 # modules)
-def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
+def fixup_module(tree: MypyFile, modules: dict[str, MypyFile], allow_missing: bool) -> None:
     node_fixer = NodeFixer(modules, allow_missing)
     node_fixer.visit_symbol_table(tree.names, tree.fullname)
 
 
 # TODO: Fix up .info when deserializing, i.e. much earlier.
 class NodeFixer(NodeVisitor[None]):
-    current_info: Optional[TypeInfo] = None
+    current_info: TypeInfo | None = None
 
-    def __init__(self, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
+    def __init__(self, modules: dict[str, MypyFile], allow_missing: bool) -> None:
         self.modules = modules
         self.allow_missing = allow_missing
         self.type_fixer = TypeFixer(self.modules, allow_missing)
@@ -78,12 +80,24 @@ class NodeFixer(NodeVisitor[None]):
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
                 info.update_tuple_type(info.tuple_type)
+                if info.special_alias:
+                    info.special_alias.alias_tvars = list(info.defn.type_vars)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
+                info.update_typeddict_type(info.typeddict_type)
+                if info.special_alias:
+                    info.special_alias.alias_tvars = list(info.defn.type_vars)
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
+            if info.alt_promote:
+                info.alt_promote.accept(self.type_fixer)
+                instance = Instance(info, [])
+                # Hack: We may also need to add a backwards promotion (from int to native int),
+                # since it might not be serialized.
+                if instance not in info.alt_promote.type._promote:
+                    info.alt_promote.type._promote.append(instance)
             if info._mro_refs:
                 info.mro = [
                     lookup_fully_qualified_typeinfo(
@@ -156,11 +170,17 @@ class NodeFixer(NodeVisitor[None]):
             if isinstance(v, TypeVarType):
                 for value in v.values:
                     value.accept(self.type_fixer)
-                v.upper_bound.accept(self.type_fixer)
+            v.upper_bound.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
             value.accept(self.type_fixer)
+        tv.upper_bound.accept(self.type_fixer)
+
+    def visit_paramspec_expr(self, p: ParamSpecExpr) -> None:
+        p.upper_bound.accept(self.type_fixer)
+
+    def visit_type_var_tuple_expr(self, tv: TypeVarTupleExpr) -> None:
         tv.upper_bound.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:
@@ -171,10 +191,12 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_type_alias(self, a: TypeAlias) -> None:
         a.target.accept(self.type_fixer)
+        for v in a.alias_tvars:
+            v.accept(self.type_fixer)
 
 
 class TypeFixer(TypeVisitor[None]):
-    def __init__(self, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
+    def __init__(self, modules: dict[str, MypyFile], allow_missing: bool) -> None:
         self.modules = modules
         self.allow_missing = allow_missing
 
@@ -317,7 +339,7 @@ class TypeFixer(TypeVisitor[None]):
 
 
 def lookup_fully_qualified_typeinfo(
-    modules: Dict[str, MypyFile], name: str, *, allow_missing: bool
+    modules: dict[str, MypyFile], name: str, *, allow_missing: bool
 ) -> TypeInfo:
     stnode = lookup_fully_qualified(name, modules, raise_on_missing=not allow_missing)
     node = stnode.node if stnode else None
@@ -334,7 +356,7 @@ def lookup_fully_qualified_typeinfo(
 
 
 def lookup_fully_qualified_alias(
-    modules: Dict[str, MypyFile], name: str, *, allow_missing: bool
+    modules: dict[str, MypyFile], name: str, *, allow_missing: bool
 ) -> TypeAlias:
     stnode = lookup_fully_qualified(name, modules, raise_on_missing=not allow_missing)
     node = stnode.node if stnode else None
@@ -366,7 +388,7 @@ def lookup_fully_qualified_alias(
 _SUGGESTION: Final = "<missing {}: *should* have gone away during fine-grained update>"
 
 
-def missing_info(modules: Dict[str, MypyFile]) -> TypeInfo:
+def missing_info(modules: dict[str, MypyFile]) -> TypeInfo:
     suggestion = _SUGGESTION.format("info")
     dummy_def = ClassDef(suggestion, Block([]))
     dummy_def.fullname = suggestion

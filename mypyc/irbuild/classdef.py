@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, List, Optional, Set, Tuple
+from typing import Callable
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -24,7 +24,8 @@ from mypy.nodes import (
     TypeInfo,
     is_class_var,
 )
-from mypy.types import ENUM_REMOVED_PROPS, Instance, get_proper_type
+from mypy.types import ENUM_REMOVED_PROPS, Instance, UnboundType, get_proper_type
+from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
@@ -53,7 +54,13 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.function import handle_ext_method, handle_non_ext_method, load_type
+from mypyc.irbuild.function import (
+    gen_property_getter_ir,
+    gen_property_setter_ir,
+    handle_ext_method,
+    handle_non_ext_method,
+    load_type,
+)
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op
@@ -84,7 +91,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # classes aren't necessarily populated yet at
     # prepare_class_def time.
     if any(ir.base_mro[i].base != ir.base_mro[i + 1] for i in range(len(ir.base_mro) - 1)):
-        builder.error("Non-trait MRO must be linear", cdef.line)
+        builder.error("Multiple inheritance is not supported (except for traits)", cdef.line)
 
     if ir.allow_interpreted_subclasses:
         for parent in ir.mro:
@@ -151,6 +158,26 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         else:
             builder.error("Unsupported statement in class body", stmt.line)
 
+    # Generate implicit property setters/getters
+    for name, decl in ir.method_decls.items():
+        if decl.implicit and decl.is_prop_getter:
+            getter_ir = gen_property_getter_ir(builder, decl, cdef, ir.is_trait)
+            builder.functions.append(getter_ir)
+            ir.methods[getter_ir.decl.name] = getter_ir
+
+            setter_ir = None
+            setter_name = PROPSET_PREFIX + name
+            if setter_name in ir.method_decls:
+                setter_ir = gen_property_setter_ir(
+                    builder, ir.method_decls[setter_name], cdef, ir.is_trait
+                )
+                builder.functions.append(setter_ir)
+                ir.methods[setter_name] = setter_ir
+
+            ir.properties[name] = (getter_ir, setter_ir)
+            # TODO: Generate glue method if needed?
+            # TODO: Do we need interpreted glue methods? Maybe not?
+
     cls_builder.finalize(ir)
 
 
@@ -163,7 +190,7 @@ class ClassBuilder:
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         self.builder = builder
         self.cdef = cdef
-        self.attrs_to_cache: List[Tuple[Lvalue, RType]] = []
+        self.attrs_to_cache: list[tuple[Lvalue, RType]] = []
 
     @abstractmethod
     def add_method(self, fdef: FuncDef) -> None:
@@ -233,7 +260,7 @@ class ExtClassBuilder(ClassBuilder):
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         super().__init__(builder, cdef)
         # If the class is not decorated, generate an extension class for it.
-        self.type_obj: Optional[Value] = allocate_class(builder, cdef)
+        self.type_obj: Value | None = allocate_class(builder, cdef)
 
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         """Controls whether to skip generating a default for an attribute."""
@@ -293,7 +320,7 @@ class DataClassBuilder(ExtClassBuilder):
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         return stmt.type is not None
 
-    def get_type_annotation(self, stmt: AssignmentStmt) -> Optional[TypeInfo]:
+    def get_type_annotation(self, stmt: AssignmentStmt) -> TypeInfo | None:
         # We populate __annotations__ because dataclasses uses it to determine
         # which attributes to compute on.
         ann_type = get_proper_type(stmt.type)
@@ -357,7 +384,7 @@ class AttrsClassBuilder(DataClassBuilder):
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         return True
 
-    def get_type_annotation(self, stmt: AssignmentStmt) -> Optional[TypeInfo]:
+    def get_type_annotation(self, stmt: AssignmentStmt) -> TypeInfo | None:
         if isinstance(stmt.rvalue, CallExpr):
             # find the type arg in `attr.ib(type=str)`
             callee = stmt.rvalue.callee
@@ -428,7 +455,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
 # Mypy uses these internally as base classes of TypedDict classes. These are
 # lies and don't have any runtime equivalent.
-MAGIC_TYPED_DICT_CLASSES: Final[Tuple[str, ...]] = (
+MAGIC_TYPED_DICT_CLASSES: Final[tuple[str, ...]] = (
     "typing._TypedDict",
     "typing_extensions._TypedDict",
 )
@@ -451,6 +478,7 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
             "typing.Collection",
             "typing.Reversible",
             "typing.Container",
+            "typing.Sized",
         ):
             # HAX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
             #      This could break if they were added explicitly, though...
@@ -482,7 +510,11 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
                 name = "_NamedTuple"
             base = builder.get_module_attr("typing", name, cdef.line)
         else:
-            base = builder.load_global_str(cls.name, cdef.line)
+            cls_module = cls.fullname.rsplit(".", 1)[0]
+            if cls_module == builder.current_module:
+                base = builder.load_global_str(cls.name, cdef.line)
+            else:
+                base = builder.load_module_attr_by_fullname(cls.fullname, cdef.line)
         bases.append(base)
         if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
             # The remaining base classes are synthesized by mypy and should be ignored.
@@ -548,10 +580,11 @@ def add_non_ext_class_attr_ann(
     non_ext: NonExtClassInfo,
     lvalue: NameExpr,
     stmt: AssignmentStmt,
-    get_type_info: Optional[Callable[[AssignmentStmt], Optional[TypeInfo]]] = None,
+    get_type_info: Callable[[AssignmentStmt], TypeInfo | None] | None = None,
 ) -> None:
     """Add a class attribute to __annotations__ of a non-extension class."""
-    typ: Optional[Value] = None
+    # FIXME: try to better preserve the special forms and type parameters of generics.
+    typ: Value | None = None
     if get_type_info is not None:
         type_info = get_type_info(stmt)
         if type_info:
@@ -560,7 +593,17 @@ def add_non_ext_class_attr_ann(
     if typ is None:
         # FIXME: if get_type_info is not provided, don't fall back to stmt.type?
         ann_type = get_proper_type(stmt.type)
-        if isinstance(ann_type, Instance):
+        if (
+            isinstance(stmt.unanalyzed_type, UnboundType)
+            and stmt.unanalyzed_type.original_str_expr is not None
+        ):
+            # Annotation is a forward reference, so don't attempt to load the actual
+            # type and load the string instead.
+            #
+            # TODO: is it possible to determine whether a non-string annotation is
+            # actually a forward reference due to the __annotations__ future?
+            typ = builder.load_str(stmt.unanalyzed_type.original_str_expr)
+        elif isinstance(ann_type, Instance):
             typ = load_type(builder, ann_type.type, stmt.line)
         else:
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
@@ -575,7 +618,7 @@ def add_non_ext_class_attr(
     lvalue: NameExpr,
     stmt: AssignmentStmt,
     cdef: ClassDef,
-    attr_to_cache: List[Tuple[Lvalue, RType]],
+    attr_to_cache: list[tuple[Lvalue, RType]],
 ) -> None:
     """Add a class attribute to __dict__ of a non-extension class."""
     # Only add the attribute to the __dict__ if the assignment is of the form:
@@ -596,10 +639,8 @@ def add_non_ext_class_attr(
 
 
 def find_attr_initializers(
-    builder: IRBuilder,
-    cdef: ClassDef,
-    skip: Optional[Callable[[str, AssignmentStmt], bool]] = None,
-) -> Tuple[Set[str], List[AssignmentStmt]]:
+    builder: IRBuilder, cdef: ClassDef, skip: Callable[[str, AssignmentStmt], bool] | None = None
+) -> tuple[set[str], list[AssignmentStmt]]:
     """Find initializers of attributes in a class body.
 
     If provided, the skip arg should be a callable which will return whether
@@ -655,7 +696,7 @@ def find_attr_initializers(
 
 
 def generate_attr_defaults_init(
-    builder: IRBuilder, cdef: ClassDef, default_assignments: List[AssignmentStmt]
+    builder: IRBuilder, cdef: ClassDef, default_assignments: list[AssignmentStmt]
 ) -> None:
     """Generate an initialization method for default attr values (from class vars)."""
     if not default_assignments:
@@ -768,7 +809,7 @@ def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) ->
 
 
 def cache_class_attrs(
-    builder: IRBuilder, attrs_to_cache: List[Tuple[Lvalue, RType]], cdef: ClassDef
+    builder: IRBuilder, attrs_to_cache: list[tuple[Lvalue, RType]], cdef: ClassDef
 ) -> None:
     """Add class attributes to be cached to the global cache."""
     typ = builder.load_native_type_object(cdef.info.fullname)

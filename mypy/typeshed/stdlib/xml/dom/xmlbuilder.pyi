@@ -1,3 +1,4 @@
+from _typeshed import Incomplete, Unused
 from typing import Any, NoReturn
 from typing_extensions import Literal, TypeAlias
 from urllib.request import OpenerDirector
@@ -11,20 +12,20 @@ __all__ = ["DOMBuilder", "DOMEntityResolver", "DOMInputSource"]
 #       The same as `_DOMBuilderErrorHandlerType`?
 #       Maybe `xml.sax.handler.ErrorHandler`?
 # - Return type of DOMBuilder.getFeature().
-#       We could get rid of the `Any` if we knew more
+#       We could get rid of the `Incomplete` if we knew more
 #       about `Options.errorHandler`.
 
 # ALIASES REPRESENTING MORE UNKNOWN TYPES:
 
 # probably the same as `Options.errorHandler`?
 # Maybe `xml.sax.handler.ErrorHandler`?
-_DOMBuilderErrorHandlerType: TypeAlias = Any | None
+_DOMBuilderErrorHandlerType: TypeAlias = Incomplete | None
 # probably some kind of IO...
-_DOMInputSourceCharacterStreamType: TypeAlias = Any | None
+_DOMInputSourceCharacterStreamType: TypeAlias = Incomplete | None
 # probably a string??
-_DOMInputSourceStringDataType: TypeAlias = Any | None
+_DOMInputSourceStringDataType: TypeAlias = Incomplete | None
 # probably a string??
-_DOMInputSourceEncodingType: TypeAlias = Any | None
+_DOMInputSourceEncodingType: TypeAlias = Incomplete | None
 
 class Options:
     namespaces: int
@@ -55,18 +56,17 @@ class DOMBuilder:
     ACTION_APPEND_AS_CHILDREN: Literal[2]
     ACTION_INSERT_AFTER: Literal[3]
     ACTION_INSERT_BEFORE: Literal[4]
-    def __init__(self) -> None: ...
     def setFeature(self, name: str, state: int) -> None: ...
     def supportsFeature(self, name: str) -> bool: ...
     def canSetFeature(self, name: str, state: int) -> bool: ...
     # getFeature could return any attribute from an instance of `Options`
-    def getFeature(self, name: str) -> Any: ...
+    def getFeature(self, name: str) -> Incomplete: ...
     def parseURI(self, uri: str) -> ExpatBuilder | ExpatBuilderNS: ...
     def parse(self, input: DOMInputSource) -> ExpatBuilder | ExpatBuilderNS: ...
     # `input` and `cnode` argtypes for `parseWithContext` are unknowable
     # as the function does nothing with them, and always raises an exception.
     # But `input` is *probably* `DOMInputSource`?
-    def parseWithContext(self, input: object, cnode: object, action: Literal[1, 2, 3, 4]) -> NoReturn: ...
+    def parseWithContext(self, input: Unused, cnode: Unused, action: Literal[1, 2, 3, 4]) -> NoReturn: ...
 
 class DOMEntityResolver:
     def resolveEntity(self, publicId: str | None, systemId: str) -> DOMInputSource: ...
@@ -86,9 +86,8 @@ class DOMBuilderFilter:
     FILTER_SKIP: Literal[3]
     FILTER_INTERRUPT: Literal[4]
     whatToShow: int
-    # The argtypes for acceptNode and startContainer appear to be irrelevant.
-    def acceptNode(self, element: object) -> Literal[1]: ...
-    def startContainer(self, element: object) -> Literal[1]: ...
+    def acceptNode(self, element: Unused) -> Literal[1]: ...
+    def startContainer(self, element: Unused) -> Literal[1]: ...
 
 class DocumentLS:
     async_: bool
@@ -97,8 +96,8 @@ class DocumentLS:
     # so the argtypes of `uri` and `source` are unknowable.
     # `source` is *probably* `DOMInputSource`?
     # `uri` is *probably* a str? (see DOMBuilder.parseURI())
-    def load(self, uri: object) -> NoReturn: ...
-    def loadXML(self, source: object) -> NoReturn: ...
+    def load(self, uri: Unused) -> NoReturn: ...
+    def loadXML(self, source: Unused) -> NoReturn: ...
     def saveXML(self, snode: Node | None) -> str: ...
 
 class DOMImplementationLS:

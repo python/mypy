@@ -1,7 +1,6 @@
 import sys
-from _typeshed import SupportsRead
+from _typeshed import Incomplete, SupportsRead
 from collections.abc import Sequence
-from typing import Any
 from typing_extensions import Literal, TypeAlias
 from xml.dom.minidom import Document, DOMImplementation, Element, Text
 from xml.sax.handler import ContentHandler
@@ -36,11 +35,11 @@ _Event: TypeAlias = tuple[
 class PullDOM(ContentHandler):
     document: Document | None
     documentFactory: _DocumentFactory
-    firstEvent: Any
-    lastEvent: Any
-    elementStack: Sequence[Any]
-    pending_events: Sequence[Any]
-    def __init__(self, documentFactory: _DocumentFactory = ...) -> None: ...
+    firstEvent: Incomplete
+    lastEvent: Incomplete
+    elementStack: Sequence[Incomplete]
+    pending_events: Sequence[Incomplete]
+    def __init__(self, documentFactory: _DocumentFactory = None) -> None: ...
     def pop(self) -> Element: ...
     def setDocumentLocator(self, locator) -> None: ...
     def startPrefixMapping(self, prefix, uri) -> None: ...
@@ -68,7 +67,7 @@ class DOMEventStream:
     parser: XMLReader
     bufsize: int
     def __init__(self, stream: SupportsRead[bytes] | SupportsRead[str], parser: XMLReader, bufsize: int) -> None: ...
-    pulldom: Any
+    pulldom: Incomplete
     if sys.version_info < (3, 11):
         def __getitem__(self, pos): ...
 
@@ -89,6 +88,6 @@ class SAX2DOM(PullDOM):
 default_bufsize: int
 
 def parse(
-    stream_or_string: str | SupportsRead[bytes] | SupportsRead[str], parser: XMLReader | None = ..., bufsize: int | None = ...
+    stream_or_string: str | SupportsRead[bytes] | SupportsRead[str], parser: XMLReader | None = None, bufsize: int | None = None
 ) -> DOMEventStream: ...
-def parseString(string: str, parser: XMLReader | None = ...) -> DOMEventStream: ...
+def parseString(string: str, parser: XMLReader | None = None) -> DOMEventStream: ...

@@ -7,10 +7,11 @@ import ctypes
 import mmap
 import pickle
 import sys
-from collections.abc import Awaitable, Callable, Container, Iterable, Set as AbstractSet
+from collections.abc import Awaitable, Callable, Iterable, Set as AbstractSet
+from dataclasses import Field
 from os import PathLike
 from types import FrameType, TracebackType
-from typing import Any, AnyStr, Generic, Protocol, TypeVar, Union
+from typing import Any, AnyStr, ClassVar, Generic, Protocol, TypeVar
 from typing_extensions import Final, Literal, LiteralString, TypeAlias, final
 
 _KT = TypeVar("_KT")
@@ -35,6 +36,9 @@ AnyStr_co = TypeVar("AnyStr_co", str, bytes, covariant=True)  # noqa: Y001
 # use Incomplete instead of Any as a marker. For example, use
 # "Incomplete | None" instead of "Any | None".
 Incomplete: TypeAlias = Any
+
+# To describe a function parameter that is unused and will work with anything.
+Unused: TypeAlias = object
 
 # stable
 class IdentityFunction(Protocol):
@@ -115,16 +119,17 @@ class SupportsItems(Protocol[_KT_co, _VT_co]):
 # stable
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
     def keys(self) -> Iterable[_KT]: ...
-    def __getitem__(self, __k: _KT) -> _VT_co: ...
+    def __getitem__(self, __key: _KT) -> _VT_co: ...
 
 # stable
-class SupportsGetItem(Container[_KT_contra], Protocol[_KT_contra, _VT_co]):
-    def __getitem__(self, __k: _KT_contra) -> _VT_co: ...
+class SupportsGetItem(Protocol[_KT_contra, _VT_co]):
+    def __contains__(self, __x: Any) -> bool: ...
+    def __getitem__(self, __key: _KT_contra) -> _VT_co: ...
 
 # stable
 class SupportsItemAccess(SupportsGetItem[_KT_contra, _VT], Protocol[_KT_contra, _VT]):
-    def __setitem__(self, __k: _KT_contra, __v: _VT) -> None: ...
-    def __delitem__(self, __v: _KT_contra) -> None: ...
+    def __setitem__(self, __key: _KT_contra, __value: _VT) -> None: ...
+    def __delitem__(self, __key: _KT_contra) -> None: ...
 
 StrPath: TypeAlias = str | PathLike[str]  # stable
 BytesPath: TypeAlias = bytes | PathLike[bytes]  # stable
@@ -204,6 +209,7 @@ class HasFileno(Protocol):
 
 FileDescriptor: TypeAlias = int  # stable
 FileDescriptorLike: TypeAlias = int | HasFileno  # stable
+FileDescriptorOrPath: TypeAlias = int | StrOrBytesPath
 
 # stable
 class SupportsRead(Protocol[_T_co]):
@@ -233,9 +239,33 @@ else:
     WriteableBuffer: TypeAlias = bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData  # stable
 # Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
 ReadableBuffer: TypeAlias = ReadOnlyBuffer | WriteableBuffer  # stable
+_BufferWithLen: TypeAlias = ReadableBuffer  # not stable  # noqa: Y047
+
+# Anything that implements the read-write buffer interface, and can be sliced/indexed.
+SliceableBuffer: TypeAlias = bytes | bytearray | memoryview | array.array[Any] | mmap.mmap
+IndexableBuffer: TypeAlias = bytes | bytearray | memoryview | array.array[Any] | mmap.mmap
+# https://github.com/python/typeshed/pull/9115#issuecomment-1304905864
+# Post PEP 688, they should be rewritten as such:
+# from collections.abc import Sequence
+# from typing import Sized, overload
+# class SliceableBuffer(Protocol):
+#     def __buffer__(self, __flags: int) -> memoryview: ...
+#     def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+# class IndexableBuffer(Protocol):
+#     def __buffer__(self, __flags: int) -> memoryview: ...
+#     def __getitem__(self, __i: int) -> int: ...
+# class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
+#     def __buffer__(self, __flags: int) -> memoryview: ...
+#     def __contains__(self, __x: Any) -> bool: ...
+#     @overload
+#     def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+#     @overload
+#     def __getitem__(self, __i: int) -> int: ...
+# class SizedBuffer(Sized, Protocol):  # instead of _BufferWithLen
+#     def __buffer__(self, __flags: int) -> memoryview: ...
 
 ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
-OptExcInfo: TypeAlias = Union[ExcInfo, tuple[None, None, None]]
+OptExcInfo: TypeAlias = ExcInfo | tuple[None, None, None]
 
 # stable
 if sys.version_info >= (3, 10):
@@ -263,7 +293,7 @@ class structseq(Generic[_T_co]):
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
     def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...
 
-# Superset of typing.AnyStr that also inclues LiteralString
+# Superset of typing.AnyStr that also includes LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001
 
 # Represents when str or LiteralStr is acceptable. Useful for string processing
@@ -274,5 +304,11 @@ StrOrLiteralStr = TypeVar("StrOrLiteralStr", LiteralString, str)  # noqa: Y001
 ProfileFunction: TypeAlias = Callable[[FrameType, str, Any], object]
 
 # Objects suitable to be passed to sys.settrace, threading.settrace, and similar
-# TODO: Ideally this would be a recursive type alias
-TraceFunction: TypeAlias = Callable[[FrameType, str, Any], Callable[[FrameType, str, Any], Any] | None]
+TraceFunction: TypeAlias = Callable[[FrameType, str, Any], TraceFunction | None]
+
+# experimental
+# Might not work as expected for pyright, see
+#   https://github.com/python/typeshed/pull/9362
+#   https://github.com/microsoft/pyright/issues/4339
+class DataclassInstance(Protocol):
+    __dataclass_fields__: ClassVar[dict[str, Field[Any]]]

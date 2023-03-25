@@ -12,7 +12,7 @@ import shutil
 import sys
 import tempfile
 from types import TracebackType
-from typing import Callable, Optional, Type
+from typing import Callable
 from typing_extensions import Final
 
 if sys.platform == "win32":
@@ -35,8 +35,6 @@ else:
 class IPCException(Exception):
     """Exception for IPC issues."""
 
-    pass
-
 
 class IPCBase:
     """Base class for communication between the dmypy client and server.
@@ -47,7 +45,7 @@ class IPCBase:
 
     connection: _IPCHandle
 
-    def __init__(self, name: str, timeout: Optional[float]) -> None:
+    def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
 
@@ -91,9 +89,6 @@ class IPCBase:
         if sys.platform == "win32":
             try:
                 ov, err = _winapi.WriteFile(self.connection, data, overlapped=True)
-                # TODO: remove once typeshed supports Literal types
-                assert isinstance(ov, _winapi.Overlapped)
-                assert isinstance(err, int)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
@@ -125,7 +120,7 @@ class IPCBase:
 class IPCClient(IPCBase):
     """The client side of an IPC connection."""
 
-    def __init__(self, name: str, timeout: Optional[float]) -> None:
+    def __init__(self, name: str, timeout: float | None) -> None:
         super().__init__(name, timeout)
         if sys.platform == "win32":
             timeout = int(self.timeout * 1000) if self.timeout else _winapi.NMPWAIT_WAIT_FOREVER
@@ -166,9 +161,9 @@ class IPCClient(IPCBase):
 
     def __exit__(
         self,
-        exc_ty: Optional[Type[BaseException]] = None,
-        exc_val: Optional[BaseException] = None,
-        exc_tb: Optional[TracebackType] = None,
+        exc_ty: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
     ) -> None:
         self.close()
 
@@ -177,7 +172,7 @@ class IPCServer(IPCBase):
 
     BUFFER_SIZE: Final = 2**16
 
-    def __init__(self, name: str, timeout: Optional[float] = None) -> None:
+    def __init__(self, name: str, timeout: float | None = None) -> None:
         if sys.platform == "win32":
             name = r"\\.\pipe\{}-{}.pipe".format(
                 name, base64.urlsafe_b64encode(os.urandom(6)).decode()
@@ -219,8 +214,6 @@ class IPCServer(IPCBase):
             # client never connects, though this can be "solved" by killing the server
             try:
                 ov = _winapi.ConnectNamedPipe(self.connection, overlapped=True)
-                # TODO: remove once typeshed supports Literal types
-                assert isinstance(ov, _winapi.Overlapped)
             except OSError as e:
                 # Don't raise if the client already exists, or the client already connected
                 if e.winerror not in (_winapi.ERROR_PIPE_CONNECTED, _winapi.ERROR_NO_DATA):
@@ -245,16 +238,16 @@ class IPCServer(IPCBase):
 
     def __exit__(
         self,
-        exc_ty: Optional[Type[BaseException]] = None,
-        exc_val: Optional[BaseException] = None,
-        exc_tb: Optional[TracebackType] = None,
+        exc_ty: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
     ) -> None:
         if sys.platform == "win32":
             try:
                 # Wait for the client to finish reading the last write before disconnecting
                 if not FlushFileBuffers(self.connection):
                     raise IPCException(
-                        "Failed to flush NamedPipe buffer," "maybe the client hung up?"
+                        "Failed to flush NamedPipe buffer, maybe the client hung up?"
                     )
             finally:
                 DisconnectNamedPipe(self.connection)
@@ -272,4 +265,6 @@ class IPCServer(IPCBase):
         if sys.platform == "win32":
             return self.name
         else:
-            return self.sock.getsockname()
+            name = self.sock.getsockname()
+            assert isinstance(name, str)
+            return name

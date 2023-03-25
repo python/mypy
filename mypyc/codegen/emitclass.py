@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Callable, Mapping, Tuple
 
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header
@@ -13,11 +13,12 @@ from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper,
     generate_get_wrapper,
     generate_hash_wrapper,
+    generate_ipow_wrapper,
     generate_len_wrapper,
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
+from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
 from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
@@ -61,11 +62,15 @@ AS_MAPPING_SLOT_DEFS: SlotTable = {
 AS_SEQUENCE_SLOT_DEFS: SlotTable = {"__contains__": ("sq_contains", generate_contains_wrapper)}
 
 AS_NUMBER_SLOT_DEFS: SlotTable = {
+    # Unary operations.
     "__bool__": ("nb_bool", generate_bool_wrapper),
-    "__neg__": ("nb_negative", generate_dunder_wrapper),
-    "__invert__": ("nb_invert", generate_dunder_wrapper),
     "__int__": ("nb_int", generate_dunder_wrapper),
     "__float__": ("nb_float", generate_dunder_wrapper),
+    "__neg__": ("nb_negative", generate_dunder_wrapper),
+    "__pos__": ("nb_positive", generate_dunder_wrapper),
+    "__abs__": ("nb_absolute", generate_dunder_wrapper),
+    "__invert__": ("nb_invert", generate_dunder_wrapper),
+    # Binary operations.
     "__add__": ("nb_add", generate_bin_op_wrapper),
     "__radd__": ("nb_add", generate_bin_op_wrapper),
     "__sub__": ("nb_subtract", generate_bin_op_wrapper),
@@ -78,6 +83,8 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rtruediv__": ("nb_true_divide", generate_bin_op_wrapper),
     "__floordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
     "__rfloordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
+    "__divmod__": ("nb_divmod", generate_bin_op_wrapper),
+    "__rdivmod__": ("nb_divmod", generate_bin_op_wrapper),
     "__lshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rlshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rshift__": ("nb_rshift", generate_bin_op_wrapper),
@@ -90,6 +97,7 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rxor__": ("nb_xor", generate_bin_op_wrapper),
     "__matmul__": ("nb_matrix_multiply", generate_bin_op_wrapper),
     "__rmatmul__": ("nb_matrix_multiply", generate_bin_op_wrapper),
+    # In-place binary operations.
     "__iadd__": ("nb_inplace_add", generate_dunder_wrapper),
     "__isub__": ("nb_inplace_subtract", generate_dunder_wrapper),
     "__imul__": ("nb_inplace_multiply", generate_dunder_wrapper),
@@ -102,6 +110,11 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__ior__": ("nb_inplace_or", generate_dunder_wrapper),
     "__ixor__": ("nb_inplace_xor", generate_dunder_wrapper),
     "__imatmul__": ("nb_inplace_matrix_multiply", generate_dunder_wrapper),
+    # Ternary operations. (yes, really)
+    # These are special cased in generate_bin_op_wrapper().
+    "__pow__": ("nb_power", generate_bin_op_wrapper),
+    "__rpow__": ("nb_power", generate_bin_op_wrapper),
+    "__ipow__": ("nb_inplace_power", generate_ipow_wrapper),
 }
 
 AS_ASYNC_SLOT_DEFS: SlotTable = {
@@ -141,9 +154,9 @@ def slot_key(attr: str) -> str:
     return attr
 
 
-def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
-    fields: Dict[str, str] = {}
-    generated: Dict[str, str] = {}
+def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    generated: dict[str, str] = {}
     # Sort for determinism on Python 3.5
     for name, (slot, generator) in sorted(table.items(), key=lambda x: slot_key(x[0])):
         method_cls = cl.get_method_and_class(name)
@@ -200,7 +213,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
 
-    fields: Dict[str, str] = {}
+    fields: dict[str, str] = {}
     fields["tp_name"] = f'"{name}"'
 
     generate_full = not cl.is_trait and not cl.builtin_base
@@ -296,7 +309,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
 
         if cl.allow_interpreted_subclasses:
-            shadow_vtable_name: Optional[str] = generate_vtables(
+            shadow_vtable_name: str | None = generate_vtables(
                 cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
             )
             emit_line()
@@ -326,7 +339,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         flags.append("_Py_TPFLAGS_HAVE_VECTORCALL")
         if not fields.get("tp_vectorcall"):
             # This is just a placeholder to please CPython. It will be
-            # overriden during setup.
+            # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
     fields["tp_flags"] = " | ".join(flags)
 
@@ -362,13 +375,22 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    seen_attrs: Set[Tuple[str, RType]] = set()
-    lines: List[str] = []
+    seen_attrs: set[tuple[str, RType]] = set()
+    lines: list[str] = []
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__") and emitter.use_vectorcall():
         lines.append("vectorcallfunc vectorcall;")
+    bitmap_attrs = []
     for base in reversed(cl.base_mro):
         if not base.is_trait:
+            if base.bitmap_attrs:
+                # Do we need another attribute bitmap field?
+                if emitter.bitmap_field(len(base.bitmap_attrs) - 1) not in bitmap_attrs:
+                    for i in range(0, len(base.bitmap_attrs), BITMAP_BITS):
+                        attr = emitter.bitmap_field(i)
+                        if attr not in bitmap_attrs:
+                            lines.append(f"{BITMAP_TYPE} {attr};")
+                            bitmap_attrs.append(attr)
             for attr, rtype in base.attributes.items():
                 if (attr, rtype) not in seen_attrs:
                     lines.append(f"{emitter.ctype_spaced(rtype)}{emitter.attr(attr)};")
@@ -490,7 +512,7 @@ def generate_vtable(
     entries: VTableEntries,
     vtable_name: str,
     emitter: Emitter,
-    subtables: List[Tuple[ClassIR, str, str]],
+    subtables: list[tuple[ClassIR, str, str]],
     shadow: bool,
 ) -> None:
     emitter.emit_line(f"CPyVTableItem {vtable_name}_scratch[] = {{")
@@ -524,9 +546,9 @@ def generate_vtable(
 def generate_setup_for_class(
     cl: ClassIR,
     func_name: str,
-    defaults_fn: Optional[FuncIR],
+    defaults_fn: FuncIR | None,
     vtable_name: str,
-    shadow_vtable_name: Optional[str],
+    shadow_vtable_name: str | None,
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
@@ -546,6 +568,9 @@ def generate_setup_for_class(
         emitter.emit_line("}")
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
+    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
+        field = emitter.bitmap_field(i)
+        emitter.emit_line(f"self->{field} = 0;")
 
     if cl.has_method("__call__") and emitter.use_vectorcall():
         name = cl.method_decl("__call__").cname(emitter.names)
@@ -573,7 +598,7 @@ def generate_setup_for_class(
 def generate_constructor_for_class(
     cl: ClassIR,
     fn: FuncDecl,
-    init_fn: Optional[FuncIR],
+    init_fn: FuncIR | None,
     setup_name: str,
     vtable_name: str,
     emitter: Emitter,
@@ -642,7 +667,7 @@ def generate_new_for_class(
     func_name: str,
     vtable_name: str,
     setup_name: str,
-    init_fn: Optional[FuncIR],
+    init_fn: FuncIR | None,
     emitter: Emitter,
 ) -> None:
     emitter.emit_line("static PyObject *")
@@ -781,8 +806,8 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 
 
 def generate_side_table_for_class(
-    cl: ClassIR, name: str, type: str, slots: Dict[str, str], emitter: Emitter
-) -> Optional[str]:
+    cl: ClassIR, name: str, type: str, slots: dict[str, str], emitter: Emitter
+) -> str | None:
     name = f"{cl.name_prefix(emitter.names)}_{name}"
     emitter.emit_line(f"static {type} {name} = {{")
     for field, value in slots.items():
@@ -807,7 +832,10 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                 )
             )
 
-    for prop in cl.properties:
+    for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         # Generate getter declaration
         emitter.emit_line("static PyObject *")
         emitter.emit_line(
@@ -817,7 +845,7 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
         )
 
         # Generate property setter declaration if a setter exists
-        if cl.properties[prop][1]:
+        if setter:
             emitter.emit_line("static int")
             emitter.emit_line(
                 "{}({} *self, PyObject *value, void *closure);".format(
@@ -837,11 +865,13 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
                 )
             )
             emitter.emit_line(" NULL, NULL},")
-    for prop in cl.properties:
+    for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         emitter.emit_line(f'{{"{prop}",')
         emitter.emit_line(f" (getter){getter_name(cl, prop, emitter.names)},")
 
-        setter = cl.properties[prop][1]
         if setter:
             emitter.emit_line(f" (setter){setter_name(cl, prop, emitter.names)},")
             emitter.emit_line("NULL, NULL},")
@@ -861,6 +891,9 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
             if i < len(cl.attributes) - 1:
                 emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         rtype = getter.sig.ret_type
         emitter.emit_line("")
         generate_readonly_getter(cl, prop, rtype, getter, emitter)
@@ -887,7 +920,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
     if not always_defined:
-        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", unlikely=True)
+        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
         emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
         emitter.emit_line("return NULL;")
@@ -926,7 +959,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if rtype.is_refcounted:
         attr_expr = f"self->{attr_field}"
         if not always_defined:
-            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=")
+            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, cl)
         emitter.emit_dec_ref(f"self->{attr_field}", rtype)
         if not always_defined:
             emitter.emit_line("}")
@@ -943,9 +976,14 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_lines("if (!tmp)", "    return -1;")
     emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
+    if rtype.error_overlap and not always_defined:
+        emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
+
     if deletable:
         emitter.emit_line("} else")
         emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
+        if rtype.error_overlap:
+            emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -966,6 +1004,7 @@ def generate_readonly_getter(
                 emitter.ctype_spaced(rtype), NATIVE_PREFIX, func_ir.cname(emitter.names)
             )
         )
+        emitter.emit_error_check("retval", rtype, "return NULL;")
         emitter.emit_box("retval", "retbox", rtype, declare_dest=True)
         emitter.emit_line("return retbox;")
     else:
