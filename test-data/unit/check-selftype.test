@@ -1829,3 +1829,21 @@ class C(Generic[T]):
         reveal_type(self.val)  # N: Revealed type is "__main__.A" \
                                # N: Revealed type is "__main__.B"
         self.val = x
+
+[case testNarrowSelfType]
+from typing import Self, Union
+
+class A: ...
+class B:
+    def f1(self, v: Union[Self, A]) -> A:
+        if isinstance(v, B):
+            return A()
+        else:
+            return v
+    def f2(self, v: Union[Self, A]) -> A:
+        if isinstance(v, B):
+            return A()
+        else:
+            return B()  # E: Incompatible return value type (got "B", expected "A")
+
+[builtins fixtures/isinstancelist.pyi]
