@@ -602,21 +602,31 @@ def func(names: Tuple[str, ...]):
 from typing_extensions import TypeGuard
 
 class Z:
-    def typeguard1(self, *, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
+    def typeguard1(self, *, x: object) -> TypeGuard[int]:  # line 4
         ...
     
     @staticmethod
     def typeguard2(x: object) -> TypeGuard[int]:
         ...
     
-    @staticmethod  # E: TypeGuard functions must have a positional argument
+    @staticmethod  # line 11
     def typeguard3(*, x: object) -> TypeGuard[int]:
         ...
 
-def bad_typeguard(*, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
+def bad_typeguard(*, x: object) -> TypeGuard[int]: # line 15
     ...
+
+# seperated outputs are due to a parsing difference (?)
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
+[out]
+main:4: error: TypeGuard functions must have a positional argument
+main:11: error: TypeGuard functions must have a positional argument
+main:15: error: TypeGuard functions must have a positional argument
+[out version>=3.8]
+main:4: error: TypeGuard functions must have a positional argument
+main:12: error: TypeGuard functions must have a positional argument
+main:15: error: TypeGuard functions must have a positional argument
 
 [case testTypeGuardWithKeywordArg]
 from typing_extensions import TypeGuard
