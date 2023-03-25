@@ -616,7 +616,7 @@ class Z:
 def bad_typeguard(*, x: object) -> TypeGuard[int]: # line 15
     ...
 
-# separated outputs are due to a parsing difference (?)
+# In Python 3.8 the line number associated with FunctionDef nodes changed
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
 [out]
