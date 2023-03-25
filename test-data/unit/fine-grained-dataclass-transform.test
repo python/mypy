@@ -90,3 +90,45 @@ builtins.pyi:12: note: "B" defined here
 main:7: error: Unexpected keyword argument "y" for "B"
 builtins.pyi:12: note: "B" defined here
 ==
+
+[case frozenStays]
+# flags: --python-version 3.11
+from foo import Foo
+
+foo = Foo(base=0, foo=1)
+
+[file transform.py]
+from typing import dataclass_transform, Type
+
+@dataclass_transform(frozen_default=True)
+def dataclass(cls: Type) -> Type: return cls
+
+[file base.py]
+from transform import dataclass
+
+@dataclass
+class Base:
+    base: int
+
+[file foo.py]
+from base import Base
+from transform import dataclass
+
+@dataclass
+class Foo(Base):
+    foo: int
+
+[file foo.py.2]
+from base import Base
+from transform import dataclass
+
+@dataclass
+class Foo(Base):
+    foo: int
+    bar: int = 0
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[out]
+==
