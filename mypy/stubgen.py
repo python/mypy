@@ -1015,8 +1015,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 assert isinstance(o.rvalue, CallExpr)
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
-            if isinstance(lvalue, NameExpr) and self.is_typeddict(o.rvalue):
-                assert isinstance(o.rvalue, CallExpr)
+            if (
+                isinstance(lvalue, NameExpr)
+                and isinstance(o.rvalue, CallExpr)
+                and self.is_typeddict(o.rvalue)
+            ):
                 self.process_typeddict(lvalue, o.rvalue)
                 continue
             if (
@@ -1087,9 +1090,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add(f"{self._indent}    {item}: Incomplete\n")
         self._state = CLASS
 
-    def is_typeddict(self, expr: Expression) -> bool:
-        if not isinstance(expr, CallExpr):
-            return False
+    def is_typeddict(self, expr: CallExpr) -> bool:
         callee = expr.callee
         return (
             isinstance(callee, NameExpr) and self.refers_to_fullname(callee.name, TPDICT_NAMES)
