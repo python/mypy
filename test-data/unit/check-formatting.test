@@ -30,8 +30,8 @@ xb: bytes
 xs: str
 
 '%s' % xs   # OK
-'%s' % xb   # E: If "x = b'abc'" then "%s" % x produces "b'abc'", not "abc"; if this is desired behavior use "%r" % x
-'%(name)s' % {'name': b'value'}  # E: If "x = b'abc'" then "%s" % x produces "b'abc'", not "abc"; if this is desired behavior use "%r" % x
+'%s' % xb   # E: If "x = b'abc'" then "%s" % x produces "b'abc'", not "abc". If this is desired behavior use "%r" % x. Otherwise, decode the bytes
+'%(name)s' % {'name': b'value'}  # E: If "x = b'abc'" then "%s" % x produces "b'abc'", not "abc". If this is desired behavior use "%r" % x. Otherwise, decode the bytes
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationCount]
@@ -435,21 +435,21 @@ N = NewType('N', bytes)
 n: N
 
 '{}'.format(a)
-'{}'.format(b)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x)
-'{}'.format(x)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x)
-'{}'.format(n)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x)
+'{}'.format(b)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+'{}'.format(x)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+'{}'.format(n)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
 
-f'{b}'  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x)
-f'{x}'  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x)
-f'{n}'  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x)
+f'{b}'  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+f'{x}'  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+f'{n}'  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
 
 class C(Generic[B]):
     x: B
     def meth(self) -> None:
-        '{}'.format(self.x)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x)
+        '{}'.format(self.x)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
 
 def func(x: A) -> A:
-    '{}'.format(x)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x)
+    '{}'.format(x)  # E: If "x = b'abc'" then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
     return x
 
 '{!r}'.format(a)
