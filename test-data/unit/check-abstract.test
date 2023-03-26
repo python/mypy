@@ -382,10 +382,10 @@ class A(I):
     def g(self, a: 'A') -> 'A':
         return A()
 [out]
+main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
 main:11: error: Argument 1 of "h" is incompatible with supertype "I"; supertype defines the argument type as "I"
 main:11: note: This violates the Liskov substitution principle
 main:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
 
 
 -- Accessing abstract members

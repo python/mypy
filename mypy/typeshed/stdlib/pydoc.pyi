@@ -6,16 +6,16 @@ from collections.abc import Callable, Container, Mapping, MutableMapping
 from reprlib import Repr
 from types import MethodType, ModuleType, TracebackType
 from typing import IO, Any, AnyStr, NoReturn, TypeVar
-from typing_extensions import TypeGuard
+from typing_extensions import Final, TypeGuard
 
 __all__ = ["help"]
 
 _T = TypeVar("_T")
 
-__author__: str
-__date__: str
-__version__: str
-__credits__: str
+__author__: Final[str]
+__date__: Final[str]
+__version__: Final[str]
+__credits__: Final[str]
 
 def pathdirs() -> list[str]: ...
 def getdoc(object: object) -> str: ...
@@ -40,7 +40,7 @@ class ErrorDuringImport(Exception):
     def __init__(self, filename: str, exc_info: OptExcInfo) -> None: ...
 
 def importfile(path: str) -> ModuleType: ...
-def safeimport(path: str, forceload: bool = ..., cache: MutableMapping[str, ModuleType] = ...) -> ModuleType: ...
+def safeimport(path: str, forceload: bool = ..., cache: MutableMapping[str, ModuleType] = ...) -> ModuleType | None: ...
 
 class Doc:
     PYTHONDOCS: str

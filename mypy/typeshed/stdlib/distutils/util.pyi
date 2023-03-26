@@ -1,7 +1,11 @@
+import sys
 from _typeshed import StrPath, Unused
 from collections.abc import Callable, Container, Iterable, Mapping
 from typing import Any
 from typing_extensions import Literal
+
+if sys.version_info >= (3, 8):
+    def get_host_platform() -> str: ...
 
 def get_platform() -> str: ...
 def convert_path(pathname: str) -> str: ...

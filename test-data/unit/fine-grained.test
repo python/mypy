@@ -989,7 +989,6 @@ import attr
 class A:
     a: int
     other: int
-[builtins fixtures/list.pyi]
 
 [file a.py.3]
 import attr

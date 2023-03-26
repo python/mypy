@@ -660,8 +660,6 @@ T = TypeVar("T", bound=Union[Data, Dict[str, str]])
 
 def f(data: T) -> None:
     reveal_type(data["x"]) # N: Revealed type is "Union[builtins.int, builtins.str]"
-
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTypeVarWithTypedDictValueInIndexExpression]
@@ -677,7 +675,6 @@ T = TypeVar("T", Data, Dict[str, str])
 
 def f(data: T) -> None:
     _: Union[str, int] = data["x"]
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testSelfTypeVarIndexExpr]
@@ -699,8 +696,6 @@ class Indexable:
 
     def m(self: T) -> T:
         return self["foo"]
-
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
 
 [case testTypeVarWithValueDeferral]

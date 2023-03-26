@@ -1,3 +1,4 @@
+import _ast
 import sys
 import types
 from _typeshed import (
@@ -7,6 +8,7 @@ from _typeshed import (
     OpenBinaryModeWriting,
     OpenTextMode,
     ReadableBuffer,
+    StrPath,
 )
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence
@@ -52,7 +54,9 @@ class InspectLoader(Loader):
     def get_source(self, fullname: str) -> str | None: ...
     def exec_module(self, module: types.ModuleType) -> None: ...
     @staticmethod
-    def source_to_code(data: ReadableBuffer | str, path: str = "<string>") -> types.CodeType: ...
+    def source_to_code(
+        data: ReadableBuffer | str | _ast.Module | _ast.Expression | _ast.Interactive, path: ReadableBuffer | StrPath = "<string>"
+    ) -> types.CodeType: ...
 
 class ExecutionLoader(InspectLoader):
     @abstractmethod
@@ -133,7 +137,7 @@ if sys.version_info >= (3, 9):
         @overload
         @abstractmethod
         def open(
-            self, mode: OpenBinaryMode, buffering: Literal[0], encoding: None = ..., errors: None = ..., newline: None = ...
+            self, mode: OpenBinaryMode, buffering: Literal[0], encoding: None = None, errors: None = None, newline: None = None
         ) -> FileIO: ...
         # Buffering is on: return BufferedRandom, BufferedReader, or BufferedWriter
         @overload
@@ -142,9 +146,9 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeUpdating,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedRandom: ...
         @overload
         @abstractmethod
@@ -152,9 +156,9 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeWriting,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedWriter: ...
         @overload
         @abstractmethod
@@ -162,15 +166,15 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeReading,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedReader: ...
         # Buffering cannot be determined: fall back to BinaryIO
         @overload
         @abstractmethod
         def open(
-            self, mode: OpenBinaryMode, buffering: int = ..., encoding: None = ..., errors: None = ..., newline: None = ...
+            self, mode: OpenBinaryMode, buffering: int = ..., encoding: None = None, errors: None = None, newline: None = None
         ) -> BinaryIO: ...
         # Fallback if mode is not specified
         @overload
@@ -191,7 +195,7 @@ if sys.version_info >= (3, 9):
     class TraversableResources(ResourceReader):
         @abstractmethod
         def files(self) -> Traversable: ...
-        def open_resource(self, resource: str) -> BufferedReader: ...  # type: ignore[override]
+        def open_resource(self, resource: str) -> BufferedReader: ...
         def resource_path(self, resource: Any) -> NoReturn: ...
         def is_resource(self, path: str) -> bool: ...
         def contents(self) -> Iterator[str]: ...

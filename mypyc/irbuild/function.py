@@ -643,7 +643,7 @@ def gen_glue_method(
         args = args[: -base_sig.num_bitmap_args]
         arg_kinds = arg_kinds[: -base_sig.num_bitmap_args]
         arg_names = arg_names[: -base_sig.num_bitmap_args]
-        bitmap_args = builder.builder.args[-base_sig.num_bitmap_args :]
+        bitmap_args = list(builder.builder.args[-base_sig.num_bitmap_args :])
 
     # We can do a passthrough *args/**kwargs with a native call, but if the
     # args need to get distributed out to arguments, we just let python handle it

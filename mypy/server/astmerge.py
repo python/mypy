@@ -358,7 +358,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         if node in self.replacements:
             # The subclass relationships may change, so reset all caches relevant to the
             # old MRO.
-            new = cast(TypeInfo, self.replacements[node])
+            new = self.replacements[node]
+            assert isinstance(new, TypeInfo)
             type_state.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 

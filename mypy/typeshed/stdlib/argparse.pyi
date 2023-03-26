@@ -161,16 +161,11 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
             add_help: bool = True,
             allow_abbrev: bool = True,
         ) -> None: ...
-    # The type-ignores in these overloads should be temporary.  See:
-    # https://github.com/python/typeshed/pull/2643#issuecomment-442280277
+    # Ignore errors about overlapping overloads
     @overload
-    def parse_args(self, args: Sequence[str] | None = None) -> Namespace: ...
-    @overload
-    def parse_args(self, args: Sequence[str] | None, namespace: None) -> Namespace: ...  # type: ignore[misc]
+    def parse_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...  # type: ignore[misc]
     @overload
     def parse_args(self, args: Sequence[str] | None, namespace: _N) -> _N: ...
-    @overload
-    def parse_args(self, *, namespace: None) -> Namespace: ...  # type: ignore[misc]
     @overload
     def parse_args(self, *, namespace: _N) -> _N: ...
     @overload

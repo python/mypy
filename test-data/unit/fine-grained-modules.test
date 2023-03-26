@@ -1806,7 +1806,7 @@ import b
 [file b.py]
 [file c.py]
 x = 1
-[file b.py]
+[file b.py.2]
 1+'x'
 [file c.py.2]
 x = '2'

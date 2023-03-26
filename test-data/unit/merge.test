@@ -1086,7 +1086,7 @@ a: A
 [file target.py.next]
 from _x import A
 a: A
-[file _x.pyi]
+[fixture _x.pyi]
 from typing import Generic, TypeVar, overload
 
 T = TypeVar('T')

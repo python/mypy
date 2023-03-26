@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import time
-from _typeshed import ReadableBuffer, Self, _BufferWithLen
+from _typeshed import ReadableBuffer, _BufferWithLen
 from builtins import list as _list  # conflicts with a method named "list"
 from collections.abc import Callable
 from datetime import datetime
@@ -10,7 +10,7 @@ from socket import socket as _socket
 from ssl import SSLContext, SSLSocket
 from types import TracebackType
 from typing import IO, Any, SupportsAbs, SupportsInt
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Literal, Self, TypeAlias
 
 __all__ = ["IMAP4", "IMAP4_stream", "Internaldate2tuple", "Int2AP", "ParseFlags", "Time2Internaldate", "IMAP4_SSL"]
 
@@ -69,7 +69,7 @@ class IMAP4:
     def delete(self, mailbox: str) -> _CommandResults: ...
     def deleteacl(self, mailbox: str, who: str) -> _CommandResults: ...
     def enable(self, capability: str) -> _CommandResults: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(self, t: type[BaseException] | None, v: BaseException | None, tb: TracebackType | None) -> None: ...
     def expunge(self) -> _CommandResults: ...
     def fetch(self, message_set: str, message_parts: str) -> tuple[str, _AnyResponseData]: ...

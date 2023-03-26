@@ -103,6 +103,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     UnaryExpr,
+    is_StrExpr_list,
 )
 from mypy.options import Options as MypyOptions
 from mypy.stubdoc import Sig, find_unique_signatures, parse_all_signatures
@@ -1064,7 +1065,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(rvalue.args[1], StrExpr):
             items = rvalue.args[1].value.replace(",", " ").split()
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
-            list_items = cast(List[StrExpr], rvalue.args[1].items)
+            list_items = rvalue.args[1].items
+            assert is_StrExpr_list(list_items)
             items = [item.value for item in list_items]
         else:
             self.add(f"{self._indent}{lvalue.name}: Incomplete")
@@ -1072,7 +1074,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         self.import_tracker.require_name("NamedTuple")
         self.add(f"{self._indent}class {lvalue.name}(NamedTuple):")
-        if len(items) == 0:
+        if not items:
             self.add(" ...\n")
         else:
             self.import_tracker.require_name("Incomplete")

@@ -1115,11 +1115,28 @@ o[:]   # E: Value of type "object" is not indexable
 
 [case testNonIntSliceBounds]
 from typing import Any
-a, o = None, None # type: (Any, object)
-a[o:1] # E: Slice index must be an integer or None
-a[1:o] # E: Slice index must be an integer or None
-a[o:]  # E: Slice index must be an integer or None
-a[:o]  # E: Slice index must be an integer or None
+a: Any
+o: object
+a[o:1] # E: Slice index must be an integer, SupportsIndex or None
+a[1:o] # E: Slice index must be an integer, SupportsIndex or None
+a[o:]  # E: Slice index must be an integer, SupportsIndex or None
+a[:o]  # E: Slice index must be an integer, SupportsIndex or None
+[builtins fixtures/slice.pyi]
+
+[case testSliceSupportsIndex]
+import typing_extensions
+class Index:
+    def __init__(self, value: int) -> None:
+        self.value = value
+    def __index__(self) -> int:
+        return self.value
+
+c = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+reveal_type(c[Index(0):Index(5)])  # N: Revealed type is "builtins.list[builtins.int]"
+[file typing_extensions.pyi]
+from typing import Protocol
+class SupportsIndex(Protocol):
+    def __index__(self) -> int: ...
 [builtins fixtures/slice.pyi]
 
 [case testNoneSliceBounds]

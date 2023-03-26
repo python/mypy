@@ -303,7 +303,7 @@ MypyFile:1(
 import typing
 import _m
 typing.cast(_m.C, object)
-[file _m.py]
+[fixture _m.py]
 class C: pass
 [out]
 MypyFile:1(
@@ -318,8 +318,8 @@ MypyFile:1(
 import typing
 import _m._n
 typing.cast(_m._n.C, object)
-[file _m/__init__.py]
-[file _m/_n.py]
+[fixture _m/__init__.py]
+[fixture _m/_n.py]
 class C: pass
 [out]
 MypyFile:1(
@@ -1152,7 +1152,7 @@ from typing import Generic
 from _m import T
 class A(Generic[T]):
     y = None # type: T
-[file _m.py]
+[fixture _m.py]
 from typing import TypeVar
 T = TypeVar('T')
 [out]
@@ -1175,7 +1175,7 @@ class A(Generic[_m.T]):
     a = None # type: _m.T
     def f(self, x: _m.T):
         b = None # type: _m.T
-[file _m.py]
+[fixture _m.py]
 from typing import TypeVar
 T = TypeVar('T')
 [out]
@@ -1206,7 +1206,7 @@ MypyFile:1(
 import _m
 def f(x: _m.T) -> None:
     a = None # type: _m.T
-[file _m.py]
+[fixture _m.py]
 from typing import TypeVar
 T = TypeVar('T')
 [out]
