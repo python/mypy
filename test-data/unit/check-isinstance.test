@@ -2670,10 +2670,9 @@ if type(x) == int == str:
 else:
     reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
-# mypy shows an error about "Unsupported left operand type for !=" if we don't include this
-[builtins fixtures/typing-medium.pyi]
 # mypy thinks int isn't defined unless we include this
 [builtins fixtures/primitives.pyi]
+
 [case testTypeNotEqualsCheck]
 from typing import Union
 
@@ -2683,8 +2682,6 @@ if type(x) != int:
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
-# mypy shows an error about "Unsupported left operand type for !=" if we don't include this
-[builtins fixtures/typing-medium.pyi]
 # mypy thinks int isn't defined unless we include this
 [builtins fixtures/primitives.pyi]
 
