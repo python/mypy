@@ -207,6 +207,16 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     for file_path, contents in files:
         expand_errors(contents.split("\n"), output, file_path)
 
+    seen_files = set()
+    for file, _ in files:
+        if file in seen_files:
+            raise ValueError(
+                f"{case.file}, line {first_item.line}: Duplicated filename {file}. Did you include"
+                " it multiple times?"
+            )
+
+        seen_files.add(file)
+
     case.input = input
     case.output = output
     case.output2 = output2

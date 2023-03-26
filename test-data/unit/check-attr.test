@@ -1714,8 +1714,6 @@ class C:
     # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
     # and a consequence of Callable etc. being set to an int in the test stub.
     b = attr.ib(type=Callable[[], C])
-[builtins fixtures/bool.pyi]
-
 [file b.py]
 import attr
 import a

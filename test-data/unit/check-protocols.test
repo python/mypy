@@ -2280,7 +2280,6 @@ def func2(arg: Optional[A]) -> None: ...
 x: B
 func1(x)
 func2(x)
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 main:14: error: Argument 1 to "func1" has incompatible type "B"; expected "A"
@@ -3191,7 +3190,6 @@ class NoneCompatible3(Protocol):
 
 class C(NoneCompatible3): ...
 C() # E: Cannot instantiate abstract class "C" with abstract attributes "f", "g" and "h"
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyWithFinal]
