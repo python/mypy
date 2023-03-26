@@ -2809,16 +2809,19 @@ class Y(TypedDict, total=False):
     a: int
     b: str
 
-[case testTypeddictWithNonIdentifierKeys]
+[case testTypeddictWithNonIdentifierOrKeywordKeys]
 from typing import TypedDict
 X = TypedDict('X', {'a-b': int, 'c': str})
 Y = TypedDict('X', {'a-b': int, 'c': str}, total=False)
+Z = TypedDict('X', {'a': int, 'in': str})
 [out]
 from typing import TypedDict
 
 X = TypedDict('X', {'a-b': int, 'c': str})
 
 Y = TypedDict('X', {'a-b': int, 'c': str}, total=False)
+
+Z = TypedDict('X', {'a': int, 'in': str})
 
 [case testEmptyTypeddict]
 import typing

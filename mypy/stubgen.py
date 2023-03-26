@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import keyword
 import os
 import os.path
 import sys
@@ -1112,8 +1113,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         self.import_tracker.require_name("TypedDict")
         p = AliasPrinter(self)
-        if not all(key.isidentifier() for key, _ in items):
-            # Keep the call syntax if there are non-identifier keys.
+        if any(not key.isidentifier() or keyword.iskeyword(key) for key, _ in items):
+            # Keep the call syntax if there are non-identifier or keyword keys.
             self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
             self._state = VAR
         else:
