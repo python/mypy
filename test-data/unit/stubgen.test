@@ -2854,3 +2854,11 @@ from _typeshed import Incomplete
 
 X: Incomplete
 Y: Incomplete
+
+[case testTypeddictWithWrongAttributesType]
+from typing import TypedDict
+T = TypeDict("T", {"a": int, **{"b": str, "c": bytes}})
+[out]
+from _typeshed import Incomplete
+
+T: Incomplete
