@@ -2799,7 +2799,7 @@ import typing, x
 X = typing.TypedDict('X', {'a': int, 'b': str})
 Y = typing.TypedDict('X', {'a': int, 'b': str}, total=False)
 [out]
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 class X(TypedDict):
     a: int
@@ -2827,7 +2827,7 @@ Z = TypedDict('X', {'a': int, 'in': str})
 import typing
 X = typing.TypedDict('X', {})
 [out]
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 class X(TypedDict): ...
 
@@ -2837,7 +2837,7 @@ def f(): ...
 X = _TypedDict('X', {'a': int, 'b': str})
 def g(): ...
 [out]
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 def f() -> None: ...
 

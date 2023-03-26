@@ -634,7 +634,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         # Disable implicit exports of package-internal imports?
         self.export_less = export_less
         # Add imports that could be implicitly generated
-        self.import_tracker.add_import_from("typing", [("NamedTuple", None), ("TypedDict", None)])
+        self.import_tracker.add_import_from("typing", [("NamedTuple", None)])
         # Names in __all__ are required
         for name in _all_ or ():
             if name not in IGNORED_DUNDERS:
@@ -652,6 +652,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             "_typeshed": ["Incomplete"],
             "typing": ["Any", "TypeVar"],
             "collections.abc": ["Generator"],
+            "typing_extensions": ["TypedDict"],
         }
         for pkg, imports in known_imports.items():
             for t in imports:
