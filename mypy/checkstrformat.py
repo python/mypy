@@ -435,7 +435,7 @@ class StringFormatterChecker:
                 actual_type, "__str__"
             ):
                 self.msg.fail(
-                    'If "x = b\'abc\'" then f"{x}" or "{}".format(x) produces "b\'abc\'", '
+                    'If x = b\'abc\' then f"{x}" or "{}".format(x) produces "b\'abc\'", '
                     'not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). '
                     "Otherwise, decode the bytes",
                     call,
@@ -946,7 +946,7 @@ class StringFormatterChecker:
             # Couple special cases for string formatting.
             if has_type_component(typ, "builtins.bytes"):
                 self.msg.fail(
-                    'If "x = b\'abc\'" then "%s" % x produces "b\'abc\'", not "abc". '
+                    'If x = b\'abc\' then "%s" % x produces "b\'abc\'", not "abc". '
                     'If this is desired behavior use "%r" % x. Otherwise, decode the bytes',
                     context,
                     code=codes.STR_BYTES_PY3,
