@@ -1345,7 +1345,6 @@ class Foo(bytes, Enum):
 a = Foo.A
 reveal_type(a.value)    # N: Revealed type is "Any"
 reveal_type(a._value_)  # N: Revealed type is "Any"
-[builtins fixtures/__new__.pyi]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -1368,7 +1367,6 @@ class Bar(Foo):
 a = Bar.A
 reveal_type(a.value)    # N: Revealed type is "Any"
 reveal_type(a._value_)  # N: Revealed type is "Any"
-[builtins fixtures/__new__.pyi]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 

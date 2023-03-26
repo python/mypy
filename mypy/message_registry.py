@@ -82,7 +82,7 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string i
 INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage("Incompatible types in capture pattern")
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
-INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer or None")
+INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer, SupportsIndex or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
     'Accessing "__init__" on an instance is unsound, since instance.__init__ could be from'
@@ -270,3 +270,7 @@ CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"
 CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
 MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
 CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
+
+DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL: Final = (
+    '"alias" argument to dataclass field must be a string literal'
+)

@@ -895,6 +895,16 @@ class Emitter:
             self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
             # TODO: Handle 'optional'
             # TODO: Handle 'failure'
+        elif is_float_rprimitive(typ):
+            if declare_dest:
+                self.emit_line("double {};".format(dest))
+            # TODO: Don't use __float__ and __index__
+            self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
+            self.emit_lines(
+                f"if ({dest} == -1.0 && PyErr_Occurred()) {{", f"{dest} = -113.0;", "}"
+            )
+            # TODO: Handle 'optional'
+            # TODO: Handle 'failure'
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
@@ -983,6 +993,8 @@ class Emitter:
             self.emit_line(f"{declaration}{dest} = PyLong_FromLong({src});")
         elif is_int64_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLongLong({src});")
+        elif is_float_rprimitive(typ):
+            self.emit_line(f"{declaration}{dest} = PyFloat_FromDouble({src});")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")

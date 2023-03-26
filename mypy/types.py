@@ -183,7 +183,7 @@ class TypeOfAny:
     # Does this Any come from an error?
     from_error: Final = 5
     # Is this a type that can't be represented in mypy's type system? For instance, type of
-    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
+    # call to NewType(...). Even though these types aren't real Anys, we treat them as such.
     # Also used for variables named '_'.
     special_form: Final = 6
     # Does this Any come from interaction with another Any?
@@ -950,7 +950,8 @@ class CallableArgument(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_callable_argument(self))
+        ret: T = visitor.visit_callable_argument(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -975,7 +976,8 @@ class TypeList(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_type_list(self))
+        ret: T = visitor.visit_type_list(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -1775,7 +1777,7 @@ class CallableType(FunctionLike):
         self: CT,
         arg_types: Bogus[Sequence[Type]] = _dummy,
         arg_kinds: Bogus[list[ArgKind]] = _dummy,
-        arg_names: Bogus[list[str | None]] = _dummy,
+        arg_names: Bogus[Sequence[str | None]] = _dummy,
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,
         name: Bogus[str | None] = _dummy,
@@ -1976,20 +1978,15 @@ class CallableType(FunctionLike):
         arg_type = self.arg_types[-2]
         if not isinstance(arg_type, ParamSpecType):
             return None
+
         # sometimes paramspectypes are analyzed in from mysterious places,
         # e.g. def f(prefix..., *args: P.args, **kwargs: P.kwargs) -> ...: ...
         prefix = arg_type.prefix
         if not prefix.arg_types:
             # TODO: confirm that all arg kinds are positional
             prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
-        return ParamSpecType(
-            arg_type.name,
-            arg_type.fullname,
-            arg_type.id,
-            ParamSpecFlavor.BARE,
-            arg_type.upper_bound,
-            prefix=prefix,
-        )
+
+        return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
     def expand_param_spec(
         self, c: CallableType | Parameters, no_prefix: bool = False
@@ -2489,7 +2486,8 @@ class RawExpressionType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_raw_expression_type(self))
+        ret: T = visitor.visit_raw_expression_type(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2736,7 +2734,8 @@ class EllipsisType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_ellipsis_type(self))
+        ret: T = visitor.visit_ellipsis_type(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2845,7 +2844,8 @@ class PlaceholderType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_placeholder_type(self))
+        ret: T = visitor.visit_placeholder_type(self)
+        return ret
 
     def __hash__(self) -> int:
         return hash((self.fullname, tuple(self.args)))

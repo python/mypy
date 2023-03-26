@@ -1,10 +1,10 @@
 import sys
-from _typeshed import Self, SupportsRichComparisonT
+from _typeshed import SupportsRichComparisonT
 from collections.abc import Hashable, Iterable, Sequence
 from decimal import Decimal
 from fractions import Fraction
 from typing import Any, NamedTuple, SupportsFloat, TypeVar
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Literal, Self, TypeAlias
 
 __all__ = [
     "StatisticsError",
@@ -93,7 +93,7 @@ if sys.version_info >= (3, 8):
         @property
         def variance(self) -> float: ...
         @classmethod
-        def from_samples(cls: type[Self], data: Iterable[SupportsFloat]) -> Self: ...
+        def from_samples(cls, data: Iterable[SupportsFloat]) -> Self: ...
         def samples(self, n: int, *, seed: Any | None = None) -> list[float]: ...
         def pdf(self, x: float) -> float: ...
         def cdf(self, x: float) -> float: ...

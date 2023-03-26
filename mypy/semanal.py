@@ -216,6 +216,7 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     find_dataclass_transform_spec,
     has_placeholder,
+    require_bool_literal_argument,
     set_callable_name as set_callable_name,
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
@@ -235,7 +236,7 @@ from mypy.typeanal import (
     remove_dups,
     type_constructors,
 )
-from mypy.typeops import function_type, get_type_vars
+from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
 from mypy.types import (
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
@@ -866,11 +867,8 @@ class SemanticAnalyzer(
                 assert isinstance(result, ProperType)
                 if isinstance(result, CallableType):
                     # type guards need to have a positional argument, to spec
-                    if (
-                        result.type_guard
-                        and ARG_POS not in result.arg_kinds[self.is_class_scope() :]
-                        and not defn.is_static
-                    ):
+                    skip_self = self.is_class_scope() and not defn.is_static
+                    if result.type_guard and ARG_POS not in result.arg_kinds[skip_self:]:
                         self.fail(
                             "TypeGuard functions must have a positional argument",
                             result,
@@ -1313,7 +1311,8 @@ class SemanticAnalyzer(
         """
         defn.is_property = True
         items = defn.items
-        first_item = cast(Decorator, defn.items[0])
+        first_item = defn.items[0]
+        assert isinstance(first_item, Decorator)
         deleted_items = []
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
@@ -1356,7 +1355,8 @@ class SemanticAnalyzer(
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
-                typ = cast(CallableType, defn.type)
+                typ = defn.type
+                assert isinstance(typ, CallableType)
                 a.bind_function_type_variables(typ, defn)
                 for i in range(len(typ.arg_types)):
                     store_argument_type(defn, i, typ, self.named_type)
@@ -1368,8 +1368,11 @@ class SemanticAnalyzer(
                 # The first argument of a non-static, non-class method is like 'self'
                 # (though the name could be different), having the enclosing class's
                 # instance type.
-                if is_method and not defn.is_static and not defn.is_class and defn.arguments:
-                    defn.arguments[0].variable.is_self = True
+                if is_method and not defn.is_static and defn.arguments:
+                    if not defn.is_class:
+                        defn.arguments[0].variable.is_self = True
+                    else:
+                        defn.arguments[0].variable.is_cls = True
 
                 defn.body.accept(self)
             self.function_stack.pop()
@@ -2612,11 +2615,14 @@ class SemanticAnalyzer(
                 typing_extensions = self.modules.get("typing_extensions")
                 if typing_extensions and source_id in typing_extensions.names:
                     self.msg.note(
-                        f"Use `from typing_extensions import {source_id}` instead", context
+                        f"Use `from typing_extensions import {source_id}` instead",
+                        context,
+                        code=codes.ATTR_DEFINED,
                     )
                     self.msg.note(
                         "See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module",
                         context,
+                        code=codes.ATTR_DEFINED,
                     )
 
     def process_import_over_existing_name(
@@ -5104,7 +5110,7 @@ class SemanticAnalyzer(
                 return None
             types.append(analyzed)
 
-        if has_param_spec and num_args == 1 and len(types) > 0:
+        if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             if not (
                 len(types) == 1
@@ -5248,7 +5254,9 @@ class SemanticAnalyzer(
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope() or not self.function_stack:
             # We check both because is_function_scope() returns True inside comprehensions.
-            self.fail('"await" outside function', expr, serious=True, blocker=True)
+            # This is not a blocker, because some enviroments (like ipython)
+            # support top level awaits.
+            self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:
             self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
         expr.expr.accept(self)
@@ -5804,7 +5812,7 @@ class SemanticAnalyzer(
         # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
         # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
         # See also https://github.com/mypyc/mypyc/issues/892
-        f = cast(Any, lambda x: x)
+        f: Callable[[object], Any] = lambda x: x
         if isinstance(f(symbol_node), (Decorator, FuncBase, Var)):
             # For imports in class scope, we construct a new node to represent the symbol and
             # set its `info` attribute to `self.type`.
@@ -6461,6 +6469,17 @@ class SemanticAnalyzer(
                 return False
         return None
 
+    def parse_str_literal(self, expr: Expression) -> str | None:
+        """Attempt to find the string literal value of the given expression. Returns `None` if no
+        literal value can be found."""
+        if isinstance(expr, StrExpr):
+            return expr.value
+        if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.type is not None:
+            values = try_getting_str_literals_from_type(expr.node.type)
+            if values is not None and len(values) == 1:
+                return values[0]
+        return None
+
     def set_future_import_flags(self, module_name: str) -> None:
         if module_name in FUTURE_IMPORTS:
             self.modules[self.cur_mod_id].future_import_flags.add(FUTURE_IMPORTS[module_name])
@@ -6473,15 +6492,21 @@ class SemanticAnalyzer(
         typing.dataclass_transform."""
         parameters = DataclassTransformSpec()
         for name, value in zip(call.arg_names, call.args):
+            # Skip any positional args. Note that any such args are invalid, but we can rely on
+            # typeshed to enforce this and don't need an additional error here.
+            if name is None:
+                continue
+
             # field_specifiers is currently the only non-boolean argument; check for it first so
             # so the rest of the block can fail through to handling booleans
             if name == "field_specifiers":
-                self.fail('"field_specifiers" support is currently unimplemented', call)
+                parameters.field_specifiers = self.parse_dataclass_transform_field_specifiers(
+                    value
+                )
                 continue
 
-            boolean = self.parse_bool(value)
+            boolean = require_bool_literal_argument(self, value, name)
             if boolean is None:
-                self.fail(f'"{name}" argument must be a True or False literal', call)
                 continue
 
             if name == "eq_default":
@@ -6496,6 +6521,19 @@ class SemanticAnalyzer(
                 self.fail(f'Unrecognized dataclass_transform parameter "{name}"', call)
 
         return parameters
+
+    def parse_dataclass_transform_field_specifiers(self, arg: Expression) -> tuple[str, ...]:
+        if not isinstance(arg, TupleExpr):
+            self.fail('"field_specifiers" argument must be a tuple literal', arg)
+            return tuple()
+
+        names = []
+        for specifier in arg.items:
+            if not isinstance(specifier, RefExpr):
+                self.fail('"field_specifiers" must only contain identifiers', specifier)
+                return tuple()
+            names.append(specifier.fullname)
+        return tuple(names)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

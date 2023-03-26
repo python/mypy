@@ -1,9 +1,9 @@
 import socket
-from _typeshed import Self
 from collections.abc import Callable, Sequence
 from re import Match, Pattern
 from types import TracebackType
 from typing import Any
+from typing_extensions import Self
 
 __all__ = ["Telnet"]
 
@@ -115,7 +115,7 @@ class Telnet:
     def expect(
         self, list: Sequence[Pattern[bytes] | bytes], timeout: float | None = None
     ) -> tuple[int, Match[bytes] | None, bytes]: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...

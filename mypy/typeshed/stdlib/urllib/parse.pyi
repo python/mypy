@@ -40,13 +40,10 @@ scheme_chars: str
 if sys.version_info < (3, 11):
     MAX_CACHE_SIZE: int
 
-class _ResultMixinBase(Generic[AnyStr]):
-    def geturl(self) -> AnyStr: ...
-
-class _ResultMixinStr(_ResultMixinBase[str]):
+class _ResultMixinStr:
     def encode(self, encoding: str = "ascii", errors: str = "strict") -> _ResultMixinBytes: ...
 
-class _ResultMixinBytes(_ResultMixinBase[bytes]):
+class _ResultMixinBytes:
     def decode(self, encoding: str = "ascii", errors: str = "strict") -> _ResultMixinStr: ...
 
 class _NetlocResultMixinBase(Generic[AnyStr]):
@@ -64,55 +61,44 @@ class _NetlocResultMixinBase(Generic[AnyStr]):
 class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): ...
 class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes): ...
 
-# Ideally this would be a generic fixed-length tuple,
-# but mypy doesn't support that yet: https://github.com/python/mypy/issues/685#issuecomment-992014179
-class _DefragResultBase(tuple[AnyStr, ...], Generic[AnyStr]):
-    if sys.version_info >= (3, 10):
-        __match_args__ = ("url", "fragment")
-    @property
-    def url(self) -> AnyStr: ...
-    @property
-    def fragment(self) -> AnyStr: ...
+class _DefragResultBase(NamedTuple, Generic[AnyStr]):
+    url: AnyStr
+    fragment: AnyStr
 
-class _SplitResultBase(NamedTuple):
-    scheme: str
-    netloc: str
-    path: str
-    query: str
-    fragment: str
+class _SplitResultBase(NamedTuple, Generic[AnyStr]):
+    scheme: AnyStr
+    netloc: AnyStr
+    path: AnyStr
+    query: AnyStr
+    fragment: AnyStr
 
-class _SplitResultBytesBase(NamedTuple):
-    scheme: bytes
-    netloc: bytes
-    path: bytes
-    query: bytes
-    fragment: bytes
-
-class _ParseResultBase(NamedTuple):
-    scheme: str
-    netloc: str
-    path: str
-    params: str
-    query: str
-    fragment: str
-
-class _ParseResultBytesBase(NamedTuple):
-    scheme: bytes
-    netloc: bytes
-    path: bytes
-    params: bytes
-    query: bytes
-    fragment: bytes
+class _ParseResultBase(NamedTuple, Generic[AnyStr]):
+    scheme: AnyStr
+    netloc: AnyStr
+    path: AnyStr
+    params: AnyStr
+    query: AnyStr
+    fragment: AnyStr
 
 # Structured result objects for string data
-class DefragResult(_DefragResultBase[str], _ResultMixinStr): ...
-class SplitResult(_SplitResultBase, _NetlocResultMixinStr): ...
-class ParseResult(_ParseResultBase, _NetlocResultMixinStr): ...
+class DefragResult(_DefragResultBase[str], _ResultMixinStr):
+    def geturl(self) -> str: ...
+
+class SplitResult(_SplitResultBase[str], _NetlocResultMixinStr):
+    def geturl(self) -> str: ...
+
+class ParseResult(_ParseResultBase[str], _NetlocResultMixinStr):
+    def geturl(self) -> str: ...
 
 # Structured result objects for bytes data
-class DefragResultBytes(_DefragResultBase[bytes], _ResultMixinBytes): ...
-class SplitResultBytes(_SplitResultBytesBase, _NetlocResultMixinBytes): ...
-class ParseResultBytes(_ParseResultBytesBase, _NetlocResultMixinBytes): ...
+class DefragResultBytes(_DefragResultBase[bytes], _ResultMixinBytes):
+    def geturl(self) -> bytes: ...
+
+class SplitResultBytes(_SplitResultBase[bytes], _NetlocResultMixinBytes):
+    def geturl(self) -> bytes: ...
+
+class ParseResultBytes(_ParseResultBase[bytes], _NetlocResultMixinBytes):
+    def geturl(self) -> bytes: ...
 
 def parse_qs(
     qs: AnyStr | None,
@@ -192,26 +178,22 @@ def urljoin(base: AnyStr, url: AnyStr | None, allow_fragments: bool = True) -> A
 @overload
 def urlparse(url: str, scheme: str = "", allow_fragments: bool = True) -> ParseResult: ...
 @overload
-def urlparse(url: bytes | bytearray, scheme: bytes | bytearray | None, allow_fragments: bool = True) -> ParseResultBytes: ...
-@overload
 def urlparse(
-    url: None, scheme: bytes | bytearray | None | Literal[""] = "", allow_fragments: bool = True
+    url: bytes | bytearray | None, scheme: bytes | bytearray | None | Literal[""] = "", allow_fragments: bool = True
 ) -> ParseResultBytes: ...
 @overload
 def urlsplit(url: str, scheme: str = "", allow_fragments: bool = True) -> SplitResult: ...
 
 if sys.version_info >= (3, 11):
     @overload
-    def urlsplit(url: bytes, scheme: bytes | None, allow_fragments: bool = True) -> SplitResultBytes: ...
-    @overload
-    def urlsplit(url: None, scheme: bytes | None | Literal[""] = "", allow_fragments: bool = True) -> SplitResultBytes: ...
+    def urlsplit(
+        url: bytes | None, scheme: bytes | None | Literal[""] = "", allow_fragments: bool = True
+    ) -> SplitResultBytes: ...
 
 else:
     @overload
-    def urlsplit(url: bytes | bytearray, scheme: bytes | bytearray | None, allow_fragments: bool = True) -> SplitResultBytes: ...
-    @overload
     def urlsplit(
-        url: None, scheme: bytes | bytearray | None | Literal[""] = "", allow_fragments: bool = True
+        url: bytes | bytearray | None, scheme: bytes | bytearray | None | Literal[""] = "", allow_fragments: bool = True
     ) -> SplitResultBytes: ...
 
 @overload

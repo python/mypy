@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable
-from typing_extensions import Final, Protocol
+from typing import Callable, overload
+from typing_extensions import Final, Literal, Protocol
 
 from mypy_extensions import trait
 
 from mypy import join
-from mypy.errorcodes import ErrorCode
+from mypy.errorcodes import LITERAL_REQ, ErrorCode
 from mypy.nodes import (
     CallExpr,
     ClassDef,
@@ -19,12 +19,14 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     Node,
+    OverloadedFuncDef,
     RefExpr,
     SymbolNode,
     SymbolTable,
     SymbolTableNode,
     TypeInfo,
 )
+from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
@@ -379,6 +381,17 @@ def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec |
         # `@dataclass_transform(...)` syntax and never `@dataclass_transform`
         node = node.func
 
+    if isinstance(node, OverloadedFuncDef):
+        # The dataclass_transform decorator may be attached to any single overload, so we must
+        # search them all.
+        # Note that using more than one decorator is undefined behavior, so we can just take the
+        # first that we find.
+        for candidate in node.items:
+            spec = find_dataclass_transform_spec(candidate)
+            if spec is not None:
+                return spec
+        return find_dataclass_transform_spec(node.impl)
+
     # For functions, we can directly consult the AST field for the spec
     if isinstance(node, FuncDef):
         return node.dataclass_transform_spec
@@ -408,3 +421,41 @@ def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec |
             return metaclass_type.type.dataclass_transform_spec
 
     return None
+
+
+# Never returns `None` if a default is given
+@overload
+def require_bool_literal_argument(
+    api: SemanticAnalyzerInterface | SemanticAnalyzerPluginInterface,
+    expression: Expression,
+    name: str,
+    default: Literal[True] | Literal[False],
+) -> bool:
+    ...
+
+
+@overload
+def require_bool_literal_argument(
+    api: SemanticAnalyzerInterface | SemanticAnalyzerPluginInterface,
+    expression: Expression,
+    name: str,
+    default: None = None,
+) -> bool | None:
+    ...
+
+
+def require_bool_literal_argument(
+    api: SemanticAnalyzerInterface | SemanticAnalyzerPluginInterface,
+    expression: Expression,
+    name: str,
+    default: bool | None = None,
+) -> bool | None:
+    """Attempt to interpret an expression as a boolean literal, and fail analysis if we can't."""
+    value = api.parse_bool(expression)
+    if value is None:
+        api.fail(
+            f'"{name}" argument must be a True or False literal', expression, code=LITERAL_REQ
+        )
+        return default
+
+    return value

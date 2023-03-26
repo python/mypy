@@ -1,11 +1,11 @@
 import enum
 import sys
-from _typeshed import Self, Unused
+from _typeshed import Unused
 from collections import deque
 from collections.abc import Callable, Generator
 from types import TracebackType
 from typing import Any, TypeVar
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
 
 from .events import AbstractEventLoop
 from .futures import Future
@@ -103,7 +103,7 @@ if sys.version_info >= (3, 11):
 
     class Barrier(_LoopBoundMixin):
         def __init__(self, parties: int) -> None: ...
-        async def __aenter__(self: Self) -> Self: ...
+        async def __aenter__(self) -> Self: ...
         async def __aexit__(self, *args: Unused) -> None: ...
         async def wait(self) -> int: ...
         async def abort(self) -> None: ...

@@ -1016,35 +1016,24 @@ def assign_and_return_float_sum() -> float:
     return f1 * f2 + f3
 [out]
 def assign_and_return_float_sum():
-    r0, f1, r1, f2, r2, f3 :: float
-    r3 :: object
-    r4 :: float
-    r5 :: object
-    r6 :: float
+    f1, f2, f3, r0, r1 :: float
 L0:
-    r0 = 1.0
-    f1 = r0
-    r1 = 2.0
-    f2 = r1
-    r2 = 3.0
-    f3 = r2
-    r3 = PyNumber_Multiply(f1, f2)
-    r4 = cast(float, r3)
-    r5 = PyNumber_Add(r4, f3)
-    r6 = cast(float, r5)
-    return r6
+    f1 = 1.0
+    f2 = 2.0
+    f3 = 3.0
+    r0 = f1 * f2
+    r1 = r0 + f3
+    return r1
 
 [case testLoadComplex]
 def load() -> complex:
     return 5j+1.0
 [out]
 def load():
-    r0 :: object
-    r1 :: float
-    r2 :: object
+    r0, r1, r2 :: object
 L0:
     r0 = 5j
-    r1 = 1.0
+    r1 = box(float, 1.0)
     r2 = PyNumber_Add(r0, r1)
     return r2
 
@@ -1176,10 +1165,8 @@ L0:
     r5 = unbox(int, r4)
     return r5
 def return_float():
-    r0 :: float
 L0:
-    r0 = 5.0
-    return r0
+    return 5.0
 def return_callable_type():
     r0 :: dict
     r1 :: str
@@ -1196,7 +1183,7 @@ L0:
     r0 = return_callable_type()
     f = r0
     r1 = PyObject_CallFunctionObjArgs(f, 0)
-    r2 = cast(float, r1)
+    r2 = unbox(float, r1)
     return r2
 
 [case testCallableTypesWithKeywordArgs]
@@ -3573,7 +3560,7 @@ def f() -> None:
 def f():
     i, r0 :: int
     r1, i__redef__, r2 :: str
-    r3, i__redef____redef__ :: float
+    i__redef____redef__ :: float
 L0:
     i = 0
     r0 = CPyTagged_Add(i, 2)
@@ -3582,8 +3569,7 @@ L0:
     i__redef__ = r1
     r2 = CPyStr_Append(i__redef__, i__redef__)
     i__redef__ = r2
-    r3 = 0.0
-    i__redef____redef__ = r3
+    i__redef____redef__ = 0.0
     return 1
 
 [case testNewType]

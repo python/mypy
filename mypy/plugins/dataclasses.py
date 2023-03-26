@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Iterator, Optional
 from typing_extensions import Final
 
+from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -16,11 +17,13 @@ from mypy.nodes import (
     MDEF,
     Argument,
     AssignmentStmt,
+    Block,
     CallExpr,
     ClassDef,
     Context,
     DataclassTransformSpec,
     Expression,
+    IfStmt,
     JsonDict,
     NameExpr,
     Node,
@@ -41,7 +44,7 @@ from mypy.plugins.common import (
     add_method_to_class,
     deserialize_and_fixup_type,
 )
-from mypy.semanal_shared import find_dataclass_transform_spec
+from mypy.semanal_shared import find_dataclass_transform_spec, require_bool_literal_argument
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
 from mypy.typeops import map_type_from_supertype
@@ -77,6 +80,7 @@ class DataclassAttribute:
     def __init__(
         self,
         name: str,
+        alias: str | None,
         is_in_init: bool,
         is_init_var: bool,
         has_default: bool,
@@ -85,8 +89,10 @@ class DataclassAttribute:
         type: Type | None,
         info: TypeInfo,
         kw_only: bool,
+        is_neither_frozen_nor_nonfrozen: bool,
     ) -> None:
         self.name = name
+        self.alias = alias
         self.is_in_init = is_in_init
         self.is_init_var = is_init_var
         self.has_default = has_default
@@ -95,6 +101,7 @@ class DataclassAttribute:
         self.type = type
         self.info = info
         self.kw_only = kw_only
+        self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
 
     def to_argument(self, current_info: TypeInfo) -> Argument:
         arg_kind = ARG_POS
@@ -121,12 +128,13 @@ class DataclassAttribute:
         return self.type
 
     def to_var(self, current_info: TypeInfo) -> Var:
-        return Var(self.name, self.expand_type(current_info))
+        return Var(self.alias or self.name, self.expand_type(current_info))
 
     def serialize(self) -> JsonDict:
         assert self.type
         return {
             "name": self.name,
+            "alias": self.alias,
             "is_in_init": self.is_in_init,
             "is_init_var": self.is_init_var,
             "has_default": self.has_default,
@@ -134,6 +142,7 @@ class DataclassAttribute:
             "column": self.column,
             "type": self.type.serialize(),
             "kw_only": self.kw_only,
+            "is_neither_frozen_nor_nonfrozen": self.is_neither_frozen_nor_nonfrozen,
         }
 
     @classmethod
@@ -286,7 +295,11 @@ class DataclassTransformer:
         parent_decorator_arguments = []
         for parent in info.mro[1:-1]:
             parent_args = parent.metadata.get("dataclass")
-            if parent_args:
+
+            # Ignore parent classes that directly specify a dataclass transform-decorated metaclass
+            # when searching for usage of the frozen parameter. PEP 681 states that a class that
+            # directly specifies such a metaclass must be treated as neither frozen nor non-frozen.
+            if parent_args and not _has_direct_dataclass_transform_metaclass(parent):
                 parent_decorator_arguments.append(parent_args)
 
         if decorator_arguments["frozen"]:
@@ -376,6 +389,22 @@ class DataclassTransformer:
                             # recreate a symbol node for this attribute.
                             lvalue.node = None
 
+    def _get_assignment_statements_from_if_statement(
+        self, stmt: IfStmt
+    ) -> Iterator[AssignmentStmt]:
+        for body in stmt.body:
+            if not body.is_unreachable:
+                yield from self._get_assignment_statements_from_block(body)
+        if stmt.else_body is not None and not stmt.else_body.is_unreachable:
+            yield from self._get_assignment_statements_from_block(stmt.else_body)
+
+    def _get_assignment_statements_from_block(self, block: Block) -> Iterator[AssignmentStmt]:
+        for stmt in block.body:
+            if isinstance(stmt, AssignmentStmt):
+                yield stmt
+            elif isinstance(stmt, IfStmt):
+                yield from self._get_assignment_statements_from_if_statement(stmt)
+
     def collect_attributes(self) -> list[DataclassAttribute] | None:
         """Collect all attributes declared in the dataclass and its parents.
 
@@ -434,10 +463,10 @@ class DataclassTransformer:
         # Second, collect attributes belonging to the current class.
         current_attr_names: set[str] = set()
         kw_only = self._get_bool_arg("kw_only", self._spec.kw_only_default)
-        for stmt in cls.defs.body:
+        for stmt in self._get_assignment_statements_from_block(cls.defs):
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
-            if not (isinstance(stmt, AssignmentStmt) and stmt.new_syntax):
+            if not stmt.new_syntax:
                 continue
 
             # a: int, b: str = 1, 'foo' is not supported syntax so we
@@ -495,7 +524,12 @@ class DataclassTransformer:
             # Ensure that something like x: int = field() is rejected
             # after an attribute with a default.
             if has_field_call:
-                has_default = "default" in field_args or "default_factory" in field_args
+                has_default = (
+                    "default" in field_args
+                    or "default_factory" in field_args
+                    # alias for default_factory defined in PEP 681
+                    or "factory" in field_args
+                )
 
             # All other assignments are already type checked.
             elif not isinstance(stmt.rvalue, TempNode):
@@ -511,7 +545,11 @@ class DataclassTransformer:
             # kw_only value from the decorator parameter.
             field_kw_only_param = field_args.get("kw_only")
             if field_kw_only_param is not None:
-                is_kw_only = bool(self._api.parse_bool(field_kw_only_param))
+                value = self._api.parse_bool(field_kw_only_param)
+                if value is not None:
+                    is_kw_only = value
+                else:
+                    self._api.fail('"kw_only" argument must be a boolean literal', stmt.rvalue)
 
             if sym.type is None and node.is_final and node.is_inferred:
                 # This is a special case, assignment like x: Final = 42 is classified
@@ -529,9 +567,20 @@ class DataclassTransformer:
                     )
                     node.type = AnyType(TypeOfAny.from_error)
 
+            alias = None
+            if "alias" in field_args:
+                alias = self._api.parse_str_literal(field_args["alias"])
+                if alias is None:
+                    self._api.fail(
+                        message_registry.DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL,
+                        stmt.rvalue,
+                        code=errorcodes.LITERAL_REQ,
+                    )
+
             current_attr_names.add(lhs.name)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
+                alias=alias,
                 is_in_init=is_in_init,
                 is_init_var=is_init_var,
                 has_default=has_default,
@@ -540,6 +589,9 @@ class DataclassTransformer:
                 type=sym.type,
                 info=cls.info,
                 kw_only=is_kw_only,
+                is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
+                    cls.info
+                ),
             )
 
         all_attrs = list(found_attrs.values())
@@ -582,6 +634,13 @@ class DataclassTransformer:
         """
         info = self._cls.info
         for attr in attributes:
+            # Classes that directly specify a dataclass_transform metaclass must be neither frozen
+            # non non-frozen per PEP681. Though it is surprising, this means that attributes from
+            # such a class must be writable even if the rest of the class heirarchy is frozen. This
+            # matches the behavior of Pyright (the reference implementation).
+            if attr.is_neither_frozen_nor_nonfrozen:
+                continue
+
             sym_node = info.names.get(attr.name)
             if sym_node is not None:
                 var = sym_node.node
@@ -626,7 +685,16 @@ class DataclassTransformer:
     def _add_dataclass_fields_magic_attribute(self) -> None:
         attr_name = "__dataclass_fields__"
         any_type = AnyType(TypeOfAny.explicit)
-        field_type = self._api.named_type_or_none("dataclasses.Field", [any_type]) or any_type
+        # For `dataclasses`, use the type `dict[str, Field[Any]]` for accuracy. For dataclass
+        # transforms, it's inaccurate to use `Field` since a given transform may use a completely
+        # different type (or none); fall back to `Any` there.
+        #
+        # In either case, we're aiming to match the Typeshed stub for `is_dataclass`, which expects
+        # the instance to have a `__dataclass_fields__` attribute of type `dict[str, Field[Any]]`.
+        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+            field_type = self._api.named_type_or_none("dataclasses.Field", [any_type]) or any_type
+        else:
+            field_type = any_type
         attr_type = self._api.named_type(
             "builtins.dict", [self._api.named_type("builtins.str"), field_type]
         )
@@ -657,6 +725,12 @@ class DataclassTransformer:
                         # the best we can do for now is not to fail.
                         # TODO: we can infer what's inside `**` and try to collect it.
                         message = 'Unpacking **kwargs in "field()" is not supported'
+                    elif self._spec is not _TRANSFORM_SPEC_FOR_DATACLASSES:
+                        # dataclasses.field can only be used with keyword args, but this
+                        # restriction is only enforced for the *standardized* arguments to
+                        # dataclass_transform field specifiers. If this is not a
+                        # dataclasses.dataclass class, we can just skip positional args safely.
+                        continue
                     else:
                         message = '"field()" does not accept positional arguments'
                     self._api.fail(message, expr)
@@ -678,11 +752,7 @@ class DataclassTransformer:
         # class's keyword arguments (ie `class Subclass(Parent, kwarg1=..., kwarg2=...)`)
         expression = self._cls.keywords.get(name)
         if expression is not None:
-            value = self._api.parse_bool(self._cls.keywords[name])
-            if value is not None:
-                return value
-            else:
-                self._api.fail(f'"{name}" argument must be True or False', expression)
+            return require_bool_literal_argument(self._api, expression, name, default)
         return default
 
 
@@ -734,3 +804,10 @@ def _is_dataclasses_decorator(node: Node) -> bool:
     if isinstance(node, RefExpr):
         return node.fullname in dataclass_makers
     return False
+
+
+def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
+    return (
+        info.declared_metaclass is not None
+        and info.declared_metaclass.type.dataclass_transform_spec is not None
+    )

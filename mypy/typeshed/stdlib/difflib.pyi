@@ -57,9 +57,8 @@ class SequenceMatcher(Generic[_T]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-# mypy thinks the signatures of the overloads overlap, but the types still work fine
 @overload
-def get_close_matches(word: AnyStr, possibilities: Iterable[AnyStr], n: int = 3, cutoff: float = 0.6) -> list[AnyStr]: ...  # type: ignore[misc]
+def get_close_matches(word: AnyStr, possibilities: Iterable[AnyStr], n: int = 3, cutoff: float = 0.6) -> list[AnyStr]: ...
 @overload
 def get_close_matches(
     word: Sequence[_T], possibilities: Iterable[Sequence[_T]], n: int = 3, cutoff: float = 0.6
