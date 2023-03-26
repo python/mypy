@@ -49,7 +49,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping, cast
+from typing import Iterable, List, Mapping
 from typing_extensions import Final
 
 import mypy.build
@@ -409,10 +409,12 @@ class AliasPrinter(NodeVisitor[str]):
         return f"[{', '.join(n.accept(self) for n in node.items)}]"
 
     def visit_dict_expr(self, o: DictExpr) -> str:
-        # This is currently only used for TypedDict where all keys are strings.
-        return "{%s}" % ", ".join(
-            f"{cast(StrExpr, k).accept(self)}: {v.accept(self)}" for k, v in o.items
-        )
+        dict_items = []
+        for key, value in o.items:
+            # This is currently only used for TypedDict where all keys are strings.
+            assert isinstance(key, StrExpr)
+            dict_items.append(f"{key.accept(self)}: {value.accept(self)}")
+        return f"{{{', '.join(dict_items)}}}"
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
