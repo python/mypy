@@ -1804,9 +1804,10 @@ x = '2'
 from c import x
 import b
 [file b.py]
-1+'x'
 [file c.py]
 x = 1
+[file b.py.2]
+1+'x'
 [file c.py.2]
 x = '2'
 [file c.py.3]
