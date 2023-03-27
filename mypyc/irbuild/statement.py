@@ -257,7 +257,6 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
             module_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
             static_ptr = builder.add(LoadAddress(object_pointer_rprimitive, module_static))
             statics.append(static_ptr)
-            # TODO: Don't add local imports to the global namespace
             # Update the globals dict with the appropriate module:
             # * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
             # * For 'import foo.bar' we add 'foo' with the name 'foo'
@@ -265,11 +264,13 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
             # via the module static, but we will use the globals version for
             # modules that mypy couldn't find, since it doesn't analyze module
             # references from those properly.
-            if as_name or "." not in mod_id:
-                globals_base = None
+            # TODO: Don't add local imports to the global namespace
+            if as_name:
+                globals_id = mod_id
+                globals_name = as_name
             else:
-                globals_base = mod_id.split(".")[0]
-            modules.append((mod_id, as_name, globals_base))
+                globals_id = globals_name = mod_id.split(".")[0]
+            modules.append((mod_id, globals_id, globals_name))
 
     static_array_ptr = builder.builder.setup_rarray(object_pointer_rprimitive, statics)
     import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, import_lines)
@@ -304,9 +305,9 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     builder.imports[id] = None
 
     names = [name for name, _ in node.names]
-    as_names = [as_name for _, as_name in node.names]
+    as_names = [as_name or name for name, as_name in node.names]
     names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
-    if all(n is None for n in as_names):
+    if as_names == names:
         # Reuse names tuple to reduce verbosity.
         as_names_literal = names_literal
     else:

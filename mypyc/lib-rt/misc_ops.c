@@ -669,11 +669,8 @@ CPy_Super(PyObject *builtins, PyObject *self) {
     return result;
 }
 
-static bool import_single(PyObject *mod_id,
-                                  PyObject *as_name,
-                                  PyObject **mod_static,
-                                  PyObject *globals_base,
-                                  PyObject *globals) {
+static bool import_single(PyObject *mod_id, PyObject **mod_static,
+                          PyObject *globals_id, PyObject *globals_name, PyObject *globals) {
     if (*mod_static == Py_None) {
         CPyModule *mod = PyImport_Import(mod_id);
         if (mod == NULL) {
@@ -682,16 +679,6 @@ static bool import_single(PyObject *mod_id,
         *mod_static = mod;
     }
 
-    if (as_name == Py_None) {
-        as_name = mod_id;
-    }
-    PyObject *globals_id, *globals_name;
-    if (globals_base == Py_None) {
-        globals_id = mod_id;
-        globals_name = as_name;
-    } else {
-        globals_id = globals_name = globals_base;
-    }
     PyObject *mod_dict = PyImport_GetModuleDict();
     CPyModule *globals_mod = CPyDict_GetItem(mod_dict, globals_id);
     if (globals_mod == NULL) {
@@ -712,10 +699,10 @@ bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *gl
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(modules); i++) {
         PyObject *module = PyTuple_GET_ITEM(modules, i);
         PyObject *mod_id = PyTuple_GET_ITEM(module, 0);
-        PyObject *as_name = PyTuple_GET_ITEM(module, 1);
-        PyObject *globals_base = PyTuple_GET_ITEM(module, 2);
+        PyObject *globals_id = PyTuple_GET_ITEM(module, 1);
+        PyObject *globals_name = PyTuple_GET_ITEM(module, 2);
 
-        if (!import_single(mod_id, as_name, statics[i], globals_base, globals)) {
+        if (!import_single(mod_id, statics[i], globals_id, globals_name, globals)) {
             const char *path = PyUnicode_AsUTF8(tb_path);
             if (path == NULL) {
                 path = "<unable to display>";
@@ -774,9 +761,6 @@ PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(names); i++) {
         PyObject *name = PyTuple_GET_ITEM(names, i);
         PyObject *as_name = PyTuple_GET_ITEM(as_names, i);
-        if (as_name == Py_None) {
-            as_name = name;
-        }
         PyObject *obj = CPyImport_ImportFrom(mod, mod_id, name, as_name);
         if (obj == NULL) {
             Py_DECREF(mod);

@@ -745,7 +745,7 @@ L2:
     r10 = load_address r9
     r11 = [1, 2, 3, 4]
     r12 = load_address r11
-    r13 = (('sys', None, None), ('enum', 'enum2', None), ('collections.abc', None, 'collections'), ('collections.abc', 'abc2', None))
+    r13 = (('sys', 'sys', 'sys'), ('enum', 'enum', 'enum2'), ('collections.abc', 'collections', 'collections'), ('collections.abc', 'collections.abc', 'abc2'))
     r14 = __main__.globals :: static
     r15 = 'main'
     r16 = '<module>'
@@ -760,7 +760,7 @@ L2:
     r25 = load_address r24
     r26 = [6]
     r27 = load_address r26
-    r28 = (('single', None, None),)
+    r28 = (('single', 'single', 'single'),)
     r29 = __main__.globals :: static
     r30 = 'main'
     r31 = '<module>'
@@ -3498,7 +3498,7 @@ L0:
     r2 = load_address r1
     r3 = [2]
     r4 = load_address r3
-    r5 = (('p.m', None, 'p'),)
+    r5 = (('p.m', 'p', 'p'),)
     r6 = __main__.globals :: static
     r7 = 'main'
     r8 = 'f'
