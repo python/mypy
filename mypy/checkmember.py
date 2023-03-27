@@ -919,7 +919,12 @@ def analyze_class_attribute_access(
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         return None
 
-    if isinstance(node.node, Var) and not node.node.is_classvar and mcs_fallback.type.get(name):
+    if (
+        isinstance(node.node, Var)
+        and not node.node.is_classvar
+        and not hook
+        and mcs_fallback.type.get(name)
+    ):
         # If the same attribute is declared on the metaclass and the class but with different types,
         # and the attribute on the class is not a ClassVar,
         # the type of the attribute on the metaclass should take priority
