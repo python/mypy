@@ -301,7 +301,7 @@ that are common in idiomatic Python are standardized.
    from typing import IO
 
    # Use IO[str] or IO[bytes] for functions that should accept or return
-   # objects that come from an open() call (note that IO[] does not
+   # objects that come from an open() call (note that IO does not
    # distinguish between reading, writing or other modes)
    def get_sys_IO(mode: str = 'w') -> IO[str]:
        if mode == 'w':
@@ -324,7 +324,7 @@ Forward references
    def f(foo: A) -> int:  # This will fail at runtime with 'A' is not defined
        ...
 
-   # However, if you add the following magic import:
+   # However, if you add the following special import:
    from __future__ import annotations
    # It will work at runtime and type checking will succeed as long as there
    # is a class of that name later on in the file
