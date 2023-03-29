@@ -372,7 +372,7 @@ See :ref:`async-and-await` for the full detail on typing coroutines and asynchro
    import asyncio
 
    # A coroutine is typed like a normal function
-   async def countdown35(tag: str, count: int) -> str:
+   async def countdown(tag: str, count: int) -> str:
        while count > 0:
            print(f'T-minus {count} ({tag})')
            await asyncio.sleep(0.1)
