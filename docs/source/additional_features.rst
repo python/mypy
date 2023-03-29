@@ -178,7 +178,7 @@ Caveats/Known Issues
   :py:meth:`__init__ <object.__init__>` will be replaced by ``Any``.
 
 * :ref:`Validator decorators <attrs:examples-validators>`
-  and `default decorators <http://www.attrs.org/en/stable/examples.html#defaults>`_
+  and `default decorators <https://www.attrs.org/en/stable/examples.html#defaults>`_
   are not type-checked against the attribute they are setting/validating.
 
 * Method definitions added by mypy currently overwrite any existing method

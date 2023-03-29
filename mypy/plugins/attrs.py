@@ -299,7 +299,7 @@ def attr_class_maker_callback(
     it will add an __init__ or all the compare methods.
     For frozen=True it will turn the attrs into properties.
 
-    See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
+    See https://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
     If this returns False, some required metadata was not ready yet and we need another
     pass.
