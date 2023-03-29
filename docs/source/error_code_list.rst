@@ -924,7 +924,7 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
 
     # Okay
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
-    print(f"The alphabet starts with {b.decode()}")  # The alphabet starts with abc
+    print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
 
 Report syntax errors [syntax]
 -----------------------------
