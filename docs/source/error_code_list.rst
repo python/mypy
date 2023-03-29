@@ -908,7 +908,7 @@ Functions will always evaluate to true in boolean contexts.
     if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
         pass
 
-Check that function isn't used in boolean context [str-bytes-safe]
+Check for unexpected bytes coercions [str-bytes-safe]
 -------------------------------------------------------------------
 
 Warn about dangerous coercions related to bytes and string types.
