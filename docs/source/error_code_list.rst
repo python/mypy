@@ -911,7 +911,7 @@ Functions will always evaluate to true in boolean contexts.
 Check for unexpected bytes coercions [str-bytes-safe]
 -------------------------------------------------------------------
 
-Warn about dangerous coercions related to bytes and string types.
+Warn about cases where a bytes object may be converted to a string in an unexpected manner.
 
 .. code-block:: python
 
