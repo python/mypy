@@ -117,6 +117,8 @@ Since code inside ``if TYPE_CHECKING:`` is not executed at runtime, it provides
 a convenient way to tell mypy something without the code being evaluated at
 runtime. This is most useful for resolving :ref:`import cycles <import-cycles>`.
 
+.. _forward-references:
+
 Class name forward references
 -----------------------------
 
