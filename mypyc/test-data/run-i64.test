@@ -315,7 +315,8 @@ def test_explicit_conversion_from_float() -> None:
     assert from_float(0.0) == 0
     assert from_float(1.456) == 1
     assert from_float(-1234.567) == -1234
-    assert from_float(2**63 - 1) == 2**63 - 1
+    # Subtract 1024 due to limited precision of 64-bit floats
+    assert from_float(2**63 - 1024) == 2**63 - 1024
     assert from_float(-2**63) == -2**63
     # The error message could be better, but this is acceptable
     with assertRaises(OverflowError, "int too large to convert to i64"):

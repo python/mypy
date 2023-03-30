@@ -184,10 +184,8 @@ L0:
     return 6
 def C.__float__(self):
     self :: __main__.C
-    r0 :: float
 L0:
-    r0 = 4.0
-    return r0
+    return 4.0
 def C.__pos__(self):
     self :: __main__.C
 L0:
@@ -223,4 +221,3 @@ L0:
     r6 = c.__bool__()
     r7 = c.__complex__()
     return 1
-

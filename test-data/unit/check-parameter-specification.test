@@ -1471,3 +1471,53 @@ def test(f: Concat[T, ...]) -> None: ...
 
 class Defer: ...
 [builtins fixtures/paramspec.pyi]
+
+[case testNoParamSpecDoubling]
+# https://github.com/python/mypy/issues/12734
+from typing import Callable, ParamSpec
+from typing_extensions import Concatenate
+
+P = ParamSpec("P")
+Q = ParamSpec("Q")
+
+def foo(f: Callable[P, int]) -> Callable[P, int]:
+    return f
+
+def bar(f: Callable[Concatenate[str, Q], int]) -> Callable[Concatenate[str, Q], int]:
+    return foo(f)
+[builtins fixtures/paramspec.pyi]
+
+[case testAlreadyExpandedCallableWithParamSpecReplacement]
+from typing import Callable, Any, overload
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec("P")
+
+@overload
+def command() -> Callable[[Callable[Concatenate[object, object, P], object]], None]:  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    ...
+
+@overload
+def command(
+    cls: int = ...,
+) -> Callable[[Callable[Concatenate[object, P], object]], None]:
+    ...
+
+def command(
+    cls: int = 42,
+) -> Any:
+    ...
+[builtins fixtures/paramspec.pyi]
+
+[case testCopiedParamSpecComparison]
+# minimized from https://github.com/python/mypy/issues/12909
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+def identity(func: Callable[P, None]) -> Callable[P, None]: ...
+
+@identity
+def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+[builtins fixtures/paramspec.pyi]

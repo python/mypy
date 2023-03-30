@@ -2,12 +2,13 @@ import _typeshed
 import sys
 from _typeshed import SupportsWrite
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar
-from typing_extensions import Literal
+from typing import Any, TypeVar
+from typing_extensions import Concatenate, Literal, ParamSpec
 
 _T = TypeVar("_T")
 _R_co = TypeVar("_R_co", covariant=True)
 _FuncT = TypeVar("_FuncT", bound=Callable[..., Any])
+_P = ParamSpec("_P")
 
 # These definitions have special processing in mypy
 class ABCMeta(type):
@@ -28,13 +29,13 @@ class ABCMeta(type):
 
 def abstractmethod(funcobj: _FuncT) -> _FuncT: ...
 
-class abstractclassmethod(classmethod[_R_co], Generic[_R_co]):
+class abstractclassmethod(classmethod[_T, _P, _R_co]):
     __isabstractmethod__: Literal[True]
-    def __init__(self: abstractclassmethod[_R_co], callable: Callable[..., _R_co]) -> None: ...
+    def __init__(self, callable: Callable[Concatenate[_T, _P], _R_co]) -> None: ...
 
-class abstractstaticmethod(staticmethod[_R_co], Generic[_R_co]):
+class abstractstaticmethod(staticmethod[_P, _R_co]):
     __isabstractmethod__: Literal[True]
-    def __init__(self, callable: Callable[..., _R_co]) -> None: ...
+    def __init__(self, callable: Callable[_P, _R_co]) -> None: ...
 
 class abstractproperty(property):
     __isabstractmethod__: Literal[True]

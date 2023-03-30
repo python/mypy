@@ -4638,7 +4638,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return type_type, instance_type
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
-        expected = make_optional_type(self.named_type("builtins.int"))
+        try:
+            supports_index = self.chk.named_type("typing_extensions.SupportsIndex")
+        except KeyError:
+            supports_index = self.chk.named_type("builtins.int")  # thanks, fixture life
+        expected = make_optional_type(supports_index)
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 t = self.accept(index)
@@ -5518,7 +5522,7 @@ def merge_typevars_in_callables_by_name(
                     variables.append(tv)
                 rename[tv.id] = unique_typevars[name]
 
-            target = cast(CallableType, expand_type(target, rename))
+            target = expand_type(target, rename)
         output.append(target)
 
     return output, variables

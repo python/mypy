@@ -12,7 +12,7 @@ import time
 import tokenize
 from abc import ABCMeta, abstractmethod
 from operator import attrgetter
-from typing import Any, Callable, Dict, Iterator, Tuple, cast
+from typing import Any, Callable, Dict, Iterator, Tuple
 from typing_extensions import Final, TypeAlias as _TypeAlias
 from urllib.request import pathname2url
 
@@ -704,8 +704,9 @@ class AbstractXmlReporter(AbstractReporter):
         super().__init__(reports, output_dir)
 
         memory_reporter = reports.add_report("memory-xml", "<memory>")
+        assert isinstance(memory_reporter, MemoryXmlReporter)
         # The dependency will be called first.
-        self.memory_xml = cast(MemoryXmlReporter, memory_reporter)
+        self.memory_xml = memory_reporter
 
 
 class XmlReporter(AbstractXmlReporter):

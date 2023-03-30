@@ -388,8 +388,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_proper_subtype(left, right, subtype_context=self.subtype_context)
         return is_subtype(left, right, subtype_context=self.subtype_context)
 
-    # visit_x(left) means: is left (which is an instance of X) a subtype of
-    # right?
+    # visit_x(left) means: is left (which is an instance of X) a subtype of right?
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         # This can be called if there is a bad type annotation. The result probably

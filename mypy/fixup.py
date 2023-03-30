@@ -170,7 +170,7 @@ class NodeFixer(NodeVisitor[None]):
             if isinstance(v, TypeVarType):
                 for value in v.values:
                     value.accept(self.type_fixer)
-                v.upper_bound.accept(self.type_fixer)
+            v.upper_bound.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:

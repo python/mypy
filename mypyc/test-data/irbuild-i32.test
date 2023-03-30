@@ -481,7 +481,7 @@ L0:
     z = -3
     return 1
 
-[case testI32ExplicitConversionFromVariousTypes]
+[case testI32ExplicitConversionFromVariousTypes_64bit]
 from mypy_extensions import i32
 
 def bool_to_i32(b: bool) -> i32:
@@ -526,9 +526,62 @@ L0:
     return r0
 def float_to_i32(x):
     x :: float
-    r0 :: object
-    r1 :: int32
+    r0 :: int
+    r1 :: native_int
+    r2, r3, r4 :: bit
+    r5 :: native_int
+    r6, r7 :: int32
 L0:
-    r0 = CPyLong_FromFloat(x)
-    r1 = unbox(int32, r0)
-    return r1
+    r0 = CPyTagged_FromFloat(x)
+    r1 = r0 & 1
+    r2 = r1 == 0
+    if r2 goto L1 else goto L4 :: bool
+L1:
+    r3 = r0 < 4294967296 :: signed
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = r0 >= -4294967296 :: signed
+    if r4 goto L3 else goto L4 :: bool
+L3:
+    r5 = r0 >> 1
+    r6 = truncate r5: native_int to int32
+    r7 = r6
+    goto L5
+L4:
+    CPyInt32_Overflow()
+    unreachable
+L5:
+    return r7
+
+[case testI32ExplicitConversionFromFloat_32bit]
+from mypy_extensions import i32
+
+def float_to_i32(x: float) -> i32:
+    return i32(x)
+[out]
+def float_to_i32(x):
+    x :: float
+    r0 :: int
+    r1 :: native_int
+    r2 :: bit
+    r3, r4 :: int32
+    r5 :: ptr
+    r6 :: c_ptr
+    r7 :: int32
+L0:
+    r0 = CPyTagged_FromFloat(x)
+    r1 = r0 & 1
+    r2 = r1 == 0
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = r0 >> 1
+    r4 = r3
+    goto L3
+L2:
+    r5 = r0 ^ 1
+    r6 = r5
+    r7 = CPyLong_AsInt32(r6)
+    r4 = r7
+    keep_alive r0
+L3:
+    return r4
