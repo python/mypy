@@ -1572,21 +1572,33 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
-    def test_protocol(self) -> Iterator[Case]:
+    def test_runtime_typing_objects(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing_extensions import Protocol, TypedDict",
+            runtime="from typing_extensions import Protocol, TypedDict",
+            error=None,
+        )
         yield Case(
             stub="""
-            from typing_extensions import Protocol
-
             class X(Protocol):
                 bar: int
                 def foo(self, x: int, y: bytes = ...) -> str: ...
             """,
             runtime="""
-            from typing_extensions import Protocol
-
             class X(Protocol):
                 bar: int
                 def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Y(TypedDict):
+                a: int
+            """,
+            runtime="""
+            class Y(TypedDict):
+                a: int
             """,
             error=None,
         )
