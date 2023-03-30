@@ -76,7 +76,7 @@ _TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
     frozen_default=False,
     field_specifiers=("dataclasses.Field", "dataclasses.field"),
 )
-_INTERNAL_REPLACE_SYM_NAME = "mypy-replace"
+_INTERNAL_REPLACE_SYM_NAME = "__mypy-replace"
 
 
 class DataclassAttribute:
