@@ -606,7 +606,7 @@ def pytest_addoption(parser: Any) -> None:
 
 
 # This function name is special to pytest.  See
-# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
+# https://doc.pytest.org/en/latest/how-to/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | None:
     """Called by pytest on each object in modules configured in conftest.py files.
 
