@@ -867,11 +867,8 @@ class SemanticAnalyzer(
                 assert isinstance(result, ProperType)
                 if isinstance(result, CallableType):
                     # type guards need to have a positional argument, to spec
-                    if (
-                        result.type_guard
-                        and ARG_POS not in result.arg_kinds[self.is_class_scope() :]
-                        and not defn.is_static
-                    ):
+                    skip_self = self.is_class_scope() and not defn.is_static
+                    if result.type_guard and ARG_POS not in result.arg_kinds[skip_self:]:
                         self.fail(
                             "TypeGuard functions must have a positional argument",
                             result,
@@ -5113,7 +5110,7 @@ class SemanticAnalyzer(
                 return None
             types.append(analyzed)
 
-        if has_param_spec and num_args == 1 and len(types) > 0:
+        if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             if not (
                 len(types) == 1

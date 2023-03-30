@@ -1739,8 +1739,8 @@ on at least one module for which the cache metadata is stale.)
 
 Now we can execute steps A-C from the first section.  Finding SCCs for
 step A shouldn't be hard; there's a recipe here:
-http://code.activestate.com/recipes/578507/.  There's also a plethora
-of topsort recipes, e.g. http://code.activestate.com/recipes/577413/.
+https://code.activestate.com/recipes/578507/.  There's also a plethora
+of topsort recipes, e.g. https://code.activestate.com/recipes/577413/.
 
 For single nodes, processing is simple.  If the node was cached, we
 deserialize the cache data and fix up cross-references.  Otherwise, we
@@ -3301,7 +3301,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
             fresh_scc_queue.append(scc)
         else:
-            if len(fresh_scc_queue) > 0:
+            if fresh_scc_queue:
                 manager.log(f"Processing {len(fresh_scc_queue)} queued fresh SCCs")
                 # Defer processing fresh SCCs until we actually run into a stale SCC
                 # and need the earlier modules to be loaded.
@@ -3517,7 +3517,7 @@ def strongly_connected_components(
       exactly once; vertices not part of a SCC are returned as
       singleton sets.
 
-    From http://code.activestate.com/recipes/578507/.
+    From https://code.activestate.com/recipes/578507/.
     """
     identified: set[str] = set()
     stack: list[str] = []
@@ -3580,7 +3580,7 @@ def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
         {B, C}
         {A}
 
-    From http://code.activestate.com/recipes/577413/.
+    From https://code.activestate.com/recipes/577413/.
     """
     # TODO: Use a faster algorithm?
     for k, v in data.items():

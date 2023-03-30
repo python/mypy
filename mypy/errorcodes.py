@@ -113,7 +113,7 @@ STRING_FORMATTING: Final = ErrorCode(
     "str-format", "Check that string formatting/interpolation is type-safe", "General"
 )
 STR_BYTES_PY3: Final = ErrorCode(
-    "str-bytes-safe", "Warn about dangerous coercions related to bytes and string types", "General"
+    "str-bytes-safe", "Warn about implicit coercions related to bytes and string types", "General"
 )
 EXIT_RETURN: Final = ErrorCode(
     "exit-return", "Warn about too general return type for '__exit__'", "General"

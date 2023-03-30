@@ -1802,6 +1802,9 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
             # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
             if supertype.type.fullname == "builtins.dict":
                 return True
+        elif isinstance(item, TypeVarType):
+            if is_proper_subtype(item.upper_bound, supertype, ignore_promotions=True):
+                return True
         elif isinstance(item, Instance) and supertype.type.fullname == "builtins.int":
             # "int" covers all native int types
             if item.type.fullname in MYPYC_NATIVE_INT_NAMES:

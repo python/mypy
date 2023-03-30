@@ -207,6 +207,16 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     for file_path, contents in files:
         expand_errors(contents.split("\n"), output, file_path)
 
+    seen_files = set()
+    for file, _ in files:
+        if file in seen_files:
+            raise ValueError(
+                f"{case.file}, line {first_item.line}: Duplicated filename {file}. Did you include"
+                " it multiple times?"
+            )
+
+        seen_files.add(file)
+
     case.input = input
     case.output = output
     case.output2 = output2
@@ -359,11 +369,13 @@ class DataDrivenTestCase(pytest.Item):
         return self.file, self.line, self.name
 
     def repr_failure(self, excinfo: Any, style: Any | None = None) -> str:
-        if excinfo.errisinstance(SystemExit):
+        if isinstance(excinfo.value, SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.
             # In particular, uncaught exceptions during semantic analysis or type checking
             # call exit() and they already print out a stack trace.
+            excrepr = excinfo.exconly()
+        elif isinstance(excinfo.value, pytest.fail.Exception) and not excinfo.value.pytrace:
             excrepr = excinfo.exconly()
         else:
             self.parent._prunetraceback(excinfo)
@@ -474,7 +486,7 @@ def strip_list(l: list[str]) -> list[str]:
         # Strip spaces at end of line
         r.append(re.sub(r"\s+$", "", s))
 
-    while len(r) > 0 and r[-1] == "":
+    while r and r[-1] == "":
         r.pop()
 
     return r
@@ -594,7 +606,7 @@ def pytest_addoption(parser: Any) -> None:
 
 
 # This function name is special to pytest.  See
-# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
+# https://doc.pytest.org/en/latest/how-to/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | None:
     """Called by pytest on each object in modules configured in conftest.py files.
 

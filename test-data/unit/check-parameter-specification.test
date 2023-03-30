@@ -539,7 +539,6 @@ def three(**kwargs: int) -> int: ...
 
 @expects_int_first # Accepted
 def four(*args: int) -> int: ...
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecTwiceSolving]

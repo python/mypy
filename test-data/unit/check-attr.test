@@ -469,6 +469,56 @@ A([1], '2')  # E: Cannot infer type argument 1 of "A"
 
 [builtins fixtures/list.pyi]
 
+[case testAttrsGenericWithConverter]
+from typing import TypeVar, Generic, List, Iterable, Iterator, Callable
+import attr
+T = TypeVar('T')
+
+def int_gen() -> Iterator[int]:
+    yield 1
+
+def list_converter(x: Iterable[T]) -> List[T]:
+    return list(x)
+
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    x: List[T] = attr.ib(converter=list_converter)
+    y: T = attr.ib()
+    def foo(self) -> List[T]:
+        return [self.y]
+    def bar(self) -> T:
+        return self.x[0]
+    def problem(self) -> T:
+        return self.x  # E: Incompatible return value type (got "List[T]", expected "T")
+reveal_type(A) # N: Revealed type is "def [T] (x: typing.Iterable[T`1], y: T`1) -> __main__.A[T`1]"
+a1 = A([1], 2)
+reveal_type(a1)  # N: Revealed type is "__main__.A[builtins.int]"
+reveal_type(a1.x)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(a1.y)  # N: Revealed type is "builtins.int"
+
+a2 = A(int_gen(), 2)
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+reveal_type(a2.x)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(a2.y)  # N: Revealed type is "builtins.int"
+
+
+def get_int() -> int:
+    return 1
+
+class Other(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+
+@attr.s(auto_attribs=True)
+class B(Generic[T]):
+    x: Other[Callable[..., T]] = attr.ib(converter=Other[Callable[..., T]])
+
+b1 = B(get_int)
+reveal_type(b1)  # N: Revealed type is "__main__.B[builtins.int]"
+reveal_type(b1.x)  # N: Revealed type is "__main__.Other[def (*Any, **Any) -> builtins.int]"
+
+[builtins fixtures/list.pyi]
+
 
 [case testAttrsUntypedGenericInheritance]
 from typing import Generic, TypeVar
@@ -1664,8 +1714,6 @@ class C:
     # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
     # and a consequence of Callable etc. being set to an int in the test stub.
     b = attr.ib(type=Callable[[], C])
-[builtins fixtures/bool.pyi]
-
 [file b.py]
 import attr
 import a

@@ -1,6 +1,7 @@
 # Test cases for floats (compile and run)
 
 [case testFloatOps]
+from __future__ import annotations
 from typing import Any, cast
 from typing_extensions import Final
 from testutil import assertRaises, float_vals, FLOAT_MAGIC
@@ -184,6 +185,16 @@ def test_explicit_conversion_to_int() -> None:
         else:
             assert repr(int(x)) == repr(int_any(x))
 
+    # Test some edge cases
+    assert 2**30 == int(2.0**30 + int())
+    assert 2**30 - 1 == int(1073741823.9999999 + int())  # math.nextafter(2.0**30, 0))
+    assert -2**30 - 1 == int(-2.0**30 - 1 + int())
+    assert -2**30 == int(-1073741824.9999998 + int())  # math.nextafter(-2.0**30 - 1, 0)
+    assert 2**62 == int(2.0**62 + int())
+    assert 2**62 == int(2.0**62 - 1 + int())
+    assert -2**62 == int(-2.0**62 + int())
+    assert -2**62 == int(-2.0**62 - 1 + int())
+
 def str_to_float(x: str) -> float:
     return float(x)
 
@@ -328,6 +339,13 @@ def test_undefined_local_var() -> None:
         y2 = -1.0
     with assertRaises(UnboundLocalError, 'local variable "y2" referenced before assignment'):
         print(y2)
+
+def test_tuples() -> None:
+    t1: tuple[float, float] = (1.5, 2.5)
+    assert t1 == tuple([1.5, 2.5])
+    n = int() + 5
+    t2: tuple[float, float, float, float] = (n, 1.5, -7, -113)
+    assert t2 == tuple([5.0, 1.5, -7.0, -113.0])
 
 [case testFloatGlueMethodsAndInheritance]
 from typing import Any
