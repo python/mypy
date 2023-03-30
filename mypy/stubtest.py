@@ -30,7 +30,6 @@ from typing_extensions import get_origin
 
 import mypy.build
 import mypy.modulefinder
-import mypy.nodes
 import mypy.state
 import mypy.types
 import mypy.version

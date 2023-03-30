@@ -3,7 +3,7 @@ from __future__ import annotations
 import pprint
 import re
 import sys
-from typing import Any, Callable, Dict, Mapping, Pattern
+from typing import Any, Callable, Mapping, Pattern
 from typing_extensions import Final
 
 from mypy import defaults
