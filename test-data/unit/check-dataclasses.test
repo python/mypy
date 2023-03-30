@@ -2070,3 +2070,21 @@ class C:
     pass
 
 replace(C())  # E: Argument 1 to "replace" has incompatible type "C"; expected a dataclass
+
+[case testReplaceGeneric]
+from dataclasses import dataclass, replace, InitVar
+from typing import ClassVar, Generic, TypeVar
+
+T = TypeVar('T')
+
+@dataclass
+class A(Generic[T]):
+    x: T
+
+
+a = A(x=42)
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
+a2 = replace(a, x=42)
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+a2 = replace(a, x='42')  # E: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"

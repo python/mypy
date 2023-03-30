@@ -6,7 +6,7 @@ from typing import Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.messages import format_type_bare
 from mypy.nodes import (
     ARG_NAMED,
@@ -350,12 +350,15 @@ class DataclassTransformer:
         Stashes the signature of 'dataclasses.replace(...)' for this specific dataclass
         to be used later whenever 'dataclasses.replace' is called for this dataclass.
         """
-        arg_types: list[Type] = [Instance(self._cls.info, [])]
-        arg_kinds = [ARG_POS]
-        arg_names: list[str | None] = [None]
+        arg_types: list[Type] = []
+        arg_kinds = []
+        arg_names: list[str | None] = []
+
+        info = self._cls.info
         for attr in attributes:
-            assert attr.type is not None
-            arg_types.append(attr.type)
+            attr_type = attr.expand_type(info)
+            assert attr_type is not None
+            arg_types.append(attr_type)
             arg_kinds.append(
                 ARG_NAMED if attr.is_init_var and not attr.has_default else ARG_NAMED_OPT
             )
@@ -365,7 +368,7 @@ class DataclassTransformer:
             arg_types=arg_types,
             arg_kinds=arg_kinds,
             arg_names=arg_names,
-            ret_type=Instance(self._cls.info, []),
+            ret_type=NoneType(),
             fallback=self._api.named_type("builtins.function"),
             name=f"replace of {self._cls.info.name}",
         )
@@ -883,4 +886,12 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
 
     signature = get_proper_type(replace_func.type)
     assert isinstance(signature, CallableType)
+    signature = expand_type_by_instance(signature, obj_type)
+    # re-add the instance type
+    signature = signature.copy_modified(
+        arg_types=[obj_type, *signature.arg_types],
+        arg_kinds=[ARG_POS, *signature.arg_kinds],
+        arg_names=[None, *signature.arg_names],
+        ret_type=obj_type,
+    )
     return signature
