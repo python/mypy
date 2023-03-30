@@ -1,4 +1,3 @@
-#
 # Mypy documentation build configuration file, created by
 # sphinx-quickstart on Sun Sep 14 19:50:35 2014.
 #
