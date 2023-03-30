@@ -889,7 +889,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if expr.name == "abstractproperty":
                 self.import_tracker.require_name(expr.expr.name)
                 self.add_decorator("property")
-                self.add_decorator(f"{expr.expr.name}.abstractmethod"))
+                self.add_decorator(f"{expr.expr.name}.abstractmethod")
             else:
                 self.import_tracker.require_name(expr.expr.name)
                 self.add_decorator(f"{expr.expr.name}.{expr.name}")
