@@ -518,7 +518,7 @@ class MessageBuilder:
                     )
             else:
                 self.fail(
-                    '{} has no attribute "{}"{}'.format(format_type(original_type), member, extra),
+                    f'{format_type(original_type)} has no attribute "{member}"{extra}',
                     context,
                     code=codes.ATTR_DEFINED,
                 )

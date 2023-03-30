@@ -488,7 +488,7 @@ class Options:
         return re.compile(expr + "\\Z")
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        result: Dict[str, object] = {}
+        result: dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)
             if opt in ("disabled_error_codes", "enabled_error_codes"):

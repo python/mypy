@@ -50,16 +50,16 @@ ERR_NEG_INT: Final = 10
 
 class CFunctionDescription(NamedTuple):
     name: str
-    arg_types: List[RType]
+    arg_types: list[RType]
     return_type: RType
-    var_arg_type: Optional[RType]
-    truncated_type: Optional[RType]
+    var_arg_type: RType | None
+    truncated_type: RType | None
     c_function_name: str
     error_kind: int
     steals: StealsDescription
     is_borrowed: bool
-    ordering: Optional[List[int]]
-    extra_int_constants: List[Tuple[int, RType]]
+    ordering: list[int] | None
+    extra_int_constants: list[tuple[int, RType]]
     priority: int
 
 

@@ -140,7 +140,7 @@ class Literals:
     def encoded_tuple_values(self) -> list[str]:
         return self._encode_collection_values(self.tuple_literals)
 
-    def encoded_frozenset_values(self) -> List[str]:
+    def encoded_frozenset_values(self) -> list[str]:
         return self._encode_collection_values(self.frozenset_literals)
 
     def _encode_collection_values(

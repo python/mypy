@@ -414,7 +414,7 @@ def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: set[ClassIR]
     seen.add(cl)
 
 
-def detect_undefined_bitmap(cl: ClassIR, seen: Set[ClassIR]) -> None:
+def detect_undefined_bitmap(cl: ClassIR, seen: set[ClassIR]) -> None:
     if cl.is_trait:
         return
 
