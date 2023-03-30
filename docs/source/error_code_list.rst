@@ -908,6 +908,24 @@ Functions will always evaluate to true in boolean contexts.
     if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
         pass
 
+Check for implicit bytes coercions [str-bytes-safe]
+-------------------------------------------------------------------
+
+Warn about cases where a bytes object may be converted to a string in an unexpected manner.
+
+.. code-block:: python
+
+    b = b"abc"
+
+    # Error: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc".
+    # If this is desired behavior, use f"{x!r}" or "{!r}".format(x).
+    # Otherwise, decode the bytes [str-bytes-safe]
+    print(f"The alphabet starts with {b}")
+
+    # Okay
+    print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
+    print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
+
 Report syntax errors [syntax]
 -----------------------------
 
