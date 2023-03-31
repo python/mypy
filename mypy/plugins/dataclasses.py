@@ -336,7 +336,9 @@ class DataclassTransformer:
             add_attribute_to_class(self._api, self._cls, "__match_args__", match_args_type)
 
         self._add_dataclass_fields_magic_attribute()
-        self._add_internal_replace_method(attributes)
+
+        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+            self._add_internal_replace_method(attributes)
 
         info.metadata["dataclass"] = {
             "attributes": [attr.serialize() for attr in attributes],

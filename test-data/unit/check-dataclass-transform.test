@@ -807,3 +807,21 @@ reveal_type(bar.base)  # N: Revealed type is "builtins.int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformReplace]
+from dataclasses import replace
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+@my_dataclass
+class Person:
+    name: str
+
+p = Person('John')
+y = replace(p, name='Jonh')  # E: Argument 1 to "replace" has incompatible type "Person"; expected a dataclass
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
