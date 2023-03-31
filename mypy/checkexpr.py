@@ -2126,7 +2126,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if actual_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(
                     actual_type
                 ):
-                    is_mapping = is_subtype(actual_type, self.chk.named_type("typing.Mapping"))
+                    is_mapping = is_subtype(
+                        actual_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
+                    )
                     self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
                     actual_type, actual_kind, callee.arg_names[i], callee_arg_kind
@@ -4936,14 +4938,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             is_subtype(
                 typ,
                 self.chk.named_generic_type(
-                    "typing.Mapping",
+                    "_typeshed.SupportsKeysAndGetItem",
                     [self.named_type("builtins.str"), AnyType(TypeOfAny.special_form)],
                 ),
             )
             or is_subtype(
                 typ,
                 self.chk.named_generic_type(
-                    "typing.Mapping", [UninhabitedType(), UninhabitedType()]
+                    "_typeshed.SupportsKeysAndGetItem", [UninhabitedType(), UninhabitedType()]
                 ),
             )
             or isinstance(typ, ParamSpecType)

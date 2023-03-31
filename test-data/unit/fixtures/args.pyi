@@ -1,5 +1,6 @@
 # Builtins stub used to support *args, **kwargs.
 
+import _typeshed
 from typing import TypeVar, Generic, Iterable, Sequence, Tuple, Dict, Any, overload, Mapping
 
 Tco = TypeVar('Tco', covariant=True)

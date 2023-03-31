@@ -1,5 +1,6 @@
 # Builtins stub used in dictionary-related test cases.
 
+import _typeshed
 from typing import (
     TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence
 )
