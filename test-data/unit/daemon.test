@@ -523,7 +523,7 @@ class A:
 class B:
     x: int
 
-[case testUnusedTypeIgnorePreservedAfterUpdate]
+[case testUnusedTypeIgnorePreservedOnRerun]
 -- Regression test for https://github.com/python/mypy/issues/9655
 $ dmypy start -- --warn-unused-ignores --no-error-summary
 Daemon started
@@ -540,7 +540,7 @@ bar.py:2: error: Unused "type: ignore" comment
 from foo.empty import *
 a = 1  # type: ignore
 
-[case testTypeIgnoreWithoutCodePreservedAfterUpdate]
+[case testTypeIgnoreWithoutCodePreservedOnRerun]
 -- Regression test for https://github.com/python/mypy/issues/9655
 $ dmypy start -- --enable-error-code ignore-without-code --no-error-summary
 Daemon started
