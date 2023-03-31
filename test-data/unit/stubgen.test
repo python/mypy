@@ -2809,6 +2809,22 @@ class Y(TypedDict, total=False):
     a: int
     b: str
 
+[case testTypeddictKeywordSyntax]
+from typing import TypedDict
+
+X = TypedDict('X', a=int, b=str)
+Y = TypedDict('X', a=int, b=str, total=False)
+[out]
+from typing import TypedDict
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict, total=False):
+    a: int
+    b: str
+
 [case testTypeddictWithNonIdentifierOrKeywordKeys]
 from typing import TypedDict
 X = TypedDict('X', {'a-b': int, 'c': str})
@@ -2826,10 +2842,19 @@ Z = TypedDict('X', {'a': int, 'in': str})
 [case testEmptyTypeddict]
 import typing
 X = typing.TypedDict('X', {})
+Y = typing.TypedDict('Y', {}, total=False)
+Z = typing.TypedDict('Z')
+W = typing.TypedDict('W', total=False)
 [out]
 from typing_extensions import TypedDict
 
 class X(TypedDict): ...
+
+class Y(TypedDict, total=False): ...
+
+class Z(TypedDict): ...
+
+class W(TypedDict, total=False): ...
 
 [case testTypeddictWithUnderscore]
 from typing import TypedDict as _TypedDict

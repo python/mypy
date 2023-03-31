@@ -1103,18 +1103,33 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def process_typeddict(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
         if self._state != EMPTY:
             self.add("\n")
-        if isinstance(rvalue.args[1], DictExpr):
-            items: list[tuple[str, Expression]] = []
+
+        if not isinstance(rvalue.args[0], StrExpr):
+            self.add(f"{self._indent}{lvalue.name}: Incomplete")
+            self.import_tracker.require_name("Incomplete")
+            return
+
+        items: list[tuple[str, Expression]] = []
+        total: Expression | None = None
+        if len(rvalue.args) > 1 and isinstance(rvalue.args[1], DictExpr):
             for attr_name, attr_type in rvalue.args[1].items:
                 if not isinstance(attr_name, StrExpr):
                     self.add(f"{self._indent}{lvalue.name}: Incomplete")
                     self.import_tracker.require_name("Incomplete")
                     return
                 items.append((attr_name.value, attr_type))
+            if len(rvalue.args) > 2:
+                total = rvalue.args[2]
         else:
-            self.add(f"{self._indent}{lvalue.name}: Incomplete")
-            self.import_tracker.require_name("Incomplete")
-            return
+            for arg_name, arg in zip(rvalue.arg_names[1:], rvalue.args[1:]):
+                if not isinstance(arg_name, str):
+                    self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                    self.import_tracker.require_name("Incomplete")
+                    return
+                if arg_name == "total":
+                    total = arg
+                else:
+                    items.append((arg_name, arg))
         self.import_tracker.require_name("TypedDict")
         p = AliasPrinter(self)
         if any(not key.isidentifier() or keyword.iskeyword(key) for key, _ in items):
@@ -1123,8 +1138,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._state = VAR
         else:
             bases = "TypedDict"
-            if len(rvalue.args) > 2:
-                bases += f", total={rvalue.args[2].accept(p)}"
+            # TODO: Add support for generic TypedDicts. Requires `Generic` as base class.
+            if total is not None:
+                bases += f", total={total.accept(p)}"
             self.add(f"{self._indent}class {lvalue.name}({bases}):")
             if len(items) == 0:
                 self.add(" ...\n")
