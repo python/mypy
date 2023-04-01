@@ -14,7 +14,7 @@ class SimpleDialog:
         self,
         master: Misc | None,
         text: str = "",
-        buttons: list[str] = ...,
+        buttons: list[str] = [],
         default: int | None = None,
         cancel: int | None = None,
         title: str | None = None,

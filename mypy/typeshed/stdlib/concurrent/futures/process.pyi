@@ -153,9 +153,9 @@ def _chain_from_iterable_of_lists(iterable: Iterable[MutableSequence[Any]]) -> A
 class BrokenProcessPool(BrokenExecutor): ...
 
 class ProcessPoolExecutor(Executor):
-    _mp_context: BaseContext | None = ...
-    _initializer: Callable[..., None] | None = ...
-    _initargs: tuple[Any, ...] = ...
+    _mp_context: BaseContext | None
+    _initializer: Callable[..., None] | None
+    _initargs: tuple[Any, ...]
     _executor_manager_thread: _ThreadWakeup
     _processes: MutableMapping[int, Process]
     _shutdown_thread: bool
@@ -174,7 +174,7 @@ class ProcessPoolExecutor(Executor):
             max_workers: int | None = None,
             mp_context: BaseContext | None = None,
             initializer: Callable[..., object] | None = None,
-            initargs: tuple[Any, ...] = ...,
+            initargs: tuple[Any, ...] = (),
             *,
             max_tasks_per_child: int | None = None,
         ) -> None: ...
@@ -184,7 +184,7 @@ class ProcessPoolExecutor(Executor):
             max_workers: int | None = None,
             mp_context: BaseContext | None = None,
             initializer: Callable[..., object] | None = None,
-            initargs: tuple[Any, ...] = ...,
+            initargs: tuple[Any, ...] = (),
         ) -> None: ...
     if sys.version_info >= (3, 9):
         def _start_executor_manager_thread(self) -> None: ...

@@ -67,14 +67,14 @@ _CallValue: TypeAlias = str | tuple[Any, ...] | Mapping[str, Any] | _ArgsKwargs 
 
 class _Call(tuple[Any, ...]):
     def __new__(
-        cls, value: _CallValue = ..., name: str | None = "", parent: Any | None = None, two: bool = False, from_kall: bool = True
+        cls, value: _CallValue = (), name: str | None = "", parent: Any | None = None, two: bool = False, from_kall: bool = True
     ) -> Self: ...
     name: Any
     parent: Any
     from_kall: Any
     def __init__(
         self,
-        value: _CallValue = ...,
+        value: _CallValue = (),
         name: str | None = None,
         parent: Any | None = None,
         two: bool = False,
@@ -259,7 +259,7 @@ class _patch_dict:
     in_dict: Any
     values: Any
     clear: Any
-    def __init__(self, in_dict: Any, values: Any = ..., clear: Any = False, **kwargs: Any) -> None: ...
+    def __init__(self, in_dict: Any, values: Any = (), clear: Any = False, **kwargs: Any) -> None: ...
     def __call__(self, f: Any) -> Any: ...
     if sys.version_info >= (3, 10):
         def decorate_callable(self, f: _F) -> _F: ...

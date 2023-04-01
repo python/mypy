@@ -113,7 +113,7 @@ class _SpecialForm:
 # typing.Protocol and typing_extensions.Protocol so they can properly
 # warn users about potential runtime exceptions when using typing.Protocol
 # on older versions of Python.
-Protocol: _SpecialForm = ...
+Protocol: _SpecialForm
 
 def runtime_checkable(cls: _TC) -> _TC: ...
 
@@ -227,7 +227,7 @@ if sys.version_info >= (3, 11):
     )
 else:
     Self: _SpecialForm
-    Never: _SpecialForm = ...
+    Never: _SpecialForm
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: Never) -> Never: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
@@ -245,7 +245,7 @@ else:
         order_default: bool = False,
         kw_only_default: bool = False,
         frozen_default: bool = False,
-        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = (),
         **kwargs: object,
     ) -> IdentityFunction: ...
 

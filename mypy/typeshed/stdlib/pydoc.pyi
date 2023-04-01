@@ -30,7 +30,7 @@ def visiblename(name: str, all: Container[str] | None = None, obj: object = None
 def classify_class_attrs(object: object) -> list[tuple[str, str, type, str]]: ...
 def ispackage(path: str) -> bool: ...
 def source_synopsis(file: IO[AnyStr]) -> AnyStr | None: ...
-def synopsis(filename: str, cache: MutableMapping[str, tuple[int, str]] = ...) -> str | None: ...
+def synopsis(filename: str, cache: MutableMapping[str, tuple[int, str]] = {}) -> str | None: ...
 
 class ErrorDuringImport(Exception):
     filename: str
@@ -40,7 +40,7 @@ class ErrorDuringImport(Exception):
     def __init__(self, filename: str, exc_info: OptExcInfo) -> None: ...
 
 def importfile(path: str) -> ModuleType: ...
-def safeimport(path: str, forceload: bool = ..., cache: MutableMapping[str, ModuleType] = ...) -> ModuleType | None: ...
+def safeimport(path: str, forceload: bool = ..., cache: MutableMapping[str, ModuleType] = {}) -> ModuleType | None: ...
 
 class Doc:
     PYTHONDOCS: str
@@ -70,7 +70,7 @@ class HTMLRepr(Repr):
     def repr_unicode(self, x: AnyStr, level: complex) -> str: ...
 
 class HTMLDoc(Doc):
-    _repr_instance: HTMLRepr = ...
+    _repr_instance: HTMLRepr
     repr = _repr_instance.repr
     escape = _repr_instance.escape
     def page(self, title: str, contents: str) -> str: ...
@@ -113,9 +113,9 @@ class HTMLDoc(Doc):
         self,
         text: str,
         escape: Callable[[str], str] | None = None,
-        funcs: Mapping[str, str] = ...,
-        classes: Mapping[str, str] = ...,
-        methods: Mapping[str, str] = ...,
+        funcs: Mapping[str, str] = {},
+        classes: Mapping[str, str] = {},
+        methods: Mapping[str, str] = {},
     ) -> str: ...
     def formattree(
         self, tree: list[tuple[type, tuple[type, ...]] | list[Any]], modname: str, parent: type | None = None
@@ -126,8 +126,8 @@ class HTMLDoc(Doc):
         object: object,
         name: str | None = None,
         mod: str | None = None,
-        funcs: Mapping[str, str] = ...,
-        classes: Mapping[str, str] = ...,
+        funcs: Mapping[str, str] = {},
+        classes: Mapping[str, str] = {},
         *ignored: Any,
     ) -> str: ...
     def formatvalue(self, object: object) -> str: ...
@@ -136,9 +136,9 @@ class HTMLDoc(Doc):
         object: object,
         name: str | None = None,
         mod: str | None = None,
-        funcs: Mapping[str, str] = ...,
-        classes: Mapping[str, str] = ...,
-        methods: Mapping[str, str] = ...,
+        funcs: Mapping[str, str] = {},
+        classes: Mapping[str, str] = {},
+        methods: Mapping[str, str] = {},
         cl: type | None = None,
     ) -> str: ...
     def docproperty(self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
@@ -154,7 +154,7 @@ class TextRepr(Repr):
     def repr_instance(self, x: object, level: complex) -> str: ...
 
 class TextDoc(Doc):
-    _repr_instance: TextRepr = ...
+    _repr_instance: TextRepr
     repr = _repr_instance.repr
     def bold(self, text: str) -> str: ...
     def indent(self, text: str, prefix: str = "    ") -> str: ...

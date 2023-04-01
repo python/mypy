@@ -167,20 +167,14 @@ _T = TypeVar("_T")
 
 def overload(func: _F) -> _F: ...
 
-# Unlike the vast majority module-level objects in stub files,
-# these `_SpecialForm` objects in typing need the default value `= ...`,
-# due to the fact that they are used elswhere in the same file.
-# Otherwise, flake8 erroneously flags them as undefined.
-# `_SpecialForm` objects in typing.py that are not used elswhere in the same file
-# do not need the default value assignment.
-Union: _SpecialForm = ...
-Generic: _SpecialForm = ...
+Union: _SpecialForm
+Generic: _SpecialForm
 # Protocol is only present in 3.8 and later, but mypy needs it unconditionally
-Protocol: _SpecialForm = ...
-Callable: _SpecialForm = ...
-Type: _SpecialForm = ...
-NoReturn: _SpecialForm = ...
-ClassVar: _SpecialForm = ...
+Protocol: _SpecialForm
+Callable: _SpecialForm
+Type: _SpecialForm
+NoReturn: _SpecialForm
+ClassVar: _SpecialForm
 
 Optional: _SpecialForm
 Tuple: _SpecialForm
@@ -193,7 +187,7 @@ if sys.version_info >= (3, 8):
 
 if sys.version_info >= (3, 11):
     Self: _SpecialForm
-    Never: _SpecialForm = ...
+    Never: _SpecialForm
     Unpack: _SpecialForm
     Required: _SpecialForm
     NotRequired: _SpecialForm
@@ -798,7 +792,7 @@ if sys.version_info >= (3, 11):
         order_default: bool = False,
         kw_only_default: bool = False,
         frozen_default: bool = False,  # on 3.11, runtime accepts it as part of kwargs
-        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = (),
         **kwargs: Any,
     ) -> IdentityFunction: ...
 

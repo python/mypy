@@ -39,10 +39,10 @@ _HaveCodeType: TypeAlias = types.MethodType | types.FunctionType | types.CodeTyp
 
 if sys.version_info >= (3, 11):
     class Positions(NamedTuple):
-        lineno: int | None = ...
-        end_lineno: int | None = ...
-        col_offset: int | None = ...
-        end_col_offset: int | None = ...
+        lineno: int | None = None
+        end_lineno: int | None = None
+        col_offset: int | None = None
+        end_col_offset: int | None = None
 
 if sys.version_info >= (3, 11):
     class Instruction(NamedTuple):
@@ -54,7 +54,7 @@ if sys.version_info >= (3, 11):
         offset: int
         starts_line: int | None
         is_jump_target: bool
-        positions: Positions | None = ...
+        positions: Positions | None = None
 
 else:
     class Instruction(NamedTuple):

@@ -44,8 +44,8 @@ class ModuleFinder:
             self,
             path: list[str] | None = None,
             debug: int = 0,
-            excludes: Container[str] = ...,
-            replace_paths: Sequence[tuple[str, str]] = ...,
+            excludes: Container[str] = [],
+            replace_paths: Sequence[tuple[str, str]] = [],
         ) -> None: ...
 
     def msg(self, level: int, str: str, *args: Any) -> None: ...  # undocumented

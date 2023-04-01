@@ -54,7 +54,10 @@ if sys.platform == "win32":
     HIGH_PRIORITY_CLASS: Literal[0x80]
     INFINITE: Literal[0xFFFFFFFF]
     if sys.version_info >= (3, 8):
-        INVALID_HANDLE_VALUE: Literal[0xFFFFFFFFFFFFFFFF]
+        # Ignore the flake8 error -- flake8-pyi assumes
+        # most numbers this long will be implementation details,
+        # but here we can see that it's a power of 2
+        INVALID_HANDLE_VALUE: Literal[0xFFFFFFFFFFFFFFFF]  # noqa: Y054
     IDLE_PRIORITY_CLASS: Literal[0x40]
     NORMAL_PRIORITY_CLASS: Literal[0x20]
     REALTIME_PRIORITY_CLASS: Literal[0x100]
