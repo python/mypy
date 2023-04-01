@@ -78,7 +78,7 @@ class Thread:
         group: None = None,
         target: Callable[..., object] | None = None,
         name: str | None = None,
-        args: Iterable[Any] = ...,
+        args: Iterable[Any] = (),
         kwargs: Mapping[str, Any] | None = None,
         *,
         daemon: bool | None = None,
