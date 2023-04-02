@@ -2856,10 +2856,12 @@ class Z(TypedDict): ...
 
 class W(TypedDict, total=False): ...
 
-[case testTypeddictWithUnderscore]
-from typing import TypedDict as _TypedDict
+[case testTypeddictAliased]
+from typing import TypedDict as t_TypedDict
+from typing_extensions import TypedDict as te_TypedDict
 def f(): ...
-X = _TypedDict('X', {'a': int, 'b': str})
+X = t_TypedDict('X', {'a': int, 'b': str})
+Y = te_TypedDict('Y', {'a': int, 'b': str})
 def g(): ...
 [out]
 from typing_extensions import TypedDict
@@ -2867,6 +2869,10 @@ from typing_extensions import TypedDict
 def f() -> None: ...
 
 class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict):
     a: int
     b: str
 
@@ -2885,8 +2891,18 @@ Y: Incomplete
 
 [case testTypeddictWithWrongAttributesType]
 from typing import TypedDict
-T = TypeDict("T", {"a": int, **{"b": str, "c": bytes}})
+R = TypedDict("R", {"a": int, **{"b": str, "c": bytes}})
+S = TypedDict("S", [("b", str), ("c", bytes)])
+T = TypedDict("T", {"a": int}, b=str, total=False)
+U = TypedDict("U", {"a": int}, totale=False)
+V = TypedDict("V", {"a": int}, {"b": str})
+W = TypedDict("W", **{"a": int, "b": str})
 [out]
 from _typeshed import Incomplete
 
+R: Incomplete
+S: Incomplete
 T: Incomplete
+U: Incomplete
+V: Incomplete
+W: Incomplete

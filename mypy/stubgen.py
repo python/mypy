@@ -1111,7 +1111,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
         items: list[tuple[str, Expression]] = []
         total: Expression | None = None
-        if len(rvalue.args) > 1 and isinstance(rvalue.args[1], DictExpr):
+        if len(rvalue.args) > 1 and rvalue.arg_kinds[1] == ARG_POS:
+            if not isinstance(rvalue.args[1], DictExpr):
+                self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                self.import_tracker.require_name("Incomplete")
+                return
             for attr_name, attr_type in rvalue.args[1].items:
                 if not isinstance(attr_name, StrExpr):
                     self.add(f"{self._indent}{lvalue.name}: Incomplete")
@@ -1119,6 +1123,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     return
                 items.append((attr_name.value, attr_type))
             if len(rvalue.args) > 2:
+                if rvalue.arg_kinds[2] != ARG_NAMED or rvalue.arg_names[2] != "total":
+                    self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                    self.import_tracker.require_name("Incomplete")
+                    return
                 total = rvalue.args[2]
         else:
             for arg_name, arg in zip(rvalue.arg_names[1:], rvalue.args[1:]):
