@@ -771,10 +771,14 @@ class DataclassTransformer:
         t = get_proper_type(sym.type)
         if not isinstance(t, Instance):
             return default
-        if "__set__" in t.type.names:
-            setter = t.type.names["__set__"]
+        setter = t.type.get("__set__")
+        if setter:
             if isinstance(setter.node, FuncDef):
-                setter_type = get_proper_type(setter.type)
+                super_info = t.type.get_containing_type_info("__set__")
+                assert super_info
+                setter_type = get_proper_type(
+                    map_type_from_supertype(setter.type, t.type, super_info)
+                )
                 if isinstance(setter_type, CallableType) and setter_type.arg_kinds == [
                     ARG_POS,
                     ARG_POS,
