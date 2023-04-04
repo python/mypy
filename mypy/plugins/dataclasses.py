@@ -582,7 +582,7 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
-            attr_type = _infer_dataclass_attr_type(sym)
+            init_type = _infer_dataclass_attr_init_type(sym)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
@@ -591,7 +591,7 @@ class DataclassTransformer:
                 has_default=has_default,
                 line=stmt.line,
                 column=stmt.column,
-                type=attr_type,
+                type=init_type,
                 info=cls.info,
                 kw_only=is_kw_only,
                 is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
@@ -818,7 +818,7 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
     )
 
 
-def _infer_dataclass_attr_type(sym: SymbolTableNode) -> Type | None:
+def _infer_dataclass_attr_init_type(sym: SymbolTableNode) -> Type | None:
     if sym.implicit:
         return sym.type
     t = get_proper_type(sym.type)
