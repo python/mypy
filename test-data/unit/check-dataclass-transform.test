@@ -919,3 +919,40 @@ c.x = 1  # E: Incompatible types in assignment (expression has type "int", varia
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformUnsupportedDescriptors]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> int: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner): ...
+
+    def __set__(*args, **kwargs): ...
+
+class Desc2:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> int: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner): ...
+
+    @overload
+    def __set__(self, instance: Any, value: bytes) -> None: ...
+    @overload
+    def __set__(self) -> None: ...
+    def __set__(self, *args, **kawrga) -> None: ...
+
+@my_dataclass
+class C:
+    x: Desc  # E: Unsupported signature for "__set__" in "Desc"
+    y: Desc2  # E: Unsupported "__set__" in "Desc2"
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]

@@ -582,7 +582,7 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
-            init_type = _infer_dataclass_attr_init_type(sym)
+            init_type = self._infer_dataclass_attr_init_type(sym, lhs.name)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
@@ -760,6 +760,36 @@ class DataclassTransformer:
             return require_bool_literal_argument(self._api, expression, name, default)
         return default
 
+    def _infer_dataclass_attr_init_type(self, sym: SymbolTableNode, name: str) -> Type | None:
+        """Infer __init__ argument type for an attribute.
+
+        In particular, possibly use the signature of __set__.
+        """
+        default = sym.type
+        if sym.implicit:
+            return default
+        t = get_proper_type(sym.type)
+        if not isinstance(t, Instance):
+            return default
+        if "__set__" in t.type.names:
+            setter = t.type.names["__set__"]
+            if isinstance(setter.node, FuncDef):
+                setter_type = get_proper_type(setter.type)
+                if isinstance(setter_type, CallableType) and setter_type.arg_kinds == [
+                    ARG_POS,
+                    ARG_POS,
+                    ARG_POS,
+                ]:
+                    return expand_type_by_instance(setter_type.arg_types[2], t)
+                else:
+                    self._api.fail(
+                        f'Unsupported signature for "__set__" in "{t.type.name}"', sym.node
+                    )
+            else:
+                self._api.fail(f'Unsupported "__set__" in "{t.type.name}"', sym.node)
+
+        return default
+
 
 def add_dataclass_tag(info: TypeInfo) -> None:
     # The value is ignored, only the existence matters.
@@ -816,20 +846,3 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
         info.declared_metaclass is not None
         and info.declared_metaclass.type.dataclass_transform_spec is not None
     )
-
-
-def _infer_dataclass_attr_init_type(sym: SymbolTableNode) -> Type | None:
-    if sym.implicit:
-        return sym.type
-    t = get_proper_type(sym.type)
-    if not isinstance(t, Instance):
-        return sym.type
-    if "__set__" in t.type.names:
-        n = t.type.names["__set__"]
-        if isinstance(n.node, FuncDef):
-            setter_type = get_proper_type(n.type)
-            if not isinstance(setter_type, CallableType):
-                assert False, "unknown type"
-            if setter_type.arg_kinds == [ARG_POS, ARG_POS, ARG_POS]:
-                return expand_type_by_instance(setter_type.arg_types[2], t)
-    return sym.type
