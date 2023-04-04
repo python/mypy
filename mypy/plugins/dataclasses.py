@@ -540,7 +540,8 @@ class DataclassTransformer:
                 # Make all non-default dataclass attributes implicit because they are de-facto
                 # set on self in the generated __init__(), not in the class body. On the other
                 # hand, we don't know how custom dataclass transforms initialize attributes,
-                # so we don't treat them as implicit. This is required to support descriptors.
+                # so we don't treat them as implicit. This is required to support descriptors
+                # (https://github.com/python/mypy/issues/14868).
                 sym.implicit = True
 
             is_kw_only = kw_only
