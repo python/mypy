@@ -100,7 +100,7 @@ class DataclassAttribute:
         self.has_default = has_default
         self.line = line
         self.column = column
-        self.type = type
+        self.type = type  # Type as __init__ argument
         self.info = info
         self.kw_only = kw_only
         self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
