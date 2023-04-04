@@ -18,12 +18,15 @@ from mypy.nodes import (
     RefExpr,
     SymbolTableNode,
     Var,
+    NameExpr,
 )
+from mypy.argmap import map_actuals_to_formals
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal_shared import (
     ALLOW_INCOMPATIBLE_OVERRIDE,
     require_bool_literal_argument,
     set_callable_name,
+    parse_bool,
 )
 from mypy.typeops import (  # noqa: F401  # Part of public API
     try_getting_str_literals as try_getting_str_literals,
@@ -34,8 +37,12 @@ from mypy.types import (
     Type,
     TypeType,
     TypeVarType,
+    NoneType,
     deserialize_type,
     get_proper_type,
+    AnyType,
+    TypeOfAny,
+    LiteralType,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
@@ -87,6 +94,48 @@ def _get_argument(call: CallExpr, name: str) -> Expression | None:
     return None
 
 
+def find_shallow_matching_overload_item(overload: Overloaded,
+                                        call: CallExpr) -> CallableType | None:
+    """Perform limited lookup of a matching overload item.
+
+    Full overload resolution is only supported during type checking, but plugins
+    sometimes need to resolve overloads. This can be used in some such use cases.
+
+    Resolve overloads based on these things only:
+
+    * Match using argument kinds and names
+    * If formal argument has type None, only accept the "None" expression in the callee
+    * If formal argument has type Literal[True] or Literal[False], only accept the
+      relevant bool literal
+
+    Return the first matching overload item.
+    """
+    for item in overload.items[:-1]:
+        ok = True
+        mapped = map_actuals_to_formals(
+            call.arg_kinds, call.arg_names, item.arg_kinds, item.arg_names,
+            lambda i: AnyType(TypeOfAny.special_form))
+        for arg_type, kind, actuals in zip(item.arg_types, item.arg_kinds, mapped):
+            if kind.is_required() and not actuals:
+                # Missing required argument
+                ok = False
+                break
+            elif actuals:
+                args = [call.args[i] for i in actuals]
+                arg_type = get_proper_type(arg_type)
+                if isinstance(arg_type, NoneType):
+                    if not any(isinstance(arg, NameExpr) and arg.name == "None" for arg in args):
+                        ok = False
+                        break
+                elif isinstance(arg_type, LiteralType) and type(arg_type.value) is bool:
+                    if not any(parse_bool(arg) == arg_type.value for arg in args):
+                        ok = False
+                        break
+        if ok:
+            return item
+    return overload.items[-1]
+
+
 def _get_callee_type(call: CallExpr) -> CallableType | None:
     """Return the type of the callee, regardless of its syntatic form."""
 
@@ -103,8 +152,7 @@ def _get_callee_type(call: CallExpr) -> CallableType | None:
     if isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES)) and callee_node.type:
         callee_node_type = get_proper_type(callee_node.type)
         if isinstance(callee_node_type, Overloaded):
-            # We take the last overload.
-            return callee_node_type.items[-1]
+            return find_shallow_matching_overload_item(callee_node_type, call)
         elif isinstance(callee_node_type, CallableType):
             return callee_node_type
 

@@ -218,6 +218,7 @@ from mypy.semanal_shared import (
     has_placeholder,
     require_bool_literal_argument,
     set_callable_name as set_callable_name,
+    parse_bool,
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.tvar_scope import TypeVarLikeScope
@@ -6462,12 +6463,9 @@ class SemanticAnalyzer(
         return name == unmangle(name) + "'"
 
     def parse_bool(self, expr: Expression) -> bool | None:
-        if isinstance(expr, NameExpr):
-            if expr.fullname == "builtins.True":
-                return True
-            if expr.fullname == "builtins.False":
-                return False
-        return None
+        # This wrapper is preserved for plugin backward compatibility. New code
+        # should not use this and call the wrapped parse_bool() function directly.
+        return parse_bool(expr)
 
     def parse_str_literal(self, expr: Expression) -> str | None:
         """Attempt to find the string literal value of the given expression. Returns `None` if no
