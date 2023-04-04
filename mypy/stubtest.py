@@ -26,7 +26,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
 from typing import Any, Generic, Iterator, TypeVar, Union
-from typing_extensions import get_origin
+from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
 import mypy.modulefinder
@@ -436,12 +436,12 @@ def _verify_final(
 
 
 def _verify_metaclass(
-    stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str]
+    stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str], *, is_runtime_typeddict: bool
 ) -> Iterator[Error]:
     # We exclude protocols, because of how complex their implementation is in different versions of
-    # python. Enums are also hard, ignoring.
+    # python. Enums are also hard, as are runtime TypedDicts; ignoring.
     # TODO: check that metaclasses are identical?
-    if not stub.is_protocol and not stub.is_enum:
+    if not stub.is_protocol and not stub.is_enum and not is_runtime_typeddict:
         runtime_metaclass = type(runtime)
         if runtime_metaclass is not type and stub.metaclass_type is None:
             # This means that runtime has a custom metaclass, but a stub does not.
@@ -485,7 +485,10 @@ def verify_typeinfo(
         return
 
     yield from _verify_final(stub, runtime, object_path)
-    yield from _verify_metaclass(stub, runtime, object_path)
+    is_runtime_typeddict = stub.typeddict_type is not None and is_typeddict(runtime)
+    yield from _verify_metaclass(
+        stub, runtime, object_path, is_runtime_typeddict=is_runtime_typeddict
+    )
 
     # Check everything already defined on the stub class itself (i.e. not inherited)
     to_check = set(stub.names)
@@ -493,7 +496,7 @@ def verify_typeinfo(
     to_check.update(
         m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
-    # Special-case the __init__ method for Protocols
+    # Special-case the __init__ method for Protocols and the __new__ method for TypedDicts
     #
     # TODO: On Python <3.11, __init__ methods on Protocol classes
     # are silently discarded and replaced.
@@ -501,6 +504,8 @@ def verify_typeinfo(
     # Ideally, we'd figure out a good way of validating Protocol __init__ methods on 3.11+.
     if stub.is_protocol:
         to_check.discard("__init__")
+    if is_runtime_typeddict:
+        to_check.discard("__new__")
 
     for entry in sorted(to_check):
         mangled_entry = entry
