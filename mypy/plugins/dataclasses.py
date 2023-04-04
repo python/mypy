@@ -6,7 +6,7 @@ from typing import Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -831,5 +831,5 @@ def _infer_dataclass_attr_type(sym: SymbolTableNode) -> Type | None:
             if not isinstance(setter_type, CallableType):
                 assert False, "unknown type"
             if setter_type.arg_kinds == [ARG_POS, ARG_POS, ARG_POS]:
-                return setter_type.arg_types[2]
+                return expand_type_by_instance(setter_type.arg_types[2], t)
     return sym.type
