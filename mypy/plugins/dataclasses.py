@@ -23,6 +23,7 @@ from mypy.nodes import (
     Context,
     DataclassTransformSpec,
     Expression,
+    FuncDef,
     IfStmt,
     JsonDict,
     NameExpr,
@@ -36,7 +37,6 @@ from mypy.nodes import (
     TypeInfo,
     TypeVarExpr,
     Var,
-    FuncDef,
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
@@ -59,7 +59,6 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeVarType,
-    CallableType,
     get_proper_type,
 )
 from mypy.typevars import fill_typevars
@@ -582,7 +581,7 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
-            init_type = self._infer_dataclass_attr_init_type(sym, lhs.name)
+            init_type = self._infer_dataclass_attr_init_type(sym, lhs.name, stmt)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
@@ -760,7 +759,9 @@ class DataclassTransformer:
             return require_bool_literal_argument(self._api, expression, name, default)
         return default
 
-    def _infer_dataclass_attr_init_type(self, sym: SymbolTableNode, name: str) -> Type | None:
+    def _infer_dataclass_attr_init_type(
+        self, sym: SymbolTableNode, name: str, context: Context
+    ) -> Type | None:
         """Infer __init__ argument type for an attribute.
 
         In particular, possibly use the signature of __set__.
@@ -776,9 +777,12 @@ class DataclassTransformer:
             if isinstance(setter.node, FuncDef):
                 super_info = t.type.get_containing_type_info("__set__")
                 assert super_info
-                setter_type = get_proper_type(
-                    map_type_from_supertype(setter.type, t.type, super_info)
-                )
+                if setter.type:
+                    setter_type = get_proper_type(
+                        map_type_from_supertype(setter.type, t.type, super_info)
+                    )
+                else:
+                    return AnyType(TypeOfAny.unannotated)
                 if isinstance(setter_type, CallableType) and setter_type.arg_kinds == [
                     ARG_POS,
                     ARG_POS,
@@ -787,10 +791,10 @@ class DataclassTransformer:
                     return expand_type_by_instance(setter_type.arg_types[2], t)
                 else:
                     self._api.fail(
-                        f'Unsupported signature for "__set__" in "{t.type.name}"', sym.node
+                        f'Unsupported signature for "__set__" in "{t.type.name}"', context
                     )
             else:
-                self._api.fail(f'Unsupported "__set__" in "{t.type.name}"', sym.node)
+                self._api.fail(f'Unsupported "__set__" in "{t.type.name}"', context)
 
         return default
 

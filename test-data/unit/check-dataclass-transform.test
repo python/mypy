@@ -839,6 +839,37 @@ reveal_type(C.x)  # N: Revealed type is "__main__.Desc"
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassTransformUnannotatedDescriptor]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | str: ...
+
+    def __set__(*args, **kwargs): ...
+
+@my_dataclass
+class C:
+    x: Desc
+    y: int
+
+C(x='x', y=1)
+C(x=1, y=1)
+reveal_type(C(x='x', y=1).x)  # N: Revealed type is "builtins.str"
+reveal_type(C(x='x', y=1).y)  # N: Revealed type is "builtins.int"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassTransformGenericDescriptor]
 # flags: --python-version 3.11
 
@@ -969,7 +1000,7 @@ class Desc:
     def __get__(self, instance: object, owner: Any) -> str: ...
     def __get__(self, instance, owner): ...
 
-    def __set__(*args, **kwargs): ...
+    def __set__(*args, **kwargs) -> None: ...
 
 class Desc2:
     @overload
