@@ -807,3 +807,32 @@ reveal_type(bar.base)  # N: Revealed type is "builtins.int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformDescriptors]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | str: ...
+
+    def __set__(self, instance: Any, value: str) -> None: ...
+
+@my_dataclass
+class C:
+    x: Desc
+
+C(x='x')
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "str"
+reveal_type(C(x='x').x)  # N: Revealed type is "builtins.str"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]

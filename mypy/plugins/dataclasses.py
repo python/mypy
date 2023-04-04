@@ -36,6 +36,7 @@ from mypy.nodes import (
     TypeInfo,
     TypeVarExpr,
     Var,
+    FuncDef,
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
@@ -58,6 +59,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeVarType,
+    CallableType,
     get_proper_type,
 )
 from mypy.typevars import fill_typevars
@@ -535,9 +537,11 @@ class DataclassTransformer:
             elif not isinstance(stmt.rvalue, TempNode):
                 has_default = True
 
-            if not has_default:
-                # Make all non-default attributes implicit because they are de-facto set
-                # on self in the generated __init__(), not in the class body.
+            if not has_default and self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+                # Make all non-default dataclass attributes implicit because they are de-facto
+                # set on self in the generated __init__(), not in the class body. On the other
+                # hand, we don't know how custom dataclass transforms initialize attributes,
+                # so we don't treat them as implicit. This is required to support descriptors.
                 sym.implicit = True
 
             is_kw_only = kw_only
@@ -578,6 +582,7 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
+            attr_type = _infer_dataclass_attr_type(sym)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
@@ -586,7 +591,7 @@ class DataclassTransformer:
                 has_default=has_default,
                 line=stmt.line,
                 column=stmt.column,
-                type=sym.type,
+                type=attr_type,
                 info=cls.info,
                 kw_only=is_kw_only,
                 is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
@@ -811,3 +816,20 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
         info.declared_metaclass is not None
         and info.declared_metaclass.type.dataclass_transform_spec is not None
     )
+
+
+def _infer_dataclass_attr_type(sym: SymbolTableNode) -> Type | None:
+    if sym.implicit:
+        return sym.type
+    t = get_proper_type(sym.type)
+    if not isinstance(t, Instance):
+        return sym.type
+    if "__set__" in t.type.names:
+        n = t.type.names["__set__"]
+        if isinstance(n.node, FuncDef):
+            setter_type = get_proper_type(n.type)
+            if not isinstance(setter_type, CallableType):
+                assert False, "unknown type"
+            if setter_type.arg_kinds == [ARG_POS, ARG_POS, ARG_POS]:
+                return setter_type.arg_types[2]
+    return sym.type
