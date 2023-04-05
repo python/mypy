@@ -95,7 +95,7 @@ def _get_argument(call: CallExpr, name: str) -> Expression | None:
 
 
 def find_shallow_matching_overload_item(overload: Overloaded,
-                                        call: CallExpr) -> CallableType | None:
+                                        call: CallExpr) -> CallableType:
     """Perform limited lookup of a matching overload item.
 
     Full overload resolution is only supported during type checking, but plugins
@@ -108,7 +108,7 @@ def find_shallow_matching_overload_item(overload: Overloaded,
     * If formal argument has type Literal[True] or Literal[False], only accept the
       relevant bool literal
 
-    Return the first matching overload item.
+    Return the first matching overload item, or the last one if nothing matches.
     """
     for item in overload.items[:-1]:
         ok = True
