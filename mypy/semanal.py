@@ -216,9 +216,9 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     find_dataclass_transform_spec,
     has_placeholder,
+    parse_bool,
     require_bool_literal_argument,
     set_callable_name as set_callable_name,
-    parse_bool,
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.tvar_scope import TypeVarLikeScope
@@ -6463,8 +6463,7 @@ class SemanticAnalyzer(
         return name == unmangle(name) + "'"
 
     def parse_bool(self, expr: Expression) -> bool | None:
-        # This wrapper is preserved for plugin backward compatibility. New code
-        # should not use this and call the wrapped parse_bool() function directly.
+        # This wrapper is preserved for plugins.
         return parse_bool(expr)
 
     def parse_str_literal(self, expr: Expression) -> str | None:

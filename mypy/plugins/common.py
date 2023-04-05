@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from mypy.argmap import map_actuals_to_formals
 from mypy.fixup import TypeFixer
 from mypy.nodes import (
     ARG_POS,
@@ -13,36 +14,35 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     JsonDict,
+    NameExpr,
     Node,
     PassStmt,
     RefExpr,
     SymbolTableNode,
     Var,
-    NameExpr,
 )
-from mypy.argmap import map_actuals_to_formals
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal_shared import (
     ALLOW_INCOMPATIBLE_OVERRIDE,
+    parse_bool,
     require_bool_literal_argument,
     set_callable_name,
-    parse_bool,
 )
 from mypy.typeops import (  # noqa: F401  # Part of public API
     try_getting_str_literals as try_getting_str_literals,
 )
 from mypy.types import (
+    AnyType,
     CallableType,
+    LiteralType,
+    NoneType,
     Overloaded,
     Type,
+    TypeOfAny,
     TypeType,
     TypeVarType,
-    NoneType,
     deserialize_type,
     get_proper_type,
-    AnyType,
-    TypeOfAny,
-    LiteralType,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
@@ -94,8 +94,7 @@ def _get_argument(call: CallExpr, name: str) -> Expression | None:
     return None
 
 
-def find_shallow_matching_overload_item(overload: Overloaded,
-                                        call: CallExpr) -> CallableType:
+def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) -> CallableType:
     """Perform limited lookup of a matching overload item.
 
     Full overload resolution is only supported during type checking, but plugins
@@ -113,8 +112,12 @@ def find_shallow_matching_overload_item(overload: Overloaded,
     for item in overload.items[:-1]:
         ok = True
         mapped = map_actuals_to_formals(
-            call.arg_kinds, call.arg_names, item.arg_kinds, item.arg_names,
-            lambda i: AnyType(TypeOfAny.special_form))
+            call.arg_kinds,
+            call.arg_names,
+            item.arg_kinds,
+            item.arg_names,
+            lambda i: AnyType(TypeOfAny.special_form),
+        )
 
         # Look for extra actuals
         matched_actuals = set()

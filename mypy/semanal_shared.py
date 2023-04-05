@@ -18,6 +18,7 @@ from mypy.nodes import (
     Decorator,
     Expression,
     FuncDef,
+    NameExpr,
     Node,
     OverloadedFuncDef,
     RefExpr,
@@ -25,7 +26,6 @@ from mypy.nodes import (
     SymbolTable,
     SymbolTableNode,
     TypeInfo,
-    NameExpr,
 )
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.tvar_scope import TypeVarLikeScope
