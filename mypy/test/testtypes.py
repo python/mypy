@@ -1361,6 +1361,9 @@ class ShallowOverloadMatchingSuite(Suite):
         )
         self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
         self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload([[("x", fx.anyt, ARG_POS)], [("x", fx.nonet, ARG_POS)]])
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
 
     def test_optional_arg(self) -> None:
         fx = self.fx

@@ -148,6 +148,7 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
                         isinstance(arg_type, Instance)
                         and arg_type.type.fullname == "builtins.object"
                     )
+                    and not isinstance(arg_type, AnyType)
                 ):
                     ok = False
                     break
