@@ -16,7 +16,9 @@ from mypy.nodes import (
     CONTRAVARIANT,
     COVARIANT,
     INVARIANT,
+    ArgKind,
     CallExpr,
+    Expression,
     NameExpr,
 )
 from mypy.plugins.common import find_shallow_matching_overload_item
@@ -1390,7 +1392,7 @@ class ShallowOverloadMatchingSuite(Suite):
 
 
 def make_call(*items: tuple[str, str | None]) -> CallExpr:
-    args = []
+    args: list[Expression] = []
     arg_names = []
     arg_kinds = []
     for arg, name in items:
