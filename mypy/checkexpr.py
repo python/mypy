@@ -4348,7 +4348,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for arg in stargs:
                 if rv is None:
                     constructor = CallableType(
-                        [self.chk.named_generic_type("typing.Mapping", [kt, vt])],
+                        [self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [kt, vt])],
                         [nodes.ARG_POS],
                         [None],
                         self.chk.named_generic_type("builtins.dict", [kt, vt]),
