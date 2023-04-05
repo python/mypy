@@ -115,6 +115,14 @@ def find_shallow_matching_overload_item(overload: Overloaded,
         mapped = map_actuals_to_formals(
             call.arg_kinds, call.arg_names, item.arg_kinds, item.arg_names,
             lambda i: AnyType(TypeOfAny.special_form))
+
+        # Look for extra actuals
+        matched_actuals = set()
+        for actuals in mapped:
+            matched_actuals.update(actuals)
+        if any(i not in matched_actuals for i in range(len(call.args))):
+            ok = False
+
         for arg_type, kind, actuals in zip(item.arg_types, item.arg_kinds, mapped):
             if kind.is_required() and not actuals:
                 # Missing required argument

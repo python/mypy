@@ -1308,9 +1308,33 @@ class ShallowOverloadMatchingSuite(Suite):
     def test_simple(self) -> None:
         fx = self.fx
         ov = self.make_overload([[("x", fx.anyt, ARG_NAMED)], [("y", fx.anyt, ARG_NAMED)]])
+        # Match first only
         self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "x")), 0)
+        # Match second only
         self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "y")), 1)
+        # No match -- invalid keyword arg name
         self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "z")), 1)
+        # No match -- missing arg
+        self.assert_find_shallow_matching_overload_item(ov, make_call(), 1)
+        # No match -- extra arg
+        self.assert_find_shallow_matching_overload_item(
+            ov, make_call(("foo", "x"), ("foo", "z")), 1
+        )
+
+    def test_match_using_types(self) -> None:
+        fx = self.fx
+        ov = self.make_overload(
+            [
+                [("x", fx.nonet, ARG_POS)],
+                [("x", fx.lit_false, ARG_POS)],
+                [("x", fx.lit_true, ARG_POS)],
+                [("x", fx.anyt, ARG_POS)],
+            ]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("builtins.False", None)), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("builtins.True", None)), 2)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", None)), 3)
 
     def assert_find_shallow_matching_overload_item(
         self, ov: Overloaded, call: CallExpr, expected_index: int
@@ -1342,7 +1366,10 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
     arg_names = []
     arg_kinds = []
     for arg, name in items:
-        args.append(NameExpr(arg))
+        shortname = arg.split(".")[-1]
+        n = NameExpr(shortname)
+        n.fullname = arg
+        args.append(n)
         arg_names.append(name)
         if name:
             arg_kinds.append(ARG_NAMED)
