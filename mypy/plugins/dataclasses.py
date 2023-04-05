@@ -6,7 +6,7 @@ from typing import Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -23,6 +23,7 @@ from mypy.nodes import (
     Context,
     DataclassTransformSpec,
     Expression,
+    FuncDef,
     IfStmt,
     JsonDict,
     NameExpr,
@@ -98,7 +99,7 @@ class DataclassAttribute:
         self.has_default = has_default
         self.line = line
         self.column = column
-        self.type = type
+        self.type = type  # Type as __init__ argument
         self.info = info
         self.kw_only = kw_only
         self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
@@ -535,9 +536,12 @@ class DataclassTransformer:
             elif not isinstance(stmt.rvalue, TempNode):
                 has_default = True
 
-            if not has_default:
-                # Make all non-default attributes implicit because they are de-facto set
-                # on self in the generated __init__(), not in the class body.
+            if not has_default and self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+                # Make all non-default dataclass attributes implicit because they are de-facto
+                # set on self in the generated __init__(), not in the class body. On the other
+                # hand, we don't know how custom dataclass transforms initialize attributes,
+                # so we don't treat them as implicit. This is required to support descriptors
+                # (https://github.com/python/mypy/issues/14868).
                 sym.implicit = True
 
             is_kw_only = kw_only
@@ -578,6 +582,7 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
+            init_type = self._infer_dataclass_attr_init_type(sym, lhs.name, stmt)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
@@ -586,7 +591,7 @@ class DataclassTransformer:
                 has_default=has_default,
                 line=stmt.line,
                 column=stmt.column,
-                type=sym.type,
+                type=init_type,
                 info=cls.info,
                 kw_only=is_kw_only,
                 is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
@@ -753,6 +758,50 @@ class DataclassTransformer:
         expression = self._cls.keywords.get(name)
         if expression is not None:
             return require_bool_literal_argument(self._api, expression, name, default)
+        return default
+
+    def _infer_dataclass_attr_init_type(
+        self, sym: SymbolTableNode, name: str, context: Context
+    ) -> Type | None:
+        """Infer __init__ argument type for an attribute.
+
+        In particular, possibly use the signature of __set__.
+        """
+        default = sym.type
+        if sym.implicit:
+            return default
+        t = get_proper_type(sym.type)
+
+        # Perform a simple-minded inference from the signature of __set__, if present.
+        # We can't use mypy.checkmember here, since this plugin runs before type checking.
+        # We only support some basic scanerios here, which is hopefully sufficient for
+        # the vast majority of use cases.
+        if not isinstance(t, Instance):
+            return default
+        setter = t.type.get("__set__")
+        if setter:
+            if isinstance(setter.node, FuncDef):
+                super_info = t.type.get_containing_type_info("__set__")
+                assert super_info
+                if setter.type:
+                    setter_type = get_proper_type(
+                        map_type_from_supertype(setter.type, t.type, super_info)
+                    )
+                else:
+                    return AnyType(TypeOfAny.unannotated)
+                if isinstance(setter_type, CallableType) and setter_type.arg_kinds == [
+                    ARG_POS,
+                    ARG_POS,
+                    ARG_POS,
+                ]:
+                    return expand_type_by_instance(setter_type.arg_types[2], t)
+                else:
+                    self._api.fail(
+                        f'Unsupported signature for "__set__" in "{t.type.name}"', context
+                    )
+            else:
+                self._api.fail(f'Unsupported "__set__" in "{t.type.name}"', context)
+
         return default
 
 
