@@ -34,6 +34,7 @@ from mypy.typeops import (  # noqa: F401  # Part of public API
 from mypy.types import (
     AnyType,
     CallableType,
+    Instance,
     LiteralType,
     NoneType,
     Overloaded,
@@ -43,6 +44,7 @@ from mypy.types import (
     TypeVarType,
     deserialize_type,
     get_proper_type,
+    is_optional,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
@@ -134,10 +136,21 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
             elif actuals:
                 args = [call.args[i] for i in actuals]
                 arg_type = get_proper_type(arg_type)
+                arg_none = any(isinstance(arg, NameExpr) and arg.name == "None" for arg in args)
                 if isinstance(arg_type, NoneType):
-                    if not any(isinstance(arg, NameExpr) and arg.name == "None" for arg in args):
+                    if not arg_none:
                         ok = False
                         break
+                elif (
+                    arg_none
+                    and not is_optional(arg_type)
+                    and not (
+                        isinstance(arg_type, Instance)
+                        and arg_type.type.fullname == "builtins.object"
+                    )
+                ):
+                    ok = False
+                    break
                 elif isinstance(arg_type, LiteralType) and type(arg_type.value) is bool:
                     if not any(parse_bool(arg) == arg_type.value for arg in args):
                         ok = False

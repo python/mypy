@@ -1338,6 +1338,30 @@ class ShallowOverloadMatchingSuite(Suite):
         self.assert_find_shallow_matching_overload_item(ov, make_call(("builtins.True", None)), 2)
         self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", None)), 3)
 
+    def test_none_special_cases(self) -> None:
+        fx = self.fx
+        ov = self.make_overload(
+            [[("x", fx.callable(fx.nonet), ARG_POS)], [("x", fx.nonet, ARG_POS)]]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload([[("x", fx.str_type, ARG_POS)], [("x", fx.nonet, ARG_POS)]])
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload(
+            [[("x", UnionType([fx.str_type, fx.a]), ARG_POS)], [("x", fx.nonet, ARG_POS)]]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload([[("x", fx.o, ARG_POS)], [("x", fx.nonet, ARG_POS)]])
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload(
+            [[("x", UnionType([fx.str_type, fx.nonet]), ARG_POS)], [("x", fx.nonet, ARG_POS)]]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+
     def test_optional_arg(self) -> None:
         fx = self.fx
         ov = self.make_overload(
