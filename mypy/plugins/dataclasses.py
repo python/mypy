@@ -40,6 +40,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
+    _get_callee_type,
     _get_decorator_bool_argument,
     add_attribute_to_class,
     add_method_to_class,
@@ -48,7 +49,7 @@ from mypy.plugins.common import (
 from mypy.semanal_shared import find_dataclass_transform_spec, require_bool_literal_argument
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
-from mypy.typeops import map_type_from_supertype
+from mypy.typeops import map_type_from_supertype, try_getting_literals_from_type
 from mypy.types import (
     AnyType,
     CallableType,
@@ -517,7 +518,7 @@ class DataclassTransformer:
 
             is_in_init_param = field_args.get("init")
             if is_in_init_param is None:
-                is_in_init = True
+                is_in_init = self._get_default_init_value_for_field_specifier(stmt.rvalue)
             else:
                 is_in_init = bool(self._api.parse_bool(is_in_init_param))
 
@@ -759,6 +760,30 @@ class DataclassTransformer:
         if expression is not None:
             return require_bool_literal_argument(self._api, expression, name, default)
         return default
+
+    def _get_default_init_value_for_field_specifier(self, call: Expression) -> bool:
+        """
+        Find a default value for the `init` parameter of the specifier being called. If the
+        specifier's type signature includes an `init` parameter with a type of `Literal[True]` or
+        `Literal[False]`, return the appropriate boolean value from the literal. Otherwise,
+        fall back to the standard default of `True`.
+        """
+        if not isinstance(call, CallExpr):
+            return True
+
+        specifier_type = _get_callee_type(call)
+        if specifier_type is None:
+            return True
+
+        parameter = specifier_type.argument_by_name("init")
+        if parameter is None:
+            return True
+
+        literals = try_getting_literals_from_type(parameter.typ, bool, "builtins.bool")
+        if literals is None or len(literals) != 1:
+            return True
+
+        return literals[0]
 
     def _infer_dataclass_attr_init_type(
         self, sym: SymbolTableNode, name: str, context: Context

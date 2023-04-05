@@ -18,6 +18,7 @@ from mypy.nodes import (
     Decorator,
     Expression,
     FuncDef,
+    NameExpr,
     Node,
     OverloadedFuncDef,
     RefExpr,
@@ -451,7 +452,7 @@ def require_bool_literal_argument(
     default: bool | None = None,
 ) -> bool | None:
     """Attempt to interpret an expression as a boolean literal, and fail analysis if we can't."""
-    value = api.parse_bool(expression)
+    value = parse_bool(expression)
     if value is None:
         api.fail(
             f'"{name}" argument must be a True or False literal', expression, code=LITERAL_REQ
@@ -459,3 +460,12 @@ def require_bool_literal_argument(
         return default
 
     return value
+
+
+def parse_bool(expr: Expression) -> bool | None:
+    if isinstance(expr, NameExpr):
+        if expr.fullname == "builtins.True":
+            return True
+        if expr.fullname == "builtins.False":
+            return False
+    return None
