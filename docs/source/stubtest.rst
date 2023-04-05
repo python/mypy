@@ -136,8 +136,8 @@ The rest of this section documents the command line interface of stubtest.
 
     Ignore unused allowlist entries
 
-    By default, stubtest will complain if an allowlist entry is not necessary
-    for stubtest to pass successfully.
+    Without this option enabled, the default is for stubtest to complain if an
+    allowlist entry is not necessary for stubtest to pass successfully.
 
     Note if an allowlist entry is a regex that matches the empty string,
     stubtest will never consider it unused. For example, to get
