@@ -1336,6 +1336,34 @@ class ShallowOverloadMatchingSuite(Suite):
         self.assert_find_shallow_matching_overload_item(ov, make_call(("builtins.True", None)), 2)
         self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", None)), 3)
 
+    def test_optional_arg(self) -> None:
+        fx = self.fx
+        ov = self.make_overload(
+            [[("x", fx.anyt, ARG_NAMED)], [("y", fx.anyt, ARG_OPT)], [("z", fx.anyt, ARG_NAMED)]]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "x")), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "y")), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "z")), 2)
+
+    def test_two_args(self) -> None:
+        fx = self.fx
+        ov = self.make_overload(
+            [
+                [("x", fx.nonet, ARG_OPT), ("y", fx.anyt, ARG_OPT)],
+                [("x", fx.anyt, ARG_OPT), ("y", fx.anyt, ARG_OPT)],
+            ]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", "x")), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "x")), 1)
+        self.assert_find_shallow_matching_overload_item(
+            ov, make_call(("foo", "y"), ("None", "x")), 0
+        )
+        self.assert_find_shallow_matching_overload_item(
+            ov, make_call(("foo", "y"), ("bar", "x")), 1
+        )
+
     def assert_find_shallow_matching_overload_item(
         self, ov: Overloaded, call: CallExpr, expected_index: int
     ) -> None:
