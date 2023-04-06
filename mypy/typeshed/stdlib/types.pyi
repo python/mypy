@@ -554,13 +554,13 @@ class MemberDescriptorType:
 
 def new_class(
     name: str,
-    bases: Iterable[object] = ...,
+    bases: Iterable[object] = (),
     kwds: dict[str, Any] | None = None,
     exec_body: Callable[[dict[str, Any]], object] | None = None,
 ) -> type: ...
 def resolve_bases(bases: Iterable[object]) -> tuple[Any, ...]: ...
 def prepare_class(
-    name: str, bases: tuple[type, ...] = ..., kwds: dict[str, Any] | None = None
+    name: str, bases: tuple[type, ...] = (), kwds: dict[str, Any] | None = None
 ) -> tuple[type, dict[str, Any], dict[str, Any]]: ...
 
 # Actually a different type, but `property` is special and we want that too.

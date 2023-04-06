@@ -72,16 +72,16 @@ class Pool:
         self,
         processes: int | None = None,
         initializer: Callable[..., object] | None = None,
-        initargs: Iterable[Any] = ...,
+        initargs: Iterable[Any] = (),
         maxtasksperchild: int | None = None,
         context: Any | None = None,
     ) -> None: ...
-    def apply(self, func: Callable[..., _T], args: Iterable[Any] = ..., kwds: Mapping[str, Any] = ...) -> _T: ...
+    def apply(self, func: Callable[..., _T], args: Iterable[Any] = (), kwds: Mapping[str, Any] = {}) -> _T: ...
     def apply_async(
         self,
         func: Callable[..., _T],
-        args: Iterable[Any] = ...,
-        kwds: Mapping[str, Any] = ...,
+        args: Iterable[Any] = (),
+        kwds: Mapping[str, Any] = {},
         callback: Callable[[_T], object] | None = None,
         error_callback: Callable[[BaseException], object] | None = None,
     ) -> AsyncResult[_T]: ...
@@ -115,7 +115,7 @@ class Pool:
 
 class ThreadPool(Pool):
     def __init__(
-        self, processes: int | None = None, initializer: Callable[..., object] | None = None, initargs: Iterable[Any] = ...
+        self, processes: int | None = None, initializer: Callable[..., object] | None = None, initargs: Iterable[Any] = ()
     ) -> None: ...
 
 # undocumented

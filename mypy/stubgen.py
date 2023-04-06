@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping
+from typing import Iterable, Mapping
 from typing_extensions import Final
 
 import mypy.build
@@ -888,8 +888,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         ):
             if expr.name == "abstractproperty":
                 self.import_tracker.require_name(expr.expr.name)
-                self.add_decorator("%s" % ("property"))
-                self.add_decorator("{}.{}".format(expr.expr.name, "abstractmethod"))
+                self.add_decorator("property")
+                self.add_decorator(f"{expr.expr.name}.abstractmethod")
             else:
                 self.import_tracker.require_name(expr.expr.name)
                 self.add_decorator(f"{expr.expr.name}.{expr.name}")
@@ -1656,8 +1656,8 @@ def generate_stub_from_ast(
         file.write("".join(gen.output()))
 
 
-def get_sig_generators(options: Options) -> List[SignatureGenerator]:
-    sig_generators: List[SignatureGenerator] = [
+def get_sig_generators(options: Options) -> list[SignatureGenerator]:
+    sig_generators: list[SignatureGenerator] = [
         DocstringSignatureGenerator(),
         FallbackSignatureGenerator(),
     ]

@@ -50,14 +50,14 @@ class Finalize:
         self,
         obj: Incomplete | None,
         callback: Callable[..., Incomplete],
-        args: Sequence[Any] = ...,
+        args: Sequence[Any] = (),
         kwargs: Mapping[str, Any] | None = None,
         exitpriority: int | None = None,
     ) -> None: ...
     def __call__(
         self,
         wr: Unused = None,
-        _finalizer_registry: MutableMapping[Incomplete, Incomplete] = ...,
+        _finalizer_registry: MutableMapping[Incomplete, Incomplete] = {},
         sub_debug: Callable[..., object] = ...,
         getpid: Callable[[], int] = ...,
     ) -> Incomplete: ...

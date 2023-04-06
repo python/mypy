@@ -41,6 +41,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, FunctionSigContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
+    _get_callee_type,
     _get_decorator_bool_argument,
     add_attribute_to_class,
     add_method_to_class,
@@ -49,7 +50,7 @@ from mypy.plugins.common import (
 from mypy.semanal_shared import find_dataclass_transform_spec, require_bool_literal_argument
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
-from mypy.typeops import map_type_from_supertype
+from mypy.typeops import map_type_from_supertype, try_getting_literals_from_type
 from mypy.types import (
     AnyType,
     CallableType,
@@ -101,7 +102,7 @@ class DataclassAttribute:
         self.has_default = has_default
         self.line = line
         self.column = column
-        self.type = type
+        self.type = type  # Type as __init__ argument
         self.info = info
         self.kw_only = kw_only
         self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
@@ -554,7 +555,7 @@ class DataclassTransformer:
 
             is_in_init_param = field_args.get("init")
             if is_in_init_param is None:
-                is_in_init = True
+                is_in_init = self._get_default_init_value_for_field_specifier(stmt.rvalue)
             else:
                 is_in_init = bool(self._api.parse_bool(is_in_init_param))
 
@@ -573,9 +574,12 @@ class DataclassTransformer:
             elif not isinstance(stmt.rvalue, TempNode):
                 has_default = True
 
-            if not has_default:
-                # Make all non-default attributes implicit because they are de-facto set
-                # on self in the generated __init__(), not in the class body.
+            if not has_default and self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+                # Make all non-default dataclass attributes implicit because they are de-facto
+                # set on self in the generated __init__(), not in the class body. On the other
+                # hand, we don't know how custom dataclass transforms initialize attributes,
+                # so we don't treat them as implicit. This is required to support descriptors
+                # (https://github.com/python/mypy/issues/14868).
                 sym.implicit = True
 
             is_kw_only = kw_only
@@ -616,6 +620,7 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
+            init_type = self._infer_dataclass_attr_init_type(sym, lhs.name, stmt)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
@@ -624,7 +629,7 @@ class DataclassTransformer:
                 has_default=has_default,
                 line=stmt.line,
                 column=stmt.column,
-                type=sym.type,
+                type=init_type,
                 info=cls.info,
                 kw_only=is_kw_only,
                 is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
@@ -791,6 +796,74 @@ class DataclassTransformer:
         expression = self._cls.keywords.get(name)
         if expression is not None:
             return require_bool_literal_argument(self._api, expression, name, default)
+        return default
+
+    def _get_default_init_value_for_field_specifier(self, call: Expression) -> bool:
+        """
+        Find a default value for the `init` parameter of the specifier being called. If the
+        specifier's type signature includes an `init` parameter with a type of `Literal[True]` or
+        `Literal[False]`, return the appropriate boolean value from the literal. Otherwise,
+        fall back to the standard default of `True`.
+        """
+        if not isinstance(call, CallExpr):
+            return True
+
+        specifier_type = _get_callee_type(call)
+        if specifier_type is None:
+            return True
+
+        parameter = specifier_type.argument_by_name("init")
+        if parameter is None:
+            return True
+
+        literals = try_getting_literals_from_type(parameter.typ, bool, "builtins.bool")
+        if literals is None or len(literals) != 1:
+            return True
+
+        return literals[0]
+
+    def _infer_dataclass_attr_init_type(
+        self, sym: SymbolTableNode, name: str, context: Context
+    ) -> Type | None:
+        """Infer __init__ argument type for an attribute.
+
+        In particular, possibly use the signature of __set__.
+        """
+        default = sym.type
+        if sym.implicit:
+            return default
+        t = get_proper_type(sym.type)
+
+        # Perform a simple-minded inference from the signature of __set__, if present.
+        # We can't use mypy.checkmember here, since this plugin runs before type checking.
+        # We only support some basic scanerios here, which is hopefully sufficient for
+        # the vast majority of use cases.
+        if not isinstance(t, Instance):
+            return default
+        setter = t.type.get("__set__")
+        if setter:
+            if isinstance(setter.node, FuncDef):
+                super_info = t.type.get_containing_type_info("__set__")
+                assert super_info
+                if setter.type:
+                    setter_type = get_proper_type(
+                        map_type_from_supertype(setter.type, t.type, super_info)
+                    )
+                else:
+                    return AnyType(TypeOfAny.unannotated)
+                if isinstance(setter_type, CallableType) and setter_type.arg_kinds == [
+                    ARG_POS,
+                    ARG_POS,
+                    ARG_POS,
+                ]:
+                    return expand_type_by_instance(setter_type.arg_types[2], t)
+                else:
+                    self._api.fail(
+                        f'Unsupported signature for "__set__" in "{t.type.name}"', context
+                    )
+            else:
+                self._api.fail(f'Unsupported "__set__" in "{t.type.name}"', context)
+
         return default
 
 

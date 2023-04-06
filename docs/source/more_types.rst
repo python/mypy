@@ -941,11 +941,11 @@ One common confusion is that the presence of a ``yield`` statement in an
        await arange(5)  # Error: Incompatible types in "await" (actual type "AsyncIterator[int]", expected type "Awaitable[Any]")
        reveal_type(await coroutine(5))  # Revealed type is "typing.AsyncIterator[builtins.int]"
 
-This can sometimes come up when trying to define base classes or Protocols:
+This can sometimes come up when trying to define base classes, Protocols or overloads:
 
 .. code-block:: python
 
-    from typing import AsyncIterator, Protocol
+    from typing import AsyncIterator, Protocol, overload
 
     class LauncherIncorrect(Protocol):
         # Because launch does not have yield, this has type
@@ -964,3 +964,17 @@ This can sometimes come up when trying to define base classes or Protocols:
             raise NotImplementedError
             if False:
                 yield 0
+
+    # The type of the overloads is independent of the implementation.
+    # In particular, their type is not affected by whether or not the
+    # implementation contains a `yield`.
+    # Use of `def`` makes it clear the type is Callable[..., AsyncIterator[int]],
+    # whereas with `async def` it would be Callable[..., Coroutine[Any, Any, AsyncIterator[int]]]
+    @overload
+    def launch(*, count: int = ...) -> AsyncIterator[int]: ...
+    @overload
+    def launch(*, time: float = ...) -> AsyncIterator[int]: ...
+
+    async def launch(*, count: int = 0, time: float = 0) -> AsyncIterator[int]:
+        # The implementation of launch is an async generator and contains a yield
+        yield 0
