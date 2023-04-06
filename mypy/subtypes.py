@@ -608,6 +608,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 left, right, proper_subtype=self.proper_subtype
             ):
                 return True
+            # We record negative cache entry here, and not in the protocol check like we do for
+            # positive cache, to avoid accidentally adding a type that is not a structural
+            # subtype, but is a nominal subtype (involving type: ignore override).
             type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
             return False
         if isinstance(right, TypeType):

@@ -12,6 +12,9 @@ from mypy.nodes import TypeInfo
 from mypy.server.trigger import make_trigger
 from mypy.types import Instance, Type, TypeVarId, get_proper_type
 
+MAX_NEGATIVE_CACHE_TYPES: Final = 1000
+MAX_NEGATIVE_CACHE_ENTRIES: Final = 10000
+
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]
 
@@ -195,7 +198,12 @@ class TypeState:
             # These are unlikely to match, due to the large space of
             # possible values.  Avoid uselessly increasing cache sizes.
             return
+        if len(self._negative_subtype_caches) > MAX_NEGATIVE_CACHE_TYPES:
+            self._negative_subtype_caches.clear()
         cache = self._negative_subtype_caches.setdefault(right.type, dict())
+        subcache = cache.setdefault(kind, set())
+        if len(subcache) > MAX_NEGATIVE_CACHE_ENTRIES:
+            subcache.clear()
         cache.setdefault(kind, set()).add((left, right))
 
     def reset_protocol_deps(self) -> None:
