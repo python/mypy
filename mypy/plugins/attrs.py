@@ -929,13 +929,10 @@ class MethodAdder:
         add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
 
 
-def _get_attrs_init_type(typ: Type) -> CallableType | None:
+def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     """
     If `typ` refers to an attrs class, gets the type of its initializer method.
     """
-    typ = get_proper_type(typ)
-    if not isinstance(typ, Instance):
-        return None
     magic_attr = typ.type.get(MAGIC_ATTR_NAME)
     if magic_attr is None or not magic_attr.plugin_generated:
         return None
@@ -967,16 +964,23 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
 
     inst_type = get_proper_type(inst_type)
     if isinstance(inst_type, AnyType):
-        return ctx.default_signature
+        return ctx.default_signature  # evolve(Any, ....) -> Any
     inst_type_str = format_type_bare(inst_type)
-
-    attrs_init_type = _get_attrs_init_type(inst_type)
-    if not attrs_init_type:
+    attrs_type = get_proper_type(
+        inst_type.upper_bound if isinstance(inst_type, TypeVarType) else inst_type
+    )
+    attrs_init_type = None
+    if isinstance(attrs_type, Instance):
+        attrs_init_type = _get_attrs_init_type(attrs_type)
+    if attrs_init_type is None:
         ctx.api.fail(
-            f'Argument 1 to "evolve" has incompatible type "{inst_type_str}"; expected an attrs class',
+            f'Argument 1 to "evolve" has a variable type "{inst_type_str}" not bound to an attrs class'
+            if isinstance(inst_type, TypeVarType)
+            else f'Argument 1 to "evolve" has incompatible type "{inst_type_str}"; expected an attrs class',
             ctx.context,
         )
         return ctx.default_signature
+    assert isinstance(attrs_type, Instance)
 
     # AttrClass.__init__ has the following signature (or similar, if having kw-only & defaults):
     #   def __init__(self, attr1: Type1, attr2: Type2) -> None:
