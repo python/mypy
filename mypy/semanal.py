@@ -1937,16 +1937,15 @@ class SemanticAnalyzer(
                 return None
             inner_unbound = inner_t
             inner_sym = self.lookup_qualified(inner_unbound.name, inner_unbound)
-            if inner_sym:
-                if isinstance(inner_sym.node, PlaceholderNode):
-                    self.record_incomplete_ref()
-                elif isinstance(inner_sym.node, TypeVarTupleExpr):
-                    if inner_sym.fullname and not self.tvar_scope.allow_binding(
-                        inner_sym.fullname
-                    ):
-                        # It's bound by our type variable scope
-                        return None
-                return inner_unbound.name, inner_sym.node
+            if not inner_sym:
+                return None
+            if isinstance(inner_sym.node, PlaceholderNode):
+                self.record_incomplete_ref()
+            elif isinstance(inner_sym.node, TypeVarTupleExpr):
+                if inner_sym.fullname and not self.tvar_scope.allow_binding(inner_sym.fullname):
+                    # It's bound by our type variable scope
+                    return None
+            return inner_unbound.name, inner_sym.node
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
             # It's bound by our type variable scope
             return None
