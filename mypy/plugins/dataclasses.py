@@ -949,6 +949,7 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     obj_type = get_proper_type(obj_type)
     if not isinstance(obj_type, Instance):
         return ctx.default_signature
+    inst_type_str = format_type_bare(obj_type)
 
     replace_func = obj_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
     if replace_func is None:
@@ -963,10 +964,10 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     assert isinstance(signature, CallableType)
     signature = expand_type_by_instance(signature, obj_type)
     # re-add the instance type
-    signature = signature.copy_modified(
+    return signature.copy_modified(
         arg_types=[obj_type, *signature.arg_types],
         arg_kinds=[ARG_POS, *signature.arg_kinds],
         arg_names=[None, *signature.arg_names],
         ret_type=obj_type,
+        name=f"{ctx.default_signature.name} of {inst_type_str}",
     )
-    return signature

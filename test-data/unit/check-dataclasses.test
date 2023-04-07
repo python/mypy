@@ -2086,5 +2086,5 @@ a = A(x=42)
 reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
 a2 = replace(a, x=42)
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
-a2 = replace(a, x='42')  # E: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
+a2 = replace(a, x='42')  # E: Argument "x" to "replace" of "A[int]" has incompatible type "str"; expected "int"
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
