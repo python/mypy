@@ -9,7 +9,7 @@ import mypy.plugin  # To avoid circular imports.
 from mypy.applytype import apply_generic_arguments
 from mypy.checker import TypeChecker
 from mypy.errorcodes import LITERAL_REQ
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import format_type_bare
 from mypy.nodes import (
@@ -966,7 +966,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     # </hack>
 
     inst_type = get_proper_type(inst_type)
-    if isinstance(inst_type, AnyType):
+    if not isinstance(inst_type, Instance):
         return ctx.default_signature
     inst_type_str = format_type_bare(inst_type)
 
@@ -977,6 +977,8 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
             ctx.context,
         )
         return ctx.default_signature
+
+    attrs_init_type = expand_type_by_instance(attrs_init_type, inst_type)
 
     # AttrClass.__init__ has the following signature (or similar, if having kw-only & defaults):
     #   def __init__(self, attr1: Type1, attr2: Type2) -> None:

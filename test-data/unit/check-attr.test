@@ -1970,6 +1970,27 @@ reveal_type(ret)  # N: Revealed type is "Any"
 
 [typing fixtures/typing-medium.pyi]
 
+[case testEvolveGeneric]
+import attrs
+from typing import ClassVar, Generic, TypeVar
+
+T = TypeVar('T')
+
+@attrs.define
+class A(Generic[T]):
+    x: T
+
+
+a = A(x=42)
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
+a2 = attrs.evolve(a, x=42)
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+a2 = attrs.evolve(a, x='42')  # E: Argument "x" to "evolve" of "A[int]" has incompatible type "str"; expected "int"
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+
+[builtins fixtures/attr.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testEvolveVariants]
 from typing import Any
 import attr
