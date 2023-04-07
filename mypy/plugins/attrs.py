@@ -929,13 +929,10 @@ class MethodAdder:
         add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
 
 
-def _get_attrs_init_type(typ: Type) -> CallableType | None:
+def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     """
     If `typ` refers to an attrs class, gets the type of its initializer method.
     """
-    typ = get_proper_type(typ)
-    if not isinstance(typ, Instance):
-        return None
     magic_attr = typ.type.get(MAGIC_ATTR_NAME)
     if magic_attr is None or not magic_attr.plugin_generated:
         return None
@@ -966,12 +963,10 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     # </hack>
 
     inst_type = get_proper_type(inst_type)
-    if not isinstance(inst_type, Instance):
-        return ctx.default_signature
     inst_type_str = format_type_bare(inst_type)
-
-    attrs_init_type = _get_attrs_init_type(inst_type)
-    if not attrs_init_type:
+    if not (
+        isinstance(inst_type, Instance) and (attrs_init_type := _get_attrs_init_type(inst_type))
+    ):
         ctx.api.fail(
             f'Argument 1 to "evolve" has incompatible type "{inst_type_str}"; expected an attrs class',
             ctx.context,
