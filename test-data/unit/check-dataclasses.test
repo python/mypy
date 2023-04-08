@@ -2072,6 +2072,7 @@ class A:
 TA = TypeVar('TA', bound=A)
 TInt = TypeVar('TInt', bound=int)
 TAny = TypeVar('TAny')
+TNone = TypeVar('TNone', bound=None)
 
 
 def f(t: TA) -> TA:
@@ -2085,6 +2086,10 @@ def g(t: TInt) -> None:
 
 def h(t: TAny) -> TAny:
     return replace(t, x='spam')  # E: Argument 1 to "replace" has variable type "TAny" not bound to a dataclass
+
+
+def q(t: TNone) -> TNone:
+    return replace(t, x='spam')  # E: Argument 1 to "replace" has variable type "TNone" not bound to a dataclass
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -2107,6 +2112,8 @@ class C:
     pass
 
 replace(C())  # E: Argument 1 to "replace" has incompatible type "C"; expected a dataclass
+
+replace(None)  # E: Argument 1 to "replace" has incompatible type "None"; expected a dataclass
 
 [case testReplaceGeneric]
 from dataclasses import dataclass, replace, InitVar

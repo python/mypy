@@ -952,16 +952,9 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
         return ctx.default_signature  # replace(Any, ...) -> Any
 
     dataclass_type = obj_type.upper_bound if isinstance(obj_type, TypeVarType) else obj_type
-
-    if not isinstance(dataclass_type, Instance):
-        ctx.api.fail(
-            f'Argument 1 to "replace" has variable type "{obj_type_str}" with unexpected bounds'
-            if isinstance(obj_type, TypeVarType)
-            else f'Argument 1 to "replace" has unexpected type "{obj_type_str}"',
-            ctx.context,
-        )
-        return ctx.default_signature
-    replace_func = dataclass_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
+    replace_func = None
+    if isinstance(dataclass_type, Instance):
+        replace_func = dataclass_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
     if replace_func is None:
         ctx.api.fail(
             f'Argument 1 to "replace" has variable type "{obj_type_str}" not bound to a dataclass'
