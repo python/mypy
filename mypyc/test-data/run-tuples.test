@@ -250,3 +250,42 @@ TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 def test_final_boxed_tuple() -> None:
     t = TUPLE
     assert t == ('x', 'y')
+
+[case testTupleGenericUnboxing]
+# tuple->tuple coerces are optimized away with each tuple item being
+# coerced individually instead. No need to test that here.
+from typing import Any, Tuple, cast
+from mypy_extensions import i64, i32
+from testutil import assertRaises
+
+class A: pass
+
+def test_generic() -> None:
+    src: Any = (1, 2.5, "3", b"4", False, A())
+    t1: Tuple[int, float, str, bytes, bool, A] = src
+    assert t1 == src
+    t2: Tuple[int, float, str, bytes, bool, A] = cast(Tuple[Any, Any, Any, Any, Any, Any], src)
+    assert t2 == src
+    src = (2, 4)
+    t3: Tuple[i64, i32] = src
+    assert t3 == src
+
+def test_errors_generic() -> None:
+    with assertRaises(TypeError, "tuple[str, str] object expected; got tuple[str, int]"):
+        t1: Tuple[str, str] = cast(Any, ("1", 2))
+    with assertRaises(TypeError, "tuple[str, str] object expected; got tuple[int, str]"):
+        t2: Tuple[str, str] = cast(Any, (1, "1"))
+
+    with assertRaises(TypeError, "must be real number, not str"):
+        t3: Tuple[float, float] = cast(Any, (1.0, "2.5"))
+    with assertRaises(TypeError, "str"):  # Error changes on Python 3.10
+        t4: Tuple[i64, i32] = cast(Any, (1, "2"))
+    with assertRaises(OverflowError, "int too large to convert to i32"):
+        t5: Tuple[i64, i32] = cast(Any, (1, 2**32))
+    with assertRaises(OverflowError, "int too large to convert to i64"):
+        t6: Tuple[i64, i32] = cast(Any, (2**64, 2))
+
+    with assertRaises(TypeError, "tuple[int] object expected; got int"):
+        t7: Tuple[int] = cast(Any, 1)
+    with assertRaises(TypeError, "tuple[int] object expected; got tuple[int, int]"):
+        t8: Tuple[int] = cast(Any, (1, 2))
