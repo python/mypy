@@ -2009,6 +2009,7 @@ class B(A):
 TA = TypeVar('TA', bound=A)
 TInt = TypeVar('TInt', bound=int)
 TAny = TypeVar('TAny')
+TNone = TypeVar('TNone', bound=None)
 
 
 def f(t: TA) -> TA:
@@ -2025,6 +2026,9 @@ def g(t: TInt) -> None:
 
 def h(t: TAny) -> None:
     _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TAny" not bound to an attrs class
+
+def q(t: TNone) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TNone" not bound to an attrs class
 
 [builtins fixtures/attr.pyi]
 [typing fixtures/typing-medium.pyi]
