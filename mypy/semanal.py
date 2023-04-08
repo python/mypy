@@ -1945,16 +1945,17 @@ class SemanticAnalyzer(
                 if inner_sym.fullname and not self.tvar_scope.allow_binding(inner_sym.fullname):
                     # It's bound by our type variable scope
                     return None
-            return inner_unbound.name, inner_sym.node
+                return inner_unbound.name, inner_sym.node
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
             # It's bound by our type variable scope
             return None
         elif isinstance(sym.node, (ParamSpecExpr, TypeVarExpr)):
             return unbound.name, sym.node
 
-        if isinstance(sym.type, AnyType) and sym.type.missing_import_name:
+        sym_type = get_proper_type(sym.type)
+        if isinstance(sym_type, AnyType) and sym_type.missing_import_name:
             self.fail(
-                f"{sym.type.missing_import_name} is imported from a missing module "
+                f"{sym_type.missing_import_name} is imported from a missing module "
                 "and cannot be used as a type variable",
                 t,
             )
