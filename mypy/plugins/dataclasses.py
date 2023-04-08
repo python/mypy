@@ -951,7 +951,9 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     if isinstance(obj_type, AnyType):
         return ctx.default_signature  # replace(Any, ...) -> Any
 
-    dataclass_type = obj_type.upper_bound if isinstance(obj_type, TypeVarType) else obj_type
+    dataclass_type = get_proper_type(
+        obj_type.upper_bound if isinstance(obj_type, TypeVarType) else obj_type
+    )
     replace_func = None
     if isinstance(dataclass_type, Instance):
         replace_func = dataclass_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
@@ -963,6 +965,7 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
             ctx.context,
         )
         return ctx.default_signature
+    assert isinstance(dataclass_type, Instance)
 
     signature = get_proper_type(replace_func.type)
     assert isinstance(signature, CallableType)
