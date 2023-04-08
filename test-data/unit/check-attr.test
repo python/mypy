@@ -2006,17 +2006,25 @@ class B(A):
     pass
 
 
-T = TypeVar('T', bound=A)
+TA = TypeVar('TA', bound=A)
+TInt = TypeVar('TInt', bound=int)
+TAny = TypeVar('TAny')
 
 
-def f(t: T) -> T:
+def f(t: TA) -> TA:
     t2 = attrs.evolve(t, x=42)
-    reveal_type(t2)  # N: Revealed type is "T`-1"
-    t3 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "T" has incompatible type "str"; expected "int"
+    reveal_type(t2)  # N: Revealed type is "TA`-1"
+    t3 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "TA" has incompatible type "str"; expected "int"
     return t2
 
 f(A(x=42))
 f(B(x=42))
+
+def g(t: TInt) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TInt" not bound to an attrs class
+
+def h(t: TAny) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TAny" not bound to an attrs class
 
 [builtins fixtures/attr.pyi]
 [typing fixtures/typing-medium.pyi]

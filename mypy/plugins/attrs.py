@@ -967,18 +967,37 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         return ctx.default_signature  # evolve(Any, ....) -> Any
     # We stringify it first, so that TypeVars maintain their name.
     inst_type_str = format_type_bare(inst_type)
-    upper_bound = inst_type.upper_bound if isinstance(inst_type, TypeVarType) else inst_type
-    if not (
-        isinstance(upper_bound, Instance)
-        and (attrs_init_type := _get_attrs_init_type(upper_bound))
-    ):
-        ctx.api.fail(
-            f'Argument 1 to "evolve" has incompatible type "{inst_type_str}"; expected an attrs class',
-            ctx.context,
-        )
-        return ctx.default_signature
+    if isinstance(inst_type, TypeVarType):
+        attrs_type = inst_type.upper_bound
+        if not isinstance(attrs_type, Instance):
+            ctx.api.fail(
+                f'Argument 1 to "evolve" has a variable type "{inst_type_str}" with unexpected upper bounds',
+                ctx.context,
+            )
+            return ctx.default_signature  # TODO: is this possible?
+        attrs_init_type = _get_attrs_init_type(attrs_type)
+        if attrs_init_type is None:
+            ctx.api.fail(
+                f'Argument 1 to "evolve" has a variable type "{inst_type_str}" not bound to an attrs class',
+                ctx.context,
+            )
+            return ctx.default_signature
+    else:
+        attrs_type = inst_type
+        if not isinstance(attrs_type, Instance):
+            ctx.api.fail(
+                f'Argument 1 to "evolve" has incompatible type "{inst_type_str}"', ctx.context
+            )
+            return ctx.default_signature  # TODO: is this possible?
+        attrs_init_type = _get_attrs_init_type(attrs_type)
+        if attrs_init_type is None:
+            ctx.api.fail(
+                f'Argument 1 to "evolve" has incompatible type "{inst_type_str}"; expected an attrs class',
+                ctx.context,
+            )
+            return ctx.default_signature  # TODO: is this possible?
 
-    attrs_init_type = expand_type_by_instance(attrs_init_type, upper_bound)
+    attrs_init_type = expand_type_by_instance(attrs_init_type, attrs_type)
 
     # AttrClass.__init__ has the following signature (or similar, if having kw-only & defaults):
     #   def __init__(self, attr1: Type1, attr2: Type2) -> None:
