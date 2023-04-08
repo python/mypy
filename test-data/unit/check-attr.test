@@ -1972,7 +1972,7 @@ reveal_type(ret)  # N: Revealed type is "Any"
 
 [case testEvolveGeneric]
 import attrs
-from typing import ClassVar, Generic, TypeVar
+from typing import Generic, TypeVar
 
 T = TypeVar('T')
 
@@ -1987,6 +1987,88 @@ a2 = attrs.evolve(a, x=42)
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 a2 = attrs.evolve(a, x='42')  # E: Argument "x" to "evolve" of "A[int]" has incompatible type "str"; expected "int"
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+
+[builtins fixtures/attr.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testEvolveTypeVarWithAttrsUpperBound]
+import attrs
+from typing import TypeVar
+
+
+@attrs.define
+class A:
+    x: int
+
+
+@attrs.define
+class B(A):
+    pass
+
+
+T = TypeVar('T', bound=A)
+
+
+def f(t: T) -> T:
+    t2 = attrs.evolve(t, x=42)
+    reveal_type(t2)  # N: Revealed type is "T`-1"
+    t3 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "T" has incompatible type "str"; expected "int"
+    return t2
+
+f(A(x=42))
+f(B(x=42))
+
+[builtins fixtures/attr.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testEvolveTypeVarWithAttrsGenericUpperBound]
+import attrs
+from typing import Generic, TypeVar
+
+Q = TypeVar('Q', bound=str)
+
+@attrs.define
+class A(Generic[Q]):
+    x: Q
+
+
+T = TypeVar('T', bound=A[str])
+
+
+def f(t: T) -> T:
+    t = attrs.evolve(t, x=42)  # E: Argument "x" to "evolve" of "T" has incompatible type "int"; expected "str"
+    return t
+
+f(A(x='42'))
+
+[builtins fixtures/attr.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testEvolveTypeVarWithAttrsValueRestrictions]
+import attrs
+from typing import TypeVar
+
+@attrs.define
+class A:
+    x: int
+
+
+@attrs.define
+class B:
+    x: str  # conflicting with A.x
+
+
+T = TypeVar('T', A, B)
+
+
+def f(t: T) -> T:
+    t2 = attrs.evolve(t, x=42)  # E: Argument "x" to "evolve" of "B" has incompatible type "int"; expected "str"
+    reveal_type(t2)  # N: Revealed type is "__main__.A"  # N: Revealed type is "__main__.B"
+    t2 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "A" has incompatible type "str"; expected "int"
+    return t2
+
+f(A(x=42))
+f(B(x='42'))
 
 [builtins fixtures/attr.pyi]
 [typing fixtures/typing-medium.pyi]
