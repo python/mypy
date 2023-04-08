@@ -963,6 +963,8 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     # </hack>
 
     inst_type = get_proper_type(inst_type)
+    if isinstance(inst_type, AnyType):
+        return ctx.default_signature  # evolve(Any, ....) -> Any
     inst_type_str = format_type_bare(inst_type)
     if not (
         isinstance(inst_type, Instance) and (attrs_init_type := _get_attrs_init_type(inst_type))
