@@ -965,9 +965,10 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     inst_type = get_proper_type(inst_type)
     if isinstance(inst_type, AnyType):
         return ctx.default_signature  # evolve(Any, ....) -> Any
-    # We stringify it first, so that TypeVars maintain their name.
     inst_type_str = format_type_bare(inst_type)
-    attrs_type = inst_type.upper_bound if isinstance(inst_type, TypeVarType) else inst_type
+    attrs_type = get_proper_type(
+        inst_type.upper_bound if isinstance(inst_type, TypeVarType) else inst_type
+    )
     attrs_init_type = None
     if isinstance(attrs_type, Instance):
         attrs_init_type = _get_attrs_init_type(attrs_type)
@@ -979,6 +980,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
             ctx.context,
         )
         return ctx.default_signature
+    assert isinstance(attrs_type, Instance)
 
     attrs_init_type = expand_type_by_instance(attrs_init_type, attrs_type)
 
