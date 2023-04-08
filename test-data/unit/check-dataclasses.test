@@ -2061,6 +2061,43 @@ reveal_type(a2)  # N: Revealed type is "__main__.A"
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testReplaceTypeVar]
+from dataclasses import dataclass, replace
+from typing import TypeVar
+
+@dataclass
+class A:
+    x: int
+
+TA = TypeVar('TA', bound=A)
+TInt = TypeVar('TInt', bound=int)
+TAny = TypeVar('TAny')
+
+
+def f(t: TA) -> TA:
+    _ = replace(t, x='spam')  # E: Argument "x" to "replace" of "TA" has incompatible type "str"; expected "int"
+    return replace(t, x=42)
+
+
+def g(t: TInt) -> None:
+    _ = replace(t, x=42)  # E: Argument 1 to "replace" has variable type "TInt" not bound to a dataclass
+
+
+def h(t: TAny) -> TAny:
+    return replace(t, x='spam')  # E: Argument 1 to "replace" has variable type "TAny" not bound to a dataclass
+
+[builtins fixtures/dataclasses.pyi]
+
+[case testReplaceAny]
+from dataclasses import replace
+from typing import Any
+
+a: Any
+a2 = replace(a)
+reveal_type(a2)  # N: Revealed type is "Any"
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testReplaceNotDataclass]
 from dataclasses import replace
 

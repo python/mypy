@@ -947,27 +947,38 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     # </hack>
 
     obj_type = get_proper_type(obj_type)
-    if not isinstance(obj_type, Instance):
-        return ctx.default_signature
-    inst_type_str = format_type_bare(obj_type)
+    obj_type_str = format_type_bare(obj_type)
+    if isinstance(obj_type, AnyType):
+        return ctx.default_signature  # replace(Any, ...) -> Any
 
-    replace_func = obj_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
-    if replace_func is None:
-        obj_type_str = format_type_bare(obj_type)
+    dataclass_type = obj_type.upper_bound if isinstance(obj_type, TypeVarType) else obj_type
+
+    if not isinstance(dataclass_type, Instance):
         ctx.api.fail(
-            f'Argument 1 to "replace" has incompatible type "{obj_type_str}"; expected a dataclass',
+            f'Argument 1 to "replace" has variable type "{obj_type_str}" with unexpected bounds'
+            if isinstance(obj_type, TypeVarType)
+            else f'Argument 1 to "replace" has unexpected type "{obj_type_str}"',
+            ctx.context,
+        )
+        return ctx.default_signature
+    replace_func = dataclass_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
+    if replace_func is None:
+        ctx.api.fail(
+            f'Argument 1 to "replace" has variable type "{obj_type_str}" not bound to a dataclass'
+            if isinstance(obj_type, TypeVarType)
+            else f'Argument 1 to "replace" has incompatible type "{obj_type_str}"; expected a dataclass',
             ctx.context,
         )
         return ctx.default_signature
 
     signature = get_proper_type(replace_func.type)
     assert isinstance(signature, CallableType)
-    signature = expand_type_by_instance(signature, obj_type)
+    signature = expand_type_by_instance(signature, dataclass_type)
     # re-add the instance type
     return signature.copy_modified(
         arg_types=[obj_type, *signature.arg_types],
         arg_kinds=[ARG_POS, *signature.arg_kinds],
         arg_names=[None, *signature.arg_names],
         ret_type=obj_type,
-        name=f"{ctx.default_signature.name} of {inst_type_str}",
+        name=f"{ctx.default_signature.name} of {obj_type_str}",
     )
