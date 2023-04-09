@@ -62,6 +62,7 @@ from mypy.types import (
     LiteralType,
     NoneType,
     Overloaded,
+    ProperType,
     TupleType,
     Type,
     TypeOfAny,
@@ -942,6 +943,14 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     return init_method.type
 
 
+def _get_attrs_cls_and_init(typ: ProperType) -> tuple[Instance | None, CallableType | None]:
+    if isinstance(typ, TypeVarType):
+        typ = get_proper_type(typ.upper_bound)
+    if not isinstance(typ, Instance):
+        return None, None
+    return typ, _get_attrs_init_type(typ)
+
+
 def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
     """
     Generates a signature for the 'attr.evolve' function that's specific to the call site
@@ -966,13 +975,9 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     if isinstance(inst_type, AnyType):
         return ctx.default_signature  # evolve(Any, ....) -> Any
     inst_type_str = format_type_bare(inst_type)
-    attrs_type = get_proper_type(
-        inst_type.upper_bound if isinstance(inst_type, TypeVarType) else inst_type
-    )
-    attrs_init_type = None
-    if isinstance(attrs_type, Instance):
-        attrs_init_type = _get_attrs_init_type(attrs_type)
-    if attrs_init_type is None:
+
+    attrs_type, attrs_init_type = _get_attrs_cls_and_init(inst_type)
+    if attrs_type is None or attrs_init_type is None:
         ctx.api.fail(
             f'Argument 1 to "evolve" has a variable type "{inst_type_str}" not bound to an attrs class'
             if isinstance(inst_type, TypeVarType)
@@ -980,7 +985,6 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
             ctx.context,
         )
         return ctx.default_signature
-    assert isinstance(attrs_type, Instance)
 
     # AttrClass.__init__ has the following signature (or similar, if having kw-only & defaults):
     #   def __init__(self, attr1: Type1, attr2: Type2) -> None:
