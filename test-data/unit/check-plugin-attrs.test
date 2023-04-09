@@ -1550,6 +1550,24 @@ takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompati
 
 [case testAttrsFields]
 import attr
+from attrs import fields as f  # Common usage.
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+reveal_type(f(A))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(f(A)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+reveal_type(f(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+f(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+
+[builtins fixtures/attr.pyi]
+
+[case testAttrsGenericFields]
+from typing import TypeVar
+
+import attr
 from attrs import fields
 
 @attr.define
@@ -1557,14 +1575,19 @@ class A:
     b: int
     c: str
 
-reveal_type(fields(A))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
-reveal_type(fields(A)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
-reveal_type(fields(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
-fields(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+TA = TypeVar('TA', bound=A)
+
+def f(t: TA) -> None:
+    reveal_type(fields(t))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+    reveal_type(fields(t)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+    reveal_type(fields(t).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+    fields(t).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+    
 
 [builtins fixtures/attr.pyi]
 
 [case testNonattrsFields]
+from typing import Any, cast
 from attrs import fields
 
 class A:
@@ -1572,6 +1595,8 @@ class A:
     c: str
 
 fields(A)  # E: Argument 1 to "fields" has incompatible type "Type[A]"; expected an attrs class
+fields(None)  # E: Argument 1 to "fields" has incompatible type "None"; expected an attrs class
+fields(cast(Any, 42))
 
 [builtins fixtures/attr.pyi]
 

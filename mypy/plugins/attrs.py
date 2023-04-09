@@ -46,7 +46,7 @@ from mypy.nodes import (
     Var,
     is_class_var,
 )
-from mypy.plugin import FunctionContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_argument,
     _get_bool_argument,
@@ -1062,27 +1062,41 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     )
 
 
-def _get_cls_from_init(t: Type) -> TypeInfo | None:
-    proper_type = get_proper_type(t)
-    if isinstance(proper_type, CallableType):
-        return proper_type.type_object()
-    return None
+def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
+    """Provide the proper signature for `attrs.fields`."""
+    if ctx.args and len(ctx.args) == 1 and ctx.args[0] and ctx.args[0][0]:
+        # <hack>
+        assert isinstance(ctx.api, TypeChecker)
+        inst_type = ctx.api.expr_checker.accept(ctx.args[0][0])
+        # </hack>
+        proper_type = get_proper_type(inst_type)
 
+        if isinstance(proper_type, AnyType):  # fields(Any) -> Any
+            return ctx.default_signature
 
-def fields_function_callback(ctx: FunctionContext) -> Type:
-    """Provide the proper return value for `attrs.fields`."""
-    if ctx.arg_types and ctx.arg_types[0] and ctx.arg_types[0][0]:
-        first_arg_type = ctx.arg_types[0][0]
-        cls = _get_cls_from_init(first_arg_type)
+        cls = None
+        arg_types = ctx.default_signature.arg_types
+
+        if isinstance(proper_type, TypeVarType):
+            inner = get_proper_type(proper_type.upper_bound)
+            if isinstance(inner, Instance):
+                # We need to work arg_types to compensate for the attrs stubs.
+                arg_types = [inst_type]
+                cls = inner.type
+        elif isinstance(proper_type, CallableType):
+            cls = proper_type.type_object()
+
         if cls is not None:
             if MAGIC_ATTR_NAME in cls.names:
                 # This is a proper attrs class.
                 ret_type = cls.names[MAGIC_ATTR_NAME].type
                 if ret_type is not None:
-                    return ret_type
-            else:
-                ctx.api.fail(
-                    f'Argument 1 to "fields" has incompatible type "{format_type_bare(first_arg_type)}"; expected an attrs class',
-                    ctx.context,
-                )
-    return ctx.default_return_type
+                    return ctx.default_signature.copy_modified(
+                        arg_types=arg_types, ret_type=ret_type
+                    )
+
+        ctx.api.fail(
+            f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type)}"; expected an attrs class',
+            ctx.context,
+        )
+    return ctx.default_signature
