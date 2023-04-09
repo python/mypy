@@ -46,7 +46,7 @@ from mypy.nodes import (
     Var,
     is_class_var,
 )
-from mypy.plugin import SemanticAnalyzerPluginInterface
+from mypy.plugin import FunctionContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_argument,
     _get_bool_argument,
@@ -1060,3 +1060,27 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         fallback=ctx.default_signature.fallback,
         name=f"{ctx.default_signature.name} of {inst_type_str}",
     )
+
+
+def _get_cls_from_init(t: Type) -> TypeInfo | None:
+    if isinstance(t, CallableType):
+        return t.type_object()
+    return None
+
+
+def fields_function_callback(ctx: FunctionContext) -> Type:
+    """Provide the proper return value for `attrs.fields`."""
+    if ctx.arg_types and ctx.arg_types[0] and ctx.arg_types[0][0]:
+        first_arg_type = ctx.arg_types[0][0]
+        cls = _get_cls_from_init(first_arg_type)
+        if cls is not None:
+            if MAGIC_ATTR_NAME in cls.names:
+                # This is a proper attrs class.
+                ret_type = cls.names[MAGIC_ATTR_NAME].type
+                return ret_type
+            else:
+                ctx.api.fail(
+                    f'Argument 1 to "fields" has incompatible type "{format_type_bare(first_arg_type)}"; expected an attrs class',
+                    ctx.context,
+                )
+    return ctx.default_return_type

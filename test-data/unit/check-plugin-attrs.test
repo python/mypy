@@ -1548,6 +1548,33 @@ takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible
 takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
 [builtins fixtures/plugin_attrs.pyi]
 
+[case testAttrsFields]
+import attr
+from attrs import fields
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+reveal_type(fields(A))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(fields(A)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+reveal_type(fields(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+fields(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+
+[builtins fixtures/attr.pyi]
+
+[case testNonattrsFields]
+from attrs import fields
+
+class A:
+    b: int
+    c: str
+
+fields(A)  # E: Argument 1 to "fields" has incompatible type "Type[A]"; expected an attrs class
+
+[builtins fixtures/attr.pyi]
+
 [case testAttrsInitMethodAlwaysGenerates]
 from typing import Tuple
 import attr
