@@ -1063,8 +1063,9 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
 
 
 def _get_cls_from_init(t: Type) -> TypeInfo | None:
-    if isinstance(t, CallableType):
-        return t.type_object()
+    proper_type = get_proper_type(t)
+    if isinstance(proper_type, CallableType):
+        return proper_type.type_object()
     return None
 
 
@@ -1077,7 +1078,8 @@ def fields_function_callback(ctx: FunctionContext) -> Type:
             if MAGIC_ATTR_NAME in cls.names:
                 # This is a proper attrs class.
                 ret_type = cls.names[MAGIC_ATTR_NAME].type
-                return ret_type
+                if ret_type is not None:
+                    return ret_type
             else:
                 ctx.api.fail(
                     f'Argument 1 to "fields" has incompatible type "{format_type_bare(first_arg_type)}"; expected an attrs class',
