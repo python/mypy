@@ -564,7 +564,7 @@ Daemon started
 $ dmypy check -- bar.py
 bar.py:2: error: Unused "type: ignore" comment
 == Return code: 1
-$ echo '' >> bar.py
+$ {python} -c "print('\n')" >> bar.py
 $ dmypy check -- bar.py
 bar.py:2: error: Unused "type: ignore" comment
 == Return code: 1
@@ -582,7 +582,7 @@ Daemon started
 $ dmypy check -- bar.py
 bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
 == Return code: 1
-$ echo '' >> bar.py
+$ {python} -c "print('\n')" >> bar.py
 $ dmypy check -- bar.py
 bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
 == Return code: 1
