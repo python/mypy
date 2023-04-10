@@ -10,7 +10,7 @@ import mypy.typeops
 from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import ARG_OPT, ARG_POS, CONTRAVARIANT, COVARIANT, ArgKind, FuncDef
+from mypy.nodes import ARG_OPT, ARG_POS, CONTRAVARIANT, COVARIANT, ArgKind
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -1138,13 +1138,8 @@ def find_matching_overload_item(overloaded: Overloaded, template: CallableType) 
             item, template, is_compat=mypy.subtypes.is_subtype, ignore_return=True
         ):
             return item
-    # Try to return the first item with the correct self type (fixes issue 14943).
-    for item in items:
-        if isinstance(item.definition, FuncDef) and isinstance(item.definition.type, CallableType):
-            if item.bound_args and item.definition.type.arg_types:
-                if item.bound_args[0] == item.definition.type.arg_types[0]:
-                    return item
-    # Give up and just return the first of all items.
+    # Fall back to the first item if we can't find a match. This is totally arbitrary --
+    # maybe we should just bail out at this point.
     return items[0]
 
 
