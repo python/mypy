@@ -6,9 +6,13 @@ static VecI64 vec_i64_alloc(Py_ssize_t size)
 {
     VecbufI64Object *buf;
     /* TODO: Check for overflow */
-    buf = PyObject_NewVar(VecbufI64Object, &VecbufI64Type, size);
-    if (buf == NULL)
-        return Vec_I64_Error();
+    if (size == 0) {
+        buf = NULL;
+    } else {
+        buf = PyObject_NewVar(VecbufI64Object, &VecbufI64Type, size);
+        if (buf == NULL)
+            return Vec_I64_Error();
+    }
     VecI64 res = { .buf = buf };
     return res;
 }
@@ -329,20 +333,21 @@ PyTypeObject VecI64Type = {
 };
 
 VecI64 Vec_I64_Append(VecI64 vec, int64_t x) {
-    Py_ssize_t cap = VEC_CAP(vec);
-    if (vec.len < cap) {
+    if (vec.buf && vec.len < VEC_CAP(vec)) {
         vec.buf->items[vec.len] = x;
         vec.len++;
         return vec;
     } else {
+        Py_ssize_t cap = vec.buf ? VEC_CAP(vec) : 0;
         Py_ssize_t new_size = 2 * cap + 1;
         VecI64 new = vec_i64_alloc(new_size);
         if (VEC_IS_ERROR(new))
             return Vec_I64_Error();
         new.len = vec.len + 1;
-        memcpy(new.buf->items, vec.buf->items, sizeof(int64_t) * vec.len);
+        if (vec.len > 0)
+            memcpy(new.buf->items, vec.buf->items, sizeof(int64_t) * vec.len);
         new.buf->items[vec.len] = x;
-        Py_DECREF(vec.buf);
+        Py_XDECREF(vec.buf);
         return new;
     }
 }

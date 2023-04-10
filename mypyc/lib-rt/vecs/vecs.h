@@ -144,8 +144,8 @@ typedef struct {
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
 #define VEC_CAP(v) ((v).buf->ob_base.ob_size)
 #define VEC_IS_ERROR(v) ((v).len < 0)
-#define VEC_DECREF(v) Py_DECREF((v).buf)
-#define VEC_INCREF(v) Py_INCREF((v).buf)
+#define VEC_DECREF(v) Py_XDECREF((v).buf)
+#define VEC_INCREF(v) Py_XINCREF((v).buf)
 
 inline VecI64 Vec_I64_Error() {
     VecI64 v = { .len = -1 };
