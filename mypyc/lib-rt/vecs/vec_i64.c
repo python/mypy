@@ -351,6 +351,7 @@ VecI64Features I64Features = {
     &VecI64Type,
     &VecbufI64Type,
     Vec_I64_New,
+    Vec_I64_Box,
     Vec_I64_Append,
     Vec_I64_Pop,
     Vec_I64_Remove,

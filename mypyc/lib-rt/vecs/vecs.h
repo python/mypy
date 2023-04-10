@@ -87,6 +87,7 @@ typedef struct _VecI64Features {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecI64 (*alloc)(Py_ssize_t);
+    PyObject *(*box)(VecI64);
     VecI64 (*append)(VecI64, int64_t);
     VecI64 (*pop)(VecI64, Py_ssize_t, int64_t *result);
     VecI64 (*remove)(VecI64, int64_t);
