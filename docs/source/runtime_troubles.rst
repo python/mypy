@@ -277,9 +277,19 @@ sections, these can be dealt with by using :ref:`typing.TYPE_CHECKING
 
 .. code-block:: python
 
+   from __future__ import annotations
    from typing import TYPE_CHECKING
    if TYPE_CHECKING:
        from _typeshed import SupportsRichComparison
+
+    def f(x: SupportsRichComparison) -> None
+
+Note that the ``from __future__ import annotations`` is required to avoid
+a ``NameError`` at the use site of the excluded import. In the example above,
+``def f(x: SupportsRichComparison)`` would raise ``NameError`` if
+``from __future__ import annotations`` is not included. For more information,
+and additional caveats, see the section on
+:ref:`future annotations <future-annotations>`.
 
 .. _generic-builtins:
 
