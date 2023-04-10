@@ -86,6 +86,7 @@ class SubtypeContext:
         # Supported for both proper and non-proper
         ignore_promotions: bool = False,
         ignore_uninhabited: bool = False,
+        ignore_type_vars: bool = False,
         # Proper subtype flags
         erase_instances: bool = False,
         keep_erased_types: bool = False,
@@ -96,6 +97,7 @@ class SubtypeContext:
         self.ignore_declared_variance = ignore_declared_variance
         self.ignore_promotions = ignore_promotions
         self.ignore_uninhabited = ignore_uninhabited
+        self.ignore_type_vars = ignore_type_vars
         self.erase_instances = erase_instances
         self.keep_erased_types = keep_erased_types
         self.options = options
@@ -119,6 +121,7 @@ def is_subtype(
     ignore_declared_variance: bool = False,
     ignore_promotions: bool = False,
     ignore_uninhabited: bool = False,
+    ignore_type_vars: bool = False,
     options: Options | None = None,
 ) -> bool:
     """Is 'left' subtype of 'right'?
@@ -139,6 +142,7 @@ def is_subtype(
             ignore_declared_variance=ignore_declared_variance,
             ignore_promotions=ignore_promotions,
             ignore_uninhabited=ignore_uninhabited,
+            ignore_type_vars=ignore_type_vars,
             options=options,
         )
     else:
@@ -285,6 +289,9 @@ def _is_subtype(
     ):
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
+        return True
+
+    if subtype_context.ignore_type_vars and (isinstance(left, TypeVarType) or isinstance(right, TypeVarType)):
         return True
 
     if isinstance(right, UnionType) and not isinstance(left, UnionType):

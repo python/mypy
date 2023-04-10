@@ -274,10 +274,28 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
     b = B().copy()  # type: B
 
     """
+
+    from mypy.subtypes import is_subtype
+
     if isinstance(method, Overloaded):
+        # Try to remove overload items with non-matching self types first (fixes #14943)
+        origtype = get_proper_type(original_type)
+        if isinstance(origtype, Instance):
+            methoditems = []
+            for mi in method.items:
+                selftype = get_proper_type(mi.arg_types[0])
+                if not isinstance(selftype, Instance) or is_subtype(
+                    origtype, selftype, ignore_type_vars=True
+                ):
+                    methoditems.append(mi)
+            if len(methoditems) == 0:
+                methoditems = method.items
+        else:
+            methoditems = method.items
         return cast(
-            F, Overloaded([bind_self(c, original_type, is_classmethod) for c in method.items])
+            F, Overloaded([bind_self(mi, original_type, is_classmethod) for mi in methoditems])
         )
+
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:
