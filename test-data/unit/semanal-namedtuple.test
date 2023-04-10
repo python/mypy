@@ -225,3 +225,23 @@ class B(A): pass
 [out]
 main:2: error: Unsupported dynamic base class "NamedTuple"
 main:2: error: Name "NamedTuple" is not defined
+
+[case testNamedTupleWithDecorator]
+from typing import final, NamedTuple
+
+@final
+class A(NamedTuple("N", [("x", int)])):
+    pass
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [final, NamedTuple])
+  ClassDef:4(
+    A
+    TupleType(
+      Tuple[builtins.int, fallback=__main__.N@4])
+    Decorators(
+      NameExpr(final [typing.final]))
+    BaseType(
+      __main__.N@4)
+    PassStmt:5()))
