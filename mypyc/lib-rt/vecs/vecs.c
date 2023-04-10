@@ -24,6 +24,8 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
         return NULL;
     }
+    return NULL;
+#if 0
     VecProxy *p = (VecProxy *)self;
     if (p->optionals == 0 && p->depth == 0) {
         if (init == NULL) {
@@ -40,6 +42,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
                                                       p->depth, init);
         }
     }
+#endif
 }
 
 static int
@@ -321,8 +324,13 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         if (x == -1 && PyErr_Occurred()) {
             return NULL;
         }
-        Py_INCREF(vec);
-        return Vec_I64_Append(vec, x);
+        VecI64 v = ((VecI64Object *)vec)->vec;
+        VEC_INCREF(v);
+        v = Vec_I64_Append(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return Vec_I64_Box(v);
+#if 0
     } else if (VecT_Check(vec)) {
         VecTObject *v = (VecTObject *)vec;
         if (!VecT_ItemCheck(v, item))
@@ -335,6 +343,7 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
             return NULL;
         Py_INCREF(vec);
         return Vec_T_Ext_Append(vec, item);
+#endif
     } else {
         PyErr_SetString(PyExc_TypeError, "vec argument expected");
         return NULL;
@@ -356,8 +365,8 @@ static PyModuleDef vecsmodule = {
 
 static VecCapsule Capsule = {
     &I64Features,
-    &TFeatures,
-    &TExtFeatures,
+    NULL, // TODO: &TFeatures,
+    NULL, // TODO: &TExtFeatures,
 };
 
 PyMODINIT_FUNC
@@ -378,11 +387,15 @@ PyInit_vecs(void)
         return NULL;
     if (PyType_Ready(&VecProxyType) < 0)
         return NULL;
+#if 0
     if (PyType_Ready(&VecTType) < 0)
         return NULL;
     if (PyType_Ready(&VecTExtType) < 0)
         return NULL;
+#endif
     if (PyType_Ready(&VecI64Type) < 0)
+        return NULL;
+    if (PyType_Ready(&VecbufI64Type) < 0)
         return NULL;
 
     PyObject *m = PyModule_Create(&vecsmodule);

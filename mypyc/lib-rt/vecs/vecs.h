@@ -8,46 +8,90 @@
 // use PyErr_Occurred() since this overlaps with valid integer values.
 #define MYPYC_INT_ERROR -113
 
-// Arbitrary vec object (only shared bits)
-typedef struct _VecObject {
-    PyObject_VAR_HEAD
-    Py_ssize_t len;
-} VecObject;
 
-// vec[i64]
-typedef struct _VecI64Object {
+// Buffer objects
+
+
+// vecbuf[i64]
+typedef struct _VecbufI64Object {
     PyObject_VAR_HEAD
-    Py_ssize_t len;
     int64_t items[1];
-} VecI64Object;
+} VecbufI64Object;
 
-// Simple generic vec: vec[t] when t is a type object
-typedef struct _VecTObject {
+// Simple generic vecbuf: vecbuf[t] when t is a type object
+typedef struct _VecbufTObject {
     PyObject_VAR_HEAD
-    Py_ssize_t len;
     PyTypeObject *item_type;
     PyObject *items[1];
-} VecTObject;
+} VecbufTObject;
 
 // Extended generic vec type: vec[t | None], vec[vec[...]], etc.
-typedef struct _VecTExtObject {
+typedef struct _VecbufTExtObject {
     PyObject_VAR_HEAD
-    Py_ssize_t len;
     PyTypeObject *item_type;
     int32_t depth;  // Number of nested VecTExt or VecT types
     int32_t optionals;  // Flags for optional types on each nesting level
     PyObject *items[1];
+} VecbufTExtObject;
+
+
+// Unboxed vec objects
+
+
+typedef struct _VecI64 {
+    Py_ssize_t len;
+    VecbufI64Object *buf;
+} VecI64;
+
+typedef struct _VecT {
+    Py_ssize_t len;
+    VecbufTObject *buf;
+} VecT;
+
+typedef struct _VecTExt {
+    Py_ssize_t len;
+    VecbufTExtObject *buf;
+} VecTExt;
+
+
+// Boxed vec objects
+
+
+// Arbitrary boxed vec object (only shared bits)
+typedef struct _VecObject {
+    PyObject_HEAD
+    Py_ssize_t len;
+} VecObject;
+
+// Boxed vec[i64]
+typedef struct _VecI64Object {
+    PyObject_HEAD
+    VecI64 vec;
+} VecI64Object;
+
+// Simple boxed generic vecbuf: vecbuf[t] when t is a type object
+typedef struct _VecTObject {
+    PyObject_HEAD
+    VecT vec;
+} VecTObject;
+
+// Extended generic vec type: vec[t | None], vec[vec[...]], etc.
+typedef struct _VecTExtObject {
+    PyObject_HEAD
+    VecTExt vec;
 } VecTExtObject;
 
-// vec[i64] operations + type object (stored in a capsule)
+
+// vec[i64] operations + type objects (stored in a capsule)
 typedef struct _VecI64Features {
-    PyTypeObject *type;
-    PyObject *(*alloc)(Py_ssize_t);
-    PyObject *(*append)(PyObject *, int64_t);
-    int64_t (*pop)(PyObject *, Py_ssize_t);
-    int (*remove)(PyObject *, int64_t);
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
+    VecI64 (*alloc)(Py_ssize_t);
+    VecI64 (*append)(VecI64, int64_t);
+    VecI64 (*pop)(VecI64, Py_ssize_t, int64_t *result);
+    VecI64 (*remove)(VecI64, int64_t);
     // TODO: Py_ssize_t
-    PyObject *(*slice)(PyObject *, int64_t, int64_t);
+    VecI64 (*slice)(VecI64, int64_t, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, int64_t);
@@ -58,7 +102,8 @@ typedef struct _VecI64Features {
 //
 // T is a class type
 typedef struct _VecTFeatures {
-    PyTypeObject *type;
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
     PyObject *(*alloc)(Py_ssize_t, PyObject *);
     PyObject *(*append)(PyObject *, PyObject *);
     PyObject *(*pop)(PyObject *, Py_ssize_t);
@@ -75,7 +120,8 @@ typedef struct _VecTFeatures {
 //
 // T can be T | None or vec[T] (or a combination of these)
 typedef struct _VecTExtFeatures {
-    PyTypeObject *type;
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
     PyObject *(*alloc)(Py_ssize_t, PyObject *, int optionals, int depth);
     PyObject *(*append)(PyObject *, PyObject *);
     PyObject *(*pop)(PyObject *, Py_ssize_t);
@@ -95,12 +141,26 @@ typedef struct {
 } VecCapsule;
 
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
+#define VEC_CAP(v) ((v).buf->ob_base.ob_size)
+#define VEC_IS_ERROR(v) ((v).len < 0)
+#define VEC_DECREF(v) Py_DECREF((v).buf)
+#define VEC_INCREF(v) Py_INCREF((v).buf)
+
+inline VecI64 Vec_I64_Error() {
+    VecI64 v = { .len = -1 };
+    return v;
+}
 
 // Type objects
+
+extern PyTypeObject VecbufI64Type;
+extern PyTypeObject VecbufTType;
+extern PyTypeObject VecbufTExtType;
 
 extern PyTypeObject VecI64Type;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecTExtType;
+
 extern VecI64Features I64Features;
 extern PyTypeObject *I64TypeObj;
 extern VecTFeatures TFeatures;
@@ -112,13 +172,16 @@ static inline int VecI64_Check(PyObject *o) {
     return o->ob_type == &VecI64Type;
 }
 
-PyObject *Vec_I64_Append(PyObject *obj, int64_t x);
+PyObject *Vec_I64_Box(VecI64);
+VecI64 Vec_I64_Append(VecI64, int64_t x);
 
 // vec[t] operations (simple)
 
 static inline int VecT_Check(PyObject *o) {
     return o->ob_type == &VecTType;
 }
+
+#if 0
 
 static inline int VecT_ItemCheck(VecTObject *v, PyObject *item) {
     if (PyObject_TypeCheck(item, v->item_type))
@@ -159,6 +222,8 @@ static inline int VecTExt_ItemCheck(VecTExtObject *v, PyObject *it) {
         return 0;
     }
 }
+
+#endif
 
 PyObject *Vec_T_Ext_New(Py_ssize_t size, PyObject *item_type, int32_t optionals, int32_t depth);
 VecTExtObject *Vec_T_Ext_FromIterable(PyTypeObject *item_type, int32_t optionals, int32_t depth,
