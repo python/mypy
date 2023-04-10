@@ -291,7 +291,10 @@ def _is_subtype(
         # ErasedType as we do for non-proper subtyping.
         return True
 
-    if subtype_context.ignore_type_vars and (isinstance(left, TypeVarType) or isinstance(right, TypeVarType)):
+
+    if subtype_context.ignore_type_vars and (
+        isinstance(left, TypeVarType) or isinstance(right, TypeVarType)
+    ):
         return True
 
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
