@@ -103,9 +103,9 @@ Functions
    def show(value: str, excitement: int = 10) -> None:
        print(value + "!" * excitement)
 
-    # Note that arguments without a type are dynamically typed (treated as Any)
-    # and that functions without any annotations not checked
-    def untyped(x):
+   # Note that arguments without a type are dynamically typed (treated as Any)
+   # and that functions without any annotations not checked
+   def untyped(x):
         x.anything() + 1 + "string"  # no errors
 
    # This is how you annotate a callable (function) value
