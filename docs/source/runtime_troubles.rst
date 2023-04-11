@@ -284,11 +284,9 @@ sections, these can be dealt with by using :ref:`typing.TYPE_CHECKING
 
     def f(x: SupportsRichComparison) -> None
 
-Note that the ``from __future__ import annotations`` is required to avoid
-a ``NameError`` at the use site of the excluded import. In the example above,
-``def f(x: SupportsRichComparison)`` would raise ``NameError`` if
-``from __future__ import annotations`` is not included. For more information,
-and additional caveats, see the section on
+The ``from __future__ import annotations`` is required to avoid
+a ``NameError`` when using the imported symbol.
+For more information and caveats, see the section on
 :ref:`future annotations <future-annotations>`.
 
 .. _generic-builtins:
