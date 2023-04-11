@@ -106,7 +106,7 @@ Functions
    # Note that arguments without a type are dynamically typed (treated as Any)
    # and that functions without any annotations not checked
    def untyped(x):
-        x.anything() + 1 + "string"  # no errors
+       x.anything() + 1 + "string"  # no errors
 
    # This is how you annotate a callable (function) value
    x: Callable[[int, float], float] = f
