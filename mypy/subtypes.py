@@ -1046,23 +1046,8 @@ def is_protocol_implementation(
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = get_proper_type(find_member(member, right, left))
             assert supertype is not None
-            if member == "__call__" and class_obj:
-                # Special case: class objects always have __call__ that is just the constructor.
-                # TODO: move this helper function to typeops.py?
-                import mypy.checkmember
 
-                def named_type(fullname: str) -> Instance:
-                    return Instance(left.type.mro[-1], [])
-
-                subtype: ProperType | None = mypy.checkmember.type_object_type(
-                    left.type, named_type
-                )
-            elif member == "__call__" and left.type.is_metaclass():
-                # Special case: we want to avoid falling back to metaclass __call__
-                # if constructor signature didn't match, this can cause many false negatives.
-                subtype = None
-            else:
-                subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
+            subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
