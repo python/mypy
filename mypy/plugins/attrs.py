@@ -985,7 +985,6 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
             ctx.context,
         )
         return ctx.default_signature
-    assert isinstance(attrs_type, Instance)
 
     attrs_init_type = expand_type_by_instance(attrs_init_type, attrs_type)
 
