@@ -707,3 +707,24 @@ from foo.main import *
 [file foo/main.py]
 from foo import does_not_exist
 from unused.submodule import *
+
+[case testReturnTypeIgnoreAfterUnknownImport]
+-- Return type ignores after unknown imports and unused modules are respected on the second pass.
+$ dmypy start -- --warn-unused-ignores --no-error-summary
+Daemon started
+$ dmypy check -- foo.py
+foo.py:2: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
+foo.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+== Return code: 1
+$ dmypy check -- foo.py
+foo.py:2: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
+foo.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+== Return code: 1
+
+[file unused/__init__.py]
+[file unused/empty.py]
+[file foo.py]
+from unused.empty import *
+import a_module_which_does_not_exist
+def is_foo() -> str:
+    return True  # type: ignore
