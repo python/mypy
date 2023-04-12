@@ -1970,6 +1970,75 @@ reveal_type(ret)  # N: Revealed type is "Any"
 
 [typing fixtures/typing-medium.pyi]
 
+[case testEvolveTypeVarBound]
+import attrs
+from typing import TypeVar
+
+@attrs.define
+class A:
+    x: int
+
+@attrs.define
+class B(A):
+    pass
+
+TA = TypeVar('TA', bound=A)
+
+def f(t: TA) -> TA:
+    t2 = attrs.evolve(t, x=42)
+    reveal_type(t2)  # N: Revealed type is "TA`-1"
+    t3 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "TA" has incompatible type "str"; expected "int"
+    return t2
+
+f(A(x=42))
+f(B(x=42))
+
+[builtins fixtures/attr.pyi]
+
+[case testEvolveTypeVarBoundNonAttrs]
+import attrs
+from typing import TypeVar
+
+TInt = TypeVar('TInt', bound=int)
+TAny = TypeVar('TAny')
+TNone = TypeVar('TNone', bound=None)
+
+def f(t: TInt) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TInt" not bound to an attrs class
+
+def g(t: TAny) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TAny" not bound to an attrs class
+
+def h(t: TNone) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TNone" not bound to an attrs class
+
+[builtins fixtures/attr.pyi]
+
+[case testEvolveTypeVarConstrained]
+import attrs
+from typing import TypeVar
+
+@attrs.define
+class A:
+    x: int
+
+@attrs.define
+class B:
+    x: str  # conflicting with A.x
+
+T = TypeVar('T', A, B)
+
+def f(t: T) -> T:
+    t2 = attrs.evolve(t, x=42)  # E: Argument "x" to "evolve" of "B" has incompatible type "int"; expected "str"
+    reveal_type(t2)  # N: Revealed type is "__main__.A"  # N: Revealed type is "__main__.B"
+    t2 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "A" has incompatible type "str"; expected "int"
+    return t2
+
+f(A(x=42))
+f(B(x='42'))
+
+[builtins fixtures/attr.pyi]
+
 [case testEvolveVariants]
 from typing import Any
 import attr
