@@ -1954,11 +1954,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # If we have an overload, filter to overloads that match the self type.
                 # This avoids false positives for concrete subclasses of generic classes,
                 # see testSelfTypeOverrideCompatibility for an example.
-                filtered_items = [
-                    item
-                    for item in mapped_typ.items
-                    if not item.arg_types or is_subtype(active_self_type, item.arg_types[0])
-                ]
+                filtered_items = []
+                for item in mapped_typ.items:
+                    if not item.arg_types:
+                        filtered_items.append(item)
+                    item_arg = item.arg_types[0]
+                    if isinstance(item_arg, TypeVarType):
+                        item_arg = item_arg.upper_bound
+                    if is_subtype(active_self_type, item_arg):
+                        filtered_items.append(item)
                 # If we don't have any filtered_items, maybe it's always a valid override
                 # of the superclass? However if you get to that point you're in murky type
                 # territory anyway, so we just preserve the type and have the behaviour match
