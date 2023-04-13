@@ -132,7 +132,7 @@ def main(
             code = 2
 
     code = 0 if options.exit_zero else code
-   
+
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
         #
