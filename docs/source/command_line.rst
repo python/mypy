@@ -982,5 +982,10 @@ Miscellaneous
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
 
+.. option:: --exit-zero
+
+    This flag will make the program always exit with a zero exit code.
+    This is useful for debugging and testing.
+
 .. _lxml: https://pypi.org/project/lxml/
 .. _SQLite: https://www.sqlite.org/

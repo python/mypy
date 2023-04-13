@@ -131,6 +131,8 @@ def main(
             print("note: Run mypy again for up-to-date results with installed types")
             code = 2
 
+    code = 0 if options.exit_zero else code
+   
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
         #
@@ -1044,6 +1046,14 @@ def process_options(
         "--scripts-are-modules",
         action="store_true",
         help="Script x becomes module x instead of __main__",
+    )
+    other_group.add_argument(
+        "--exit-zero",
+        action="store_true",
+        help=(
+            "Exit with code 0 even if errors were encountered. "
+            + "This is useful for debugging and testing."
+        ),
     )
 
     add_invertible_flag(

@@ -1015,6 +1015,14 @@ These options may only be set in the global section (``[mypy]``).
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
 
+.. confval:: exit_zero
+
+    :type: boolean
+    :default: False
+
+    This flag will make the program always exit with a zero exit code.
+    This is useful for debugging and testing.
+
 .. _using-a-pyproject-toml:
 
 Using a pyproject.toml file

@@ -346,6 +346,9 @@ class Options:
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
 
+        # Exit with exit code zero even if errors are encountered
+        self.exit_zero = False
+
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
     def new_semantic_analyzer(self) -> bool:
