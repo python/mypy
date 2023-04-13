@@ -668,3 +668,42 @@ from foo.empty import *
 if False:
     a = 1
 a
+
+[case testUnusedTypeIgnorePreservedOnRerunWithIgnoredMissingImports]
+$ dmypy start -- --no-error-summary --ignore-missing-imports --warn-unused-ignores
+Daemon started
+$ dmypy check foo
+foo/main.py:3: error: Unused "type: ignore" comment  [unused-ignore]
+== Return code: 1
+$ dmypy check foo
+foo/main.py:3: error: Unused "type: ignore" comment  [unused-ignore]
+== Return code: 1
+
+[file unused/__init__.py]
+[file unused/submodule.py]
+[file foo/empty.py]
+[file foo/__init__.py]
+from foo.main import *
+from unused.submodule import *
+[file foo/main.py]
+from foo import empty
+from foo.does_not_exist import *
+a = 1  # type: ignore
+
+[case testModuleDoesNotExistPreservedOnRerun]
+$ dmypy start -- --no-error-summary --ignore-missing-imports
+Daemon started
+$ dmypy check foo
+foo/main.py:1: error: Module "foo" has no attribute "does_not_exist"  [attr-defined]
+== Return code: 1
+$ dmypy check foo
+foo/main.py:1: error: Module "foo" has no attribute "does_not_exist"  [attr-defined]
+== Return code: 1
+
+[file unused/__init__.py]
+[file unused/submodule.py]
+[file foo/__init__.py]
+from foo.main import *
+[file foo/main.py]
+from foo import does_not_exist
+from unused.submodule import *
