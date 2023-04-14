@@ -849,6 +849,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add_decorator("property")
             self.add_decorator("abc.abstractmethod")
             is_abstract = True
+        elif self.refers_to_fullname(name, "functools.cached_property"):
+            self.import_tracker.require_name(name)
+            self.add_decorator(name)
         elif self.refers_to_fullname(name, OVERLOAD_NAMES):
             self.add_decorator(name)
             self.add_typing_import("overload")
@@ -894,6 +897,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.import_tracker.require_name(expr.expr.name)
                 self.add_decorator(f"{expr.expr.name}.{expr.name}")
             is_abstract = True
+        elif expr.name == "cached_property" and isinstance(expr.expr, NameExpr):
+            explicit_name = expr.expr.name
+            reverse = self.import_tracker.reverse_alias.get(explicit_name)
+            if reverse == "functools" or (reverse is None and explicit_name == "functools"):
+                if reverse is not None:
+                    self.import_tracker.add_import(reverse, alias=explicit_name)
+                self.import_tracker.require_name(explicit_name)
+                self.add_decorator(f"{explicit_name}.{expr.name}")
         elif expr.name == "coroutine":
             if (
                 isinstance(expr.expr, MemberExpr)
