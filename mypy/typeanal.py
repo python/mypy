@@ -447,6 +447,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if count > 0:
             first_arg = get_proper_type(an_args[0])
             if not (count == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))):
+                # TODO: I don't think AnyType here is valid in the general case, there's 2 cases:
+                #  1. invalid paramspec expression (in which case we should transform it into an ellipsis)
+                #  2. user passed it (in which case we should pass it into Parameters(...))
                 return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
         return list(an_args)
 

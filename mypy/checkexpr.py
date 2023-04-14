@@ -136,6 +136,7 @@ from mypy.types import (
     LiteralValue,
     NoneType,
     Overloaded,
+    Parameters,
     ParamSpecFlavor,
     ParamSpecType,
     PartialType,
@@ -4095,6 +4096,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
+            if len(tp.variables) == 1 and isinstance(tp.variables[0], ParamSpecType) and (len(args) != 1 or not isinstance(args[0], (Parameters, ParamSpecType, AnyType))):
+                # TODO: I don't think AnyType here is valid in the general case, there's 2 cases:
+                #  1. invalid paramspec expression (in which case we should transform it into an ellipsis)
+                #  2. user passed it (in which case we should pass it into Parameters(...))
+                args = [Parameters(args, [nodes.ARG_POS for _ in args], [None for _ in args])]
             if len(tp.variables) != len(args):
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # TODO: Specialize the callable for the type arguments

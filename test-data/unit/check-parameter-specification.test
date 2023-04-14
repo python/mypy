@@ -1556,3 +1556,16 @@ ex: Example[int] = test()(reveal_type(Example()))  # N: Revealed type is "__main
 reveal_type(test()(Example[int]()))  # N: Revealed type is "__main__.Example[[builtins.int, builtins.int]]"
 ex = test()(Example[int]())  # E: Argument 1 has incompatible type "Example[[int]]"; expected "Example[[]]"
 [builtins fixtures/paramspec.pyi]
+
+[case testRuntimeSpecialParamspecLiteralSyntax]
+import sub
+
+reveal_type(sub.Ex[None]())  # N: Revealed type is "sub.Ex[[None]]"
+[file sub/__init__.py]
+from typing_extensions import ParamSpec
+from typing import Generic
+
+P = ParamSpec("P")
+
+class Ex(Generic[P]): ...
+[builtins fixtures/paramspec.pyi]
