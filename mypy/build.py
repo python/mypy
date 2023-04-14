@@ -3301,7 +3301,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
             fresh_scc_queue.append(scc)
         else:
-            if len(fresh_scc_queue) > 0:
+            if fresh_scc_queue:
                 manager.log(f"Processing {len(fresh_scc_queue)} queued fresh SCCs")
                 # Defer processing fresh SCCs until we actually run into a stale SCC
                 # and need the earlier modules to be loaded.

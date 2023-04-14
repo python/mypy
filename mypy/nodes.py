@@ -556,7 +556,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.items = items
         self.unanalyzed_items = items.copy()
         self.impl = None
-        if len(items) > 0:
+        if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
         self.is_final = False
@@ -3089,7 +3089,7 @@ class TypeInfo(SymbolNode):
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
                 for name, node in base.names.items():
-                    if isinstance(node.node, (TypeAlias, TypeVarExpr)):
+                    if isinstance(node.node, (TypeAlias, TypeVarExpr, MypyFile)):
                         # These are auxiliary definitions (and type aliases are prohibited).
                         continue
                     members.add(name)
@@ -3921,7 +3921,7 @@ class DataclassTransformSpec:
             "eq_default": self.eq_default,
             "order_default": self.order_default,
             "kw_only_default": self.kw_only_default,
-            "frozen_only_default": self.frozen_default,
+            "frozen_default": self.frozen_default,
             "field_specifiers": list(self.field_specifiers),
         }
 

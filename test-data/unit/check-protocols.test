@@ -3998,3 +3998,27 @@ TF = TypeVar("TF", bound=Foo)
 def outer(cls: Type[TF]) -> TF:
     reveal_type(test(cls))  # N: Revealed type is "TF`-1"
     return cls()
+
+[case testProtocolImportNotMember]
+import m
+import lib
+
+class Bad:
+    x: int
+class Good:
+    x: lib.C
+
+x: m.P = Bad()  # E: Incompatible types in assignment (expression has type "Bad", variable has type "P") \
+                # N: Following member(s) of "Bad" have conflicts: \
+                # N:     x: expected "C", got "int"
+x = Good()
+
+[file m.py]
+from typing import Protocol
+
+class P(Protocol):
+    import lib
+    x: lib.C
+
+[file lib.py]
+class C: ...

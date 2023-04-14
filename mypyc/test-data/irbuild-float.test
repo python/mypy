@@ -475,3 +475,23 @@ def init(n: int) -> None:
     # narrowing assignments, generate errors here
     x: float = n  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
     y: float = 5  # E: Incompatible value representations in assignment (expression has type "int", variable has type "float")
+
+[case testFloatCoerceTupleFromIntValues]
+from __future__ import annotations
+
+def f(x: int) -> None:
+    t: tuple[float, float, float] = (x, 2.5, -7)
+[out]
+def f(x):
+    x :: int
+    r0 :: tuple[int, float, int]
+    r1 :: int
+    r2 :: float
+    r3, t :: tuple[float, float, float]
+L0:
+    r0 = (x, 2.5, -14)
+    r1 = r0[0]
+    r2 = CPyFloat_FromTagged(r1)
+    r3 = (r2, 2.5, -7.0)
+    t = r3
+    return 1

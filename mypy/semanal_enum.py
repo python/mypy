@@ -232,7 +232,7 @@ class EnumCallAnalyzer:
                 % class_name,
                 call,
             )
-        if len(items) == 0:
+        if not items:
             return self.fail_enum_call_arg(f"{class_name}() needs at least one item", call)
         if not values:
             values = [None] * len(items)

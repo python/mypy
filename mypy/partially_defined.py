@@ -153,7 +153,7 @@ class BranchStatement:
             all_vars.update(b.must_be_defined)
         # For the rest of the things, we only care about branches that weren't skipped.
         non_skipped_branches = [b for b in self.branches if not b.skipped]
-        if len(non_skipped_branches) > 0:
+        if non_skipped_branches:
             must_be_defined = non_skipped_branches[0].must_be_defined
             for b in non_skipped_branches[1:]:
                 must_be_defined.intersection_update(b.must_be_defined)
@@ -660,7 +660,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             else:
                 # When you do `import x.y`, only `x` becomes defined.
                 names = mod.split(".")
-                if len(names) > 0:
+                if names:
                     # `names` should always be nonempty, but we don't want mypy
                     # to crash on invalid code.
                     self.tracker.record_definition(names[0])

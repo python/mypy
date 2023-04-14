@@ -70,6 +70,7 @@ __all__ = [
     "assert_never",
     "assert_type",
     "dataclass_transform",
+    "deprecated",
     "final",
     "IntVar",
     "is_typeddict",
@@ -326,3 +327,4 @@ class TypeVarTuple:
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
 def override(__arg: _F) -> _F: ...
+def deprecated(__msg: str, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> Callable[[_T], _T]: ...

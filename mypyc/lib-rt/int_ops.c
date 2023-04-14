@@ -294,8 +294,8 @@ PyObject *CPyLong_FromStr(PyObject *o) {
 }
 
 CPyTagged CPyTagged_FromFloat(double f) {
-    if (f < (double)CPY_TAGGED_MAX && f > CPY_TAGGED_MIN) {
-        return (CPyTagged)f << 1;
+    if (f < ((double)CPY_TAGGED_MAX + 1.0) && f > (CPY_TAGGED_MIN - 1.0)) {
+        return (Py_ssize_t)f << 1;
     }
     PyObject *o = PyLong_FromDouble(f);
     if (o == NULL)

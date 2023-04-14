@@ -53,6 +53,8 @@ class Signals(IntEnum):
             SIGPWR: int
             SIGRTMAX: int
             SIGRTMIN: int
+            if sys.version_info >= (3, 11):
+                SIGSTKFLT: int
 
 class Handlers(IntEnum):
     SIG_DFL: int
@@ -147,6 +149,8 @@ else:
         SIGPWR: Signals
         SIGRTMAX: Signals
         SIGRTMIN: Signals
+        if sys.version_info >= (3, 11):
+            SIGSTKFLT: Signals
         @final
         class struct_siginfo(structseq[int], tuple[int, int, int, int, int, int, int]):
             if sys.version_info >= (3, 10):

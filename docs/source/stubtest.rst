@@ -85,7 +85,7 @@ Usage
 Running stubtest can be as simple as ``stubtest module_to_check``.
 Run :option:`stubtest --help` for a quick summary of options.
 
-Subtest must be able to import the code to be checked, so make sure that mypy
+Stubtest must be able to import the code to be checked, so make sure that mypy
 is installed in the same environment as the library to be tested. In some
 cases, setting ``PYTHONPATH`` can help stubtest find the code to import.
 

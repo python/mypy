@@ -5113,7 +5113,7 @@ class SemanticAnalyzer(
                 return None
             types.append(analyzed)
 
-        if has_param_spec and num_args == 1 and len(types) > 0:
+        if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             if not (
                 len(types) == 1
