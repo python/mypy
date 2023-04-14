@@ -4099,7 +4099,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 len(tp.variables) == 1
                 and isinstance(tp.variables[0], ParamSpecType)
                 and (
-                    len(args) != 1 or not isinstance(args[0], (Parameters, ParamSpecType, AnyType))
+                    len(args) != 1
+                    or not isinstance(
+                        get_proper_type(args[0]), (Parameters, ParamSpecType, AnyType)
+                    )
                 )
             ):
                 # TODO: I don't think AnyType here is valid in the general case, there's 2 cases:
