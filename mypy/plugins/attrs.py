@@ -999,6 +999,7 @@ def _get_expanded_attr_types(
         ctx.api.fail(_format_not_attrs_class_failure(display_typ, parent_typ), ctx.context)
         return None
     init_func = expand_type_by_instance(init_func, typ)
+    # [1:] to skip the self argument of AttrClass.__init__
     field_names = cast(List[str], init_func.arg_names[1:])
     field_types = init_func.arg_types[1:]
     return [dict(zip(field_names, field_types))]
