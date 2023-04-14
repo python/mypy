@@ -1940,6 +1940,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             sub_info: class where the method is used
             super_info: class where the method was defined
         """
+        mapped_typ = cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
         if isinstance(sym.node, (FuncDef, OverloadedFuncDef, Decorator)) and not is_static(
             sym.node
         ):
@@ -1947,28 +1948,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 is_class_method = sym.node.func.is_class
             else:
                 is_class_method = sym.node.is_class
-
-            mapped_typ = cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
             active_self_type = self.scope.active_self_type()
-            if isinstance(mapped_typ, Overloaded) and active_self_type:
-                # If we have an overload, filter to overloads that match the self type.
-                # This avoids false positives for concrete subclasses of generic classes,
-                # see testSelfTypeOverrideCompatibility for an example.
-                filtered_items = [
-                    item
-                    for item in mapped_typ.items
-                    if not item.arg_types or is_subtype(active_self_type, item.arg_types[0])
-                ]
-                # If we don't have any filtered_items, maybe it's always a valid override
-                # of the superclass? However if you get to that point you're in murky type
-                # territory anyway, so we just preserve the type and have the behaviour match
-                # that of older versions of mypy.
-                if filtered_items:
-                    mapped_typ = Overloaded(filtered_items)
-
             return bind_self(mapped_typ, active_self_type, is_class_method)
-        else:
-            return cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
+        return mapped_typ
 
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
         if isinstance(tp, CallableType):
