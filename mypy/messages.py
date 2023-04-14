@@ -19,6 +19,7 @@ from textwrap import dedent
 from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast
 from typing_extensions import Final
 
+import mypy.typeops
 from mypy import errorcodes as codes, message_registry
 from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
@@ -2711,7 +2712,7 @@ def get_conflict_protocol_types(
             continue
         supertype = find_member(member, right, left)
         assert supertype is not None
-        subtype = find_member(member, left, left, class_obj=class_obj)
+        subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
