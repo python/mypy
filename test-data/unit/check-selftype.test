@@ -266,6 +266,26 @@ class B(A):
     def f(*a, **kw): ...
 [builtins fixtures/dict.pyi]
 
+[case testSelfTypeOverrideCompatibilitySelfTypeVar]
+from typing import Any, Generic, Self, TypeVar, overload
+
+T_co = TypeVar('T_co', covariant=True)
+
+class Config(Generic[T_co]):
+	@overload
+	def get(self, instance: None) -> Self: ...
+	@overload
+	def get(self, instance: Any) -> T_co: ...
+	def get(self, *a, **kw): ...
+
+class MultiConfig(Config[T_co]):
+	@overload
+	def get(self, instance: None) -> Self: ...
+	@overload
+	def get(self, instance: Any) -> T_co: ...
+	def get(self, *a, **kw): ...
+[builtins fixtures/dict.pyi]
+
 [case testSelfTypeSuper]
 from typing import TypeVar, cast
 
