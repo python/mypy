@@ -175,6 +175,8 @@ static VecT Vec_T_Remove(VecT v, PyObject *arg) {
             for (; i < v.len - 1; i++) {
                 items[i] = items[i + 1];
             }
+            if (v.len > 0)
+                Py_XINCREF(items[v.len - 1]);
             v.len--;
             VEC_INCREF(v);
             return v;
@@ -194,16 +196,51 @@ static PyObject *vec_t_remove(PyObject *self, PyObject *arg) {
     return Vec_T_Box(v);
 }
 
-static VecT Vec_T_Pop(VecT self, Py_ssize_t index, PyObject **result) {
-    return Vec_T_Error();  // TODO implement
-    //VecTObject *v = (VecTObject *)self;
-    //return vec_generic_pop(&v->len, v->items, index);
+static VecT Vec_T_Pop(VecT v, Py_ssize_t index, PyObject **result) {
+    if (index < 0)
+        index += v.len;
+
+    if (index < 0 || index >= v.len) {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return Vec_T_Error();
+    }
+
+    PyObject **items = v.buf->items;
+    *result = items[index];
+    for (Py_ssize_t i = index; i < v.len - 1; i++)
+        items[i] = items[i + 1];
+    if (v.len > 0)
+        Py_XINCREF(items[v.len - 1]);
+    v.len--;
+    VEC_INCREF(v);
+    return v;
 }
 
 static PyObject *vec_t_pop(PyObject *self, PyObject *args) {
-    return NULL;   // TODO implement
-    //VecTObject *v = (VecTObject *)self;
-    //return vec_generic_pop_wrapper(&v->len, v->items, args);
+    Py_ssize_t index = -1;
+    if (!PyArg_ParseTuple(args, "|n:pop", &index))
+        return NULL;
+
+    VecT v = ((VecTObject *)self)->vec;
+    PyObject *result;
+    v = Vec_T_Pop(v, index, &result);
+    if (VEC_IS_ERROR(v))
+        return NULL;
+
+    PyObject *vboxed = Vec_T_Box(v);
+    if (vboxed == NULL)
+        return NULL;
+
+    PyObject *res = PyTuple_New(2);
+    if (res == NULL) {
+        Py_DECREF(vboxed);
+        Py_DECREF(result);
+        return NULL;
+    }
+
+    PyTuple_SetItem(res, 0, vboxed);
+    PyTuple_SetItem(res, 1, result);
+    return res;
 }
 
 static int
