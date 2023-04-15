@@ -21,14 +21,16 @@ typedef struct _VecbufI64Object {
 // Simple generic vecbuf: vecbuf[t] when t is a type object
 typedef struct _VecbufTObject {
     PyObject_VAR_HEAD
-    PyTypeObject *item_type;
+    // Tagged pointer to PyTypeObject *. The lowest bit is 1 for optional item type.
+    size_t item_type;
     PyObject *items[1];
 } VecbufTObject;
 
 // Extended generic vec type: vec[t | None], vec[vec[...]], etc.
 typedef struct _VecbufTExtObject {
     PyObject_VAR_HEAD
-    PyTypeObject *item_type;
+    // Tagged pointer to PyTypeObject *. The lowest bit is 1 for optional item type.
+    size_t item_type;
     int32_t depth;  // Number of nested VecTExt or VecT types
     int32_t optionals;  // Flags for optional types on each nesting level
     PyObject *items[1];
@@ -105,7 +107,7 @@ typedef struct _VecI64Features {
 typedef struct _VecTFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
-    VecT (*alloc)(Py_ssize_t, PyObject *);
+    VecT (*alloc)(Py_ssize_t, size_t);
     PyObject *(*box)(VecT);
     VecT (*append)(VecT, PyObject *);
     VecT (*pop)(VecT, Py_ssize_t, PyObject **result);
@@ -143,6 +145,7 @@ typedef struct {
 } VecCapsule;
 
 #define BUF_SIZE(b) ((b)->ob_base.ob_size)
+#define BUF_ITEM_TYPE(b) ((PyTypeObject *)((b)->item_type & ~1))
 #define VEC_CAP(v) ((v).buf->ob_base.ob_size)
 #define VEC_IS_ERROR(v) ((v).len < 0)
 #define VEC_DECREF(v) Py_XDECREF((v).buf)
@@ -189,17 +192,19 @@ static inline int VecT_Check(PyObject *o) {
 }
 
 static inline int VecT_ItemCheck(VecT v, PyObject *item) {
-    if (PyObject_TypeCheck(item, v.buf->item_type))
+    if (PyObject_TypeCheck(item, BUF_ITEM_TYPE(v.buf))) {
         return 1;
-    else {
+    } else if ((v.buf->item_type & 1) && item == Py_None) {
+        return 1;
+    } else {
         // TODO: better error message
         PyErr_SetString(PyExc_TypeError, "invalid item type");
         return 0;
     }
 }
 
-VecT Vec_T_New(Py_ssize_t size, PyObject *item_type);
-PyObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable);
+VecT Vec_T_New(Py_ssize_t size, size_t item_type);
+PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable);
 PyObject *Vec_T_Box(VecT);
 VecT Vec_T_Append(VecT vec, PyObject *x);
 
@@ -247,8 +252,8 @@ static inline int check_float_error(PyObject *o) {
     return 0;
 }
 
-PyObject *vec_type_to_str(PyTypeObject *item_type, int32_t depth, int32_t optionals);
-PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_t optionals,
+PyObject *vec_type_to_str(size_t item_type, int32_t depth, int32_t optionals);
+PyObject *vec_repr(PyObject *vec, size_t item_type, int32_t depth, int32_t optionals,
                    int verbose);
 PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
                                   Py_ssize_t *other_len, PyObject **other_items,

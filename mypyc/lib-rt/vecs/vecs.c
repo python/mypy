@@ -12,7 +12,8 @@ PyTypeObject *I64TypeObj;
 // These aren't really types. This only supports constructing instances.
 typedef struct {
     PyObject_HEAD
-    PyTypeObject *item_type;
+    // Tagged pointer to PyTypeObject *, lowest bit set for optional item type
+    size_t item_type;
     int32_t depth;  // Number of nested VecTExt or VecT types
     int32_t optionals;  // Flags for optional types on each nesting level
 } VecProxy;
@@ -25,14 +26,14 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
         return NULL;
     }
     VecProxy *p = (VecProxy *)self;
-    if (p->optionals == 0 && p->depth == 0) {
+    if (p->depth == 0) {
         if (init == NULL) {
-            VecT vec = Vec_T_New(0, (PyObject *)p->item_type);
+            VecT vec = Vec_T_New(0, p->item_type);
             if (VEC_IS_ERROR(vec))
                 return NULL;
             return Vec_T_Box(vec);
         } else {
-            return Vec_T_FromIterable((PyTypeObject *)p->item_type, init);
+            return Vec_T_FromIterable(p->item_type, init);
         }
 #if 0
     } else {
@@ -58,18 +59,22 @@ VecProxy_traverse(VecProxy *self, visitproc visit, void *arg)
 static void
 VecProxy_dealloc(VecProxy *self)
 {
-    Py_CLEAR(self->item_type);
+    if (self->item_type) {
+        Py_DECREF((PyObject *)(self->item_type & ~1));
+        self->item_type = 0;
+    }
     PyObject_GC_Del(self);
 }
 
-PyObject *vec_type_to_str(PyTypeObject *item_type, int32_t depth, int32_t optionals) {
+PyObject *vec_type_to_str(size_t item_type, int32_t depth, int32_t optionals) {
     PyObject *item;
     if (depth == 0)
-        item = PyObject_GetAttrString((PyObject *)item_type, "__name__");
+        item = PyObject_GetAttrString((PyObject *)(item_type & ~1), "__name__");
     else
         item = vec_type_to_str(item_type, depth - 1, optionals >> 1);
 
-    if (optionals & 1) {
+    // TODO: clean up
+    if ((optionals & 1) || (item_type & 1)) {
         item = PyUnicode_FromFormat("%U | None", item);
     }
     return PyUnicode_FromFormat("vec[%U]", item);
@@ -168,7 +173,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         if (p == NULL)
             return NULL;
         Py_INCREF(item);
-        p->item_type = (PyTypeObject *)item;
+        p->item_type = (size_t)item | (optionals & 1);
         p->depth = depth;
         p->optionals = optionals;
         PyObject_GC_Track(p);
@@ -190,8 +195,9 @@ PyTypeObject VecGenericType = {
     .tp_methods = vec_methods,
 };
 
-PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_t optionals,
+PyObject *vec_repr(PyObject *vec, size_t item_type, int32_t depth, int32_t optionals,
                    int verbose) {
+    // TODO: Check for errors
     PyObject *l = Py_BuildValue("[]");
     PyObject *prefix;
     PyObject *mid;
