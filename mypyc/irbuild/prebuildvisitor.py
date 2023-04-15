@@ -114,12 +114,6 @@ class PreBuildVisitor(TraverserVisitor):
     def visit_lambda_expr(self, expr: LambdaExpr) -> None:
         self.visit_func(expr)
 
-    def visit_list_comprehension(self, o: ListComprehension) -> None:
-        return super().visit_generator_expr(o.generator)
-
-    def visit_set_comprehension(self, o: SetComprehension) -> None:
-        return super().visit_generator_expr(o.generator)
-
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
         expr.sequences[0].accept(self)
 

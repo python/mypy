@@ -176,7 +176,6 @@ class TypeCheckSuite(DataSuite):
             raise AssertionError()
 
         if output != a and testcase.config.getoption("--update-data", False):
-            breakpoint()
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
