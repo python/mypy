@@ -52,7 +52,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
 static int
 VecProxy_traverse(VecProxy *self, visitproc visit, void *arg)
 {
-    Py_VISIT(self->item_type);
+    Py_VISIT((PyObject *)(self->item_type & ~1));
     return 0;
 }
 
