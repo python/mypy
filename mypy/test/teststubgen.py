@@ -1061,6 +1061,7 @@ class StubgencSuite(unittest.TestCase):
 
     def test_generate_c_function_other_module_arg(self) -> None:
         """Test that if argument references type from other module, module will be imported."""
+
         # Provide different type in python spec than in docstring to make sure, that docstring
         # information is used.
         def test(arg0: str) -> None:
@@ -1087,6 +1088,7 @@ class StubgencSuite(unittest.TestCase):
         """Test that if annotation references type from same module but using full path, no module
         will be imported, and type specification will be striped to local reference.
         """
+
         # Provide different type in python spec than in docstring to make sure, that docstring
         # information is used.
         def test(arg0: str) -> None:
@@ -1136,6 +1138,7 @@ class StubgencSuite(unittest.TestCase):
         """Test that if annotation references type from same module but using full path, no module
         will be imported, and type specification will be stripped to local reference.
         """
+
         # Provide different type in python spec than in docstring to make sure, that docstring
         # information is used.
         def test(arg0: str) -> None:
@@ -1162,6 +1165,7 @@ class StubgencSuite(unittest.TestCase):
         """Test that if annotation references type from same module but using full path, no module
         will be imported, and type specification will be stripped to local reference.
         """
+
         # Provide different type in python spec than in docstring to make sure, that docstring
         # information is used.
         def test(arg0: str) -> None:

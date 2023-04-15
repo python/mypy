@@ -255,7 +255,6 @@ def parse(
     errors: Errors | None = None,
     options: Options | None = None,
 ) -> MypyFile:
-
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError

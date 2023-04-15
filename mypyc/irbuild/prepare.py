@@ -465,7 +465,6 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
 def prepare_non_ext_class_def(
     path: str, module_name: str, cdef: ClassDef, errors: Errors, mapper: Mapper
 ) -> None:
-
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 

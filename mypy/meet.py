@@ -828,13 +828,13 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
-            for (name, l, r) in self.s.zip(t):
+            for name, l, r in self.s.zip(t):
                 if not is_equivalent(l, r) or (name in t.required_keys) != (
                     name in self.s.required_keys
                 ):
                     return self.default(self.s)
             item_list: list[tuple[str, Type]] = []
-            for (item_name, s_item_type, t_item_type) in self.s.zipall(t):
+            for item_name, s_item_type, t_item_type in self.s.zipall(t):
                 if s_item_type is not None:
                     item_list.append((item_name, s_item_type))
                 else:

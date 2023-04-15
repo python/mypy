@@ -99,7 +99,6 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
     """Called for functools.singledispatch"""
     func_type = get_proper_type(get_first_arg(ctx.arg_types))
     if isinstance(func_type, CallableType):
-
         if len(func_type.arg_kinds) < 1:
             fail(
                 ctx, "Singledispatch function requires at least one argument", func_type.definition
@@ -176,7 +175,6 @@ def register_function(
 
     fallback_dispatch_type = fallback.arg_types[0]
     if not is_subtype(dispatch_type, fallback_dispatch_type):
-
         fail(
             ctx,
             "Dispatch type {} must be subtype of fallback function first argument {}".format(

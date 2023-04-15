@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 22.12.0  # must match test-requirements.txt
+    rev: 23.3.0  # must match test-requirements.txt
     hooks:
       - id: black
   - repo: https://github.com/pycqa/isort

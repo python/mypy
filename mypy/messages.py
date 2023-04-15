@@ -2276,7 +2276,6 @@ def format_callable_args(
     arg_strings = []
     for arg_name, arg_type, arg_kind in zip(arg_names, arg_types, arg_kinds):
         if arg_kind == ARG_POS and arg_name is None or verbosity == 0 and arg_kind.is_positional():
-
             arg_strings.append(format(arg_type))
         else:
             constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
@@ -2383,7 +2382,7 @@ def format_type_inner(
         if not typ.is_anonymous():
             return format(typ.fallback)
         items = []
-        for (item_name, item_type) in typ.items.items():
+        for item_name, item_type in typ.items.items():
             modifier = "" if item_name in typ.required_keys else "?"
             items.append(f"{item_name!r}{modifier}: {format(item_type)}")
         s = f"TypedDict({{{', '.join(items)}}})"

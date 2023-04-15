@@ -505,7 +505,6 @@ class TypeVarId:
 
 
 class TypeVarLikeType(ProperType):
-
     __slots__ = ("name", "fullname", "id", "upper_bound")
 
     name: str  # Name (may be qualified)
@@ -2406,17 +2405,17 @@ class TypedDictType(ProperType):
 
     def zip(self, right: TypedDictType) -> Iterable[tuple[str, Type, Type]]:
         left = self
-        for (item_name, left_item_type) in left.items.items():
+        for item_name, left_item_type in left.items.items():
             right_item_type = right.items.get(item_name)
             if right_item_type is not None:
                 yield (item_name, left_item_type, right_item_type)
 
     def zipall(self, right: TypedDictType) -> Iterable[tuple[str, Type | None, Type | None]]:
         left = self
-        for (item_name, left_item_type) in left.items.items():
+        for item_name, left_item_type in left.items.items():
             right_item_type = right.items.get(item_name)
             yield (item_name, left_item_type, right_item_type)
-        for (item_name, right_item_type) in right.items.items():
+        for item_name, right_item_type in right.items.items():
             if item_name in left.items:
                 continue
             yield (item_name, None, right_item_type)
