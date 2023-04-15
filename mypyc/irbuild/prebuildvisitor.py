@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from mypy.nodes import (
+    Block,
     Decorator,
     Expression,
     FuncDef,
@@ -82,17 +83,15 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         self.current_file: MypyFile = current_file
 
     def visit(self, o: Node) -> bool:
-        if isinstance(o, Import):
-            if self._current_import_group is not None:
-                self.module_import_groups[self._current_import_group].append(o)
-            else:
-                self.module_import_groups[o] = [o]
-                self._current_import_group = o
-            # Don't recurse into the import's assignments.
-            return False
-
-        self._current_import_group = None
+        # print(o) if isinstance(o, Import) else print(repr(o))
+        if not isinstance(o, Import):
+            self._current_import_group = None
         return True
+
+    def visit_block(self, block: Block) -> None:
+        self._current_import_group = None
+        super().visit_block(block)
+        self._current_import_group = None
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
@@ -144,6 +143,16 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         self.funcs.append(func)
         super().visit_func(func)
         self.funcs.pop()
+
+    def visit_import(self, imp: Import) -> None:
+        if self._current_import_group is not None:
+            self.module_import_groups[self._current_import_group].append(imp)
+            # print("\033[1m\033[36madding\033[0m", end=" ")
+        else:
+            # print("\033[1m\033[32mnew group\033[0m", end=" ")
+            self.module_import_groups[imp] = [imp]
+            self._current_import_group = imp
+        super().visit_import(imp)
 
     def visit_name_expr(self, expr: NameExpr) -> None:
         if isinstance(expr.node, (Var, FuncDef)):
