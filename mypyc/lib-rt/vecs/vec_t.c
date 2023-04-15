@@ -22,8 +22,6 @@ static VecT vec_t_alloc(Py_ssize_t size, size_t item_type) {
     return res;
 }
 
-// TODO: vec_t_dealloc
-
 PyObject *Vec_T_Box(VecT vec) {
     VecTObject *obj = PyObject_GC_New(VecTObject, &VecTType);
     if (obj == NULL)

@@ -378,8 +378,8 @@ static PyModuleDef vecsmodule = {
 
 static VecCapsule Capsule = {
     &I64Features,
-    NULL, // TODO: &TFeatures,
-    NULL, // TODO: &TExtFeatures,
+    &TFeatures,
+    &TExtFeatures,
 };
 
 PyMODINIT_FUNC
@@ -406,10 +406,10 @@ PyInit_vecs(void)
     if (PyType_Ready(&VecbufTType) < 0)
         return NULL;
 
-#if 0
     if (PyType_Ready(&VecTExtType) < 0)
         return NULL;
-#endif
+    if (PyType_Ready(&VecbufTExtType) < 0)
+        return NULL;
 
     if (PyType_Ready(&VecI64Type) < 0)
         return NULL;
