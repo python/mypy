@@ -7,11 +7,9 @@ from mypy.nodes import (
     FuncItem,
     GeneratorExpr,
     LambdaExpr,
-    ListComprehension,
     MemberExpr,
     MypyFile,
     NameExpr,
-    SetComprehension,
     SymbolNode,
     Var,
 )

@@ -12,7 +12,6 @@ from mypy.nodes import (
     ARG_POS,
     LDEF,
     ArgKind,
-    Argument,
     AssertTypeExpr,
     AssignmentExpr,
     BytesExpr,
@@ -26,7 +25,6 @@ from mypy.nodes import (
     EllipsisExpr,
     Expression,
     FloatExpr,
-    FuncDef,
     GeneratorExpr,
     IndexExpr,
     IntExpr,
@@ -49,7 +47,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import CallableType, Instance, ProperType, TupleType, TypeType, get_proper_type
+from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
 from mypyc.common import LAMBDA_NAME, MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncSignature, RuntimeArg
@@ -1040,9 +1038,7 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
 def transform_generator_expr(builder: IRBuilder, expr: GeneratorExpr) -> Value:
     # create the function that returns a generator
     name = builder.generators_to_argname[expr]
-    runtime_args = [
-        RuntimeArg(name, object_rprimitive, ArgKind.ARG_POS)
-    ]
+    runtime_args = [RuntimeArg(name, object_rprimitive, ArgKind.ARG_POS)]
     ret_type = builder.type_to_rtype(builder.types[expr])
 
     fsig = FuncSignature(runtime_args, ret_type)
