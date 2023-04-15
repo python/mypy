@@ -26,6 +26,11 @@ typedef struct _VecbufTObject {
     PyObject *items[1];
 } VecbufTObject;
 
+typedef struct _VecbufTExtItem {
+    Py_ssize_t len;
+    PyObject *buf;
+} VecbufTExtItem;
+
 // Extended generic vec type: vec[t | None], vec[vec[...]], etc.
 typedef struct _VecbufTExtObject {
     PyObject_VAR_HEAD
@@ -33,7 +38,7 @@ typedef struct _VecbufTExtObject {
     size_t item_type;
     int32_t depth;  // Number of nested VecTExt or VecT types
     int32_t optionals;  // Flags for optional types on each nesting level
-    PyObject *items[1];
+    VecbufTExtItem items[1];
 } VecbufTExtObject;
 
 
@@ -126,12 +131,12 @@ typedef struct _VecTFeatures {
 typedef struct _VecTExtFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
-    PyObject *(*alloc)(Py_ssize_t, PyObject *, int optionals, int depth);
-    PyObject *(*append)(PyObject *, PyObject *);
-    PyObject *(*pop)(PyObject *, Py_ssize_t);
-    int (*remove)(PyObject *, PyObject *);
+    VecTExt (*alloc)(Py_ssize_t, size_t, int optionals, int depth);
+    VecTExt (*append)(VecTExt, PyObject *);
+    VecTExt (*pop)(VecTExt, Py_ssize_t, PyObject **result);
+    VecTExt (*remove)(VecTExt, PyObject *);
     // TODO: Py_ssize_t
-    PyObject *(*slice)(PyObject *, int64_t, int64_t);
+    VecTExt (*slice)(VecTExt, int64_t, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
@@ -158,6 +163,11 @@ inline VecI64 Vec_I64_Error() {
 
 inline VecT Vec_T_Error() {
     VecT v = { .len = -1 };
+    return v;
+}
+
+inline VecTExt Vec_T_Ext_Error() {
+    VecTExt v = { .len = -1 };
     return v;
 }
 
@@ -208,26 +218,22 @@ PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable);
 PyObject *Vec_T_Box(VecT);
 VecT Vec_T_Append(VecT vec, PyObject *x);
 
-#if 0
-
 // vec[t] operations (extended)
 
 static inline int VecTExt_Check(PyObject *o) {
     return o->ob_type == &VecTExtType;
 }
 
-static inline int VecTExt_ItemCheck(VecTExtObject *v, PyObject *it) {
-    if (v->depth == 0 && PyObject_TypeCheck(it, v->item_type)) {
+static inline int VecTExt_ItemCheck(VecTExt v, PyObject *it) {
+    if (it == Py_None && (v.buf->optionals & 1)) {
         return 1;
-    } else if (it == Py_None && (v->optionals & 1)) {
-        return 1;
-    } else if (v->depth == 1 && it->ob_type == &VecTType
-               && ((VecTExtObject *)it)->item_type == v->item_type) {
+    } else if (v.buf->depth == 1 && it->ob_type == &VecTType
+               && ((VecTExtObject *)it)->vec.buf->item_type == v.buf->item_type) {
         return 1;
     } else if (it->ob_type == &VecTExtType
-               && ((VecTExtObject *)it)->depth == v->depth - 1
-               && ((VecTExtObject *)it)->item_type == v->item_type
-               && ((VecTExtObject *)it)->optionals == (v->optionals >> 1)) {
+               && ((VecTExtObject *)it)->vec.buf->depth == v.buf->depth - 1
+               && ((VecTExtObject *)it)->vec.buf->item_type == v.buf->item_type
+               && ((VecTExtObject *)it)->vec.buf->optionals == (v.buf->optionals >> 1)) {
         return 1;
     } else {
         // TODO: better error message
@@ -236,12 +242,12 @@ static inline int VecTExt_ItemCheck(VecTExtObject *v, PyObject *it) {
     }
 }
 
-#endif
+VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, int32_t optionals, int32_t depth);
+PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t depth,
+                                 PyObject *iterable);
+PyObject *Vec_T_Ext_Box(VecTExt);
+VecTExt Vec_T_Ext_Append(VecTExt vec, PyObject *x);
 
-PyObject *Vec_T_Ext_New(Py_ssize_t size, PyObject *item_type, int32_t optionals, int32_t depth);
-VecTExtObject *Vec_T_Ext_FromIterable(PyTypeObject *item_type, int32_t optionals, int32_t depth,
-                                      PyObject *iterable);
-PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x);
 // Misc helpers
 
 static inline int check_float_error(PyObject *o) {
