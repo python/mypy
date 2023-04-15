@@ -285,7 +285,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
             for mi in method.items:
                 selftype = get_proper_type(mi.arg_types[0])
                 if not isinstance(selftype, Instance) or is_subtype(
-                    origtype, selftype, ignore_type_vars=True
+                    origtype, selftype, ignore_type_vars=False
                 ):
                     methoditems.append(mi)
             if len(methoditems) == 0:
