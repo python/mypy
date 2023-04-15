@@ -105,12 +105,13 @@ typedef struct _VecI64Features {
 typedef struct _VecTFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
-    PyObject *(*alloc)(Py_ssize_t, PyObject *);
-    PyObject *(*append)(PyObject *, PyObject *);
-    PyObject *(*pop)(PyObject *, Py_ssize_t);
-    int (*remove)(PyObject *, PyObject *);
+    VecT (*alloc)(Py_ssize_t, PyObject *);
+    PyObject *(*box)(VecT);
+    VecT (*append)(VecT, PyObject *);
+    VecT (*pop)(VecT, Py_ssize_t, PyObject **result);
+    VecT (*remove)(VecT, PyObject *);
     // TODO: Py_ssize_t
-    PyObject *(*slice)(PyObject *, int64_t, int64_t);
+    VecT (*slice)(VecT, int64_t, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
@@ -141,7 +142,7 @@ typedef struct {
     VecTExtFeatures *t_ext;
 } VecCapsule;
 
-#define VEC_SIZE(v) ((v)->ob_base.ob_size)
+#define BUF_SIZE(b) ((b)->ob_base.ob_size)
 #define VEC_CAP(v) ((v).buf->ob_base.ob_size)
 #define VEC_IS_ERROR(v) ((v).len < 0)
 #define VEC_DECREF(v) Py_XDECREF((v).buf)
@@ -149,6 +150,11 @@ typedef struct {
 
 inline VecI64 Vec_I64_Error() {
     VecI64 v = { .len = -1 };
+    return v;
+}
+
+inline VecT Vec_T_Error() {
+    VecT v = { .len = -1 };
     return v;
 }
 
@@ -182,10 +188,8 @@ static inline int VecT_Check(PyObject *o) {
     return o->ob_type == &VecTType;
 }
 
-#if 0
-
-static inline int VecT_ItemCheck(VecTObject *v, PyObject *item) {
-    if (PyObject_TypeCheck(item, v->item_type))
+static inline int VecT_ItemCheck(VecT v, PyObject *item) {
+    if (PyObject_TypeCheck(item, v.buf->item_type))
         return 1;
     else {
         // TODO: better error message
@@ -194,9 +198,12 @@ static inline int VecT_ItemCheck(VecTObject *v, PyObject *item) {
     }
 }
 
-PyObject *Vec_T_New(Py_ssize_t size, PyObject *item_type);
-VecTObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable);
-PyObject *Vec_T_Append(PyObject *obj, PyObject *x);
+VecT Vec_T_New(Py_ssize_t size, PyObject *item_type);
+PyObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable);
+PyObject *Vec_T_Box(VecT);
+VecT Vec_T_Append(VecT vec, PyObject *x);
+
+#if 0
 
 // vec[t] operations (extended)
 

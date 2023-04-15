@@ -10,44 +10,49 @@
 #include <Python.h>
 #include "vecs.h"
 
-// Alloc a partially initialized vec. Caller *must* initialize len and items, and
-// call PyObject_GC_Track().
-static VecTObject *vec_t_alloc(Py_ssize_t size, PyTypeObject *item_type) {
-    VecTObject *v = PyObject_GC_NewVar(VecTObject, &VecTType, size);
-    if (v == NULL)
-        return NULL;
+// Alloc a partially initialized vec. Caller *must* initialize len and buf->items.
+static VecT vec_t_alloc(Py_ssize_t size, PyTypeObject *item_type) {
+    VecbufTObject *buf = PyObject_GC_NewVar(VecbufTObject, &VecbufTType, size);
+    if (buf == NULL)
+        return Vec_T_Error();
     Py_INCREF(item_type);
-    v->item_type = item_type;
-    return v;
+    buf->item_type = item_type;
+    VecT res = { .buf = buf };
+    PyObject_GC_Track(buf);
+    return res;
 }
 
-PyObject *Vec_T_New(Py_ssize_t size, PyObject *item_type) {
-    VecTObject *v;
-    v = PyObject_GC_NewVar(VecTObject, &VecTType, size);
-    //v = VecTType.tp_alloc(&VecTType, size);
-    if (v == NULL)
+// TODO: vec_t_dealloc
+
+PyObject *Vec_T_Box(VecT vec) {
+    VecTObject *obj = PyObject_GC_New(VecTObject, &VecTType);
+    if (obj == NULL)
         return NULL;
+    obj->vec = vec;
+    PyObject_GC_Track(obj);
+    return (PyObject *)obj;
+}
 
-    Py_INCREF(item_type);
-    v->item_type = (PyTypeObject *)item_type;
-    v->len = size;
+VecT Vec_T_New(Py_ssize_t size, PyObject *item_type) {
+    VecT vec = vec_t_alloc(size, (PyTypeObject *)item_type);
+    if (VEC_IS_ERROR(vec))
+        return vec;
     for (Py_ssize_t i = 0; i < size; i++) {
-        v->items[i] = NULL;
+        vec.buf->items[i] = NULL;
     }
-
-    PyObject_GC_Track(v);
-    return (PyObject *)v;
+    vec.len = size;
+    return vec;
 }
 
 PyObject *vec_t_repr(PyObject *self) {
     VecTObject *v = (VecTObject *)self;
-    return vec_repr(self, v->item_type, 0, 0, 1);
+    return vec_repr(self, v->vec.buf->item_type, 0, 0, 1);
 }
 
 PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
-    VecTObject *v = (VecTObject *)o;
-    if ((size_t)i < (size_t)v->len) {
-        PyObject *item = v->items[i];
+    VecT v = ((VecTObject *)o)->vec;
+    if ((size_t)i < (size_t)v.len) {
+        PyObject *item = v.buf->items[i];
         Py_INCREF(item);
         return item;
     } else {
@@ -56,39 +61,38 @@ PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-PyObject *Vec_T_Slice(PyObject *self, int64_t start, int64_t end) {
-    VecTObject *vec = (VecTObject *)self;
+VecT Vec_T_Slice(VecT vec, int64_t start, int64_t end) {
     if (start < 0)
-        start += vec->len;
+        start += vec.len;
     if (end < 0)
-        end += vec->len;
+        end += vec.len;
     if (end < start)
         end = start;
     if (start < 0)
         start = 0;
-    if (end > vec->len)
-        end = vec->len;
+    if (end > vec.len)
+        end = vec.len;
     int64_t slicelength = end - start;
-    VecTObject *res = vec_t_alloc(slicelength, vec->item_type);
-    if (res == NULL)
-        return NULL;
-    res->len = slicelength;
+    VecT res = vec_t_alloc(slicelength, vec.buf->item_type);
+    if (VEC_IS_ERROR(res))
+        return res;
+    res.len = slicelength;
     for (Py_ssize_t i = 0; i < slicelength; i++) {
-        PyObject *item = vec->items[start + i];
+        PyObject *item = vec.buf->items[start + i];
         Py_INCREF(item);
-        res->items[i] = item;
+        res.buf->items[i] = item;
     }
-    return (PyObject *)res;
+    return res;
 }
 
 PyObject *vec_t_subscript(PyObject *self, PyObject *item) {
-    VecTObject *vec = (VecTObject *)self;
+    VecT vec = ((VecTObject *)self)->vec;
     if (PyIndex_Check(item)) {
         Py_ssize_t i = PyNumber_AsSsize_t(item, PyExc_IndexError);
         if (i == -1 && PyErr_Occurred())
             return NULL;
-        if ((size_t)i < (size_t)vec->len) {
-            PyObject *item = vec->items[i];
+        if ((size_t)i < (size_t)vec.len) {
+            PyObject *item = vec.buf->items[i];
             Py_INCREF(item);
             return item;
         } else {
@@ -99,20 +103,19 @@ PyObject *vec_t_subscript(PyObject *self, PyObject *item) {
         Py_ssize_t start, stop, step;
         if (PySlice_Unpack(item, &start, &stop, &step) < 0)
             return NULL;
-        Py_ssize_t slicelength = PySlice_AdjustIndices(vec->len, &start, &stop, step);
-        VecTObject *res = vec_t_alloc(slicelength, vec->item_type);
-        if (res == NULL)
+        Py_ssize_t slicelength = PySlice_AdjustIndices(vec.len, &start, &stop, step);
+        VecT res = vec_t_alloc(slicelength, vec.buf->item_type);
+        if (VEC_IS_ERROR(res))
             return NULL;
-        res->len = slicelength;
+        res.len = slicelength;
         Py_ssize_t j = start;
         for (Py_ssize_t i = 0; i < slicelength; i++) {
-            PyObject *item = vec->items[j];
+            PyObject *item = vec.buf->items[j];
             Py_INCREF(item);
-            res->items[i] = item;
+            res.buf->items[i] = item;
             j += step;
         }
-        PyObject_GC_Track(res);
-        return (PyObject *)res;
+        return Vec_T_Box(res);
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
@@ -121,12 +124,12 @@ PyObject *vec_t_subscript(PyObject *self, PyObject *item) {
 }
 
 int vec_t_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
-    VecTObject *v = (VecTObject *)self;
+    VecT v = ((VecTObject *)self)->vec;
     if (!VecT_ItemCheck(v, o))
         return -1;
-    if ((size_t)i < (size_t)v->len) {
+    if ((size_t)i < (size_t)v.len) {
         Py_INCREF(o);
-        v->items[i] = o;
+        v.buf->items[i] = o;
         return 0;
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
@@ -140,12 +143,14 @@ PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
         if (other->ob_type != &VecTType) {
             res = op == Py_EQ ? Py_False : Py_True;
         } else {
-            VecTObject *x = (VecTObject *)self;
-            VecTObject *y = (VecTObject *)other;
-            if (x->item_type != y->item_type) {
+            VecT x = ((VecTObject *)self)->vec;
+            VecT y = ((VecTObject *)other)->vec;
+            if (x.buf->item_type != y.buf->item_type) {
                 res = op == Py_EQ ? Py_False : Py_True;
-            } else
-                return vec_generic_richcompare(&x->len, x->items, &y->len, y->items, op);
+            } else {
+                // TODO: why pointers to len?
+                return vec_generic_richcompare(&x.len, x.buf->items, &y.len, y.buf->items, op);
+            }
         }
     } else
         res = Py_NotImplemented;
@@ -153,35 +158,47 @@ PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-static int Vec_T_Remove(PyObject *self, PyObject *arg) {
-    VecTObject *v = (VecTObject *)self;
-    return vec_generic_remove(&v->len, v->items, arg);
+static VecT Vec_T_Remove(VecT v, PyObject *arg) {
+    return Vec_T_Error(); // TODO implement
+    //VecTObject *v = (VecTObject *)self;
+    //return vec_generic_remove(&v->len, v->items, arg);
 }
 
 static PyObject *vec_t_remove(PyObject *self, PyObject *arg) {
+    Py_RETURN_NONE; // TODO implement
+#if 0
     VecTObject *v = (VecTObject *)self;
     if (!VecT_ItemCheck(v, arg))
         return NULL;
     if (!vec_generic_remove(&v->len, v->items, arg))
         return NULL;
-    Py_RETURN_NONE;
+#endif
 }
 
-static PyObject *Vec_T_Pop(PyObject *self, Py_ssize_t index) {
-    VecTObject *v = (VecTObject *)self;
-    return vec_generic_pop(&v->len, v->items, index);
+static VecT Vec_T_Pop(VecT self, Py_ssize_t index, PyObject **result) {
+    return Vec_T_Error();  // TODO implement
+    //VecTObject *v = (VecTObject *)self;
+    //return vec_generic_pop(&v->len, v->items, index);
 }
 
 static PyObject *vec_t_pop(PyObject *self, PyObject *args) {
-    VecTObject *v = (VecTObject *)self;
-    return vec_generic_pop_wrapper(&v->len, v->items, args);
+    return NULL;   // TODO implement
+    //VecTObject *v = (VecTObject *)self;
+    //return vec_generic_pop_wrapper(&v->len, v->items, args);
 }
 
 static int
 VecT_traverse(VecTObject *self, visitproc visit, void *arg)
 {
+    Py_VISIT(self->vec.buf);
+    return 0;
+}
+
+static int
+VecbufT_traverse(VecbufTObject *self, visitproc visit, void *arg)
+{
     Py_VISIT(self->item_type);
-    for (Py_ssize_t i = 0; i < self->len; i++) {
+    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
         Py_VISIT(self->items[i]);
     }
     return 0;
@@ -190,8 +207,15 @@ VecT_traverse(VecTObject *self, visitproc visit, void *arg)
 static int
 VecT_clear(VecTObject *self)
 {
+    Py_CLEAR(self->vec.buf);
+    return 0;
+}
+
+static int
+VecbufT_clear(VecbufTObject *self)
+{
     Py_CLEAR(self->item_type);
-    for (Py_ssize_t i = 0; i < self->len; i++) {
+    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
         Py_CLEAR(self->items[i]);
     }
     return 0;
@@ -202,9 +226,19 @@ VecT_dealloc(VecTObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecT_dealloc)
-    Py_XDECREF(self->item_type);
-    for (Py_ssize_t i = 0; i < self->len; i++) {
-        Py_XDECREF(self->items[i]);
+    Py_CLEAR(self->vec.buf);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+    Py_TRASHCAN_END
+}
+
+static void
+VecbufT_dealloc(VecbufTObject *self)
+{
+    PyObject_GC_UnTrack(self);
+    Py_TRASHCAN_BEGIN(self, VecbufT_dealloc)
+    Py_CLEAR(self->item_type);
+    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+        Py_CLEAR(self->items[i]);
     }
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
@@ -212,7 +246,7 @@ VecT_dealloc(VecTObject *self)
 
 static Py_ssize_t vec_length(PyObject *o) {
     // TODO: Type check o
-    return ((VecTObject *)o)->len;
+    return ((VecTObject *)o)->vec.len;
 }
 
 static PyMappingMethods VecTMapping = {
@@ -231,12 +265,26 @@ static PyMethodDef vec_t_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
+PyTypeObject VecbufTType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vecbuf",
+    .tp_doc = "vec doc",
+    .tp_basicsize = sizeof(VecbufTObject) - sizeof(PyObject *),
+    .tp_itemsize = sizeof(PyObject *),
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)VecbufT_traverse,
+    //.tp_new = vecbuf_i64_new, //??
+    .tp_free = PyObject_GC_Del,
+    .tp_clear = (inquiry)VecbufT_clear,
+    .tp_dealloc = (destructor)VecbufT_dealloc,
+};
+
 PyTypeObject VecTType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VecTObject) - sizeof(PyObject *),
-    .tp_itemsize = sizeof(PyObject *),
+    .tp_basicsize = sizeof(VecTObject),
+    .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_traverse = (traverseproc)VecT_traverse,
     .tp_clear = (inquiry)VecT_clear,
@@ -250,71 +298,75 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-VecTObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable) {
-    VecTObject *v = PyObject_GC_NewVar(VecTObject, &VecTType, 0);
-    if (v == NULL)
+PyObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable) {
+    VecT v = vec_t_alloc(0, item_type);
+    if (VEC_IS_ERROR(v))
         return NULL;
-    v->len = 0;
+    v.len = 0;
     Py_INCREF(item_type);
-    v->item_type = item_type;
-    PyObject_GC_Track(v);
+    v.buf->item_type = item_type;
 
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
-        Py_DECREF(v);
+        VEC_DECREF(v);
         return NULL;
     }
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
         if (!VecT_ItemCheck(v, item)) {
             Py_DECREF(iter);
-            Py_DECREF(v);
+            VEC_DECREF(v);
             Py_DECREF(item);
             return NULL;
         }
-        v = (VecTObject *)Vec_T_Append((PyObject *)v, item);
+        v = Vec_T_Append(v, item);
         Py_DECREF(item);
-        if (v == NULL) {
+        if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
-            Py_DECREF(v);
+            VEC_DECREF(v);
             return NULL;
         }
     }
     Py_DECREF(iter);
     if (PyErr_Occurred()) {
-        Py_DECREF(v);
+        VEC_DECREF(v);
         return NULL;
     }
-    return v;
+    return Vec_T_Box(v);
 }
 
-PyObject *Vec_T_Append(PyObject *obj, PyObject *x) {
-    VecTObject *vec = (VecTObject *)obj;
-    Py_ssize_t cap = VEC_SIZE(vec);
-    Py_ssize_t len = vec->len;
+VecT Vec_T_Append(VecT vec, PyObject *x) {
+    Py_ssize_t cap = VEC_CAP(vec);
     Py_INCREF(x);
-    if (len < cap) {
-        vec->items[len] = x;
-        vec->len = len + 1;
-        return (PyObject *)vec;
+    if (vec.len < cap) {
+        fprintf(stderr, "simple\n");
+        vec.buf->items[vec.len] = x;
+        vec.len++;
+        return vec;
     } else {
+        fprintf(stderr, "grow\n");
         Py_ssize_t new_size = 2 * cap + 1;
         // TODO: Avoid initializing to zero here
-        VecTObject *new = (VecTObject *)Vec_T_New(new_size, (PyObject *)vec->item_type);
-        if (new == NULL)
-            return NULL;
-        memcpy(new->items, vec->items, sizeof(PyObject *) * len);
-        memset(vec->items, 0, sizeof(PyObject *) * len);
-        new->items[len] = x;
-        new->len = len + 1;
-        Py_DECREF(vec);
-        return (PyObject *)new;
+        VecT new = vec_t_alloc(new_size, vec.buf->item_type);
+        if (VEC_IS_ERROR(new))
+            return new;
+        // Copy items to new vec.
+        memcpy(new.buf->items, vec.buf->items, sizeof(PyObject *) * vec.len);
+        memset(new.buf->items + vec.len, 0, sizeof(PyObject *) * (new_size - vec.len));
+        // Clear the items in the old vec. We avoid reference count manipulation.
+        memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
+        new.buf->items[vec.len] = x;
+        new.len = vec.len + 1;
+        VEC_DECREF(vec);
+        return new;
     }
 }
 
 VecTFeatures TFeatures = {
     &VecTType,
+    &VecbufTType,
     Vec_T_New,
+    Vec_T_Box,
     Vec_T_Append,
     Vec_T_Pop,
     Vec_T_Remove,

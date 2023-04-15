@@ -2,6 +2,7 @@
 #include <Python.h>
 #include "vecs.h"
 
+// Alloc a partially initialized vec. Caller *must* initialize len.
 static VecI64 vec_i64_alloc(Py_ssize_t size)
 {
     VecbufI64Object *buf;
@@ -30,8 +31,7 @@ PyObject *Vec_I64_Box(VecI64 vec) {
     return (PyObject *)obj;
 }
 
-VecI64 Vec_I64_New(Py_ssize_t size)
-{
+VecI64 Vec_I64_New(Py_ssize_t size) {
     VecI64 vec = vec_i64_alloc(size);
     if (VEC_IS_ERROR(vec))
         return vec;
@@ -118,7 +118,7 @@ VecI64 Vec_I64_Slice(VecI64 vec, int64_t start, int64_t end) {
     int64_t slicelength = end - start;
     VecI64 res = vec_i64_alloc(slicelength);
     if (VEC_IS_ERROR(res))
-        return Vec_I64_Error();
+        return res;
     res.len = slicelength;
     for (Py_ssize_t i = 0; i < slicelength; i++)
         res.buf->items[i] = vec.buf->items[start + i];

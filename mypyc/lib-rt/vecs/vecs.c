@@ -24,15 +24,17 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
         return NULL;
     }
-    return NULL;
-#if 0
     VecProxy *p = (VecProxy *)self;
     if (p->optionals == 0 && p->depth == 0) {
         if (init == NULL) {
-            return (PyObject *)Vec_T_New(0, (PyObject *)p->item_type);
+            VecT vec = Vec_T_New(0, (PyObject *)p->item_type);
+            if (VEC_IS_ERROR(vec))
+                return NULL;
+            return Vec_T_Box(vec);
         } else {
-            return (PyObject *)Vec_T_FromIterable((PyTypeObject *)p->item_type, init);
+            return Vec_T_FromIterable((PyTypeObject *)p->item_type, init);
         }
+#if 0
     } else {
         if (init == NULL) {
             return (PyObject *)Vec_T_Ext_New(0, (PyObject *)p->item_type, p->optionals,
@@ -41,8 +43,9 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
             return (PyObject *)Vec_T_Ext_FromIterable((PyTypeObject *)p->item_type, p->optionals,
                                                       p->depth, init);
         }
-    }
 #endif
+    }
+    return NULL; // TODO remove
 }
 
 static int
@@ -330,13 +333,17 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return Vec_I64_Box(v);
-#if 0
     } else if (VecT_Check(vec)) {
-        VecTObject *v = (VecTObject *)vec;
-        if (!VecT_ItemCheck(v, item))
+        VecT v = ((VecTObject *)vec)->vec;
+        if (!VecT_ItemCheck(v, item)) {
             return NULL;
-        Py_INCREF(vec);
-        return Vec_T_Append(vec, item);
+        }
+        VEC_INCREF(v);
+        v = Vec_T_Append(v, item);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return Vec_T_Box(v);
+#if 0
     } else if (VecTExt_Check(vec)) {
         VecTExtObject *v = (VecTExtObject *)vec;
         if (!VecTExt_ItemCheck(v, item))
@@ -387,12 +394,17 @@ PyInit_vecs(void)
         return NULL;
     if (PyType_Ready(&VecProxyType) < 0)
         return NULL;
-#if 0
+
     if (PyType_Ready(&VecTType) < 0)
         return NULL;
+    if (PyType_Ready(&VecbufTType) < 0)
+        return NULL;
+
+#if 0
     if (PyType_Ready(&VecTExtType) < 0)
         return NULL;
 #endif
+
     if (PyType_Ready(&VecI64Type) < 0)
         return NULL;
     if (PyType_Ready(&VecbufI64Type) < 0)
