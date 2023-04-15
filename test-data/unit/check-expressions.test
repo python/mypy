@@ -1786,13 +1786,42 @@ b = {'z': 26, *a}  # E: invalid syntax
 
 [case testDictWithStarStarExpr]
 
-from typing import Dict
+from typing import Dict, Iterable
+
+class Thing:
+    def keys(self) -> Iterable[str]:
+        ...
+    def __getitem__(self, key: str) -> int:
+        ...
+
 a = {'a': 1}
 b = {'z': 26, **a}
 c = {**b}
 d = {**a, **b, 'c': 3}
-e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "Mapping[int, str]"
-f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "Mapping[int, int]"
+e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, str]"
+f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, int]"
+g = {**Thing()}
+h = {**a, **Thing()}
+i = {**Thing()}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, int]" \
+                 # N: Following member(s) of "Thing" have conflicts: \
+                 # N:     Expected: \
+                 # N:         def __getitem__(self, int, /) -> int \
+                 # N:     Got: \
+                 # N:         def __getitem__(self, str, /) -> int \
+                 # N:     Expected: \
+                 # N:         def keys(self) -> Iterable[int] \
+                 # N:     Got: \
+                 # N:         def keys(self) -> Iterable[str]
+j = {1: 'a', **Thing()}  # E: Argument 1 to "update" of "dict" has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, str]" \
+                         # N: Following member(s) of "Thing" have conflicts: \
+                         # N:     Expected: \
+                         # N:         def __getitem__(self, int, /) -> str \
+                         # N:     Got: \
+                         # N:         def __getitem__(self, str, /) -> int \
+                         # N:     Expected: \
+                         # N:         def keys(self) -> Iterable[int] \
+                         # N:     Got: \
+                         # N:         def keys(self) -> Iterable[str]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
 

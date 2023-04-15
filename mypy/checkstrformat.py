@@ -844,10 +844,14 @@ class StringFormatterChecker:
         any_type = AnyType(TypeOfAny.special_form)
         if isinstance(expr, BytesExpr):
             bytes_type = self.chk.named_generic_type("builtins.bytes", [])
-            return self.chk.named_generic_type("typing.Mapping", [bytes_type, any_type])
+            return self.chk.named_generic_type(
+                "_typeshed.SupportsKeysAndGetItem", [bytes_type, any_type]
+            )
         elif isinstance(expr, StrExpr):
             str_type = self.chk.named_generic_type("builtins.str", [])
-            return self.chk.named_generic_type("typing.Mapping", [str_type, any_type])
+            return self.chk.named_generic_type(
+                "_typeshed.SupportsKeysAndGetItem", [str_type, any_type]
+            )
         else:
             assert False, "Unreachable"
 
