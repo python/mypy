@@ -296,7 +296,7 @@ def bind_self(
                 selftype = get_self_type(methoditem, origtype)
                 selftype_proper = get_proper_type(selftype)
                 if not isinstance(selftype_proper, Instance) or is_subtype(
-                    origtype, selftype_proper, ignore_type_vars=False
+                    origtype, selftype_proper, ignore_type_vars=True
                 ):
                     methoditems.append(methoditem)
                     if selftypes is not None:
