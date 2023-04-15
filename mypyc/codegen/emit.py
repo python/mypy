@@ -193,25 +193,31 @@ class Emitter:
     def attr(self, name: str) -> str:
         return ATTR_PREFIX + name
 
+    def object_annotation(self, obj: object, line: str) -> str:
+        """Build a C comment with an object's string represention.
+
+        If the comment exceeds the line length limit, it's wrapped into a
+        multiline string (with the extra lines indented to be aligned with
+        the first line's comment).
+
+        If it contains illegal characters, an empty string is returned."""
+        line_width = self._indent + len(line)
+        formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+        if any(x in formatted for x in ("/*", "*/", "\0")):
+            return ""
+
+        if "\n" in formatted:
+            first_line, rest = formatted.split("\n", maxsplit=1)
+            comment_continued = textwrap.indent(rest, (line_width + 3) * " ")
+            return f" /* {first_line}\n{comment_continued} */"
+        else:
+            return f" /* {formatted} */"
+
     def emit_line(self, line: str = "", *, ann: object = None) -> None:
         if line.startswith("}"):
             self.dedent()
-
-        comment = comment_continued = ""
-        if ann is not None:
-            line_width = self._indent + len(line)
-            formatted = pprint.pformat(ann, compact=True, width=max(90 - line_width, 20))
-            if not any(x in formatted for x in ("/*", "*/", "\0")):
-                if "\n" in formatted:
-                    first_line, rest = formatted.split("\n", maxsplit=1)
-                    comment = f" /* {first_line}"
-                    comment_continued = textwrap.indent(rest, (line_width + 3) * " ") + " */\n"
-                else:
-                    comment = f" /* {formatted} */"
+        comment = self.object_annotation(ann, line) if ann is not None else ""
         self.fragments.append(self._indent * " " + line + comment + "\n")
-        if comment_continued:
-            self.fragments.extend(comment_continued.splitlines(keepends=True))
-
         if line.endswith("{"):
             self.indent()
 
