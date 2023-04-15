@@ -263,15 +263,13 @@ def get_members(obj: object) -> list[tuple[str, Any]]:
     for name in obj_dict:
         if is_skipped_attribute(name):
             continue
-        # First try to get the value via getattr.  Some descriptors don't
-        # like calling their __get__ (see bug #1785), so fall back to
-        # looking in the __dict__.
+        # Try to get the value via getattr
         try:
-            results.append((name, getattr(obj, name)))
+            value = getattr(obj, name)
         except AttributeError:
-            # could be a (currently) missing slot member, or a buggy
-            # __dir__; discard and move on
             continue
+        else:
+            results.append((name, value))
     return results
 
 
@@ -314,6 +312,7 @@ def generate_c_function_stub(
     module: ModuleType,
     name: str,
     obj: object,
+    *,
     known_modules: list[str],
     sig_generators: Iterable[SignatureGenerator],
     output: list[str],
@@ -341,7 +340,7 @@ def generate_c_function_stub(
             if inferred:
                 # add self/cls var, if not present
                 for sig in inferred:
-                    if not sig.args or sig.args[0].name != self_var:
+                    if not sig.args or sig.args[0].name not in ("self", "cls"):
                         sig.args.insert(0, ArgSig(name=self_var))
                 break
     else:
@@ -357,7 +356,6 @@ def generate_c_function_stub(
             "if FallbackSignatureGenerator is provided"
         )
 
-    is_classmethod = self_var == "cls"
     is_overloaded = len(inferred) > 1 if inferred else False
     if is_overloaded:
         imports.append("from typing import overload")
@@ -379,7 +377,8 @@ def generate_c_function_stub(
 
             if is_overloaded:
                 output.append("@overload")
-            if is_classmethod:
+            # a sig generator indicates @classmethod by specifying the cls arg
+            if class_name and signature.args and signature.args[0].name == "cls":
                 output.append("@classmethod")
             output.append(
                 "def {function}({args}) -> {ret}: ...".format(
@@ -501,6 +500,7 @@ def generate_c_type_stub(
     The result lines will be appended to 'output'. If necessary, any
     required names will be added to 'imports'.
     """
+    raw_lookup = getattr(obj, "__dict__")  # noqa: B009
     items = sorted(get_members(obj), key=lambda x: method_name_sort_key(x[0]))
     names = set(x[0] for x in items)
     methods: list[str] = []
@@ -510,6 +510,8 @@ def generate_c_type_stub(
     ro_properties: list[str] = []
     attrs: list[tuple[str, Any]] = []
     for attr, value in items:
+        # use unevaluated descriptors when dealing with property inspection
+        raw_value = raw_lookup.get(attr, value)
         if is_c_method(value) or is_c_classmethod(value):
             if attr == "__new__":
                 # TODO: We should support __new__.
@@ -535,14 +537,14 @@ def generate_c_type_stub(
                 class_name=class_name,
                 sig_generators=sig_generators,
             )
-        elif is_c_property(value):
+        elif is_c_property(raw_value):
             generate_c_property_stub(
                 attr,
-                value,
+                raw_value,
                 static_properties,
                 rw_properties,
                 ro_properties,
-                is_c_property_readonly(value),
+                is_c_property_readonly(raw_value),
                 module=module,
                 known_modules=known_modules,
                 imports=imports,
@@ -756,6 +758,7 @@ def infer_method_ret_type(name: str) -> str:
         name = name[2:-2]
         if name in ("float", "bool", "bytes", "int"):
             return name
+        # Note: __eq__ and co may return arbitrary types, but bool is good enough for stubgen.
         elif name in ("eq", "ne", "lt", "le", "gt", "ge", "contains"):
             return "bool"
         elif name in ("len", "hash", "sizeof", "trunc", "floor", "ceil"):
