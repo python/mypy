@@ -143,7 +143,9 @@ def type_object_type_from_function(
     #      ...
     #
     # We need to map B's __init__ to the type (List[T]) -> None.
-    signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
+    signature = bind_self(
+        signature, original_type=default_self, is_classmethod=is_new, selftypes=orig_self_types
+    )
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
     special_sig: str | None = None
@@ -251,7 +253,12 @@ def supported_self_type(typ: ProperType) -> bool:
 F = TypeVar("F", bound=FunctionLike)
 
 
-def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool = False) -> F:
+def bind_self(
+    method: F,
+    original_type: Type | None = None,
+    is_classmethod: bool = False,
+    selftypes: list[Type | None] | None = None,
+) -> F:
     """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to original_type.
 
@@ -282,14 +289,22 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         origtype = get_proper_type(original_type)
         if isinstance(origtype, Instance):
             methoditems = []
-            for mi in method.items:
-                selftype = get_proper_type(mi.arg_types[0])
-                if not isinstance(selftype, Instance) or is_subtype(
-                    origtype, selftype, ignore_type_vars=False
+            if selftypes is not None:
+                selftypes_copy = selftypes.copy()
+                selftypes.clear()
+            for idx, methoditem in enumerate(method.items):
+                selftype = get_self_type(methoditem, origtype)
+                selftype_proper = get_proper_type(selftype)
+                if not isinstance(selftype_proper, Instance) or is_subtype(
+                    origtype, selftype_proper, ignore_type_vars=False
                 ):
-                    methoditems.append(mi)
+                    methoditems.append(methoditem)
+                    if selftypes is not None:
+                        selftypes.append(selftypes_copy[idx])
             if len(methoditems) == 0:
                 methoditems = method.items
+                if selftypes is not None:
+                    selftypes.extend(selftypes_copy)
         else:
             methoditems = method.items
         return cast(
