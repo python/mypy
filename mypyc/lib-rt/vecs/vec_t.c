@@ -159,20 +159,39 @@ PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
 }
 
 static VecT Vec_T_Remove(VecT v, PyObject *arg) {
-    return Vec_T_Error(); // TODO implement
-    //VecTObject *v = (VecTObject *)self;
-    //return vec_generic_remove(&v->len, v->items, arg);
+    PyObject **items = v.buf->items;
+    for (Py_ssize_t i = 0; i < v.len; i++) {
+        int match = 0;
+        if (items[i] == arg)
+            match = 1;
+        else {
+            int itemcmp = PyObject_RichCompareBool(items[i], arg, Py_EQ);
+            if (itemcmp < 0)
+                return Vec_T_Error();
+            match = itemcmp;
+        }
+        if (match) {
+            Py_CLEAR(items[i]);
+            for (; i < v.len - 1; i++) {
+                items[i] = items[i + 1];
+            }
+            v.len--;
+            VEC_INCREF(v);
+            return v;
+        }
+    }
+    PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
+    return Vec_T_Error();
 }
 
 static PyObject *vec_t_remove(PyObject *self, PyObject *arg) {
-    Py_RETURN_NONE; // TODO implement
-#if 0
-    VecTObject *v = (VecTObject *)self;
+    VecT v = ((VecTObject *)self)->vec;
     if (!VecT_ItemCheck(v, arg))
         return NULL;
-    if (!vec_generic_remove(&v->len, v->items, arg))
+    v = Vec_T_Remove(v, arg);
+    if (VEC_IS_ERROR(v))
         return NULL;
-#endif
+    return Vec_T_Box(v);
 }
 
 static VecT Vec_T_Pop(VecT self, Py_ssize_t index, PyObject **result) {
@@ -339,12 +358,10 @@ VecT Vec_T_Append(VecT vec, PyObject *x) {
     Py_ssize_t cap = VEC_CAP(vec);
     Py_INCREF(x);
     if (vec.len < cap) {
-        fprintf(stderr, "simple\n");
         vec.buf->items[vec.len] = x;
         vec.len++;
         return vec;
     } else {
-        fprintf(stderr, "grow\n");
         Py_ssize_t new_size = 2 * cap + 1;
         // TODO: Avoid initializing to zero here
         VecT new = vec_t_alloc(new_size, vec.buf->item_type);
