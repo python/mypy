@@ -529,7 +529,6 @@ def _cleanup_decorator(stmt: Decorator, attr_map: dict[str, Attribute]) -> None:
             and isinstance(func_decorator.expr, NameExpr)
             and func_decorator.expr.name in attr_map
         ):
-
             if func_decorator.name == "default":
                 attr_map[func_decorator.expr.name].has_default = True
 

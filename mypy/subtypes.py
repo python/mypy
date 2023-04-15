@@ -1034,7 +1034,7 @@ def is_protocol_implementation(
         if not members_right.issubset(members_left):
             return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
-    for (l, r) in reversed(assuming):
+    for l, r in reversed(assuming):
         if l == left and r == right:
             return True
     with pop_on_exit(assuming, left, right):

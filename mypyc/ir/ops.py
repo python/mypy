@@ -1549,6 +1549,7 @@ class OpVisitor(Generic[T]):
 
 # TODO: Should the following definition live somewhere else?
 
+
 # We do a three-pass deserialization scheme in order to resolve name
 # references.
 #  1. Create an empty ClassIR for each class in an SCC.

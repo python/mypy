@@ -142,9 +142,9 @@ class TestRun(MypycDataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
         # by chdiring into tmp/
-        with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase), (
-            chdir_manager("tmp")
-        ):
+        with use_custom_builtins(
+            os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase
+        ), chdir_manager("tmp"):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:

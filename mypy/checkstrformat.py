@@ -139,7 +139,6 @@ class ConversionSpecifier:
     def __init__(
         self, match: Match[str], start_pos: int = -1, non_standard_format_spec: bool = False
     ) -> None:
-
         self.whole_seq = match.group()
         self.start_pos = start_pos
 

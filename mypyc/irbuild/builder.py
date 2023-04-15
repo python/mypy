@@ -756,7 +756,6 @@ class IRBuilder:
     def process_iterator_tuple_assignment(
         self, target: AssignmentTargetTuple, rvalue_reg: Value, line: int
     ) -> None:
-
         iterator = self.call_c(iter_op, [rvalue_reg], line)
 
         # This may be the whole lvalue list if there is no starred value
@@ -1041,7 +1040,6 @@ class IRBuilder:
     def call_refexpr_with_args(
         self, expr: CallExpr, callee: RefExpr, arg_values: list[Value]
     ) -> Value:
-
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
             fullname = get_call_target_fullname(callee)

@@ -1006,7 +1006,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return infer_constraints(template, item, self.direction)
 
     def visit_tuple_type(self, template: TupleType) -> list[Constraint]:
-
         actual = self.actual
         unpack_index = find_unpack_in_list(template.items)
         is_varlength_tuple = (
@@ -1065,7 +1064,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res: list[Constraint] = []
             # NOTE: Non-matching keys are ignored. Compatibility is checked
             #       elsewhere so this shouldn't be unsafe.
-            for (item_name, template_item_type, actual_item_type) in template.zip(actual):
+            for item_name, template_item_type, actual_item_type in template.zip(actual):
                 res.extend(infer_constraints(template_item_type, actual_item_type, self.direction))
             return res
         elif isinstance(actual, AnyType):

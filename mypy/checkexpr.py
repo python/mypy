@@ -170,7 +170,7 @@ from mypy.visitor import ExpressionVisitor
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
 ArgChecker: _TypeAlias = Callable[
-    [Type, Type, ArgKind, Type, int, int, CallableType, Optional[Type], Context, Context], None,
+    [Type, Type, ArgKind, Type, int, int, CallableType, Optional[Type], Context, Context], None
 ]
 
 # Maximum nesting level for math union in overloads, setting this to large values
@@ -845,7 +845,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # this may give a better error message.
             ret_type = callee
 
-        for (item_name, item_expected_type) in ret_type.items.items():
+        for item_name, item_expected_type in ret_type.items.items():
             if item_name in kwargs:
                 item_value = kwargs[item_name]
                 self.chk.check_simple_assignment(

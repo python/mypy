@@ -89,7 +89,6 @@ def get_cfg(blocks: list[BasicBlock]) -> CFG:
     pred_map: dict[BasicBlock, list[BasicBlock]] = {}
     exits = set()
     for block in blocks:
-
         assert not any(
             isinstance(op, ControlOp) for op in block.ops[:-1]
         ), "Control-flow ops must be at the end of blocks"
