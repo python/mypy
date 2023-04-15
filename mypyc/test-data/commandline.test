@@ -191,13 +191,6 @@ class NonExt2:
     def test(self, x: int) -> None:
         pass
 
-iterator_warning = (i+1 for i in range(10))  # W: Treating generator comprehension as list
-
-# But we don't want warnings for these cases:
-tup = tuple(i+1 for i in range(10))
-a_str = " ".join(str(i) for i in range(10))
-wtvr = next(i for i in range(10) if i == 5)
-
 d1 = {1: 2}
 
 # Make sure we can produce an error when we hit the awful None case
@@ -242,4 +235,5 @@ def i(arg: Foo) -> None:
 # cmd: test.py
 
 [file test.py]
-names = (str(v) for v in [1, 2, 3])  # W: Treating generator comprehension as list
+class Foo:
+    l = [10]  # W: Unsupported default attribute value

@@ -2266,7 +2266,7 @@ class SetExpr(Expression):
         return visitor.visit_set_expr(self)
 
 
-class GeneratorExpr(Expression):
+class GeneratorExpr(FuncItem, Expression):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
 
     __slots__ = ("left_expr", "sequences", "condlists", "is_async", "indices")
@@ -2288,11 +2288,16 @@ class GeneratorExpr(Expression):
         is_async: list[bool],
     ) -> None:
         super().__init__()
+        self.is_generator = True
         self.left_expr = left_expr
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
         self.is_async = is_async
+
+    @property
+    def name(self) -> str:
+        return "<generator>"
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)

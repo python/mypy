@@ -5,15 +5,20 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     FuncItem,
+    GeneratorExpr,
     LambdaExpr,
+    ListComprehension,
     MemberExpr,
     MypyFile,
     NameExpr,
+    SetComprehension,
     SymbolNode,
     Var,
 )
 from mypy.traverser import TraverserVisitor
+from mypyc.common import GENERATOR_ARG_NAME
 from mypyc.errors import Errors
+from mypyc.irbuild.prebuildgenerator import gen_generator_expression_body
 
 
 class PreBuildVisitor(TraverserVisitor):
@@ -68,6 +73,9 @@ class PreBuildVisitor(TraverserVisitor):
         # Map function to indices of decorators to remove
         self.decorators_to_remove: dict[FuncDef, list[int]] = decorators_to_remove
 
+        # Map generator expression to the variable it takes
+        self.generators_to_argname: dict[GeneratorExpr, str] = {}
+
         self.errors: Errors = errors
 
         self.current_file: MypyFile = current_file
@@ -104,6 +112,21 @@ class PreBuildVisitor(TraverserVisitor):
         self.visit_func(fdef)
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> None:
+        self.visit_func(expr)
+
+    def visit_list_comprehension(self, o: ListComprehension) -> None:
+        return super().visit_generator_expr(o.generator)
+
+    def visit_set_comprehension(self, o: SetComprehension) -> None:
+        return super().visit_generator_expr(o.generator)
+
+    def visit_generator_expr(self, expr: GeneratorExpr) -> None:
+        expr.sequences[0].accept(self)
+
+        param_name = f"{GENERATOR_ARG_NAME}{len(self.generators_to_argname)}"
+        self.generators_to_argname[expr] = param_name
+
+        gen_generator_expression_body(expr, param_name)
         self.visit_func(expr)
 
     def visit_func(self, func: FuncItem) -> None:
