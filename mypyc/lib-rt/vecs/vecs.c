@@ -171,7 +171,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         if (p == NULL)
             return NULL;
         Py_INCREF(item);
-        p->item_type = (size_t)item | (optionals & 1);
+        p->item_type = (size_t)item | ((optionals >> depth) & 1);
         p->depth = depth;
         p->optionals = optionals;
         PyObject_GC_Track(p);
@@ -196,6 +196,7 @@ PyTypeObject VecGenericType = {
 PyObject *vec_repr(PyObject *vec, size_t item_type, int32_t depth, int32_t optionals,
                    int verbose) {
     // TODO: Check for errors
+    // TODO: Refcount handling
     PyObject *l = Py_BuildValue("[]");
     PyObject *prefix;
     PyObject *mid;
@@ -219,7 +220,7 @@ PyObject *vec_repr(PyObject *vec, size_t item_type, int32_t depth, int32_t optio
     for (Py_ssize_t i = 0; i < len; i++) {
         PyObject *it = PySequence_GetItem(vec, i);
         PyObject *r;
-        if (depth == 0) {
+        if (depth == 0 || it == Py_None) {
             r = PyObject_Repr(it);
         } else {
             r = vec_repr(it, item_type, depth - 1, optionals >> 1, 0);

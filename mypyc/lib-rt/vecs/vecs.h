@@ -256,6 +256,7 @@ static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem 
     int optionals = v.buf->optionals;
     if (item == Py_None && (optionals & 1)) {
         unboxed->len = -1;
+        unboxed->buf = NULL;
         return 0;
     }
     int depth = v.buf->depth;
