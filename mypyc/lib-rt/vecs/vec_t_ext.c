@@ -372,49 +372,44 @@ PyTypeObject VecTExtType = {
     // TODO: free
 };
 
-#if 0
-
-VecTExtObject *Vec_T_Ext_FromIterable(PyTypeObject *item_type, int32_t optionals, int32_t depth,
-                                      PyObject *iterable) {
-    // TODO
-    VecTExtObject *v = PyObject_GC_NewVar(VecTExtObject, &VecTExtType, 0);
-    if (v == NULL)
+PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t depth,
+                                 PyObject *iterable) {
+    VecTExt v = vec_t_ext_alloc(0, item_type, optionals, depth);
+    if (VEC_IS_ERROR(v))
         return NULL;
-    v->len = 0;
-    Py_INCREF(item_type);
-    v->item_type = item_type;
-    v->optionals = optionals;
-    v->depth = depth;
-    PyObject_GC_Track(v);
+    v.len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
-        Py_DECREF(v);
+        VEC_DECREF(v);
         return NULL;
     }
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
-        if (!VecTExt_ItemCheck(v, item)) {
+        VecbufTExtItem vecitem;
+        if (unbox_vec_item(v, item, &vecitem) < 0) {
             Py_DECREF(iter);
-            Py_DECREF(v);
+            VEC_DECREF(v);
             Py_DECREF(item);
             return NULL;
         }
-        v = (VecTExtObject *)Vec_T_Ext_Append((PyObject *)v, item);
+        v = Vec_T_Ext_Append(v, vecitem);
         Py_DECREF(item);
-        if (v == NULL) {
+        if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
-            Py_DECREF(v);
+            VEC_DECREF(v);
             return NULL;
         }
     }
     Py_DECREF(iter);
     if (PyErr_Occurred()) {
-        Py_DECREF(v);
+        VEC_DECREF(v);
         return NULL;
     }
-    return v;
+    return Vec_T_Ext_Box(v);
 }
+
+#if 0
 
 PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x) {
     // TODO

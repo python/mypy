@@ -247,7 +247,7 @@ VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, int32_t optionals, int3
 PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t depth,
                                  PyObject *iterable);
 PyObject *Vec_T_Ext_Box(VecTExt);
-VecTExt Vec_T_Ext_Append(VecTExt vec, PyObject *x);
+VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x);
 
 // Misc helpers
 
