@@ -279,6 +279,13 @@ def parse(
         # Disable deprecation warnings about \u
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
+            if options.allow_commented_type_annotations:
+                lines = source.split("\n")
+                result = ""
+                for line in lines:
+                    if not line.startswith("# type:"):
+                        result += line + "\n"
+                source = result
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
         tree = ASTConverter(options=options, is_stub=is_stub_file, errors=errors).visit(ast)
