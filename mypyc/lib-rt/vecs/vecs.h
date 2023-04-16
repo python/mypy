@@ -132,9 +132,10 @@ typedef struct _VecTExtFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecTExt (*alloc)(Py_ssize_t, size_t, int optionals, int depth);
-    VecTExt (*append)(VecTExt, PyObject *);
-    VecTExt (*pop)(VecTExt, Py_ssize_t, PyObject **result);
-    VecTExt (*remove)(VecTExt, PyObject *);
+    PyObject *(*box)(VecTExt);
+    VecTExt (*append)(VecTExt, VecbufTExtItem);
+    VecTExt (*pop)(VecTExt, Py_ssize_t, VecbufTExtItem *result);
+    VecTExt (*remove)(VecTExt, VecbufTExtItem);
     // TODO: Py_ssize_t
     VecTExt (*slice)(VecTExt, int64_t, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);

@@ -202,10 +202,11 @@ int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
-#if 0
-
 PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
     // TODO
+    return NULL;
+
+    /*
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
         if (other->ob_type != &VecTExtType) {
@@ -224,36 +225,45 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
         res = Py_NotImplemented;
     Py_INCREF(res);
     return res;
+    */
 }
 
-static int Vec_T_Ext_Remove(PyObject *self, PyObject *arg) {
+static VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     // TODO
+    return Vec_T_Ext_Error();
+    /*
     VecTExtObject *v = (VecTExtObject *)self;
     return vec_generic_remove(&v->len, v->items, arg);
+    */
 }
 
 static PyObject *vec_t_ext_remove(PyObject *self, PyObject *arg) {
     // TODO
+    return NULL;
+    /*
     VecTExtObject *v = (VecTExtObject *)self;
     if (!VecTExt_ItemCheck(v, arg))
         return NULL;
     if (!vec_generic_remove(&v->len, v->items, arg))
         return NULL;
     Py_RETURN_NONE;
+    */
 }
 
-static VecTExt Vec_T_Ext_Pop(VecTExt vec, Py_ssize_t index, PyObject **result) {
+static VecTExt Vec_T_Ext_Pop(VecTExt vec, Py_ssize_t index, VecbufTExtItem *result) {
     // TODO
     return Vec_T_Ext_Error();
 }
 
 static PyObject *vec_t_ext_pop(PyObject *self, PyObject *args) {
     // TODO
+    return NULL;
+
+    /*
     VecTExtObject *v = (VecTExtObject *)self;
     return vec_generic_pop_wrapper(&v->len, v->items, args);
+    */
 }
-
-#endif
 
 static int
 VecTExt_traverse(VecTObject *self, visitproc visit, void *arg)
@@ -436,8 +446,6 @@ VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
     }
 }
 
-#if 0
-
 VecTExtFeatures TExtFeatures = {
     &VecTExtType,
     &VecbufTExtType,
@@ -448,5 +456,3 @@ VecTExtFeatures TExtFeatures = {
     Vec_T_Ext_Remove,
     Vec_T_Ext_Slice,
 };
-
-#endif
