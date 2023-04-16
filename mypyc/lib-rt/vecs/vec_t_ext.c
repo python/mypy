@@ -9,6 +9,30 @@
 #include <Python.h>
 #include "vecs.h"
 
+static inline PyObject *box_vec_item(VecTExt v, Py_ssize_t index) {
+    VecbufTExtItem item = v.buf->items[index];
+    if (item.len < 0)
+        Py_RETURN_NONE;
+    Py_INCREF(item.buf);
+    if (v.buf->depth > 1) {
+        // Item is a nested vec
+        VecTExt v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
+        return Vec_T_Ext_Box(v);
+    } else {
+        // Item is a non-nested vec
+        void *item_type = (void *)(v.buf->item_type & ~1);
+        if (item_type == I64TypeObj) {
+            // vec[i64]
+            VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
+            return Vec_I64_Box(v);
+        } else {
+            // Generic vec[t]
+            VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
+            return Vec_T_Box(v);
+        }
+    }
+}
+
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items.
 static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, int32_t optionals,
                                int32_t depth) {
@@ -48,30 +72,6 @@ VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, int32_t optionals, int3
 PyObject *vec_t_ext_repr(PyObject *self) {
     VecTExt v = ((VecTExtObject *)self)->vec;
     return vec_repr(self, v.buf->item_type, v.buf->depth, v.buf->optionals, 1);
-}
-
-static inline PyObject *box_vec_item(VecTExt v, Py_ssize_t index) {
-    VecbufTExtItem item = v.buf->items[index];
-    if (item.len < 0)
-        Py_RETURN_NONE;
-    Py_INCREF(item.buf);
-    if (v.buf->depth > 1) {
-        // Item is a nested vec
-        VecTExt v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
-        return Vec_T_Ext_Box(v);
-    } else {
-        // Item is a non-nested vec
-        void *item_type = (void *)(v.buf->item_type & ~1);
-        if (item_type == I64TypeObj) {
-            // vec[i64]
-            VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
-            return Vec_I64_Box(v);
-        } else {
-            // Generic vec[t]
-            VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
-            return Vec_T_Box(v);
-        }
-    }
 }
 
 PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
