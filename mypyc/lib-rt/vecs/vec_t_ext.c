@@ -50,29 +50,34 @@ PyObject *vec_t_ext_repr(PyObject *self) {
     return vec_repr(self, v.buf->item_type, v.buf->depth, v.buf->optionals, 1);
 }
 
+static inline PyObject *box_vec_item(VecTExt v, Py_ssize_t index) {
+    VecbufTExtItem item = v.buf->items[index];
+    if (item.len < 0)
+        Py_RETURN_NONE;
+    Py_INCREF(item.buf);
+    if (v.buf->depth > 1) {
+        // Item is a nested vec
+        VecTExt v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
+        return Vec_T_Ext_Box(v);
+    } else {
+        // Item is a non-nested vec
+        void *item_type = (void *)(v.buf->item_type & ~1);
+        if (item_type == I64TypeObj) {
+            // vec[i64]
+            VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
+            return Vec_I64_Box(v);
+        } else {
+            // Generic vec[t]
+            VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
+            return Vec_T_Box(v);
+        }
+    }
+}
+
 PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
     VecTExt v = ((VecTExtObject *)o)->vec;
     if ((size_t)i < (size_t)v.len) {
-        VecbufTExtItem item = v.buf->items[i];
-        if (item.len < 0)
-            Py_RETURN_NONE;
-        else if (v.buf->depth > 1) {
-            // Item is a nested vec
-            VecTExt item = { .len = item.len, .buf = item.buf };
-            return Vec_T_Ext_Box(item);
-        } else {
-            // Item is a non-nested vec
-            void *item_type = (void *)(v.buf->item_type & ~1);
-            if (item_type == I64TypeObj) {
-                // vec[i64]
-                VecI64 item = { .len = item.len, .buf = item.buf };
-                return Vec_I64_Box(item);
-            } else {
-                // Generic vec[t]
-                VecT item = { .len = item.len, .buf = item.buf };
-                return Vec_T_Box(item);
-            }
-        }
+        return box_vec_item(v, i);
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
         return NULL;
@@ -104,19 +109,14 @@ VecTExt Vec_T_Ext_Slice(VecTExt vec, int64_t start, int64_t end) {
     return res;
 }
 
-#if 0
-
 PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
-    // TODO
-    VecTExtObject *vec = (VecTExtObject *)self;
+    VecTExt vec = ((VecTExtObject *)self)->vec;
     if (PyIndex_Check(item)) {
         Py_ssize_t i = PyNumber_AsSsize_t(item, PyExc_IndexError);
         if (i == -1 && PyErr_Occurred())
             return NULL;
-        if ((size_t)i < (size_t)vec->len) {
-            PyObject *item = vec->items[i];
-            Py_INCREF(item);
-            return item;
+        if ((size_t)i < (size_t)vec.len) {
+            return box_vec_item(vec, i);
         } else {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
@@ -125,27 +125,28 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
         Py_ssize_t start, stop, step;
         if (PySlice_Unpack(item, &start, &stop, &step) < 0)
             return NULL;
-        Py_ssize_t slicelength = PySlice_AdjustIndices(vec->len, &start, &stop, step);
-        VecTExtObject *res = vec_t_ext_alloc(slicelength, vec->item_type, vec->optionals,
-                                             vec->depth);
-        if (res == NULL)
+        Py_ssize_t slicelength = PySlice_AdjustIndices(vec.len, &start, &stop, step);
+        VecTExt res = vec_t_ext_alloc(slicelength, vec.buf->item_type, vec.buf->optionals,
+                                      vec.buf->depth);
+        if (VEC_IS_ERROR(res))
             return NULL;
-        res->len = slicelength;
+        res.len = slicelength;
         Py_ssize_t j = start;
         for (Py_ssize_t i = 0; i < slicelength; i++) {
-            PyObject *item = vec->items[j];
-            Py_INCREF(item);
-            res->items[i] = item;
+            VecbufTExtItem item = vec.buf->items[j];
+            Py_INCREF(item.buf);
+            res.buf->items[i] = item;
             j += step;
         }
-        PyObject_GC_Track(res);
-        return (PyObject *)res;
+        return Vec_T_Ext_Box(res);
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
         return NULL;
     }
 }
+
+#if 0
 
 int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     // TODO
