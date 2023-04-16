@@ -33,6 +33,47 @@ static inline PyObject *box_vec_item(VecTExt v, Py_ssize_t index) {
     }
 }
 
+// Return 0 on success, -1 on error
+static inline int unbox_vec_item(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
+    int optionals = v.buf->optionals;
+    if (item == Py_None && (optionals & 1)) {
+        unboxed->len = -1;
+        return 0;
+    }
+    int depth = v.buf->depth;
+    if (depth == 1) {
+        // TODO: vec[i64]
+        if (item->ob_type == &VecTType) {
+            VecTExtObject *o = (VecTExtObject *)item;
+            if (o->vec.buf->item_type == v.buf->item_type) {
+                unboxed->len = o->vec.len;
+                unboxed->buf = (PyObject *)o->vec.buf;
+                Py_INCREF(unboxed->buf);
+                return 1;
+            }
+        } else if (item->ob_type == &VecI64Type && v.buf->item_type == (size_t)I64TypeObj) {
+            VecI64Object *o = (VecI64Object *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            Py_INCREF(unboxed->buf);
+            return 1;
+        }
+    } else if (item->ob_type == &VecTExtType) {
+        VecTExtObject *o = (VecTExtObject *)item;
+        if (o->vec.buf->depth == v.buf->depth - 1
+            && o->vec.buf->item_type == v.buf->item_type
+            && o->vec.buf->optionals == (optionals >> 1)) {
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            Py_INCREF(unboxed->buf);
+            return 1;
+        }
+    }
+    // TODO: better error message
+    PyErr_SetString(PyExc_TypeError, "invalid item type");
+    return 0;
+}
+
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items.
 static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, int32_t optionals,
                                int32_t depth) {
