@@ -35,18 +35,16 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
         } else {
             return Vec_T_FromIterable(p->item_type, init);
         }
-#if 0
     } else {
         if (init == NULL) {
-            return (PyObject *)Vec_T_Ext_New(0, (PyObject *)p->item_type, p->optionals,
-                                             p->depth);
+            VecTExt vec = Vec_T_Ext_New(0, p->item_type, p->optionals, p->depth);
+            if (VEC_IS_ERROR(vec))
+                return NULL;
+            return Vec_T_Ext_Box(vec);
         } else {
-            return (PyObject *)Vec_T_Ext_FromIterable((PyTypeObject *)p->item_type, p->optionals,
-                                                      p->depth, init);
+            return Vec_T_Ext_FromIterable(p->item_type, p->optionals, p->depth, init);
         }
-#endif
     }
-    return NULL; // TODO remove
 }
 
 static int
