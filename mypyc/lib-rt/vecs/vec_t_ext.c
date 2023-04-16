@@ -33,7 +33,8 @@ static inline PyObject *box_vec_item(VecTExt v, Py_ssize_t index) {
     }
 }
 
-// Return 0 on success, -1 on error
+// Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
+// Return a new reference.
 static inline int unbox_vec_item(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
     int optionals = v.buf->optionals;
     if (item == Py_None && (optionals & 1)) {
@@ -49,14 +50,14 @@ static inline int unbox_vec_item(VecTExt v, PyObject *item, VecbufTExtItem *unbo
                 unboxed->len = o->vec.len;
                 unboxed->buf = (PyObject *)o->vec.buf;
                 Py_INCREF(unboxed->buf);
-                return 1;
+                return 0;
             }
         } else if (item->ob_type == &VecI64Type && v.buf->item_type == (size_t)I64TypeObj) {
             VecI64Object *o = (VecI64Object *)item;
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
             Py_INCREF(unboxed->buf);
-            return 1;
+            return 0;
         }
     } else if (item->ob_type == &VecTExtType) {
         VecTExtObject *o = (VecTExtObject *)item;
@@ -66,12 +67,12 @@ static inline int unbox_vec_item(VecTExt v, PyObject *item, VecbufTExtItem *unbo
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
             Py_INCREF(unboxed->buf);
-            return 1;
+            return 0;
         }
     }
     // TODO: better error message
     PyErr_SetString(PyExc_TypeError, "invalid item type");
-    return 0;
+    return -1;
 }
 
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items.
@@ -187,22 +188,21 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
     }
 }
 
-#if 0
-
 int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
-    // TODO
     VecTExt v = ((VecTExtObject *)self)->vec;
-    if (!VecTExt_ItemCheck(v, o))
-        return -1;
-    if ((size_t)i < (size_t)v->len) {
-        Py_INCREF(o);
-        v->items[i] = o;
+    if ((size_t)i < (size_t)v.len) {
+        VecbufTExtItem item;
+        if (unbox_vec_item(v, o, &item) < 0)
+            return -1;
+        v.buf->items[i] = item;
         return 0;
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
         return -1;
     }
 }
+
+#if 0
 
 PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
     // TODO
