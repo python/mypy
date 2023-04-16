@@ -409,33 +409,34 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t de
     return Vec_T_Ext_Box(v);
 }
 
-#if 0
-
-PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x) {
-    // TODO
-    VecTExtObject *vec = (VecTExtObject *)obj;
-    Py_ssize_t cap = VEC_SIZE(vec);
-    Py_ssize_t len = vec->len;
-    Py_INCREF(x);
-    if (len < cap) {
-        vec->items[len] = x;
-        vec->len = len + 1;
-        return (PyObject *)vec;
+VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
+    Py_ssize_t cap = VEC_CAP(vec);
+    Py_INCREF(x.buf);
+    if (vec.len < cap) {
+        vec.buf->items[vec.len] = x;
+        vec.len++;
+        return vec;
     } else {
         Py_ssize_t new_size = 2 * cap + 1;
         // TODO: Avoid initializing to zero here
-        VecTExtObject *new = (VecTExtObject *)Vec_T_Ext_New(
-            new_size, (PyObject *)vec->item_type, vec->optionals, vec->depth);
-        if (new == NULL)
-            return NULL;
-        memcpy(new->items, vec->items, sizeof(PyObject *) * len);
-        memset(vec->items, 0, sizeof(PyObject *) * len);
-        new->items[len] = x;
-        new->len = len + 1;
-        Py_DECREF(vec);
-        return (PyObject *)new;
+        VecTExt new = vec_t_ext_alloc(new_size, vec.buf->item_type, vec.buf->optionals,
+                                      vec.buf->depth);
+        if (VEC_IS_ERROR(new))
+            return new;
+        // Copy items to new vec.
+        memcpy(new.buf->items, vec.buf->items, sizeof(VecbufTExtItem) * vec.len);
+        // TODO: How to safely represent deleted items?
+        memset(new.buf->items + vec.len, 0, sizeof(VecbufTExtItem) * (new_size - vec.len));
+        // Clear the items in the old vec. We avoid reference count manipulation.
+        memset(vec.buf->items, 0, sizeof(VecbufTExtItem) * vec.len);
+        new.buf->items[vec.len] = x;
+        new.len = vec.len + 1;
+        VEC_DECREF(vec);
+        return new;
     }
 }
+
+#if 0
 
 VecTExtFeatures TExtFeatures = {
     &VecTExtType,
