@@ -33,48 +33,6 @@ static inline PyObject *box_vec_item(VecTExt v, Py_ssize_t index) {
     }
 }
 
-// Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
-// Return a new reference.
-static inline int unbox_vec_item(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
-    int optionals = v.buf->optionals;
-    if (item == Py_None && (optionals & 1)) {
-        unboxed->len = -1;
-        return 0;
-    }
-    int depth = v.buf->depth;
-    if (depth == 1) {
-        // TODO: vec[i64]
-        if (item->ob_type == &VecTType) {
-            VecTExtObject *o = (VecTExtObject *)item;
-            if (o->vec.buf->item_type == v.buf->item_type) {
-                unboxed->len = o->vec.len;
-                unboxed->buf = (PyObject *)o->vec.buf;
-                Py_INCREF(unboxed->buf);
-                return 0;
-            }
-        } else if (item->ob_type == &VecI64Type && v.buf->item_type == (size_t)I64TypeObj) {
-            VecI64Object *o = (VecI64Object *)item;
-            unboxed->len = o->vec.len;
-            unboxed->buf = (PyObject *)o->vec.buf;
-            Py_INCREF(unboxed->buf);
-            return 0;
-        }
-    } else if (item->ob_type == &VecTExtType) {
-        VecTExtObject *o = (VecTExtObject *)item;
-        if (o->vec.buf->depth == v.buf->depth - 1
-            && o->vec.buf->item_type == v.buf->item_type
-            && o->vec.buf->optionals == (optionals >> 1)) {
-            unboxed->len = o->vec.len;
-            unboxed->buf = (PyObject *)o->vec.buf;
-            Py_INCREF(unboxed->buf);
-            return 0;
-        }
-    }
-    // TODO: better error message
-    PyErr_SetString(PyExc_TypeError, "invalid item type");
-    return -1;
-}
-
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items.
 static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, int32_t optionals,
                                int32_t depth) {
@@ -192,7 +150,7 @@ int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     VecTExt v = ((VecTExtObject *)self)->vec;
     if ((size_t)i < (size_t)v.len) {
         VecbufTExtItem item;
-        if (unbox_vec_item(v, o, &item) < 0)
+        if (Vec_T_Ext_UnboxItem(v, o, &item) < 0)
             return -1;
         v.buf->items[i] = item;
         return 0;
@@ -397,7 +355,7 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t de
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
         VecbufTExtItem vecitem;
-        if (unbox_vec_item(v, item, &vecitem) < 0) {
+        if (Vec_T_Ext_UnboxItem(v, item, &vecitem) < 0) {
             Py_DECREF(iter);
             VEC_DECREF(v);
             Py_DECREF(item);
@@ -419,9 +377,9 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t de
     return Vec_T_Ext_Box(v);
 }
 
+// Steals references to vec and x
 VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
     Py_ssize_t cap = VEC_CAP(vec);
-    Py_INCREF(x.buf);
     if (vec.len < cap) {
         vec.buf->items[vec.len] = x;
         vec.len++;

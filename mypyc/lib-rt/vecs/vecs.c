@@ -335,7 +335,7 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         VEC_INCREF(v);
         v = Vec_I64_Append(v, x);
         if (VEC_IS_ERROR(v))
-            return NULL;
+            return NULL; // TODO: decref?
         return Vec_I64_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
@@ -347,14 +347,16 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return Vec_T_Box(v);
-#if 0
     } else if (VecTExt_Check(vec)) {
-        VecTExtObject *v = (VecTExtObject *)vec;
-        if (!VecTExt_ItemCheck(v, item))
+        VecTExt v = ((VecTExtObject *)vec)->vec;
+        VecbufTExtItem vecitem;
+        if (Vec_T_Ext_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
-        Py_INCREF(vec);
-        return Vec_T_Ext_Append(vec, item);
-#endif
+        VEC_INCREF(v);
+        v = Vec_T_Ext_Append(v, vecitem);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return Vec_T_Ext_Box(v);
     } else {
         PyErr_SetString(PyExc_TypeError, "vec argument expected");
         return NULL;
