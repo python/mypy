@@ -225,6 +225,7 @@ static inline int VecTExt_Check(PyObject *o) {
 }
 
 static inline int VecTExt_ItemCheck(VecTExt v, PyObject *it) {
+    // TODO: vec[i64] item type
     if (it == Py_None && (v.buf->optionals & 1)) {
         return 1;
     } else if (v.buf->depth == 1 && it->ob_type == &VecTType

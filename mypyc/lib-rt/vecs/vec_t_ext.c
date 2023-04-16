@@ -150,7 +150,7 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
 
 int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     // TODO
-    VecTExtObject *v = (VecTExtObject *)self;
+    VecTExt v = ((VecTExtObject *)self)->vec;
     if (!VecTExt_ItemCheck(v, o))
         return -1;
     if ((size_t)i < (size_t)v->len) {
@@ -212,43 +212,70 @@ static PyObject *vec_t_ext_pop(PyObject *self, PyObject *args) {
     return vec_generic_pop_wrapper(&v->len, v->items, args);
 }
 
+#endif
+
 static int
-VecTExt_traverse(VecTExtObject *self, visitproc visit, void *arg)
+VecTExt_traverse(VecTObject *self, visitproc visit, void *arg)
 {
-    // TODO
-    Py_VISIT(self->item_type);
-    for (Py_ssize_t i = 0; i < self->len; i++) {
-        Py_VISIT(self->items[i]);
+    Py_VISIT(self->vec.buf);
+    return 0;
+}
+
+static int
+VecTExt_clear(VecTObject *self)
+{
+    Py_CLEAR(self->vec.buf);
+    return 0;
+}
+
+static void
+VecTExt_dealloc(VecTObject *self)
+{
+    PyObject_GC_UnTrack(self);
+    Py_TRASHCAN_BEGIN(self, VecTExt_dealloc)
+    Py_CLEAR(self->vec.buf);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+    Py_TRASHCAN_END
+}
+
+static int
+VecbufTExt_traverse(VecbufTExtObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(BUF_ITEM_TYPE(self));
+    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+        Py_VISIT(self->items[i].buf);
     }
     return 0;
 }
 
 static int
-VecTExt_clear(VecTExtObject *self)
+VecbufTExt_clear(VecbufTExtObject *self)
 {
-    // TODO
-    Py_CLEAR(self->item_type);
-    for (Py_ssize_t i = 0; i < self->len; i++) {
-        Py_CLEAR(self->items[i]);
+    if (self->item_type) {
+        Py_DECREF(BUF_ITEM_TYPE(self));
+        self->item_type = 0;
+    }
+    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+        Py_CLEAR(self->items[i].buf);
     }
     return 0;
 }
 
 static void
-VecTExt_dealloc(VecTExtObject *self)
+VecbufTExt_dealloc(VecbufTExtObject *self)
 {
-    // TODO
     PyObject_GC_UnTrack(self);
-    Py_TRASHCAN_BEGIN(self, VecTExt_dealloc)
-    Py_XDECREF(self->item_type);
-    for (Py_ssize_t i = 0; i < self->len; i++) {
-        Py_XDECREF(self->items[i]);
+    Py_TRASHCAN_BEGIN(self, VecbufTExt_dealloc)
+    if (self->item_type) {
+        Py_DECREF(BUF_ITEM_TYPE(self));
+        self->item_type = 0;
+    }
+    for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
+        Py_CLEAR(self->items[i].buf);
     }
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
 }
-
-#endif
 
 static Py_ssize_t vec_ext_length(PyObject *o) {
     // TODO: Type check o
@@ -269,6 +296,20 @@ static PyMethodDef vec_t_ext_methods[] = {
     {"remove", vec_t_ext_remove, METH_O, NULL},
     {"pop", vec_t_ext_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
+};
+
+PyTypeObject VecbufTExtType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vecbuf",
+    .tp_doc = "vec doc",
+    .tp_basicsize = sizeof(VecbufTExtObject) - sizeof(VecbufTExtItem),
+    .tp_itemsize = sizeof(VecbufTExtItem),
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)VecbufTExt_traverse,
+    //.tp_new = vecbuf_i64_new, //??
+    .tp_free = PyObject_GC_Del,
+    .tp_clear = (inquiry)VecbufTExt_clear,
+    .tp_dealloc = (destructor)VecbufTExt_dealloc,
 };
 
 PyTypeObject VecTExtType = {

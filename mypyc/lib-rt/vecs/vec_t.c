@@ -249,19 +249,29 @@ VecT_traverse(VecTObject *self, visitproc visit, void *arg)
 }
 
 static int
+VecT_clear(VecTObject *self)
+{
+    Py_CLEAR(self->vec.buf);
+    return 0;
+}
+
+static void
+VecT_dealloc(VecTObject *self)
+{
+    PyObject_GC_UnTrack(self);
+    Py_TRASHCAN_BEGIN(self, VecT_dealloc)
+    Py_CLEAR(self->vec.buf);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+    Py_TRASHCAN_END
+}
+
+static int
 VecbufT_traverse(VecbufTObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(BUF_ITEM_TYPE(self));
     for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
         Py_VISIT(self->items[i]);
     }
-    return 0;
-}
-
-static int
-VecT_clear(VecTObject *self)
-{
-    Py_CLEAR(self->vec.buf);
     return 0;
 }
 
@@ -276,16 +286,6 @@ VecbufT_clear(VecbufTObject *self)
         Py_CLEAR(self->items[i]);
     }
     return 0;
-}
-
-static void
-VecT_dealloc(VecTObject *self)
-{
-    PyObject_GC_UnTrack(self);
-    Py_TRASHCAN_BEGIN(self, VecT_dealloc)
-    Py_CLEAR(self->vec.buf);
-    Py_TYPE(self)->tp_free((PyObject *)self);
-    Py_TRASHCAN_END
 }
 
 static void
