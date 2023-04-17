@@ -280,11 +280,11 @@ def parse(
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             if options.allow_commented_type_annotations:
-                lines = source.split("\n")
+                lines = str(source).split("\n")
                 result = ""
                 for line in lines:
-                    if not line.startswith("# type:"):
-                        result += line + "\n"
+                    if not str(line).startswith("# type:"):
+                        result += str(line) + str("\n")
                 source = result
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
