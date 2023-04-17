@@ -31,3 +31,10 @@ class A():
 # type: str 
 [out]
 main:2: error: invalid syntax
+
+[case testCommentedTypeAnnotationsNotAtStart]
+# flags: --allow-commented-type-annotations
+
+class A():
+    b = "" # type: str
+# type: str

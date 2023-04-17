@@ -283,9 +283,12 @@ def parse(
                 lines = str(source).split("\n")
                 result = ""
                 for line in lines:
-                    if not str(line).startswith("# type:"):
+                    if "# type:" not in str(line):
                         result += str(line) + str("\n")
-                source = result
+                    else:
+                        line = line.split("#")[0] + "\n"
+                        result += line
+                    source = result
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
         tree = ASTConverter(options=options, is_stub=is_stub_file, errors=errors).visit(ast)
