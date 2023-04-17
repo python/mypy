@@ -845,11 +845,11 @@ def process_options(
         default=[],
         help="Enable a specific error code",
     )
-    strictness_group.add_argument(		
-        "--allow-commented-type-annotations",		
-        action="store_true",		
-        default=False,		
-        help="Allow type annotations in comments formatted # type: [type]",		
+    strictness_group.add_argument(
+        "--allow-commented-type-annotations",
+        action="store_true",
+        default=False,
+        help="Allow type annotations in comments formatted # type: [type]",
     )
 
     error_group = parser.add_argument_group(

@@ -181,7 +181,7 @@ class Options:
         # Don't re-export names unless they are imported with `from ... as ...`
         self.implicit_reexport = True
 
-        # Suppress errors from type annotations in comments		
+        # Suppress errors from type annotations in comments
         self.allow_commented_type_annotations = False
 
         # Suppress toplevel errors caused by missing annotations
