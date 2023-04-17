@@ -735,8 +735,8 @@ from typing import NamedTuple
 
 class T(NamedTuple):
   class State(Enum):
-    A =1
-  state:State
+    A = 1
+  state: State
 
 class RaggedFeature(NamedTuple):
   class RowSplits(NamedTuple):
@@ -744,5 +744,7 @@ class RaggedFeature(NamedTuple):
 
   splits: RowSplits
 
-reveal_type(T.State.A) # N: Revealed type is "Literal[__main__.T.State.A]"
+reveal_type(T.State.A) # N: Revealed type is "Literal[__main__.State.A]?"
 reveal_type(RaggedFeature.RowSplits.x) # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
