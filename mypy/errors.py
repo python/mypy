@@ -261,23 +261,14 @@ class Errors:
         options: Options,
         *,
         read_source: Callable[[str], list[str] | None] | None = None,
-        many_errors_threshold: int | None = None,
+        hide_error_codes: bool | None = None,
     ) -> None:
-
         self.options = options
-        self.show_error_context = options.show_error_context
-        self.show_column_numbers = options.show_column_numbers
-        self.hide_error_codes = options.hide_error_codes
-        self.show_absolute_path = options.show_absolute_path
-        self.pretty = options.pretty
-        self.show_error_end = options.show_error_end
+        self.hide_error_codes = (
+            hide_error_codes if hide_error_codes is not None else options.hide_error_codes
+        )
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.many_errors_threshold = (
-            many_errors_threshold
-            if many_errors_threshold is not None
-            else options.many_errors_threshold
-        )
         self.initialize()
 
     def initialize(self) -> None:
@@ -306,7 +297,7 @@ class Errors:
         self.ignore_prefix = prefix
 
     def simplify_path(self, file: str) -> str:
-        if self.show_absolute_path:
+        if self.options.show_absolute_path:
             return os.path.abspath(file)
         else:
             file = os.path.normpath(file)
@@ -532,13 +523,13 @@ class Errors:
             self._add_error_info(file, note)
 
     def has_many_errors(self) -> bool:
-        if self.many_errors_threshold < 0:
+        if self.options.many_errors_threshold < 0:
             return False
-        if len(self.error_info_map) >= self.many_errors_threshold:
+        if len(self.error_info_map) >= self.options.many_errors_threshold:
             return True
         if (
             sum(len(errors) for errors in self.error_info_map.values())
-            >= self.many_errors_threshold
+            >= self.options.many_errors_threshold
         ):
             return True
         return False
@@ -804,9 +795,9 @@ class Errors:
         ) in errors:
             s = ""
             if file is not None:
-                if self.show_column_numbers and line >= 0 and column >= 0:
+                if self.options.show_column_numbers and line >= 0 and column >= 0:
                     srcloc = f"{file}:{line}:{1 + column}"
-                    if self.show_error_end and end_line >= 0 and end_column >= 0:
+                    if self.options.show_error_end and end_line >= 0 and end_column >= 0:
                         srcloc += f":{end_line}:{end_column}"
                 elif line >= 0:
                     srcloc = f"{file}:{line}"
@@ -824,7 +815,7 @@ class Errors:
                 # displaying duplicate error codes.
                 s = f"{s}  [{code.code}]"
             a.append(s)
-            if self.pretty:
+            if self.options.pretty:
                 # Add source code fragment and a location marker.
                 if severity == "error" and source_lines and line > 0:
                     source_line = source_lines[line - 1]
@@ -855,7 +846,7 @@ class Errors:
             return []
         self.flushed_files.add(path)
         source_lines = None
-        if self.pretty:
+        if self.options.pretty:
             assert self.read_source
             source_lines = self.read_source(path)
         return self.format_messages(self.error_info_map[path], source_lines)
@@ -896,7 +887,7 @@ class Errors:
 
         for e in errors:
             # Report module import context, if different from previous message.
-            if not self.show_error_context:
+            if not self.options.show_error_context:
                 pass
             elif e.import_ctx != prev_import_context:
                 last = len(e.import_ctx) - 1
@@ -921,7 +912,7 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if not self.show_error_context:
+            if not self.options.show_error_context:
                 pass
             elif e.function_or_member != prev_function_or_member or e.type != prev_type:
                 if e.function_or_member is None:
