@@ -977,7 +977,7 @@ def _get_expanded_attr_types(
     """
     if isinstance(typ, AnyType):
         return None
-    if isinstance(typ, UnionType):
+    elif isinstance(typ, UnionType):
         ret: list[Mapping[str, Type]] | None = []
         for item in typ.relevant_items():
             item = get_proper_type(item)
@@ -987,22 +987,23 @@ def _get_expanded_attr_types(
             else:
                 ret = None  # but keep iterating to emit all errors
         return ret
-    if isinstance(typ, TypeVarType):
+    elif isinstance(typ, TypeVarType):
         return _get_expanded_attr_types(
             ctx, get_proper_type(typ.upper_bound), display_typ, parent_typ
         )
-    if not isinstance(typ, Instance):
+    elif isinstance(typ, Instance):
+        init_func = _get_attrs_init_type(typ)
+        if init_func is None:
+            ctx.api.fail(_format_not_attrs_class_failure(display_typ, parent_typ), ctx.context)
+            return None
+        init_func = expand_type_by_instance(init_func, typ)
+        # [1:] to skip the self argument of AttrClass.__init__
+        field_names = cast(List[str], init_func.arg_names[1:])
+        field_types = init_func.arg_types[1:]
+        return [dict(zip(field_names, field_types))]
+    else:
         ctx.api.fail(_format_not_attrs_class_failure(display_typ, parent_typ), ctx.context)
         return None
-    init_func = _get_attrs_init_type(typ)
-    if init_func is None:
-        ctx.api.fail(_format_not_attrs_class_failure(display_typ, parent_typ), ctx.context)
-        return None
-    init_func = expand_type_by_instance(init_func, typ)
-    # [1:] to skip the self argument of AttrClass.__init__
-    field_names = cast(List[str], init_func.arg_names[1:])
-    field_types = init_func.arg_types[1:]
-    return [dict(zip(field_names, field_types))]
 
 
 def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
