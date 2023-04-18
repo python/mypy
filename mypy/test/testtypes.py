@@ -1206,8 +1206,8 @@ class MeetSuite(Suite):
 
     def assert_simple_meet(self, s: Type, t: Type, meet: Type) -> None:
         result = meet_types(s, t)
-        actual = str(result.accept)
-        expected = str(meet.accept)
+        actual = str(result)
+        expected = str(meet)
         assert_equal(actual, expected, f"meet({s}, {t}) == {{}} ({{}} expected)")
         assert is_subtype(result, s), f"{result} not subtype of {s}"
         assert is_subtype(result, t), f"{result} not subtype of {t}"
