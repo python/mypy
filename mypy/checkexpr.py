@@ -1244,7 +1244,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     chk=self.chk,
                     in_literal_context=self.is_literal_context(),
                     self_type=typ,
-                    options=self.chk.options,
                 )
             narrowed = self.narrow_type_from_binder(e.callee, item, skip_non_overlapping=True)
             if narrowed is None:
@@ -1320,7 +1319,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 original_type=callee,
                 chk=self.chk,
                 in_literal_context=self.is_literal_context(),
-                options=self.chk.options,
             )
             callable_name = callee.type.fullname + ".__call__"
             # Apply method signature hook, if one exists
@@ -2804,7 +2802,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table,
                 is_self=is_self,
-                options=self.chk.options,
             )
 
             return member_type
@@ -2827,7 +2824,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             original_type=base_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
-            options=self.chk.options,
         )
 
     def is_literal_context(self) -> bool:
@@ -3217,7 +3213,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             original_type=original_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
-            options=self.chk.options,
         )
         return self.check_method_call(method, base_type, method_type, args, arg_kinds, context)
 
@@ -3311,7 +3306,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     msg=self.msg,
                     chk=self.chk,
                     in_literal_context=self.is_literal_context(),
-                    options=self.chk.options,
                 )
                 return None if w.has_new_errors() else member
 
@@ -4572,7 +4566,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     msg=self.msg,
                     chk=self.chk,
                     in_literal_context=self.is_literal_context(),
-                    options=self.chk.options,
                 )
 
         assert False, "unreachable"

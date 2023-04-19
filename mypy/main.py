@@ -735,10 +735,7 @@ def process_options(
     )
 
     add_invertible_flag(
-        "--force-uppercase-builtins",
-        default=False,
-        help="Force names to be uppercase",
-        group=none_group,
+        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
     )
 
     lint_group = parser.add_argument_group(

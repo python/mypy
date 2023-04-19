@@ -511,7 +511,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                         self.msg,
                         original_type=typ,
                         chk=self.chk,
-                        options=self.options,
                     )
                     has_local_errors = local_errors.has_new_errors()
                 if has_local_errors:
@@ -578,7 +577,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                         self.msg,
                         original_type=new_type,
                         chk=self.chk,
-                        options=self.options,
                     )
                 else:
                     key_type = AnyType(TypeOfAny.from_error)

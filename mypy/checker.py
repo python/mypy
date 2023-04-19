@@ -688,7 +688,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             msg=self.msg,
                             original_type=inner_type,
                             chk=self,
-                            options=self.options,
                         )
                     )
                     if isinstance(inner_call, CallableType):
@@ -3972,7 +3971,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             msg=self.msg,
             chk=self,
         )
-        get_type = analyze_descriptor_access(attribute_type, mx, self.options)
+        get_type = analyze_descriptor_access(attribute_type, mx)
         if not attribute_type.type.has_readable_member("__set__"):
             # If there is no __set__, we type-check that the assigned value matches
             # the return type of __get__. This doesn't match the python semantics,
@@ -3998,7 +3997,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self_type=attribute_type,
             name="__set__",
             mx=mx,
-            options=self.options,
         )
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
@@ -5713,7 +5711,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             original_type=new_parent_type,
                             chk=self,
                             in_literal_context=False,
-                            options=self.options,
                         )
                     if w.has_new_errors():
                         return None
@@ -6716,7 +6713,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # This is not a real attribute lookup so don't mess with deferring nodes.
                 no_deferral=True,
                 module_symbol_table=module_symbol_table,
-                options=self.options,
             )
         return not watcher.has_new_errors()
 
