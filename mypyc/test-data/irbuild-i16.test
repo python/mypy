@@ -191,3 +191,21 @@ L0:
     a = r0
     r1 = CPyInt16_Remainder(a, y)
     return r1
+
+[case testI16BoxAndUnbox]
+from typing import Any
+from mypy_extensions import i16
+
+def f(x: Any) -> Any:
+    y: i16 = x
+    return y
+[out]
+def f(x):
+    x :: object
+    r0, y :: int16
+    r1 :: object
+L0:
+    r0 = unbox(int16, x)
+    y = r0
+    r1 = box(int16, y)
+    return r1
