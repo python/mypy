@@ -703,6 +703,9 @@ bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *gl
         PyObject *globals_name = PyTuple_GET_ITEM(module, 2);
 
         if (!import_single(mod_id, statics[i], globals_id, globals_name, globals)) {
+            assert(PyErr_Occurred() && "error indicator should be set on bad import!");
+            PyObject *typ, *val, *tb;
+            PyErr_Fetch(&typ, &val, &tb);
             const char *path = PyUnicode_AsUTF8(tb_path);
             if (path == NULL) {
                 path = "<unable to display>";
@@ -711,6 +714,7 @@ bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *gl
             if (function == NULL) {
                 function = "<unable to display>";
             }
+            PyErr_Restore(typ, val, tb);
             CPy_AddTraceback(path, function, tb_lines[i], globals);
             return false;
         }
