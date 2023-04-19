@@ -3699,8 +3699,8 @@ cache_fine_grained = False
 [file mypy.ini.2]
 \[mypy]
 cache_fine_grained = True
-[rechecked a, builtins, typing]
-[stale a, builtins, typing]
+[rechecked _typeshed, a, builtins, typing]
+[stale _typeshed, a, builtins, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalPackageNameOverload]
@@ -3751,8 +3751,8 @@ Signature: 8a477f597d28d172789f06886806bc55
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale a, b, builtins, typing]
-[rechecked a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, typing]
+[rechecked _typeshed, a, b, builtins, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache2]
@@ -3764,8 +3764,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the settings changed
-[stale a, b, builtins, typing]
-[rechecked a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, typing]
+[rechecked _typeshed, a, b, builtins, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache3]
@@ -3780,8 +3780,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale a, b, builtins, typing]
-[rechecked a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, typing]
+[rechecked _typeshed, a, b, builtins, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalWorkingFineGrainedCache]
@@ -6403,3 +6403,29 @@ def g(d: Dict[TValue]) -> TValue:
 tmp/b.py:6: error: TypedDict "a.Dict[TValue]" has no key "x"
 [out2]
 tmp/b.py:6: error: TypedDict "a.Dict[TValue]" has no key "y"
+
+[case testParamSpecNoCrash]
+import m
+[file m.py]
+from typing import Callable, TypeVar
+from lib import C
+
+T = TypeVar("T")
+def test(x: Callable[..., T]) -> T: ...
+test(C)  # type: ignore
+
+[file m.py.2]
+from typing import Callable, TypeVar
+from lib import C
+
+T = TypeVar("T")
+def test(x: Callable[..., T]) -> T: ...
+test(C)  # type: ignore
+# touch
+[file lib.py]
+from typing import ParamSpec, Generic, Callable
+
+P = ParamSpec("P")
+class C(Generic[P]):
+    def __init__(self, fn: Callable[P, int]) -> None: ...
+[builtins fixtures/dict.pyi]

@@ -989,7 +989,6 @@ import attr
 class A:
     a: int
     other: int
-[builtins fixtures/list.pyi]
 
 [file a.py.3]
 import attr
@@ -7547,7 +7546,7 @@ def d() -> Dict[int, int]: pass
 [builtins fixtures/dict.pyi]
 [out]
 ==
-main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testAwaitAndAsyncDef-only_when_nocache]
 from a import g

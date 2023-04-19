@@ -108,9 +108,9 @@ class ServerHTMLDoc(pydoc.HTMLDoc):  # undocumented
         object: object,
         name: str,
         mod: str | None = None,
-        funcs: Mapping[str, str] = ...,
-        classes: Mapping[str, str] = ...,
-        methods: Mapping[str, str] = ...,
+        funcs: Mapping[str, str] = {},
+        classes: Mapping[str, str] = {},
+        methods: Mapping[str, str] = {},
         cl: type | None = None,
     ) -> str: ...
     def docserver(self, server_name: str, package_documentation: str, methods: dict[str, str]) -> str: ...

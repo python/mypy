@@ -30,7 +30,7 @@ if sys.platform != "win32":
     ]
 
 _RequestType: TypeAlias = _socket | tuple[bytes, _socket]
-_AfUnixAddress: TypeAlias = str | ReadableBuffer  # adddress acceptable for an AF_UNIX socket
+_AfUnixAddress: TypeAlias = str | ReadableBuffer  # address acceptable for an AF_UNIX socket
 _AfInetAddress: TypeAlias = tuple[str | bytes | bytearray, int]  # address acceptable for an AF_INET socket
 
 # This can possibly be generic at some point:
@@ -42,14 +42,10 @@ class BaseServer:
     request_queue_size: int
     socket_type: int
     timeout: float | None
+    RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler]
     def __init__(
         self, server_address: _Address, RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler]
     ) -> None: ...
-    # It is not actually a `@property`, but we need a `Self` type:
-    @property
-    def RequestHandlerClass(self) -> Callable[[Any, _RetAddress, Self], BaseRequestHandler]: ...
-    @RequestHandlerClass.setter
-    def RequestHandlerClass(self, val: Callable[[Any, _RetAddress, Self], BaseRequestHandler]) -> None: ...
     def fileno(self) -> int: ...
     def handle_request(self) -> None: ...
     def serve_forever(self, poll_interval: float = 0.5) -> None: ...
@@ -74,7 +70,7 @@ class BaseServer:
 class TCPServer(BaseServer):
     if sys.version_info >= (3, 11):
         allow_reuse_port: bool
-    server_address: _AfInetAddress  # type: ignore[assignment]
+    server_address: _AfInetAddress
     def __init__(
         self,
         server_address: _AfInetAddress,

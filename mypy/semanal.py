@@ -216,6 +216,7 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     find_dataclass_transform_spec,
     has_placeholder,
+    parse_bool,
     require_bool_literal_argument,
     set_callable_name as set_callable_name,
 )
@@ -509,6 +510,7 @@ class SemanticAnalyzer(
 
         They will be replaced with real aliases when corresponding targets are ready.
         """
+
         # This is all pretty unfortunate. typeshed now has a
         # sys.version_info check for OrderedDict, and we shouldn't
         # take it out, because it is correct and a typechecker should
@@ -715,7 +717,7 @@ class SemanticAnalyzer(
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
                 # Transform List to List[Any], etc.
-                fix_instance_types(target, self.fail, self.note, self.options.python_version)
+                fix_instance_types(target, self.fail, self.note, self.options)
                 alias_node = TypeAlias(
                     target,
                     alias,
@@ -867,11 +869,8 @@ class SemanticAnalyzer(
                 assert isinstance(result, ProperType)
                 if isinstance(result, CallableType):
                     # type guards need to have a positional argument, to spec
-                    if (
-                        result.type_guard
-                        and ARG_POS not in result.arg_kinds[self.is_class_scope() :]
-                        and not defn.is_static
-                    ):
+                    skip_self = self.is_class_scope() and not defn.is_static
+                    if result.type_guard and ARG_POS not in result.arg_kinds[skip_self:]:
                         self.fail(
                             "TypeGuard functions must have a positional argument",
                             result,
@@ -1314,7 +1313,8 @@ class SemanticAnalyzer(
         """
         defn.is_property = True
         items = defn.items
-        first_item = cast(Decorator, defn.items[0])
+        first_item = defn.items[0]
+        assert isinstance(first_item, Decorator)
         deleted_items = []
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
@@ -1357,7 +1357,8 @@ class SemanticAnalyzer(
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
-                typ = cast(CallableType, defn.type)
+                typ = defn.type
+                assert isinstance(typ, CallableType)
                 a.bind_function_type_variables(typ, defn)
                 for i in range(len(typ.arg_types)):
                     store_argument_type(defn, i, typ, self.named_type)
@@ -1369,8 +1370,11 @@ class SemanticAnalyzer(
                 # The first argument of a non-static, non-class method is like 'self'
                 # (though the name could be different), having the enclosing class's
                 # instance type.
-                if is_method and not defn.is_static and not defn.is_class and defn.arguments:
-                    defn.arguments[0].variable.is_self = True
+                if is_method and not defn.is_static and defn.arguments:
+                    if not defn.is_class:
+                        defn.arguments[0].variable.is_self = True
+                    else:
+                        defn.arguments[0].variable.is_cls = True
 
                 defn.body.accept(self)
             self.function_stack.pop()
@@ -2613,11 +2617,14 @@ class SemanticAnalyzer(
                 typing_extensions = self.modules.get("typing_extensions")
                 if typing_extensions and source_id in typing_extensions.names:
                     self.msg.note(
-                        f"Use `from typing_extensions import {source_id}` instead", context
+                        f"Use `from typing_extensions import {source_id}` instead",
+                        context,
+                        code=codes.ATTR_DEFINED,
                     )
                     self.msg.note(
                         "See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module",
                         context,
+                        code=codes.ATTR_DEFINED,
                     )
 
     def process_import_over_existing_name(
@@ -3528,7 +3535,7 @@ class SemanticAnalyzer(
         # if the expected number of arguments is non-zero, so that aliases like A = List work.
         # However, eagerly expanding aliases like Text = str is a nice performance optimization.
         no_args = isinstance(res, Instance) and not res.args  # type: ignore[misc]
-        fix_instance_types(res, self.fail, self.note, self.options.python_version)
+        fix_instance_types(res, self.fail, self.note, self.options)
         # Aliases defined within functions can't be accessed outside
         # the function, since the symbol table will no longer
         # exist. Work around by expanding them eagerly when used.
@@ -4416,7 +4423,6 @@ class SemanticAnalyzer(
             and s.lvalues[0].name == "__slots__"
             and s.lvalues[0].kind == MDEF
         ):
-
             # We understand `__slots__` defined as string, tuple, list, set, and dict:
             if not isinstance(s.rvalue, (StrExpr, ListExpr, TupleExpr, SetExpr, DictExpr)):
                 # For example, `__slots__` can be defined as a variable,
@@ -5105,7 +5111,7 @@ class SemanticAnalyzer(
                 return None
             types.append(analyzed)
 
-        if has_param_spec and num_args == 1 and len(types) > 0:
+        if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             if not (
                 len(types) == 1
@@ -5249,7 +5255,9 @@ class SemanticAnalyzer(
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope() or not self.function_stack:
             # We check both because is_function_scope() returns True inside comprehensions.
-            self.fail('"await" outside function', expr, serious=True, blocker=True)
+            # This is not a blocker, because some enviroments (like ipython)
+            # support top level awaits.
+            self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:
             self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
         expr.expr.accept(self)
@@ -5805,7 +5813,7 @@ class SemanticAnalyzer(
         # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
         # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
         # See also https://github.com/mypyc/mypyc/issues/892
-        f = cast(Any, lambda x: x)
+        f: Callable[[object], Any] = lambda x: x
         if isinstance(f(symbol_node), (Decorator, FuncBase, Var)):
             # For imports in class scope, we construct a new node to represent the symbol and
             # set its `info` attribute to `self.type`.
@@ -6455,12 +6463,8 @@ class SemanticAnalyzer(
         return name == unmangle(name) + "'"
 
     def parse_bool(self, expr: Expression) -> bool | None:
-        if isinstance(expr, NameExpr):
-            if expr.fullname == "builtins.True":
-                return True
-            if expr.fullname == "builtins.False":
-                return False
-        return None
+        # This wrapper is preserved for plugins.
+        return parse_bool(expr)
 
     def parse_str_literal(self, expr: Expression) -> str | None:
         """Attempt to find the string literal value of the given expression. Returns `None` if no

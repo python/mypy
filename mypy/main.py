@@ -738,6 +738,10 @@ def process_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
+    add_invertible_flag(
+        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
+    )
+
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
         description="Detect code that is sound but redundant or problematic.",
@@ -1021,6 +1025,8 @@ def process_options(
     add_invertible_flag(
         "--allow-empty-bodies", default=False, help=argparse.SUPPRESS, group=internals_group
     )
+    # This undocumented feature exports limited line-level dependency information.
+    internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."

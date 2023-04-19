@@ -169,7 +169,6 @@ class IPCClient(IPCBase):
 
 
 class IPCServer(IPCBase):
-
     BUFFER_SIZE: Final = 2**16
 
     def __init__(self, name: str, timeout: float | None = None) -> None:

@@ -145,7 +145,7 @@ def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
 
 def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     lvalues = stmt.lvalues
-    assert len(lvalues) >= 1
+    assert lvalues
     builder.disallow_class_assignments(lvalues, stmt.line)
     first_lvalue = lvalues[0]
     if stmt.type and isinstance(stmt.rvalue, TempNode):
@@ -169,7 +169,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
             temp = Register(rvalue_reg.type)
             builder.assign(temp, rvalue_reg, stmt.line)
             temps.append(temp)
-        for (left, temp) in zip(first_lvalue.items, temps):
+        for left, temp in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
         builder.flush_keep_alives()

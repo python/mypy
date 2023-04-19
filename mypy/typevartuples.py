@@ -52,14 +52,17 @@ def split_with_mapped_and_template(
     template: tuple[Type, ...],
     template_prefix_len: int,
     template_suffix_len: int,
-) -> tuple[
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-] | None:
+) -> (
+    tuple[
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+    ]
+    | None
+):
     split_result = fully_split_with_mapped_and_template(
         mapped,
         mapped_prefix_len,
@@ -101,18 +104,21 @@ def fully_split_with_mapped_and_template(
     template: tuple[Type, ...],
     template_prefix_len: int,
     template_suffix_len: int,
-) -> tuple[
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-] | None:
+) -> (
+    tuple[
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+    ]
+    | None
+):
     if mapped_prefix_len is not None:
         assert mapped_suffix_len is not None
         mapped_prefix, mapped_middle, mapped_suffix = split_with_prefix_and_suffix(

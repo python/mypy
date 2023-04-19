@@ -36,7 +36,7 @@ the error message
 - `W: ...` and `N: ...` works exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
 - optional `[builtins fixtures/...]` tells the type checker to use
-stubs from the indicated file (see Fixtures section below)
+`builtins` stubs from the indicated file (see Fixtures section below)
 - optional `[out]` is an alternative to the `# E: ` notation: it indicates that
 any text after it contains the expected type checking error messages.
 Usually, `# E: ` is preferred because it makes it easier to associate the
@@ -65,7 +65,7 @@ Where the stubs for builtins come from for a given test:
 - The builtins used by default in unit tests live in
   `test-data/unit/lib-stub`.
 
-- Individual test cases can override the builtins stubs by using
+- Individual test cases can override the `builtins` stubs by using
   `[builtins fixtures/foo.pyi]`; this targets files in `test-data/unit/fixtures`.
   Feel free to modify existing files there or create new ones as you deem fit.
 
@@ -77,6 +77,21 @@ Where the stubs for builtins come from for a given test:
   addition with other mypy developers, as additions could slow down the test
   suite.
 
+- Some tests choose to customize the standard library in a way that's local to the test:
+  ```
+  [case testFoo]
+  ...
+  [file builtins.py]
+  class int:
+    def next_fibonacci() -> int: pass
+  ```
+  Another possible syntax is:
+  ```
+  [fixture builtins.py]
+  ```
+  Whether you use `[file ...]` or `[fixture ...]` depends on whether you want
+  the file to be part of the tested corpus (e.g. contribute to `[out]` section)
+  or only support the test.
 
 Running tests and linting
 -------------------------

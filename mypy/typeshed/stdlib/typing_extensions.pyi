@@ -32,6 +32,11 @@ from typing import (  # noqa: Y022,Y039
     type_check_only,
 )
 
+if sys.version_info >= (3, 10):
+    from types import UnionType
+if sys.version_info >= (3, 9):
+    from types import GenericAlias
+
 __all__ = [
     "Any",
     "ClassVar",
@@ -65,6 +70,7 @@ __all__ = [
     "assert_never",
     "assert_type",
     "dataclass_transform",
+    "deprecated",
     "final",
     "IntVar",
     "is_typeddict",
@@ -107,7 +113,7 @@ class _SpecialForm:
 # typing.Protocol and typing_extensions.Protocol so they can properly
 # warn users about potential runtime exceptions when using typing.Protocol
 # on older versions of Python.
-Protocol: _SpecialForm = ...
+Protocol: _SpecialForm
 
 def runtime_checkable(cls: _TC) -> _TC: ...
 
@@ -155,6 +161,18 @@ def get_type_hints(
     include_extras: bool = False,
 ) -> dict[str, Any]: ...
 def get_args(tp: Any) -> tuple[Any, ...]: ...
+
+if sys.version_info >= (3, 10):
+    @overload
+    def get_origin(tp: UnionType) -> type[UnionType]: ...
+
+if sys.version_info >= (3, 9):
+    @overload
+    def get_origin(tp: GenericAlias) -> type: ...
+
+@overload
+def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
+@overload
 def get_origin(tp: Any) -> Any | None: ...
 
 Annotated: _SpecialForm
@@ -209,7 +227,7 @@ if sys.version_info >= (3, 11):
     )
 else:
     Self: _SpecialForm
-    Never: _SpecialForm = ...
+    Never: _SpecialForm
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: Never) -> Never: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
@@ -226,7 +244,8 @@ else:
         eq_default: bool = True,
         order_default: bool = False,
         kw_only_default: bool = False,
-        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+        frozen_default: bool = False,
+        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = (),
         **kwargs: object,
     ) -> IdentityFunction: ...
 
@@ -308,3 +327,4 @@ class TypeVarTuple:
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
 def override(__arg: _F) -> _F: ...
+def deprecated(__msg: str, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> Callable[[_T], _T]: ...

@@ -61,6 +61,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         args.append("--hide-error-codes")
     if "--disallow-empty-bodies" not in args:
         args.append("--allow-empty-bodies")
+    if "--no-force-uppercase-builtins" not in args:
+        args.append("--force-uppercase-builtins")
     # Type check the program.
     fixed = [python3_path, "-m", "mypy"]
     env = os.environ.copy()

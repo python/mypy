@@ -1453,7 +1453,7 @@ from typing import Tuple
 
 heterogenous_tuple: Tuple[Unpack[Tuple[int, str]]]
 homogenous_tuple: Tuple[Unpack[Tuple[int, ...]]]
-bad: Tuple[Unpack[int]]  # E: builtins.int cannot be unpacked (must be tuple or TypeVarTuple)
+bad: Tuple[Unpack[int]]  # E: "int" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuple]

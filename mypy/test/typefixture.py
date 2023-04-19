@@ -136,6 +136,7 @@ class TypeFixture:
         self.type_type = Instance(self.type_typei, [])  # type
         self.function = Instance(self.functioni, [])  # function TODO
         self.str_type = Instance(self.str_type_info, [])
+        self.bool_type = Instance(self.bool_type_info, [])
         self.a = Instance(self.ai, [])  # A
         self.b = Instance(self.bi, [])  # B
         self.c = Instance(self.ci, [])  # C
@@ -196,6 +197,9 @@ class TypeFixture:
         self.lit_str1_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str1)
         self.lit_str2_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str2)
         self.lit_str3_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str3)
+
+        self.lit_false = LiteralType(False, self.bool_type)
+        self.lit_true = LiteralType(True, self.bool_type)
 
         self.type_a = TypeType.make_normalized(self.a)
         self.type_b = TypeType.make_normalized(self.b)

@@ -30,8 +30,8 @@ xb: bytes
 xs: str
 
 '%s' % xs   # OK
-'%s' % xb   # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior
-'%(name)s' % {'name': b'value'}  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior
+'%s' % xb   # E: If x = b'abc' then "%s" % x produces "b'abc'", not "abc". If this is desired behavior use "%r" % x. Otherwise, decode the bytes
+'%(name)s' % {'name': b'value'}  # E: If x = b'abc' then "%s" % x produces "b'abc'", not "abc". If this is desired behavior use "%r" % x. Otherwise, decode the bytes
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationCount]
@@ -125,14 +125,29 @@ b'%(x)s' % {b'x': b'data'}
 [typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationMappingDictTypes]
-from typing import Any, Dict
+from typing import Any, Dict, Iterable
+
+class StringThing:
+    def keys(self) -> Iterable[str]:
+        ...
+    def __getitem__(self, __key: str) -> str:
+        ...
+
+class BytesThing:
+    def keys(self) -> Iterable[bytes]:
+        ...
+    def __getitem__(self, __key: bytes) -> str:
+        ...
+
 a = None # type: Any
 ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[int, int]
-'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "Mapping[str, Any]")
+'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
 '%()d' % a
 '%()d' % ds
-'%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "Mapping[str, Any]")
-b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "Mapping[bytes, Any]")
+'%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
+b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "SupportsKeysAndGetItem[bytes, Any]")
+'%()s' % StringThing()
+b'%()s' % BytesThing()
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationMappingInvalidSpecifiers]
@@ -435,21 +450,21 @@ N = NewType('N', bytes)
 n: N
 
 '{}'.format(a)
-'{}'.format(b)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
-'{}'.format(x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
-'{}'.format(n)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+'{}'.format(b)  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+'{}'.format(x)  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+'{}'.format(n)  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
 
-f'{b}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
-f'{x}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
-f'{n}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+f'{b}'  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+f'{x}'  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+f'{n}'  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
 
 class C(Generic[B]):
     x: B
     def meth(self) -> None:
-        '{}'.format(self.x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+        '{}'.format(self.x)  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
 
 def func(x: A) -> A:
-    '{}'.format(x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+    '{}'.format(x)  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
     return x
 
 '{!r}'.format(a)

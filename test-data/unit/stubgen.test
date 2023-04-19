@@ -319,6 +319,62 @@ class A:
     def f(self, x) -> None: ...
     def h(self) -> None: ...
 
+[case testFunctoolsCachedProperty]
+import functools
+
+class A:
+    @functools.cached_property
+    def x(self):
+        return 'x'
+[out]
+import functools
+
+class A:
+    @functools.cached_property
+    def x(self): ...
+
+[case testFunctoolsCachedPropertyAlias]
+import functools as ft
+
+class A:
+    @ft.cached_property
+    def x(self):
+        return 'x'
+[out]
+import functools as ft
+
+class A:
+    @ft.cached_property
+    def x(self): ...
+
+[case testCachedProperty]
+from functools import cached_property
+
+class A:
+    @cached_property
+    def x(self):
+        return 'x'
+[out]
+from functools import cached_property
+
+class A:
+    @cached_property
+    def x(self): ...
+
+[case testCachedPropertyAlias]
+from functools import cached_property as cp
+
+class A:
+    @cp
+    def x(self):
+        return 'x'
+[out]
+from functools import cached_property as cp
+
+class A:
+    @cp
+    def x(self): ...
+
 [case testStaticMethod]
 class A:
     @staticmethod

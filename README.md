@@ -142,7 +142,7 @@ Web site and documentation
 
 Additional information is available at the web site:
 
-  http://www.mypy-lang.org/
+  https://www.mypy-lang.org/
 
 Jump straight to the documentation:
 

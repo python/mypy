@@ -602,12 +602,30 @@ def func(names: Tuple[str, ...]):
 from typing_extensions import TypeGuard
 
 class Z:
-    def typeguard(self, *, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
+    def typeguard1(self, *, x: object) -> TypeGuard[int]:  # line 4
+        ...
+    
+    @staticmethod
+    def typeguard2(x: object) -> TypeGuard[int]:
+        ...
+    
+    @staticmethod  # line 11
+    def typeguard3(*, x: object) -> TypeGuard[int]:
         ...
 
-def bad_typeguard(*, x: object) -> TypeGuard[int]:  # E: TypeGuard functions must have a positional argument
+def bad_typeguard(*, x: object) -> TypeGuard[int]: # line 15
     ...
-[builtins fixtures/tuple.pyi]
+
+# In Python 3.8 the line number associated with FunctionDef nodes changed
+[builtins fixtures/classmethod.pyi]
+[out]
+main:4: error: TypeGuard functions must have a positional argument
+main:11: error: TypeGuard functions must have a positional argument
+main:15: error: TypeGuard functions must have a positional argument
+[out version>=3.8]
+main:4: error: TypeGuard functions must have a positional argument
+main:12: error: TypeGuard functions must have a positional argument
+main:15: error: TypeGuard functions must have a positional argument
 
 [case testTypeGuardWithKeywordArg]
 from typing_extensions import TypeGuard
@@ -640,7 +658,6 @@ if Y().typeguard(x):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 if Y.typeguard(x):
     reveal_type(x)  # N: Revealed type is "builtins.int"
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
 
 [case testTypeGuardKwargFollowingThroughOverloaded]

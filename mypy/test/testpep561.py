@@ -92,7 +92,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
             use_pip = False
         elif arg == "editable":
             editable = True
-    assert pkgs != [], "No packages to install for PEP 561 test?"
+    assert pkgs, "No packages to install for PEP 561 test?"
     with virtualenv(python) as venv:
         venv_dir, python_executable = venv
         for pkg in pkgs:

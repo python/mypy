@@ -32,6 +32,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     The argument contains the description of the test case.
     """
     options = Options()
+    options.force_uppercase_builtins = True
     options.hide_error_codes = True
 
     if testcase.file.endswith("python310.test"):
@@ -47,7 +48,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
             errors=None,
             options=options,
         )
-        a = str(n).split("\n")
+        a = n.str_with_options(options).split("\n")
     except CompileError as e:
         a = e.messages
     assert_string_arrays_equal(

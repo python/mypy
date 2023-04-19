@@ -1028,3 +1028,18 @@ RHSAlias3: type = tuple[int, ...]
 WrongTypeElement = str | tuple[float, 1]  # E: Invalid type: try using Literal[1] instead?
 WrongEllipsis = str | tuple[float, float, ...]  # E: Unexpected "..."
 [builtins fixtures/tuple.pyi]
+
+[case testCompiledNoCrashOnSingleItemUnion]
+# flags: --no-strict-optional
+from typing import Callable, Union, Generic, TypeVar
+
+Alias = Callable[[], int]
+
+T = TypeVar("T")
+class C(Generic[T]):
+    attr: Union[Alias, None] = None
+
+    @classmethod
+    def test(cls) -> None:
+        cls.attr
+[builtins fixtures/classmethod.pyi]

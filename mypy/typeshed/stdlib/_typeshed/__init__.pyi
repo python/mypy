@@ -293,7 +293,7 @@ class structseq(Generic[_T_co]):
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
     def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...
 
-# Superset of typing.AnyStr that also inclues LiteralString
+# Superset of typing.AnyStr that also includes LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001
 
 # Represents when str or LiteralStr is acceptable. Useful for string processing

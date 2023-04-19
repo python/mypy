@@ -41,23 +41,16 @@ class GetDependenciesSuite(DataSuite):
                 a = ["Unknown compile error (likely syntax error in test case or fixture)"]
         else:
             deps: defaultdict[str, set[str]] = defaultdict(set)
-            for module in files:
-                if (
-                    module in dumped_modules
-                    or dump_all
-                    and module
-                    not in ("abc", "typing", "mypy_extensions", "typing_extensions", "enum")
-                ):
-                    new_deps = get_dependencies(
-                        files[module], type_map, options.python_version, options
-                    )
+            for module, file in files.items():
+                if (module in dumped_modules or dump_all) and (module in testcase.test_modules):
+                    new_deps = get_dependencies(file, type_map, options.python_version, options)
                     for source in new_deps:
                         deps[source].update(new_deps[source])
 
             type_state.add_all_protocol_deps(deps)
 
             for source, targets in sorted(deps.items()):
-                if source.startswith(("<enum", "<typing", "<mypy")):
+                if source.startswith(("<enum", "<typing", "<mypy", "<_typeshed.")):
                     # Remove noise.
                     continue
                 line = f"{source} -> {', '.join(sorted(targets))}"

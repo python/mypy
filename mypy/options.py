@@ -339,12 +339,20 @@ class Options:
         self.disable_recursive_aliases = False
         # Deprecated reverse version of the above, do not use.
         self.enable_recursive_aliases = False
+        # Export line-level, limited, fine-grained dependency information in cache data
+        # (undocumented feature).
+        self.export_ref_info = False
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
-
+        self.force_uppercase_builtins = False
         # Sets output format
         self.output = ""
+
+    def use_lowercase_names(self) -> bool:
+        if self.python_version >= (3, 9):
+            return not self.force_uppercase_builtins
+        return False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

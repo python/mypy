@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping, cast
+from typing import Iterable, Mapping
 from typing_extensions import Final
 
 import mypy.build
@@ -102,6 +102,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     UnaryExpr,
+    is_StrExpr_list,
 )
 from mypy.options import Options as MypyOptions
 from mypy.stubdoc import Sig, find_unique_signatures, parse_all_signatures
@@ -306,7 +307,7 @@ class AnnotationPrinter(TypeStrVisitor):
     # TODO: Generate valid string representation for callable types.
     # TODO: Use short names for Instances.
     def __init__(self, stubgen: StubGenerator) -> None:
-        super().__init__()
+        super().__init__(options=mypy.options.Options())
         self.stubgen = stubgen
 
     def visit_any(self, t: AnyType) -> str:
@@ -848,6 +849,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add_decorator("property")
             self.add_decorator("abc.abstractmethod")
             is_abstract = True
+        elif self.refers_to_fullname(name, "functools.cached_property"):
+            self.import_tracker.require_name(name)
+            self.add_decorator(name)
         elif self.refers_to_fullname(name, OVERLOAD_NAMES):
             self.add_decorator(name)
             self.add_typing_import("overload")
@@ -887,12 +891,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         ):
             if expr.name == "abstractproperty":
                 self.import_tracker.require_name(expr.expr.name)
-                self.add_decorator("%s" % ("property"))
-                self.add_decorator("{}.{}".format(expr.expr.name, "abstractmethod"))
+                self.add_decorator("property")
+                self.add_decorator(f"{expr.expr.name}.abstractmethod")
             else:
                 self.import_tracker.require_name(expr.expr.name)
                 self.add_decorator(f"{expr.expr.name}.{expr.name}")
             is_abstract = True
+        elif expr.name == "cached_property" and isinstance(expr.expr, NameExpr):
+            explicit_name = expr.expr.name
+            reverse = self.import_tracker.reverse_alias.get(explicit_name)
+            if reverse == "functools" or (reverse is None and explicit_name == "functools"):
+                if reverse is not None:
+                    self.import_tracker.add_import(reverse, alias=explicit_name)
+                self.import_tracker.require_name(explicit_name)
+                self.add_decorator(f"{explicit_name}.{expr.name}")
         elif expr.name == "coroutine":
             if (
                 isinstance(expr.expr, MemberExpr)
@@ -1052,7 +1064,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(rvalue.args[1], StrExpr):
             items = rvalue.args[1].value.replace(",", " ").split()
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
-            list_items = cast(List[StrExpr], rvalue.args[1].items)
+            list_items = rvalue.args[1].items
+            assert is_StrExpr_list(list_items)
             items = [item.value for item in list_items]
         else:
             self.add(f"{self._indent}{lvalue.name}: Incomplete")
@@ -1060,7 +1073,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         self.import_tracker.require_name("NamedTuple")
         self.add(f"{self._indent}class {lvalue.name}(NamedTuple):")
-        if len(items) == 0:
+        if not items:
             self.add(" ...\n")
         else:
             self.import_tracker.require_name("Incomplete")
@@ -1588,7 +1601,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     with open(mod.path, "rb") as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data)
-    errors = Errors()
+    errors = Errors(mypy_options)
     mod.ast = mypy.parse.parse(
         source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options
     )
@@ -1654,8 +1667,8 @@ def generate_stub_from_ast(
         file.write("".join(gen.output()))
 
 
-def get_sig_generators(options: Options) -> List[SignatureGenerator]:
-    sig_generators: List[SignatureGenerator] = [
+def get_sig_generators(options: Options) -> list[SignatureGenerator]:
+    sig_generators: list[SignatureGenerator] = [
         DocstringSignatureGenerator(),
         FallbackSignatureGenerator(),
     ]
@@ -1707,6 +1720,7 @@ def generate_stubs(options: Options) -> None:
             )
 
     # Separately analyse C modules using different logic.
+    all_modules = sorted(m.module for m in (py_modules + c_modules))
     for mod in c_modules:
         if any(py_mod.module.startswith(mod.module + ".") for py_mod in py_modules + c_modules):
             target = mod.module.replace(".", "/") + "/__init__.pyi"
@@ -1715,7 +1729,9 @@ def generate_stubs(options: Options) -> None:
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
-            generate_stub_for_c_module(mod.module, target, sig_generators=sig_generators)
+            generate_stub_for_c_module(
+                mod.module, target, known_modules=all_modules, sig_generators=sig_generators
+            )
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
         print("Processed %d modules" % num_modules)

@@ -62,7 +62,7 @@ def load_json(data_path: str, meta_path: str) -> CacheData:
 
 
 def get_files(root: str) -> Iterable[CacheData]:
-    for (dirpath, dirnames, filenames) in os.walk(root):
+    for dirpath, dirnames, filenames in os.walk(root):
         for filename in filenames:
             if filename.endswith(".data.json"):
                 meta_filename = filename.replace(".data.json", ".meta.json")
