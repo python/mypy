@@ -550,6 +550,8 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "8"  # "8 byte integer"
         elif t._ctype == "int32_t":
             return "4"  # "4 byte integer"
+        elif t._ctype == "int16_t":
+            return "2"  # "2 byte integer"
         elif t._ctype == "double":
             return "F"
         assert not t.is_unboxed, f"{t} unexpected unboxed type"
