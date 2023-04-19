@@ -279,3 +279,18 @@ L4:
 L5:
     r7 = x == r6
     return r7
+
+[case testI16ConvertToInt]
+from mypy_extensions import i16
+
+def i16_to_int(a: i16) -> int:
+    return a
+[out]
+def i16_to_int(a):
+    a :: int16
+    r0 :: native_int
+    r1 :: int
+L0:
+    r0 = extend signed a: int16 to native_int
+    r1 = r0 << 1
+    return r1

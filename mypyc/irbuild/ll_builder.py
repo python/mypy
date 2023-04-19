@@ -477,7 +477,7 @@ class LowLevelIRBuilder:
         assert False, (src.type, target_type)
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
-        if is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8:
+        if (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8) or is_int16_rprimitive(src.type):
             # Simple case -- just sign extend and shift.
             extended = self.add(Extend(src, c_pyssize_t_rprimitive, signed=True))
             return self.int_op(
