@@ -3468,48 +3468,117 @@ L0:
     r2 = truncate r0: int32 to builtins.bool
     return r2
 
-[case testLocalImportSubmodule]
-def f() -> int:
+[case testLocalImports]
+def root() -> None:
+    import dataclasses
+    import enum
+
+def submodule() -> int:
     import p.m
     return p.x
 [file p/__init__.py]
 x = 1
 [file p/m.py]
 [out]
-def f():
-    r0 :: object_ptr
-    r1 :: object_ptr[1]
-    r2 :: c_ptr
-    r3 :: native_int[1]
-    r4 :: c_ptr
+def root():
+    r0 :: dict
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
     r5 :: object
-    r6 :: dict
-    r7, r8 :: str
-    r9 :: bit
-    r10 :: dict
-    r11 :: str
-    r12 :: object
+    r6 :: str
+    r7 :: dict
+    r8 :: str
+    r9 :: object
+    r10 :: int32
+    r11 :: bit
+    r12 :: dict
+    r13, r14 :: object
+    r15 :: bit
+    r16 :: str
+    r17 :: object
+    r18 :: str
+    r19 :: dict
+    r20 :: str
+    r21 :: object
+    r22 :: int32
+    r23 :: bit
+L0:
+    r0 = __main__.globals :: static
+    r1 = dataclasses :: module
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r4 = 'dataclasses'
+    r5 = PyImport_Import(r4)
+    dataclasses = r5 :: module
+L2:
+    r6 = 'dataclasses'
+    r7 = PyImport_GetModuleDict()
+    r8 = 'dataclasses'
+    r9 = CPyDict_GetItem(r7, r8)
+    r10 = CPyDict_SetItem(r0, r6, r9)
+    r11 = r10 >= 0 :: signed
+    r12 = __main__.globals :: static
+    r13 = enum :: module
+    r14 = load_address _Py_NoneStruct
+    r15 = r13 != r14
+    if r15 goto L4 else goto L3 :: bool
+L3:
+    r16 = 'enum'
+    r17 = PyImport_Import(r16)
+    enum = r17 :: module
+L4:
+    r18 = 'enum'
+    r19 = PyImport_GetModuleDict()
+    r20 = 'enum'
+    r21 = CPyDict_GetItem(r19, r20)
+    r22 = CPyDict_SetItem(r12, r18, r21)
+    r23 = r22 >= 0 :: signed
+    return 1
+def submodule():
+    r0 :: dict
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5 :: object
+    r6 :: str
+    r7 :: dict
+    r8 :: str
+    r9 :: object
+    r10 :: int32
+    r11 :: bit
+    r12 :: dict
     r13 :: str
     r14 :: object
-    r15 :: int
+    r15 :: str
+    r16 :: object
+    r17 :: int
 L0:
-    r0 = load_address p.m :: module
-    r1 = [r0]
-    r2 = load_address r1
-    r3 = [2]
-    r4 = load_address r3
-    r5 = (('p.m', 'p', 'p'),)
-    r6 = __main__.globals :: static
-    r7 = 'main'
-    r8 = 'f'
-    r9 = CPyImport_ImportMany(r5, r2, r6, r7, r8, r4)
-    r10 = PyImport_GetModuleDict()
-    r11 = 'p'
-    r12 = CPyDict_GetItem(r10, r11)
-    r13 = 'x'
-    r14 = CPyObject_GetAttr(r12, r13)
-    r15 = unbox(int, r14)
-    return r15
+    r0 = __main__.globals :: static
+    r1 = p.m :: module
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r4 = 'p.m'
+    r5 = PyImport_Import(r4)
+    p.m = r5 :: module
+L2:
+    r6 = 'p'
+    r7 = PyImport_GetModuleDict()
+    r8 = 'p'
+    r9 = CPyDict_GetItem(r7, r8)
+    r10 = CPyDict_SetItem(r0, r6, r9)
+    r11 = r10 >= 0 :: signed
+    r12 = PyImport_GetModuleDict()
+    r13 = 'p'
+    r14 = CPyDict_GetItem(r12, r13)
+    r15 = 'x'
+    r16 = CPyObject_GetAttr(r14, r15)
+    r17 = unbox(int, r16)
+    return r17
 
 [case testIsinstanceBool]
 def f(x: object) -> bool:

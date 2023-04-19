@@ -83,7 +83,6 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         self.current_file: MypyFile = current_file
 
     def visit(self, o: Node) -> bool:
-        # print(o) if isinstance(o, Import) else print(repr(o))
         if not isinstance(o, Import):
             self._current_import_group = None
         return True
@@ -147,9 +146,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
     def visit_import(self, imp: Import) -> None:
         if self._current_import_group is not None:
             self.module_import_groups[self._current_import_group].append(imp)
-            # print("\033[1m\033[36madding\033[0m", end=" ")
         else:
-            # print("\033[1m\033[32mnew group\033[0m", end=" ")
             self.module_import_groups[imp] = [imp]
             self._current_import_group = imp
         super().visit_import(imp)

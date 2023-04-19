@@ -112,7 +112,7 @@ py_calc_meta_op = custom_op(
     is_borrowed=True,
 )
 
-# Import a module (plain; use CPython's C-API)
+# Import a module (plain)
 import_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=object_rprimitive,
