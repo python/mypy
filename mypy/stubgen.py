@@ -57,6 +57,7 @@ import mypy.parse
 import mypy.traverser
 import mypy.util
 from mypy.build import build
+from mypy.config_parser import parse_config_file
 from mypy.errors import CompileError, Errors
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.modulefinder import (
@@ -232,6 +233,7 @@ class Options:
         verbose: bool,
         quiet: bool,
         export_less: bool,
+        mypy_config_file: str,
     ) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
@@ -250,6 +252,7 @@ class Options:
         self.verbose = verbose
         self.quiet = quiet
         self.export_less = export_less
+        self.mypy_config_file = mypy_config_file
 
 
 class StubSource:
@@ -1588,6 +1591,14 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.python_version = stubgen_options.pyversion
     options.show_traceback = True
     options.transform_source = remove_misplaced_type_comments
+    if stubgen_options.mypy_config_file:
+
+        def set_strict_flags() -> None:  # not needed yet
+            return
+
+        parse_config_file(
+            options, set_strict_flags, stubgen_options.mypy_config_file, sys.stdout, sys.stderr
+        )
     return options
 
 
@@ -1833,6 +1844,15 @@ def parse_options(args: list[str]) -> Options:
         dest="files",
         help="generate stubs for given files or directories",
     )
+    config_group = parser.add_argument_group(
+        title="mypy config file",
+        description="Use a config file to override command line arguments",
+    )
+    config_group.add_argument(
+        "--mypy-config-file",
+        default="",
+        help="An existing mypy configuration file (e.g. defining additional plugins)",
+    )
 
     ns = parser.parse_args(args)
 
@@ -1864,6 +1884,7 @@ def parse_options(args: list[str]) -> Options:
         verbose=ns.verbose,
         quiet=ns.quiet,
         export_less=ns.export_less,
+        mypy_config_file=ns.mypy_config_file,
     )
 
 
