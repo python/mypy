@@ -3967,7 +3967,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.
             item = expand_type_alias(
-                tapp.expr.node, tapp.types, self.chk.fail, tapp.expr.node.no_args, tapp
+                tapp.expr.node,
+                tapp.types,
+                self.chk.fail,
+                tapp.expr.node.no_args,
+                tapp,
+                self.chk.options,
             )
             item = get_proper_type(item)
             if isinstance(item, Instance):
@@ -4032,7 +4037,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         disallow_any = self.chk.options.disallow_any_generics and self.is_callee
         item = get_proper_type(
             set_any_tvars(
-                alias, ctx.line, ctx.column, disallow_any=disallow_any, fail=self.msg.fail
+                alias,
+                ctx.line,
+                ctx.column,
+                self.chk.options,
+                disallow_any=disallow_any,
+                fail=self.msg.fail,
             )
         )
         if isinstance(item, Instance):

@@ -241,7 +241,7 @@ class TestRun(MypycDataSuite):
                 groups=groups,
                 alt_lib_path=".",
             )
-            errors = Errors()
+            errors = Errors(options)
             ir, cfiles = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )

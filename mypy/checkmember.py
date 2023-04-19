@@ -637,7 +637,10 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     dunder_get = descriptor_type.type.get_method("__get__")
     if dunder_get is None:
         mx.msg.fail(
-            message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), mx.context
+            message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(
+                descriptor_type.str_with_options(mx.msg.options)
+            ),
+            mx.context,
         )
         return AnyType(TypeOfAny.from_error)
 
@@ -694,7 +697,10 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
 
     if not isinstance(inferred_dunder_get_type, CallableType):
         mx.msg.fail(
-            message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), mx.context
+            message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(
+                descriptor_type.str_with_options(mx.msg.options)
+            ),
+            mx.context,
         )
         return AnyType(TypeOfAny.from_error)
 

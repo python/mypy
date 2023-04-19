@@ -973,7 +973,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     inst_type = get_proper_type(inst_type)
     if isinstance(inst_type, AnyType):
         return ctx.default_signature  # evolve(Any, ....) -> Any
-    inst_type_str = format_type_bare(inst_type)
+    inst_type_str = format_type_bare(inst_type, ctx.api.options)
 
     attrs_type, attrs_init_type = _get_attrs_cls_and_init(inst_type)
     if attrs_type is None or attrs_init_type is None:

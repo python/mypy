@@ -419,7 +419,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.expr_checker = mypy.checkexpr.ExpressionChecker(
             self, self.msg, self.plugin, per_line_checking_time_ns
         )
-        self.pattern_checker = PatternChecker(self, self.msg, self.plugin)
+        self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
 
     @property
     def type_context(self) -> list[Type | None]:
@@ -483,7 +483,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         "typing.Sequence", [self.named_type("builtins.str")]
                     )
                     if not is_subtype(all_.type, seq_str):
-                        str_seq_s, all_s = format_type_distinctly(seq_str, all_.type)
+                        str_seq_s, all_s = format_type_distinctly(
+                            seq_str, all_.type, options=self.options
+                        )
                         self.fail(
                             message_registry.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s), all_node
                         )
@@ -1178,7 +1180,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 msg = None
                             elif typ.arg_names[i] in {"self", "cls"}:
                                 msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
-                                    erased, ref_type
+                                    erased.str_with_options(self.options),
+                                    ref_type.str_with_options(self.options),
                                 )
                             else:
                                 msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
@@ -1323,7 +1326,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ):
                     self.note(
                         "Consider using the upper bound "
-                        f"{format_type(typ.ret_type.upper_bound)} instead",
+                        f"{format_type(typ.ret_type.upper_bound, self.options)} instead",
                         context=typ.ret_type,
                     )
 
@@ -1430,7 +1433,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             get_proper_type(bound_type.ret_type), (AnyType, Instance, TupleType, UninhabitedType)
         ):
             self.fail(
-                message_registry.NON_INSTANCE_NEW_TYPE.format(format_type(bound_type.ret_type)),
+                message_registry.NON_INSTANCE_NEW_TYPE.format(
+                    format_type(bound_type.ret_type, self.options)
+                ),
                 fdef,
             )
         else:
@@ -2351,7 +2356,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 enum_base = base
                 continue
             elif enum_base is not None and not base.type.is_enum:
-                self.fail(f'No non-enum mixin classes are allowed after "{enum_base}"', defn)
+                self.fail(
+                    f'No non-enum mixin classes are allowed after "{enum_base.str_with_options(self.options)}"',
+                    defn,
+                )
                 break
 
     def check_enum_new(self, defn: ClassDef) -> None:
@@ -2376,7 +2384,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if candidate and has_new:
                 self.fail(
                     "Only a single data type mixin is allowed for Enum subtypes, "
-                    'found extra "{}"'.format(base),
+                    'found extra "{}"'.format(base.str_with_options(self.options)),
                     defn,
                 )
             elif candidate:
@@ -3978,7 +3986,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         dunder_set = attribute_type.type.get_method("__set__")
         if dunder_set is None:
-            self.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type), context)
+            self.fail(
+                message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(
+                    attribute_type.str_with_options(self.options)
+                ),
+                context,
+            )
             return AnyType(TypeOfAny.from_error), get_type, False
 
         bound_method = analyze_decorator_or_funcbase_access(
@@ -4132,7 +4145,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if error_note_and_code:
             error_note, code = error_note_and_code
             self.fail(
-                message_registry.TYPE_MUST_BE_USED.format(format_type(expr_type)), s, code=code
+                message_registry.TYPE_MUST_BE_USED.format(format_type(expr_type, self.options)),
+                s,
+                code=code,
             )
             self.note(error_note, s, code=code)
 
@@ -4962,7 +4977,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # We use the pretty_names_list for error messages but can't
         # use it for the real name that goes into the symbol table
         # because it can have dots in it.
-        pretty_names_list = pretty_seq(format_type_distinctly(*base_classes, bare=True), "and")
+        pretty_names_list = pretty_seq(
+            format_type_distinctly(*base_classes, options=self.options, bare=True), "and"
+        )
         try:
             info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
             with self.msg.filter_errors() as local_errors:
@@ -4999,7 +5016,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         gen_name = gen_unique_name(f"<callable subtype of {typ.type.name}>", cur_module.names)
 
         # Synthesize a fake TypeInfo
-        short_name = format_type_bare(typ)
+        short_name = format_type_bare(typ, self.options)
         cdef, info = self.make_fake_typeinfo(cur_module.fullname, gen_name, short_name, [typ])
 
         # Build up a fake FuncDef so we can populate the symbol table.
@@ -5205,7 +5222,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         def format_expr_type() -> str:
-            typ = format_type(t)
+            typ = format_type(t, self.options)
             if isinstance(expr, MemberExpr):
                 return f'Member "{expr.name}" has type {typ}'
             elif isinstance(expr, RefExpr) and expr.fullname:
@@ -5220,14 +5237,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f"Expression has type {typ}"
 
         if isinstance(t, FunctionLike):
-            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
+            self.fail(
+                message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t, self.options)), expr
+            )
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":
             _, info = self.make_fake_typeinfo("typing", "Collection", "Collection", [])
             self.fail(
                 message_registry.ITERABLE_ALWAYS_TRUE.format(
-                    format_expr_type(), format_type(Instance(info, t.args))
+                    format_expr_type(), format_type(Instance(info, t.args), self.options)
                 ),
                 expr,
             )
@@ -6012,7 +6031,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         note_msg = ""
         notes = notes or []
         if subtype_label is not None or supertype_label is not None:
-            subtype_str, supertype_str = format_type_distinctly(orig_subtype, orig_supertype)
+            subtype_str, supertype_str = format_type_distinctly(
+                orig_subtype, orig_supertype, options=self.options
+            )
             if subtype_label is not None:
                 extra_info.append(subtype_label + " " + subtype_str)
             if supertype_label is not None:
