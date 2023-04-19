@@ -336,3 +336,169 @@ L5:
     r9 = r8 << 1
     x = r9
     return 1
+
+[case testI16InitializeFromLiteral]
+from mypy_extensions import i16, i64
+
+def f() -> None:
+    x: i16 = 0
+    y: i16 = -127
+    z: i16 = 5 + 7
+[out]
+def f():
+    x, y, z :: int16
+L0:
+    x = 0
+    y = -127
+    z = 12
+    return 1
+
+[case testI16ExplicitConversionFromNativeInt]
+from mypy_extensions import i64, i32, i16
+
+def from_i16(x: i16) -> i16:
+    return i16(x)
+
+def from_i32(x: i32) -> i16:
+    return i16(x)
+
+def from_i64(x: i64) -> i16:
+    return i16(x)
+[out]
+def from_i16(x):
+    x :: int16
+L0:
+    return x
+def from_i32(x):
+    x :: int32
+    r0 :: int16
+L0:
+    r0 = truncate x: int32 to int16
+    return r0
+def from_i64(x):
+    x :: int64
+    r0 :: int16
+L0:
+    r0 = truncate x: int64 to int16
+    return r0
+
+[case testI16ExplicitConversionFromInt]
+from mypy_extensions import i16
+
+def f(x: int) -> i16:
+    return i16(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: int16
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = x < 65536 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >= -65536 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = x >> 1
+    r5 = truncate r4: native_int to int16
+    r6 = r5
+    goto L5
+L4:
+    CPyInt16_Overflow()
+    unreachable
+L5:
+    return r6
+
+[case testI16ExplicitConversionFromLiteral]
+from mypy_extensions import i16
+
+def f() -> None:
+    x = i16(0)
+    y = i16(11)
+    z = i16(-3)
+[out]
+def f():
+    x, y, z :: int16
+L0:
+    x = 0
+    y = 11
+    z = -3
+    return 1
+
+[case testI16ExplicitConversionFromVariousTypes]
+from mypy_extensions import i16
+
+def bool_to_i16(b: bool) -> i16:
+    return i16(b)
+
+def str_to_i16(s: str) -> i16:
+    return i16(s)
+
+class C:
+    def __int__(self) -> i16:
+        return 5
+
+def instance_to_i16(c: C) -> i16:
+    return i16(c)
+
+def float_to_i16(x: float) -> i16:
+    return i16(x)
+[out]
+def bool_to_i16(b):
+    b :: bool
+    r0 :: int16
+L0:
+    r0 = extend b: builtins.bool to int16
+    return r0
+def str_to_i16(s):
+    s :: str
+    r0 :: object
+    r1 :: int16
+L0:
+    r0 = CPyLong_FromStr(s)
+    r1 = unbox(int16, r0)
+    return r1
+def C.__int__(self):
+    self :: __main__.C
+L0:
+    return 5
+def instance_to_i16(c):
+    c :: __main__.C
+    r0 :: int16
+L0:
+    r0 = c.__int__()
+    return r0
+def float_to_i16(x):
+    x :: float
+    r0 :: int
+    r1 :: native_int
+    r2, r3, r4 :: bit
+    r5 :: native_int
+    r6, r7 :: int16
+L0:
+    r0 = CPyTagged_FromFloat(x)
+    r1 = r0 & 1
+    r2 = r1 == 0
+    if r2 goto L1 else goto L4 :: bool
+L1:
+    r3 = r0 < 65536 :: signed
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = r0 >= -65536 :: signed
+    if r4 goto L3 else goto L4 :: bool
+L3:
+    r5 = r0 >> 1
+    r6 = truncate r5: native_int to int16
+    r7 = r6
+    goto L5
+L4:
+    CPyInt16_Overflow()
+    unreachable
+L5:
+    return r7
