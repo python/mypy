@@ -294,3 +294,45 @@ L0:
     r0 = extend signed a: int16 to native_int
     r1 = r0 << 1
     return r1
+
+[case testI16OperatorAssignmentMixed]
+from mypy_extensions import i16
+
+def f(a: i16) -> None:
+    x = 0
+    x += a
+[out]
+def f(a):
+    a :: int16
+    x :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6, r7 :: int16
+    r8 :: native_int
+    r9 :: int
+L0:
+    x = 0
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = x < 65536 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >= -65536 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = x >> 1
+    r5 = truncate r4: native_int to int16
+    r6 = r5
+    goto L5
+L4:
+    CPyInt16_Overflow()
+    unreachable
+L5:
+    r7 = r6 + a
+    r8 = extend signed r7: int16 to native_int
+    r9 = r8 << 1
+    x = r9
+    return 1
