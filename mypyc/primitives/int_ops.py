@@ -38,7 +38,12 @@ from mypyc.primitives.registry import (
 
 # Constructors for builtins.int and native int types have the same behavior. In
 # interpreted mode, native int types are just aliases to 'int'.
-for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32", "mypy_extensions.i16"):
+for int_name in (
+    "builtins.int",
+    "mypy_extensions.i64",
+    "mypy_extensions.i32",
+    "mypy_extensions.i16",
+):
     # These int constructors produce object_rprimitives that then need to be unboxed
     # I guess unboxing ourselves would save a check and branch though?
 

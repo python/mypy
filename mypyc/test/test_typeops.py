@@ -19,7 +19,6 @@ from mypyc.ir.rtypes import (
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 
-
 native_int_types = [int64_rprimitive, int32_rprimitive, int16_rprimitive]
 
 
