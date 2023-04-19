@@ -14,3 +14,17 @@ repos:
         additional_dependencies:
           - flake8-bugbear==22.12.6  # must match test-requirements.txt
           - flake8-noqa==1.3.0       # must match test-requirements.txt
+  - repo: local
+    hooks:
+      - id: mypy-self-check-mypy
+        name: mypy self-check mypy(c)
+        language: system
+        entry: python -m mypy --config-file mypy_self_check.ini -p mypy -p mypyc
+        pass_filenames: false
+        files: ^(mypy|mypyc)/.+\.py$
+      - id: mypy-self-check-misc
+        name: mypy self-check misc
+        language: system
+        entry: python -m mypy --config-file mypy_self_check.ini misc --exclude misc/fix_annotate.py --exclude misc/async_matrix.py --exclude misc/sync-typeshed.py
+        pass_filenames: false
+        files: ^(misc)/.+\.py$
