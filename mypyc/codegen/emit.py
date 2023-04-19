@@ -897,7 +897,7 @@ class Emitter:
             # TODO: Handle 'failure'
         elif is_float_rprimitive(typ):
             if declare_dest:
-                self.emit_line("double {};".format(dest))
+                self.emit_line(f"double {dest};")
             # TODO: Don't use __float__ and __index__
             self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
             self.emit_lines(

@@ -86,7 +86,7 @@ class FuncSignature:
             return self.args[: -self.num_bitmap_args]
         return self.args
 
-    def bound_sig(self) -> "FuncSignature":
+    def bound_sig(self) -> FuncSignature:
         if self.num_bitmap_args:
             return FuncSignature(self.args[1 : -self.num_bitmap_args], self.ret_type)
         else:

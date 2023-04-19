@@ -3,7 +3,7 @@ from __future__ import annotations
 import pprint
 import re
 import sys
-from typing import Any, Callable, Dict, Mapping, Pattern
+from typing import Any, Callable, Mapping, Pattern
 from typing_extensions import Final
 
 from mypy import defaults
@@ -488,7 +488,7 @@ class Options:
         return re.compile(expr + "\\Z")
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        result: Dict[str, object] = {}
+        result: dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)
             if opt in ("disabled_error_codes", "enabled_error_codes"):
