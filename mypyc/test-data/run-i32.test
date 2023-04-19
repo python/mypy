@@ -259,7 +259,7 @@ def test_explicit_conversion_to_i32() -> None:
     n64: i64 = 1733
     x = i32(n64)
     assert x == 1733
-    n32 = -1733
+    n32: i32 = -1733
     x = i32(n32)
     assert x == -1733
     z = i32(x)

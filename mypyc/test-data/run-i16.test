@@ -259,7 +259,7 @@ def test_explicit_conversion_to_i16() -> None:
     n64: i64 = 1733
     x = i16(n64)
     assert x == 1733
-    n32 = -1733
+    n32: i32 = -1733
     x = i16(n32)
     assert x == -1733
     z = i16(x)
@@ -303,6 +303,12 @@ def test_i16_truncate_from_i64() -> None:
     small2 = i64(-2**15 - 1 - int())
     x = i16(small2)
     assert x == 2**15 - 1
+
+def test_i16_truncate_from_i32() -> None:
+    large = i32(2**16 + 2**30 + 5 + int())
+    assert i16(large) == 5
+    small = i32(-2**16 - 2**30 - 1 + int())
+    assert i16(small) == -1
 
 def from_float(x: float) -> i16:
     return i16(x)
