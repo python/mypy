@@ -149,6 +149,7 @@ from mypyc.primitives.generic_ops import (
 from mypyc.primitives.int_ops import (
     int16_divide_op,
     int16_mod_op,
+    int16_overflow,
     int32_divide_op,
     int32_mod_op,
     int32_overflow,
@@ -458,6 +459,10 @@ class LowLevelIRBuilder:
         elif is_int32_rprimitive(target_type):
             # Slow path just always generates an OverflowError
             self.call_c(int32_overflow, [], line)
+            self.add(Unreachable())
+        elif is_int16_rprimitive(target_type):
+            # Slow path just always generates an OverflowError
+            self.call_c(int16_overflow, [], line)
             self.add(Unreachable())
         else:
             assert False, target_type

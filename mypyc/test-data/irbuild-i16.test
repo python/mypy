@@ -209,3 +209,73 @@ L0:
     y = r0
     r1 = box(int16, y)
     return r1
+
+[case testI16MixedCompare1]
+from mypy_extensions import i16
+def f(x: int, y: i16) -> bool:
+    return x == y
+[out]
+def f(x, y):
+    x :: int
+    y :: int16
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: int16
+    r7 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = x < 65536 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >= -65536 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = x >> 1
+    r5 = truncate r4: native_int to int16
+    r6 = r5
+    goto L5
+L4:
+    CPyInt16_Overflow()
+    unreachable
+L5:
+    r7 = r6 == y
+    return r7
+
+[case testI16MixedCompare2]
+from mypy_extensions import i16
+def f(x: i16, y: int) -> bool:
+    return x == y
+[out]
+def f(x, y):
+    x :: int16
+    y :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: int16
+    r7 :: bit
+L0:
+    r0 = y & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = y < 65536 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = y >= -65536 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = y >> 1
+    r5 = truncate r4: native_int to int16
+    r6 = r5
+    goto L5
+L4:
+    CPyInt16_Overflow()
+    unreachable
+L5:
+    r7 = x == r6
+    return r7

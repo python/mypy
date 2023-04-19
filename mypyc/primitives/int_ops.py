@@ -282,3 +282,10 @@ int32_overflow = custom_op(
     c_function_name="CPyInt32_Overflow",
     error_kind=ERR_ALWAYS,
 )
+
+int16_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyInt16_Overflow",
+    error_kind=ERR_ALWAYS,
+)
