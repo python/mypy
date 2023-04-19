@@ -80,3 +80,54 @@ L0:
     x = r1
     y = x
     return y
+
+[case testI16DivisionByConstant]
+from mypy_extensions import i16
+
+def div_by_constant(x: i16) -> i16:
+    x = x // 5
+    x //= 17
+    return x
+[out]
+def div_by_constant(x):
+    x, r0, r1 :: int16
+    r2, r3, r4 :: bit
+    r5 :: int16
+    r6 :: bit
+    r7, r8, r9 :: int16
+    r10, r11, r12 :: bit
+    r13 :: int16
+    r14 :: bit
+    r15 :: int16
+L0:
+    r0 = x / 5
+    r1 = r0
+    r2 = x < 0 :: signed
+    r3 = 5 < 0 :: signed
+    r4 = r2 == r3
+    if r4 goto L3 else goto L1 :: bool
+L1:
+    r5 = r1 * 5
+    r6 = r5 == x
+    if r6 goto L3 else goto L2 :: bool
+L2:
+    r7 = r1 - 1
+    r1 = r7
+L3:
+    x = r1
+    r8 = x / 17
+    r9 = r8
+    r10 = x < 0 :: signed
+    r11 = 17 < 0 :: signed
+    r12 = r10 == r11
+    if r12 goto L6 else goto L4 :: bool
+L4:
+    r13 = r9 * 17
+    r14 = r13 == x
+    if r14 goto L6 else goto L5 :: bool
+L5:
+    r15 = r9 - 1
+    r9 = r15
+L6:
+    x = r9
+    return x
