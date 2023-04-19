@@ -1,0 +1,21 @@
+# Test cases for i16 native ints. Focus on things that are different from i64; no need to
+# duplicate all i64 test cases here.
+
+[case testI16BinaryOp]
+from mypy_extensions import i16
+
+def add_op(x: i16, y: i16) -> i16:
+    x = y + x
+    y = x + 5
+    y += x
+    y += 7
+    x = 5 + y
+    return x
+def compare(x: i16, y: i16) -> None:
+    a = x == y
+    b = x == -5
+    c = x < y
+    d = x < -5
+    e = -5 == x
+    f = -5 < x
+[out]
