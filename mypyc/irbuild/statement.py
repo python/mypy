@@ -220,7 +220,7 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     builder.flush_keep_alives()
 
 
-def import_globals_id_and_name(module_id: str, as_name: str) -> tuple[str, str]:
+def import_globals_id_and_name(module_id: str, as_name: str | None) -> tuple[str, str]:
     """Compute names for updating the globals dict with the appropriate module.
 
     * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
