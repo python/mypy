@@ -112,7 +112,7 @@ py_calc_meta_op = custom_op(
     is_borrowed=True,
 )
 
-# Import a module (plain)
+# Import a module (plain; use CPython's C-API)
 import_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=object_rprimitive,
@@ -120,7 +120,7 @@ import_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Import helper op (handles globals/statics & can import multiple modules)
+# Table-driven import op.
 import_many_op = custom_op(
     arg_types=[
         object_rprimitive,
