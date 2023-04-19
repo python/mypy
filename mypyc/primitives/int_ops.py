@@ -19,6 +19,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     c_pyssize_t_rprimitive,
     float_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
@@ -228,6 +229,20 @@ int32_mod_op = custom_op(
     arg_types=[int32_rprimitive, int32_rprimitive],
     return_type=int32_rprimitive,
     c_function_name="CPyInt32_Remainder",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+int16_divide_op = custom_op(
+    arg_types=[int16_rprimitive, int16_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyInt16_Divide",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+int16_mod_op = custom_op(
+    arg_types=[int16_rprimitive, int16_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyInt16_Remainder",
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 

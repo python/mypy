@@ -147,6 +147,8 @@ from mypyc.primitives.generic_ops import (
     py_vectorcall_op,
 )
 from mypyc.primitives.int_ops import (
+    int16_divide_op,
+    int16_mod_op,
     int32_divide_op,
     int32_mod_op,
     int32_overflow,
@@ -2039,6 +2041,8 @@ class LowLevelIRBuilder:
                 prim = int64_divide_op
             elif is_int32_rprimitive(type):
                 prim = int32_divide_op
+            elif is_int16_rprimitive(type):
+                prim = int16_divide_op
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)
@@ -2051,6 +2055,8 @@ class LowLevelIRBuilder:
                 prim = int64_mod_op
             elif is_int32_rprimitive(type):
                 prim = int32_mod_op
+            elif is_int16_rprimitive(type):
+                prim = int16_mod_op
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)
