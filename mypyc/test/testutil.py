@@ -121,7 +121,7 @@ def build_ir_for_single_file2(
     if result.errors:
         raise CompileError(result.errors)
 
-    errors = Errors()
+    errors = Errors(options)
     modules = build_ir(
         [result.files["__main__"]],
         result.graph,

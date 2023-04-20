@@ -169,7 +169,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
             temp = Register(rvalue_reg.type)
             builder.assign(temp, rvalue_reg, stmt.line)
             temps.append(temp)
-        for (left, temp) in zip(first_lvalue.items, temps):
+        for left, temp in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
         builder.flush_keep_alives()

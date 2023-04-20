@@ -346,6 +346,13 @@ class Options:
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
 
+        self.force_uppercase_builtins = False
+
+    def use_lowercase_names(self) -> bool:
+        if self.python_version >= (3, 9):
+            return not self.force_uppercase_builtins
+        return False
+
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
     def new_semantic_analyzer(self) -> bool:

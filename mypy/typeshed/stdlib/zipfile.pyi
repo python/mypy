@@ -222,10 +222,11 @@ class ZipInfo:
     def is_dir(self) -> bool: ...
     def FileHeader(self, zip64: bool | None = None) -> bytes: ...
 
-class _PathOpenProtocol(Protocol):
-    def __call__(self, mode: _ReadWriteMode = ..., pwd: bytes | None = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
-
 if sys.version_info >= (3, 8):
+    if sys.version_info < (3, 9):
+        class _PathOpenProtocol(Protocol):
+            def __call__(self, mode: _ReadWriteMode = "r", pwd: bytes | None = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
+
     class Path:
         @property
         def name(self) -> str: ...
@@ -245,7 +246,12 @@ if sys.version_info >= (3, 8):
         def __init__(self, root: ZipFile | StrPath | IO[bytes], at: str = "") -> None: ...
         if sys.version_info >= (3, 9):
             def open(
-                self, mode: _ReadWriteBinaryMode = "r", *args: Any, pwd: bytes | None = None, **kwargs: Any
+                self,
+                mode: _ReadWriteBinaryMode = "r",
+                encoding: str | None = None,
+                *args: Any,
+                pwd: bytes | None = None,
+                **kwargs: Any,
             ) -> IO[bytes]: ...
         else:
             @property

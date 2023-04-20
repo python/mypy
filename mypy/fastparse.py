@@ -255,7 +255,6 @@ def parse(
     errors: Errors | None = None,
     options: Options | None = None,
 ) -> MypyFile:
-
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -265,7 +264,7 @@ def parse(
     if options is None:
         options = Options()
     if errors is None:
-        errors = Errors(hide_error_codes=options.hide_error_codes)
+        errors = Errors(options)
         raise_on_error = True
     errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")

@@ -220,7 +220,6 @@ class DataclassTransformer:
             and ("__init__" not in info.names or info.names["__init__"].plugin_generated)
             and attributes
         ):
-
             with state.strict_optional_set(self._api.options.strict_optional):
                 args = [
                     attr.to_argument(info)

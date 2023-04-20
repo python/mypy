@@ -533,7 +533,6 @@ def _cleanup_decorator(stmt: Decorator, attr_map: dict[str, Attribute]) -> None:
             and isinstance(func_decorator.expr, NameExpr)
             and func_decorator.expr.name in attr_map
         ):
-
             if func_decorator.name == "default":
                 attr_map[func_decorator.expr.name].has_default = True
 
@@ -947,21 +946,23 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     return init_method.type
 
 
-def _format_not_attrs_class_failure(t: Type, parent_t: Type) -> str:
-    t_name = format_type_bare(t)
+def _fail_not_attrs_class(ctx: mypy.plugin.FunctionSigContext, t: Type, parent_t: Type) -> None:
+    t_name = format_type_bare(t, ctx.api.options)
     if parent_t is t:
-        return (
+        msg = (
             f'Argument 1 to "evolve" has a variable type "{t_name}" not bound to an attrs class'
             if isinstance(t, TypeVarType)
             else f'Argument 1 to "evolve" has incompatible type "{t_name}"; expected an attrs class'
         )
     else:
-        pt_name = format_type_bare(parent_t)
-        return (
+        pt_name = format_type_bare(parent_t, ctx.api.options)
+        msg = (
             f'Argument 1 to "evolve" has type "{pt_name}" whose item "{t_name}" is not bound to an attrs class'
             if isinstance(t, TypeVarType)
             else f'Argument 1 to "evolve" has incompatible type "{pt_name}" whose item "{t_name}" is not an attrs class'
         )
+
+    ctx.api.fail(msg, ctx.context)
 
 
 def _get_expanded_attr_types(
@@ -994,7 +995,7 @@ def _get_expanded_attr_types(
     elif isinstance(typ, Instance):
         init_func = _get_attrs_init_type(typ)
         if init_func is None:
-            ctx.api.fail(_format_not_attrs_class_failure(display_typ, parent_typ), ctx.context)
+            _fail_not_attrs_class(ctx, display_typ, parent_typ)
             return None
         init_func = expand_type_by_instance(init_func, typ)
         # [1:] to skip the self argument of AttrClass.__init__
@@ -1002,7 +1003,7 @@ def _get_expanded_attr_types(
         field_types = init_func.arg_types[1:]
         return [dict(zip(field_names, field_types))]
     else:
-        ctx.api.fail(_format_not_attrs_class_failure(display_typ, parent_typ), ctx.context)
+        _fail_not_attrs_class(ctx, display_typ, parent_typ)
         return None
 
 
@@ -1044,7 +1045,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     # </hack>
 
     inst_type = get_proper_type(inst_type)
-    inst_type_str = format_type_bare(inst_type)
+    inst_type_str = format_type_bare(inst_type, ctx.api.options)
 
     attr_types = _get_expanded_attr_types(ctx, inst_type, inst_type, inst_type)
     if attr_types is None:

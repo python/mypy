@@ -125,14 +125,29 @@ b'%(x)s' % {b'x': b'data'}
 [typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationMappingDictTypes]
-from typing import Any, Dict
+from typing import Any, Dict, Iterable
+
+class StringThing:
+    def keys(self) -> Iterable[str]:
+        ...
+    def __getitem__(self, __key: str) -> str:
+        ...
+
+class BytesThing:
+    def keys(self) -> Iterable[bytes]:
+        ...
+    def __getitem__(self, __key: bytes) -> str:
+        ...
+
 a = None # type: Any
 ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[int, int]
-'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "Mapping[str, Any]")
+'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
 '%()d' % a
 '%()d' % ds
-'%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "Mapping[str, Any]")
-b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "Mapping[bytes, Any]")
+'%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
+b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "SupportsKeysAndGetItem[bytes, Any]")
+'%()s' % StringThing()
+b'%()s' % BytesThing()
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationMappingInvalidSpecifiers]

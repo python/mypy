@@ -1106,7 +1106,7 @@ def verify_overloadedfuncdef(
             "is inconsistent, " + message,
             stub,
             runtime,
-            stub_desc=str(stub.type) + f"\nInferred signature: {stub_sig}",
+            stub_desc=(str(stub.type)) + f"\nInferred signature: {stub_sig}",
             runtime_desc="def " + str(signature),
         )
 

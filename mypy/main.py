@@ -734,6 +734,10 @@ def process_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
+    add_invertible_flag(
+        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
+    )
+
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
         description="Detect code that is sound but redundant or problematic.",

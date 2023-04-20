@@ -112,7 +112,7 @@ class TypeState:
         self.infer_unions = False
 
     def is_assumed_subtype(self, left: Type, right: Type) -> bool:
-        for (l, r) in reversed(self._assuming):
+        for l, r in reversed(self._assuming):
             if get_proper_type(l) == get_proper_type(left) and get_proper_type(
                 r
             ) == get_proper_type(right):
@@ -120,7 +120,7 @@ class TypeState:
         return False
 
     def is_assumed_proper_subtype(self, left: Type, right: Type) -> bool:
-        for (l, r) in reversed(self._assuming_proper):
+        for l, r in reversed(self._assuming_proper):
             if get_proper_type(l) == get_proper_type(left) and get_proper_type(
                 r
             ) == get_proper_type(right):

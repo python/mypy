@@ -435,7 +435,6 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
                 class_ir.method_decls[name].sig, base.method_decls[name].sig
             )
         ):
-
             # TODO: Support contravariant subtyping in the input argument for
             # property setters. Need to make a special glue method for handling this,
             # similar to gen_glue_property.
