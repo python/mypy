@@ -2241,18 +2241,12 @@ class MessageBuilder:
         """Format very long tuple type using an ellipsis notation"""
         item_cnt = len(typ.items)
         if item_cnt > 10:
-<<<<<<< HEAD
-            return 'Tuple[{}, {}, ... <{} more items>]'\
-                    .format(format_type_bare(typ.items[0]),
-                            format_type_bare(typ.items[1]), str(item_cnt - 2))
-=======
             return "{}[{}, {}, ... <{} more items>]".format(
                 "tuple" if self.options.use_lowercase_names() else "Tuple",
                 format_type_bare(typ.items[0], self.options),
                 format_type_bare(typ.items[1], self.options),
                 str(item_cnt - 2),
             )
->>>>>>> master
         else:
             return format_type_bare(typ, self.options)
 
