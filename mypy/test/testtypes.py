@@ -21,6 +21,7 @@ from mypy.nodes import (
     Expression,
     NameExpr,
 )
+from mypy.options import Options
 from mypy.plugins.common import find_shallow_matching_overload_item
 from mypy.state import state
 from mypy.subtypes import is_more_precise, is_proper_subtype, is_same_type, is_subtype
@@ -124,10 +125,14 @@ class TypesSuite(Suite):
         assert_equal(str(c3), "def (X? =, *Y?) -> Any")
 
     def test_tuple_type(self) -> None:
-        assert_equal(str(TupleType([], self.fx.std_tuple)), "Tuple[]")
-        assert_equal(str(TupleType([self.x], self.fx.std_tuple)), "Tuple[X?]")
+        options = Options()
+        options.force_uppercase_builtins = True
+        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[]")
+        assert_equal(TupleType([self.x], self.fx.std_tuple).str_with_options(options), "Tuple[X?]")
         assert_equal(
-            str(TupleType([self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple)),
+            TupleType(
+                [self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple
+            ).str_with_options(options),
             "Tuple[X?, Any]",
         )
 

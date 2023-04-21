@@ -235,17 +235,7 @@ def _build(
 
     source_set = BuildSourceSet(sources)
     cached_read = fscache.read
-    errors = Errors(
-        options.show_error_context,
-        options.show_column_numbers,
-        options.hide_error_codes,
-        options.pretty,
-        options.show_error_end,
-        lambda path: read_py_file(path, cached_read),
-        options.show_absolute_path,
-        options.many_errors_threshold,
-        options,
-    )
+    errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
     # Add catch-all .gitignore to cache dir if we created it

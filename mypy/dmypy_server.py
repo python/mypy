@@ -163,7 +163,6 @@ ChangesAndRemovals: _TypeAlias = Tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
-
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
@@ -828,7 +827,6 @@ class Server:
     def update_changed(
         self, sources: list[BuildSource], remove: list[str], update: list[str]
     ) -> ChangesAndRemovals:
-
         changed_paths = self.fswatcher.update_changed(remove, update)
         return self._find_changed(sources, changed_paths)
 

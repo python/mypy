@@ -469,7 +469,7 @@ class TypedDictAnalyzer:
         seen_keys = set()
         items: list[str] = []
         types: list[Type] = []
-        for (field_name_expr, field_type_expr) in dict_items:
+        for field_name_expr, field_type_expr in dict_items:
             if isinstance(field_name_expr, StrExpr):
                 key = field_name_expr.value
                 items.append(key)

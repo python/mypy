@@ -3522,7 +3522,12 @@ class C:
 def test(arg: P) -> None: ...
 test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
-         # N: "C" has constructor incompatible with "__call__" of "P"
+         # N: "C" has constructor incompatible with "__call__" of "P" \
+         # N: Following member(s) of "C" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__(x: int, y: int) -> Any \
+         # N:     Got: \
+         # N:         def __init__(x: int, y: str) -> C
 
 [case testProtocolClassObjectPureCallback]
 from typing import Any, ClassVar, Protocol
@@ -3538,7 +3543,36 @@ class C:
 def test(arg: P) -> None: ...
 test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
-         # N: "C" has constructor incompatible with "__call__" of "P"
+         # N: "C" has constructor incompatible with "__call__" of "P" \
+         # N: Following member(s) of "C" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__(x: int, y: int) -> Any \
+         # N:     Got: \
+         # N:         def __init__(x: int, y: str) -> C
+[builtins fixtures/type.pyi]
+
+[case testProtocolClassObjectCallableError]
+from typing import Protocol, Any, Callable
+
+class P(Protocol):
+    def __call__(self, app: int) -> Callable[[str], None]:
+        ...
+
+class C:
+    def __init__(self, app: str) -> None:
+        pass
+
+    def __call__(self, el: str) -> None:
+        return None
+
+p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", variable has type "P") \
+          # N: Following member(s) of "C" have conflicts: \
+          # N:     Expected: \
+          # N:         def __call__(app: int) -> Callable[[str], None] \
+          # N:     Got: \
+          # N:         def __init__(app: str) -> C \
+          # N: "P.__call__" has type "Callable[[Arg(int, 'app')], Callable[[str], None]]"
+
 [builtins fixtures/type.pyi]
 
 [case testProtocolTypeTypeAttribute]

@@ -170,7 +170,7 @@ from mypy.visitor import ExpressionVisitor
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
 ArgChecker: _TypeAlias = Callable[
-    [Type, Type, ArgKind, Type, int, int, CallableType, Optional[Type], Context, Context], None,
+    [Type, Type, ArgKind, Type, int, int, CallableType, Optional[Type], Context, Context], None
 ]
 
 # Maximum nesting level for math union in overloads, setting this to large values
@@ -845,7 +845,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # this may give a better error message.
             ret_type = callee
 
-        for (item_name, item_expected_type) in ret_type.items.items():
+        for item_name, item_expected_type in ret_type.items.items():
             if item_name in kwargs:
                 item_value = kwargs[item_name]
                 self.chk.check_simple_assignment(
@@ -2126,7 +2126,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if actual_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(
                     actual_type
                 ):
-                    is_mapping = is_subtype(actual_type, self.chk.named_type("typing.Mapping"))
+                    is_mapping = is_subtype(
+                        actual_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
+                    )
                     self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
                     actual_type, actual_kind, callee.arg_names[i], callee_arg_kind
@@ -3965,7 +3967,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.
             item = expand_type_alias(
-                tapp.expr.node, tapp.types, self.chk.fail, tapp.expr.node.no_args, tapp
+                tapp.expr.node,
+                tapp.types,
+                self.chk.fail,
+                tapp.expr.node.no_args,
+                tapp,
+                self.chk.options,
             )
             item = get_proper_type(item)
             if isinstance(item, Instance):
@@ -4030,7 +4037,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         disallow_any = self.chk.options.disallow_any_generics and self.is_callee
         item = get_proper_type(
             set_any_tvars(
-                alias, ctx.line, ctx.column, disallow_any=disallow_any, fail=self.msg.fail
+                alias,
+                ctx.line,
+                ctx.column,
+                self.chk.options,
+                disallow_any=disallow_any,
+                fail=self.msg.fail,
             )
         )
         if isinstance(item, Instance):
@@ -4346,7 +4358,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for arg in stargs:
                 if rv is None:
                     constructor = CallableType(
-                        [self.chk.named_generic_type("typing.Mapping", [kt, vt])],
+                        [
+                            self.chk.named_generic_type(
+                                "_typeshed.SupportsKeysAndGetItem", [kt, vt]
+                            )
+                        ],
                         [nodes.ARG_POS],
                         [None],
                         self.chk.named_generic_type("builtins.dict", [kt, vt]),
@@ -4936,14 +4952,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             is_subtype(
                 typ,
                 self.chk.named_generic_type(
-                    "typing.Mapping",
+                    "_typeshed.SupportsKeysAndGetItem",
                     [self.named_type("builtins.str"), AnyType(TypeOfAny.special_form)],
                 ),
             )
             or is_subtype(
                 typ,
                 self.chk.named_generic_type(
-                    "typing.Mapping", [UninhabitedType(), UninhabitedType()]
+                    "_typeshed.SupportsKeysAndGetItem", [UninhabitedType(), UninhabitedType()]
                 ),
             )
             or isinstance(typ, ParamSpecType)

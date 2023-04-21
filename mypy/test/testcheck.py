@@ -125,6 +125,8 @@ class TypeCheckSuite(DataSuite):
             options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
+        if "lowercase" not in testcase.file:
+            options.force_uppercase_builtins = True
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
