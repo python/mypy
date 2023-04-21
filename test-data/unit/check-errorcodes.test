@@ -805,6 +805,22 @@ j = [x for x in lst if False]            # E: If condition in comprehension is a
 k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true  [redundant-expr]
 [builtins fixtures/isinstancelist.pyi]
 
+[case testRedundantExprTruthiness]
+# flags: --enable-error-code redundant-expr
+from typing import List
+
+def maybe() -> bool: ...
+
+class Foo:
+    def __init__(self, x: List[int]) -> None:
+        self.x = x or []
+
+    def method(self) -> int:
+        if not self.x or maybe():
+            return 1
+        return 2
+[builtins fixtures/list.pyi]
+
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple
 
