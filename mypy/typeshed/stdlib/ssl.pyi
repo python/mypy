@@ -1,18 +1,19 @@
 import enum
 import socket
 import sys
-from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
-from typing import Any, Callable, ClassVar, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Type, Union, overload
-from typing_extensions import Literal, TypedDict
+from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
+from collections.abc import Callable, Iterable
+from typing import Any, NamedTuple, overload
+from typing_extensions import Literal, Self, TypeAlias, TypedDict, final
 
-_PCTRTT = Tuple[Tuple[str, str], ...]
-_PCTRTTT = Tuple[_PCTRTT, ...]
-_PeerCertRetDictType = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
-_PeerCertRetType = Union[_PeerCertRetDictType, bytes, None]
-_EnumRetType = List[Tuple[bytes, str, Union[Set[str], bool]]]
-_PasswordType = Union[Callable[[], Union[str, bytes]], str, bytes]
+_PCTRTT: TypeAlias = tuple[tuple[str, str], ...]
+_PCTRTTT: TypeAlias = tuple[_PCTRTT, ...]
+_PeerCertRetDictType: TypeAlias = dict[str, str | _PCTRTTT | _PCTRTT]
+_PeerCertRetType: TypeAlias = _PeerCertRetDictType | bytes | None
+_EnumRetType: TypeAlias = list[tuple[bytes, str, set[str] | bool]]
+_PasswordType: TypeAlias = Callable[[], str | bytes | bytearray] | str | bytes | bytearray
 
-_SrvnmeCbType = Callable[[Union[SSLSocket, SSLObject], Optional[str], SSLSocket], Optional[int]]
+_SrvnmeCbType: TypeAlias = Callable[[SSLSocket | SSLObject, str | None, SSLSocket], int | None]
 
 class _Cipher(TypedDict):
     aead: bool
@@ -37,73 +38,82 @@ class SSLWantWriteError(SSLError): ...
 class SSLSyscallError(SSLError): ...
 class SSLEOFError(SSLError): ...
 
-if sys.version_info >= (3, 7):
-    class SSLCertVerificationError(SSLError, ValueError):
-        verify_code: int
-        verify_message: str
-    CertificateError = SSLCertVerificationError
-else:
-    class CertificateError(ValueError): ...
+class SSLCertVerificationError(SSLError, ValueError):
+    verify_code: int
+    verify_message: str
+
+CertificateError = SSLCertVerificationError
 
 def wrap_socket(
     sock: socket.socket,
-    keyfile: StrOrBytesPath | None = ...,
-    certfile: StrOrBytesPath | None = ...,
-    server_side: bool = ...,
+    keyfile: StrOrBytesPath | None = None,
+    certfile: StrOrBytesPath | None = None,
+    server_side: bool = False,
     cert_reqs: int = ...,
     ssl_version: int = ...,
-    ca_certs: str | None = ...,
-    do_handshake_on_connect: bool = ...,
-    suppress_ragged_eofs: bool = ...,
-    ciphers: str | None = ...,
+    ca_certs: str | None = None,
+    do_handshake_on_connect: bool = True,
+    suppress_ragged_eofs: bool = True,
+    ciphers: str | None = None,
 ) -> SSLSocket: ...
 def create_default_context(
     purpose: Purpose = ...,
     *,
-    cafile: StrOrBytesPath | None = ...,
-    capath: StrOrBytesPath | None = ...,
-    cadata: str | bytes | None = ...,
+    cafile: StrOrBytesPath | None = None,
+    capath: StrOrBytesPath | None = None,
+    cadata: str | ReadableBuffer | None = None,
 ) -> SSLContext: ...
 
-if sys.version_info >= (3, 7):
+if sys.version_info >= (3, 10):
     def _create_unverified_context(
-        protocol: int = ...,
+        protocol: int | None = None,
         *,
         cert_reqs: int = ...,
-        check_hostname: bool = ...,
+        check_hostname: bool = False,
         purpose: Purpose = ...,
-        certfile: StrOrBytesPath | None = ...,
-        keyfile: StrOrBytesPath | None = ...,
-        cafile: StrOrBytesPath | None = ...,
-        capath: StrOrBytesPath | None = ...,
-        cadata: str | bytes | None = ...,
+        certfile: StrOrBytesPath | None = None,
+        keyfile: StrOrBytesPath | None = None,
+        cafile: StrOrBytesPath | None = None,
+        capath: StrOrBytesPath | None = None,
+        cadata: str | ReadableBuffer | None = None,
     ) -> SSLContext: ...
 
 else:
     def _create_unverified_context(
         protocol: int = ...,
         *,
-        cert_reqs: int | None = ...,
-        check_hostname: bool = ...,
+        cert_reqs: int = ...,
+        check_hostname: bool = False,
         purpose: Purpose = ...,
-        certfile: StrOrBytesPath | None = ...,
-        keyfile: StrOrBytesPath | None = ...,
-        cafile: StrOrBytesPath | None = ...,
-        capath: StrOrBytesPath | None = ...,
-        cadata: str | bytes | None = ...,
+        certfile: StrOrBytesPath | None = None,
+        keyfile: StrOrBytesPath | None = None,
+        cafile: StrOrBytesPath | None = None,
+        capath: StrOrBytesPath | None = None,
+        cadata: str | ReadableBuffer | None = None,
     ) -> SSLContext: ...
 
 _create_default_https_context: Callable[..., SSLContext]
 
-def RAND_bytes(__num: int) -> bytes: ...
-def RAND_pseudo_bytes(__num: int) -> tuple[bytes, bool]: ...
+def RAND_bytes(__n: int) -> bytes: ...
+def RAND_pseudo_bytes(__n: int) -> tuple[bytes, bool]: ...
 def RAND_status() -> bool: ...
 def RAND_egd(path: str) -> None: ...
-def RAND_add(__s: bytes, __entropy: float) -> None: ...
-def match_hostname(cert: _PeerCertRetType, hostname: str) -> None: ...
+def RAND_add(__string: str | ReadableBuffer, __entropy: float) -> None: ...
+
+if sys.version_info < (3, 12):
+    def match_hostname(cert: _PeerCertRetDictType, hostname: str) -> None: ...
+
 def cert_time_to_seconds(cert_time: str) -> int: ...
-def get_server_certificate(addr: tuple[str, int], ssl_version: int = ..., ca_certs: str | None = ...) -> str: ...
-def DER_cert_to_PEM_cert(der_cert_bytes: bytes) -> str: ...
+
+if sys.version_info >= (3, 10):
+    def get_server_certificate(
+        addr: tuple[str, int], ssl_version: int = ..., ca_certs: str | None = None, timeout: float = ...
+    ) -> str: ...
+
+else:
+    def get_server_certificate(addr: tuple[str, int], ssl_version: int = ..., ca_certs: str | None = None) -> str: ...
+
+def DER_cert_to_PEM_cert(der_cert_bytes: ReadableBuffer) -> str: ...
 def PEM_cert_to_DER_cert(pem_cert_string: str) -> bytes: ...
 
 class DefaultVerifyPaths(NamedTuple):
@@ -135,12 +145,19 @@ class VerifyFlags(enum.IntFlag):
     VERIFY_CRL_CHECK_CHAIN: int
     VERIFY_X509_STRICT: int
     VERIFY_X509_TRUSTED_FIRST: int
+    if sys.version_info >= (3, 10):
+        VERIFY_ALLOW_PROXY_CERTS: int
+        VERIFY_X509_PARTIAL_CHAIN: int
 
 VERIFY_DEFAULT: VerifyFlags
 VERIFY_CRL_CHECK_LEAF: VerifyFlags
 VERIFY_CRL_CHECK_CHAIN: VerifyFlags
 VERIFY_X509_STRICT: VerifyFlags
 VERIFY_X509_TRUSTED_FIRST: VerifyFlags
+
+if sys.version_info >= (3, 10):
+    VERIFY_ALLOW_PROXY_CERTS: VerifyFlags
+    VERIFY_X509_PARTIAL_CHAIN: VerifyFlags
 
 class _SSLMethod(enum.IntEnum):
     PROTOCOL_SSLv23: int
@@ -176,10 +193,11 @@ class Options(enum.IntFlag):
     OP_SINGLE_ECDH_USE: int
     OP_NO_COMPRESSION: int
     OP_NO_TICKET: int
-    if sys.version_info >= (3, 7):
-        OP_NO_RENEGOTIATION: int
+    OP_NO_RENEGOTIATION: int
     if sys.version_info >= (3, 8):
         OP_ENABLE_MIDDLEBOX_COMPAT: int
+        if sys.platform == "linux":
+            OP_IGNORE_UNEXPECTED_EOF: int
 
 OP_ALL: Options
 OP_NO_SSLv2: Options
@@ -193,19 +211,19 @@ OP_SINGLE_DH_USE: Options
 OP_SINGLE_ECDH_USE: Options
 OP_NO_COMPRESSION: Options
 OP_NO_TICKET: Options
-if sys.version_info >= (3, 7):
-    OP_NO_RENEGOTIATION: Options
+OP_NO_RENEGOTIATION: Options
 if sys.version_info >= (3, 8):
     OP_ENABLE_MIDDLEBOX_COMPAT: Options
+    if sys.platform == "linux":
+        OP_IGNORE_UNEXPECTED_EOF: Options
 
-if sys.version_info >= (3, 7):
-    HAS_NEVER_CHECK_COMMON_NAME: bool
-    HAS_SSLv2: bool
-    HAS_SSLv3: bool
-    HAS_TLSv1: bool
-    HAS_TLSv1_1: bool
-    HAS_TLSv1_2: bool
-    HAS_TLSv1_3: bool
+HAS_NEVER_CHECK_COMMON_NAME: bool
+HAS_SSLv2: bool
+HAS_SSLv3: bool
+HAS_TLSv1: bool
+HAS_TLSv1_1: bool
+HAS_TLSv1_2: bool
+HAS_TLSv1_3: bool
 HAS_ALPN: bool
 HAS_ECDH: bool
 HAS_SNI: bool
@@ -273,15 +291,18 @@ ALERT_DESCRIPTION_UNSUPPORTED_CERTIFICATE: AlertDescription
 ALERT_DESCRIPTION_UNSUPPORTED_EXTENSION: AlertDescription
 ALERT_DESCRIPTION_USER_CANCELLED: AlertDescription
 
-class _ASN1Object(NamedTuple):
+class _ASN1ObjectBase(NamedTuple):
     nid: int
     shortname: str
     longname: str
     oid: str
+
+class _ASN1Object(_ASN1ObjectBase):
+    def __new__(cls, oid: str) -> Self: ...
     @classmethod
-    def fromnid(cls: Type[Self], nid: int) -> Self: ...
+    def fromnid(cls, nid: int) -> Self: ...
     @classmethod
-    def fromname(cls: Type[Self], name: str) -> Self: ...
+    def fromname(cls, name: str) -> Self: ...
 
 class Purpose(_ASN1Object, enum.Enum):
     SERVER_AUTH: _ASN1Object
@@ -292,51 +313,29 @@ class SSLSocket(socket.socket):
     server_side: bool
     server_hostname: str | None
     session: SSLSession | None
-    session_reused: bool | None
-    if sys.version_info < (3, 7):
-        def __init__(
-            self,
-            sock: socket.socket | None = ...,
-            keyfile: str | None = ...,
-            certfile: str | None = ...,
-            server_side: bool = ...,
-            cert_reqs: int = ...,
-            ssl_version: int = ...,
-            ca_certs: str | None = ...,
-            do_handshake_on_connect: bool = ...,
-            family: int = ...,
-            type: int = ...,
-            proto: int = ...,
-            fileno: int | None = ...,
-            suppress_ragged_eofs: bool = ...,
-            npn_protocols: Iterable[str] | None = ...,
-            ciphers: str | None = ...,
-            server_hostname: str | None = ...,
-            _context: SSLContext | None = ...,
-            _session: Any | None = ...,
-        ) -> None: ...
-    else:
-        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
-    def connect(self, addr: socket._Address | bytes) -> None: ...
-    def connect_ex(self, addr: socket._Address | bytes) -> int: ...
-    def recv(self, buflen: int = ..., flags: int = ...) -> bytes: ...
-    def recv_into(self, buffer: WriteableBuffer, nbytes: int | None = ..., flags: int = ...) -> int: ...
-    def recvfrom(self, buflen: int = ..., flags: int = ...) -> tuple[bytes, socket._RetAddress]: ...
+    @property
+    def session_reused(self) -> bool | None: ...
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    def connect(self, addr: socket._Address) -> None: ...
+    def connect_ex(self, addr: socket._Address) -> int: ...
+    def recv(self, buflen: int = 1024, flags: int = 0) -> bytes: ...
+    def recv_into(self, buffer: WriteableBuffer, nbytes: int | None = None, flags: int = 0) -> int: ...
+    def recvfrom(self, buflen: int = 1024, flags: int = 0) -> tuple[bytes, socket._RetAddress]: ...
     def recvfrom_into(
-        self, buffer: WriteableBuffer, nbytes: int | None = ..., flags: int = ...
+        self, buffer: WriteableBuffer, nbytes: int | None = None, flags: int = 0
     ) -> tuple[int, socket._RetAddress]: ...
-    def send(self, data: ReadableBuffer, flags: int = ...) -> int: ...
-    def sendall(self, data: ReadableBuffer, flags: int = ...) -> None: ...
+    def send(self, data: ReadableBuffer, flags: int = 0) -> int: ...
+    def sendall(self, data: ReadableBuffer, flags: int = 0) -> None: ...
     @overload
-    def sendto(self, data: ReadableBuffer, flags_or_addr: socket._Address) -> int: ...
+    def sendto(self, data: ReadableBuffer, flags_or_addr: socket._Address, addr: None = None) -> int: ...
     @overload
-    def sendto(self, data: ReadableBuffer, flags_or_addr: int | socket._Address, addr: socket._Address | None = ...) -> int: ...
+    def sendto(self, data: ReadableBuffer, flags_or_addr: int, addr: socket._Address) -> int: ...
     def shutdown(self, how: int) -> None: ...
-    def read(self, len: int = ..., buffer: bytearray | None = ...) -> bytes: ...
-    def write(self, data: bytes) -> int: ...
-    def do_handshake(self, block: bool = ...) -> None: ...  # block is undocumented
+    def read(self, len: int = 1024, buffer: bytearray | None = None) -> bytes: ...
+    def write(self, data: ReadableBuffer) -> int: ...
+    def do_handshake(self, block: bool = False) -> None: ...  # block is undocumented
     @overload
-    def getpeercert(self, binary_form: Literal[False] = ...) -> _PeerCertRetDictType | None: ...
+    def getpeercert(self, binary_form: Literal[False] = False) -> _PeerCertRetDictType | None: ...
     @overload
     def getpeercert(self, binary_form: Literal[True]) -> bytes | None: ...
     @overload
@@ -344,7 +343,7 @@ class SSLSocket(socket.socket):
     def cipher(self) -> tuple[str, str, int] | None: ...
     def shared_ciphers(self) -> list[tuple[str, str, int]] | None: ...
     def compression(self) -> str | None: ...
-    def get_channel_binding(self, cb_type: str = ...) -> bytes | None: ...
+    def get_channel_binding(self, cb_type: str = "tls-unique") -> bytes | None: ...
     def selected_alpn_protocol(self) -> str | None: ...
     def selected_npn_protocol(self) -> str | None: ...
     def accept(self) -> tuple[SSLSocket, socket._RetAddress]: ...
@@ -354,15 +353,14 @@ class SSLSocket(socket.socket):
     if sys.version_info >= (3, 8):
         def verify_client_post_handshake(self) -> None: ...
 
-if sys.version_info >= (3, 7):
-    class TLSVersion(enum.IntEnum):
-        MINIMUM_SUPPORTED: int
-        MAXIMUM_SUPPORTED: int
-        SSLv3: int
-        TLSv1: int
-        TLSv1_1: int
-        TLSv1_2: int
-        TLSv1_3: int
+class TLSVersion(enum.IntEnum):
+    MINIMUM_SUPPORTED: int
+    MAXIMUM_SUPPORTED: int
+    SSLv3: int
+    TLSv1: int
+    TLSv1_1: int
+    TLSv1_2: int
+    TLSv1_3: int
 
 class SSLContext:
     check_hostname: bool
@@ -371,71 +369,85 @@ class SSLContext:
     verify_mode: VerifyMode
     @property
     def protocol(self) -> _SSLMethod: ...
-    if sys.version_info >= (3, 7):
-        hostname_checks_common_name: bool
-        maximum_version: TLSVersion
-        minimum_version: TLSVersion
-        sni_callback: Callable[[SSLObject, str, SSLContext], None | int] | None
-        sslobject_class: ClassVar[Type[SSLObject]]
-        sslsocket_class: ClassVar[Type[SSLSocket]]
+    hostname_checks_common_name: bool
+    maximum_version: TLSVersion
+    minimum_version: TLSVersion
+    sni_callback: Callable[[SSLObject, str, SSLContext], None | int] | None
+    # The following two attributes have class-level defaults.
+    # However, the docs explicitly state that it's OK to override these attributes on instances,
+    # so making these ClassVars wouldn't be appropriate
+    sslobject_class: type[SSLObject]
+    sslsocket_class: type[SSLSocket]
     if sys.version_info >= (3, 8):
         keylog_filename: str
         post_handshake_auth: bool
-    def __new__(cls, protocol: int = ..., *args: Any, **kwargs: Any) -> SSLContext: ...
-    def __init__(self, protocol: int = ...) -> None: ...
+    if sys.version_info >= (3, 10):
+        security_level: int
+    if sys.version_info >= (3, 10):
+        # Using the default (None) for the `protocol` parameter is deprecated,
+        # but there isn't a good way of marking that in the stub unless/until PEP 702 is accepted
+        def __new__(cls, protocol: int | None = None, *args: Any, **kwargs: Any) -> Self: ...
+    else:
+        def __new__(cls, protocol: int = ..., *args: Any, **kwargs: Any) -> Self: ...
+
     def cert_store_stats(self) -> dict[str, int]: ...
     def load_cert_chain(
-        self, certfile: StrOrBytesPath, keyfile: StrOrBytesPath | None = ..., password: _PasswordType | None = ...
+        self, certfile: StrOrBytesPath, keyfile: StrOrBytesPath | None = None, password: _PasswordType | None = None
     ) -> None: ...
     def load_default_certs(self, purpose: Purpose = ...) -> None: ...
     def load_verify_locations(
-        self, cafile: StrOrBytesPath | None = ..., capath: StrOrBytesPath | None = ..., cadata: str | bytes | None = ...
+        self,
+        cafile: StrOrBytesPath | None = None,
+        capath: StrOrBytesPath | None = None,
+        cadata: str | ReadableBuffer | None = None,
     ) -> None: ...
-    def get_ca_certs(self, binary_form: bool = ...) -> list[_PeerCertRetDictType] | list[bytes]: ...
+    @overload
+    def get_ca_certs(self, binary_form: Literal[False] = False) -> list[_PeerCertRetDictType]: ...
+    @overload
+    def get_ca_certs(self, binary_form: Literal[True]) -> list[bytes]: ...
+    @overload
+    def get_ca_certs(self, binary_form: bool = False) -> Any: ...
     def get_ciphers(self) -> list[_Cipher]: ...
     def set_default_verify_paths(self) -> None: ...
     def set_ciphers(self, __cipherlist: str) -> None: ...
     def set_alpn_protocols(self, alpn_protocols: Iterable[str]) -> None: ...
     def set_npn_protocols(self, npn_protocols: Iterable[str]) -> None: ...
-    if sys.version_info >= (3, 7):
-        def set_servername_callback(self, server_name_callback: _SrvnmeCbType | None) -> None: ...
-    else:
-        def set_servername_callback(self, __method: _SrvnmeCbType | None) -> None: ...
+    def set_servername_callback(self, server_name_callback: _SrvnmeCbType | None) -> None: ...
     def load_dh_params(self, __path: str) -> None: ...
     def set_ecdh_curve(self, __name: str) -> None: ...
     def wrap_socket(
         self,
         sock: socket.socket,
-        server_side: bool = ...,
-        do_handshake_on_connect: bool = ...,
-        suppress_ragged_eofs: bool = ...,
-        server_hostname: str | None = ...,
-        session: SSLSession | None = ...,
+        server_side: bool = False,
+        do_handshake_on_connect: bool = True,
+        suppress_ragged_eofs: bool = True,
+        server_hostname: str | None = None,
+        session: SSLSession | None = None,
     ) -> SSLSocket: ...
     def wrap_bio(
         self,
         incoming: MemoryBIO,
         outgoing: MemoryBIO,
-        server_side: bool = ...,
-        server_hostname: str | None = ...,
-        session: SSLSession | None = ...,
+        server_side: bool = False,
+        server_hostname: str | None = None,
+        session: SSLSession | None = None,
     ) -> SSLObject: ...
     def session_stats(self) -> dict[str, int]: ...
 
 class SSLObject:
     context: SSLContext
-    server_side: bool
-    server_hostname: str | None
+    @property
+    def server_side(self) -> bool: ...
+    @property
+    def server_hostname(self) -> str | None: ...
     session: SSLSession | None
-    session_reused: bool
-    if sys.version_info >= (3, 7):
-        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
-    else:
-        def __init__(self, sslobj: Any, owner: SSLSocket | SSLObject | None = ..., session: Any | None = ...) -> None: ...
-    def read(self, len: int = ..., buffer: bytearray | None = ...) -> bytes: ...
-    def write(self, data: bytes) -> int: ...
+    @property
+    def session_reused(self) -> bool: ...
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    def read(self, len: int = 1024, buffer: bytearray | None = None) -> bytes: ...
+    def write(self, data: ReadableBuffer) -> int: ...
     @overload
-    def getpeercert(self, binary_form: Literal[False] = ...) -> _PeerCertRetDictType | None: ...
+    def getpeercert(self, binary_form: Literal[False] = False) -> _PeerCertRetDictType | None: ...
     @overload
     def getpeercert(self, binary_form: Literal[True]) -> bytes | None: ...
     @overload
@@ -449,23 +461,30 @@ class SSLObject:
     def do_handshake(self) -> None: ...
     def unwrap(self) -> None: ...
     def version(self) -> str | None: ...
-    def get_channel_binding(self, cb_type: str = ...) -> bytes | None: ...
+    def get_channel_binding(self, cb_type: str = "tls-unique") -> bytes | None: ...
     if sys.version_info >= (3, 8):
         def verify_client_post_handshake(self) -> None: ...
 
+@final
 class MemoryBIO:
     pending: int
     eof: bool
-    def read(self, __size: int = ...) -> bytes: ...
-    def write(self, __buf: bytes) -> int: ...
+    def read(self, __size: int = -1) -> bytes: ...
+    def write(self, __b: ReadableBuffer) -> int: ...
     def write_eof(self) -> None: ...
 
+@final
 class SSLSession:
-    id: bytes
-    time: int
-    timeout: int
-    ticket_lifetime_hint: int
-    has_ticket: bool
+    @property
+    def has_ticket(self) -> bool: ...
+    @property
+    def id(self) -> bytes: ...
+    @property
+    def ticket_lifetime_hint(self) -> int: ...
+    @property
+    def time(self) -> int: ...
+    @property
+    def timeout(self) -> int: ...
 
 class SSLErrorNumber(enum.IntEnum):
     SSL_ERROR_EOF: int

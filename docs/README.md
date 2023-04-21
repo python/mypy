@@ -6,7 +6,7 @@ What's this?
 
 This directory contains the source code for Mypy documentation (under `source/`)
 and build scripts. The documentation uses Sphinx and reStructuredText. We use
-`sphinx-rtd-theme` as the documentation theme.
+`furo` as the documentation theme.
 
 Building the documentation
 --------------------------

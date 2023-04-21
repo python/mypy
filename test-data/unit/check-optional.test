@@ -127,6 +127,7 @@ def f(x: None) -> None: pass
 f(None)
 
 [case testInferOptionalFromDefaultNone]
+# flags: --implicit-optional
 def f(x: int = None) -> None:
   x + 1  # E: Unsupported left operand type for + ("None") \
          # N: Left operand is of type "Optional[int]"
@@ -135,11 +136,14 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNone]
 # flags: --no-implicit-optional
-def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
+def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int") \
+                               # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
+                               # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   pass
 [out]
 
 [case testInferOptionalFromDefaultNoneComment]
+# flags: --implicit-optional
 def f(x=None):
   # type: (int) -> None
   x + 1  # E: Unsupported left operand type for + ("None") \
@@ -149,7 +153,9 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNoneComment]
 # flags: --no-implicit-optional
-def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
+def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int") \
+                # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
+                # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   # type: (int) -> None
   pass
 [out]
@@ -396,58 +402,6 @@ reveal_type(None if bool() else 0)  # N: Revealed type is "Union[Literal[0]?, No
 reveal_type([0, None, 0])    # N: Revealed type is "builtins.list[Union[builtins.int, None]]"
 [builtins fixtures/list.pyi]
 
-[case testOptionalWhitelistSuppressesOptionalErrors]
-# flags: --strict-optional-whitelist
-import a
-import b
-[file a.py]
-from typing import Optional
-x = None  # type: Optional[str]
-x + "foo"
-
-[file b.py]
-from typing import Optional
-x = None  # type: Optional[int]
-x + 1
-
-[builtins fixtures/primitives.pyi]
-
-[case testOptionalWhitelistPermitsOtherErrors]
-# flags: --strict-optional-whitelist
-import a
-import b
-[file a.py]
-from typing import Optional
-x = None  # type: Optional[str]
-x + "foo"
-
-[file b.py]
-from typing import Optional
-x = None  # type: Optional[int]
-x + 1
-1 + "foo"
-[builtins fixtures/primitives.pyi]
-[out]
-tmp/b.py:4: error: Unsupported operand types for + ("int" and "str")
-
-[case testOptionalWhitelistPermitsWhitelistedFiles]
-# flags: --strict-optional-whitelist **/a.py
-import a
-import b
-[file a.py]
-from typing import Optional
-x = None  # type: Optional[str]
-x + "foo"
-
-[file b.py]
-from typing import Optional
-x = None  # type: Optional[int]
-x + 1
-[builtins fixtures/primitives.pyi]
-[out]
-tmp/a.py:3: error: Unsupported left operand type for + ("None")
-tmp/a.py:3: note: Left operand is of type "Optional[str]"
-
 [case testNoneContextInference]
 from typing import Dict, List
 def f() -> List[None]:
@@ -466,7 +420,7 @@ def f() -> Generator[str, None, None]: pass
 x = f()
 reveal_type(x)  # N: Revealed type is "typing.Generator[builtins.str, None, None]"
 l = [f()]
-reveal_type(l)  # N: Revealed type is "builtins.list[typing.Generator*[builtins.str, None, None]]"
+reveal_type(l)  # N: Revealed type is "builtins.list[typing.Generator[builtins.str, None, None]]"
 [builtins fixtures/list.pyi]
 
 [case testNoneListTernary]
@@ -648,14 +602,14 @@ def u(x: T, y: S) -> Union[S, T]: pass
 a = None # type: Any
 
 # Test both orders
-reveal_type(u(C(), None))  # N: Revealed type is "Union[None, __main__.C*]"
-reveal_type(u(None, C()))  # N: Revealed type is "Union[__main__.C*, None]"
+reveal_type(u(C(), None))  # N: Revealed type is "Union[None, __main__.C]"
+reveal_type(u(None, C()))  # N: Revealed type is "Union[__main__.C, None]"
 
 reveal_type(u(a, None))  # N: Revealed type is "Union[None, Any]"
 reveal_type(u(None, a))  # N: Revealed type is "Union[Any, None]"
 
-reveal_type(u(1, None))  # N: Revealed type is "Union[None, builtins.int*]"
-reveal_type(u(None, 1))  # N: Revealed type is "Union[builtins.int*, None]"
+reveal_type(u(1, None))  # N: Revealed type is "Union[None, builtins.int]"
+reveal_type(u(None, 1))  # N: Revealed type is "Union[builtins.int, None]"
 
 [case testOptionalAndAnyBaseClass]
 from typing import Any, Optional
@@ -1077,3 +1031,12 @@ def f1(b: bool) -> Optional[int]:
 class Defer:
     def __init__(self) -> None:
         self.defer = 10
+
+[case testOptionalIterator]
+# mypy: no-strict-optional
+from typing import Optional, List
+
+x: Optional[List[int]]
+if 3 in x:
+    pass
+

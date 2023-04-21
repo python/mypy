@@ -53,6 +53,12 @@ typedef PyObject CPyModule;
 // Tag bit used for long integers
 #define CPY_INT_TAG 1
 
+// Error value for fixed-width (low-level) integers
+#define CPY_LL_INT_ERROR -113
+
+// Error value for floats
+#define CPY_FLOAT_ERROR -113.0
+
 typedef void (*CPyVTableItem)(void);
 
 static inline CPyTagged CPyTagged_ShortFromInt(int x) {

@@ -15,8 +15,8 @@ Type                   Description
 ``int``                integer
 ``float``              floating point number
 ``bool``               boolean value (subclass of ``int``)
-``str``                string (unicode in Python 3)
-``bytes``              8-bit string
+``str``                text, sequence of unicode codepoints
+``bytes``              8-bit string, sequence of byte values
 ``object``             an arbitrary object (``object`` is the common base class)
 ====================== ===============================
 
@@ -53,6 +53,7 @@ Type                   Description
 ``Iterable[int]``      iterable object containing ints
 ``Sequence[bool]``     sequence of booleans (read-only)
 ``Mapping[str, int]``  mapping from ``str`` keys to ``int`` values (read-only)
+``type[C]``            type object of ``C`` (``C`` is a class/type variable/union of types)
 ====================== ===============================
 
 The type ``dict`` is a *generic* class, signified by type arguments within
@@ -82,6 +83,7 @@ Type                   Description
 ``Iterable[int]``      iterable object containing ints
 ``Sequence[bool]``     sequence of booleans (read-only)
 ``Mapping[str, int]``  mapping from ``str`` keys to ``int`` values (read-only)
+``Type[C]``            type object of ``C`` (``C`` is a class/type variable/union of types)
 ====================== ===============================
 
 ``List`` is an alias for the built-in type ``list`` that supports

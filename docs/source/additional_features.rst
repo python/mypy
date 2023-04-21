@@ -177,8 +177,8 @@ Caveats/Known Issues
   will complain about not understanding the argument and the type annotation in
   :py:meth:`__init__ <object.__init__>` will be replaced by ``Any``.
 
-* :ref:`Validator decorators <attrs:examples_validators>`
-  and `default decorators <http://www.attrs.org/en/stable/examples.html#defaults>`_
+* :ref:`Validator decorators <attrs:examples-validators>`
+  and `default decorators <https://www.attrs.org/en/stable/examples.html#defaults>`_
   are not type-checked against the attribute they are setting/validating.
 
 * Method definitions added by mypy currently overwrite any existing method

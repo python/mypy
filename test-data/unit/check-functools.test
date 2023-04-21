@@ -20,12 +20,11 @@ Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
 Ord() == 1
 Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
 Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTotalOrderingLambda]
 from functools import total_ordering
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 
 @total_ordering
 class Ord:
@@ -43,7 +42,6 @@ Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
 Ord() == 1
 Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
 Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTotalOrderingNonCallable]
@@ -59,8 +57,6 @@ class Ord(object):
 Ord() <= Ord()  # E: Unsupported left operand type for <= ("Ord")
 Ord() > Ord()  # E: "int" not callable
 Ord() >= Ord()  # E: Unsupported left operand type for >= ("Ord")
-
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTotalOrderingReturnNotBool]
@@ -79,8 +75,6 @@ reveal_type(Ord() <= Ord())  # N: Revealed type is "Any"
 reveal_type(Ord() == Ord())  # N: Revealed type is "builtins.bool"
 reveal_type(Ord() > Ord())  # N: Revealed type is "Any"
 reveal_type(Ord() >= Ord())  # N: Revealed type is "Any"
-
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTotalOrderingAllowsAny]
@@ -105,7 +99,6 @@ Ord() <= 1  # E: Unsupported left operand type for <= ("Ord")
 Ord() == 1
 Ord() > 1
 Ord() >= 1  # E: Unsupported left operand type for >= ("Ord")
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testCachedProperty]
@@ -119,11 +112,36 @@ class Child(Parent):
     def f(self) -> str: pass
     @cached_property
     def g(self) -> int: pass
-    @cached_property
-    def h(self, arg) -> int: pass  # E: Too many arguments
+    @cached_property  # E: Too many arguments for property
+    def h(self, arg) -> int: pass
 reveal_type(Parent().f)  # N: Revealed type is "builtins.str"
 reveal_type(Child().f)  # N: Revealed type is "builtins.str"
 reveal_type(Child().g)  # N: Revealed type is "builtins.int"
 Child().f = "Hello World"
 Child().g = "invalid"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file functools.pyi]
+import sys
+from typing import TypeVar, Generic
+_T = TypeVar('_T')
+class cached_property(Generic[_T]): ...
 [builtins fixtures/property.pyi]
+
+[case testTotalOrderingWithForwardReference]
+from typing import Generic, Any, TypeVar
+import functools
+
+T = TypeVar("T", bound="C")
+
+@functools.total_ordering
+class D(Generic[T]):
+    def __lt__(self, other: Any) -> bool:
+        ...
+
+class C:
+    pass
+
+def f(d: D[C]) -> None:
+    reveal_type(d.__gt__)  # N: Revealed type is "def (other: Any) -> builtins.bool"
+
+d: D[int]  # E: Type argument "int" of "D" must be a subtype of "C"
+[builtins fixtures/dict.pyi]

@@ -36,7 +36,7 @@ Here are some potential benefits of mypy-style static typing:
   grows, you can adapt tricky application logic to static typing to
   help maintenance.
 
-See also the `front page <http://www.mypy-lang.org>`_ of the mypy web
+See also the `front page <https://www.mypy-lang.org>`_ of the mypy web
 site.
 
 Would my project benefit from static typing?
@@ -84,14 +84,6 @@ performance. It has a minimal performance impact. In the future, there
 could be other tools that can compile statically typed mypy code to C
 modules or to efficient JVM bytecode, for example, but this is outside
 the scope of the mypy project.
-
-How do I type check my Python 2 code?
-*************************************
-
-You can use a :pep:`comment-based function annotation syntax
-<484#suggested-syntax-for-python-2-7-and-straddling-code>`
-and use the :option:`--py2 <mypy --py2>` command-line option to type check your Python 2 code.
-You'll also need to install ``typing`` for Python 2 via ``pip install typing``.
 
 Is mypy free?
 *************
@@ -197,12 +189,12 @@ the following aspects, among others:
   defined in terms of translating them to C or C++. Mypy just uses
   Python semantics, and mypy does not deal with accessing C library
   functionality.
-  
+
 Does it run on PyPy?
 *********************
 
 Somewhat. With PyPy 3.8, mypy is at least able to type check itself.
-With older versions of PyPy, mypy relies on `typed-ast 
+With older versions of PyPy, mypy relies on `typed-ast
 <https://github.com/python/typed_ast>`_, which uses several APIs that
 PyPy does not support (including some internal CPython APIs).
 
@@ -210,7 +202,7 @@ Mypy is a cool project. Can I help?
 ***********************************
 
 Any help is much appreciated! `Contact
-<http://www.mypy-lang.org/contact.html>`_ the developers if you would
+<https://www.mypy-lang.org/contact.html>`_ the developers if you would
 like to contribute. Any help related to development, design,
 publicity, documentation, testing, web site maintenance, financing,
 etc. can be helpful. You can learn a lot by contributing, and anybody

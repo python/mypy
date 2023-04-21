@@ -150,7 +150,7 @@ class PureTrait:
     pass
 
 @trait
-class Trait1(Concrete1):
+class Trait1:
     pass
 
 class Concrete2:
@@ -164,14 +164,28 @@ class Trait2(Concrete2):
 class NonExt(Concrete1):  # E: Non-extension classes may not inherit from extension classes
     pass
 
-class Nope(Trait1, Concrete2):  # E: Non-trait bases must appear first in parent list  # E: Non-trait MRO must be linear
+
+class NopeMultipleInheritance(Concrete1, Concrete2):  # E: Multiple inheritance is not supported (except for traits)
     pass
+
+class NopeMultipleInheritanceAndBadOrder(Concrete1, Trait1, Concrete2):  # E: Multiple inheritance is not supported (except for traits)
+    pass
+
+class NopeMultipleInheritanceAndBadOrder2(Concrete1, Concrete2, Trait1):  # E: Multiple inheritance is not supported (except for traits)
+    pass
+
+class NopeMultipleInheritanceAndBadOrder3(Trait1, Concrete1, Concrete2):  # E: Non-trait base must appear first in parent list # E: Multiple inheritance is not supported (except for traits)
+    pass
+
+class NopeBadOrder(Trait1, Concrete2):  # E: Non-trait base must appear first in parent list
+    pass
+
 
 @decorator
 class NonExt2:
     @property  # E: Property setters not supported in non-extension classes
     def test(self) -> int:
-        pass
+        return 0
 
     @test.setter
     def test(self, x: int) -> None:
@@ -201,23 +215,6 @@ class AllowInterp1(Concrete1):  # E: Base class "test.Concrete1" does not allow 
 class AllowInterp2(PureTrait):  # E: Base class "test.PureTrait" does not allow interpreted subclasses
     pass
 
-async def async_for(xs: AsyncIterable[int]) -> None:
-    async for x in xs:  # E: async for is unimplemented
-        print(x)
-
-    [x async for x in xs]  # E: async comprehensions are unimplemented
-    (x async for x in xs)  # E: async comprehensions are unimplemented  # W: Treating generator comprehension as list
-    {x async for x in xs}  # E: async comprehensions are unimplemented
-    {x: x async for x in xs}  # E: async comprehensions are unimplemented
-
-class async_ctx:
-    async def __aenter__(self) -> int: pass
-    async def __aexit__(self, x, y, z) -> None: pass
-
-async def async_with() -> None:
-    async with async_ctx() as x:  # E: async with is unimplemented
-        print(x)
-
 async def async_generators() -> AsyncIterable[int]:
     yield 1  # E: async generators are unimplemented
 
@@ -240,3 +237,9 @@ def h(arg: str) -> None:
 @a.register
 def i(arg: Foo) -> None:
     pass
+
+[case testOnlyWarningOutput]
+# cmd: test.py
+
+[file test.py]
+names = (str(v) for v in [1, 2, 3])  # W: Treating generator comprehension as list

@@ -11,7 +11,9 @@ class type:
 class function: pass
 
 property = object()  # Dummy definition
+class classmethod: pass
 
+class list: pass
 class dict: pass
 class int: pass
 class str: pass

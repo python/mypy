@@ -365,7 +365,7 @@ class A:
     def f(self) -> None: pass
 
 class B(A):
-    def g() -> None: # E: Method must have at least one argument
+    def g() -> None: # E: Method must have at least one argument. Did you forget the "self" argument?
         super().f() # E: super() requires one or more positional arguments in enclosing function
     def h(self) -> None:
         def a() -> None:
@@ -380,3 +380,39 @@ class A:
 class B(A):
     def h(self, t: Type[None]) -> None:
         super(t, self).f # E: Unsupported argument 1 for "super"
+
+[case testSuperSelfTypeInstanceMethod]
+from typing import TypeVar, Type
+
+T = TypeVar("T", bound="A")
+
+class A:
+    def foo(self: T) -> T: ...
+
+class B(A):
+    def foo(self: T) -> T:
+        reveal_type(super().foo())  # N: Revealed type is "T`-1"
+        return super().foo()
+
+[case testSuperSelfTypeClassMethod]
+from typing import TypeVar, Type
+
+T = TypeVar("T", bound="A")
+
+class A:
+    @classmethod
+    def foo(cls: Type[T]) -> T: ...
+
+class B(A):
+    @classmethod
+    def foo(cls: Type[T]) -> T:
+        reveal_type(super().foo())  # N: Revealed type is "T`-1"
+        return super().foo()
+[builtins fixtures/classmethod.pyi]
+
+[case testWrongSuperOutsideMethodNoCrash]
+class B:
+    x: int
+class C1(B): ...
+class C2(B): ...
+super(C1, C2).x  # E: Argument 2 for "super" not an instance of argument 1

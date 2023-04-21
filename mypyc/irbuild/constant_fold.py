@@ -1,21 +1,43 @@
 """Constant folding of IR values.
 
 For example, 3 + 5 can be constant folded into 8.
+
+This is mostly like mypy.constant_fold, but we can bind some additional
+NameExpr and MemberExpr references here, since we have more knowledge
+about which definitions can be trusted -- we constant fold only references
+to other compiled modules in the same compilation unit.
 """
 
-from typing import Optional, Union
+from __future__ import annotations
+
+from typing import Union
 from typing_extensions import Final
 
-from mypy.nodes import Expression, IntExpr, StrExpr, OpExpr, UnaryExpr, NameExpr, MemberExpr, Var
+from mypy.constant_fold import (
+    constant_fold_binary_int_op,
+    constant_fold_binary_str_op,
+    constant_fold_unary_float_op,
+    constant_fold_unary_int_op,
+)
+from mypy.nodes import (
+    Expression,
+    FloatExpr,
+    IntExpr,
+    MemberExpr,
+    NameExpr,
+    OpExpr,
+    StrExpr,
+    UnaryExpr,
+    Var,
+)
 from mypyc.irbuild.builder import IRBuilder
 
-
 # All possible result types of constant folding
-ConstantValue = Union[int, str]
-CONST_TYPES: Final = (int, str)
+ConstantValue = Union[int, str, float]
+CONST_TYPES: Final = (int, str, float)
 
 
-def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[ConstantValue]:
+def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
     """Return the constant value of an expression for supported operations.
 
     Return None otherwise.
@@ -23,6 +45,8 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[Constan
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, StrExpr):
+        return expr.value
+    if isinstance(expr, FloatExpr):
         return expr.value
     elif isinstance(expr, NameExpr):
         node = expr.node
@@ -49,51 +73,6 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[Constan
         value = constant_fold_expr(builder, expr.expr)
         if isinstance(value, int):
             return constant_fold_unary_int_op(expr.op, value)
-    return None
-
-
-def constant_fold_binary_int_op(op: str, left: int, right: int) -> Optional[int]:
-    if op == '+':
-        return left + right
-    if op == '-':
-        return left - right
-    elif op == '*':
-        return left * right
-    elif op == '//':
-        if right != 0:
-            return left // right
-    elif op == '%':
-        if right != 0:
-            return left % right
-    elif op == '&':
-        return left & right
-    elif op == '|':
-        return left | right
-    elif op == '^':
-        return left ^ right
-    elif op == '<<':
-        if right >= 0:
-            return left << right
-    elif op == '>>':
-        if right >= 0:
-            return left >> right
-    elif op == '**':
-        if right >= 0:
-            return left ** right
-    return None
-
-
-def constant_fold_unary_int_op(op: str, value: int) -> Optional[int]:
-    if op == '-':
-        return -value
-    elif op == '~':
-        return ~value
-    elif op == '+':
-        return value
-    return None
-
-
-def constant_fold_binary_str_op(op: str, left: str, right: str) -> Optional[str]:
-    if op == '+':
-        return left + right
+        if isinstance(value, float):
+            return constant_fold_unary_float_op(expr.op, value)
     return None

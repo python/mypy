@@ -23,13 +23,17 @@ Error codes may change in future mypy releases.
 Displaying error codes
 ----------------------
 
-Error codes are not displayed by default.  Use :option:`--show-error-codes <mypy --show-error-codes>`
-or config `show_error_codes = True` to display error codes. Error codes are shown inside square brackets:
+Error codes are displayed by default.  Use :option:`--hide-error-codes <mypy --hide-error-codes>`
+or config ``hide_error_codes = True`` to hide error codes. Error codes are shown inside square brackets:
 
 .. code-block:: text
 
-   $ mypy --show-error-codes prog.py
+   $ mypy prog.py
    prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
+
+It's also possible to require error codes for ``type: ignore`` comments.
+See :ref:`ignore-without-code<ignore-without-code>` for more information.
+
 
 .. _silence-error-codes:
 
@@ -42,11 +46,8 @@ line.  This can be used even if you have not configured mypy to show
 error codes. Currently it's only possible to disable arbitrary error
 codes on individual lines using this comment.
 
-.. note::
-
-  There are command-line flags and config file settings for enabling
-  certain optional error codes, such as :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`,
-  which enables the ``no-untyped-def`` error code.
+You can also use :option:`--disable-error-code <mypy --disable-error-code>`
+to disable specific error codes globally.
 
 This example shows how to ignore an error about an imported name mypy
 thinks is undefined:
@@ -56,3 +57,70 @@ thinks is undefined:
    # 'foo' is defined in 'foolib', even though mypy can't see the
    # definition.
    from foolib import foo  # type: ignore[attr-defined]
+
+
+Enabling specific error codes
+-----------------------------
+
+There are command-line flags and config file settings for enabling
+certain optional error codes, such as :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`,
+which enables the ``no-untyped-def`` error code.
+
+You can use :option:`--enable-error-code <mypy --enable-error-code>` to
+enable specific error codes that don't have a dedicated command-line
+flag or config file setting.
+
+Per-module enabling/disabling error codes
+-----------------------------------------
+
+You can use :ref:`configuration file <config-file>` sections to enable or
+disable specific error codes only in some modules. For example, this ``mypy.ini``
+config will enable non-annotated empty containers in tests, while keeping
+other parts of code checked in strict mode:
+
+.. code-block:: ini
+
+   [mypy]
+   strict = True
+
+   [mypy-tests.*]
+   allow_untyped_defs = True
+   allow_untyped_calls = True
+   disable_error_code = var-annotated, has-type
+
+Note that per-module enabling/disabling acts as override over the global
+options. So that you don't need to repeat the error code lists for each
+module if you have them in global config section. For example:
+
+.. code-block:: ini
+
+   [mypy]
+   enable_error_code = truthy-bool, ignore-without-code, unused-awaitable
+
+   [mypy-extensions.*]
+   disable_error_code = unused-awaitable
+
+The above config will allow unused awaitables in extension modules, but will
+still keep the other two error codes enabled. The overall logic is following:
+
+* Command line and/or config main section set global error codes
+
+* Individual config sections *adjust* them per glob/module
+
+* Inline ``# mypy: ...`` comments can further *adjust* them for a specific
+  module
+
+So one can e.g. enable some code globally, disable it for all tests in
+the corresponding config section, and then re-enable it with an inline
+comment in some specific test.
+
+Subcodes of error codes
+-----------------------
+
+In some cases, mostly for backwards compatibility reasons, an error
+code may be covered also by another, wider error code. For example, an error with
+code ``[method-assign]`` can be ignored by ``# type: ignore[assignment]``.
+Similar logic works for disabling error codes globally. If a given error code
+is a subcode of another one, it will be mentioned in the documentation for the narrower
+code. This hierarchy is not nested: there cannot be subcodes of other
+subcodes.

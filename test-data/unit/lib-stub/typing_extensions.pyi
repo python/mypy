@@ -1,15 +1,20 @@
-from typing import TypeVar, Any, Mapping, Iterator, NoReturn, Dict, Type
+import typing
+from typing import Any, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type
 from typing import TYPE_CHECKING as TYPE_CHECKING
-from typing import NewType as NewType
+from typing import NewType as NewType, overload as overload
 
 import sys
 
-_T = TypeVar('_T')
+_T = typing.TypeVar('_T')
 
 class _SpecialForm:
     def __getitem__(self, typeargs: Any) -> Any:
         pass
 
+    def __call__(self, arg: Any) -> Any:
+        pass
+
+NamedTuple = 0
 Protocol: _SpecialForm = ...
 def runtime_checkable(x: _T) -> _T: pass
 runtime = runtime_checkable
@@ -21,12 +26,18 @@ Literal: _SpecialForm = ...
 
 Annotated: _SpecialForm = ...
 
+TypeVar: _SpecialForm
+
 ParamSpec: _SpecialForm
 Concatenate: _SpecialForm
 
 TypeAlias: _SpecialForm
 
 TypeGuard: _SpecialForm
+Never: _SpecialForm
+
+TypeVarTuple: _SpecialForm
+Unpack: _SpecialForm
 
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):
@@ -39,8 +50,28 @@ class _TypedDict(Mapping[str, object]):
     # Mypy expects that 'default' has a type variable type.
     def pop(self, k: NoReturn, default: _T = ...) -> object: ...
     def update(self: _T, __m: _T) -> None: ...
+    def items(self) -> Iterable[Tuple[str, object]]: ...
+    def keys(self) -> Iterable[str]: ...
+    def values(self) -> Iterable[object]: ...
     if sys.version_info < (3, 0):
         def has_key(self, k: str) -> bool: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+    # Stubtest's tests need the following items:
+    __required_keys__: frozenset[str]
+    __optional_keys__: frozenset[str]
+    __total__: bool
 
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
+
+def reveal_type(__obj: T) -> T: pass
+
+def dataclass_transform(
+    *,
+    eq_default: bool = ...,
+    order_default: bool = ...,
+    kw_only_default: bool = ...,
+    field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: Any,
+) -> Callable[[T], T]: ...
+
+_FutureFeatureFixture = 0

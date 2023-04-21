@@ -1,5 +1,16 @@
+from collections.abc import Mapping, Sequence
 from types import ModuleType
-from typing import Any, Mapping, Sequence
+from typing import Any
+
+__all__ = [
+    "_main",
+    "freeze_support",
+    "set_executable",
+    "get_executable",
+    "get_preparation_data",
+    "get_command_line",
+    "import_main_path",
+]
 
 WINEXE: bool
 WINSERVICE: bool
@@ -9,7 +20,7 @@ def get_executable() -> str: ...
 def is_forking(argv: Sequence[str]) -> bool: ...
 def freeze_support() -> None: ...
 def get_command_line(**kwds: Any) -> list[str]: ...
-def spawn_main(pipe_handle: int, parent_pid: int | None = ..., tracker_fd: int | None = ...) -> None: ...
+def spawn_main(pipe_handle: int, parent_pid: int | None = None, tracker_fd: int | None = None) -> None: ...
 
 # undocumented
 def _main(fd: int) -> Any: ...

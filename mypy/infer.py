@@ -1,13 +1,18 @@
 """Utilities for type argument inference."""
 
-from typing import List, Optional, Sequence, NamedTuple
+from __future__ import annotations
+
+from typing import NamedTuple, Sequence
 
 from mypy.constraints import (
-    infer_constraints, infer_constraints_for_callable, SUBTYPE_OF, SUPERTYPE_OF
+    SUBTYPE_OF,
+    SUPERTYPE_OF,
+    infer_constraints,
+    infer_constraints_for_callable,
 )
-from mypy.types import Type, TypeVarId, CallableType, Instance
 from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
+from mypy.types import CallableType, Instance, Type, TypeVarId
 
 
 class ArgumentInferContext(NamedTuple):
@@ -24,12 +29,14 @@ class ArgumentInferContext(NamedTuple):
     iterable_type: Instance
 
 
-def infer_function_type_arguments(callee_type: CallableType,
-                                  arg_types: Sequence[Optional[Type]],
-                                  arg_kinds: List[ArgKind],
-                                  formal_to_actual: List[List[int]],
-                                  context: ArgumentInferContext,
-                                  strict: bool = True) -> List[Optional[Type]]:
+def infer_function_type_arguments(
+    callee_type: CallableType,
+    arg_types: Sequence[Type | None],
+    arg_kinds: list[ArgKind],
+    formal_to_actual: list[list[int]],
+    context: ArgumentInferContext,
+    strict: bool = True,
+) -> list[Type | None]:
     """Infer the type arguments of a generic function.
 
     Return an array of lower bound types for the type variables -1 (at
@@ -45,18 +52,18 @@ def infer_function_type_arguments(callee_type: CallableType,
     """
     # Infer constraints.
     constraints = infer_constraints_for_callable(
-        callee_type, arg_types, arg_kinds, formal_to_actual, context)
+        callee_type, arg_types, arg_kinds, formal_to_actual, context
+    )
 
     # Solve constraints.
     type_vars = callee_type.type_var_ids()
     return solve_constraints(type_vars, constraints, strict)
 
 
-def infer_type_arguments(type_var_ids: List[TypeVarId],
-                         template: Type, actual: Type,
-                         is_supertype: bool = False) -> List[Optional[Type]]:
+def infer_type_arguments(
+    type_var_ids: list[TypeVarId], template: Type, actual: Type, is_supertype: bool = False
+) -> list[Type | None]:
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
-    constraints = infer_constraints(template, actual,
-                                    SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
+    constraints = infer_constraints(template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
     return solve_constraints(type_var_ids, constraints)

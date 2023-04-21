@@ -125,3 +125,11 @@ i: int = 0
 This isn't even syntatically valid!
 [file x/please_skipme_.py]
 Neither is this!
+
+[case testPyprojectTOMLUnicode]
+# cmd: mypy x.py
+[file pyproject.toml]
+\[project]
+description = "Factory ⸻ A code generator 🏭"
+\[tool.mypy]
+[file x.py]

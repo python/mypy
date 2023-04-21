@@ -26,6 +26,24 @@ CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     }
 }
 
+CPyTagged CPyTagged_FromVoidPtr(void *ptr) {
+    if ((uintptr_t)ptr > PY_SSIZE_T_MAX) {
+        PyObject *object = PyLong_FromVoidPtr(ptr);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return CPyTagged_FromSsize_t((Py_ssize_t)ptr);
+    }
+}
+
+CPyTagged CPyTagged_FromInt64(int64_t value) {
+    if (unlikely(CPyTagged_TooBigInt64(value))) {
+        PyObject *object = PyLong_FromLongLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
+}
+
 CPyTagged CPyTagged_FromObject(PyObject *object) {
     int overflow;
     // The overflow check knows about CPyTagged's width
@@ -241,8 +259,11 @@ bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {
     if (CPyTagged_CheckShort(right)) {
         return false;
     } else {
-        int result = PyObject_RichCompareBool(CPyTagged_LongAsObject(left),
-                                              CPyTagged_LongAsObject(right), Py_EQ);
+        PyObject *left_obj = CPyTagged_AsObject(left);
+        PyObject *right_obj = CPyTagged_AsObject(right);
+        int result = PyObject_RichCompareBool(left_obj, right_obj, Py_EQ);
+        Py_DECREF(left_obj);
+        Py_DECREF(right_obj);
         if (result == -1) {
             CPyError_OutOfMemory();
         }
@@ -272,13 +293,14 @@ PyObject *CPyLong_FromStr(PyObject *o) {
     return CPyLong_FromStrWithBase(o, base);
 }
 
-PyObject *CPyLong_FromFloat(PyObject *o) {
-    if (PyLong_Check(o)) {
-        CPy_INCREF(o);
-        return o;
-    } else {
-        return PyLong_FromDouble(PyFloat_AS_DOUBLE(o));
+CPyTagged CPyTagged_FromFloat(double f) {
+    if (f < ((double)CPY_TAGGED_MAX + 1.0) && f > (CPY_TAGGED_MIN - 1.0)) {
+        return (Py_ssize_t)f << 1;
     }
+    PyObject *o = PyLong_FromDouble(f);
+    if (o == NULL)
+        return CPY_INT_TAG;
+    return CPyTagged_StealFromObject(o);
 }
 
 PyObject *CPyBool_Str(bool b) {
@@ -325,10 +347,10 @@ static digit *GetIntDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
             val = -val;
         }
         buf[0] = val & PyLong_MASK;
-        if (val > PyLong_MASK) {
+        if (val > (Py_ssize_t)PyLong_MASK) {
             val >>= PyLong_SHIFT;
             buf[1] = val & PyLong_MASK;
-            if (val > PyLong_MASK) {
+            if (val > (Py_ssize_t)PyLong_MASK) {
                 buf[2] = val >> PyLong_SHIFT;
                 len = 3;
             } else {
@@ -491,4 +513,149 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
         return CPY_INT_TAG;
     }
     return CPyTagged_StealFromObject(result);
+}
+
+int64_t CPyLong_AsInt64(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = Py_SIZE(lobj);
+        if (likely(size == 1)) {
+            // Fast path
+            return lobj->ob_digit[0];
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    }
+    // Slow path
+    int overflow;
+    int64_t result = PyLong_AsLongLongAndOverflow(o, &overflow);
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
+int64_t CPyInt64_Divide(int64_t x, int64_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT64_MIN) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int64_t d = x / y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    // Edge case: avoid core dump
+    if (y == -1 && x == INT64_MIN) {
+        return 0;
+    }
+    int64_t d = x % y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+int32_t CPyLong_AsInt32(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            return lobj->ob_digit[0];
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    }
+    // Slow path
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result > 0x7fffffffLL || result < -0x80000000LL) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
+int32_t CPyInt32_Divide(int32_t x, int32_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT32_MIN) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int32_t d = x / y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    // Edge case: avoid core dump
+    if (y == -1 && x == INT32_MIN) {
+        return 0;
+    }
+    int32_t d = x % y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+void CPyInt32_Overflow() {
+    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+}
+
+double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
+    if (unlikely(y == 0)) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "division by zero");
+        return CPY_FLOAT_ERROR;
+    }
+    if (likely(!CPyTagged_CheckLong(x) && !CPyTagged_CheckLong(y))) {
+        return (double)((Py_ssize_t)x >> 1) / (double)((Py_ssize_t)y >> 1);
+    } else {
+        PyObject *xo = CPyTagged_AsObject(x);
+        PyObject *yo = CPyTagged_AsObject(y);
+        PyObject *result = PyNumber_TrueDivide(xo, yo);
+        if (result == NULL) {
+            return CPY_FLOAT_ERROR;
+        }
+        return PyFloat_AsDouble(result);
+    }
+    return 1.0;
 }

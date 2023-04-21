@@ -1,0 +1,65 @@
+[case testTryStarSimple]
+try:
+    pass
+except* Exception as e:
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[builtins.Exception]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarMultiple]
+try:
+    pass
+except* Exception as e:
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[builtins.Exception]"
+except* RuntimeError as e:
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[builtins.RuntimeError]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarBase]
+try:
+    pass
+except* BaseException as e:
+    reveal_type(e)  # N: Revealed type is "builtins.BaseExceptionGroup[builtins.BaseException]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarTuple]
+class Custom(Exception): ...
+
+try:
+    pass
+except* (RuntimeError, Custom) as e:
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Union[builtins.RuntimeError, __main__.Custom]]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarInvalidType]
+class Bad: ...
+try:
+    pass
+except* (RuntimeError, Bad) as e:  # E: Exception type must be derived from BaseException
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Any]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarGroupInvalid]
+try:
+    pass
+except* ExceptionGroup as e:  # E: Exception type in except* cannot derive from BaseExceptionGroup
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Any]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarGroupInvalidTuple]
+try:
+    pass
+except* (RuntimeError, ExceptionGroup) as e:  # E: Exception type in except* cannot derive from BaseExceptionGroup
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Union[builtins.RuntimeError, Any]]"
+[builtins fixtures/exception.pyi]
+
+[case testBasicTypeVarTupleGeneric]
+from typing import Generic, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+class Variadic(Generic[Unpack[Ts]]):
+    ...
+
+variadic: Variadic[int, str]
+reveal_type(variadic)  # N: Revealed type is "__main__.Variadic[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]

@@ -1,14 +1,14 @@
 import sys
+from collections.abc import Container, Iterable, Sequence
 from types import ModuleType
-from typing import Any, Container, Iterable, Sequence, Tuple, Type
+from typing import Any
 from typing_extensions import Literal
 
 if sys.platform == "win32":
+    from _msi import *
     from _msi import _Database
 
     AMD64: bool
-    if sys.version_info < (3, 7):
-        Itanium: bool
     Win64: bool
 
     datasizemask: Literal[0x00FF]
@@ -22,22 +22,24 @@ if sys.platform == "win32":
     type_nullable: Literal[0x1000]
     type_key: Literal[0x2000]
     knownbits: Literal[0x3FFF]
-    class Table:
 
+    class Table:
         name: str
         fields: list[tuple[int, str, int]]
         def __init__(self, name: str) -> None: ...
         def add_field(self, index: int, name: str, type: int) -> None: ...
         def sql(self) -> str: ...
         def create(self, db: _Database) -> None: ...
+
     class _Unspecified: ...
+
     def change_sequence(
         seq: Sequence[tuple[str, str | None, int]],
         action: str,
-        seqno: int | Type[_Unspecified] = ...,
-        cond: str | Type[_Unspecified] = ...,
+        seqno: int | type[_Unspecified] = ...,
+        cond: str | type[_Unspecified] = ...,
     ) -> None: ...
-    def add_data(db: _Database, table: str, values: Iterable[Tuple[Any, ...]]) -> None: ...
+    def add_data(db: _Database, table: str, values: Iterable[tuple[Any, ...]]) -> None: ...
     def add_stream(db: _Database, name: str, path: str) -> None: ...
     def init_database(
         name: str, schema: ModuleType, ProductName: str, ProductCode: str, ProductVersion: str, Manufacturer: str
@@ -45,8 +47,8 @@ if sys.platform == "win32":
     def add_tables(db: _Database, module: ModuleType) -> None: ...
     def make_id(str: str) -> str: ...
     def gen_uuid() -> str: ...
-    class CAB:
 
+    class CAB:
         name: str
         files: list[tuple[str, str]]
         filenames: set[str]
@@ -56,8 +58,8 @@ if sys.platform == "win32":
         def append(self, full: str, file: str, logical: str) -> tuple[int, str]: ...
         def commit(self, db: _Database) -> None: ...
     _directories: set[str]
-    class Directory:
 
+    class Directory:
         db: _Database
         cab: CAB
         basedir: str
@@ -77,27 +79,26 @@ if sys.platform == "win32":
             physical: str,
             _logical: str,
             default: str,
-            componentflags: int | None = ...,
+            componentflags: int | None = None,
         ) -> None: ...
         def start_component(
             self,
-            component: str | None = ...,
-            feature: Feature | None = ...,
-            flags: int | None = ...,
-            keyfile: str | None = ...,
-            uuid: str | None = ...,
+            component: str | None = None,
+            feature: Feature | None = None,
+            flags: int | None = None,
+            keyfile: str | None = None,
+            uuid: str | None = None,
         ) -> None: ...
         def make_short(self, file: str) -> str: ...
-        def add_file(self, file: str, src: str | None = ..., version: str | None = ..., language: str | None = ...) -> str: ...
-        def glob(self, pattern: str, exclude: Container[str] | None = ...) -> list[str]: ...
+        def add_file(self, file: str, src: str | None = None, version: str | None = None, language: str | None = None) -> str: ...
+        def glob(self, pattern: str, exclude: Container[str] | None = None) -> list[str]: ...
         def remove_pyc(self) -> None: ...
-    class Binary:
 
+    class Binary:
         name: str
         def __init__(self, fname: str) -> None: ...
-        def __repr__(self) -> str: ...
-    class Feature:
 
+    class Feature:
         id: str
         def __init__(
             self,
@@ -106,28 +107,28 @@ if sys.platform == "win32":
             title: str,
             desc: str,
             display: int,
-            level: int = ...,
-            parent: Feature | None = ...,
-            directory: str | None = ...,
-            attributes: int = ...,
+            level: int = 1,
+            parent: Feature | None = None,
+            directory: str | None = None,
+            attributes: int = 0,
         ) -> None: ...
         def set_current(self) -> None: ...
-    class Control:
 
+    class Control:
         dlg: Dialog
         name: str
         def __init__(self, dlg: Dialog, name: str) -> None: ...
-        def event(self, event: str, argument: str, condition: str = ..., ordering: int | None = ...) -> None: ...
+        def event(self, event: str, argument: str, condition: str = "1", ordering: int | None = None) -> None: ...
         def mapping(self, event: str, attribute: str) -> None: ...
         def condition(self, action: str, condition: str) -> None: ...
-    class RadioButtonGroup(Control):
 
+    class RadioButtonGroup(Control):
         property: str
         index: int
         def __init__(self, dlg: Dialog, name: str, property: str) -> None: ...
-        def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = ...) -> None: ...
-    class Dialog:
+        def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = None) -> None: ...
 
+    class Dialog:
         db: _Database
         name: str
         x: int

@@ -1,10 +1,13 @@
-import sys
 import unittest.case
 import unittest.loader
 import unittest.result
 import unittest.suite
+from collections.abc import Iterable
 from types import ModuleType
-from typing import Any, Iterable, Protocol, Type
+from typing import Any, Protocol
+
+MAIN_EXAMPLES: str
+MODULE_EXAMPLES: str
 
 class _TestRunner(Protocol):
     def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase) -> unittest.result.TestResult: ...
@@ -19,31 +22,26 @@ class TestProgram:
     buffer: bool | None
     progName: str | None
     warnings: str | None
-
-    if sys.version_info >= (3, 7):
-        testNamePatterns: list[str] | None
+    testNamePatterns: list[str] | None
     def __init__(
         self,
-        module: None | str | ModuleType = ...,
-        defaultTest: str | Iterable[str] | None = ...,
-        argv: list[str] | None = ...,
-        testRunner: Type[_TestRunner] | _TestRunner | None = ...,
+        module: None | str | ModuleType = "__main__",
+        defaultTest: str | Iterable[str] | None = None,
+        argv: list[str] | None = None,
+        testRunner: type[_TestRunner] | _TestRunner | None = None,
         testLoader: unittest.loader.TestLoader = ...,
-        exit: bool = ...,
-        verbosity: int = ...,
-        failfast: bool | None = ...,
-        catchbreak: bool | None = ...,
-        buffer: bool | None = ...,
-        warnings: str | None = ...,
+        exit: bool = True,
+        verbosity: int = 1,
+        failfast: bool | None = None,
+        catchbreak: bool | None = None,
+        buffer: bool | None = None,
+        warnings: str | None = None,
         *,
-        tb_locals: bool = ...,
+        tb_locals: bool = False,
     ) -> None: ...
-    def usageExit(self, msg: Any = ...) -> None: ...
+    def usageExit(self, msg: Any = None) -> None: ...
     def parseArgs(self, argv: list[str]) -> None: ...
-    if sys.version_info >= (3, 7):
-        def createTests(self, from_discovery: bool = ..., Loader: unittest.loader.TestLoader | None = ...) -> None: ...
-    else:
-        def createTests(self) -> None: ...
+    def createTests(self, from_discovery: bool = False, Loader: unittest.loader.TestLoader | None = None) -> None: ...
     def runTests(self) -> None: ...  # undocumented
 
 main = TestProgram

@@ -1,5 +1,7 @@
 # Builtins stub used in dictionary-related test cases.
 
+from _typeshed import SupportsKeysAndGetItem
+import _typeshed
 from typing import (
     TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence
 )
@@ -13,7 +15,8 @@ class object:
     def __init_subclass__(cls) -> None: pass
     def __eq__(self, other: object) -> bool: pass
 
-class type: pass
+class type:
+    __annotations__: Mapping[str, object]
 
 class dict(Mapping[KT, VT]):
     @overload
@@ -24,22 +27,22 @@ class dict(Mapping[KT, VT]):
     def __setitem__(self, k: KT, v: VT) -> None: pass
     def __iter__(self) -> Iterator[KT]: pass
     def __contains__(self, item: object) -> int: pass
-    def update(self, a: Mapping[KT, VT]) -> None: pass
+    def update(self, a: SupportsKeysAndGetItem[KT, VT]) -> None: pass
     @overload
     def get(self, k: KT) -> Optional[VT]: pass
     @overload
-    def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
+    def get(self, k: KT, default: Union[VT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
 
 class int: # for convenience
     def __add__(self, x: Union[int, complex]) -> int: pass
+    def __radd__(self, x: int) -> int: pass
     def __sub__(self, x: Union[int, complex]) -> int: pass
-    def __neg__(self): pass
+    def __neg__(self) -> int: pass
     real: int
     imag: int
 
 class str: pass # for keyword argument key type
-class unicode: pass # needed for py2 docstrings
 class bytes: pass
 
 class list(Sequence[T]): # needed by some test cases

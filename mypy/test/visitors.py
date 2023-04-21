@@ -6,13 +6,10 @@ even if the test was compiled.
 
 """
 
-from typing import Set
+from __future__ import annotations
 
-from mypy.nodes import (
-    NameExpr, TypeVarExpr, CallExpr, Expression, MypyFile, AssignmentStmt, IntExpr
-)
+from mypy.nodes import AssignmentStmt, CallExpr, Expression, IntExpr, NameExpr, Node, TypeVarExpr
 from mypy.traverser import TraverserVisitor
-
 from mypy.treetransform import TransformVisitor
 from mypy.types import Type
 
@@ -20,12 +17,8 @@ from mypy.types import Type
 # from testtypegen
 class SkippedNodeSearcher(TraverserVisitor):
     def __init__(self) -> None:
-        self.nodes: Set[Expression] = set()
-        self.is_typing = False
-
-    def visit_mypy_file(self, f: MypyFile) -> None:
-        self.is_typing = f.fullname == 'typing' or f.fullname == 'builtins'
-        super().visit_mypy_file(f)
+        self.nodes: set[Node] = set()
+        self.ignore_file = False
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         if s.type or ignore_node(s.rvalue):
@@ -35,14 +28,14 @@ class SkippedNodeSearcher(TraverserVisitor):
         super().visit_assignment_stmt(s)
 
     def visit_name_expr(self, n: NameExpr) -> None:
-        self.skip_if_typing(n)
+        if self.ignore_file:
+            self.nodes.add(n)
+        super().visit_name_expr(n)
 
     def visit_int_expr(self, n: IntExpr) -> None:
-        self.skip_if_typing(n)
-
-    def skip_if_typing(self, n: Expression) -> None:
-        if self.is_typing:
+        if self.ignore_file:
             self.nodes.add(n)
+        super().visit_int_expr(n)
 
 
 def ignore_node(node: Expression) -> bool:
@@ -53,12 +46,11 @@ def ignore_node(node: Expression) -> bool:
     # from the typing module is not easy, we just to strip them all away.
     if isinstance(node, TypeVarExpr):
         return True
-    if isinstance(node, NameExpr) and node.fullname == 'builtins.object':
+    if isinstance(node, NameExpr) and node.fullname == "builtins.object":
         return True
-    if isinstance(node, NameExpr) and node.fullname == 'builtins.None':
+    if isinstance(node, NameExpr) and node.fullname == "builtins.None":
         return True
-    if isinstance(node, CallExpr) and (ignore_node(node.callee) or
-                                       node.analyzed):
+    if isinstance(node, CallExpr) and (ignore_node(node.callee) or node.analyzed):
         return True
 
     return False

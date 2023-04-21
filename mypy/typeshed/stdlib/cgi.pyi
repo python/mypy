@@ -1,30 +1,45 @@
 import sys
-from _typeshed import SupportsGetItem, SupportsItemAccess
-from builtins import type as _type
+from _typeshed import SupportsGetItem, SupportsItemAccess, Unused
+from builtins import list as _list, type as _type
 from collections.abc import Iterable, Iterator, Mapping
-from typing import IO, Any, Protocol, TypeVar
+from email.message import Message
+from types import TracebackType
+from typing import IO, Any, Protocol
+from typing_extensions import Self
 
-_T = TypeVar("_T", bound=FieldStorage)
+__all__ = [
+    "MiniFieldStorage",
+    "FieldStorage",
+    "parse",
+    "parse_multipart",
+    "parse_header",
+    "test",
+    "print_exception",
+    "print_environ",
+    "print_form",
+    "print_directory",
+    "print_arguments",
+    "print_environ_usage",
+]
+
+if sys.version_info < (3, 8):
+    __all__ += ["parse_qs", "parse_qsl", "escape"]
 
 def parse(
-    fp: IO[Any] | None = ...,
+    fp: IO[Any] | None = None,
     environ: SupportsItemAccess[str, str] = ...,
     keep_blank_values: bool = ...,
     strict_parsing: bool = ...,
-    separator: str = ...,
+    separator: str = "&",
 ) -> dict[str, list[str]]: ...
 
 if sys.version_info < (3, 8):
     def parse_qs(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> dict[str, list[str]]: ...
     def parse_qsl(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> list[tuple[str, str]]: ...
 
-if sys.version_info >= (3, 7):
-    def parse_multipart(
-        fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = ..., errors: str = ..., separator: str = ...
-    ) -> dict[str, list[Any]]: ...
-
-else:
-    def parse_multipart(fp: IO[Any], pdict: SupportsGetItem[str, bytes]) -> dict[str, list[bytes]]: ...
+def parse_multipart(
+    fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = "utf-8", errors: str = "replace", separator: str = "&"
+) -> dict[str, list[Any]]: ...
 
 class _Environ(Protocol):
     def __getitem__(self, __k: str) -> str: ...
@@ -38,7 +53,7 @@ def print_directory() -> None: ...
 def print_environ_usage() -> None: ...
 
 if sys.version_info < (3, 8):
-    def escape(s: str, quote: bool | None = ...) -> str: ...
+    def escape(s: str, quote: bool | None = None) -> str: ...
 
 class MiniFieldStorage:
     # The first five "Any" attributes here are always None, but mypy doesn't support that
@@ -53,16 +68,13 @@ class MiniFieldStorage:
     name: Any
     value: Any
     def __init__(self, name: Any, value: Any) -> None: ...
-    def __repr__(self) -> str: ...
 
-_list = list
-
-class FieldStorage(object):
+class FieldStorage:
     FieldStorageClass: _type | None
     keep_blank_values: int
     strict_parsing: int
     qs_on_post: str | None
-    headers: Mapping[str, str]
+    headers: Mapping[str, str] | Message
     fp: IO[bytes]
     encoding: str
     errors: str
@@ -82,25 +94,24 @@ class FieldStorage(object):
     value: None | bytes | _list[Any]
     def __init__(
         self,
-        fp: IO[Any] | None = ...,
-        headers: Mapping[str, str] | None = ...,
-        outerboundary: bytes = ...,
+        fp: IO[Any] | None = None,
+        headers: Mapping[str, str] | Message | None = None,
+        outerboundary: bytes = b"",
         environ: SupportsGetItem[str, str] = ...,
-        keep_blank_values: int = ...,
-        strict_parsing: int = ...,
-        limit: int | None = ...,
-        encoding: str = ...,
-        errors: str = ...,
-        max_num_fields: int | None = ...,
-        separator: str = ...,
+        keep_blank_values: int = 0,
+        strict_parsing: int = 0,
+        limit: int | None = None,
+        encoding: str = "utf-8",
+        errors: str = "replace",
+        max_num_fields: int | None = None,
+        separator: str = "&",
     ) -> None: ...
-    def __enter__(self: _T) -> _T: ...
-    def __exit__(self, *args: Any) -> None: ...
-    def __repr__(self) -> str: ...
+    def __enter__(self) -> Self: ...
+    def __exit__(self, *args: Unused) -> None: ...
     def __iter__(self) -> Iterator[str]: ...
     def __getitem__(self, key: str) -> Any: ...
-    def getvalue(self, key: str, default: Any = ...) -> Any: ...
-    def getfirst(self, key: str, default: Any = ...) -> Any: ...
+    def getvalue(self, key: str, default: Any = None) -> Any: ...
+    def getfirst(self, key: str, default: Any = None) -> Any: ...
     def getlist(self, key: str) -> _list[Any]: ...
     def keys(self) -> _list[str]: ...
     def __contains__(self, key: str) -> bool: ...
@@ -108,3 +119,11 @@ class FieldStorage(object):
     def __bool__(self) -> bool: ...
     # In Python 3 it returns bytes or str IO depending on an internal flag
     def make_file(self) -> IO[Any]: ...
+
+def print_exception(
+    type: type[BaseException] | None = None,
+    value: BaseException | None = None,
+    tb: TracebackType | None = None,
+    limit: int | None = None,
+) -> None: ...
+def print_arguments() -> None: ...

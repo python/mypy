@@ -16,7 +16,7 @@ The simplest way to narrow a type is to use one of the supported expressions:
 
 - :py:func:`isinstance` like in ``isinstance(obj, float)`` will narrow ``obj`` to have ``float`` type
 - :py:func:`issubclass` like in ``issubclass(cls, MyClass)`` will narrow ``cls`` to be ``Type[MyClass]``
-- :py:func:`type` like in ``type(obj) is int`` will narrow ``obj`` to have ``int`` type
+- :py:class:`type` like in ``type(obj) is int`` will narrow ``obj`` to have ``int`` type
 - :py:func:`callable` like in ``callable(obj)`` will narrow object to callable type
 
 Type narrowing is contextual. For example, based on the condition, mypy will narrow an expression only within an ``if`` branch:
@@ -100,7 +100,7 @@ for better type inference when working with types and metaclasses:
        t = type(o)  # We must use a variable here
        reveal_type(t)  # Revealed type is "builtins.type"
 
-       if issubtype(t, MyCalcMeta):  # `issubtype(type(o), MyCalcMeta)` won't work
+       if issubclass(t, MyCalcMeta):  # `issubclass(type(o), MyCalcMeta)` won't work
            reveal_type(t)  # Revealed type is "Type[MyCalcMeta]"
            t.calc()  # Okay
 

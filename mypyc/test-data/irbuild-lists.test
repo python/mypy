@@ -38,10 +38,11 @@ def f(x):
     r2 :: object
     r3 :: int
 L0:
-    r0 = CPyList_GetItemShort(x, 0)
-    r1 = cast(list, r0)
+    r0 = CPyList_GetItemShortBorrow(x, 0)
+    r1 = borrow cast(list, r0)
     r2 = CPyList_GetItemShort(r1, 2)
     r3 = unbox(int, r2)
+    keep_alive x, r0
     return r3
 
 [case testListSet]
@@ -54,7 +55,7 @@ def f(x):
     r0 :: object
     r1 :: bit
 L0:
-    r0 = box(short_int, 2)
+    r0 = object 1
     r1 = CPyList_SetItem(x, 0, r0)
     return 1
 
@@ -83,6 +84,22 @@ L0:
     x = r0
     return 1
 
+[case testNewListEmptyViaAlias]
+from typing import List
+
+ListAlias = list
+
+def f() -> None:
+    x: List[int] = ListAlias()
+
+[out]
+def f():
+    r0, x :: list
+L0:
+    r0 = PyList_New(0)
+    x = r0
+    return 1
+
 [case testNewListTwoItems]
 from typing import List
 def f() -> None:
@@ -95,8 +112,8 @@ def f():
     x :: list
 L0:
     r0 = PyList_New(2)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
+    r1 = object 1
+    r2 = object 2
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
     set_mem r4, r1 :: builtins.object*
@@ -145,7 +162,7 @@ L0:
     r0 = CPySequence_Multiply(a, 4)
     b = r0
     r1 = PyList_New(1)
-    r2 = box(short_int, 8)
+    r2 = object 4
     r3 = get_element_ptr r1 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
     set_mem r4, r2 :: builtins.object*
@@ -217,7 +234,7 @@ L1:
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyList_GetItem(l, i)
-    r6 = box(short_int, 2)
+    r6 = object 1
     r7 = PyNumber_InPlaceAdd(r5, r6)
     r8 = CPyList_SetItem(l, i, r7)
 L3:
@@ -242,8 +259,8 @@ def f(x, y):
     r10 :: bit
 L0:
     r0 = PyList_New(2)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
+    r1 = object 1
+    r2 = object 2
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
     set_mem r4, r1 :: builtins.object*
@@ -252,7 +269,7 @@ L0:
     keep_alive r0
     r6 = CPyList_Extend(r0, x)
     r7 = CPyList_Extend(r0, y)
-    r8 = box(short_int, 6)
+    r8 = object 3
     r9 = PyList_Append(r0, r8)
     r10 = r9 >= 0 :: signed
     return r0
@@ -426,4 +443,105 @@ L4:
     r8 = r10
 L5:
     res = r8
+    return 1
+
+[case testSimplifyListUnion]
+from typing import List, Union, Optional
+
+def narrow(a: Union[List[str], List[bytes], int]) -> int:
+    if isinstance(a, list):
+        return len(a)
+    return a
+def loop(a: Union[List[str], List[bytes]]) -> None:
+    for x in a:
+         pass
+def nested_union(a: Union[List[str], List[Optional[str]]]) -> None:
+    for x in a:
+        pass
+[out]
+def narrow(a):
+    a :: union[list, int]
+    r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: list
+    r5 :: ptr
+    r6 :: native_int
+    r7 :: short_int
+    r8 :: int
+L0:
+    r0 = load_address PyList_Type
+    r1 = PyObject_IsInstance(a, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = borrow cast(list, a)
+    r5 = get_element_ptr r4 ob_size :: PyVarObject
+    r6 = load_mem r5 :: native_int*
+    keep_alive r4
+    r7 = r6 << 1
+    keep_alive a
+    return r7
+L2:
+    r8 = unbox(int, a)
+    return r8
+def loop(a):
+    a :: list
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bit
+    r5 :: object
+    r6, x :: union[str, bytes]
+    r7 :: short_int
+L0:
+    r0 = 0
+L1:
+    r1 = get_element_ptr a ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    keep_alive a
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = CPyList_GetItemUnsafe(a, r0)
+    r6 = cast(union[str, bytes], r5)
+    x = r6
+L3:
+    r7 = r0 + 2
+    r0 = r7
+    goto L1
+L4:
+    return 1
+def nested_union(a):
+    a :: list
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bit
+    r5 :: object
+    r6, x :: union[str, None]
+    r7 :: short_int
+L0:
+    r0 = 0
+L1:
+    r1 = get_element_ptr a ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    keep_alive a
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = CPyList_GetItemUnsafe(a, r0)
+    r6 = cast(union[str, None], r5)
+    x = r6
+L3:
+    r7 = r0 + 2
+    r0 = r7
+    goto L1
+L4:
     return 1
