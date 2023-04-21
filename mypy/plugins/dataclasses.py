@@ -7,6 +7,7 @@ from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type, expand_type_by_instance
+from mypy.meet import meet_types
 from mypy.messages import format_type_bare
 from mypy.nodes import (
     ARG_NAMED,
@@ -57,10 +58,13 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    ProperType,
     TupleType,
     Type,
     TypeOfAny,
     TypeVarType,
+    UninhabitedType,
+    UnionType,
     get_proper_type,
 )
 from mypy.typevars import fill_typevars
@@ -372,7 +376,6 @@ class DataclassTransformer:
             arg_names=arg_names,
             ret_type=NoneType(),
             fallback=self._api.named_type("builtins.function"),
-            name=f"replace of {self._cls.info.name}",
         )
 
         self._cls.info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
@@ -923,6 +926,91 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
     )
 
 
+def _fail_not_dataclass(ctx: FunctionSigContext, t: Type, parent_t: Type) -> None:
+    t_name = format_type_bare(t, ctx.api.options)
+    if parent_t is t:
+        msg = (
+            f'Argument 1 to "replace" has a variable type "{t_name}" not bound to a dataclass'
+            if isinstance(t, TypeVarType)
+            else f'Argument 1 to "replace" has incompatible type "{t_name}"; expected a dataclass'
+        )
+    else:
+        pt_name = format_type_bare(parent_t, ctx.api.options)
+        msg = (
+            f'Argument 1 to "replace" has type "{pt_name}" whose item "{t_name}" is not bound to a dataclass'
+            if isinstance(t, TypeVarType)
+            else f'Argument 1 to "replace" has incompatible type "{pt_name}" whose item "{t_name}" is not a dataclass'
+        )
+
+    ctx.api.fail(msg, ctx.context)
+
+
+def _get_expanded_dataclasses_fields(
+    ctx: FunctionSigContext, typ: ProperType, display_typ: ProperType, parent_typ: ProperType
+) -> list[CallableType] | None:
+    """
+    For a given type, determine what dataclasses it can be: for each class, return the field types.
+    For generic classes, the field types are expanded.
+    If the type contains Any or a non-dataclass, returns None; in the latter case, also reports an error.
+    """
+    if isinstance(typ, AnyType):
+        return None
+    elif isinstance(typ, UnionType):
+        ret: list[CallableType] | None = []
+        for item in typ.relevant_items():
+            item = get_proper_type(item)
+            item_types = _get_expanded_dataclasses_fields(ctx, item, item, parent_typ)
+            if ret is not None and item_types is not None:
+                ret += item_types
+            else:
+                ret = None  # but keep iterating to emit all errors
+        return ret
+    elif isinstance(typ, TypeVarType):
+        return _get_expanded_dataclasses_fields(
+            ctx, get_proper_type(typ.upper_bound), display_typ, parent_typ
+        )
+    elif isinstance(typ, Instance):
+        replace_sym = typ.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
+        if replace_sym is None:
+            _fail_not_dataclass(ctx, display_typ, parent_typ)
+            return None
+        replace_sig = get_proper_type(replace_sym.type)
+        assert isinstance(replace_sig, CallableType)
+        return [expand_type_by_instance(replace_sig, typ)]
+    else:
+        _fail_not_dataclass(ctx, display_typ, parent_typ)
+        return None
+
+
+def _meet_replace_sigs(sigs: list[CallableType]) -> CallableType:
+    """
+    Produces the lowest bound of the 'replace' signatures of multiple dataclasses.
+    """
+    args = {
+        name: (typ, kind)
+        for name, typ, kind in zip(sigs[0].arg_names, sigs[0].arg_types, sigs[0].arg_kinds)
+    }
+
+    for sig in sigs[1:]:
+        sig_args = {
+            name: (typ, kind)
+            for name, typ, kind in zip(sig.arg_names, sig.arg_types, sig.arg_kinds)
+        }
+        for name in (*args.keys(), *sig_args.keys()):
+            sig_typ, sig_kind = args.get(name, (UninhabitedType(), ARG_NAMED_OPT))
+            sig2_typ, sig2_kind = sig_args.get(name, (UninhabitedType(), ARG_NAMED_OPT))
+            args[name] = (
+                meet_types(sig_typ, sig2_typ),
+                ARG_NAMED_OPT if sig_kind == sig2_kind == ARG_NAMED_OPT else ARG_NAMED,
+            )
+
+    return sigs[0].copy_modified(
+        arg_names=list(args.keys()),
+        arg_types=[typ for typ, _ in args.values()],
+        arg_kinds=[kind for _, kind in args.values()],
+    )
+
+
 def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     """
     Returns a signature for the 'dataclasses.replace' function that's dependent on the type
@@ -946,34 +1034,18 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     # </hack>
 
     obj_type = get_proper_type(obj_type)
-    obj_type_str = format_type_bare(obj_type)
-    if isinstance(obj_type, AnyType):
-        return ctx.default_signature  # replace(Any, ...) -> Any
+    inst_type_str = format_type_bare(obj_type, ctx.api.options)
 
-    dataclass_type = get_proper_type(
-        obj_type.upper_bound if isinstance(obj_type, TypeVarType) else obj_type
-    )
-    replace_func = None
-    if isinstance(dataclass_type, Instance):
-        replace_func = dataclass_type.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
-    if replace_func is None:
-        ctx.api.fail(
-            f'Argument 1 to "replace" has variable type "{obj_type_str}" not bound to a dataclass'
-            if isinstance(obj_type, TypeVarType)
-            else f'Argument 1 to "replace" has incompatible type "{obj_type_str}"; expected a dataclass',
-            ctx.context,
-        )
+    replace_sigs = _get_expanded_dataclasses_fields(ctx, obj_type, obj_type, obj_type)
+    if replace_sigs is None:
         return ctx.default_signature
-    assert isinstance(dataclass_type, Instance)
+    replace_sig = _meet_replace_sigs(replace_sigs)
 
-    signature = get_proper_type(replace_func.type)
-    assert isinstance(signature, CallableType)
-    signature = expand_type_by_instance(signature, dataclass_type)
-    # re-add the instance type
-    return signature.copy_modified(
-        arg_types=[obj_type, *signature.arg_types],
-        arg_kinds=[ARG_POS, *signature.arg_kinds],
-        arg_names=[None, *signature.arg_names],
+    return replace_sig.copy_modified(
+        arg_names=[None, *replace_sig.arg_names],
+        arg_kinds=[ARG_POS, *replace_sig.arg_kinds],
+        arg_types=[obj_type, *replace_sig.arg_types],
         ret_type=obj_type,
-        name=f"{ctx.default_signature.name} of {obj_type_str}",
+        fallback=ctx.default_signature.fallback,
+        name=f"{ctx.default_signature.name} of {inst_type_str}",
     )
