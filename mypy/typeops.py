@@ -530,8 +530,6 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             if safe_skip:
                 continue
 
-        # Keep track of the truthiness info for deleted subtypes which can be relevant
-        cbt = cbf = False
         for j, tj in enumerate(items):
             proper_tj = get_proper_type(tj)
             if (
@@ -553,13 +551,6 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             ):
                 # We found a redundant item in the union.
                 removed.add(j)
-                cbt = cbt or tj.can_be_true
-                cbf = cbf or tj.can_be_false
-        # if deleted subtypes had more general truthiness, use that
-        if not item.can_be_true and cbt:
-            items[i] = true_or_false(item)
-        elif not item.can_be_false and cbf:
-            items[i] = true_or_false(item)
 
     return [items[i] for i in range(len(items)) if i not in removed]
 
