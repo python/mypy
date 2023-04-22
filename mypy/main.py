@@ -738,6 +738,10 @@ def process_options(
         "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
     )
 
+    add_invertible_flag(
+        "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
+    )
+
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
         description="Detect code that is sound but redundant or problematic.",

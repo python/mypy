@@ -2359,6 +2359,12 @@ def format_type_inner(
     def format_list(types: Sequence[Type]) -> str:
         return ", ".join(format(typ) for typ in types)
 
+    def format_union(types: Sequence[Type]) -> str:
+        new_list = [format(typ) for typ in types if format(typ) is not "None"]
+        if any(format(typ) is "None" for typ in types):
+            new_list.append("None")
+        return " | ".join(new_list)
+
     def format_literal_value(typ: LiteralType) -> str:
         if typ.is_enum_literal():
             underlying_type = format(typ.fallback)
@@ -2470,10 +2476,9 @@ def format_type_inner(
             )
             if print_as_optional:
                 rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-                return f"Optional[{format(rest[0])}]"
+                return f"{format(rest[0])} | None" if options.use_or_syntax() else f"Optional[{format(rest[0])}]"
             else:
-                s = f"Union[{format_list(typ.items)}]"
-
+                s = format_union(typ.items) if options.use_or_syntax() else f"Union[{format_list(typ.items)}]"
             return s
     elif isinstance(typ, NoneType):
         return "None"
