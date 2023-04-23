@@ -7,10 +7,7 @@ Python being executed, this module should not use *any* dependencies outside of 
 library found in Python 3.7. This file is run each mypy run, so it should be kept as fast as
 possible.
 """
-import os
-import site
 import sys
-import sysconfig
 
 if __name__ == "__main__":
     # HACK: We don't want to pick up mypy.types as the top-level types
@@ -21,6 +18,10 @@ if __name__ == "__main__":
     import types  # noqa: F401
 
     sys.path = old_sys_path
+
+import os
+import site
+import sysconfig
 
 
 def getsitepackages() -> list[str]:
