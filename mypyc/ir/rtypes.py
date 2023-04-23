@@ -820,11 +820,11 @@ class RUnion(RType):
         items = flatten_nested_unions(items)
         assert items
 
-        unique_items = list(dict.fromkeys(items))
+        unique_items = dict.fromkeys(items)
         if len(unique_items) > 1:
-            return RUnion(unique_items)
+            return RUnion(list(unique_items))
         else:
-            return unique_items[0]
+            return next(iter(unique_items))
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
