@@ -23,7 +23,7 @@ RTypes.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
 from typing_extensions import Final
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
@@ -820,17 +820,15 @@ class RUnion(RType):
         items = flatten_nested_unions(items)
         assert items
 
-        # Remove duplicate items using set + list to preserve item order
-        seen = set()
-        new_items = []
+        # Use a dict for O(1) lookups that preserve order; values are ignored
+        seen: dict[RType, Any] = {}
         for item in items:
             if item not in seen:
-                new_items.append(item)
-                seen.add(item)
-        if len(new_items) > 1:
-            return RUnion(new_items)
+                seen[item] = None
+        if len(seen) > 1:
+            return RUnion(list(seen.keys()))
         else:
-            return new_items[0]
+            return next(iter(seen.keys()))
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
