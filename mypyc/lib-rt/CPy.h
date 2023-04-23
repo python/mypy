@@ -114,6 +114,24 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
     ((method_type)(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable)[vtable_index]))
 
 
+typedef struct CPy_GetSetContext {
+    const char *attrname;
+    size_t offset;
+} CPy_GetSetContext;
+
+static PyObject *CPy_GenericGetAttr(PyObject *self, void *closure) {
+    CPy_GetSetContext *context = (CPy_GetSetContext *)closure;
+
+    char *addr = (char *)self + context->offset;
+    PyObject *value = *(PyObject **)addr;
+    if (value == NULL) {
+        PyErr_Format(PyExc_AttributeError,
+            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
+        return NULL;
+    }
+    return Py_NewRef(value);
+}
+
 // Int operations
 
 
