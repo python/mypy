@@ -820,11 +820,7 @@ class RUnion(RType):
         items = flatten_nested_unions(items)
         assert items
 
-        # Use a dict for O(1) lookups that preserve order; values are ignored
-        seen: dict[RType, Any] = {}
-        for item in items:
-            if item not in seen:
-                seen[item] = None
+        seen = dict.fromkeys(items, None)
         if len(seen) > 1:
             return RUnion(list(seen.keys()))
         else:
