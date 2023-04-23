@@ -2360,10 +2360,10 @@ def format_type_inner(
         return ", ".join(format(typ) for typ in types)
 
     def format_union(types: Sequence[Type]) -> str:
-        new_list = [format(typ) for typ in types if format(typ) is not "None"]
-        if any(format(typ) is "None" for typ in types):
-            new_list.append("None")
-        return " | ".join(new_list)
+        formatted = [format(typ) for typ in types if format(typ) != "None"]
+        if any(format(typ) == "None" for typ in types):
+            formatted.append("None")
+        return " | ".join(formatted)
 
     def format_literal_value(typ: LiteralType) -> str:
         if typ.is_enum_literal():
