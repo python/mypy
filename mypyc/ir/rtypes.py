@@ -820,7 +820,7 @@ class RUnion(RType):
         items = flatten_nested_unions(items)
         assert items
 
-        unique_items = list(dict.fromkeys(items, None).keys())
+        unique_items = list(dict.fromkeys(items, None))
         if len(unique_items) > 1:
             return RUnion(unique_items)
         else:
