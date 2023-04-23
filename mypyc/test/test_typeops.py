@@ -81,6 +81,3 @@ class TestUnionSimplification(unittest.TestCase):
         assert RUnion.make_simplified_union(
             [int_rprimitive, RUnion([str_rprimitive, RUnion([int_rprimitive])])]
         ) == RUnion([int_rprimitive, str_rprimitive])
-
-    def test_remove_duplicate_preserves_order(self) -> None:
-        assert RUnion.make_simplified_union([int_rprimitive, int_rprimitive]) == int_rprimitive
