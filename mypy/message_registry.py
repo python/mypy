@@ -268,7 +268,7 @@ CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
 )
 CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
 CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
-CLASS_PATTERN_CLASS_OR_STATIC_METHOD: Final = 'Cannot have both classmethod and staticmethod'
+CLASS_PATTERN_CLASS_OR_STATIC_METHOD: Final = "Cannot have both classmethod and staticmethod"
 MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
 CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 
