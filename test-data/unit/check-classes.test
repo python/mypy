@@ -1395,6 +1395,13 @@ main:8: note:          def f(cls) -> None
 main:8: note:      Subclass:
 main:8: note:          def f(self) -> None
 
+[case testClassMethodAndStaticMethod]
+class C:
+  @classmethod  # E: Cannot have both classmethod and staticmethod
+  @staticmethod
+  def foo(cls) -> None: pass
+[builtins fixtures/classmethod.pyi]
+
 -- Properties
 -- ----------
 
