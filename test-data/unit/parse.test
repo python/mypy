@@ -95,7 +95,6 @@ MypyFile:1(
     StrExpr(x\n\'))
   ExpressionStmt:2(
     StrExpr(x\n\")))
---" fix syntax highlight
 
 [case testBytes]
 b'foo'
@@ -128,7 +127,6 @@ MypyFile:1(
 MypyFile:1(
   ExpressionStmt:1(
     StrExpr(')))
---'
 
 [case testOctalEscapes]
 '\0\1\177\1234'
@@ -3484,3 +3482,358 @@ MypyFile:1(
                           NameExpr(y)
                           NameExpr(y))
                         StrExpr()))))))))))))
+
+[case testStripFunctionBodiesIfIgnoringErrors]
+# mypy: ignore-errors=True
+def f(self):
+    self.x = 1  # Cannot define an attribute
+    return 1
+[out]
+MypyFile:1(
+  FuncDef:2(
+    f
+    Args(
+      Var(self))
+    Block:2()))
+
+[case testStripMethodBodiesIfIgnoringErrors]
+# mypy: ignore-errors=True
+class C:
+    def f(self):
+        x = self.x
+        for x in y:
+            pass
+        with a as y:
+            pass
+        while self.foo():
+            self.bah()
+            a[self.x] = 1
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    FuncDef:3(
+      f
+      Args(
+        Var(self))
+      Block:3())))
+
+[case testDoNotStripModuleTopLevelOrClassBody]
+# mypy: ignore-errors=True
+f()
+class C:
+    x = 5
+[out]
+MypyFile:1(
+  ExpressionStmt:2(
+    CallExpr:2(
+      NameExpr(f)
+      Args()))
+  ClassDef:3(
+    C
+    AssignmentStmt:4(
+      NameExpr(x)
+      IntExpr(5))))
+
+[case testDoNotStripMethodThatAssignsToAttribute]
+# mypy: ignore-errors=True
+class C:
+    def m1(self):
+        self.x = 0
+    def m2(self):
+        a, self.y = 0
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    FuncDef:3(
+      m1
+      Args(
+        Var(self))
+      Block:3(
+        AssignmentStmt:4(
+          MemberExpr:4(
+            NameExpr(self)
+            x)
+          IntExpr(0))))
+    FuncDef:5(
+      m2
+      Args(
+        Var(self))
+      Block:5(
+        AssignmentStmt:6(
+          TupleExpr:6(
+            NameExpr(a)
+            MemberExpr:6(
+              NameExpr(self)
+              y))
+          IntExpr(0))))))
+
+[case testDoNotStripMethodThatAssignsToAttributeWithinStatement]
+# mypy: ignore-errors=True
+class C:
+    def m1(self):
+        for x in y:
+            self.x = 0
+    def m2(self):
+        with x:
+            self.y = 0
+    def m3(self):
+        if x:
+            self.y = 0
+        else:
+            x = 4
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    FuncDef:3(
+      m1
+      Args(
+        Var(self))
+      Block:3(
+        ForStmt:4(
+          NameExpr(x)
+          NameExpr(y)
+          Block:4(
+            AssignmentStmt:5(
+              MemberExpr:5(
+                NameExpr(self)
+                x)
+              IntExpr(0))))))
+    FuncDef:6(
+      m2
+      Args(
+        Var(self))
+      Block:6(
+        WithStmt:7(
+          Expr(
+            NameExpr(x))
+          Block:7(
+            AssignmentStmt:8(
+              MemberExpr:8(
+                NameExpr(self)
+                y)
+              IntExpr(0))))))
+    FuncDef:9(
+      m3
+      Args(
+        Var(self))
+      Block:9(
+        IfStmt:10(
+          If(
+            NameExpr(x))
+          Then(
+            AssignmentStmt:11(
+              MemberExpr:11(
+                NameExpr(self)
+                y)
+              IntExpr(0)))
+          Else(
+            AssignmentStmt:13(
+              NameExpr(x)
+              IntExpr(4))))))))
+
+[case testDoNotStripMethodThatDefinesAttributeWithoutAssignment]
+# mypy: ignore-errors=True
+class C:
+    def m1(self):
+        with y as self.x:
+            pass
+    def m2(self):
+        for self.y in x:
+            pass
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    FuncDef:3(
+      m1
+      Args(
+        Var(self))
+      Block:3(
+        WithStmt:4(
+          Expr(
+            NameExpr(y))
+          Target(
+            MemberExpr:4(
+              NameExpr(self)
+              x))
+          Block:4(
+            PassStmt:5()))))
+    FuncDef:6(
+      m2
+      Args(
+        Var(self))
+      Block:6(
+        ForStmt:7(
+          MemberExpr:7(
+            NameExpr(self)
+            y)
+          NameExpr(x)
+          Block:7(
+            PassStmt:8()))))))
+
+[case testStripDecoratedFunctionOrMethod]
+# mypy: ignore-errors=True
+@deco
+def f():
+    x = 0
+
+class C:
+    @deco
+    def m1(self):
+        x = 0
+
+    @deco
+    def m2(self):
+        self.x = 0
+[out]
+MypyFile:1(
+  Decorator:2(
+    Var(f)
+    NameExpr(deco)
+    FuncDef:3(
+      f
+      Block:3()))
+  ClassDef:6(
+    C
+    Decorator:7(
+      Var(m1)
+      NameExpr(deco)
+      FuncDef:8(
+        m1
+        Args(
+          Var(self))
+        Block:8()))
+    Decorator:11(
+      Var(m2)
+      NameExpr(deco)
+      FuncDef:12(
+        m2
+        Args(
+          Var(self))
+        Block:12(
+          AssignmentStmt:13(
+            MemberExpr:13(
+              NameExpr(self)
+              x)
+            IntExpr(0)))))))
+
+[case testStripOverloadedMethod]
+# mypy: ignore-errors=True
+class C:
+    @overload
+    def m1(self, x: int) -> None: ...
+    @overload
+    def m1(self, x: str) -> None: ...
+    def m1(self, x):
+        x = 0
+
+    @overload
+    def m2(self, x: int) -> None: ...
+    @overload
+    def m2(self, x: str) -> None: ...
+    def m2(self, x):
+        self.x = 0
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    OverloadedFuncDef:3(
+      Decorator:3(
+        Var(m1)
+        NameExpr(overload)
+        FuncDef:4(
+          m1
+          Args(
+            Var(self)
+            Var(x))
+          def (self: Any, x: int?) -> None?
+          Block:4(
+            ExpressionStmt:4(
+              Ellipsis))))
+      Decorator:5(
+        Var(m1)
+        NameExpr(overload)
+        FuncDef:6(
+          m1
+          Args(
+            Var(self)
+            Var(x))
+          def (self: Any, x: str?) -> None?
+          Block:6(
+            ExpressionStmt:6(
+              Ellipsis))))
+      FuncDef:7(
+        m1
+        Args(
+          Var(self)
+          Var(x))
+        Block:7()))
+    OverloadedFuncDef:10(
+      Decorator:10(
+        Var(m2)
+        NameExpr(overload)
+        FuncDef:11(
+          m2
+          Args(
+            Var(self)
+            Var(x))
+          def (self: Any, x: int?) -> None?
+          Block:11(
+            ExpressionStmt:11(
+              Ellipsis))))
+      Decorator:12(
+        Var(m2)
+        NameExpr(overload)
+        FuncDef:13(
+          m2
+          Args(
+            Var(self)
+            Var(x))
+          def (self: Any, x: str?) -> None?
+          Block:13(
+            ExpressionStmt:13(
+              Ellipsis))))
+      FuncDef:14(
+        m2
+        Args(
+          Var(self)
+          Var(x))
+        Block:14(
+          AssignmentStmt:15(
+            MemberExpr:15(
+              NameExpr(self)
+              x)
+            IntExpr(0)))))))
+
+[case testStripMethodInNestedClass]
+# mypy: ignore-errors=True
+class C:
+    class D:
+        def m1(self):
+             self.x = 1
+        def m2(self):
+             return self.x
+[out]
+MypyFile:1(
+  ClassDef:2(
+    C
+    ClassDef:3(
+      D
+      FuncDef:4(
+        m1
+        Args(
+          Var(self))
+        Block:4(
+          AssignmentStmt:5(
+            MemberExpr:5(
+              NameExpr(self)
+              x)
+            IntExpr(1))))
+      FuncDef:6(
+        m2
+        Args(
+          Var(self))
+        Block:6()))))

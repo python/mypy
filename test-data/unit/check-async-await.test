@@ -944,6 +944,49 @@ async def bar(x: Union[A, B]) -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testAsyncIteratorWithIgnoredErrors]
+from m import L
+
+async def func(l: L) -> None:
+    reveal_type(l.get_iterator)  # N: Revealed type is "def () -> typing.AsyncIterator[builtins.str]"
+    reveal_type(l.get_iterator2)  # N: Revealed type is "def () -> typing.AsyncIterator[builtins.str]"
+    async for i in l.get_iterator():
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+
+[file m.py]
+# mypy: ignore-errors=True
+from typing import AsyncIterator
+
+class L:
+    async def some_func(self, i: int) -> str:
+        return 'x'
+
+    async def get_iterator(self) -> AsyncIterator[str]:
+        yield await self.some_func(0)
+
+    async def get_iterator2(self) -> AsyncIterator[str]:
+        if self:
+            a = (yield 'x')
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testAsyncIteratorWithIgnoredErrorsAndYieldFrom]
+from m import L
+
+async def func(l: L) -> None:
+    reveal_type(l.get_iterator)
+
+[file m.py]
+# mypy: ignore-errors=True
+from typing import AsyncIterator
+
+class L:
+    async def get_iterator(self) -> AsyncIterator[str]:
+        yield from ['x']  # E: "yield from" in async function
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testInvalidComprehensionNoCrash]
 # flags: --show-error-codes
 async def foo(x: int) -> int: ...
