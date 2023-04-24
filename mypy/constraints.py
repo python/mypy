@@ -1158,7 +1158,7 @@ def find_matching_overload_items(
     if not res:
         # Falling back to all items if we can't find a match is pretty arbitrary, but
         # it maintains backward compatibility.
-        res = items[:]
+        res = items.copy()
     return res
 
 
