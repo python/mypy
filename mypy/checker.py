@@ -5839,8 +5839,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             def should_coerce_inner(typ: Type) -> bool:
                 typ = get_proper_type(typ)
                 return is_literal_type_like(typ) or (
-                    isinstance(typ, Instance)
-                    and typ.type.is_enum
+                    isinstance(typ, Instance) and typ.type.is_enum
                 )
 
             should_coerce = any(should_coerce_inner(operand_types[i]) for i in chain_indices)
