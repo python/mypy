@@ -876,10 +876,8 @@ class LowLevelIRBuilder:
         ):
             if arg_values:
                 # Create a C array containing all arguments as boxed values.
-                array = Register(RArray(object_rprimitive, len(arg_values)))
                 coerced_args = [self.coerce(arg, object_rprimitive, line) for arg in arg_values]
-                self.add(AssignMulti(array, coerced_args))
-                arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+                arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
             else:
                 arg_ptr = Integer(0, object_pointer_rprimitive)
             num_pos = num_positional_args(arg_values, arg_kinds)
@@ -953,13 +951,10 @@ class LowLevelIRBuilder:
             not kind.is_star() and not kind.is_optional() for kind in arg_kinds
         ):
             method_name_reg = self.load_str(method_name)
-            array = Register(RArray(object_rprimitive, len(arg_values) + 1))
-            self_arg = self.coerce(obj, object_rprimitive, line)
-            coerced_args = [self_arg] + [
-                self.coerce(arg, object_rprimitive, line) for arg in arg_values
+            coerced_args = [
+                self.coerce(arg, object_rprimitive, line) for arg in [obj] + arg_values
             ]
-            self.add(AssignMulti(array, coerced_args))
-            arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
             num_pos = num_positional_args(arg_values, arg_kinds)
             keywords = self._vectorcall_keywords(arg_names)
             value = self.call_c(
@@ -1715,6 +1710,16 @@ class LowLevelIRBuilder:
 
     def new_set_op(self, values: list[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)
+
+    def setup_rarray(
+        self, item_type: RType, values: Sequence[Value], *, object_ptr: bool = False
+    ) -> Value:
+        """Declare and initialize a new RArray, returning its address."""
+        array = Register(RArray(item_type, len(values)))
+        self.add(AssignMulti(array, list(values)))
+        return self.add(
+            LoadAddress(object_pointer_rprimitive if object_ptr else c_pointer_rprimitive, array)
+        )
 
     def shortcircuit_helper(
         self,
