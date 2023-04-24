@@ -109,10 +109,10 @@ TYPE_ABSTRACT: Final = ErrorCode(
 VALID_NEWTYPE: Final = ErrorCode(
     "valid-newtype", "Check that argument 2 to NewType is valid", "General"
 )
-STRING_FORMATTING: Final = ErrorCode(
+STRING_FORMATTING: Final[ErrorCode] = ErrorCode(
     "str-format", "Check that string formatting/interpolation is type-safe", "General"
 )
-STR_BYTES_PY3: Final = ErrorCode(
+STR_BYTES_PY3: Final[ErrorCode] = ErrorCode(
     "str-bytes-safe", "Warn about implicit coercions related to bytes and string types", "General"
 )
 EXIT_RETURN: Final = ErrorCode(
