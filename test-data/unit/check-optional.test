@@ -1040,7 +1040,7 @@ x: Optional[List[int]]
 if 3 in x:
     pass
 
-[case testNarrowedVariableInNestedFunction]
+[case testNarrowedVariableInNestedFunctionBasic]
 from typing import Optional
 
 def can_narrow(x: Optional[str]) -> None:
@@ -1069,3 +1069,34 @@ x: Optional[str] = "x"
 
 def cannot_narrow_top_level() -> None:
     reveal_type(x)  # N: Revealed type is "Union[builtins.str, None]"
+
+[case testNarrowedVariableInNestedFunction2]
+from typing import Optional
+
+class C:
+    a: Optional[str]
+
+def attribute_narrowing(c: C) -> None:
+    # This case is not supported at the moment.
+    c.a = "x"
+    def nested() -> str:
+        return c.a  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    nested()
+
+def assignment_in_for(x: Optional[str]) -> None:
+    if x is None:
+        x = "e"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    for x in ["x"]:
+        pass
+
+def foo(): pass
+
+def assignment_in_with(x: Optional[str]) -> None:
+    if x is None:
+        x = "e"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    with foo() as x:
+        pass
