@@ -1060,7 +1060,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         expanded = self.expand_typevars(defn, typ)
         for item, typ in expanded:
             old_binder = self.binder
+            #print([1], old_binder.frames)
             self.binder = ConditionalTypeBinder()
+            for f in old_binder.frames:
+                for k, v in f.types.items():
+                    if len(k) == 2 and k[0] == 'Var':
+                        print(k[1], v)
             with self.binder.top_frame_context():
                 defn.expanded.append(item)
 

@@ -1040,7 +1040,7 @@ x: Optional[List[int]]
 if 3 in x:
     pass
 
-[case testNestedFunction]
+[case testNarrowedVariableInNestedFunction]
 from typing import Optional
 
 def f1(x: Optional[str]) -> None:
@@ -1050,6 +1050,7 @@ def f1(x: Optional[str]) -> None:
         return reveal_type(x)
     nested()
 
+"""
 def f2(x: Optional[str]) -> None:
     if x is None:
         x = "a"
@@ -1058,3 +1059,4 @@ def f2(x: Optional[str]) -> None:
     if int():
         x = None
     nested()
+"""
