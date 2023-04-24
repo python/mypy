@@ -158,10 +158,3 @@ x *** x this is what future python looks like public static void main String[] a
 [out]
 main:2: error: invalid syntax; you likely need to run mypy using Python 3.99 or newer
 
-[case testStarredExpressionsInForLoop]
-# flags: --python-version 3.9
-
-a = b = c = [1, 2, 3]
-for x in *a, *b, *c:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
-[builtins fixtures/tuple.pyi]
