@@ -1043,14 +1043,20 @@ if 3 in x:
 [case testNarrowedVariableInNestedFunction]
 from typing import Optional
 
-def f1(x: Optional[str]) -> None:
+def can_narrow(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
         return reveal_type(x)  # N: Revealed type is "builtins.str"
     nested()
 
-def f2(x: Optional[str]) -> None:
+def can_narrow_lambda(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    nested = lambda: x
+    reveal_type(nested())  # N: Revealed type is "builtins.str"
+
+def cannot_narrow_if_reassigned(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
@@ -1058,3 +1064,8 @@ def f2(x: Optional[str]) -> None:
     if int():
         x = None
     nested()
+
+x: Optional[str] = "x"
+
+def cannot_narrow_top_level() -> None:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, None]"
