@@ -1040,3 +1040,21 @@ x: Optional[List[int]]
 if 3 in x:
     pass
 
+[case testNestedFunction]
+from typing import Optional
+
+def f1(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return reveal_type(x)
+    nested()
+
+def f2(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    if int():
+        x = None
+    nested()
