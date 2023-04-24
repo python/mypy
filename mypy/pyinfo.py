@@ -72,6 +72,11 @@ def getsearchdirs() -> tuple[list[str], list[str]]:
 
 if __name__ == "__main__":
     if sys.argv[-1] == "getsearchdirs":
+        # Pass -P flag on Python 3.11 and newer
+        if sys.version_info >= (3, 11):
+            cmd_args = ["-P", sys.argv[0]]
+        else:
+            cmd_args = [sys.argv[0]]
         print(repr(getsearchdirs()))
     else:
         print("ERROR: incorrect argument to pyinfo.py.", file=sys.stderr)
