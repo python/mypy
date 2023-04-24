@@ -45,6 +45,7 @@ from mypy.literals import Key, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_erased_types, is_overlapping_types
 from mypy.message_registry import ErrorMessage
+from mypy.traverser import TraverserVisitor
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
     MessageBuilder,
@@ -1060,12 +1061,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         expanded = self.expand_typevars(defn, typ)
         for item, typ in expanded:
             old_binder = self.binder
-            #print([1], old_binder.frames)
             self.binder = ConditionalTypeBinder()
-            for f in old_binder.frames:
-                for k, v in f.types.items():
-                    if len(k) == 2 and k[0] == 'Var':
-                        print(k[1], v)
             with self.binder.top_frame_context():
                 defn.expanded.append(item)
 
@@ -1212,6 +1208,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
+                for f in old_binder.frames:
+                    for k, v in f.types.items():
+                        if (
+                            len(k) == 2
+                            and k[0] == "Var"
+                            and not self.is_var_redefined_in_outer_context(k[1], defn.line)
+                        ):
+                            f = self.binder.push_frame()
+                            f.types[k] = v
                 with self.scope.push_function(defn):
                     # We suppress reachability warnings when we use TypeVars with value
                     # restrictions: we only want to report a warning if a certain statement is
@@ -1314,6 +1319,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def is_var_redefined_in_outer_context(self, v: Var, after_line: int) -> bool:
+        outer = self.tscope.outer_function()
+        if outer is None:
+            # Top-level function -- outer context is top level, and we can't reason about
+            # globals
+            return True
+        if isinstance(outer, FuncDef):
+            return find_last_var_assignment_line(outer.body, v) >= after_line
+        return False
 
     def check_unbound_return_typevar(self, typ: CallableType) -> None:
         """Fails when the return typevar is not defined in arguments."""
@@ -7634,3 +7649,26 @@ def collapse_walrus(e: Expression) -> Expression:
     if isinstance(e, AssignmentExpr):
         return e.target
     return e
+
+
+def find_last_var_assignment_line(n: Node, v: Var) -> int:
+    v = VarAssignVisitor(v)
+    n.accept(v)
+    return v.last_line
+
+
+class VarAssignVisitor(TraverserVisitor):
+    def __init__(self, v: Var) -> None:
+        self.last_line = -1
+        self.lvalue = False
+        self.var_node = v
+
+    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+        self.lvalue = True
+        for lv in s.lvalues:
+            lv.accept(self)
+        self.lvalue = False
+
+    def visit_name_expr(self, e: NameExpr) -> None:
+        if self.lvalue and e.node is self.var_node:
+            self.last_line = max(self.last_line, e.line)

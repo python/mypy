@@ -1047,10 +1047,9 @@ def f1(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
-        return reveal_type(x)
+        return reveal_type(x)  # N: Revealed type is "builtins.str"
     nested()
 
-"""
 def f2(x: Optional[str]) -> None:
     if x is None:
         x = "a"
@@ -1059,4 +1058,3 @@ def f2(x: Optional[str]) -> None:
     if int():
         x = None
     nested()
-"""
