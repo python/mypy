@@ -2463,10 +2463,17 @@ def format_type_inner(
             )
 
             if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
-                return f"{literal_str} | None" if options.use_or_syntax() else f"Optional[{literal_str}]"
+                return (
+                    f"{literal_str} | None"
+                    if options.use_or_syntax()
+                    else f"Optional[{literal_str}]"
+                )
             elif union_items:
-                return f"{literal_str} | {format_union(union_items)}" if options.use_or_syntax() else\
-                    f"Union[{format_list(union_items)}, {literal_str}]"
+                return (
+                    f"{literal_str} | {format_union(union_items)}"
+                    if options.use_or_syntax()
+                    else f"Union[{format_list(union_items)}, {literal_str}]"
+                )
             else:
                 return literal_str
         else:
@@ -2477,9 +2484,17 @@ def format_type_inner(
             )
             if print_as_optional:
                 rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-                return f"{format(rest[0])} | None" if options.use_or_syntax() else f"Optional[{format(rest[0])}]"
+                return (
+                    f"{format(rest[0])} | None"
+                    if options.use_or_syntax()
+                    else f"Optional[{format(rest[0])}]"
+                )
             else:
-                s = format_union(typ.items) if options.use_or_syntax() else f"Union[{format_list(typ.items)}]"
+                s = (
+                    format_union(typ.items)
+                    if options.use_or_syntax()
+                    else f"Union[{format_list(typ.items)}]"
+                )
             return s
     elif isinstance(typ, NoneType):
         return "None"
