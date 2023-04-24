@@ -233,6 +233,9 @@ class TransformVisitor(NodeVisitor[Node]):
         new.max_pos = original.max_pos
         new.is_overload = original.is_overload
         new.is_generator = original.is_generator
+        new.is_coroutine = original.is_coroutine
+        new.is_async_generator = original.is_async_generator
+        new.is_awaitable_coroutine = original.is_awaitable_coroutine
         new.line = original.line
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> OverloadedFuncDef:
