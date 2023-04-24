@@ -1100,3 +1100,13 @@ def assignment_in_with(x: Optional[str]) -> None:
         return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
     with foo() as x:
         pass
+
+g: Optional[str]
+
+def assign_to_global() -> None:
+    global g
+    g = "x"
+    # This is unsafe, but we don't generate an error, for convenience. Besides,
+    # this is probably a very rare case.
+    def nested() -> str:
+        return g
