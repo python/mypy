@@ -224,7 +224,7 @@ USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
 
 
 # Syntax errors are often blocking.
-SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
+SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
 
 # This is an internal marker code for a whole-file ignore. It is not intended to
 # be user-visible.
