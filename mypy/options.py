@@ -3,6 +3,7 @@ from __future__ import annotations
 import pprint
 import re
 import sys
+import sysconfig
 from typing import Any, Callable, Dict, Mapping, Pattern
 from typing_extensions import Final
 
@@ -86,7 +87,15 @@ class Options:
         # The executable used to search for PEP 561 packages. If this is None,
         # then mypy does not search for PEP 561 packages.
         self.python_executable: str | None = sys.executable
-        self.platform = sys.platform
+
+        # When cross compiling to emscripten, we need to rely on MACHDEP because
+        # sys.platform is the host build platform, not emscripten.
+        MACHDEP = sysconfig.get_config_var("MACHDEP")
+        if MACHDEP == "emscripten":
+            self.platform = MACHDEP
+        else:
+            self.platform = sys.platform
+
         self.custom_typing_module: str | None = None
         self.custom_typeshed_dir: str | None = None
         # The abspath() version of the above, we compute it once as an optimization.

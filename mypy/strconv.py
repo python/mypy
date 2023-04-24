@@ -154,7 +154,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_overloaded_func_def(self, o: mypy.nodes.OverloadedFuncDef) -> str:
-        a: Any = o.items[:]
+        a: Any = o.items.copy()
         if o.type:
             a.insert(0, o.type)
         if o.impl:

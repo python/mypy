@@ -145,7 +145,7 @@ def cleanup_cfg(blocks: list[BasicBlock]) -> None:
         # Then delete any blocks that have no predecessors
         changed = False
         cfg = get_cfg(blocks)
-        orig_blocks = blocks[:]
+        orig_blocks = blocks.copy()
         blocks.clear()
         for i, block in enumerate(orig_blocks):
             if i == 0 or cfg.pred[block]:

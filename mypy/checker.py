@@ -5835,7 +5835,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         should_coerce = True
         if coerce_only_in_literal_context:
-            should_coerce = any(is_literal_type_like(operand_types[i]) for i in chain_indices)
+
+            def should_coerce_inner(typ: Type) -> bool:
+                typ = get_proper_type(typ)
+                return is_literal_type_like(typ) or (
+                    isinstance(typ, Instance) and typ.type.is_enum
+                )
+
+            should_coerce = any(should_coerce_inner(operand_types[i]) for i in chain_indices)
 
         target: Type | None = None
         possible_target_indices = []

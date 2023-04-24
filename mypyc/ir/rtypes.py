@@ -820,17 +820,11 @@ class RUnion(RType):
         items = flatten_nested_unions(items)
         assert items
 
-        # Remove duplicate items using set + list to preserve item order
-        seen = set()
-        new_items = []
-        for item in items:
-            if item not in seen:
-                new_items.append(item)
-                seen.add(item)
-        if len(new_items) > 1:
-            return RUnion(new_items)
+        unique_items = dict.fromkeys(items)
+        if len(unique_items) > 1:
+            return RUnion(list(unique_items))
         else:
-            return new_items[0]
+            return next(iter(unique_items))
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)

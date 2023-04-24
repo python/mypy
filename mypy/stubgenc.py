@@ -254,7 +254,7 @@ def add_typing_import(output: list[str]) -> list[str]:
     if names:
         return [f"from typing import {', '.join(names)}", ""] + output
     else:
-        return output[:]
+        return output.copy()
 
 
 def get_members(obj: object) -> list[tuple[str, Any]]:
