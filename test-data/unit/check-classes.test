@@ -1397,7 +1397,7 @@ main:8: note:          def f(self) -> None
 
 [case testClassMethodAndStaticMethod]
 class C:
-  @classmethod  # E: "Type[C]" cannot have both classmethod and staticmethod
+  @classmethod  # E: Cannot have both classmethod and staticmethod
   @staticmethod
   def foo(cls) -> None: pass
 [builtins fixtures/classmethod.pyi]
