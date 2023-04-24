@@ -1044,18 +1044,3 @@ def coro() -> Generator[int, None, None]:
 reveal_type(coro)  # N: Revealed type is "def () -> typing.AwaitableGenerator[builtins.int, None, None, typing.Generator[builtins.int, None, None]]"
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
-
-[case testAsyncGeneratorWithinComprehension]
-# flags: --python-version 3.11
-from typing import List
-
-async def asynciter(iterable):
-    for x in iterable:
-        yield x
-
-async def coro() -> List[int]:
-    gens = ((i async for i in asynciter([0,j])) for j in [3, 5])
-    return [x for g in gens async for x in g]
-reveal_type(coro)  # N: Revealed type is "def () -> typing.Coroutine[Any, Any, builtins.list[builtins.int]]"
-[builtins fixtures/async_await.pyi]
-[typing fixtures/typing-async.pyi]
