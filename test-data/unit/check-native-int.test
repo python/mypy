@@ -184,3 +184,47 @@ from mypy_extensions import i64, i32
 reveal_type([a for a in range(i64(5))])  # N: Revealed type is "builtins.list[mypy_extensions.i64]"
 [reveal_type(a) for a in range(0, i32(5))]  # N: Revealed type is "mypy_extensions.i32"
 [builtins fixtures/primitives.pyi]
+
+[case testNativeIntNarrowing]
+from typing import Union
+from mypy_extensions import i64, i32
+
+def narrow_i64(x: Union[str, i64]) -> None:
+    if isinstance(x, i64):
+        reveal_type(x)  # N: Revealed type is "mypy_extensions.i64"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, mypy_extensions.i64]"
+
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "mypy_extensions.i64"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, mypy_extensions.i64]"
+
+    if isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is "mypy_extensions.i64"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, mypy_extensions.i64]"
+
+def narrow_i32(x: Union[str, i32]) -> None:
+    if isinstance(x, i32):
+        reveal_type(x)  # N: Revealed type is "mypy_extensions.i32"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, mypy_extensions.i32]"
+
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "mypy_extensions.i32"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, mypy_extensions.i32]"
+
+    if isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is "mypy_extensions.i32"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, mypy_extensions.i32]"
+
+[builtins fixtures/primitives.pyi]

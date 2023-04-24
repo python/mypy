@@ -80,13 +80,24 @@ class NodeFixer(NodeVisitor[None]):
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
                 info.update_tuple_type(info.tuple_type)
+                if info.special_alias:
+                    info.special_alias.alias_tvars = list(info.defn.type_vars)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
                 info.update_typeddict_type(info.typeddict_type)
+                if info.special_alias:
+                    info.special_alias.alias_tvars = list(info.defn.type_vars)
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
+            if info.alt_promote:
+                info.alt_promote.accept(self.type_fixer)
+                instance = Instance(info, [])
+                # Hack: We may also need to add a backwards promotion (from int to native int),
+                # since it might not be serialized.
+                if instance not in info.alt_promote.type._promote:
+                    info.alt_promote.type._promote.append(instance)
             if info._mro_refs:
                 info.mro = [
                     lookup_fully_qualified_typeinfo(
@@ -159,7 +170,7 @@ class NodeFixer(NodeVisitor[None]):
             if isinstance(v, TypeVarType):
                 for value in v.values:
                     value.accept(self.type_fixer)
-                v.upper_bound.accept(self.type_fixer)
+            v.upper_bound.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:

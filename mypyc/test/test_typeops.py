@@ -54,6 +54,13 @@ class TestRuntimeSubtype(unittest.TestCase):
         assert not is_runtime_subtype(bool_rprimitive, bit_rprimitive)
         assert not is_runtime_subtype(bool_rprimitive, int_rprimitive)
 
+    def test_union(self) -> None:
+        bool_int_mix = RUnion([bool_rprimitive, int_rprimitive])
+        assert not is_runtime_subtype(bool_int_mix, short_int_rprimitive)
+        assert not is_runtime_subtype(bool_int_mix, int_rprimitive)
+        assert not is_runtime_subtype(short_int_rprimitive, bool_int_mix)
+        assert not is_runtime_subtype(int_rprimitive, bool_int_mix)
+
 
 class TestUnionSimplification(unittest.TestCase):
     def test_simple_type_result(self) -> None:

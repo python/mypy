@@ -116,7 +116,7 @@ Yusuke Miyazaki). If you are working with large code bases, you can run mypy in
     dmypy run -- PROGRAM
 
 [statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
-[daemon-mode]: https://mypy.readthedocs.io/en/stable/mypy_daemon.html
+[daemon mode]: https://mypy.readthedocs.io/en/stable/mypy_daemon.html
 
 
 Integrations
@@ -142,7 +142,7 @@ Web site and documentation
 
 Additional information is available at the web site:
 
-  http://www.mypy-lang.org/
+  https://www.mypy-lang.org/
 
 Jump straight to the documentation:
 

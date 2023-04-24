@@ -41,6 +41,14 @@ class DeleteFile(NamedTuple):
 FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
 
 
+def _file_arg_to_module(filename: str) -> str:
+    filename, _ = os.path.splitext(filename)
+    parts = filename.split("/")  # not os.sep since it comes from test data
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts)
+
+
 def parse_test_case(case: DataDrivenTestCase) -> None:
     """Parse and prepare a single case from suite with test case descriptions.
 
@@ -65,35 +73,44 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     rechecked_modules: dict[int, set[str]] = {}  # from run number module names
     triggered: list[str] = []  # Active triggers (one line per incremental step)
     targets: dict[int, list[str]] = {}  # Fine-grained targets (per fine-grained update)
+    test_modules: list[str] = []  # Modules which are deemed "test" (vs "fixture")
 
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
     item = first_item = test_items[0]
+    test_modules.append("__main__")
     for item in test_items[1:]:
-        if item.id in {"file", "outfile", "outfile-re"}:
+        if item.id in {"file", "fixture", "outfile", "outfile-re"}:
             # Record an extra file needed for the test case.
             assert item.arg is not None
             contents = expand_variables("\n".join(item.data))
-            file_entry = (join(base_path, item.arg), contents)
-            if item.id == "file":
-                files.append(file_entry)
+            path = join(base_path, item.arg)
+            if item.id != "fixture":
+                test_modules.append(_file_arg_to_module(item.arg))
+            if item.id in {"file", "fixture"}:
+                files.append((path, contents))
             elif item.id == "outfile-re":
-                output_files.append((file_entry[0], re.compile(file_entry[1].rstrip(), re.S)))
-            else:
-                output_files.append(file_entry)
-        elif item.id in ("builtins", "builtins_py2"):
+                output_files.append((path, re.compile(contents.rstrip(), re.S)))
+            elif item.id == "outfile":
+                output_files.append((path, contents))
+        elif item.id == "builtins":
             # Use an alternative stub file for the builtins module.
             assert item.arg is not None
             mpath = join(os.path.dirname(case.file), item.arg)
-            fnam = "builtins.pyi" if item.id == "builtins" else "__builtin__.pyi"
             with open(mpath, encoding="utf8") as f:
-                files.append((join(base_path, fnam), f.read()))
+                files.append((join(base_path, "builtins.pyi"), f.read()))
         elif item.id == "typing":
             # Use an alternative stub file for the typing module.
             assert item.arg is not None
             src_path = join(os.path.dirname(case.file), item.arg)
             with open(src_path, encoding="utf8") as f:
                 files.append((join(base_path, "typing.pyi"), f.read()))
+        elif item.id == "_typeshed":
+            # Use an alternative stub file for the _typeshed module.
+            assert item.arg is not None
+            src_path = join(os.path.dirname(case.file), item.arg)
+            with open(src_path, encoding="utf8") as f:
+                files.append((join(base_path, "_typeshed.pyi"), f.read()))
         elif re.match(r"stale[0-9]*$", item.id):
             passnum = 1 if item.id == "stale" else int(item.id[len("stale") :])
             assert passnum > 0
@@ -170,9 +187,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
         elif item.id == "triggered" and item.arg is None:
             triggered = item.data
         else:
-            raise ValueError(
-                f"Invalid section header {item.id} in {case.file} at line {item.line}"
-            )
+            raise ValueError(f"Invalid section header {item.id} in {case.file}:{item.line}")
 
     if out_section_missing:
         raise ValueError(f"{case.file}, line {first_item.line}: Required output section not found")
@@ -198,6 +213,16 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     for file_path, contents in files:
         expand_errors(contents.split("\n"), output, file_path)
 
+    seen_files = set()
+    for file, _ in files:
+        if file in seen_files:
+            raise ValueError(
+                f"{case.file}, line {first_item.line}: Duplicated filename {file}. Did you include"
+                " it multiple times?"
+            )
+
+        seen_files.add(file)
+
     case.input = input
     case.output = output
     case.output2 = output2
@@ -210,6 +235,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     case.triggered = triggered or []
     case.normalize_output = normalize_output
     case.expected_fine_grained_targets = targets
+    case.test_modules = test_modules
 
 
 class DataDrivenTestCase(pytest.Item):
@@ -228,6 +254,8 @@ class DataDrivenTestCase(pytest.Item):
 
     # (file path, file content) tuples
     files: list[tuple[str, str]]
+    # Modules which is to be considered "test" rather than "fixture"
+    test_modules: list[str]
     expected_stale_modules: dict[int, set[str]]
     expected_rechecked_modules: dict[int, set[str]]
     expected_fine_grained_targets: dict[int, list[str]]
@@ -347,11 +375,13 @@ class DataDrivenTestCase(pytest.Item):
         return self.file, self.line, self.name
 
     def repr_failure(self, excinfo: Any, style: Any | None = None) -> str:
-        if excinfo.errisinstance(SystemExit):
+        if isinstance(excinfo.value, SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.
             # In particular, uncaught exceptions during semantic analysis or type checking
             # call exit() and they already print out a stack trace.
+            excrepr = excinfo.exconly()
+        elif isinstance(excinfo.value, pytest.fail.Exception) and not excinfo.value.pytrace:
             excrepr = excinfo.exconly()
         else:
             self.parent._prunetraceback(excinfo)
@@ -462,7 +492,7 @@ def strip_list(l: list[str]) -> list[str]:
         # Strip spaces at end of line
         r.append(re.sub(r"\s+$", "", s))
 
-    while len(r) > 0 and r[-1] == "":
+    while r and r[-1] == "":
         r.pop()
 
     return r
@@ -582,7 +612,7 @@ def pytest_addoption(parser: Any) -> None:
 
 
 # This function name is special to pytest.  See
-# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
+# https://doc.pytest.org/en/latest/how-to/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | None:
     """Called by pytest on each object in modules configured in conftest.py files.
 
@@ -677,8 +707,8 @@ class DataFileCollector(pytest.Collector):
     parent: DataSuiteCollector
 
     @classmethod  # We have to fight with pytest here:
-    def from_parent(  # type: ignore[override]
-        cls, parent: DataSuiteCollector, *, name: str
+    def from_parent(
+        cls, parent: DataSuiteCollector, *, name: str  # type: ignore[override]
     ) -> DataFileCollector:
         collector = super().from_parent(parent, name=name)
         assert isinstance(collector, DataFileCollector)

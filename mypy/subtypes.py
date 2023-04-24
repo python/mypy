@@ -27,6 +27,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.state import state
 from mypy.types import (
+    MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
@@ -387,8 +388,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_proper_subtype(left, right, subtype_context=self.subtype_context)
         return is_subtype(left, right, subtype_context=self.subtype_context)
 
-    # visit_x(left) means: is left (which is an instance of X) a subtype of
-    # right?
+    # visit_x(left) means: is left (which is an instance of X) a subtype of right?
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         # This can be called if there is a bad type annotation. The result probably
@@ -444,6 +444,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
+            if type_state.is_cached_negative_subtype_check(self._subtype_kind, left, right):
+                return False
             if not self.subtype_context.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and any(
@@ -454,7 +456,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # Special case: Low-level integer types are compatible with 'int'. We can't
                 # use promotions, since 'int' is already promoted to low-level integer types,
                 # and we can't have circular promotions.
-                if left.type.alt_promote is right.type:
+                if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
             # Always try a nominal check if possible,
@@ -598,11 +600,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 nominal = False
                 if nominal:
                     type_state.record_subtype_cache_entry(self._subtype_kind, left, right)
+                else:
+                    type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(
                 left, right, proper_subtype=self.proper_subtype
             ):
                 return True
+            # We record negative cache entry here, and not in the protocol check like we do for
+            # positive cache, to avoid accidentally adding a type that is not a structural
+            # subtype, but is a nominal subtype (involving type: ignore override).
+            type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
             return False
         if isinstance(right, TypeType):
             item = right.item
@@ -909,13 +917,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
             for item in _flattened(self.right.relevant_items()):
                 p_item = get_proper_type(item)
-                if isinstance(p_item, LiteralType):
-                    fast_check.add(p_item)
-                elif isinstance(p_item, Instance):
-                    if p_item.last_known_value is None:
-                        fast_check.add(p_item)
-                    else:
-                        fast_check.add(p_item.last_known_value)
+                fast_check.add(p_item)
+                if isinstance(p_item, Instance) and p_item.last_known_value is not None:
+                    fast_check.add(p_item.last_known_value)
 
             for item in left.relevant_items():
                 p_item = get_proper_type(item)
@@ -1026,7 +1030,7 @@ def is_protocol_implementation(
         if not members_right.issubset(members_left):
             return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
-    for (l, r) in reversed(assuming):
+    for l, r in reversed(assuming):
         if l == left and r == right:
             return True
     with pop_on_exit(assuming, left, right):
@@ -1038,23 +1042,8 @@ def is_protocol_implementation(
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = get_proper_type(find_member(member, right, left))
             assert supertype is not None
-            if member == "__call__" and class_obj:
-                # Special case: class objects always have __call__ that is just the constructor.
-                # TODO: move this helper function to typeops.py?
-                import mypy.checkmember
 
-                def named_type(fullname: str) -> Instance:
-                    return Instance(left.type.mro[-1], [])
-
-                subtype: ProperType | None = mypy.checkmember.type_object_type(
-                    left.type, named_type
-                )
-            elif member == "__call__" and left.type.is_metaclass():
-                # Special case: we want to avoid falling back to metaclass __call__
-                # if constructor signature didn't match, this can cause many false negatives.
-                subtype = None
-            else:
-                subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
+            subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1793,14 +1782,22 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
         erase_type(item), supertype, ignore_promotions=True, erase_instances=True
     ):
         return True
-    if isinstance(supertype, Instance) and supertype.type.is_protocol:
-        # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
-        if is_proper_subtype(item, supertype, ignore_promotions=True):
-            return True
-    if isinstance(item, TypedDictType) and isinstance(supertype, Instance):
-        # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
-        if supertype.type.fullname == "builtins.dict":
-            return True
+    if isinstance(supertype, Instance):
+        if supertype.type.is_protocol:
+            # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
+            if is_proper_subtype(item, supertype, ignore_promotions=True):
+                return True
+        if isinstance(item, TypedDictType):
+            # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
+            if supertype.type.fullname == "builtins.dict":
+                return True
+        elif isinstance(item, TypeVarType):
+            if is_proper_subtype(item.upper_bound, supertype, ignore_promotions=True):
+                return True
+        elif isinstance(item, Instance) and supertype.type.fullname == "builtins.int":
+            # "int" covers all native int types
+            if item.type.fullname in MYPYC_NATIVE_INT_NAMES:
+                return True
     # TODO: Add more special cases.
     return False
 

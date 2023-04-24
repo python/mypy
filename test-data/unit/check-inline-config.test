@@ -315,3 +315,12 @@ class C:
         pass
 
 [builtins fixtures/exception.pyi]
+
+[case testInlineErrorCodesMultipleCodes]
+# mypy: disable-error-code="truthy-bool, ignore-without-code"
+class Foo:
+    pass
+
+foo = Foo()
+if foo: ...
+42 + "no"  # type: ignore

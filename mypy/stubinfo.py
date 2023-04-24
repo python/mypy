@@ -20,8 +20,6 @@ def stub_package_name(prefix: str) -> str:
 # Package name can have one or two components ('a' or 'a.b').
 legacy_bundled_packages = {
     "aiofiles": "types-aiofiles",
-    "backports": "types-backports",
-    "backports_abc": "types-backports_abc",
     "bleach": "types-bleach",
     "boto": "types-boto",
     "cachetools": "types-cachetools",
@@ -76,8 +74,6 @@ legacy_bundled_packages = {
 # Package name can have one or two components ('a' or 'a.b').
 #
 # Note that these packages are omitted for now:
-#   sqlalchemy: It's unclear which stub package to suggest. There's also
-#               a mypy plugin available.
 #   pika:       typeshed's stubs are on PyPI as types-pika-ts.
 #               types-pika already exists on PyPI, and is more complete in many ways,
 #               but is a non-typeshed stubs package.
@@ -180,4 +176,9 @@ non_bundled_packages = {
     "xmltodict": "types-xmltodict",
     "xxhash": "types-xxhash",
     "zxcvbn": "types-zxcvbn",
+    # Stub packages that are not from typeshed
+    # Since these can be installed automatically via --install-types, we have a high trust bar
+    # for additions here
+    "pandas": "pandas-stubs",  # https://github.com/pandas-dev/pandas-stubs
+    "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
 }

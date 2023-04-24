@@ -989,7 +989,6 @@ import attr
 class A:
     a: int
     other: int
-[builtins fixtures/list.pyi]
 
 [file a.py.3]
 import attr
@@ -1809,8 +1808,8 @@ def f() -> Iterator[None]:
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b>, __main__
-3: <b>, __main__, a
+2: <b>, <b[wildcard]>, __main__
+3: <b>, <b[wildcard]>, __main__, a
 [out]
 main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
@@ -7547,7 +7546,7 @@ def d() -> Dict[int, int]: pass
 [builtins fixtures/dict.pyi]
 [out]
 ==
-main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testAwaitAndAsyncDef-only_when_nocache]
 from a import g
@@ -9975,7 +9974,7 @@ def update() -> str: ...
 [out]
 ==
 m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
-m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+m.py:9: note: Following member(s) of Module "default_config" have conflicts:
 m.py:9: note:     Expected:
 m.py:9: note:         def update() -> bool
 m.py:9: note:     Got:

@@ -123,7 +123,9 @@ def array_constructor_callback(ctx: mypy.plugin.FunctionContext) -> Type:
                 ctx.api.msg.fail(
                     "Array constructor argument {} of type {}"
                     " is not convertible to the array element type {}".format(
-                        arg_num, format_type(arg_type), format_type(et)
+                        arg_num,
+                        format_type(arg_type, ctx.api.options),
+                        format_type(et, ctx.api.options),
                     ),
                     ctx.context,
                 )
@@ -134,7 +136,9 @@ def array_constructor_callback(ctx: mypy.plugin.FunctionContext) -> Type:
                     ctx.api.msg.fail(
                         "Array constructor argument {} of type {}"
                         " is not convertible to the array element type {}".format(
-                            arg_num, format_type(arg_type), format_type(it)
+                            arg_num,
+                            format_type(arg_type, ctx.api.options),
+                            format_type(it, ctx.api.options),
                         ),
                         ctx.context,
                     )
@@ -209,7 +213,9 @@ def array_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
             else:
                 ctx.api.msg.fail(
                     'Array attribute "value" is only available'
-                    ' with element type "c_char" or "c_wchar", not {}'.format(format_type(et)),
+                    ' with element type "c_char" or "c_wchar", not {}'.format(
+                        format_type(et, ctx.api.options)
+                    ),
                     ctx.context,
                 )
         return make_simplified_union(types)
@@ -232,7 +238,7 @@ def array_raw_callback(ctx: mypy.plugin.AttributeContext) -> Type:
             else:
                 ctx.api.msg.fail(
                     'Array attribute "raw" is only available'
-                    ' with element type "c_char", not {}'.format(format_type(et)),
+                    ' with element type "c_char", not {}'.format(format_type(et, ctx.api.options)),
                     ctx.context,
                 )
         return make_simplified_union(types)

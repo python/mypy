@@ -70,7 +70,7 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     defined = analyze_must_defined_regs(ir.blocks, cfg, args, values, strict_errors=True)
     ordering = make_value_ordering(ir)
     cache: BlockCache = {}
-    for block in ir.blocks[:]:
+    for block in ir.blocks.copy():
         if isinstance(block.ops[-1], (Branch, Goto)):
             insert_branch_inc_and_decrefs(
                 block,

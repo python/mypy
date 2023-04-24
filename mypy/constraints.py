@@ -619,6 +619,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         actual.item, template, subtype, template, class_obj=True
                     )
                 )
+            if self.direction == SUPERTYPE_OF:
+                # Infer constraints for Type[T] via metaclass of T when it makes sense.
+                a_item = actual.item
+                if isinstance(a_item, TypeVarType):
+                    a_item = get_proper_type(a_item.upper_bound)
+                if isinstance(a_item, Instance) and a_item.type.metaclass_type:
+                    res.extend(
+                        self.infer_constraints_from_protocol_members(
+                            a_item.type.metaclass_type, template, actual, template
+                        )
+                    )
 
         if isinstance(actual, Overloaded) and actual.fallback is not None:
             actual = actual.fallback
@@ -938,7 +949,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 )
 
                 # TODO: see above "FIX" comments for param_spec is None case
-                # TODO: this assume positional arguments
+                # TODO: this assumes positional arguments
                 for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
                     res.extend(infer_constraints(t, a, neg_op(self.direction)))
 
@@ -995,7 +1006,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return infer_constraints(template, item, self.direction)
 
     def visit_tuple_type(self, template: TupleType) -> list[Constraint]:
-
         actual = self.actual
         unpack_index = find_unpack_in_list(template.items)
         is_varlength_tuple = (
@@ -1054,7 +1064,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res: list[Constraint] = []
             # NOTE: Non-matching keys are ignored. Compatibility is checked
             #       elsewhere so this shouldn't be unsafe.
-            for (item_name, template_item_type, actual_item_type) in template.zip(actual):
+            for item_name, template_item_type, actual_item_type in template.zip(actual):
                 res.extend(infer_constraints(template_item_type, actual_item_type, self.direction))
             return res
         elif isinstance(actual, AnyType):
@@ -1148,7 +1158,7 @@ def find_matching_overload_items(
     if not res:
         # Falling back to all items if we can't find a match is pretty arbitrary, but
         # it maintains backward compatibility.
-        res = items[:]
+        res = items.copy()
     return res
 
 

@@ -41,6 +41,7 @@ from mypy.nodes import (
     TypeInfo,
     TypeVarExpr,
     Var,
+    is_StrExpr_list,
 )
 from mypy.options import Options
 from mypy.semanal_shared import (
@@ -280,7 +281,7 @@ class NamedTupleAnalyzer:
             #     two methods of a class can define a named tuple with the same name,
             #     and they will be stored in the same namespace (see below).
             name += "@" + str(call.line)
-        if len(defaults) > 0:
+        if defaults:
             default_items = {
                 arg_name: default for arg_name, default in zip(items[-len(defaults) :], defaults)
             }
@@ -373,7 +374,7 @@ class NamedTupleAnalyzer:
         if not isinstance(args[0], StrExpr):
             self.fail(f'"{type_name}()" expects a string literal as the first argument', call)
             return None
-        typename = cast(StrExpr, call.args[0]).value
+        typename = args[0].value
         types: list[Type] = []
         tvar_defs = []
         if not isinstance(args[1], (ListExpr, TupleExpr)):
@@ -392,10 +393,10 @@ class NamedTupleAnalyzer:
             listexpr = args[1]
             if fullname == "collections.namedtuple":
                 # The fields argument contains just names, with implicit Any types.
-                if any(not isinstance(item, StrExpr) for item in listexpr.items):
+                if not is_StrExpr_list(listexpr.items):
                     self.fail('String literal expected as "namedtuple()" item', call)
                     return None
-                items = [cast(StrExpr, item).value for item in listexpr.items]
+                items = [item.value for item in listexpr.items]
             else:
                 type_exprs = [
                     t.items[1]
@@ -481,13 +482,9 @@ class NamedTupleAnalyzer:
         strtype = self.api.named_type("builtins.str")
         implicit_any = AnyType(TypeOfAny.special_form)
         basetuple_type = self.api.named_type("builtins.tuple", [implicit_any])
-        dictype = self.api.named_type_or_none(
-            "builtins.dict", [strtype, implicit_any]
-        ) or self.api.named_type("builtins.object")
+        dictype = self.api.named_type("builtins.dict", [strtype, implicit_any])
         # Actual signature should return OrderedDict[str, Union[types]]
-        ordereddictype = self.api.named_type_or_none(
-            "builtins.dict", [strtype, implicit_any]
-        ) or self.api.named_type("builtins.object")
+        ordereddictype = self.api.named_type("builtins.dict", [strtype, implicit_any])
         fallback = self.api.named_type("builtins.tuple", [implicit_any])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.

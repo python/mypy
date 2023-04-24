@@ -672,8 +672,8 @@ app1 >= app3
 # flags: --python-version 3.7
 from dataclasses import dataclass
 
-@dataclass(eq=False, order=True)
-class Application:  # E: eq must be True if order is True
+@dataclass(eq=False, order=True)  # E: "eq" must be True if "order" is True
+class Application:
    ...
 
 [builtins fixtures/dataclasses.pyi]
@@ -684,7 +684,7 @@ from dataclasses import dataclass
 
 @dataclass(order=True)
 class Application:
-  def __lt__(self, other: 'Application') -> bool: # E: You may not have a custom __lt__ method when order=True
+  def __lt__(self, other: 'Application') -> bool: # E: You may not have a custom "__lt__" method when "order" is True
     ...
 
 [builtins fixtures/dataclasses.pyi]
@@ -2000,4 +2000,40 @@ class Element(Generic[_T]):
 class Bar(Foo): ...
 e: Element[Bar]
 reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testIfConditionsInDefinition]
+# flags: --python-version 3.11 --always-true TRUTH
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+
+@dataclass
+class Foo:
+    if TYPE_CHECKING:
+        present_1: int
+    else:
+        skipped_1: int
+    if True:  # Mypy does not know if it is True or False, so the block is used
+        present_2: int
+    if False:  # Mypy does not know if it is True or False, so the block is used
+        present_3: int
+    if not TRUTH:
+        skipped_2: int
+    elif 123:
+        present_4: int
+    elif TRUTH:
+        present_5: int
+    else:
+        skipped_3: int
+
+Foo(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    present_5=5,
+)
 [builtins fixtures/dataclasses.pyi]

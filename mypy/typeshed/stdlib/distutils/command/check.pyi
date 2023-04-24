@@ -6,6 +6,8 @@ from ..cmd import Command
 _Reporter: TypeAlias = Any  # really docutils.utils.Reporter
 
 # Only defined if docutils is installed.
+# Depends on a third-party stub. Since distutils is deprecated anyway,
+# it's easier to just suppress the "any subclassing" error.
 class SilentReporter(_Reporter):
     messages: Any
     def __init__(

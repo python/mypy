@@ -1,9 +1,7 @@
 [case testI64BasicOps]
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Union
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32
 
 from testutil import assertRaises
 
@@ -317,7 +315,8 @@ def test_explicit_conversion_from_float() -> None:
     assert from_float(0.0) == 0
     assert from_float(1.456) == 1
     assert from_float(-1234.567) == -1234
-    assert from_float(2**63 - 1) == 2**63 - 1
+    # Subtract 1024 due to limited precision of 64-bit floats
+    assert from_float(2**63 - 1024) == 2**63 - 1024
     assert from_float(-2**63) == -2**63
     # The error message could be better, but this is acceptable
     with assertRaises(OverflowError, "int too large to convert to i64"):
@@ -497,16 +496,28 @@ def test_for_loop() -> None:
     assert n == 9
     assert sum([x * x for x in range(i64(4 + int()))]) == 1 + 4 + 9
 
+def narrow1(x: Union[str, i64]) -> i64:
+    if isinstance(x, i64):
+        return x
+    return len(x)
+
+def narrow2(x: Union[str, i64]) -> i64:
+    if isinstance(x, int):
+        return x
+    return len(x)
+
+def test_isinstance() -> None:
+    assert narrow1(123) == 123
+    assert narrow1("foobar") == 6
+    assert narrow2(123) == 123
+    assert narrow2("foobar") == 6
+
 [case testI64ErrorValuesAndUndefined]
 from typing import Any, Tuple
 import sys
 
-from mypy_extensions import mypyc_attr
+from mypy_extensions import mypyc_attr, i64
 from typing_extensions import Final
-
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64
 
 from testutil import assertRaises
 
@@ -895,9 +906,7 @@ from typing_extensions import Final
 
 MAGIC: Final = -113
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64
+from mypy_extensions import i64
 
 def f(x: i64, y: i64 = 5) -> i64:
     return x + y
@@ -1195,9 +1204,7 @@ def test_magic_default() -> None:
 [case testI64UndefinedLocal]
 from typing_extensions import Final
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32
 
 from testutil import assertRaises
 
@@ -1330,9 +1337,7 @@ def test_many_locals() -> None:
 from typing import Any
 from typing_extensions import Final
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, trait
+from mypy_extensions import i64, trait
 
 from testutil import assertRaises
 

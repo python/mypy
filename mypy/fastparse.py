@@ -256,7 +256,6 @@ def parse(
     errors: Errors | None = None,
     options: Options | None = None,
 ) -> MypyFile:
-
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -271,7 +270,7 @@ def parse(
     if options is None:
         options = Options()
     if errors is None:
-        errors = Errors(hide_error_codes=options.hide_error_codes)
+        errors = Errors(options)
         raise_on_error = True
     errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")
@@ -363,8 +362,7 @@ def parse_type_comment(
     else:
         extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment)
         if extra_ignore:
-            # Typeshed has a non-optional return type for group!
-            tag: str | None = cast(Any, extra_ignore).group(1)
+            tag: str | None = extra_ignore.group(1)
             ignored: list[str] | None = parse_type_ignore_tag(tag)
             if ignored is None:
                 if errors is not None:
@@ -514,11 +512,13 @@ class ASTConverter:
             and self.type_ignores
             and min(self.type_ignores) < self.get_lineno(stmts[0])
         ):
-            if self.type_ignores[min(self.type_ignores)]:
+            ignores = self.type_ignores[min(self.type_ignores)]
+            if ignores:
+                joined_ignores = ", ".join(ignores)
                 self.fail(
                     (
                         "type ignore with error code is not supported for modules; "
-                        "use `# mypy: disable-error-code=...`"
+                        f'use `# mypy: disable-error-code="{joined_ignores}"`'
                     ),
                     line=min(self.type_ignores),
                     column=0,
@@ -732,7 +732,9 @@ class ASTConverter:
                 if current_overload and current_overload_name == last_if_stmt_overload_name:
                     # Remove last stmt (IfStmt) from ret if the overload names matched
                     # Only happens if no executable block had been found in IfStmt
-                    skipped_if_stmts.append(cast(IfStmt, ret.pop()))
+                    popped = ret.pop()
+                    assert isinstance(popped, IfStmt)
+                    skipped_if_stmts.append(popped)
                 if current_overload and skipped_if_stmts:
                     # Add bare IfStmt (without overloads) to ret
                     # Required for mypy to be able to still check conditions
@@ -906,7 +908,7 @@ class ASTConverter:
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
         for ti in mod.type_ignores:
-            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
+            parsed = parse_type_ignore_tag(ti.tag)
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
@@ -1150,7 +1152,14 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
+        argument = Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
+        argument.set_line(
+            arg.lineno,
+            arg.col_offset,
+            getattr(arg, "end_lineno", None),
+            getattr(arg, "end_col_offset", None),
+        )
+        return argument
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
         self.fail(msg, arg.lineno, arg.col_offset)

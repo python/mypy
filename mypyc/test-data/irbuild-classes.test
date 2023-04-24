@@ -656,6 +656,75 @@ L0:
     r3 = CPyTagged_Add(r0, r2)
     return r3
 
+[case testCallClassMethodViaCls]
+class C:
+    @classmethod
+    def f(cls, x: int) -> int:
+        return cls.g(x)
+
+    @classmethod
+    def g(cls, x: int) -> int:
+        return x
+
+class D:
+    @classmethod
+    def f(cls, x: int) -> int:
+        # TODO: This could aso be optimized, since g is not ever overridden
+        return cls.g(x)
+
+    @classmethod
+    def g(cls, x: int) -> int:
+        return x
+
+class DD(D):
+    pass
+[out]
+def C.f(cls, x):
+    cls :: object
+    x :: int
+    r0 :: object
+    r1 :: int
+L0:
+    r0 = __main__.C :: type
+    r1 = C.g(r0, x)
+    return r1
+def C.g(cls, x):
+    cls :: object
+    x :: int
+L0:
+    return x
+def D.f(cls, x):
+    cls :: object
+    x :: int
+    r0 :: str
+    r1, r2 :: object
+    r3 :: int
+L0:
+    r0 = 'g'
+    r1 = box(int, x)
+    r2 = CPyObject_CallMethodObjArgs(cls, r0, r1, 0)
+    r3 = unbox(int, r2)
+    return r3
+def D.g(cls, x):
+    cls :: object
+    x :: int
+L0:
+    return x
+
+[case testCannotAssignToClsArgument]
+from typing import Any, cast
+
+class C:
+    @classmethod
+    def m(cls) -> None:
+        cls = cast(Any, D)  # E: Cannot assign to the first argument of classmethod
+        cls, x = cast(Any, D), 1  # E: Cannot assign to the first argument of classmethod
+        cls, x = cast(Any, [1, 2])  # E: Cannot assign to the first argument of classmethod
+        cls.m()
+
+class D:
+    pass
+
 [case testSuper1]
 class A:
     def __init__(self, x: int) -> None:
@@ -1245,3 +1314,45 @@ L2:
     y = 4
 L3:
     return 1
+
+[case testIncompatibleDefinitionOfAttributeInSubclass]
+from mypy_extensions import trait
+
+class Base:
+    x: int
+
+class Bad1(Base):
+    x: bool  # E: Type of "x" is incompatible with definition in class "Base"
+
+class Good1(Base):
+    x: int
+
+class Good2(Base):
+    x: int = 0
+
+class Good3(Base):
+    x = 0
+
+class Good4(Base):
+    def __init__(self) -> None:
+        self.x = 0
+
+class Good5(Base):
+    def __init__(self) -> None:
+        self.x: int = 0
+
+class Base2(Base):
+    pass
+
+class Bad2(Base2):
+    x: bool = False  # E: Type of "x" is incompatible with definition in class "Base"
+
+class Bad3(Base):
+    x = False  # E: Type of "x" is incompatible with definition in class "Base"
+
+@trait
+class T:
+    y: object
+
+class E(T):
+    y: str  # E: Type of "y" is incompatible with definition in trait "T"

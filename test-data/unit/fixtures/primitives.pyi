@@ -1,4 +1,5 @@
 # builtins stub with non-generic primitive types
+import _typeshed
 from typing import Generic, TypeVar, Sequence, Iterator, Mapping, Iterable, Tuple, Union
 
 T = TypeVar('T')
