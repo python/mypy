@@ -282,17 +282,6 @@ Native classes can only use these dunder methods to override operators:
 
     This limitation will be lifted in the future.
 
-Generator expressions
-*********************
-
-Generator expressions are not supported. To make it easier to compile
-existing code, they are implicitly replaced with list comprehensions.
-*This does not always produce the same behavior.*
-
-To work around this limitation, you can usually use a generator
-function instead.  You can sometimes replace the generator expression
-with an explicit list comprehension.
-
 Descriptors
 ***********
 

@@ -194,6 +194,7 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
+        self.generators_to_argname = pbv.generators_to_argname
         self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor

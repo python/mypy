@@ -11,6 +11,7 @@ from typing import Callable, Sequence
 from mypy.nodes import (
     ARG_POS,
     LDEF,
+    ArgKind,
     AssertTypeExpr,
     AssignmentExpr,
     BytesExpr,
@@ -47,9 +48,9 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
-from mypyc.common import MAX_SHORT_INT
+from mypyc.common import LAMBDA_NAME, MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
+from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
     Assign,
     BasicBlock,
@@ -90,6 +91,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_printf_style,
 )
+from mypyc.irbuild.function import gen_func_item
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
 from mypyc.irbuild.util import bytes_from_str
 from mypyc.primitives.bytes_ops import bytes_slice_op
@@ -1033,9 +1035,26 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
     return builder.call_c(new_slice_op, args, expr.line)
 
 
-def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
-    builder.warning("Treating generator comprehension as list", o.line)
-    return builder.call_c(iter_op, [translate_list_comprehension(builder, o)], o.line)
+def transform_generator_expr(builder: IRBuilder, expr: GeneratorExpr) -> Value:
+    # create the function that returns a generator
+    name = builder.generators_to_argname[expr]
+    runtime_args = [RuntimeArg(name, object_rprimitive, ArgKind.ARG_POS)]
+    ret_type = builder.type_to_rtype(builder.types[expr])
+
+    fsig = FuncSignature(runtime_args, ret_type)
+
+    fname = f"{LAMBDA_NAME}{builder.lambda_counter}"
+    builder.lambda_counter += 1
+    func_ir, func_reg = gen_func_item(builder, expr, fname, fsig)
+    assert func_reg is not None
+
+    builder.functions.append(func_ir)
+
+    # call the generator
+    arg = builder.accept(expr.sequences[0])
+    arg_iter = builder.call_c(iter_op, [arg], expr.sequences[0].line)
+
+    return builder.py_call(func_reg, [arg_iter], expr.line)
 
 
 def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:

@@ -21,6 +21,7 @@ from mypy.nodes import (
     Decorator,
     FuncDef,
     FuncItem,
+    GeneratorExpr,
     LambdaExpr,
     OverloadedFuncDef,
     SymbolNode,
@@ -217,7 +218,7 @@ def gen_func_item(
     # We treat lambdas as always being nested because we always generate
     # a class for lambdas, no matter where they are. (It would probably also
     # work to special case toplevel lambdas and generate a non-class function.)
-    is_nested = fitem in builder.nested_fitems or isinstance(fitem, LambdaExpr)
+    is_nested = fitem in builder.nested_fitems or isinstance(fitem, (LambdaExpr, GeneratorExpr))
     contains_nested = fitem in builder.encapsulating_funcs.keys()
     is_decorated = fitem in builder.fdefs_to_decorators
     is_singledispatch = fitem in builder.singledispatch_impls

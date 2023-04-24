@@ -20,6 +20,7 @@ ENV_ATTR_NAME: Final = "__mypyc_env__"
 NEXT_LABEL_ATTR_NAME: Final = "__mypyc_next_label__"
 TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
+GENERATOR_ARG_NAME: Final = "__mypyc__generator_arg__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
 

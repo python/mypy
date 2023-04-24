@@ -77,208 +77,218 @@ def f(x):
 L0:
     return x
 def test1():
-    r0 :: list
-    r1, r2, r3 :: object
-    r4, r5, r6, r7 :: ptr
-    tmp_list :: list
-    r8 :: set
-    r9 :: short_int
-    r10 :: ptr
-    r11 :: native_int
-    r12 :: short_int
-    r13 :: bit
-    r14 :: object
-    r15, x, r16 :: int
-    r17 :: object
-    r18 :: int32
-    r19 :: bit
-    r20 :: short_int
-    a :: set
-L0:
-    r0 = PyList_New(3)
-    r1 = object 1
-    r2 = object 3
-    r3 = object 5
-    r4 = get_element_ptr r0 ob_item :: PyListObject
-    r5 = load_mem r4 :: ptr*
-    set_mem r5, r1 :: builtins.object*
-    r6 = r5 + WORD_SIZE*1
-    set_mem r6, r2 :: builtins.object*
-    r7 = r5 + WORD_SIZE*2
-    set_mem r7, r3 :: builtins.object*
-    keep_alive r0
-    tmp_list = r0
-    r8 = PySet_New(0)
-    r9 = 0
-L1:
-    r10 = get_element_ptr tmp_list ob_size :: PyVarObject
-    r11 = load_mem r10 :: native_int*
-    keep_alive tmp_list
-    r12 = r11 << 1
-    r13 = r9 < r12 :: signed
-    if r13 goto L2 else goto L4 :: bool
-L2:
-    r14 = CPyList_GetItemUnsafe(tmp_list, r9)
-    r15 = unbox(int, r14)
-    x = r15
-    r16 = f(x)
-    r17 = box(int, r16)
-    r18 = PySet_Add(r8, r17)
-    r19 = r18 >= 0 :: signed
-L3:
-    r20 = r9 + 2
-    r9 = r20
-    goto L1
-L4:
-    a = r8
-    return 1
-def test2():
-    r0, tmp_tuple :: tuple[int, int, int]
-    r1 :: set
+    r0 :: __main__.test1_env
+    r1 :: list
     r2, r3, r4 :: object
-    r5, x, r6 :: int
-    r7 :: object
-    r8 :: int32
-    r9, r10 :: bit
-    b :: set
-L0:
-    r0 = (2, 6, 10)
-    tmp_tuple = r0
-    r1 = PySet_New(0)
-    r2 = box(tuple[int, int, int], tmp_tuple)
-    r3 = PyObject_GetIter(r2)
-L1:
-    r4 = PyIter_Next(r3)
-    if is_error(r4) goto L4 else goto L2
-L2:
-    r5 = unbox(int, r4)
-    x = r5
-    r6 = f(x)
-    r7 = box(int, r6)
-    r8 = PySet_Add(r1, r7)
-    r9 = r8 >= 0 :: signed
-L3:
-    goto L1
-L4:
-    r10 = CPy_NoErrOccured()
-L5:
-    b = r1
-    return 1
-def test3():
-    r0, r1, r2 :: str
-    r3, r4, r5 :: object
-    r6, tmp_dict :: dict
-    r7 :: set
-    r8 :: short_int
-    r9 :: native_int
+    r5, r6, r7, r8 :: ptr
+    tmp_list :: list
+    r9 :: set
     r10 :: short_int
-    r11 :: object
-    r12 :: tuple[bool, short_int, object]
+    r11 :: ptr
+    r12 :: native_int
     r13 :: short_int
-    r14 :: bool
+    r14 :: bit
     r15 :: object
     r16, x, r17 :: int
     r18 :: object
     r19 :: int32
-    r20, r21, r22 :: bit
-    c :: set
+    r20 :: bit
+    r21 :: short_int
+    a :: set
 L0:
-    r0 = '1'
-    r1 = '3'
-    r2 = '5'
-    r3 = object 1
-    r4 = object 3
-    r5 = object 5
-    r6 = CPyDict_Build(3, r3, r0, r4, r1, r5, r2)
-    tmp_dict = r6
-    r7 = PySet_New(0)
-    r8 = 0
-    r9 = PyDict_Size(tmp_dict)
-    r10 = r9 << 1
-    r11 = CPyDict_GetKeysIter(tmp_dict)
+    r0 = test1_env()
+    r1 = PyList_New(3)
+    r2 = object 1
+    r3 = object 3
+    r4 = object 5
+    r5 = get_element_ptr r1 ob_item :: PyListObject
+    r6 = load_mem r5 :: ptr*
+    set_mem r6, r2 :: builtins.object*
+    r7 = r6 + 8
+    set_mem r7, r3 :: builtins.object*
+    r8 = r6 + 16
+    set_mem r8, r4 :: builtins.object*
+    keep_alive r1
+    tmp_list = r1
+    r9 = PySet_New(0)
+    r10 = 0
 L1:
-    r12 = CPyDict_NextKey(r11, r8)
-    r13 = r12[1]
-    r8 = r13
-    r14 = r12[0]
+    r11 = get_element_ptr tmp_list ob_size :: PyVarObject
+    r12 = load_mem r11 :: native_int*
+    keep_alive tmp_list
+    r13 = r12 << 1
+    r14 = r10 < r13 :: signed
     if r14 goto L2 else goto L4 :: bool
 L2:
-    r15 = r12[2]
+    r15 = CPyList_GetItemUnsafe(tmp_list, r10)
     r16 = unbox(int, r15)
     x = r16
     r17 = f(x)
     r18 = box(int, r17)
-    r19 = PySet_Add(r7, r18)
+    r19 = PySet_Add(r9, r18)
     r20 = r19 >= 0 :: signed
 L3:
-    r21 = CPyDict_CheckSize(tmp_dict, r10)
+    r21 = r10 + 2
+    r10 = r21
     goto L1
 L4:
-    r22 = CPy_NoErrOccured()
+    a = r9
+    return 1
+def test2():
+    r0 :: __main__.test2_env
+    r1, tmp_tuple :: tuple[int, int, int]
+    r2 :: set
+    r3, r4, r5 :: object
+    r6, x, r7 :: int
+    r8 :: object
+    r9 :: int32
+    r10, r11 :: bit
+    b :: set
+L0:
+    r0 = test2_env()
+    r1 = (2, 6, 10)
+    tmp_tuple = r1
+    r2 = PySet_New(0)
+    r3 = box(tuple[int, int, int], tmp_tuple)
+    r4 = PyObject_GetIter(r3)
+L1:
+    r5 = PyIter_Next(r4)
+    if is_error(r5) goto L4 else goto L2
+L2:
+    r6 = unbox(int, r5)
+    x = r6
+    r7 = f(x)
+    r8 = box(int, r7)
+    r9 = PySet_Add(r2, r8)
+    r10 = r9 >= 0 :: signed
+L3:
+    goto L1
+L4:
+    r11 = CPy_NoErrOccured()
 L5:
-    c = r7
+    b = r2
+    return 1
+def test3():
+    r0 :: __main__.test3_env
+    r1, r2, r3 :: str
+    r4, r5, r6 :: object
+    r7, tmp_dict :: dict
+    r8 :: set
+    r9 :: short_int
+    r10 :: native_int
+    r11 :: short_int
+    r12 :: object
+    r13 :: tuple[bool, short_int, object]
+    r14 :: short_int
+    r15 :: bool
+    r16 :: object
+    r17, x, r18 :: int
+    r19 :: object
+    r20 :: int32
+    r21, r22, r23 :: bit
+    c :: set
+L0:
+    r0 = test3_env()
+    r1 = '1'
+    r2 = '3'
+    r3 = '5'
+    r4 = object 1
+    r5 = object 3
+    r6 = object 5
+    r7 = CPyDict_Build(3, r4, r1, r5, r2, r6, r3)
+    tmp_dict = r7
+    r8 = PySet_New(0)
+    r9 = 0
+    r10 = PyDict_Size(tmp_dict)
+    r11 = r10 << 1
+    r12 = CPyDict_GetKeysIter(tmp_dict)
+L1:
+    r13 = CPyDict_NextKey(r12, r9)
+    r14 = r13[1]
+    r9 = r14
+    r15 = r13[0]
+    if r15 goto L2 else goto L4 :: bool
+L2:
+    r16 = r13[2]
+    r17 = unbox(int, r16)
+    x = r17
+    r18 = f(x)
+    r19 = box(int, r18)
+    r20 = PySet_Add(r8, r19)
+    r21 = r20 >= 0 :: signed
+L3:
+    r22 = CPyDict_CheckSize(tmp_dict, r11)
+    goto L1
+L4:
+    r23 = CPy_NoErrOccured()
+L5:
+    c = r8
     return 1
 def test4():
-    r0 :: set
-    r1 :: short_int
+    r0 :: __main__.test4_env
+    r1 :: set
+    r2 :: short_int
     x :: int
-    r2 :: bit
-    r3 :: int
-    r4 :: object
-    r5 :: int32
-    r6 :: bit
-    r7 :: short_int
+    r3 :: bit
+    r4 :: int
+    r5 :: object
+    r6 :: int32
+    r7 :: bit
+    r8 :: short_int
     d :: set
 L0:
-    r0 = PySet_New(0)
-    r1 = 2
-    x = r1
+    r0 = test4_env()
+    r1 = PySet_New(0)
+    r2 = 2
+    x = r2
 L1:
-    r2 = r1 < 12 :: signed
-    if r2 goto L2 else goto L4 :: bool
+    r3 = r2 < 12 :: signed
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r3 = f(x)
-    r4 = box(int, r3)
-    r5 = PySet_Add(r0, r4)
-    r6 = r5 >= 0 :: signed
+    r4 = f(x)
+    r5 = box(int, r4)
+    r6 = PySet_Add(r1, r5)
+    r7 = r6 >= 0 :: signed
 L3:
-    r7 = r1 + 4
-    r1 = r7
-    x = r7
+    r8 = r2 + 4
+    r2 = r8
+    x = r8
     goto L1
 L4:
-    d = r0
+    d = r1
     return 1
 def test5():
-    r0 :: set
-    r1 :: short_int
+    r0 :: __main__.test5_env
+    r1 :: set
+    r2 :: short_int
     x :: int
-    r2 :: bit
-    r3 :: int
-    r4 :: object
-    r5 :: int32
-    r6 :: bit
-    r7 :: short_int
+    r3 :: bit
+    r4 :: int
+    r5 :: object
+    r6 :: int32
+    r7 :: bit
+    r8 :: short_int
     e :: set
 L0:
-    r0 = PySet_New(0)
-    r1 = 2
-    x = r1
+    r0 = test5_env()
+    r1 = PySet_New(0)
+    r2 = 2
+    x = r2
 L1:
-    r2 = r1 < 12 :: signed
-    if r2 goto L2 else goto L4 :: bool
+    r3 = r2 < 12 :: signed
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r3 = f(x)
-    r4 = box(int, r3)
-    r5 = PySet_Add(r0, r4)
-    r6 = r5 >= 0 :: signed
+    r4 = f(x)
+    r5 = box(int, r4)
+    r6 = PySet_Add(r1, r5)
+    r7 = r6 >= 0 :: signed
 L3:
-    r7 = r1 + 4
-    r1 = r7
-    x = r7
+    r8 = r2 + 4
+    r2 = r8
+    x = r8
     goto L1
 L4:
-    e = r0
+    e = r1
     return 1
 
 [case testNewSetFromIterable3]
@@ -309,139 +319,505 @@ def f3(x):
 L0:
     r0 = CPyTagged_Add(x, 2)
     return r0
-def test():
-    r0 :: list
-    r1, r2, r3, r4, r5 :: object
-    r6, r7, r8, r9, r10, r11 :: ptr
-    tmp_list :: list
-    r12 :: set
-    r13, r14 :: list
-    r15 :: short_int
-    r16 :: ptr
-    r17 :: native_int
-    r18 :: short_int
-    r19 :: bit
+def __mypyc_lambda__0_test_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def __mypyc_lambda__0_test_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, arg):
+    __mypyc_self__ :: __main__.__mypyc_lambda__0_test_gen
+    type, value, traceback, arg :: object
+    r0 :: __main__.__mypyc_lambda__0_test_env
+    r1 :: int
+    r2 :: __main__.test_env
+    r3 :: object
+    r4 :: bit
+    r5, r6 :: object
+    r7, r8 :: bool
+    r9, r10 :: object
+    r11 :: int
+    r12 :: bool
+    r13, r14 :: int
+    r15 :: object
+    r16 :: bool
+    r17 :: object
+    r18, r19 :: bit
     r20 :: object
-    r21, z :: int
+    r21 :: bool
     r22 :: native_int
-    r23 :: bit
-    r24 :: native_int
-    r25, r26, r27 :: bit
-    r28 :: bool
-    r29 :: bit
-    r30 :: int
-    r31 :: object
-    r32 :: int32
-    r33 :: bit
-    r34 :: short_int
-    r35, r36, r37 :: object
-    r38, y, r39 :: int
-    r40 :: object
-    r41 :: int32
-    r42, r43 :: bit
-    r44, r45, r46 :: object
-    r47, x, r48 :: int
-    r49 :: object
-    r50 :: int32
-    r51, r52 :: bit
+    r23, r24 :: bit
+    r25 :: bool
+    r26 :: bit
+    r27 :: native_int
+    r28, r29 :: bit
+    r30 :: bool
+    r31 :: bit
+    r32 :: bool
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    r2 = r0.__mypyc_env__
+    goto L13
+L1:
+    r3 = load_address _Py_NoneStruct
+    r4 = type != r3
+    if r4 goto L2 else goto L3 :: bool
+L2:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L3:
+    r5 = r0.__mypyc__generator_arg__1
+    r6 = PyObject_GetIter(r5)
+    r0.__mypyc_temp__0 = r5; r7 = is_error
+    r0.__mypyc_temp__1 = r6; r8 = is_error
+L4:
+    r9 = r0.__mypyc_temp__1
+    r10 = PyIter_Next(r9)
+    if is_error(r10) goto L10 else goto L5
+L5:
+    r11 = unbox(int, r10)
+    r0.y = r11; r12 = is_error
+    r13 = r0.y
+    r14 = f2(r13)
+    r15 = box(int, r14)
+    r0.__mypyc_next_label__ = 2; r16 = is_error
+    return r15
+L6:
+    r17 = load_address _Py_NoneStruct
+    r18 = type != r17
+    if r18 goto L7 else goto L8 :: bool
+L7:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L8:
+L9:
+    goto L4
+L10:
+    r19 = CPy_NoErrOccured()
+L11:
+    r20 = box(None, 1)
+    r0.__mypyc_next_label__ = -2; r21 = is_error
+L12:
+    CPyGen_SetStopIterationValue(r20)
+    unreachable
+L13:
+    r22 = r1 & 1
+    r23 = r22 == 0
+    if r23 goto L14 else goto L15 :: bool
+L14:
+    r24 = r1 == 0
+    r25 = r24
+    goto L16
+L15:
+    r26 = CPyTagged_IsEq_(r1, 0)
+    r25 = r26
+L16:
+    if r25 goto L1 else goto L17 :: bool
+L17:
+    r27 = r1 & 1
+    r28 = r27 == 0
+    if r28 goto L18 else goto L19 :: bool
+L18:
+    r29 = r1 == 2
+    r30 = r29
+    goto L20
+L19:
+    r31 = CPyTagged_IsEq_(r1, 2)
+    r30 = r31
+L20:
+    if r30 goto L6 else goto L21 :: bool
+L21:
+    r32 = raise StopIteration
+    unreachable
+def __mypyc_lambda__0_test_gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_lambda__0_test_gen
+    r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = __mypyc_lambda__0_test_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, r0)
+    return r1
+def __mypyc_lambda__0_test_gen.send(__mypyc_self__, arg):
+    __mypyc_self__ :: __main__.__mypyc_lambda__0_test_gen
+    arg, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = __mypyc_lambda__0_test_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, arg)
+    return r1
+def __mypyc_lambda__0_test_gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_lambda__0_test_gen
+L0:
+    return __mypyc_self__
+def __mypyc_lambda__0_test_gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: __main__.__mypyc_lambda__0_test_gen
+    type, value, traceback, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    if is_error(value) goto L1 else goto L2
+L1:
+    value = r0
+L2:
+    if is_error(traceback) goto L3 else goto L4
+L3:
+    traceback = r0
+L4:
+    r1 = __mypyc_lambda__0_test_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, r0)
+    return r1
+def __mypyc_lambda__0_test_gen.close(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_lambda__0_test_gen
+    r0 :: object
+    r1 :: str
+    r2, r3, r4, r5 :: object
+    r6 :: tuple[object, object, object]
+    r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: tuple[object, object]
+    r11 :: object
+    r12 :: bit
+    r13 :: object
+    r14 :: bool
+L0:
+L1:
+    r0 = builtins :: module
+    r1 = 'GeneratorExit'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = load_address _Py_NoneStruct
+    r5 = __mypyc_self__.throw(r2, r3, r4)
+    goto L5
+L2: (handler for L1)
+    r6 = CPy_CatchError()
+    r7 = builtins :: module
+    r8 = 'StopIteration'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = (r2, r9)
+    r11 = box(tuple[object, object], r10)
+    r12 = CPy_ExceptionMatches(r11)
+    if r12 goto L3 else goto L4 :: bool
+L3:
+    CPy_RestoreExcInfo(r6)
+    r13 = load_address _Py_NoneStruct
+    return r13
+L4:
+    CPy_Reraise()
+    unreachable
+L5:
+    r14 = raise RuntimeError('generator ignored GeneratorExit')
+    unreachable
+def __mypyc_lambda__0_test_obj.__call__(__mypyc_self__, __mypyc__generator_arg__1):
+    __mypyc_self__ :: __main__.__mypyc_lambda__0_test_obj
+    __mypyc__generator_arg__1 :: object
+    r0 :: __main__.test_env
+    r1 :: __main__.__mypyc_lambda__0_test_env
+    r2, r3 :: bool
+    r4 :: __main__.__mypyc_lambda__0_test_gen
+    r5, r6 :: bool
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = __mypyc_lambda__0_test_env()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r1.__mypyc__generator_arg__1 = __mypyc__generator_arg__1; r3 = is_error
+    r4 = __mypyc_lambda__0_test_gen()
+    r4.__mypyc_env__ = r1; r5 = is_error
+    r1.__mypyc_next_label__ = 0; r6 = is_error
+    return r4
+def __mypyc_lambda__1_test_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def __mypyc_lambda__1_test_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, arg):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_test_gen
+    type, value, traceback, arg :: object
+    r0 :: __main__.__mypyc_lambda__1_test_env
+    r1 :: int
+    r2 :: __main__.test_env
+    r3 :: object
+    r4 :: bit
+    r5, r6 :: object
+    r7, r8 :: bool
+    r9, r10 :: object
+    r11 :: int
+    r12 :: bool
+    r13 :: int
+    r14 :: native_int
+    r15, r16, r17 :: bit
+    r18, r19 :: int
+    r20 :: object
+    r21 :: bool
+    r22 :: object
+    r23, r24 :: bit
+    r25 :: object
+    r26 :: bool
+    r27 :: native_int
+    r28, r29 :: bit
+    r30 :: bool
+    r31 :: bit
+    r32 :: native_int
+    r33, r34 :: bit
+    r35 :: bool
+    r36 :: bit
+    r37 :: bool
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    r2 = r0.__mypyc_env__
+    goto L17
+L1:
+    r3 = load_address _Py_NoneStruct
+    r4 = type != r3
+    if r4 goto L2 else goto L3 :: bool
+L2:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L3:
+    r5 = r0.__mypyc__generator_arg__0
+    r6 = PyObject_GetIter(r5)
+    r0.__mypyc_temp__2 = r5; r7 = is_error
+    r0.__mypyc_temp__3 = r6; r8 = is_error
+L4:
+    r9 = r0.__mypyc_temp__3
+    r10 = PyIter_Next(r9)
+    if is_error(r10) goto L14 else goto L5
+L5:
+    r11 = unbox(int, r10)
+    r0.z = r11; r12 = is_error
+    r13 = r0.z
+    r14 = r13 & 1
+    r15 = r14 != 0
+    if r15 goto L6 else goto L7 :: bool
+L6:
+    r16 = CPyTagged_IsLt_(r13, 8)
+    if r16 goto L8 else goto L12 :: bool
+L7:
+    r17 = r13 < 8 :: signed
+    if r17 goto L8 else goto L12 :: bool
+L8:
+    r18 = r0.z
+    r19 = f1(r18)
+    r20 = box(int, r19)
+    r0.__mypyc_next_label__ = 2; r21 = is_error
+    return r20
+L9:
+    r22 = load_address _Py_NoneStruct
+    r23 = type != r22
+    if r23 goto L10 else goto L11 :: bool
+L10:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L11:
+L12:
+L13:
+    goto L4
+L14:
+    r24 = CPy_NoErrOccured()
+L15:
+    r25 = box(None, 1)
+    r0.__mypyc_next_label__ = -2; r26 = is_error
+L16:
+    CPyGen_SetStopIterationValue(r25)
+    unreachable
+L17:
+    r27 = r1 & 1
+    r28 = r27 == 0
+    if r28 goto L18 else goto L19 :: bool
+L18:
+    r29 = r1 == 0
+    r30 = r29
+    goto L20
+L19:
+    r31 = CPyTagged_IsEq_(r1, 0)
+    r30 = r31
+L20:
+    if r30 goto L1 else goto L21 :: bool
+L21:
+    r32 = r1 & 1
+    r33 = r32 == 0
+    if r33 goto L22 else goto L23 :: bool
+L22:
+    r34 = r1 == 2
+    r35 = r34
+    goto L24
+L23:
+    r36 = CPyTagged_IsEq_(r1, 2)
+    r35 = r36
+L24:
+    if r35 goto L9 else goto L25 :: bool
+L25:
+    r37 = raise StopIteration
+    unreachable
+def __mypyc_lambda__1_test_gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_test_gen
+    r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = __mypyc_lambda__1_test_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, r0)
+    return r1
+def __mypyc_lambda__1_test_gen.send(__mypyc_self__, arg):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_test_gen
+    arg, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = __mypyc_lambda__1_test_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, arg)
+    return r1
+def __mypyc_lambda__1_test_gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_test_gen
+L0:
+    return __mypyc_self__
+def __mypyc_lambda__1_test_gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_test_gen
+    type, value, traceback, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    if is_error(value) goto L1 else goto L2
+L1:
+    value = r0
+L2:
+    if is_error(traceback) goto L3 else goto L4
+L3:
+    traceback = r0
+L4:
+    r1 = __mypyc_lambda__1_test_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, r0)
+    return r1
+def __mypyc_lambda__1_test_gen.close(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_test_gen
+    r0 :: object
+    r1 :: str
+    r2, r3, r4, r5 :: object
+    r6 :: tuple[object, object, object]
+    r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: tuple[object, object]
+    r11 :: object
+    r12 :: bit
+    r13 :: object
+    r14 :: bool
+L0:
+L1:
+    r0 = builtins :: module
+    r1 = 'GeneratorExit'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = load_address _Py_NoneStruct
+    r5 = __mypyc_self__.throw(r2, r3, r4)
+    goto L5
+L2: (handler for L1)
+    r6 = CPy_CatchError()
+    r7 = builtins :: module
+    r8 = 'StopIteration'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = (r2, r9)
+    r11 = box(tuple[object, object], r10)
+    r12 = CPy_ExceptionMatches(r11)
+    if r12 goto L3 else goto L4 :: bool
+L3:
+    CPy_RestoreExcInfo(r6)
+    r13 = load_address _Py_NoneStruct
+    return r13
+L4:
+    CPy_Reraise()
+    unreachable
+L5:
+    r14 = raise RuntimeError('generator ignored GeneratorExit')
+    unreachable
+def __mypyc_lambda__1_test_obj.__call__(__mypyc_self__, __mypyc__generator_arg__0):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_test_obj
+    __mypyc__generator_arg__0 :: object
+    r0 :: __main__.test_env
+    r1 :: __main__.__mypyc_lambda__1_test_env
+    r2, r3 :: bool
+    r4 :: __main__.__mypyc_lambda__1_test_gen
+    r5, r6 :: bool
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = __mypyc_lambda__1_test_env()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r1.__mypyc__generator_arg__0 = __mypyc__generator_arg__0; r3 = is_error
+    r4 = __mypyc_lambda__1_test_gen()
+    r4.__mypyc_env__ = r1; r5 = is_error
+    r1.__mypyc_next_label__ = 0; r6 = is_error
+    return r4
+def test():
+    r0 :: __main__.test_env
+    r1 :: list
+    r2, r3, r4, r5, r6 :: object
+    r7, r8, r9, r10, r11, r12 :: ptr
+    tmp_list :: list
+    r13 :: set
+    r14 :: __main__.__mypyc_lambda__0_test_obj
+    r15 :: bool
+    r16 :: __main__.__mypyc_lambda__1_test_obj
+    r17 :: bool
+    r18, r19, r20, r21, r22, r23 :: object
+    r24, x, r25 :: int
+    r26 :: object
+    r27 :: int32
+    r28, r29 :: bit
     a :: set
 L0:
-    r0 = PyList_New(5)
-    r1 = object 1
-    r2 = object 2
-    r3 = object 3
-    r4 = object 4
-    r5 = object 5
-    r6 = get_element_ptr r0 ob_item :: PyListObject
-    r7 = load_mem r6 :: ptr*
-    set_mem r7, r1 :: builtins.object*
-    r8 = r7 + WORD_SIZE*1
+    r0 = test_env()
+    r1 = PyList_New(5)
+    r2 = object 1
+    r3 = object 2
+    r4 = object 3
+    r5 = object 4
+    r6 = object 5
+    r7 = get_element_ptr r1 ob_item :: PyListObject
+    r8 = load_mem r7 :: ptr*
     set_mem r8, r2 :: builtins.object*
-    r9 = r7 + WORD_SIZE*2
+    r9 = r8 + 8
     set_mem r9, r3 :: builtins.object*
-    r10 = r7 + WORD_SIZE*3
+    r10 = r8 + 16
     set_mem r10, r4 :: builtins.object*
-    r11 = r7 + WORD_SIZE*4
+    r11 = r8 + 24
     set_mem r11, r5 :: builtins.object*
-    keep_alive r0
-    tmp_list = r0
-    r12 = PySet_New(0)
-    r13 = PyList_New(0)
-    r14 = PyList_New(0)
-    r15 = 0
+    r12 = r8 + 32
+    set_mem r12, r6 :: builtins.object*
+    keep_alive r1
+    tmp_list = r1
+    r13 = PySet_New(0)
+    r14 = __mypyc_lambda__0_test_obj()
+    r14.__mypyc_env__ = r0; r15 = is_error
+    r16 = __mypyc_lambda__1_test_obj()
+    r16.__mypyc_env__ = r0; r17 = is_error
+    r18 = PyObject_GetIter(tmp_list)
+    r19 = PyObject_CallFunctionObjArgs(r16, r18, 0)
+    r20 = PyObject_GetIter(r19)
+    r21 = PyObject_CallFunctionObjArgs(r14, r20, 0)
+    r22 = PyObject_GetIter(r21)
 L1:
-    r16 = get_element_ptr tmp_list ob_size :: PyVarObject
-    r17 = load_mem r16 :: native_int*
-    keep_alive tmp_list
-    r18 = r17 << 1
-    r19 = r15 < r18 :: signed
-    if r19 goto L2 else goto L9 :: bool
+    r23 = PyIter_Next(r22)
+    if is_error(r23) goto L4 else goto L2
 L2:
-    r20 = CPyList_GetItemUnsafe(tmp_list, r15)
-    r21 = unbox(int, r20)
-    z = r21
-    r22 = z & 1
-    r23 = r22 == 0
-    r24 = 8 & 1
-    r25 = r24 == 0
-    r26 = r23 & r25
-    if r26 goto L3 else goto L4 :: bool
+    r24 = unbox(int, r23)
+    x = r24
+    r25 = f3(x)
+    r26 = box(int, r25)
+    r27 = PySet_Add(r13, r26)
+    r28 = r27 >= 0 :: signed
 L3:
-    r27 = z < 8 :: signed
-    r28 = r27
-    goto L5
-L4:
-    r29 = CPyTagged_IsLt_(z, 8)
-    r28 = r29
-L5:
-    if r28 goto L7 else goto L6 :: bool
-L6:
-    goto L8
-L7:
-    r30 = f1(z)
-    r31 = box(int, r30)
-    r32 = PyList_Append(r14, r31)
-    r33 = r32 >= 0 :: signed
-L8:
-    r34 = r15 + 2
-    r15 = r34
     goto L1
-L9:
-    r35 = PyObject_GetIter(r14)
-    r36 = PyObject_GetIter(r35)
-L10:
-    r37 = PyIter_Next(r36)
-    if is_error(r37) goto L13 else goto L11
-L11:
-    r38 = unbox(int, r37)
-    y = r38
-    r39 = f2(y)
-    r40 = box(int, r39)
-    r41 = PyList_Append(r13, r40)
-    r42 = r41 >= 0 :: signed
-L12:
-    goto L10
-L13:
-    r43 = CPy_NoErrOccured()
-L14:
-    r44 = PyObject_GetIter(r13)
-    r45 = PyObject_GetIter(r44)
-L15:
-    r46 = PyIter_Next(r45)
-    if is_error(r46) goto L18 else goto L16
-L16:
-    r47 = unbox(int, r46)
-    x = r47
-    r48 = f3(x)
-    r49 = box(int, r48)
-    r50 = PySet_Add(r12, r49)
-    r51 = r50 >= 0 :: signed
-L17:
-    goto L15
-L18:
-    r52 = CPy_NoErrOccured()
-L19:
-    a = r12
+L4:
+    r29 = CPy_NoErrOccured()
+L5:
+    a = r13
     return 1
 
 [case testSetSize]
