@@ -11,6 +11,7 @@ from mypy.util import FancyFormatter
 
 
 def console_entry() -> None:
+    single_quote = 'asdf'
     try:
         main()
         sys.stdout.flush()
