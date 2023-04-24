@@ -2463,9 +2463,10 @@ def format_type_inner(
             )
 
             if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
-                return f"Optional[{literal_str}]"
+                return f"{literal_str} | None" if options.use_or_syntax() else f"Optional[{literal_str}]"
             elif union_items:
-                return f"Union[{format_list(union_items)}, {literal_str}]"
+                return f"{literal_str} | {format_union(union_items)}" if options.use_or_syntax() else\
+                    f"Union[{format_list(union_items)}, {literal_str}]"
             else:
                 return literal_str
         else:
