@@ -338,11 +338,11 @@ class Errors:
 
     def import_context(self) -> list[tuple[str, int]]:
         """Return a copy of the import context."""
-        return self.import_ctx[:]
+        return self.import_ctx.copy()
 
     def set_import_context(self, ctx: list[tuple[str, int]]) -> None:
         """Replace the entire import context with a new value."""
-        self.import_ctx = ctx[:]
+        self.import_ctx = ctx.copy()
 
     def report(
         self,

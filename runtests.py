@@ -129,7 +129,7 @@ def main() -> None:
         exit(1)
 
     if not args:
-        args = DEFAULT_COMMANDS[:]
+        args = DEFAULT_COMMANDS.copy()
 
     status = 0
 

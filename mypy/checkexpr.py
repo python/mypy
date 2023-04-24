@@ -4472,7 +4472,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 is_ellipsis_args=False,
                 arg_types=[AnyType(TypeOfAny.special_form)] * len(arg_kinds),
                 arg_kinds=arg_kinds,
-                arg_names=e.arg_names[:],
+                arg_names=e.arg_names.copy(),
             )
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:

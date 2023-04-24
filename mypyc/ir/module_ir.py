@@ -23,7 +23,7 @@ class ModuleIR:
         final_names: list[tuple[str, RType]],
     ) -> None:
         self.fullname = fullname
-        self.imports = imports[:]
+        self.imports = imports.copy()
         self.functions = functions
         self.classes = classes
         self.final_names = final_names

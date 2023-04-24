@@ -835,6 +835,8 @@ class BuildManager:
         Raise CompileError if there is a parse error.
         """
         t0 = time.time()
+        if ignore_errors:
+            self.errors.ignored_files.add(path)
         tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         self.add_stats(
@@ -1911,7 +1913,7 @@ class State:
         self.caller_state = caller_state
         self.caller_line = caller_line
         if caller_state:
-            self.import_context = caller_state.import_context[:]
+            self.import_context = caller_state.import_context.copy()
             self.import_context.append((caller_state.xpath, caller_line))
         else:
             self.import_context = []
