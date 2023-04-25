@@ -1217,4 +1217,15 @@ def narrow_multiple_partial(x: Optional[str], y: Optional[int]) -> None:
         z = None
         nested()
 
+def multiple_nested_functions(x: Optional[str], y: Optional[str]) -> None:
+    if x is None:
+        x = ""
+    def nested1() -> str:
+        return x
+    if y is None:
+        y = ""
+    def nested2() -> str:
+        a: str = y
+        return x
+
 [builtins fixtures/isinstance.pyi]
