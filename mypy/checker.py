@@ -7691,7 +7691,15 @@ class VarAssignVisitor(TraverserVisitor):
         if s.else_body:
             s.else_body.accept(self)
 
+    def visit_assignment_expr(self, e: AssignmentExpr) -> None:
+        self.lvalue = True
+        e.target.accept(self)
+        self.lvalue = False
+        e.value.accept(self)
+
     def visit_as_pattern(self, p: AsPattern) -> None:
+        if p.pattern is not None:
+            p.pattern.accept(self)
         if p.name is not None:
             self.lvalue = True
             p.name.accept(self)
