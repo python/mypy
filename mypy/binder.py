@@ -449,6 +449,7 @@ class ConditionalTypeBinder:
         assert len(self.frames) == 1
         yield self.push_frame()
         self.pop_frame(True, 0)
+        assert len(self.frames) == 1
 
 
 def get_declaration(expr: BindableExpression) -> Type | None:

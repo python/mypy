@@ -1208,14 +1208,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
-                # Copy type narrowings from an outer function when it seems safe.
+                # Copy some type narrowings from an outer function when it seems safe enough
+                # (i.e. we can't find an assignment that might change the type of the
+                # variable afterwards).
+                new_frame = None
                 for frame in old_binder.frames:
                     for key, narrowed_type in frame.types.items():
                         key_var = extract_var_from_literal_hash(key)
                         if key_var is not None and not self.is_var_redefined_in_outer_context(
                             key_var, defn.line
                         ):
-                            new_frame = self.binder.push_frame()
+                            # It seems safe to propagate the type narrowing to a nested scope.
+                            if new_frame is None:
+                                new_frame = self.binder.push_frame()
                             new_frame.types[key] = narrowed_type
                 with self.scope.push_function(defn):
                     # We suppress reachability warnings when we use TypeVars with value
@@ -1228,6 +1233,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
+                if new_frame is not None:
+                    self.binder.pop_frame(True, 0)
 
             if not unreachable:
                 if defn.is_generator or is_named_instance(
