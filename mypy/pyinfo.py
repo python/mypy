@@ -12,12 +12,13 @@ import sys
 if __name__ == "__main__":
     # HACK: We don't want to pick up mypy.types as the top-level types
     #       module. This could happen if this file is run as a script.
-    #       This workaround fixes it.
-    old_sys_path = sys.path
-    sys.path = sys.path[1:]
-    import types  # noqa: F401
+    #       This workaround fixes this for Python versions before 3.11.
+    if sys.version_info < (3, 11):
+        old_sys_path = sys.path
+        sys.path = sys.path[1:]
+        import types  # noqa: F401
 
-    sys.path = old_sys_path
+        sys.path = old_sys_path
 
 import os
 import site
