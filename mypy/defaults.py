@@ -44,5 +44,5 @@ REPORTER_NAMES: Final = [
 ]
 
 # Threshold after which we sometimes filter out most errors to avoid very
-# verbose output. Current default is to show all errors.
+# verbose output. The default is to show all errors.
 MANY_ERRORS_THRESHOLD: Final = -1
