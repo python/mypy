@@ -613,7 +613,7 @@ class TypeOpsSuite(Suite):
         )
         self.assert_simplified_union(
             [fx.lit_str1, fx.lit_str1, fx.lit_str1_inst],
-            UnionType([fx.lit_str1, fx.lit_str1_inst]),
+            fx.lit_str1,
         )
 
     def assert_simplified_union(self, original: list[Type], union: Type) -> None:
