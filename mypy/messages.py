@@ -3004,7 +3004,7 @@ def append_invariance_notes(
 def append_numbers_notes(
     notes: list[str], arg_type: Instance, expected_type: Instance
 ) -> list[str]:
-    """Explain if an unsupported type from "numbres" is used in a subtype check."""
+    """Explain if an unsupported type from "numbers" is used in a subtype check."""
     if expected_type.type.fullname in UNSUPPORTED_NUMBERS_TYPES:
         notes.append('Types from "numbers" aren\'t supported for static type checking')
         notes.append("See https://peps.python.org/pep-0484/#the-numeric-tower")
