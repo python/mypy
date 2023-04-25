@@ -3918,10 +3918,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             always_allow_any=True,
         )
         target_type = expr.type
-        if isinstance(mypy.types.get_proper_type(source_type), mypy.types.Instance) and (
-            hasattr(source_type, "last_known_value") and source_type.last_known_value is not None
-        ):
-            source_type = source_type.last_known_value
+        proper_source_type = get_proper_type(source_type)
+        if isinstance(proper_source_type, mypy.types.Instance) and proper_source_type.last_known_value is not None:
+            source_type = proper_source_type.last_known_value
         if not is_same_type(source_type, target_type):
             if not self.chk.in_checked_function():
                 self.msg.note(
