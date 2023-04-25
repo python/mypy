@@ -316,13 +316,15 @@ def typed_dict_setdefault_signature_callback(ctx: MethodSigContext) -> CallableT
         and len(signature.arg_types) == 2
         and len(ctx.args[1]) == 1
     ):
+        key = None
         if isinstance(ctx.args[0][0], StrExpr):
             key = ctx.args[0][0].value
         if isinstance(ctx.args[0][0], NameExpr):
             key = ctx.args[0][0].name
-        value_type = ctx.type.items.get(key)
-        if value_type:
-            return signature.copy_modified(arg_types=[str_type, value_type])
+        if key is not None:
+            value_type = ctx.type.items.get(key)
+            if value_type:
+                return signature.copy_modified(arg_types=[str_type, value_type])
     return signature.copy_modified(arg_types=[str_type, signature.arg_types[1]])
 
 
