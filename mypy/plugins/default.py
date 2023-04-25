@@ -5,7 +5,7 @@ from typing import Callable
 
 import mypy.errorcodes as codes
 from mypy import message_registry
-from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
+from mypy.nodes import DictExpr, IntExpr, NameExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
@@ -313,11 +313,13 @@ def typed_dict_setdefault_signature_callback(ctx: MethodSigContext) -> CallableT
         isinstance(ctx.type, TypedDictType)
         and len(ctx.args) == 2
         and len(ctx.args[0]) == 1
-        and isinstance(ctx.args[0][0], StrExpr)
         and len(signature.arg_types) == 2
         and len(ctx.args[1]) == 1
     ):
-        key = ctx.args[0][0].value
+        if isinstance(ctx.args[0][0], StrExpr):
+            key = ctx.args[0][0].value
+        if isinstance(ctx.args[0][0], NameExpr):
+            key = ctx.args[0][0].name
         value_type = ctx.type.items.get(key)
         if value_type:
             return signature.copy_modified(arg_types=[str_type, value_type])
