@@ -7690,3 +7690,15 @@ class VarAssignVisitor(TraverserVisitor):
         s.body.accept(self)
         if s.else_body:
             s.else_body.accept(self)
+
+    def visit_as_pattern(self, p: AsPattern) -> None:
+        if p.name is not None:
+            self.lvalue = True
+            p.name.accept(self)
+            self.lvalue = False
+
+    def visit_starred_pattern(self, p: StarredPattern) -> None:
+        if p.capture is not None:
+            self.lvalue = True
+            p.capture.accept(self)
+            self.lvalue = False
