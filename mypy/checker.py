@@ -45,7 +45,6 @@ from mypy.literals import Key, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_erased_types, is_overlapping_types
 from mypy.message_registry import ErrorMessage
-from mypy.traverser import TraverserVisitor
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
     MessageBuilder,
@@ -135,6 +134,7 @@ from mypy.nodes import (
     is_final_node,
 )
 from mypy.options import Options
+from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import CheckerPluginInterface, Plugin
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
@@ -152,7 +152,7 @@ from mypy.subtypes import (
     restrict_subtype_away,
     unify_generic_callable,
 )
-from mypy.traverser import all_return_statements, has_return_statement
+from mypy.traverser import TraverserVisitor, all_return_statements, has_return_statement
 from mypy.treetransform import TransformVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
@@ -7654,9 +7654,9 @@ def collapse_walrus(e: Expression) -> Expression:
 
 
 def find_last_var_assignment_line(n: Node, v: Var) -> int:
-    v = VarAssignVisitor(v)
-    n.accept(v)
-    return v.last_line
+    visitor = VarAssignVisitor(v)
+    n.accept(visitor)
+    return visitor.last_line
 
 
 class VarAssignVisitor(TraverserVisitor):
