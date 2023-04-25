@@ -1050,6 +1050,14 @@ def can_narrow(x: Optional[str]) -> None:
         return reveal_type(x)  # N: Revealed type is "builtins.str"
     nested()
 
+class C:
+    def can_narrow_in_method(self, x: Optional[str]) -> None:
+        if x is None:
+            x = "a"
+        def nested() -> str:
+            return reveal_type(x)  # N: Revealed type is "builtins.str"
+        nested()
+
 def can_narrow_lambda(x: Optional[str]) -> None:
     if x is None:
         x = "a"
