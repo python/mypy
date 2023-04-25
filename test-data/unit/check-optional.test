@@ -1070,7 +1070,7 @@ x: Optional[str] = "x"
 def cannot_narrow_top_level() -> None:
     reveal_type(x)  # N: Revealed type is "Union[builtins.str, None]"
 
-[case testNarrowedVariableInNestedFunction2]
+[case testNarrowedVariableInNestedFunctionMore]
 from typing import Optional, overload
 
 class C:
