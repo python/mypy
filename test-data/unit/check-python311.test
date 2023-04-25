@@ -34,7 +34,7 @@ except* (RuntimeError, Custom) as e:
 class Bad: ...
 try:
     pass
-except* (RuntimeError, Bad) as e:  # E: Exception type must be derived from BaseException
+except* (RuntimeError, Bad) as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Any]"
 [builtins fixtures/exception.pyi]
 
