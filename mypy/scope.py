@@ -81,10 +81,8 @@ class Scope:
             assert self.function
             self.function = None
 
-    def outer_function(self) -> FuncBase | None:
-        if len(self.functions) > 1:
-            return self.functions[-2]
-        return None
+    def outer_functions(self) -> list[FuncBase]:
+        return self.functions[:-1]
 
     def enter_class(self, info: TypeInfo) -> None:
         """Enter a class target scope."""

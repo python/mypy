@@ -1321,13 +1321,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.binder = old_binder
 
     def is_var_redefined_in_outer_context(self, v: Var, after_line: int) -> bool:
-        outer = self.tscope.outer_function()
-        if outer is None:
+        outers = self.tscope.outer_functions()
+        if not outers:
             # Top-level function -- outer context is top level, and we can't reason about
             # globals
             return True
-        if isinstance(outer, FuncDef):
-            return find_last_var_assignment_line(outer.body, v) >= after_line
+        for outer in outers:
+            if isinstance(outer, FuncDef):
+                if find_last_var_assignment_line(outer.body, v) >= after_line:
+                    return True
         return False
 
     def check_unbound_return_typevar(self, typ: CallableType) -> None:

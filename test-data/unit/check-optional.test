@@ -1110,3 +1110,17 @@ def assign_to_global() -> None:
     # this is probably a very rare case.
     def nested() -> str:
         return g
+
+def assign_to_nonlocal(x: Optional[str]) -> None:
+    def nested() -> str:
+        nonlocal x
+
+        if x is None:
+            x = "a"
+
+        def nested2() -> str:
+            return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+        return nested2()
+    nested()
+    x = None
