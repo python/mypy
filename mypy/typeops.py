@@ -480,6 +480,20 @@ def make_simplified_union(
 def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
     from mypy.subtypes import is_proper_subtype
 
+    # As an optimisation, sort so that we check is_proper_subtype against non literal types first
+    # test_simplify_very_large_union should pass quickly
+    if len(items) > 5:
+        literals = []
+        others = []
+        for item in items:
+            # Ignore proper type error, since this is just a speed optimisation
+            if isinstance(item, LiteralType):  # type: ignore[misc]
+                literals.append(item)
+            else:
+                others.append(item)
+        items = others
+        items.extend(literals)
+
     # The first pass through this loop, we check if later items are subtypes of earlier items.
     # The second pass through this loop, we check if earlier items are subtypes of later items
     # (by reversing the remaining items)
@@ -490,6 +504,10 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
         for ti in items:
             proper_ti = get_proper_type(ti)
 
+            # UninhabitedType is always redundant
+            if isinstance(proper_ti, UninhabitedType):
+                continue
+
             duplicate_index = -1
             # Quickly check if we've seen this type
             if proper_ti in seen:
@@ -497,8 +515,24 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             else:
                 # If not, check if we've seen a supertype of this type
                 for j, tj in enumerate(new_items):
+                    # An optimisation: LiteralTypes are only subtypes if they're equal, which we
+                    # checked in the fast path above with seen
+                    if isinstance(proper_ti, LiteralType) and isinstance(tj, LiteralType):  # type: ignore[misc]
+                        continue
                     tj = get_proper_type(tj)
-                    if is_redundant_literal_instance(tj, proper_ti) and is_proper_subtype(
+                    # If tj is an Instance with a last_known_value, do not remove proper_ti
+                    # (unless it's an instance with the same last_known_value)
+                    if (
+                        isinstance(tj, Instance)
+                        and tj.last_known_value is not None
+                        and not (
+                            isinstance(proper_ti, Instance)
+                            and tj.last_known_value == proper_ti.last_known_value
+                        )
+                    ):
+                        continue
+
+                    if is_proper_subtype(
                         proper_ti, tj, keep_erased_types=keep_erased, ignore_promotions=True
                     ):
                         duplicate_index = j
@@ -660,9 +694,7 @@ def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
             return Overloaded([dummy])
 
 
-def callable_type(
-    fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
-) -> CallableType:
+def callable_type(fdef: FuncItem, fallback: Instance, ret_type: Type | None = None) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
     if fdef.info and not fdef.is_static and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
@@ -946,17 +978,6 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         # Avoid false positives in uncertain cases.
         return True
     # TODO: support other types (see ExpressionChecker.has_member())?
-    return False
-
-
-def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> bool:
-    if not isinstance(general, Instance) or general.last_known_value is None:
-        return True
-    if isinstance(specific, Instance) and specific.last_known_value == general.last_known_value:
-        return True
-    if isinstance(specific, UninhabitedType):
-        return True
-
     return False
 
 
