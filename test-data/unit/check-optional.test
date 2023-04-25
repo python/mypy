@@ -1071,7 +1071,7 @@ def cannot_narrow_top_level() -> None:
     reveal_type(x)  # N: Revealed type is "Union[builtins.str, None]"
 
 [case testNarrowedVariableInNestedFunction2]
-from typing import Optional
+from typing import Optional, overload
 
 class C:
     a: Optional[str]
@@ -1157,6 +1157,29 @@ def decorated_inner_bad(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     @dec
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    x = None
+    nested()
+
+@overload
+def overloaded_outer(x: None) -> None: ...
+@overload
+def overloaded_outer(x: str) -> None: ...
+def overloaded_outer(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    nested()
+
+@overload
+def overloaded_outer_bad(x: None) -> None: ...
+@overload
+def overloaded_outer_bad(x: str) -> None: ...
+def overloaded_outer_bad(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
     def nested() -> str:
         return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
     x = None
