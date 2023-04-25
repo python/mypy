@@ -41,7 +41,7 @@ from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorC
 from mypy.errors import Errors, ErrorWatcher, report_internal_error
 from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
 from mypy.join import join_types
-from mypy.literals import Key, literal, literal_hash
+from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_erased_types, is_overlapping_types
 from mypy.message_registry import ErrorMessage
@@ -1211,10 +1211,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Copy type narrowings from an outer function when it seems safe.
                 for frame in old_binder.frames:
                     for key, narrowed_type in frame.types.items():
-                        if (
-                            len(key) == 2
-                            and key[0] == "Var"
-                            and not self.is_var_redefined_in_outer_context(key[1], defn.line)
+                        key_var = extract_var_from_literal_hash(key)
+                        if key_var is not None and not self.is_var_redefined_in_outer_context(
+                            key_var, defn.line
                         ):
                             new_frame = self.binder.push_frame()
                             new_frame.types[key] = narrowed_type
