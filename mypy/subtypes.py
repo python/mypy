@@ -753,9 +753,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
                 return all(self._is_subtype(li, iter_type) for li in left.items)
-            elif (
-                self._is_subtype(left.partial_fallback, right)
-                and self._is_subtype(mypy.typeops.tuple_fallback(left), right)
+            elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
+                mypy.typeops.tuple_fallback(left), right
             ):
                 return True
             return False
