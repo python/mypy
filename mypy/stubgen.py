@@ -1759,6 +1759,7 @@ Stubs are generated in directory ./out, to avoid overriding files with
 manual changes.  This directory is assumed to exist.
 """
 
+
 def parse_options(args: list[str]) -> Options:
     parser = argparse.ArgumentParser(prog="stubgen", usage=HEADER, description=DESCRIPTION)
 
