@@ -480,20 +480,6 @@ def make_simplified_union(
 def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
     from mypy.subtypes import is_proper_subtype
 
-    # As an optimisation, sort so that we check is_proper_subtype against non literal types first
-    # test_simplify_very_large_union should pass quickly
-    if len(items) > 5:
-        literals = []
-        others = []
-        for item in items:
-            # Ignore proper type error, since this is just a speed optimisation
-            if isinstance(item, LiteralType):  # type: ignore[misc]
-                literals.append(item)
-            else:
-                others.append(item)
-        items = others
-        items.extend(literals)
-
     # The first pass through this loop, we check if later items are subtypes of earlier items.
     # The second pass through this loop, we check if earlier items are subtypes of later items
     # (by reversing the remaining items)
@@ -501,6 +487,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
         new_items: list[Type] = []
         # seen is a map from a type to its index in new_items
         seen: dict[ProperType, int] = {}
+        unduplicated_literal_fallbacks: set[Instance] = set()
         for ti in items:
             proper_ti = get_proper_type(ti)
 
@@ -512,13 +499,20 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             # Quickly check if we've seen this type
             if proper_ti in seen:
                 duplicate_index = seen[proper_ti]
+            elif (
+                isinstance(proper_ti, LiteralType)
+                and proper_ti.fallback in unduplicated_literal_fallbacks
+            ):
+                # This is an optimisation for unions with many LiteralType
+                # We've already checked for exact duplicates. This means that any super type of
+                # the LiteralType must be a super type of its fallback. If we've gone through
+                # the expensive loop below and found no super type for a previous LiteralType
+                # with the same fallback, we can skip doing that work again and just add the type
+                # to new_items
+                pass
             else:
                 # If not, check if we've seen a supertype of this type
                 for j, tj in enumerate(new_items):
-                    # An optimisation: LiteralTypes are only subtypes if they're equal, which we
-                    # checked in the fast path above with seen
-                    if isinstance(proper_ti, LiteralType) and isinstance(tj, LiteralType):  # type: ignore[misc]
-                        continue
                     tj = get_proper_type(tj)
                     # If tj is an Instance with a last_known_value, do not remove proper_ti
                     # (unless it's an instance with the same last_known_value)
@@ -548,6 +542,8 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                 # We have a non-duplicate item, add it to new_items
                 seen[proper_ti] = len(new_items)
                 new_items.append(ti)
+                if isinstance(proper_ti, LiteralType):
+                    unduplicated_literal_fallbacks.add(proper_ti.fallback)
 
         items = new_items
         items.reverse()
