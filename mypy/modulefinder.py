@@ -760,6 +760,10 @@ def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]
                     stderr=subprocess.PIPE,
                 ).decode()
             )
+        except subprocess.CalledProcessError as err:
+            print(err.stderr)
+            print(err.stdout)
+            raise
         except OSError as err:
             reason = os.strerror(err.errno)
             raise CompileError(
