@@ -751,7 +751,7 @@ def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]
     else:
         # Use subprocess to get the package directory of given Python
         # executable
-        env = {**os.environ.__dict__, "PYTHONSAFEPATH": "1"}
+        env = {**dict(os.environ), "PYTHONSAFEPATH": "1"}
         try:
             sys_path, site_packages = ast.literal_eval(
                 subprocess.check_output(
