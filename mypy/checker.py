@@ -1321,6 +1321,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.binder = old_binder
 
     def is_var_redefined_in_outer_context(self, v: Var, after_line: int) -> bool:
+        """Can the variable be assigned to at module top level or outer function?
+
+        Note that this doesn't do a full CFG analysis but uses a line number based
+        heuristic that isn't correct in some (rare) cases.
+        """
         outers = self.tscope.outer_functions()
         if not outers:
             # Top-level function -- outer context is top level, and we can't reason about
@@ -7654,6 +7659,12 @@ def collapse_walrus(e: Expression) -> Expression:
 
 
 def find_last_var_assignment_line(n: Node, v: Var) -> int:
+    """Find the highest line number of a potential assignment to variable within node.
+
+    This supports local and global variables.
+
+    Return -1 if no assignment was found.
+    """
     visitor = VarAssignVisitor(v)
     n.accept(visitor)
     return visitor.last_line
