@@ -9,6 +9,7 @@ from typing_extensions import Final, Literal, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
+from mypy.message_registry import ErrorMessage
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -242,10 +243,6 @@ N = TypeVar("N", bound=Node)
 MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
-TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
-
-INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
-
 TYPE_IGNORE_PATTERN: Final = re.compile(r"[^#]*#\s*type:\s*ignore\s*(.*)")
 
 
@@ -354,8 +351,8 @@ def parse_type_comment(
     except SyntaxError:
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
-            err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
-            errors.report(line, column, err_msg, blocker=True, code=codes.SYNTAX)
+            err_msg = message_registry.TYPE_COMMENT_SYNTAX_ERROR_VALUE.format(stripped_type)
+            errors.report(line, column, err_msg.value, blocker=True, code=err_msg.code)
             return None, None
         else:
             raise
@@ -366,7 +363,9 @@ def parse_type_comment(
             ignored: list[str] | None = parse_type_ignore_tag(tag)
             if ignored is None:
                 if errors is not None:
-                    errors.report(line, column, INVALID_TYPE_IGNORE, code=codes.SYNTAX)
+                    errors.report(
+                        line, column, message_registry.INVALID_TYPE_IGNORE.value, code=codes.SYNTAX
+                    )
                 else:
                     raise SyntaxError
         else:
@@ -439,24 +438,16 @@ class ASTConverter:
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity="note", code=codes.SYNTAX)
 
-    def fail(
-        self,
-        msg: str,
-        line: int,
-        column: int,
-        blocker: bool = True,
-        code: codes.ErrorCode = codes.SYNTAX,
-    ) -> None:
+    def fail(self, msg: ErrorMessage, line: int, column: int, blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker, code=code)
+            self.errors.report(line, column, msg.value, blocker=blocker, code=msg.code)
 
     def fail_merge_overload(self, node: IfStmt) -> None:
         self.fail(
-            "Condition can't be inferred, unable to merge overloads",
+            message_registry.FAILED_TO_MERGE_OVERLOADS,
             line=node.line,
             column=node.column,
             blocker=False,
-            code=codes.MISC,
         )
 
     def visit(self, node: AST | None) -> Any:
@@ -516,10 +507,7 @@ class ASTConverter:
             if ignores:
                 joined_ignores = ", ".join(ignores)
                 self.fail(
-                    (
-                        "type ignore with error code is not supported for modules; "
-                        f'use `# mypy: disable-error-code="{joined_ignores}"`'
-                    ),
+                    message_registry.TYPE_IGNORE_WITH_ERRCODE_ON_MODULE.format(joined_ignores),
                     line=min(self.type_ignores),
                     column=0,
                     blocker=False,
@@ -912,7 +900,7 @@ class ASTConverter:
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
-                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
+                self.fail(message_registry.INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body, self.imports, False, self.type_ignores)
 
@@ -985,7 +973,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = n.type_comment.split("#", 2)[0].strip()
-                err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
+                err_msg = message_registry.TYPE_COMMENT_SYNTAX_ERROR_VALUE.format(stripped_type)
                 self.fail(err_msg, lineno, n.col_offset)
                 if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note(
@@ -1005,18 +993,20 @@ class ASTConverter:
         func_type = None
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
-                self.fail(
-                    "Ellipses cannot accompany other argument types in function type signature",
-                    lineno,
-                    n.col_offset,
-                )
+                self.fail(message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS, lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
                 self.fail(
-                    "Type signature has too many arguments", lineno, n.col_offset, blocker=False
+                    message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS,
+                    lineno,
+                    n.col_offset,
+                    blocker=False,
                 )
             elif len(arg_types) < len(arg_kinds):
                 self.fail(
-                    "Type signature has too few arguments", lineno, n.col_offset, blocker=False
+                    message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS,
+                    lineno,
+                    n.col_offset,
+                    blocker=False,
                 )
             else:
                 func_type = CallableType(
@@ -1162,7 +1152,7 @@ class ASTConverter:
         return argument
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
-        self.fail(msg, arg.lineno, arg.col_offset)
+        self.fail(ErrorMessage(msg), arg.lineno, arg.col_offset)
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -1889,9 +1879,9 @@ class TypeConverter:
             return None
         return self.node_stack[-2]
 
-    def fail(self, msg: str, line: int, column: int) -> None:
+    def fail(self, msg: ErrorMessage, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg, blocker=True, code=codes.SYNTAX)
+            self.errors.report(line, column, msg.value, blocker=True, code=msg.code)
 
     def note(self, msg: str, line: int, column: int) -> None:
         if self.errors:
@@ -1911,7 +1901,7 @@ class TypeConverter:
                 note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
             return self.invalid_type(e, note=note)
         if not constructor:
-            self.fail("Expected arg constructor name", e.lineno, e.col_offset)
+            self.fail(message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED, e.lineno, e.col_offset)
 
         name: str | None = None
         default_type = AnyType(TypeOfAny.special_form)
@@ -1924,15 +1914,13 @@ class TypeConverter:
             elif i == 1:
                 name = self._extract_argument_name(arg)
             else:
-                self.fail("Too many arguments for argument constructor", f.lineno, f.col_offset)
+                self.fail(message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS, f.lineno, f.col_offset)
         for k in e.keywords:
             value = k.value
             if k.arg == "name":
                 if name is not None:
                     self.fail(
-                        '"{}" gets multiple values for keyword argument "name"'.format(
-                            constructor
-                        ),
+                        message_registry.MULTIPLE_VALUES_FOR_NAME_KWARG.format(constructor),
                         f.lineno,
                         f.col_offset,
                     )
@@ -1940,9 +1928,7 @@ class TypeConverter:
             elif k.arg == "type":
                 if typ is not default_type:
                     self.fail(
-                        '"{}" gets multiple values for keyword argument "type"'.format(
-                            constructor
-                        ),
+                        message_registry.MULTIPLE_VALUES_FOR_TYPE_KWARG.format(constructor),
                         f.lineno,
                         f.col_offset,
                     )
@@ -1951,7 +1937,7 @@ class TypeConverter:
                 typ = converted
             else:
                 self.fail(
-                    f'Unexpected argument "{k.arg}" for argument constructor',
+                    message_registry.ARG_CONSTRUCTOR_UNEXPECTED_ARG.format(k.arg),
                     value.lineno,
                     value.col_offset,
                 )
@@ -1966,7 +1952,9 @@ class TypeConverter:
         elif isinstance(n, NameConstant) and str(n.value) == "None":
             return None
         self.fail(
-            f"Expected string literal for argument name, got {type(n).__name__}", self.line, 0
+            message_registry.ARG_NAME_EXPECTED_STRING_LITERAL.format(type(n).__name__),
+            self.line,
+            0,
         )
         return None
 
