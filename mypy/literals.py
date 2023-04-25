@@ -144,7 +144,7 @@ def extract_var_from_literal_hash(key: Key) -> Var | None:
 
     Return None otherwise.
     """
-    if len(key) == 2 and key[0] == "Var":
+    if len(key) == 2 and key[0] == "Var" and key[1] is not None:
         assert isinstance(key[1], Var)
         return key[1]
     return None
