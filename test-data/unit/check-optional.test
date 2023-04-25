@@ -1070,7 +1070,7 @@ x: Optional[str] = "x"
 def cannot_narrow_top_level() -> None:
     reveal_type(x)  # N: Revealed type is "Union[builtins.str, None]"
 
-[case testNarrowedVariableInNestedFunctionMore]
+[case testNarrowedVariableInNestedFunctionMore1]
 from typing import Optional, overload
 
 class C:
@@ -1184,3 +1184,37 @@ def overloaded_outer_bad(x: Optional[str]) -> None:
         return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
     x = None
     nested()
+
+[case testNarrowedVariableInNestedFunctionMore2]
+from typing import Optional
+
+def narrow_multiple(x: Optional[str], y: Optional[int]) -> None:
+    z: Optional[str] = x
+    if x is None:
+        x = ""
+    if y is None:
+        y = 1
+    if int():
+        if z is None:
+            z = ""
+        def nested() -> None:
+            a: str = x
+            b: int = y
+            c: str = z
+        nested()
+
+def narrow_multiple_partial(x: Optional[str], y: Optional[int]) -> None:
+    z: Optional[str] = x
+    if x is None:
+        x = ""
+    if isinstance(y, int):
+        if z is None:
+            z = ""
+        def nested() -> None:
+            a: str = x
+            b: int = y
+            c: str = z  # E: Incompatible types in assignment (expression has type "Optional[str]", variable has type "str")
+        z = None
+        nested()
+
+[builtins fixtures/isinstance.pyi]
