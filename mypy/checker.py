@@ -26,7 +26,7 @@ from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, message_registry, nodes, operators
-from mypy.binder import ConditionalTypeBinder, get_declaration
+from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
 from mypy.checkmember import (
     MemberContext,
     analyze_decorator_or_funcbase_access,
@@ -1211,7 +1211,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Copy some type narrowings from an outer function when it seems safe enough
                 # (i.e. we can't find an assignment that might change the type of the
                 # variable afterwards).
-                new_frame = None
+                new_frame: Frame | None = None
                 for frame in old_binder.frames:
                     for key, narrowed_type in frame.types.items():
                         key_var = extract_var_from_literal_hash(key)
