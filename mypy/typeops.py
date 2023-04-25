@@ -694,7 +694,9 @@ def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
             return Overloaded([dummy])
 
 
-def callable_type(fdef: FuncItem, fallback: Instance, ret_type: Type | None = None) -> CallableType:
+def callable_type(
+    fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
+) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
     if fdef.info and not fdef.is_static and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
