@@ -937,7 +937,7 @@ main:1: error: invalid syntax
 main:1: error: invalid syntax. Perhaps you forgot a comma?
 
 [case testNotIs]
-x not is y # E: invalid syntax
+x not is y # E: Invalid syntax
 [out]
 
 [case testBinaryNegAsBinaryOp]

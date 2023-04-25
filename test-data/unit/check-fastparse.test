@@ -1,10 +1,10 @@
 [case testFastParseSyntaxError]
 
-1 +  # E: invalid syntax
+1 +  # E: Invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
 
-x = None # type: a : b  # E: syntax error in type comment "a : b"
+x = None # type: a : b  # E: Syntax error in type comment "a : b"
 
 [case testFastParseInvalidTypeComment]
 
@@ -14,13 +14,13 @@ x = None # type: a + b  # E: Invalid type comment or annotation
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
 
-def f():  # E: syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
+def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
   pass
 
 [case testFastParseFunctionAnnotationSyntaxErrorSpaces]
 
-def f():  # E: syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
+def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type:             None -> None
   pass
 
@@ -159,7 +159,7 @@ def f(a,        # type: A
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 
-def f(*, # type: int  # E: bare * has associated type comment
+def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
       ):
       # type: (...) -> int

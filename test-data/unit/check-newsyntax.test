@@ -5,7 +5,7 @@ x: int = 5  # E: Variable annotation syntax is only supported in Python 3.6 and 
 
 [case testNewSyntaxSyntaxError]
 # flags: --python-version 3.6
-x: int: int  # E: invalid syntax
+x: int: int  # E: Invalid syntax
 [out]
 
 [case testNewSyntaxBasics]

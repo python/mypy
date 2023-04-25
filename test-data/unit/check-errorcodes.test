@@ -42,7 +42,7 @@ def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: syntax error in type comment "x y"  [syntax]
+x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax]
 
 [case testErrorCodeSyntaxError3]
 # This is a bit inconsistent -- syntax error would be more logical?
