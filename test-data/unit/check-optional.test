@@ -1077,7 +1077,7 @@ class C:
     a: Optional[str]
 
 def attribute_narrowing(c: C) -> None:
-    # This case is not supported at the moment.
+    # This case is not supported, since we can't keep track of assignments to attributes.
     c.a = "x"
     def nested() -> str:
         return c.a  # E: Incompatible return value type (got "Optional[str]", expected "str")

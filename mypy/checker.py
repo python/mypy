@@ -1208,15 +1208,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
-                for f in old_binder.frames:
-                    for k, v in f.types.items():
+                # Copy type narrowings from an outer function when it seems safe.
+                for frame in old_binder.frames:
+                    for key, narrowed_type in frame.types.items():
                         if (
-                            len(k) == 2
-                            and k[0] == "Var"
-                            and not self.is_var_redefined_in_outer_context(k[1], defn.line)
+                            len(key) == 2
+                            and key[0] == "Var"
+                            and not self.is_var_redefined_in_outer_context(key[1], defn.line)
                         ):
-                            f = self.binder.push_frame()
-                            f.types[k] = v
+                            new_frame = self.binder.push_frame()
+                            new_frame.types[key] = narrowed_type
                 with self.scope.push_function(defn):
                     # We suppress reachability warnings when we use TypeVars with value
                     # restrictions: we only want to report a warning if a certain statement is
