@@ -2035,6 +2035,10 @@ del test[good_keys]             # E: Key "a" of TypedDict "Test" cannot be delet
 del test[bad_keys]              # E: Key "a" of TypedDict "Test" cannot be deleted \
                                 # E: TypedDict "Test" has no key "bad"
 
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+
 [case testTypedDictLiteralTypeSetDefault]
 
 from typing_extensions import Literal
