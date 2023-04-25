@@ -3069,7 +3069,7 @@ from attr import attrib, attrs
 class A:
     a: int
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [rechecked]
 [stale]
 [out2]
@@ -3410,7 +3410,7 @@ class C:
     b: int = attr.ib(converter=int)
     c: A = attr.ib(converter=A)
     d: int = attr.ib(converter=parse)
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [out1]
 main:6: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C"
 main:10: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D"

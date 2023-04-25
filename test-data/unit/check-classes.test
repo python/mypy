@@ -387,7 +387,7 @@ main:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incom
 [case testEqMethodsOverridingWithNonObjects]
 class A:
   def __eq__(self, other: A) -> bool: pass  # Fail
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [out]
 main:2: error: Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"
 main:2: note: This violates the Liskov substitution principle
