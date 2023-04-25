@@ -93,11 +93,6 @@ jobs:
           arch: x64
           os: windows-latest
           toxenv: type
-        - name: Formatting with Black + isort and code style with flake8
-          python: '3.7'
-          arch: x64
-          os: ubuntu-latest
-          toxenv: lint
 
     name: ${{ matrix.name }}
     env:
