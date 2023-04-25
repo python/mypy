@@ -1124,3 +1124,40 @@ def assign_to_nonlocal(x: Optional[str]) -> None:
         return nested2()
     nested()
     x = None
+
+def dec(f):
+    return f
+
+@dec
+def decorated_outer(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    nested()
+
+@dec
+def decorated_outer_bad(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    x = None
+    nested()
+
+def decorated_inner(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    @dec
+    def nested() -> str:
+        return x
+    nested()
+
+def decorated_inner_bad(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    @dec
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    x = None
+    nested()
