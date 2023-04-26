@@ -40,9 +40,9 @@ To report a bug or request an enhancement:
   tracker for that library
 
 To discuss a new type system feature:
+
 - discuss at [typing-sig mailing list](https://mail.python.org/archives/list/typing-sig@python.org/)
 - there is also some historical discussion [here](https://github.com/python/typing/issues)
-
 
 What is mypy?
 -------------
@@ -82,6 +82,7 @@ See [the documentation](https://mypy.readthedocs.io/en/stable/index.html) for
 more examples and information.
 
 In particular, see:
+
 - [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
 - [getting started](https://mypy.readthedocs.io/en/stable/getting_started.html)
 - [list of error codes](https://mypy.readthedocs.io/en/stable/error_code_list.html)
@@ -91,67 +92,75 @@ Quick start
 
 Mypy can be installed using pip:
 
-    python3 -m pip install -U mypy
+```bash
+python3 -m pip install -U mypy
+```
 
 If you want to run the latest version of the code, you can install from the
 repo directly:
 
-    python3 -m pip install -U git+https://github.com/python/mypy.git
-    # or if you don't have 'git' installed
-    python3 -m pip install -U https://github.com/python/mypy/zipball/master
+```bash
+python3 -m pip install -U git+https://github.com/python/mypy.git
+# or if you don't have 'git' installed
+python3 -m pip install -U https://github.com/python/mypy/zipball/master
+```
 
 Now you can type-check the [statically typed parts] of a program like this:
 
-    mypy PROGRAM
+```bash
+mypy PROGRAM
+```
 
 You can always use the Python interpreter to run your statically typed
 programs, even if mypy reports type errors:
 
-    python3 PROGRAM
+```bash
+python3 PROGRAM
+```
 
 You can also try mypy in an [online playground](https://mypy-play.net/) (developed by
 Yusuke Miyazaki). If you are working with large code bases, you can run mypy in
 [daemon mode], that will give much faster (often sub-second) incremental updates:
 
-    dmypy run -- PROGRAM
+```bash
+dmypy run -- PROGRAM
+```
 
 [statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
 [daemon mode]: https://mypy.readthedocs.io/en/stable/mypy_daemon.html
-
 
 Integrations
 ------------
 
 Mypy can be integrated into popular IDEs:
 
-* Vim:
-  * Using [Syntastic](https://github.com/vim-syntastic/syntastic): in `~/.vimrc` add
+- Vim:
+  - Using [Syntastic](https://github.com/vim-syntastic/syntastic): in `~/.vimrc` add
     `let g:syntastic_python_checkers=['mypy']`
-  * Using [ALE](https://github.com/dense-analysis/ale): should be enabled by default when `mypy` is installed,
+  - Using [ALE](https://github.com/dense-analysis/ale): should be enabled by default when `mypy` is installed,
     or can be explicitly enabled by adding `let b:ale_linters = ['mypy']` in `~/vim/ftplugin/python.vim`
-* Emacs: using [Flycheck](https://github.com/flycheck/)
-* Sublime Text: [SublimeLinter-contrib-mypy](https://github.com/fredcallaway/SublimeLinter-contrib-mypy)
-* Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
-* PyCharm: [mypy plugin](https://github.com/dropbox/mypy-PyCharm-plugin) (PyCharm integrates
+- Emacs: using [Flycheck](https://github.com/flycheck/)
+- Sublime Text: [SublimeLinter-contrib-mypy](https://github.com/fredcallaway/SublimeLinter-contrib-mypy)
+- Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
+- PyCharm: [mypy plugin](https://github.com/dropbox/mypy-PyCharm-plugin) (PyCharm integrates
   [its own implementation](https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html) of [PEP 484](https://peps.python.org/pep-0484/))
-* VS Code: provides [basic integration](https://code.visualstudio.com/docs/python/linting#_mypy) with mypy.
-* pre-commit: use [pre-commit mirrors-mypy](https://github.com/pre-commit/mirrors-mypy).
+- VS Code: provides [basic integration](https://code.visualstudio.com/docs/python/linting#_mypy) with mypy.
+- pre-commit: use [pre-commit mirrors-mypy](https://github.com/pre-commit/mirrors-mypy).
 
 Web site and documentation
 --------------------------
 
 Additional information is available at the web site:
 
-  https://www.mypy-lang.org/
+  <https://www.mypy-lang.org/>
 
 Jump straight to the documentation:
 
-  https://mypy.readthedocs.io/
+  <https://mypy.readthedocs.io/>
 
 Follow along our changelog at:
 
-  https://mypy-lang.blogspot.com/
-
+  <https://mypy-lang.blogspot.com/>
 
 Contributing
 ------------
@@ -164,7 +173,6 @@ To get started with developing mypy, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 If you need help getting started, don't hesitate to ask on [gitter](https://gitter.im/python/typing).
 
-
 Mypyc and compiled version of mypy
 ----------------------------------
 
@@ -174,10 +182,12 @@ mypy approximately 4 times faster than if interpreted!
 
 To install an interpreted mypy instead, use:
 
-    python3 -m pip install --no-binary mypy -U mypy
+```bash
+python3 -m pip install --no-binary mypy -U mypy
+```
 
 To use a compiled version of a development
 version of mypy, directly install a binary from
-https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
+<https://github.com/mypyc/mypy_mypyc-wheels/releases/latest>.
 
-To contribute to the mypyc project, check out https://github.com/mypyc/mypyc
+To contribute to the mypyc project, check out <https://github.com/mypyc/mypyc>
