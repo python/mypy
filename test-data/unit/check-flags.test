@@ -1311,7 +1311,7 @@ import attr
 class Unannotated:
     foo = attr.ib()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsWithAnnotations]
 # flags: --disallow-incomplete-defs
@@ -1321,7 +1321,7 @@ import attr
 class Annotated:
     bar: int = attr.ib()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsPartialAnnotations]
 # flags: --disallow-incomplete-defs
@@ -1332,7 +1332,7 @@ class PartiallyAnnotated:  # E: Function is missing a type annotation for one or
     bar: int = attr.ib()
     baz = attr.ib()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
