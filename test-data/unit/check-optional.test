@@ -1244,4 +1244,19 @@ def multiple_nested_functions(x: Optional[str], y: Optional[str]) -> None:
         a: str = y
         return x
 
+class C:
+    a: str
+    def __setitem__(self, key, value): pass
+
+def narrowed_variable_used_in_lvalue_but_not_assigned(c: Optional[C]) -> None:
+    if c is None:
+        c = C()
+    def nested() -> C:
+        return c
+    c.a = "x"
+    c[1] = 2
+    cc = C()
+    cc[c] = 3
+    nested()
+
 [builtins fixtures/isinstance.pyi]

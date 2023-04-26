@@ -7693,6 +7693,18 @@ class VarAssignVisitor(TraverserVisitor):
         if self.lvalue and e.node is self.var_node:
             self.last_line = max(self.last_line, e.line)
 
+    def visit_member_expr(self, e: MemberExpr) -> None:
+        old_lvalue = self.lvalue
+        self.lvalue = False
+        super().visit_member_expr(e)
+        self.lvalue = old_lvalue
+
+    def visit_index_expr(self, e: IndexExpr) -> None:
+        old_lvalue = self.lvalue
+        self.lvalue = False
+        super().visit_index_expr(e)
+        self.lvalue = old_lvalue
+
     def visit_with_stmt(self, s: WithStmt) -> None:
         self.lvalue = True
         for lv in s.target:
