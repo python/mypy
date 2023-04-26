@@ -937,6 +937,8 @@ reveal_type(returned)  # N: Revealed type is "builtins.int"
 assert_type(a, str)  # E: Expression is of type "int", not "str"
 assert_type(a, Any)  # E: Expression is of type "int", not "Any"
 assert_type(a, Literal[1])  # E: Expression is of type "int", not "Literal[1]"
+assert_type(42, Literal[42])
+assert_type(42, int)  # E: Expression is of type "Literal[42]", not "int"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeGeneric]
