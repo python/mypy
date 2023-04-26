@@ -1878,14 +1878,16 @@ def match_stmt_error1(x: Optional[str]) -> None:
             pass
     nested()
 
+def foo(x): pass
+
 def match_stmt_ok1(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
         return x
-    match object():
+    match foo(x):
         case str(y):
-            pass
+            z = x
     nested()
 
 def match_stmt_error2(x: Optional[str]) -> None:
