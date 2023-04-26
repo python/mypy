@@ -1589,6 +1589,13 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.show_traceback = True
     options.transform_source = remove_misplaced_type_comments
     options.preserve_asts = True
+
+    # Override cache_dir if provided in the environment
+    environ_cache_dir = os.getenv("MYPY_CACHE_DIR", "")
+    if environ_cache_dir.strip():
+        options.cache_dir = environ_cache_dir
+    options.cache_dir = os.path.expanduser(options.cache_dir)
+
     return options
 
 
