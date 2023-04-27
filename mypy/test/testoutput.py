@@ -1,7 +1,7 @@
 """Test cases for `--output=json`.
 
 These cannot be run by the usual unit test runner because of the backslashes in
-the output, which get normalized to forward slashes by the test suite on Windows. 
+the output, which get normalized to forward slashes by the test suite on Windows.
 """
 
 from __future__ import annotations
