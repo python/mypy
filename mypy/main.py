@@ -69,7 +69,7 @@ def main(
         options.fast_exit = False
 
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=options.output is not None
+        stdout, stderr, options.hide_error_codes, hide_success=options.output
     )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
@@ -155,7 +155,7 @@ def run_build(
     stderr: TextIO,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=options.output is not None
+        stdout, stderr, options.hide_error_codes, hide_success=options.output
     )
 
     messages = []
@@ -531,7 +531,6 @@ def process_options(
         metavar="FORMAT",
         help="Set a custom output format",
         choices=OUTPUT_CHOICES,
-        default=None,
     )
 
     config_group = parser.add_argument_group(

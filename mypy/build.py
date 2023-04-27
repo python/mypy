@@ -47,7 +47,7 @@ from mypy_extensions import TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
-from mypy.error_formatter import ErrorFormatter, JSONFormatter
+from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter, JSONFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
@@ -257,7 +257,7 @@ def _build(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
-        error_formatter=JSONFormatter() if options.output == "json" else None,
+        error_formatter=OUTPUT_CHOICES.get(options.output),
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,

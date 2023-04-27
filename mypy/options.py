@@ -358,7 +358,7 @@ class Options:
         self.force_union_syntax = False
 
         # Sets output format
-        self.output = None
+        self.output = ""
 
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):
