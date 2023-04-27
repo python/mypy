@@ -13,6 +13,7 @@ from typing_extensions import Final
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
+from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -67,7 +68,9 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
-    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
+    formatter = util.FancyFormatter(
+        stdout, stderr, options.hide_error_codes, hide_success=options.output is not None
+    )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -151,7 +154,9 @@ def run_build(
     stdout: TextIO,
     stderr: TextIO,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
+    formatter = util.FancyFormatter(
+        stdout, stderr, options.hide_error_codes, hide_success=options.output is not None
+    )
 
     messages = []
 
@@ -521,7 +526,11 @@ def process_options(
     )
 
     general_group.add_argument(
-        "-O", "--output", metavar="FORMAT", help="Set a custom output format"
+        "-O",
+        "--output",
+        metavar="FORMAT",
+        help="Set a custom output format",
+        choices=OUTPUT_CHOICES,
     )
 
     config_group = parser.add_argument_group(

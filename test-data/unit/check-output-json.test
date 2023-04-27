@@ -1,5 +1,13 @@
 -- Test cases for `--output=json`
 
+[case testOutputJsonNoIssues]
+# flags: --output=json
+def foo() -> None:
+    pass
+
+foo()
+[out]
+
 [case testOutputJsonSimple]
 # flags: --output=json
 def foo() -> None:
