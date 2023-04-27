@@ -496,7 +496,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
         return builder.shortcircuit_expr(expr)
 
     # Special case for string formatting
-    if expr.op == "%" and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr)):
+    if expr.op == "%" and isinstance(expr.left, (StrExpr, BytesExpr)):
         ret = translate_printf_style_formatting(builder, expr.left, expr.right)
         if ret is not None:
             return ret
