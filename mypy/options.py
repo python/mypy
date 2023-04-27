@@ -357,7 +357,7 @@ class Options:
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
 
-        # Sets output format
+        # Sets custom output format
         self.output = ""
 
     def use_lowercase_names(self) -> bool:
