@@ -47,7 +47,7 @@ from mypy_extensions import TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
-from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter, JSONFormatter
+from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
