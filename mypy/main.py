@@ -69,7 +69,7 @@ def main(
         options.fast_exit = False
 
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=options.output
+        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
