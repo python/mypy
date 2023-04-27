@@ -22,7 +22,7 @@ class JSONFormatter(ErrorFormatter):
                 "line": error.line,
                 "column": error.column,
                 "message": error.message,
-                "hint": error.hint,
+                "hint": error.hint or None,
                 "code": None if error.errorcode is None else error.errorcode.code,
             }
         )
