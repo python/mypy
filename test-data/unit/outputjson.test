@@ -1,4 +1,7 @@
--- Test cases for `--output=json`
+-- Test cases for `--output=json`.
+-- These cannot be run by the usual unit test runner because of the backslashes
+-- in the output, which get normalized to forward slashes by the test suite on
+-- Windows. 
 
 [case testOutputJsonNoIssues]
 # flags: --output=json
