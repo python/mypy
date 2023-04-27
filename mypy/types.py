@@ -1666,7 +1666,7 @@ class Parameters(ProperType):
         )
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Parameters) or isinstance(other, CallableType):
+        if isinstance(other, (Parameters, CallableType)):
             return (
                 self.arg_types == other.arg_types
                 and self.arg_names == other.arg_names
@@ -3290,7 +3290,7 @@ class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
             # TODO: this branch duplicates the one in expand_type(), find a way to reuse it
             # without import cycle types <-> typeanal <-> expandtype.
             repl = get_proper_type(self.replacements.get(param_spec.id))
-            if isinstance(repl, CallableType) or isinstance(repl, Parameters):
+            if isinstance(repl, (CallableType, Parameters)):
                 prefix = param_spec.prefix
                 t = t.expand_param_spec(repl, no_prefix=True)
                 return t.copy_modified(

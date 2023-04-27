@@ -695,7 +695,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
-                        if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
+                        if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
@@ -765,7 +765,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
-                        if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
+                        if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
