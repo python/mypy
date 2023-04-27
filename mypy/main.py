@@ -531,6 +531,7 @@ def process_options(
         metavar="FORMAT",
         help="Set a custom output format",
         choices=OUTPUT_CHOICES,
+        default=None,
     )
 
     config_group = parser.add_argument_group(
