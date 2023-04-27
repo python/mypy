@@ -155,7 +155,7 @@ def run_build(
     stderr: TextIO,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=options.output
+        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
     messages = []
