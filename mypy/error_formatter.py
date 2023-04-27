@@ -32,4 +32,4 @@ class JSONFormatter(ErrorFormatter):
         )
 
 
-OUTPUT_CHOICES = {"json": JSONFormatter}
+OUTPUT_CHOICES = {"json": JSONFormatter()}
