@@ -266,6 +266,11 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_load_address(self, op: LoadAddress) -> str:
         if isinstance(op.src, Register):
             return self.format("%r = load_address %r", op, op.src)
+        elif isinstance(op.src, LoadStatic):
+            name = op.src.identifier
+            if op.src.module_name is not None:
+                name = f"{op.src.module_name}.{name}"
+            return self.format("%r = load_address %s :: %s", op, name, op.src.namespace)
         else:
             return self.format("%r = load_address %s", op, op.src)
 

@@ -137,6 +137,14 @@ SUGGESTED_TEST_FIXTURES: Final = {
     "typing._SpecialForm": "typing-medium.pyi",
 }
 
+UNSUPPORTED_NUMBERS_TYPES: Final = {
+    "numbers.Number",
+    "numbers.Complex",
+    "numbers.Real",
+    "numbers.Rational",
+    "numbers.Integral",
+}
+
 
 class MessageBuilder:
     """Helper class for reporting type checker error messages with parameters.
@@ -792,6 +800,7 @@ class MessageBuilder:
                 for type in get_proper_types(expected_types):
                     if isinstance(arg_type, Instance) and isinstance(type, Instance):
                         notes = append_invariance_notes(notes, arg_type, type)
+                        notes = append_numbers_notes(notes, arg_type, type)
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):
                 code = codes.TYPEDDICT_ITEM
@@ -2359,6 +2368,12 @@ def format_type_inner(
     def format_list(types: Sequence[Type]) -> str:
         return ", ".join(format(typ) for typ in types)
 
+    def format_union(types: Sequence[Type]) -> str:
+        formatted = [format(typ) for typ in types if format(typ) != "None"]
+        if any(format(typ) == "None" for typ in types):
+            formatted.append("None")
+        return " | ".join(formatted)
+
     def format_literal_value(typ: LiteralType) -> str:
         if typ.is_enum_literal():
             underlying_type = format(typ.fallback)
@@ -2457,9 +2472,17 @@ def format_type_inner(
             )
 
             if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
-                return f"Optional[{literal_str}]"
+                return (
+                    f"{literal_str} | None"
+                    if options.use_or_syntax()
+                    else f"Optional[{literal_str}]"
+                )
             elif union_items:
-                return f"Union[{format_list(union_items)}, {literal_str}]"
+                return (
+                    f"{literal_str} | {format_union(union_items)}"
+                    if options.use_or_syntax()
+                    else f"Union[{format_list(union_items)}, {literal_str}]"
+                )
             else:
                 return literal_str
         else:
@@ -2470,10 +2493,17 @@ def format_type_inner(
             )
             if print_as_optional:
                 rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-                return f"Optional[{format(rest[0])}]"
+                return (
+                    f"{format(rest[0])} | None"
+                    if options.use_or_syntax()
+                    else f"Optional[{format(rest[0])}]"
+                )
             else:
-                s = f"Union[{format_list(typ.items)}]"
-
+                s = (
+                    format_union(typ.items)
+                    if options.use_or_syntax()
+                    else f"Union[{format_list(typ.items)}]"
+                )
             return s
     elif isinstance(typ, NoneType):
         return "None"
@@ -2487,7 +2517,8 @@ def format_type_inner(
         else:
             return "<nothing>"
     elif isinstance(typ, TypeType):
-        return f"Type[{format(typ.item)}]"
+        type_name = "type" if options.use_lowercase_names() else "Type"
+        return f"{type_name}[{format(typ.item)}]"
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
@@ -2968,6 +2999,17 @@ def append_invariance_notes(
             + "https://mypy.readthedocs.io/en/stable/common_issues.html#variance"
         )
         notes.append(covariant_suggestion)
+    return notes
+
+
+def append_numbers_notes(
+    notes: list[str], arg_type: Instance, expected_type: Instance
+) -> list[str]:
+    """Explain if an unsupported type from "numbers" is used in a subtype check."""
+    if expected_type.type.fullname in UNSUPPORTED_NUMBERS_TYPES:
+        notes.append('Types from "numbers" aren\'t supported for static type checking')
+        notes.append("See https://peps.python.org/pep-0484/#the-numeric-tower")
+        notes.append("Consider using a protocol instead, such as typing.SupportsFloat")
     return notes
 
 

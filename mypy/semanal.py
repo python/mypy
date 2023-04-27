@@ -1548,6 +1548,8 @@ class SemanticAnalyzer(
             self.fail("Only instance methods can be decorated with @property", dec)
         if dec.func.abstract_status == IS_ABSTRACT and dec.func.is_final:
             self.fail(f"Method {dec.func.name} is both abstract and final", dec)
+        if dec.func.is_static and dec.func.is_class:
+            self.fail(message_registry.CLASS_PATTERN_CLASS_OR_STATIC_METHOD, dec)
 
     def check_decorated_function_is_method(self, decorator: str, context: Context) -> None:
         if not self.type or self.is_func_scope():
@@ -5114,12 +5116,7 @@ class SemanticAnalyzer(
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             if not (
-                len(types) == 1
-                and (
-                    isinstance(first_arg, Parameters)
-                    or isinstance(first_arg, ParamSpecType)
-                    or isinstance(first_arg, AnyType)
-                )
+                len(types) == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))
             ):
                 types = [Parameters(types, [ARG_POS] * len(types), [None] * len(types))]
 
@@ -6684,7 +6681,7 @@ def is_trivial_body(block: Block) -> bool:
     "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
     start with a statement containing just a string (e.g. a docstring).
 
-    Note: functions that raise other kinds of exceptions do not count as
+    Note: Functions that raise other kinds of exceptions do not count as
     "trivial". We use this function to help us determine when it's ok to
     relax certain checks on body, but functions that raise arbitrary exceptions
     are more likely to do non-trivial work. For example:
@@ -6694,11 +6691,18 @@ def is_trivial_body(block: Block) -> bool:
 
     A function that raises just NotImplementedError is much less likely to be
     this complex.
+
+    Note: If you update this, you may also need to update
+    mypy.fastparse.is_possible_trivial_body!
     """
     body = block.body
+    if not body:
+        # Functions have empty bodies only if the body is stripped or the function is
+        # generated or deserialized. In these cases the body is unknown.
+        return False
 
     # Skip a docstring
-    if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
+    if isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
         body = block.body[1:]
 
     if len(body) == 0:

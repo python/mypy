@@ -90,7 +90,6 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     bitmap_rprimitive,
-    c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -127,12 +126,7 @@ from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
-from mypyc.primitives.misc_ops import (
-    check_unpack_count_op,
-    get_module_dict_op,
-    import_extra_args_op,
-    import_op,
-)
+from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
 from mypyc.primitives.registry import CFunctionDescription, function_ops
 
 # These int binary operations can borrow their operands safely, since the
@@ -194,6 +188,8 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
+        self.module_import_groups = pbv.module_import_groups
+
         self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor
@@ -394,22 +390,6 @@ class IRBuilder:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
-
-    def gen_import_from(
-        self, id: str, globals_dict: Value, imported: list[str], line: int
-    ) -> Value:
-        self.imports[id] = None
-
-        null_dict = Integer(0, dict_rprimitive, line)
-        names_to_import = self.new_list_op([self.load_str(name) for name in imported], line)
-        zero_int = Integer(0, c_int_rprimitive, line)
-        value = self.call_c(
-            import_extra_args_op,
-            [self.load_str(id), globals_dict, null_dict, names_to_import, zero_int],
-            line,
-        )
-        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
-        return value
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
