@@ -50,5 +50,5 @@ def test_output_json(testcase: DataDrivenTestCase) -> None:
     # Remove temp file.
     os.remove(program_path)
 
-    normalized_output = [line.replace(program_path, "main") for line in output]
+    normalized_output = [line.replace(test_temp_dir + os.sep, "") for line in output]
     assert normalized_output == testcase.output
