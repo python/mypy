@@ -6,7 +6,6 @@ the output, which get normalized to forward slashes by the test suite on Windows
 
 from __future__ import annotations
 
-import json
 import os
 import os.path
 
