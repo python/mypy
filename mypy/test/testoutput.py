@@ -5,6 +5,7 @@ the output, which get normalized to forward slashes by the test suite on Windows
 """
 
 from __future__ import annotations
+import json
 
 import os
 import os.path
@@ -50,5 +51,9 @@ def test_output_json(testcase: DataDrivenTestCase) -> None:
     # Remove temp file.
     os.remove(program_path)
 
-    normalized_output = [line.replace(test_temp_dir + os.sep, "") for line in output]
+    # JSON encodes every `\` character into `\\`, so we need to remove `\\` from windows paths
+    # and `/` from POSIX paths
+    json_os_separator = os.sep.replace("\\", "\\\\")
+    normalized_output = [line.replace(test_temp_dir + json_os_separator, "") for line in output]
+
     assert normalized_output == testcase.output
