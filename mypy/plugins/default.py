@@ -5,7 +5,7 @@ from typing import Callable
 
 import mypy.errorcodes as codes
 from mypy import message_registry
-from mypy.nodes import DictExpr, IntExpr, NameExpr, StrExpr, UnaryExpr
+from mypy.nodes import DictExpr, IntExpr, NameExpr, StrExpr, UnaryExpr, Var
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
@@ -17,7 +17,11 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.subtypes import is_subtype
-from mypy.typeops import is_literal_type_like, make_simplified_union
+from mypy.typeops import (
+    is_literal_type_like,
+    make_simplified_union,
+    try_getting_str_literals_from_type,
+)
 from mypy.types import (
     TPDICT_FB_NAMES,
     AnyType,
@@ -319,8 +323,14 @@ def typed_dict_setdefault_signature_callback(ctx: MethodSigContext) -> CallableT
         key = None
         if isinstance(ctx.args[0][0], StrExpr):
             key = ctx.args[0][0].value
-        if isinstance(ctx.args[0][0], NameExpr):
-            key = ctx.args[0][0].name
+        if (
+            isinstance(ctx.args[0][0], NameExpr)
+            and isinstance(ctx.args[0][0].node, Var)
+            and ctx.args[0][0].node.type is not None
+        ):
+            keys = try_getting_str_literals_from_type(ctx.args[0][0].node.type)
+            if keys is not None and len(keys) == 1:
+                key = keys[0]
         if key is not None:
             value_type = ctx.type.items.get(key)
             if value_type:

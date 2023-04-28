@@ -2047,16 +2047,23 @@ class A: pass
 
 class Test(TypedDict):
     a: List[Optional[int]]
+    b: List[Optional[str]]
     
 test: Test
 
 a: Literal["a"]
+aa: Literal["a"]
 b: Literal["b"]
+c: Literal["c"]
 
-test.setdefault(a, [])
-test.setdefault("a", [])        
-test.setdefault(b, 1)         # E: TypedDict "Test" has no key "b"
-test.setdefault("b", 1)       # E: TypedDict "Test" has no key "b"
+test.setdefault(a, [1])
+test.setdefault(aa, [1])
+test.setdefault(aa, ["1"])    # E: List item 0 has incompatible type "str"; expected "int"
+test.setdefault("a", [])    
+test.setdefault(b, ["1"])
+test.setdefault("b", ["1"])
+test.setdefault(c, 1)         # E: TypedDict "Test" has no key "c"
+test.setdefault("c", 1)       # E: TypedDict "Test" has no key "c"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
