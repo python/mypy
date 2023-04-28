@@ -2043,7 +2043,6 @@ from typing_extensions import Literal
 from mypy_extensions import TypedDict
 from typing import List, Optional
 
-class A: pass
 
 class Test(TypedDict):
     a: List[Optional[int]]
