@@ -9,8 +9,7 @@
 #include <Python.h>
 #include "vecs.h"
 
-static inline PyObject *box_vec_item(VecTExt v, Py_ssize_t index) {
-    VecbufTExtItem item = v.buf->items[index];
+static inline PyObject *box_vec_item(VecTExt v, VecbufTExtItem item) {
     if (item.len < 0)
         Py_RETURN_NONE;
     Py_INCREF(item.buf);
@@ -32,6 +31,11 @@ static inline PyObject *box_vec_item(VecTExt v, Py_ssize_t index) {
         }
     }
 }
+
+static inline PyObject *box_vec_item_by_index(VecTExt v, Py_ssize_t index) {
+    return box_vec_item(v, v.buf->items[index]);
+}
+
 
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items.
 static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, int32_t optionals,
@@ -77,7 +81,7 @@ PyObject *vec_t_ext_repr(PyObject *self) {
 PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
     VecTExt v = ((VecTExtObject *)o)->vec;
     if ((size_t)i < (size_t)v.len) {
-        return box_vec_item(v, i);
+        return box_vec_item_by_index(v, i);
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
         return NULL;
@@ -116,7 +120,7 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
         if (i == -1 && PyErr_Occurred())
             return NULL;
         if ((size_t)i < (size_t)vec.len) {
-            return box_vec_item(vec, i);
+            return box_vec_item_by_index(vec, i);
         } else {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
@@ -170,8 +174,8 @@ static PyObject *compare_vec_t_ext_eq(VecTExt x, VecTExt y, int op) {
         cmp = 0;
     } else {
         for (Py_ssize_t i = 0; i < x.len; i++) {
-            PyObject *x_item = box_vec_item(x, i);
-            PyObject *y_item = box_vec_item(y, i);
+            PyObject *x_item = box_vec_item_by_index(x, i);
+            PyObject *y_item = box_vec_item_by_index(y, i);
             int itemcmp = PyObject_RichCompareBool(x_item, y_item, Py_EQ);
             Py_DECREF(x_item);
             Py_DECREF(y_item);
@@ -206,25 +210,58 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
 }
 
 static VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
-    // TODO
+    VecbufTExtItem *items = self.buf->items;
+
+    PyObject *boxed_arg = box_vec_item(self, arg);
+    if (boxed_arg == NULL)
+        return Vec_T_Ext_Error();
+
+    for (Py_ssize_t i = 0; i < self.len; i++) {
+        int match = 0;
+        if (items[i].len == arg.len && items[i].buf == arg.buf)
+            match = 1;
+        else {
+            PyObject *item = box_vec_item_by_index(self, i);
+            if (item == NULL) {
+                Py_DECREF(boxed_arg);
+                return Vec_T_Ext_Error();
+            }
+            int itemcmp = PyObject_RichCompareBool(item, boxed_arg, Py_EQ);
+            Py_DECREF(item);
+            if (itemcmp < 0) {
+                Py_DECREF(boxed_arg);
+                return Vec_T_Ext_Error();
+            }
+            match = itemcmp;
+        }
+        if (match) {
+            Py_CLEAR(items[i].buf);
+            for (; i < self.len - 1; i++) {
+                items[i] = items[i + 1];
+            }
+            if (self.len > 0)
+                Py_XINCREF(items[self.len - 1].buf);
+            self.len--;
+            Py_INCREF(self.buf);
+            Py_DECREF(boxed_arg);
+            return self;
+        }
+    }
+    Py_DECREF(boxed_arg);
+    PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
     return Vec_T_Ext_Error();
-    /*
-    VecTExtObject *v = (VecTExtObject *)self;
-    return vec_generic_remove(&v->len, v->items, arg);
-    */
 }
 
 static PyObject *vec_t_ext_remove(PyObject *self, PyObject *arg) {
-    // TODO
-    return NULL;
-    /*
-    VecTExtObject *v = (VecTExtObject *)self;
-    if (!VecTExt_ItemCheck(v, arg))
+    VecTExt v = ((VecTExtObject *)self)->vec;
+    VecbufTExtItem item;
+    if (Vec_T_Ext_UnboxItem(v, arg, &item) < 0)
         return NULL;
-    if (!vec_generic_remove(&v->len, v->items, arg))
+    v = Vec_T_Ext_Remove(v, item);
+    Py_DECREF(item.buf);
+    if (VEC_IS_ERROR(v))
         return NULL;
-    Py_RETURN_NONE;
-    */
+    return Vec_T_Ext_Box(v);
 }
 
 static VecTExt Vec_T_Ext_Pop(VecTExt vec, Py_ssize_t index, VecbufTExtItem *result) {
