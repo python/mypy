@@ -114,24 +114,6 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
     ((method_type)(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable)[vtable_index]))
 
 
-typedef struct CPy_GetSetContext {
-    const char *attrname;
-    size_t offset;
-} CPy_GetSetContext;
-
-static PyObject *CPy_GenericGetAttr(PyObject *self, void *closure) {
-    CPy_GetSetContext *context = (CPy_GetSetContext *)closure;
-
-    char *addr = (char *)self + context->offset;
-    PyObject *value = *(PyObject **)addr;
-    if (value == NULL) {
-        PyErr_Format(PyExc_AttributeError,
-            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
-        return NULL;
-    }
-    return Py_NewRef(value);
-}
-
 // Int operations
 
 
@@ -651,6 +633,61 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyOb
 
 PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
+
+
+// Native object attribute getter/setter implementations
+
+typedef struct CPy_AttrContext {
+    const char *attrname;
+    size_t offset;
+    bool always_defined;
+} CPy_AttrContext;
+
+static PyObject *CPy_AttrGetterPyObject(PyObject *self, CPy_AttrContext *context) {
+    PyObject *value = *(PyObject **)((char *)self + context->offset);
+    if (value == NULL) {
+        assert(!context->always_defined);
+        PyErr_Format(PyExc_AttributeError,
+            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
+        return NULL;
+    }
+    return Py_NewRef(value);
+}
+
+static PyObject *CPy_AttrGetterTagged(PyObject *self, CPy_AttrContext *context) {
+    CPyTagged value = *(CPyTagged *)((char *)self + context->offset);
+    if (value == CPY_INT_TAG) {
+        assert(!context->always_defined);
+        PyErr_Format(PyExc_AttributeError,
+            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
+        return NULL;
+    }
+    CPyTagged_INCREF(value);
+    return CPyTagged_StealAsObject(value);
+}
+
+static PyObject *CPy_AttrGetterBool(PyObject *self, CPy_AttrContext *context) {
+    char value = *((char *)self + context->offset);
+    if (value == 2) {
+        assert(!context->always_defined);
+        PyErr_Format(PyExc_AttributeError,
+            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
+        return NULL;
+    }
+    return Py_NewRef(value ? Py_True : Py_False);
+}
+
+static PyObject *CPy_AttrGetterFloat(PyObject *self, CPy_AttrContext *context) {
+    double value = *(double *)((char *)self + context->offset);
+    // FIXME: this undefined check is busted
+    if (value == -113.0) {
+        assert(!context->always_defined);
+        PyErr_Format(PyExc_AttributeError,
+            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
+        return NULL;
+    }
+    return Py_NewRef(value ? Py_True : Py_False);
+}
 
 #ifdef __cplusplus
 }

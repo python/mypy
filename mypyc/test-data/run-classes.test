@@ -659,7 +659,7 @@ except AttributeError:
 Traceback (most recent call last):
   File "driver.py", line 4, in <module>
     A().x
-AttributeError: attribute 'x' of 'X' undefined
+AttributeError: attribute 'x' of 'A' undefined
 
 [case testClassMethods]
 from typing import ClassVar, Any

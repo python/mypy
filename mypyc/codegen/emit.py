@@ -1004,9 +1004,12 @@ class Emitter:
             # N.B: bool is special cased to produce a borrowed value
             # after boxing, so we don't need to increment the refcount
             # when this comes directly from a Box op.
-            self.emit_lines(f"{declaration}{dest} = {src} ? Py_True : Py_False;")
-            if not can_borrow:
-                self.emit_inc_ref(dest, object_rprimitive)
+            if can_borrow:
+                self.emit_line(f"{declaration}{dest} = {src} ? Py_True : Py_False;")
+            else:
+                self.emit_line(f"{declaration}{dest} = Py_NewRef({src} ? Py_True : Py_False);")
+            # if not can_borrow:
+            #     self.emit_inc_ref(dest, object_rprimitive)
         elif is_none_rprimitive(typ):
             # N.B: None is special cased to produce a borrowed value
             # after boxing, so we don't need to increment the refcount

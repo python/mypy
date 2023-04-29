@@ -21,7 +21,7 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
-from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
+from mypyc.ir.rtypes import RTuple, RType, is_bool_rprimitive, is_tagged, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
@@ -829,29 +829,22 @@ def generate_side_table_for_class(
 
 
 def attr_context_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, "{}_attrcontext{}".format(cl.name, attribute))
+    return names.private_name(cl.module_name, "{}_attrcontext_{}".format(cl.name, attribute))
 
 
 def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for attr, rtype in cl.attributes.items():
-            if rtype._ctype == "PyObject *":
-                emitter.emit_line(
-                    "static CPy_GetSetContext {} = {{".format(
-                        attr_context_name(cl, attr, emitter.names)
-                    )
-                )
-                emitter.emit_line(
-                    '"{}", offsetof({}, {})'.format(
-                        attr, cl.struct_name(emitter.names), emitter.attr(attr)
-                    )
-                )
-                emitter.emit_line("};")
-            else:
+            class_struct = cl.struct_name(emitter.names)
+            context_name = attr_context_name(cl, attr, emitter.names)
+            emitter.emit_line(f"static CPy_AttrContext {context_name} = {{")
+            emitter.emit_line(f'"{attr}", offsetof({class_struct}, {emitter.attr(attr)})')
+            emitter.emit_line("};")
+            if rtype._ctype not in ("PyObject *", "CPyTagged", "char"):
                 emitter.emit_line("static PyObject *")
                 emitter.emit_line(
                     "{}({} *self, void *closure);".format(
-                        getter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
+                        getter_name(cl, attr, emitter.names), class_struct
                     )
                 )
             emitter.emit_line("static int")
@@ -887,12 +880,16 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     emitter.emit_line(f"static PyGetSetDef {name}[] = {{")
     if not cl.is_trait:
         for attr, rtype in cl.attributes.items():
-            getter = getter_name(cl, attr, emitter.names)
+            if not rtype.is_unboxed:
+                getter = "CPy_AttrGetterPyObject"
+            elif is_tagged(rtype):
+                getter = "CPy_AttrGetterTagged"
+            elif is_bool_rprimitive(rtype):
+                getter = "CPy_AttrGetterBool"
+            else:
+                getter = getter_name(cl, attr, emitter.names)
             setter = setter_name(cl, attr, emitter.names)
-            context = "NULL"
-            if rtype._ctype == "PyObject *":
-                getter = "CPy_GenericGetAttr"
-                context = "(void *)&{}".format(attr_context_name(cl, attr, emitter.names))
+            context = "&{}".format(attr_context_name(cl, attr, emitter.names))
             emitter.emit_line(f'{{"{attr}",')
             emitter.emit_line(f" (getter){getter}, (setter){setter},")
             emitter.emit_line(f" NULL, {context}}},")
@@ -916,7 +913,7 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for i, (attr, rtype) in enumerate(cl.attributes.items()):
-            if rtype._ctype != "PyObject *":
+            if rtype._ctype not in ("PyObject *", "char", "CPyTagged") or True:
                 generate_getter(cl, attr, rtype, emitter)
                 emitter.emit_line("")
             generate_setter(cl, attr, rtype, emitter)
