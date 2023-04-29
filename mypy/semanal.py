@@ -3647,7 +3647,7 @@ class SemanticAnalyzer(
                 has_explicit_value=has_explicit_value,
             )
         elif isinstance(lval, MemberExpr):
-            self.analyze_member_lvalue(lval, explicit_type, is_final)
+            self.analyze_member_lvalue(lval, explicit_type, is_final, has_explicit_value)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail("Type cannot be declared in assignment to non-self attribute", lval)
         elif isinstance(lval, IndexExpr):
@@ -3824,7 +3824,9 @@ class SemanticAnalyzer(
                     has_explicit_value=True,
                 )
 
-    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool, is_final: bool) -> None:
+    def analyze_member_lvalue(
+        self, lval: MemberExpr, explicit_type: bool, is_final: bool, has_explicit_value: bool
+    ) -> None:
         """Analyze lvalue that is a member expression.
 
         Arguments:
@@ -3853,6 +3855,11 @@ class SemanticAnalyzer(
                 and explicit_type
             ):
                 self.attribute_already_defined(lval.name, lval, cur_node)
+            if self.type.is_protocol and has_explicit_value and cur_node is not None:
+                # Make this variable non-abstract, it would be safer to do this only if we
+                # are inside __init__, but we do this always to preserve historical behaviour.
+                if isinstance(cur_node.node, Var):
+                    cur_node.node.is_abstract_var = False
             if (
                 # If the attribute of self is not defined, create a new Var, ...
                 node is None
