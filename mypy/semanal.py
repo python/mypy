@@ -3853,12 +3853,13 @@ class SemanticAnalyzer(
                 and explicit_type
             ):
                 self.attribute_already_defined(lval.name, lval, cur_node)
-            # If the attribute of self is not defined in superclasses, create a new Var, ...
             if (
+                # If the attribute of self is not defined, create a new Var, ...
                 node is None
-                or (isinstance(node.node, Var) and node.node.is_abstract_var)
+                # ... or if it is defined as abstract in a *superclass*.
+                or (cur_node is None and isinstance(node.node, Var) and node.node.is_abstract_var)
                 # ... also an explicit declaration on self also creates a new Var.
-                # Note that `explicit_type` might has been erased for bare `Final`,
+                # Note that `explicit_type` might have been erased for bare `Final`,
                 # so we also check if `is_final` is passed.
                 or (cur_node is None and (explicit_type or is_final))
             ):
