@@ -31,7 +31,7 @@ typedef struct _VecbufTExtItem {
     PyObject *buf;
 } VecbufTExtItem;
 
-// Extended generic vec type: vec[t | None], vec[vec[...]], etc.
+// Nested vec type: vec[vec[...]], vec[vec[...] | None], etc.
 typedef struct _VecbufTExtObject {
     PyObject_VAR_HEAD
     // Tagged pointer to PyTypeObject *. The lowest bit is 1 for optional item type.

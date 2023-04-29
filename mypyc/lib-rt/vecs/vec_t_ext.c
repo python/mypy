@@ -160,30 +160,49 @@ int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
-PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
-    // TODO
-    return NULL;
+static PyObject *compare_vec_t_ext_eq(VecTExt x, VecTExt y, int op) {
+    int cmp = 1;
+    PyObject *res;
+    if (x.len != y.len
+            || x.buf->item_type != y.buf->item_type
+            || x.buf->depth != y.buf->depth
+            || x.buf->optionals != y.buf->optionals) {
+        cmp = 0;
+    } else {
+        for (Py_ssize_t i = 0; i < x.len; i++) {
+            PyObject *x_item = box_vec_item(x, i);
+            PyObject *y_item = box_vec_item(y, i);
+            int itemcmp = PyObject_RichCompareBool(x_item, y_item, Py_EQ);
+            Py_DECREF(x_item);
+            Py_DECREF(y_item);
+            if (itemcmp < 0)
+                return NULL;
+            if (!itemcmp) {
+                cmp = 0;
+                break;
+            }
+        }
+    }
+    if (op == Py_NE)
+        cmp = cmp ^ 1;
+    res = cmp ? Py_True : Py_False;
+    Py_INCREF(res);
+    return res;
+}
 
-    /*
+PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
         if (other->ob_type != &VecTExtType) {
             res = op == Py_EQ ? Py_False : Py_True;
         } else {
-            VecTExtObject *x = (VecTExtObject *)self;
-            VecTExtObject *y = (VecTExtObject *)other;
-            if (x->item_type != y->item_type
-                    || x->depth != y->depth
-                    || x->optionals != y->optionals) {
-                res = op == Py_EQ ? Py_False : Py_True;
-            } else
-                return vec_generic_richcompare(&x->len, x->items, &y->len, y->items, op);
+            return compare_vec_t_ext_eq(((VecTExtObject *)self)->vec,
+                                        ((VecTExtObject *)other)->vec, op);
         }
     } else
         res = Py_NotImplemented;
     Py_INCREF(res);
     return res;
-    */
 }
 
 static VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
