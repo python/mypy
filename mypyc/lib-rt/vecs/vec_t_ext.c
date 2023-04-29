@@ -264,19 +264,58 @@ static PyObject *vec_t_ext_remove(PyObject *self, PyObject *arg) {
     return Vec_T_Ext_Box(v);
 }
 
-static VecTExt Vec_T_Ext_Pop(VecTExt vec, Py_ssize_t index, VecbufTExtItem *result) {
-    // TODO
-    return Vec_T_Ext_Error();
+static VecTExt Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index, VecbufTExtItem *result) {
+    if (index < 0)
+        index += v.len;
+
+    if (index < 0 || index >= v.len) {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return Vec_T_Ext_Error();
+    }
+
+    VecbufTExtItem *items = v.buf->items;
+    *result = items[index];
+    for (Py_ssize_t i = index; i < v.len - 1; i++)
+        items[i] = items[i + 1];
+    if (v.len > 0)
+        Py_XINCREF(items[v.len - 1].buf);
+    v.len--;
+    VEC_INCREF(v);
+    return v;
 }
 
 static PyObject *vec_t_ext_pop(PyObject *self, PyObject *args) {
-    // TODO
-    return NULL;
+    Py_ssize_t index = -1;
+    if (!PyArg_ParseTuple(args, "|n:pop", &index))
+        return NULL;
 
-    /*
-    VecTExtObject *v = (VecTExtObject *)self;
-    return vec_generic_pop_wrapper(&v->len, v->items, args);
-    */
+    VecTExt v = ((VecTExtObject *)self)->vec;
+    VecbufTExtItem result;
+    v = Vec_T_Ext_Pop(v, index, &result);
+    if (VEC_IS_ERROR(v))
+        return NULL;
+
+    PyObject *vboxed = Vec_T_Ext_Box(v);
+    if (vboxed == NULL)
+        return NULL;
+
+    PyObject *result_boxed = box_vec_item(v, result);
+    if (result_boxed == NULL) {
+        Py_DECREF(vboxed);
+        Py_DECREF(result.buf);
+    }
+
+    PyObject *res = PyTuple_New(2);
+    if (res == NULL) {
+        Py_DECREF(vboxed);
+        Py_DECREF(result.buf);
+        Py_DECREF(result_boxed);
+        return NULL;
+    }
+
+    PyTuple_SetItem(res, 0, vboxed);
+    PyTuple_SetItem(res, 1, result_boxed);
+    return res;
 }
 
 static int
