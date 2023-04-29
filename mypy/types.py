@@ -33,6 +33,7 @@ from mypy.nodes import (
     FuncItem,
     SymbolNode,
 )
+from mypy.options import Options
 from mypy.state import state
 from mypy.util import IdMapper
 
@@ -183,7 +184,7 @@ class TypeOfAny:
     # Does this Any come from an error?
     from_error: Final = 5
     # Is this a type that can't be represented in mypy's type system? For instance, type of
-    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
+    # call to NewType(...). Even though these types aren't real Anys, we treat them as such.
     # Also used for variables named '_'.
     special_form: Final = 6
     # Does this Any come from interaction with another Any?
@@ -256,7 +257,10 @@ class Type(mypy.nodes.Context):
         raise RuntimeError("Not implemented")
 
     def __repr__(self) -> str:
-        return self.accept(TypeStrVisitor())
+        return self.accept(TypeStrVisitor(options=Options()))
+
+    def str_with_options(self, options: Options) -> str:
+        return self.accept(TypeStrVisitor(options=options))
 
     def serialize(self) -> JsonDict | str:
         raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
@@ -505,7 +509,6 @@ class TypeVarId:
 
 
 class TypeVarLikeType(ProperType):
-
     __slots__ = ("name", "fullname", "id", "upper_bound")
 
     name: str  # Name (may be qualified)
@@ -950,7 +953,8 @@ class CallableArgument(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_callable_argument(self))
+        ret: T = visitor.visit_callable_argument(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -975,7 +979,8 @@ class TypeList(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_type_list(self))
+        ret: T = visitor.visit_type_list(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -1661,7 +1666,7 @@ class Parameters(ProperType):
         )
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Parameters) or isinstance(other, CallableType):
+        if isinstance(other, (Parameters, CallableType)):
             return (
                 self.arg_types == other.arg_types
                 and self.arg_names == other.arg_names
@@ -1775,7 +1780,7 @@ class CallableType(FunctionLike):
         self: CT,
         arg_types: Bogus[Sequence[Type]] = _dummy,
         arg_kinds: Bogus[list[ArgKind]] = _dummy,
-        arg_names: Bogus[list[str | None]] = _dummy,
+        arg_names: Bogus[Sequence[str | None]] = _dummy,
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,
         name: Bogus[str | None] = _dummy,
@@ -1976,20 +1981,15 @@ class CallableType(FunctionLike):
         arg_type = self.arg_types[-2]
         if not isinstance(arg_type, ParamSpecType):
             return None
+
         # sometimes paramspectypes are analyzed in from mysterious places,
         # e.g. def f(prefix..., *args: P.args, **kwargs: P.kwargs) -> ...: ...
         prefix = arg_type.prefix
         if not prefix.arg_types:
             # TODO: confirm that all arg kinds are positional
             prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
-        return ParamSpecType(
-            arg_type.name,
-            arg_type.fullname,
-            arg_type.id,
-            ParamSpecFlavor.BARE,
-            arg_type.upper_bound,
-            prefix=prefix,
-        )
+
+        return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
     def expand_param_spec(
         self, c: CallableType | Parameters, no_prefix: bool = False
@@ -2409,17 +2409,17 @@ class TypedDictType(ProperType):
 
     def zip(self, right: TypedDictType) -> Iterable[tuple[str, Type, Type]]:
         left = self
-        for (item_name, left_item_type) in left.items.items():
+        for item_name, left_item_type in left.items.items():
             right_item_type = right.items.get(item_name)
             if right_item_type is not None:
                 yield (item_name, left_item_type, right_item_type)
 
     def zipall(self, right: TypedDictType) -> Iterable[tuple[str, Type | None, Type | None]]:
         left = self
-        for (item_name, left_item_type) in left.items.items():
+        for item_name, left_item_type in left.items.items():
             right_item_type = right.items.get(item_name)
             yield (item_name, left_item_type, right_item_type)
-        for (item_name, right_item_type) in right.items.items():
+        for item_name, right_item_type in right.items.items():
             if item_name in left.items:
                 continue
             yield (item_name, None, right_item_type)
@@ -2489,7 +2489,8 @@ class RawExpressionType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_raw_expression_type(self))
+        ret: T = visitor.visit_raw_expression_type(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2736,7 +2737,8 @@ class EllipsisType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_ellipsis_type(self))
+        ret: T = visitor.visit_ellipsis_type(self)
+        return ret
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2845,7 +2847,8 @@ class PlaceholderType(ProperType):
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return cast(T, visitor.visit_placeholder_type(self))
+        ret: T = visitor.visit_placeholder_type(self)
+        return ret
 
     def __hash__(self) -> int:
         return hash((self.fullname, tuple(self.args)))
@@ -2945,9 +2948,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
      - Represent the NoneType type as None.
     """
 
-    def __init__(self, id_mapper: IdMapper | None = None) -> None:
+    def __init__(self, id_mapper: IdMapper | None = None, *, options: Options) -> None:
         self.id_mapper = id_mapper
         self.any_as_dots = False
+        self.options = options
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + "?"
@@ -2989,7 +2993,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
-            s = f"{t.last_known_value}?"
+            s = f"{t.last_known_value.accept(self)}?"
         else:
             s = t.type.fullname or t.type.name or "<???>"
 
@@ -3137,11 +3141,12 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_tuple_type(self, t: TupleType) -> str:
         s = self.list_str(t.items)
+        tuple_name = "tuple" if self.options.use_lowercase_names() else "Tuple"
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname
             if fallback_name != "builtins.tuple":
-                return f"Tuple[{s}, fallback={t.partial_fallback.accept(self)}]"
-        return f"Tuple[{s}]"
+                return f"{tuple_name}[{s}, fallback={t.partial_fallback.accept(self)}]"
+        return f"{tuple_name}[{s}]"
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:
         def item_str(name: str, typ: str) -> str:
@@ -3285,7 +3290,7 @@ class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
             # TODO: this branch duplicates the one in expand_type(), find a way to reuse it
             # without import cycle types <-> typeanal <-> expandtype.
             repl = get_proper_type(self.replacements.get(param_spec.id))
-            if isinstance(repl, CallableType) or isinstance(repl, Parameters):
+            if isinstance(repl, (CallableType, Parameters)):
                 prefix = param_spec.prefix
                 t = t.expand_param_spec(repl, no_prefix=True)
                 return t.copy_modified(

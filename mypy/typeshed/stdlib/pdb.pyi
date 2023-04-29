@@ -1,13 +1,12 @@
 import signal
 import sys
-from _typeshed import Self
 from bdb import Bdb
 from cmd import Cmd
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from inspect import _SourceObjectType
 from types import CodeType, FrameType, TracebackType
 from typing import IO, Any, ClassVar, TypeVar
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, Self
 
 __all__ = ["run", "pm", "Pdb", "runeval", "runctx", "runcall", "set_trace", "post_mortem", "help"]
 
@@ -129,7 +128,7 @@ class Pdb(Bdb, Cmd):
     def _select_frame(self, number: int) -> None: ...
     def _getval_except(self, arg: str, frame: FrameType | None = None) -> object: ...
     def _print_lines(
-        self, lines: Sequence[str], start: int, breaks: Sequence[int] = ..., frame: FrameType | None = None
+        self, lines: Sequence[str], start: int, breaks: Sequence[int] = (), frame: FrameType | None = None
     ) -> None: ...
     def _cmdloop(self) -> None: ...
     def do_display(self, arg: str) -> bool | None: ...
@@ -173,4 +172,4 @@ def getsourcelines(obj: _SourceObjectType) -> tuple[list[str], int]: ...
 def lasti2lineno(code: CodeType, lasti: int) -> int: ...
 
 class _rstr(str):
-    def __repr__(self: Self) -> Self: ...
+    def __repr__(self) -> Self: ...

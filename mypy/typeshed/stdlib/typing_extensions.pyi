@@ -1,4 +1,3 @@
-import _typeshed
 import abc
 import collections
 import sys
@@ -33,6 +32,11 @@ from typing import (  # noqa: Y022,Y039
     type_check_only,
 )
 
+if sys.version_info >= (3, 10):
+    from types import UnionType
+if sys.version_info >= (3, 9):
+    from types import GenericAlias
+
 __all__ = [
     "Any",
     "ClassVar",
@@ -66,6 +70,7 @@ __all__ = [
     "assert_never",
     "assert_type",
     "dataclass_transform",
+    "deprecated",
     "final",
     "IntVar",
     "is_typeddict",
@@ -108,7 +113,7 @@ class _SpecialForm:
 # typing.Protocol and typing_extensions.Protocol so they can properly
 # warn users about potential runtime exceptions when using typing.Protocol
 # on older versions of Python.
-Protocol: _SpecialForm = ...
+Protocol: _SpecialForm
 
 def runtime_checkable(cls: _TC) -> _TC: ...
 
@@ -129,7 +134,7 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     __required_keys__: ClassVar[frozenset[str]]
     __optional_keys__: ClassVar[frozenset[str]]
     __total__: ClassVar[bool]
-    def copy(self: _typeshed.Self) -> _typeshed.Self: ...
+    def copy(self) -> Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: Never, default: object) -> object: ...
@@ -141,8 +146,8 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     def values(self) -> dict_values[str, object]: ...
     def __delitem__(self, k: Never) -> None: ...
     if sys.version_info >= (3, 9):
-        def __or__(self: _typeshed.Self, __value: _typeshed.Self) -> _typeshed.Self: ...
-        def __ior__(self: _typeshed.Self, __value: _typeshed.Self) -> _typeshed.Self: ...
+        def __or__(self, __value: Self) -> Self: ...
+        def __ior__(self, __value: Self) -> Self: ...
 
 # TypedDict is a (non-subscriptable) special form.
 TypedDict: object
@@ -156,6 +161,18 @@ def get_type_hints(
     include_extras: bool = False,
 ) -> dict[str, Any]: ...
 def get_args(tp: Any) -> tuple[Any, ...]: ...
+
+if sys.version_info >= (3, 10):
+    @overload
+    def get_origin(tp: UnionType) -> type[UnionType]: ...
+
+if sys.version_info >= (3, 9):
+    @overload
+    def get_origin(tp: GenericAlias) -> type: ...
+
+@overload
+def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
+@overload
 def get_origin(tp: Any) -> Any | None: ...
 
 Annotated: _SpecialForm
@@ -210,7 +227,7 @@ if sys.version_info >= (3, 11):
     )
 else:
     Self: _SpecialForm
-    Never: _SpecialForm = ...
+    Never: _SpecialForm
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: Never) -> Never: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
@@ -227,7 +244,8 @@ else:
         eq_default: bool = True,
         order_default: bool = False,
         kw_only_default: bool = False,
-        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+        frozen_default: bool = False,
+        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = (),
         **kwargs: object,
     ) -> IdentityFunction: ...
 
@@ -242,15 +260,15 @@ else:
         @overload
         def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
         @overload
-        def __init__(self, typename: str, fields: None = ..., **kwargs: Any) -> None: ...
+        def __init__(self, typename: str, fields: None = None, **kwargs: Any) -> None: ...
         @classmethod
-        def _make(cls: type[_typeshed.Self], iterable: Iterable[Any]) -> _typeshed.Self: ...
+        def _make(cls, iterable: Iterable[Any]) -> Self: ...
         if sys.version_info >= (3, 8):
             def _asdict(self) -> dict[str, Any]: ...
         else:
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
 
-        def _replace(self: _typeshed.Self, **kwargs: Any) -> _typeshed.Self: ...
+        def _replace(self, **kwargs: Any) -> Self: ...
 
 # New things in 3.xx
 # The `default` parameter was added to TypeVar, ParamSpec, and TypeVarTuple (PEP 696)
@@ -309,3 +327,4 @@ class TypeVarTuple:
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
 def override(__arg: _F) -> _F: ...
+def deprecated(__msg: str, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> Callable[[_T], _T]: ...

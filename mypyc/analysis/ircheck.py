@@ -16,6 +16,9 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -43,6 +46,7 @@ from mypyc.ir.ops import (
     TupleSet,
     Unbox,
     Unreachable,
+    Value,
 )
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
@@ -54,6 +58,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_float_rprimitive,
     is_object_rprimitive,
     list_rprimitive,
     range_rprimitive,
@@ -221,6 +226,14 @@ class OpChecker(OpVisitor[None]):
         if not can_coerce_to(t, s) or not can_coerce_to(s, t):
             self.fail(source=op, desc=f"{t.name} and {s.name} are not compatible")
 
+    def expect_float(self, op: Op, v: Value) -> None:
+        if not is_float_rprimitive(v.type):
+            self.fail(op, f"Float expected (actual type is {v.type})")
+
+    def expect_non_float(self, op: Op, v: Value) -> None:
+        if is_float_rprimitive(v.type):
+            self.fail(op, "Float not expected")
+
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
 
@@ -376,10 +389,24 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_int_op(self, op: IntOp) -> None:
-        pass
+        self.expect_non_float(op, op.lhs)
+        self.expect_non_float(op, op.rhs)
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         self.check_compatibility(op, op.lhs.type, op.rhs.type)
+        self.expect_non_float(op, op.lhs)
+        self.expect_non_float(op, op.rhs)
+
+    def visit_float_op(self, op: FloatOp) -> None:
+        self.expect_float(op, op.lhs)
+        self.expect_float(op, op.rhs)
+
+    def visit_float_neg(self, op: FloatNeg) -> None:
+        self.expect_float(op, op.src)
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
+        self.expect_float(op, op.lhs)
+        self.expect_float(op, op.rhs)
 
     def visit_load_mem(self, op: LoadMem) -> None:
         pass

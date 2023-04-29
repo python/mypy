@@ -1,9 +1,8 @@
 import sys
-from _typeshed import Self
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from types import TracebackType
 from typing import Any, Generic, TypeVar
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -62,7 +61,7 @@ class IMapIterator(Iterator[_T]):
     else:
         def __init__(self, cache: dict[int, IMapIterator[Any]]) -> None: ...
 
-    def __iter__(self: Self) -> Self: ...
+    def __iter__(self) -> Self: ...
     def next(self, timeout: float | None = None) -> _T: ...
     def __next__(self, timeout: float | None = None) -> _T: ...
 
@@ -73,16 +72,16 @@ class Pool:
         self,
         processes: int | None = None,
         initializer: Callable[..., object] | None = None,
-        initargs: Iterable[Any] = ...,
+        initargs: Iterable[Any] = (),
         maxtasksperchild: int | None = None,
         context: Any | None = None,
     ) -> None: ...
-    def apply(self, func: Callable[..., _T], args: Iterable[Any] = ..., kwds: Mapping[str, Any] = ...) -> _T: ...
+    def apply(self, func: Callable[..., _T], args: Iterable[Any] = (), kwds: Mapping[str, Any] = {}) -> _T: ...
     def apply_async(
         self,
         func: Callable[..., _T],
-        args: Iterable[Any] = ...,
-        kwds: Mapping[str, Any] = ...,
+        args: Iterable[Any] = (),
+        kwds: Mapping[str, Any] = {},
         callback: Callable[[_T], object] | None = None,
         error_callback: Callable[[BaseException], object] | None = None,
     ) -> AsyncResult[_T]: ...
@@ -109,14 +108,14 @@ class Pool:
     def close(self) -> None: ...
     def terminate(self) -> None: ...
     def join(self) -> None: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
 
 class ThreadPool(Pool):
     def __init__(
-        self, processes: int | None = None, initializer: Callable[..., object] | None = None, initargs: Iterable[Any] = ...
+        self, processes: int | None = None, initializer: Callable[..., object] | None = None, initargs: Iterable[Any] = ()
     ) -> None: ...
 
 # undocumented

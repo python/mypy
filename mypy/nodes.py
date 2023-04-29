@@ -20,11 +20,12 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 
 import mypy.strconv
+from mypy.options import Options
 from mypy.util import short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
@@ -173,7 +174,7 @@ del _nongen_builtins["builtins.str"]
 
 
 def get_nongen_builtins(python_version: tuple[int, int]) -> dict[str, str]:
-    # After 3.9 with pep585 generic builtins are allowed.
+    # After 3.9 with pep585 generic builtins are allowed
     return _nongen_builtins if python_version < (3, 9) else {}
 
 
@@ -190,9 +191,14 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv())
+        ans = self.accept(mypy.strconv.StrConv(options=Options()))
         if ans is None:
             return repr(self)
+        return ans
+
+    def str_with_options(self, options: Options) -> str:
+        ans = self.accept(mypy.strconv.StrConv(options=options))
+        assert ans
         return ans
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -461,20 +467,17 @@ class ImportFrom(ImportBase):
 class ImportAll(ImportBase):
     """from m import *"""
 
-    __slots__ = ("id", "relative", "imported_names")
+    __slots__ = ("id", "relative")
 
     __match_args__ = ("id", "relative")
 
     id: str
     relative: int
-    # NOTE: Only filled and used by old semantic analyzer.
-    imported_names: list[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
-        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
@@ -559,7 +562,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.items = items
         self.unanalyzed_items = items.copy()
         self.impl = None
-        if len(items) > 0:
+        if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
         self.is_final = False
@@ -703,18 +706,6 @@ class FuncItem(FuncBase):
 
     def max_fixed_argc(self) -> int:
         return self.max_pos
-
-    def set_line(
-        self,
-        target: Context | int,
-        column: int | None = None,
-        end_line: int | None = None,
-        end_column: int | None = None,
-    ) -> None:
-        super().set_line(target, column, end_line, end_column)
-        for arg in self.arguments:
-            # TODO: set arguments line/column to their precise locations.
-            arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
         return self.type is None
@@ -916,6 +907,7 @@ class Decorator(SymbolNode, Statement):
 
 VAR_FLAGS: Final = [
     "is_self",
+    "is_cls",
     "is_initialized_in_class",
     "is_staticmethod",
     "is_classmethod",
@@ -950,6 +942,7 @@ class Var(SymbolNode):
         "type",
         "final_value",
         "is_self",
+        "is_cls",
         "is_ready",
         "is_inferred",
         "is_initialized_in_class",
@@ -982,6 +975,8 @@ class Var(SymbolNode):
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
+        # Is this the first argument to a classmethod (typically "cls")?
+        self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
         # Is this initialized explicitly to a non-None value in class body?
@@ -1646,6 +1641,10 @@ class StrExpr(Expression):
         return visitor.visit_str_expr(self)
 
 
+def is_StrExpr_list(seq: list[Expression]) -> TypeGuard[list[StrExpr]]:
+    return all(isinstance(item, StrExpr) for item in seq)
+
+
 class BytesExpr(Expression):
     """Bytes literal"""
 
@@ -2190,7 +2189,8 @@ class LambdaExpr(FuncItem, Expression):
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
-        ret = cast(ReturnStmt, self.body.body[-1])
+        ret = self.body.body[-1]
+        assert isinstance(ret, ReturnStmt)
         expr = ret.expr
         assert expr is not None  # lambda can't have empty body
         return expr
@@ -2830,6 +2830,7 @@ class TypeInfo(SymbolNode):
         "type_var_tuple_prefix",
         "type_var_tuple_suffix",
         "self_type",
+        "dataclass_transform_spec",
     )
 
     _fullname: str  # Fully qualified name
@@ -2977,6 +2978,9 @@ class TypeInfo(SymbolNode):
     # Shared type variable for typing.Self in this class (if used, otherwise None).
     self_type: mypy.types.TypeVarType | None
 
+    # Added if the corresponding class is directly decorated with `typing.dataclass_transform`
+    dataclass_transform_spec: DataclassTransformSpec | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3032,6 +3036,7 @@ class TypeInfo(SymbolNode):
         self.is_intersection = False
         self.metadata = {}
         self.self_type = None
+        self.dataclass_transform_spec = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3084,7 +3089,7 @@ class TypeInfo(SymbolNode):
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
                 for name, node in base.names.items():
-                    if isinstance(node.node, (TypeAlias, TypeVarExpr)):
+                    if isinstance(node.node, (TypeAlias, TypeVarExpr, MypyFile)):
                         # These are auxiliary definitions (and type aliases are prohibited).
                         continue
                     members.add(name)
@@ -3184,22 +3189,21 @@ class TypeInfo(SymbolNode):
 
         This includes the most important information about the type.
         """
-        return self.dump()
+        options = Options()
+        return self.dump(
+            str_conv=mypy.strconv.StrConv(options=options),
+            type_str_conv=mypy.types.TypeStrVisitor(options=options),
+        )
 
     def dump(
-        self,
-        str_conv: mypy.strconv.StrConv | None = None,
-        type_str_conv: mypy.types.TypeStrVisitor | None = None,
+        self, str_conv: mypy.strconv.StrConv, type_str_conv: mypy.types.TypeStrVisitor
     ) -> str:
         """Return a string dump of the contents of the TypeInfo."""
-        if not str_conv:
-            str_conv = mypy.strconv.StrConv()
+
         base: str = ""
 
         def type_str(typ: mypy.types.Type) -> str:
-            if type_str_conv:
-                return typ.accept(type_str_conv)
-            return str(typ)
+            return typ.accept(type_str_conv)
 
         head = "TypeInfo" + str_conv.format_id(self)
         if self.bases:
@@ -3251,6 +3255,11 @@ class TypeInfo(SymbolNode):
             "slots": list(sorted(self.slots)) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
             "self_type": self.self_type.serialize() if self.self_type is not None else None,
+            "dataclass_transform_spec": (
+                self.dataclass_transform_spec.serialize()
+                if self.dataclass_transform_spec is not None
+                else None
+            ),
         }
         return data
 
@@ -3314,11 +3323,14 @@ class TypeInfo(SymbolNode):
         set_flags(ti, data["flags"])
         st = data["self_type"]
         ti.self_type = mypy.types.TypeVarType.deserialize(st) if st is not None else None
+        if data.get("dataclass_transform_spec") is not None:
+            ti.dataclass_transform_spec = DataclassTransformSpec.deserialize(
+                data["dataclass_transform_spec"]
+            )
         return ti
 
 
 class FakeInfo(TypeInfo):
-
     __slots__ = ("msg",)
 
     # types.py defines a single instance of this class, called types.NOT_READY.
@@ -3484,8 +3496,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_tuple_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the tuple type described by a given TypeInfo."""
+        """Generate an alias to the tuple type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic tuple types),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.tuple_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, info.defn.type_vars)),
             info.fullname,
@@ -3495,8 +3512,13 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_typeddict_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the TypedDict type described by a given TypeInfo."""
+        """Generate an alias to the TypedDict type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic TypedDicts),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.typeddict_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.typeddict_type.copy_modified(
                 fallback=mypy.types.Instance(info, info.defn.type_vars)
@@ -3897,8 +3919,8 @@ class DataclassTransformSpec:
             "eq_default": self.eq_default,
             "order_default": self.order_default,
             "kw_only_default": self.kw_only_default,
-            "frozen_only_default": self.frozen_default,
-            "field_specifiers": self.field_specifiers,
+            "frozen_default": self.frozen_default,
+            "field_specifiers": list(self.field_specifiers),
         }
 
     @classmethod
@@ -3908,7 +3930,7 @@ class DataclassTransformSpec:
             order_default=data.get("order_default"),
             kw_only_default=data.get("kw_only_default"),
             frozen_default=data.get("frozen_default"),
-            field_specifiers=data.get("field_specifiers"),
+            field_specifiers=tuple(data.get("field_specifiers", [])),
         )
 
 

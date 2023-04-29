@@ -1027,7 +1027,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def visit_type_type(self, typ: TypeType) -> list[str]:
         triggers = self.get_type_triggers(typ.item)
         if not self.use_logical_deps:
-            old_triggers = triggers[:]
+            old_triggers = triggers.copy()
             for trigger in old_triggers:
                 triggers.append(trigger.rstrip(">") + ".__init__>")
                 triggers.append(trigger.rstrip(">") + ".__new__>")

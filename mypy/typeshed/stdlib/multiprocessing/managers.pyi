@@ -1,11 +1,11 @@
 import queue
 import sys
 import threading
-from _typeshed import Self, SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
+from _typeshed import SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
 from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping, MutableSequence, Sequence
 from types import TracebackType
 from typing import Any, AnyStr, ClassVar, Generic, TypeVar, overload
-from typing_extensions import SupportsIndex, TypeAlias
+from typing_extensions import Self, SupportsIndex, TypeAlias
 
 from .connection import Connection
 from .context import BaseContext
@@ -54,7 +54,7 @@ class BaseProxy:
         manager_owned: bool = False,
     ) -> None: ...
     def __deepcopy__(self, memo: Any | None) -> Any: ...
-    def _callmethod(self, methodname: str, args: tuple[Any, ...] = ..., kwds: dict[Any, Any] = ...) -> None: ...
+    def _callmethod(self, methodname: str, args: tuple[Any, ...] = (), kwds: dict[Any, Any] = {}) -> None: ...
     def _getvalue(self) -> Any: ...
     def __reduce__(self) -> tuple[Any, tuple[Any, Any, str, dict[Any, Any]]]: ...
 
@@ -111,13 +111,13 @@ class BaseListProxy(BaseProxy, MutableSequence[_T]):
     # Use BaseListProxy[SupportsRichComparisonT] for the first overload rather than [SupportsRichComparison]
     # to work around invariance
     @overload
-    def sort(self: BaseListProxy[SupportsRichComparisonT], *, key: None = ..., reverse: bool = ...) -> None: ...
+    def sort(self: BaseListProxy[SupportsRichComparisonT], *, key: None = None, reverse: bool = ...) -> None: ...
     @overload
     def sort(self, *, key: Callable[[_T], SupportsRichComparison], reverse: bool = ...) -> None: ...
 
 class ListProxy(BaseListProxy[_T]):
-    def __iadd__(self: Self, __x: Iterable[_T]) -> Self: ...  # type: ignore[override]
-    def __imul__(self: Self, __n: SupportsIndex) -> Self: ...  # type: ignore[override]
+    def __iadd__(self, __value: Iterable[_T]) -> Self: ...  # type: ignore[override]
+    def __imul__(self, __value: SupportsIndex) -> Self: ...  # type: ignore[override]
 
 # Returned by BaseManager.get_server()
 class Server:
@@ -150,7 +150,7 @@ class BaseManager:
 
     def get_server(self) -> Server: ...
     def connect(self) -> None: ...
-    def start(self, initializer: Callable[..., object] | None = None, initargs: Iterable[Any] = ...) -> None: ...
+    def start(self, initializer: Callable[..., object] | None = None, initargs: Iterable[Any] = ()) -> None: ...
     def shutdown(self) -> None: ...  # only available after start() was called
     def join(self, timeout: float | None = None) -> None: ...  # undocumented
     @property
@@ -165,7 +165,7 @@ class BaseManager:
         method_to_typeid: Mapping[str, str] | None = None,
         create_method: bool = True,
     ) -> None: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...

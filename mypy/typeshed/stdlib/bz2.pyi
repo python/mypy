@@ -1,10 +1,10 @@
 import _compression
 import sys
 from _compression import BaseStream
-from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
+from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Iterable
 from typing import IO, Any, Protocol, TextIO, overload
-from typing_extensions import Literal, SupportsIndex, TypeAlias, final
+from typing_extensions import Literal, Self, SupportsIndex, TypeAlias, final
 
 __all__ = ["BZ2File", "BZ2Compressor", "BZ2Decompressor", "open", "compress", "decompress"]
 
@@ -92,7 +92,7 @@ def open(
 ) -> BZ2File | TextIO: ...
 
 class BZ2File(BaseStream, IO[bytes]):
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     if sys.version_info >= (3, 9):
         @overload
         def __init__(self, filename: _WritableFileobj, mode: _WriteBinaryMode, *, compresslevel: int = 9) -> None: ...

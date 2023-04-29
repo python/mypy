@@ -665,10 +665,15 @@ def request(
         return {"error": str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
     else:
-        # Display debugging output written to stdout in the server process for convenience.
+        # Display debugging output written to stdout/stderr in the server process for convenience.
         stdout = response.get("stdout")
         if stdout:
             sys.stdout.write(stdout)
+        stderr = response.get("stderr")
+        if stderr:
+            print("-" * 79)
+            print("stderr:")
+            sys.stdout.write(stderr)
         return response
 
 

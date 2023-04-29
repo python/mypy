@@ -58,13 +58,13 @@ if sys.version_info >= (3, 8):
         *,
         out: None = None,
         from_file: _FileRead | None = None,
-        with_comments: bool = ...,
-        strip_text: bool = ...,
-        rewrite_prefixes: bool = ...,
-        qname_aware_tags: Iterable[str] | None = ...,
-        qname_aware_attrs: Iterable[str] | None = ...,
-        exclude_attrs: Iterable[str] | None = ...,
-        exclude_tags: Iterable[str] | None = ...,
+        with_comments: bool = False,
+        strip_text: bool = False,
+        rewrite_prefixes: bool = False,
+        qname_aware_tags: Iterable[str] | None = None,
+        qname_aware_attrs: Iterable[str] | None = None,
+        exclude_attrs: Iterable[str] | None = None,
+        exclude_tags: Iterable[str] | None = None,
     ) -> str: ...
     @overload
     def canonicalize(
@@ -72,13 +72,13 @@ if sys.version_info >= (3, 8):
         *,
         out: SupportsWrite[str],
         from_file: _FileRead | None = None,
-        with_comments: bool = ...,
-        strip_text: bool = ...,
-        rewrite_prefixes: bool = ...,
-        qname_aware_tags: Iterable[str] | None = ...,
-        qname_aware_attrs: Iterable[str] | None = ...,
-        exclude_attrs: Iterable[str] | None = ...,
-        exclude_tags: Iterable[str] | None = ...,
+        with_comments: bool = False,
+        strip_text: bool = False,
+        rewrite_prefixes: bool = False,
+        qname_aware_tags: Iterable[str] | None = None,
+        qname_aware_attrs: Iterable[str] | None = None,
+        exclude_attrs: Iterable[str] | None = None,
+        exclude_tags: Iterable[str] | None = None,
     ) -> None: ...
 
 class Element:
@@ -112,18 +112,18 @@ class Element:
     def set(self, __key: str, __value: str) -> None: ...
     def __copy__(self) -> Element: ...  # returns the type of self in Python impl, but not in C impl
     def __deepcopy__(self, __memo: Any) -> Element: ...  # Only exists in C impl
-    def __delitem__(self, __i: SupportsIndex | slice) -> None: ...
+    def __delitem__(self, __key: SupportsIndex | slice) -> None: ...
     @overload
-    def __getitem__(self, __i: SupportsIndex) -> Element: ...
+    def __getitem__(self, __key: SupportsIndex) -> Element: ...
     @overload
-    def __getitem__(self, __s: slice) -> list[Element]: ...
+    def __getitem__(self, __key: slice) -> list[Element]: ...
     def __len__(self) -> int: ...
     # Doesn't actually exist at runtime, but instance of the class are indeed iterable due to __getitem__.
     def __iter__(self) -> Iterator[Element]: ...
     @overload
-    def __setitem__(self, __i: SupportsIndex, __o: Element) -> None: ...
+    def __setitem__(self, __key: SupportsIndex, __value: Element) -> None: ...
     @overload
-    def __setitem__(self, __s: slice, __o: Iterable[Element]) -> None: ...
+    def __setitem__(self, __key: slice, __value: Iterable[Element]) -> None: ...
     if sys.version_info < (3, 9):
         def getchildren(self) -> list[Element]: ...
         def getiterator(self, tag: str | None = None) -> list[Element]: ...

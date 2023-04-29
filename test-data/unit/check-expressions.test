@@ -937,6 +937,8 @@ reveal_type(returned)  # N: Revealed type is "builtins.int"
 assert_type(a, str)  # E: Expression is of type "int", not "str"
 assert_type(a, Any)  # E: Expression is of type "int", not "Any"
 assert_type(a, Literal[1])  # E: Expression is of type "int", not "Literal[1]"
+assert_type(42, Literal[42])
+assert_type(42, int)  # E: Expression is of type "Literal[42]", not "int"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeGeneric]
@@ -1115,11 +1117,28 @@ o[:]   # E: Value of type "object" is not indexable
 
 [case testNonIntSliceBounds]
 from typing import Any
-a, o = None, None # type: (Any, object)
-a[o:1] # E: Slice index must be an integer or None
-a[1:o] # E: Slice index must be an integer or None
-a[o:]  # E: Slice index must be an integer or None
-a[:o]  # E: Slice index must be an integer or None
+a: Any
+o: object
+a[o:1] # E: Slice index must be an integer, SupportsIndex or None
+a[1:o] # E: Slice index must be an integer, SupportsIndex or None
+a[o:]  # E: Slice index must be an integer, SupportsIndex or None
+a[:o]  # E: Slice index must be an integer, SupportsIndex or None
+[builtins fixtures/slice.pyi]
+
+[case testSliceSupportsIndex]
+import typing_extensions
+class Index:
+    def __init__(self, value: int) -> None:
+        self.value = value
+    def __index__(self) -> int:
+        return self.value
+
+c = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+reveal_type(c[Index(0):Index(5)])  # N: Revealed type is "builtins.list[builtins.int]"
+[file typing_extensions.pyi]
+from typing import Protocol
+class SupportsIndex(Protocol):
+    def __index__(self) -> int: ...
 [builtins fixtures/slice.pyi]
 
 [case testNoneSliceBounds]
@@ -1769,13 +1788,42 @@ b = {'z': 26, *a}  # E: invalid syntax
 
 [case testDictWithStarStarExpr]
 
-from typing import Dict
+from typing import Dict, Iterable
+
+class Thing:
+    def keys(self) -> Iterable[str]:
+        ...
+    def __getitem__(self, key: str) -> int:
+        ...
+
 a = {'a': 1}
 b = {'z': 26, **a}
 c = {**b}
 d = {**a, **b, 'c': 3}
-e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "Mapping[int, str]"
-f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "Mapping[int, int]"
+e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, str]"
+f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, int]"
+g = {**Thing()}
+h = {**a, **Thing()}
+i = {**Thing()}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, int]" \
+                 # N: Following member(s) of "Thing" have conflicts: \
+                 # N:     Expected: \
+                 # N:         def __getitem__(self, int, /) -> int \
+                 # N:     Got: \
+                 # N:         def __getitem__(self, str, /) -> int \
+                 # N:     Expected: \
+                 # N:         def keys(self) -> Iterable[int] \
+                 # N:     Got: \
+                 # N:         def keys(self) -> Iterable[str]
+j = {1: 'a', **Thing()}  # E: Argument 1 to "update" of "dict" has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, str]" \
+                         # N: Following member(s) of "Thing" have conflicts: \
+                         # N:     Expected: \
+                         # N:         def __getitem__(self, int, /) -> str \
+                         # N:     Got: \
+                         # N:         def __getitem__(self, str, /) -> int \
+                         # N:     Expected: \
+                         # N:         def keys(self) -> Iterable[int] \
+                         # N:     Got: \
+                         # N:         def keys(self) -> Iterable[str]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
 

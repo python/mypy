@@ -69,6 +69,7 @@ RUNTIME_C_FILES: Final = [
     "getargs.c",
     "getargsfast.c",
     "int_ops.c",
+    "float_ops.c",
     "str_ops.c",
     "bytes_ops.c",
     "list_ops.c",

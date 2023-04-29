@@ -2,13 +2,13 @@ import gzip
 import http.client
 import sys
 import time
-from _typeshed import ReadableBuffer, Self, SupportsRead, SupportsWrite, _BufferWithLen
+from _typeshed import ReadableBuffer, SupportsRead, SupportsWrite, _BufferWithLen
 from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
 from io import BytesIO
 from types import TracebackType
-from typing import Any, Protocol, Union, overload
-from typing_extensions import Literal, TypeAlias
+from typing import Any, Protocol, overload
+from typing_extensions import Literal, Self, TypeAlias
 
 class _SupportsTimeTuple(Protocol):
     def timetuple(self) -> time.struct_time: ...
@@ -31,7 +31,7 @@ _Marshallable: TypeAlias = (
     | Binary
 )
 _XMLDate: TypeAlias = int | datetime | tuple[int, ...] | time.struct_time
-_HostType: TypeAlias = Union[tuple[str, dict[str, str]], str]
+_HostType: TypeAlias = tuple[str, dict[str, str]] | str
 
 def escape(s: str) -> str: ...  # undocumented
 
@@ -230,7 +230,7 @@ class Transport:
 
     if sys.version_info >= (3, 8):
         def __init__(
-            self, use_datetime: bool = False, use_builtin_types: bool = False, *, headers: Iterable[tuple[str, str]] = ...
+            self, use_datetime: bool = False, use_builtin_types: bool = False, *, headers: Iterable[tuple[str, str]] = ()
         ) -> None: ...
     else:
         def __init__(self, use_datetime: bool = False, use_builtin_types: bool = False) -> None: ...
@@ -259,7 +259,7 @@ class SafeTransport(Transport):
             use_datetime: bool = False,
             use_builtin_types: bool = False,
             *,
-            headers: Iterable[tuple[str, str]] = ...,
+            headers: Iterable[tuple[str, str]] = (),
             context: Any | None = None,
         ) -> None: ...
     else:
@@ -288,7 +288,7 @@ class ServerProxy:
             use_datetime: bool = False,
             use_builtin_types: bool = False,
             *,
-            headers: Iterable[tuple[str, str]] = ...,
+            headers: Iterable[tuple[str, str]] = (),
             context: Any | None = None,
         ) -> None: ...
     else:
@@ -312,7 +312,7 @@ class ServerProxy:
     def __call__(self, attr: Literal["transport"]) -> Transport: ...
     @overload
     def __call__(self, attr: str) -> Callable[[], None] | Transport: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...

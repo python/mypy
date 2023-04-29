@@ -163,7 +163,6 @@ ChangesAndRemovals: _TypeAlias = Tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
-
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
@@ -215,7 +214,9 @@ class Server:
                 with server:
                     data = receive(server)
                     debug_stdout = io.StringIO()
+                    debug_stderr = io.StringIO()
                     sys.stdout = debug_stdout
+                    sys.stderr = debug_stderr
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -233,9 +234,11 @@ class Server:
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
                                 resp["stdout"] = debug_stdout.getvalue()
+                                resp["stderr"] = debug_stderr.getvalue()
                                 server.write(json.dumps(resp).encode("utf8"))
                                 raise
                     resp["stdout"] = debug_stdout.getvalue()
+                    resp["stderr"] = debug_stderr.getvalue()
                     try:
                         resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode("utf8"))
@@ -596,7 +599,7 @@ class Server:
         messages = fine_grained_manager.update(changed, [], followed=True)
 
         # Follow deps from changed modules (still within graph).
-        worklist = changed[:]
+        worklist = changed.copy()
         while worklist:
             module = worklist.pop()
             if module[0] not in graph:
@@ -703,7 +706,7 @@ class Server:
         """
         changed = []
         new_files = []
-        worklist = roots[:]
+        worklist = roots.copy()
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
@@ -824,7 +827,6 @@ class Server:
     def update_changed(
         self, sources: list[BuildSource], remove: list[str], update: list[str]
     ) -> ChangesAndRemovals:
-
         changed_paths = self.fswatcher.update_changed(remove, update)
         return self._find_changed(sources, changed_paths)
 

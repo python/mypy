@@ -1813,6 +1813,19 @@ def f1(x: int) -> int:
 
 [typing fixtures/typing-medium.pyi]
 
+[case testUsedBeforeDefMatchWalrus]
+# flags: --enable-error-code used-before-def
+import typing
+
+def f0(x: int) -> None:
+    a = y  # E: Cannot determine type of "y"  # E: Name "y" is used before definition
+    match y := x:
+        case 1:
+            b = y
+        case 2:
+            c = y
+    d = y
+
 [case testTypeAliasWithNewUnionSyntaxAndNoneLeftOperand]
 from typing import overload
 class C:
@@ -1828,3 +1841,25 @@ class D: pass
 X = None | C
 Y = None | D
 [builtins fixtures/type.pyi]
+
+[case testMatchStatementWalrus]
+class A:
+    a = 1
+
+def returns_a_or_none() -> A | None:
+    return A()
+
+def returns_a() -> A:
+    return A()
+
+def f() -> None:
+    match x := returns_a_or_none():
+        case A():
+            reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    match x := returns_a():
+        case A():
+            reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    y = returns_a_or_none()
+    match y:
+        case A():
+            reveal_type(y.a)  # N: Revealed type is "builtins.int"

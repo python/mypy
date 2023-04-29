@@ -4,7 +4,7 @@ import tkinter
 from _typeshed import Incomplete
 from collections.abc import Callable
 from tkinter.font import _FontDescription
-from typing import Any, Union, overload
+from typing import Any, overload
 from typing_extensions import Literal, TypeAlias, TypedDict
 
 __all__ = [
@@ -38,13 +38,13 @@ __all__ = [
 def tclobjs_to_py(adict: dict[Any, Any]) -> dict[Any, Any]: ...
 def setup_master(master: Incomplete | None = None): ...
 
-_Padding: TypeAlias = Union[
-    tkinter._ScreenUnits,
-    tuple[tkinter._ScreenUnits],
-    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits],
-    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits],
-    tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits],
-]
+_Padding: TypeAlias = (
+    tkinter._ScreenUnits
+    | tuple[tkinter._ScreenUnits]
+    | tuple[tkinter._ScreenUnits, tkinter._ScreenUnits]
+    | tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits]
+    | tuple[tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits, tkinter._ScreenUnits]
+)
 
 # from ttk_widget (aka ttk::widget) manual page, differs from tkinter._Compound
 _TtkCompound: TypeAlias = Literal["text", "image", tkinter._Compound]
@@ -177,12 +177,12 @@ class Entry(Widget, tkinter.Entry):
         master: tkinter.Misc | None = None,
         widget: str | None = None,
         *,
-        background: tkinter._Color = ...,  # undocumented
+        background: str = ...,  # undocumented
         class_: str = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,
         font: _FontDescription = ...,
-        foreground: tkinter._Color = ...,
+        foreground: str = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
         name: str = ...,
@@ -201,11 +201,11 @@ class Entry(Widget, tkinter.Entry):
         self,
         cnf: dict[str, Any] | None = None,
         *,
-        background: tkinter._Color = ...,
+        background: str = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,
         font: _FontDescription = ...,
-        foreground: tkinter._Color = ...,
+        foreground: str = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
         show: str = ...,
@@ -226,11 +226,11 @@ class Entry(Widget, tkinter.Entry):
         self,
         cnf: dict[str, Any] | None = None,
         *,
-        background: tkinter._Color = ...,
+        background: str = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,
         font: _FontDescription = ...,
-        foreground: tkinter._Color = ...,
+        foreground: str = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
         show: str = ...,
@@ -254,12 +254,12 @@ class Combobox(Entry):
         self,
         master: tkinter.Misc | None = None,
         *,
-        background: tkinter._Color = ...,  # undocumented
+        background: str = ...,  # undocumented
         class_: str = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,
         font: _FontDescription = ...,  # undocumented
-        foreground: tkinter._Color = ...,  # undocumented
+        foreground: str = ...,  # undocumented
         height: int = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,  # undocumented
         justify: Literal["left", "center", "right"] = ...,
@@ -281,11 +281,11 @@ class Combobox(Entry):
         self,
         cnf: dict[str, Any] | None = None,
         *,
-        background: tkinter._Color = ...,
+        background: str = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,
         font: _FontDescription = ...,
-        foreground: tkinter._Color = ...,
+        foreground: str = ...,
         height: int = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
@@ -309,11 +309,11 @@ class Combobox(Entry):
         self,
         cnf: dict[str, Any] | None = None,
         *,
-        background: tkinter._Color = ...,
+        background: str = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,
         font: _FontDescription = ...,
-        foreground: tkinter._Color = ...,
+        foreground: str = ...,
         height: int = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
@@ -376,14 +376,14 @@ class Label(Widget):
         master: tkinter.Misc | None = None,
         *,
         anchor: tkinter._Anchor = ...,
-        background: tkinter._Color = ...,
+        background: str = ...,
         border: tkinter._ScreenUnits = ...,  # alias for borderwidth
         borderwidth: tkinter._ScreenUnits = ...,  # undocumented
         class_: str = ...,
         compound: _TtkCompound = ...,
         cursor: tkinter._Cursor = ...,
         font: _FontDescription = ...,
-        foreground: tkinter._Color = ...,
+        foreground: str = ...,
         image: tkinter._ImageSpec = ...,
         justify: Literal["left", "center", "right"] = ...,
         name: str = ...,
@@ -404,13 +404,13 @@ class Label(Widget):
         cnf: dict[str, Any] | None = None,
         *,
         anchor: tkinter._Anchor = ...,
-        background: tkinter._Color = ...,
+        background: str = ...,
         border: tkinter._ScreenUnits = ...,
         borderwidth: tkinter._ScreenUnits = ...,
         compound: _TtkCompound = ...,
         cursor: tkinter._Cursor = ...,
         font: _FontDescription = ...,
-        foreground: tkinter._Color = ...,
+        foreground: str = ...,
         image: tkinter._ImageSpec = ...,
         justify: Literal["left", "center", "right"] = ...,
         padding: _Padding = ...,
@@ -865,13 +865,13 @@ class Spinbox(Entry):
         self,
         master: tkinter.Misc | None = None,
         *,
-        background: tkinter._Color = ...,  # undocumented
+        background: str = ...,  # undocumented
         class_: str = ...,
         command: Callable[[], object] | str | list[str] | tuple[str, ...] = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,  # undocumented
         font: _FontDescription = ...,  # undocumented
-        foreground: tkinter._Color = ...,  # undocumented
+        foreground: str = ...,  # undocumented
         format: str = ...,
         from_: float = ...,
         increment: float = ...,
@@ -896,12 +896,12 @@ class Spinbox(Entry):
         self,
         cnf: dict[str, Any] | None = None,
         *,
-        background: tkinter._Color = ...,
+        background: str = ...,
         command: Callable[[], object] | str | list[str] | tuple[str, ...] = ...,
         cursor: tkinter._Cursor = ...,
         exportselection: bool = ...,
         font: _FontDescription = ...,
-        foreground: tkinter._Color = ...,
+        foreground: str = ...,
         format: str = ...,
         from_: float = ...,
         increment: float = ...,
@@ -934,8 +934,8 @@ class _TreeviewItemDict(TypedDict):
 
 class _TreeviewTagDict(TypedDict):
     # There is also 'text' and 'anchor', but they don't seem to do anything, using them is likely a bug
-    foreground: tkinter._Color
-    background: tkinter._Color
+    foreground: str
+    background: str
     font: _FontDescription
     image: str  # not wrapped in list :D
 
@@ -1130,7 +1130,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     @overload
     def tag_bind(self, tagname: str, *, callback: str) -> None: ...
     @overload
-    def tag_configure(self, tagname: str, option: Literal["foreground", "background"]) -> tkinter._Color: ...
+    def tag_configure(self, tagname: str, option: Literal["foreground", "background"]) -> str: ...
     @overload
     def tag_configure(self, tagname: str, option: Literal["font"]) -> _FontDescription: ...
     @overload
@@ -1142,8 +1142,8 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         option: None = None,
         *,
         # There is also 'text' and 'anchor', but they don't seem to do anything, using them is likely a bug
-        foreground: tkinter._Color = ...,
-        background: tkinter._Color = ...,
+        foreground: str = ...,
+        background: str = ...,
         font: _FontDescription = ...,
         image: tkinter._ImageSpec = ...,
     ) -> _TreeviewTagDict | Any: ...  # can be None but annoying to check

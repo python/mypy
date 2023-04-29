@@ -44,16 +44,16 @@ class ThreadPoolExecutor(Executor):
     _broken: bool
     _shutdown: bool
     _shutdown_lock: Lock
-    _thread_name_prefix: str | None = ...
-    _initializer: Callable[..., None] | None = ...
-    _initargs: tuple[Any, ...] = ...
+    _thread_name_prefix: str | None
+    _initializer: Callable[..., None] | None
+    _initargs: tuple[Any, ...]
     _work_queue: queue.SimpleQueue[_WorkItem[Any]]
     def __init__(
         self,
         max_workers: int | None = None,
         thread_name_prefix: str = "",
         initializer: Callable[..., object] | None = None,
-        initargs: tuple[Any, ...] = ...,
+        initargs: tuple[Any, ...] = (),
     ) -> None: ...
     def _adjust_thread_count(self) -> None: ...
     def _initializer_failed(self) -> None: ...

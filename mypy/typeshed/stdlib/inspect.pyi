@@ -2,7 +2,6 @@ import dis
 import enum
 import sys
 import types
-from _typeshed import Self
 from collections import OrderedDict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Mapping, Sequence, Set as AbstractSet
 from types import (
@@ -25,8 +24,8 @@ from types import (
     TracebackType,
     WrapperDescriptorType,
 )
-from typing import Any, ClassVar, NamedTuple, Protocol, TypeVar, Union, overload
-from typing_extensions import Literal, ParamSpec, TypeAlias, TypeGuard
+from typing import Any, ClassVar, NamedTuple, Protocol, TypeVar, overload
+from typing_extensions import Literal, ParamSpec, Self, TypeAlias, TypeGuard
 
 if sys.version_info >= (3, 11):
     __all__ = [
@@ -162,12 +161,20 @@ TPFLAGS_IS_ABSTRACT: Literal[1048576]
 
 modulesbyfile: dict[str, Any]
 
+_GetMembersPredicateTypeGuard: TypeAlias = Callable[[Any], TypeGuard[_T]]
 _GetMembersPredicate: TypeAlias = Callable[[Any], bool]
+_GetMembersReturnTypeGuard: TypeAlias = list[tuple[str, _T]]
 _GetMembersReturn: TypeAlias = list[tuple[str, Any]]
 
+@overload
+def getmembers(object: object, predicate: _GetMembersPredicateTypeGuard[_T]) -> _GetMembersReturnTypeGuard[_T]: ...
+@overload
 def getmembers(object: object, predicate: _GetMembersPredicate | None = None) -> _GetMembersReturn: ...
 
 if sys.version_info >= (3, 11):
+    @overload
+    def getmembers_static(object: object, predicate: _GetMembersPredicateTypeGuard[_T]) -> _GetMembersReturnTypeGuard[_T]: ...
+    @overload
     def getmembers_static(object: object, predicate: _GetMembersPredicate | None = None) -> _GetMembersReturn: ...
 
 def getmodulename(path: str) -> str | None: ...
@@ -264,9 +271,9 @@ def isdatadescriptor(object: object) -> TypeGuard[_SupportsSet[Any, Any] | _Supp
 #
 # Retrieving source code
 #
-_SourceObjectType: TypeAlias = Union[
-    ModuleType, type[Any], MethodType, FunctionType, TracebackType, FrameType, CodeType, Callable[..., Any]
-]
+_SourceObjectType: TypeAlias = (
+    ModuleType | type[Any] | MethodType | FunctionType | TracebackType | FrameType | CodeType | Callable[..., Any]
+)
 
 def findsource(object: _SourceObjectType) -> tuple[list[str], int]: ...
 def getabsfile(object: _SourceObjectType, _filename: str | None = None) -> str: ...
@@ -313,13 +320,11 @@ class Signature:
     def return_annotation(self) -> Any: ...
     def bind(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
     def bind_partial(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
-    def replace(
-        self: Self, *, parameters: Sequence[Parameter] | type[_void] | None = ..., return_annotation: Any = ...
-    ) -> Self: ...
+    def replace(self, *, parameters: Sequence[Parameter] | type[_void] | None = ..., return_annotation: Any = ...) -> Self: ...
     if sys.version_info >= (3, 10):
         @classmethod
         def from_callable(
-            cls: type[Self],
+            cls,
             obj: _IntrospectableCallable,
             *,
             follow_wrapped: bool = True,
@@ -329,7 +334,7 @@ class Signature:
         ) -> Self: ...
     else:
         @classmethod
-        def from_callable(cls: type[Self], obj: _IntrospectableCallable, *, follow_wrapped: bool = True) -> Self: ...
+        def from_callable(cls, obj: _IntrospectableCallable, *, follow_wrapped: bool = True) -> Self: ...
 
     def __eq__(self, other: object) -> bool: ...
 
@@ -372,7 +377,7 @@ class Parameter:
     @property
     def annotation(self) -> Any: ...
     def replace(
-        self: Self,
+        self,
         *,
         name: str | type[_void] = ...,
         kind: _ParameterKind | type[_void] = ...,
@@ -445,9 +450,9 @@ if sys.version_info < (3, 11):
         varargs: str | None = None,
         varkw: str | None = None,
         defaults: tuple[Any, ...] | None = None,
-        kwonlyargs: Sequence[str] | None = ...,
-        kwonlydefaults: Mapping[str, Any] | None = ...,
-        annotations: Mapping[str, Any] = ...,
+        kwonlyargs: Sequence[str] | None = (),
+        kwonlydefaults: Mapping[str, Any] | None = {},
+        annotations: Mapping[str, Any] = {},
         formatarg: Callable[[str], str] = ...,
         formatvarargs: Callable[[str], str] = ...,
         formatvarkw: Callable[[str], str] = ...,
@@ -493,7 +498,7 @@ if sys.version_info >= (3, 11):
     class Traceback(_Traceback):
         positions: dis.Positions | None
         def __new__(
-            cls: type[Self],
+            cls,
             filename: str,
             lineno: int,
             function: str,
@@ -514,7 +519,7 @@ if sys.version_info >= (3, 11):
     class FrameInfo(_FrameInfo):
         positions: dis.Positions | None
         def __new__(
-            cls: type[Self],
+            cls,
             frame: FrameType,
             filename: str,
             lineno: int,

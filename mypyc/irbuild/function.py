@@ -435,7 +435,6 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
                 class_ir.method_decls[name].sig, base.method_decls[name].sig
             )
         ):
-
             # TODO: Support contravariant subtyping in the input argument for
             # property setters. Need to make a special glue method for handling this,
             # similar to gen_glue_property.
@@ -516,7 +515,7 @@ def gen_func_ns(builder: IRBuilder) -> str:
     return "_".join(
         info.name + ("" if not info.class_name else "_" + info.class_name)
         for info in builder.fn_infos
-        if info.name and info.name != "<top level>"
+        if info.name and info.name != "<module>"
     )
 
 
@@ -643,7 +642,7 @@ def gen_glue_method(
         args = args[: -base_sig.num_bitmap_args]
         arg_kinds = arg_kinds[: -base_sig.num_bitmap_args]
         arg_names = arg_names[: -base_sig.num_bitmap_args]
-        bitmap_args = builder.builder.args[-base_sig.num_bitmap_args :]
+        bitmap_args = list(builder.builder.args[-base_sig.num_bitmap_args :])
 
     # We can do a passthrough *args/**kwargs with a native call, but if the
     # args need to get distributed out to arguments, we just let python handle it

@@ -1,10 +1,9 @@
 import sys
 import types
-from _typeshed import Self
 from collections.abc import Callable, Iterator
 from opcode import *  # `dis` re-exports it as a part of public API
 from typing import IO, Any, NamedTuple
-from typing_extensions import TypeAlias
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "code_info",
@@ -40,10 +39,10 @@ _HaveCodeType: TypeAlias = types.MethodType | types.FunctionType | types.CodeTyp
 
 if sys.version_info >= (3, 11):
     class Positions(NamedTuple):
-        lineno: int | None = ...
-        end_lineno: int | None = ...
-        col_offset: int | None = ...
-        end_col_offset: int | None = ...
+        lineno: int | None = None
+        end_lineno: int | None = None
+        col_offset: int | None = None
+        end_col_offset: int | None = None
 
 if sys.version_info >= (3, 11):
     class Instruction(NamedTuple):
@@ -55,7 +54,7 @@ if sys.version_info >= (3, 11):
         offset: int
         starts_line: int | None
         is_jump_target: bool
-        positions: Positions | None = ...
+        positions: Positions | None = None
 
 else:
     class Instruction(NamedTuple):
@@ -82,15 +81,13 @@ class Bytecode:
             adaptive: bool = False,
         ) -> None: ...
         @classmethod
-        def from_traceback(
-            cls: type[Self], tb: types.TracebackType, *, show_caches: bool = False, adaptive: bool = False
-        ) -> Self: ...
+        def from_traceback(cls, tb: types.TracebackType, *, show_caches: bool = False, adaptive: bool = False) -> Self: ...
     else:
         def __init__(
             self, x: _HaveCodeType | str, *, first_line: int | None = None, current_offset: int | None = None
         ) -> None: ...
         @classmethod
-        def from_traceback(cls: type[Self], tb: types.TracebackType) -> Self: ...
+        def from_traceback(cls, tb: types.TracebackType) -> Self: ...
 
     def __iter__(self) -> Iterator[Instruction]: ...
     def info(self) -> str: ...

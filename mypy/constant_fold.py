@@ -64,6 +64,8 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if isinstance(value, int):
             return constant_fold_unary_int_op(expr.op, value)
+        if isinstance(value, float):
+            return constant_fold_unary_float_op(expr.op, value)
     return None
 
 
@@ -105,6 +107,14 @@ def constant_fold_unary_int_op(op: str, value: int) -> int | None:
         return -value
     elif op == "~":
         return ~value
+    elif op == "+":
+        return value
+    return None
+
+
+def constant_fold_unary_float_op(op: str, value: float) -> float | None:
+    if op == "-":
+        return -value
     elif op == "+":
         return value
     return None

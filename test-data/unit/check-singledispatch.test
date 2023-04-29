@@ -180,9 +180,6 @@ def f(arg) -> None:
 @f.register
 def g(arg: Mapping) -> None:
     pass
-
-[builtins fixtures/args.pyi]
-[builtins fixtures/list.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testIncorrectArgumentsInSingledispatchFunctionDefinition]

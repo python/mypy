@@ -1,12 +1,12 @@
 import ssl
 import sys
-from _typeshed import FileDescriptorLike, ReadableBuffer, Self, StrPath, Unused, WriteableBuffer
+from _typeshed import FileDescriptorLike, ReadableBuffer, StrPath, Unused, WriteableBuffer
 from abc import ABCMeta, abstractmethod
 from collections.abc import Awaitable, Callable, Coroutine, Generator, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Protocol, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Literal, Self, TypeAlias
 
 from .base_events import Server
 from .futures import Future
@@ -95,7 +95,7 @@ class TimerHandle(Handle):
 class AbstractServer:
     @abstractmethod
     def close(self) -> None: ...
-    async def __aenter__(self: Self) -> Self: ...
+    async def __aenter__(self) -> Self: ...
     async def __aexit__(self, *exc: Unused) -> None: ...
     @abstractmethod
     def get_loop(self) -> AbstractEventLoop: ...
@@ -524,11 +524,11 @@ class AbstractEventLoop:
         stdin: int | IO[Any] | None = -1,
         stdout: int | IO[Any] | None = -1,
         stderr: int | IO[Any] | None = -1,
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[True] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[True] = True,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         text: Literal[False, None] = ...,
         **kwargs: Any,
     ) -> tuple[SubprocessTransport, _ProtocolT]: ...
@@ -541,11 +541,11 @@ class AbstractEventLoop:
         stdin: int | IO[Any] | None = -1,
         stdout: int | IO[Any] | None = -1,
         stderr: int | IO[Any] | None = -1,
-        universal_newlines: Literal[False] = ...,
-        shell: Literal[False] = ...,
-        bufsize: Literal[0] = ...,
-        encoding: None = ...,
-        errors: None = ...,
+        universal_newlines: Literal[False] = False,
+        shell: Literal[False] = False,
+        bufsize: Literal[0] = 0,
+        encoding: None = None,
+        errors: None = None,
         **kwargs: Any,
     ) -> tuple[SubprocessTransport, _ProtocolT]: ...
     @abstractmethod
@@ -569,11 +569,11 @@ class AbstractEventLoop:
     async def sock_accept(self, sock: socket) -> tuple[socket, _RetAddress]: ...
     if sys.version_info >= (3, 11):
         @abstractmethod
-        async def sock_recvfrom(self, sock: socket, bufsize: int) -> bytes: ...
+        async def sock_recvfrom(self, sock: socket, bufsize: int) -> tuple[bytes, _RetAddress]: ...
         @abstractmethod
-        async def sock_recvfrom_into(self, sock: socket, buf: WriteableBuffer, nbytes: int = 0) -> int: ...
+        async def sock_recvfrom_into(self, sock: socket, buf: WriteableBuffer, nbytes: int = 0) -> tuple[int, _RetAddress]: ...
         @abstractmethod
-        async def sock_sendto(self, sock: socket, data: ReadableBuffer, address: _Address) -> None: ...
+        async def sock_sendto(self, sock: socket, data: ReadableBuffer, address: _Address) -> int: ...
     # Signal handling.
     @abstractmethod
     def add_signal_handler(self, sig: int, callback: Callable[..., object], *args: Any) -> None: ...

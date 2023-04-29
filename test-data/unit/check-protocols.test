@@ -2280,7 +2280,6 @@ def func2(arg: Optional[A]) -> None: ...
 x: B
 func1(x)
 func2(x)
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 main:14: error: Argument 1 to "func1" has incompatible type "B"; expected "A"
@@ -3191,7 +3190,6 @@ class NoneCompatible3(Protocol):
 
 class C(NoneCompatible3): ...
 C() # E: Cannot instantiate abstract class "C" with abstract attributes "f", "g" and "h"
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyWithFinal]
@@ -3524,7 +3522,12 @@ class C:
 def test(arg: P) -> None: ...
 test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
-         # N: "C" has constructor incompatible with "__call__" of "P"
+         # N: "C" has constructor incompatible with "__call__" of "P" \
+         # N: Following member(s) of "C" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__(x: int, y: int) -> Any \
+         # N:     Got: \
+         # N:         def __init__(x: int, y: str) -> C
 
 [case testProtocolClassObjectPureCallback]
 from typing import Any, ClassVar, Protocol
@@ -3540,7 +3543,36 @@ class C:
 def test(arg: P) -> None: ...
 test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
-         # N: "C" has constructor incompatible with "__call__" of "P"
+         # N: "C" has constructor incompatible with "__call__" of "P" \
+         # N: Following member(s) of "C" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__(x: int, y: int) -> Any \
+         # N:     Got: \
+         # N:         def __init__(x: int, y: str) -> C
+[builtins fixtures/type.pyi]
+
+[case testProtocolClassObjectCallableError]
+from typing import Protocol, Any, Callable
+
+class P(Protocol):
+    def __call__(self, app: int) -> Callable[[str], None]:
+        ...
+
+class C:
+    def __init__(self, app: str) -> None:
+        pass
+
+    def __call__(self, el: str) -> None:
+        return None
+
+p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", variable has type "P") \
+          # N: Following member(s) of "C" have conflicts: \
+          # N:     Expected: \
+          # N:         def __call__(app: int) -> Callable[[str], None] \
+          # N:     Got: \
+          # N:         def __init__(app: str) -> C \
+          # N: "P.__call__" has type "Callable[[Arg(int, 'app')], Callable[[str], None]]"
+
 [builtins fixtures/type.pyi]
 
 [case testProtocolTypeTypeAttribute]
@@ -3998,3 +4030,27 @@ TF = TypeVar("TF", bound=Foo)
 def outer(cls: Type[TF]) -> TF:
     reveal_type(test(cls))  # N: Revealed type is "TF`-1"
     return cls()
+
+[case testProtocolImportNotMember]
+import m
+import lib
+
+class Bad:
+    x: int
+class Good:
+    x: lib.C
+
+x: m.P = Bad()  # E: Incompatible types in assignment (expression has type "Bad", variable has type "P") \
+                # N: Following member(s) of "Bad" have conflicts: \
+                # N:     x: expected "C", got "int"
+x = Good()
+
+[file m.py]
+from typing import Protocol
+
+class P(Protocol):
+    import lib
+    x: lib.C
+
+[file lib.py]
+class C: ...
