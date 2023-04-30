@@ -62,6 +62,21 @@ Example:
          def __init__(self) -> None:
              self.value = 0
 
+Check that every function has a return annotation [no-incomplete-def]
+------------------------------------------------------------
+
+If you use :option:`--disallow-incomplete-defs <mypy --disallow-incomplete-defs>`, mypy requires that all functions
+fully annotated
+
+Example:
+
+.. code-block:: python
+
+    # mypy: disallow-incomplete-defs
+
+    def example(x: int):  # Error: Function is missing a return type annotation  [no-incomplete-def]
+        pass
+
 Check that cast is not redundant [redundant-cast]
 -------------------------------------------------
 

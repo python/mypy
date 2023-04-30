@@ -1401,7 +1401,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = get_proper_type(fdef.type.ret_type)
-                if is_unannotated_any(ret_type):
+                if is_unannotated_any(ret_type) and check_incomplete_defs:
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED_INCOMPLETE_DEF, fdef)
+                elif is_unannotated_any(ret_type):
                     self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 elif fdef.is_generator:
                     if is_unannotated_any(
@@ -1411,8 +1413,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 elif fdef.is_coroutine and isinstance(ret_type, Instance):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                if any(is_unannotated_any(t) for t in fdef.type.arg_types):
+                if (
+                    any(is_unannotated_any(t) for t in fdef.type.arg_types)
+                    and check_incomplete_defs
+                ):
+                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED_INCOMPLETE_DEF, fdef)
+                elif any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)

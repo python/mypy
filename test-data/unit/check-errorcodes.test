@@ -379,6 +379,15 @@ def f() -> None:
 def g():
     pass
 
+[case testErrorCodeNoReturnAnnotation]
+# flags: --disallow-incomplete-defs
+
+def f(i: int): # E: Function is missing a return type annotation  [no-incomplete-def]
+    pass
+
+def g(i) -> None: # E: Function is missing a type annotation for one or more arguments  [no-incomplete-def]
+    pass
+
 [case testErrorCodeIndexing]
 from typing import Dict
 x: Dict[int, int]

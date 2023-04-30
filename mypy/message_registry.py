@@ -119,8 +119,14 @@ ONLY_CLASS_APPLICATION: Final = ErrorMessage(
 RETURN_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a return type annotation", codes.NO_UNTYPED_DEF
 )
+RETURN_TYPE_EXPECTED_INCOMPLETE_DEF: Final = ErrorMessage(
+    "Function is missing a return type annotation", codes.NO_INCOMPLETE_DEF
+)
 ARGUMENT_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a type annotation for one or more arguments", codes.NO_UNTYPED_DEF
+)
+ARGUMENT_TYPE_EXPECTED_INCOMPLETE_DEF: Final = ErrorMessage(
+    "Function is missing a type annotation for one or more arguments", codes.NO_INCOMPLETE_DEF
 )
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = ErrorMessage(
     'Keyword argument only valid with "str" key type in call to "dict"'
