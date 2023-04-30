@@ -903,7 +903,7 @@ from typing import TypeVar, Union, Dict
 
 def dummy() -> None:
     A = Union[str, Dict[str, "A"]]  # E: Cannot resolve name "A" (possible cyclic definition) \
-                                  # N: Recursive types are not allowed at function scope
+                                    # N: Recursive types are not allowed at function scope
     T = TypeVar("T", bound=A)
 
     def bar(x: T) -> T:
