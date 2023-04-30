@@ -63,10 +63,10 @@ Example:
              self.value = 0
 
 Check that every function has a return annotation [no-incomplete-def]
-------------------------------------------------------------
+---------------------------------------------------------------------
 
 If you use :option:`--disallow-incomplete-defs <mypy --disallow-incomplete-defs>`, mypy requires that all functions
-fully annotated
+fully annotated.
 
 Example:
 
