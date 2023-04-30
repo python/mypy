@@ -590,6 +590,7 @@ def translate_vec_create_from_iterable(
     if isinstance(arg, ListComprehension):
         return translate_vec_comprehension(builder, vec_type, arg.generator)
 
+    # TODO: Construct vec from arbitrary iterable
     assert False, (vec_type, arg)
 
 
