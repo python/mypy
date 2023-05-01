@@ -201,7 +201,7 @@ def main():
 MypyFile:1(
   FuncDef:1(
     main
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         IntExpr(1)))))
 
@@ -212,7 +212,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testIf]
@@ -286,7 +286,7 @@ while 1:
 MypyFile:1(
   WhileStmt:1(
     IntExpr(1)
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testReturn]
@@ -296,7 +296,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ReturnStmt:2(
         IntExpr(1)))))
 
@@ -308,7 +308,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ReturnStmt:2())))
 
 [case testBreak]
@@ -318,7 +318,7 @@ while 1:
 MypyFile:1(
   WhileStmt:1(
     IntExpr(1)
-    Block:1(
+    Block:2(
       BreakStmt:2())))
 
 [case testLargeBlock]
@@ -338,7 +338,7 @@ MypyFile:1(
         IntExpr(1))
       WhileStmt:3(
         IntExpr(2)
-        Block:3(
+        Block:4(
           PassStmt:4()))
       AssignmentStmt:5(
         NameExpr(y)
@@ -356,7 +356,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      Block:2(
+      Block:3(
         PassStmt:3()))))
 
 [case testGlobalVarWithType]
@@ -382,7 +382,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(x)
         IntExpr(0)
@@ -411,7 +411,7 @@ MypyFile:1(
     Args(
       Var(y))
     def (y: str?) -> int?
-    Block:1(
+    Block:2(
       ReturnStmt:2()))
   ClassDef:3(
     A
@@ -422,14 +422,14 @@ MypyFile:1(
         Var(a)
         Var(b))
       def (self: Any, a: int?, b: Any?) -> x?
-      Block:4(
+      Block:5(
         PassStmt:5()))
     FuncDef:6(
       g
       Args(
         Var(self))
       def (self: Any) -> Any?
-      Block:6(
+      Block:7(
         PassStmt:7()))))
 
 [case testFuncWithNoneReturn]
@@ -440,7 +440,7 @@ MypyFile:1(
   FuncDef:1(
     f
     def () -> None?
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testVarDefWithGenericType]
@@ -467,7 +467,7 @@ MypyFile:1(
     Args(
       Var(y))
     def (y: t?[Any?, x?]) -> a?[b?[c?], d?]
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testParsingExpressionsWithLessAndGreaterThan]
@@ -587,7 +587,7 @@ MypyFile:1(
       __init__
       Args(
         Var(self))
-      Block:2(
+      Block:3(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self)
@@ -783,7 +783,7 @@ MypyFile:1(
   ForStmt:1(
     NameExpr(x)
     NameExpr(y)
-    Block:1(
+    Block:2(
       PassStmt:2()))
   ForStmt:3(
     TupleExpr:3(
@@ -792,7 +792,7 @@ MypyFile:1(
         NameExpr(y)
         NameExpr(w)))
     NameExpr(z)
-    Block:3(
+    Block:4(
       ExpressionStmt:4(
         IntExpr(1))))
   ForStmt:5(
@@ -802,7 +802,7 @@ MypyFile:1(
         NameExpr(y)
         NameExpr(w)))
     NameExpr(z)
-    Block:5(
+    Block:6(
       ExpressionStmt:6(
         IntExpr(1)))))
 
@@ -816,7 +816,7 @@ MypyFile:1(
     x)
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       GlobalDecl:3(
         x
         y))))
@@ -829,10 +829,10 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       FuncDef:2(
         g
-        Block:2(
+        Block:3(
           NonlocalDecl:3(
             x
             y))))))
@@ -852,9 +852,9 @@ except:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       PassStmt:2())
-    Block:3(
+    Block:4(
       RaiseStmt:4())))
 
 [case testRaiseFrom]
@@ -1049,7 +1049,7 @@ MypyFile:1(
   Import:2(x)
   FuncDef:3(
     f
-    Block:3(
+    Block:4(
       ImportFrom:4(x, [y])
       ImportAll:5(z))))
 
@@ -1072,7 +1072,7 @@ MypyFile:1(
       default(
         Var(x)
         IntExpr(1)))
-    Block:1(
+    Block:2(
       PassStmt:2()))
   FuncDef:3(
     g
@@ -1089,7 +1089,7 @@ MypyFile:1(
         TupleExpr:3(
           IntExpr(1)
           IntExpr(2))))
-    Block:3(
+    Block:4(
       PassStmt:4())))
 
 [case testTryFinally]
@@ -1100,7 +1100,7 @@ finally:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         IntExpr(1)))
     Finally(
@@ -1115,11 +1115,11 @@ except x:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         IntExpr(1)))
     NameExpr(x)
-    Block:3(
+    Block:4(
       ExpressionStmt:4(
         IntExpr(2)))))
 
@@ -1133,18 +1133,18 @@ except x.y:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         IntExpr(1)))
     NameExpr(x)
     NameExpr(y)
-    Block:3(
+    Block:4(
       ExpressionStmt:4(
         IntExpr(2)))
     MemberExpr:5(
       NameExpr(x)
       y)
-    Block:5(
+    Block:6(
       ExpressionStmt:6(
         IntExpr(3)))))
 
@@ -1298,7 +1298,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         YieldExpr:2(
           OpExpr:2(
@@ -1313,7 +1313,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         YieldFromExpr:2(
           CallExpr:2(
@@ -1327,7 +1327,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(a)
         YieldFromExpr:2(
@@ -1387,7 +1387,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testLambda]
@@ -1458,7 +1458,7 @@ MypyFile:1(
       NameExpr(i)
       NameExpr(j))
     NameExpr(x)
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testForAndTrailingCommaAfterIndexVar]
@@ -1470,7 +1470,7 @@ MypyFile:1(
     TupleExpr:1(
       NameExpr(i))
     NameExpr(x)
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testListComprehensionAndTrailingCommaAfterIndexVar]
@@ -1496,7 +1496,7 @@ MypyFile:1(
       NameExpr(i)
       NameExpr(j))
     NameExpr(x)
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testGeneratorWithCondition]
@@ -1628,7 +1628,7 @@ MypyFile:1(
           StrExpr(foo))))
     Target(
       NameExpr(f))
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testWithStatementWithoutTarget]
@@ -1639,7 +1639,7 @@ MypyFile:1(
   WithStmt:1(
     Expr(
       NameExpr(foo))
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testHexOctBinLiterals]
@@ -1671,7 +1671,7 @@ while 1:
 MypyFile:1(
   WhileStmt:1(
     IntExpr(1)
-    Block:1(
+    Block:2(
       ContinueStmt:2())))
 
 [case testStrLiteralConcatenate]
@@ -1700,19 +1700,19 @@ except:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         IntExpr(1)))
-    Block:3(
+    Block:4(
       PassStmt:4()))
   TryStmt:5(
-    Block:5(
+    Block:6(
       ExpressionStmt:6(
         IntExpr(1)))
     NameExpr(x)
-    Block:7(
+    Block:8(
       PassStmt:8())
-    Block:9(
+    Block:10(
       ExpressionStmt:10(
         IntExpr(2)))))
 
@@ -1726,10 +1726,10 @@ else:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       PassStmt:2())
     NameExpr(x)
-    Block:3(
+    Block:4(
       ExpressionStmt:4(
         IntExpr(1)))
     Else(
@@ -1746,19 +1746,19 @@ except (a, b, c) as e:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       PassStmt:2())
     TupleExpr:3(
       NameExpr(x)
       NameExpr(y))
-    Block:3(
+    Block:4(
       PassStmt:4())
     TupleExpr:5(
       NameExpr(a)
       NameExpr(b)
       NameExpr(c))
     NameExpr(e)
-    Block:5(
+    Block:6(
       PassStmt:6())))
 
 [case testNestedFunctions]
@@ -1772,19 +1772,19 @@ def h() -> int:
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       FuncDef:2(
         g
-        Block:2(
+        Block:3(
           PassStmt:3()))))
   FuncDef:4(
     h
     def () -> int?
-    Block:4(
+    Block:5(
       FuncDef:5(
         g
         def () -> int?
-        Block:5(
+        Block:6(
           PassStmt:6())))))
 
 [case testStatementsAndDocStringsInClassBody]
@@ -1806,7 +1806,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      Block:4(
+      Block:5(
         PassStmt:5()))))
 
 [case testSingleLineClass]
@@ -1828,7 +1828,7 @@ MypyFile:1(
     NameExpr(property)
     FuncDef:2(
       f
-      Block:2(
+      Block:3(
         PassStmt:3()))))
 
 [case testComplexDecorator]
@@ -1849,7 +1849,7 @@ MypyFile:1(
     FuncDef:3(
       f
       def () -> int?
-      Block:3(
+      Block:4(
         PassStmt:4()))))
 
 [case testKeywordArgInCall]
@@ -2034,7 +2034,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         YieldExpr:2()))))
 
@@ -2120,7 +2120,7 @@ MypyFile:1(
   ForStmt:1(
     NameExpr(x)
     NameExpr(y)
-    Block:1(
+    Block:2(
       PassStmt:2())
     Else(
       ExpressionStmt:4(
@@ -2135,7 +2135,7 @@ else:
 MypyFile:1(
   WhileStmt:1(
     NameExpr(x)
-    Block:1(
+    Block:2(
       PassStmt:2())
     Else(
       ExpressionStmt:4(
@@ -2157,7 +2157,7 @@ MypyFile:1(
       NameExpr(a))
     Target(
       NameExpr(b))
-    Block:1(
+    Block:2(
       PassStmt:2()))
   WithStmt:3(
     Expr(
@@ -2168,7 +2168,7 @@ MypyFile:1(
       CallExpr:3(
         NameExpr(y)
         Args()))
-    Block:3(
+    Block:4(
       PassStmt:4())))
 
 [case testOperatorAssignment]
@@ -2262,10 +2262,10 @@ finally:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       PassStmt:2())
     NameExpr(x)
-    Block:3(
+    Block:4(
       ExpressionStmt:4(
         NameExpr(x)))
     Finally(
@@ -2640,7 +2640,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       OverloadedFuncDef:2(
         Decorator:2(
           Var(g)
@@ -2668,14 +2668,14 @@ MypyFile:1(
   FuncDef:1(
     f
     def () -> A?
-    Block:1(
+    Block:2(
       PassStmt:2()))
   FuncDef:3(
     g
     Args(
       Var(x))
     def (x: A?) -> B?
-    Block:3(
+    Block:4(
       PassStmt:4())))
 
 [case testCommentMethodAnnotation]
@@ -2693,7 +2693,7 @@ MypyFile:1(
       Args(
         Var(self))
       def (self: Any) -> A?
-      Block:2(
+      Block:3(
         PassStmt:3()))
     FuncDef:4(
       g
@@ -2701,7 +2701,7 @@ MypyFile:1(
         Var(xself)
         Var(x))
       def (xself: Any, x: A?) -> B?
-      Block:4(
+      Block:5(
         PassStmt:5()))))
 
 [case testCommentMethodAnnotationAndNestedFunction]
@@ -2718,13 +2718,13 @@ MypyFile:1(
       Args(
         Var(self))
       def (self: Any) -> A?
-      Block:2(
+      Block:3(
         FuncDef:3(
           g
           Args(
             Var(x))
           def (x: A?) -> B?
-          Block:3(
+          Block:4(
             PassStmt:4()))))))
 
 [case testCommentFunctionAnnotationOnSeparateLine]
@@ -2738,7 +2738,7 @@ MypyFile:1(
     Args(
       Var(x))
     def (x: X?) -> Y?
-    Block:1(
+    Block:3(
       PassStmt:3())))
 
 [case testCommentFunctionAnnotationOnSeparateLine2]
@@ -2754,7 +2754,7 @@ MypyFile:1(
     Args(
       Var(x))
     def (x: X?) -> Y?
-    Block:1(
+    Block:5(
       PassStmt:5())))
 
 [case testCommentFunctionAnnotationAndVarArg]
@@ -2769,7 +2769,7 @@ MypyFile:1(
     def (x: X?, *y: Y?) -> Z?
     VarArg(
       Var(y))
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testCommentFunctionAnnotationAndAllVarArgs]
@@ -2786,7 +2786,7 @@ MypyFile:1(
       Var(y))
     DictVarArg(
       Var(z))
-    Block:1(
+    Block:2(
       PassStmt:2())))
 
 [case testClassDecorator]
@@ -2824,11 +2824,11 @@ def y():
 MypyFile:1(
   FuncDef:1(
     x
-    Block:1(
+    Block:2(
       PassStmt:2()))
   FuncDef:4(
     y
-    Block:4(
+    Block:5(
       PassStmt:5())))
 
 [case testEmptySuperClass]
@@ -2905,7 +2905,7 @@ MypyFile:1(
     StarExpr:1(
       NameExpr(a))
     NameExpr(b)
-    Block:1(
+    Block:2(
       PassStmt:2()))
   ForStmt:4(
     TupleExpr:4(
@@ -2913,7 +2913,7 @@ MypyFile:1(
       StarExpr:4(
         NameExpr(b)))
     NameExpr(c)
-    Block:4(
+    Block:5(
       PassStmt:5()))
   ForStmt:7(
     TupleExpr:7(
@@ -2921,7 +2921,7 @@ MypyFile:1(
         NameExpr(a))
       NameExpr(b))
     NameExpr(c)
-    Block:7(
+    Block:8(
       PassStmt:8())))
 
 [case testStarExprInGeneratorExpr]
@@ -3030,7 +3030,7 @@ while 2:
 MypyFile:1(
   WhileStmt:1(
     IntExpr(2)
-    Block:1(
+    Block:2(
       IfStmt:2(
         If(
           IntExpr(1))
@@ -3073,7 +3073,7 @@ while 2:
 MypyFile:1(
   WhileStmt:1(
     IntExpr(2)
-    Block:1(
+    Block:2(
       IfStmt:2(
         If(
           IntExpr(1))
@@ -3298,7 +3298,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(x)
         YieldExpr:2(
@@ -3339,7 +3339,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         YieldExpr:2()))))
 
@@ -3494,7 +3494,7 @@ MypyFile:1(
     f
     Args(
       Var(self))
-    Block:2()))
+    Block:3()))
 
 [case testStripMethodBodiesIfIgnoringErrors]
 # mypy: ignore-errors=True
@@ -3516,7 +3516,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      Block:3())))
+      Block:4())))
 
 [case testDoNotStripModuleTopLevelOrClassBody]
 # mypy: ignore-errors=True
@@ -3550,7 +3550,7 @@ MypyFile:1(
       m1
       Args(
         Var(self))
-      Block:3(
+      Block:4(
         AssignmentStmt:4(
           MemberExpr:4(
             NameExpr(self)
@@ -3560,7 +3560,7 @@ MypyFile:1(
       m2
       Args(
         Var(self))
-      Block:5(
+      Block:6(
         AssignmentStmt:6(
           TupleExpr:6(
             NameExpr(a)
@@ -3591,11 +3591,11 @@ MypyFile:1(
       m1
       Args(
         Var(self))
-      Block:3(
+      Block:4(
         ForStmt:4(
           NameExpr(x)
           NameExpr(y)
-          Block:4(
+          Block:5(
             AssignmentStmt:5(
               MemberExpr:5(
                 NameExpr(self)
@@ -3605,11 +3605,11 @@ MypyFile:1(
       m2
       Args(
         Var(self))
-      Block:6(
+      Block:7(
         WithStmt:7(
           Expr(
             NameExpr(x))
-          Block:7(
+          Block:8(
             AssignmentStmt:8(
               MemberExpr:8(
                 NameExpr(self)
@@ -3619,7 +3619,7 @@ MypyFile:1(
       m3
       Args(
         Var(self))
-      Block:9(
+      Block:10(
         IfStmt:10(
           If(
             NameExpr(x))
@@ -3651,7 +3651,7 @@ MypyFile:1(
       m1
       Args(
         Var(self))
-      Block:3(
+      Block:4(
         WithStmt:4(
           Expr(
             NameExpr(y))
@@ -3659,19 +3659,19 @@ MypyFile:1(
             MemberExpr:4(
               NameExpr(self)
               x))
-          Block:4(
+          Block:5(
             PassStmt:5()))))
     FuncDef:6(
       m2
       Args(
         Var(self))
-      Block:6(
+      Block:7(
         ForStmt:7(
           MemberExpr:7(
             NameExpr(self)
             y)
           NameExpr(x)
-          Block:7(
+          Block:8(
             PassStmt:8()))))))
 
 [case testStripDecoratedFunctionOrMethod]
@@ -3695,7 +3695,7 @@ MypyFile:1(
     NameExpr(deco)
     FuncDef:3(
       f
-      Block:3()))
+      Block:4()))
   ClassDef:6(
     C
     Decorator:7(
@@ -3705,7 +3705,7 @@ MypyFile:1(
         m1
         Args(
           Var(self))
-        Block:8()))
+        Block:9()))
     Decorator:11(
       Var(m2)
       NameExpr(deco)
@@ -3713,7 +3713,7 @@ MypyFile:1(
         m2
         Args(
           Var(self))
-        Block:12(
+        Block:13(
           AssignmentStmt:13(
             MemberExpr:13(
               NameExpr(self)
@@ -3770,7 +3770,7 @@ MypyFile:1(
         Args(
           Var(self)
           Var(x))
-        Block:7()))
+        Block:8()))
     OverloadedFuncDef:10(
       Decorator:10(
         Var(m2)
@@ -3801,7 +3801,7 @@ MypyFile:1(
         Args(
           Var(self)
           Var(x))
-        Block:14(
+        Block:15(
           AssignmentStmt:15(
             MemberExpr:15(
               NameExpr(self)
@@ -3826,7 +3826,7 @@ MypyFile:1(
         m1
         Args(
           Var(self))
-        Block:4(
+        Block:5(
           AssignmentStmt:5(
             MemberExpr:5(
               NameExpr(self)
@@ -3836,4 +3836,4 @@ MypyFile:1(
         m2
         Args(
           Var(self))
-        Block:6()))))
+        Block:7()))))
