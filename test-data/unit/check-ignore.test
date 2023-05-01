@@ -287,6 +287,7 @@ try:
     import bar  # type: ignore[import]  # E: Unused "type: ignore" comment
     import foobar  # type: ignore[unused-ignore]
     import barfoo  # type: ignore[import,unused-ignore]
+    import missing  # type: ignore[import,unused-ignore]
 except Exception:
     pass
 [file foo.py]
