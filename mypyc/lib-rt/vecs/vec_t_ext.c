@@ -504,6 +504,7 @@ VecTExtFeatures TExtFeatures = {
     &VecbufTExtType,
     Vec_T_Ext_New,
     Vec_T_Ext_Box,
+    NULL,  // TODO: unbox
     Vec_T_Ext_Append,
     Vec_T_Ext_Pop,
     Vec_T_Ext_Remove,

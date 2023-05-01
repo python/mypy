@@ -31,6 +31,18 @@ PyObject *Vec_I64_Box(VecI64 vec) {
     return (PyObject *)obj;
 }
 
+VecI64 Vec_I64_Unbox(PyObject *obj) {
+    if (obj->ob_type == &VecI64Type) {
+        VecI64 result = ((VecI64Object *)obj)->vec;
+        VEC_INCREF(result);  // TODO: Should we borrow instead?
+        return result;
+    } else {
+        // TODO: Better error message
+        PyErr_SetString(PyExc_TypeError, "vec[i64] expected");
+        return Vec_I64_Error();
+    }
+}
+
 VecI64 Vec_I64_New(Py_ssize_t size) {
     VecI64 vec = vec_i64_alloc(size);
     if (VEC_IS_ERROR(vec))
@@ -357,6 +369,7 @@ VecI64Features I64Features = {
     &VecbufI64Type,
     Vec_I64_New,
     Vec_I64_Box,
+    Vec_I64_Unbox,
     Vec_I64_Append,
     Vec_I64_Pop,
     Vec_I64_Remove,

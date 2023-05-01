@@ -423,6 +423,7 @@ VecTFeatures TFeatures = {
     &VecbufTType,
     Vec_T_New,
     Vec_T_Box,
+    NULL,  // TODO: unbox
     Vec_T_Append,
     Vec_T_Pop,
     Vec_T_Remove,
