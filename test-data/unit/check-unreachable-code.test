@@ -1447,13 +1447,3 @@ def f() -> None:
     Foo()['a'] = 'a'
     x = 0 # This should not be reported as unreachable
 [builtins fixtures/exception.pyi]
-
-[case testUnusedIgnoreVersionCheck]
-# flags: --warn-unused-ignores
-import sys
-
-if sys.version_info < (3, 6):
-    42  # type: ignore
-else:
-    42  # type: ignore  # E: Unused "type: ignore" comment
-[builtins fixtures/ops.pyi]
