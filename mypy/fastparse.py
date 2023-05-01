@@ -620,12 +620,12 @@ class ASTConverter:
         b.end_column = getattr(last, "end_col_offset", None)
         if not b.body:
             return
-        first = b.body[0]
-        if isinstance(first, (Decorator, OverloadedFuncDef)):
+        new_first = b.body[0]
+        if isinstance(new_first, (Decorator, OverloadedFuncDef)):
             # Decorated function lines are different between Python versions.
             # copy the normalization we do for them to block first lines.
-            b.line = first.line
-            b.column = first.column
+            b.line = new_first.line
+            b.column = new_first.column
 
     def as_block(self, stmts: list[ast3.stmt]) -> Block | None:
         b = None
