@@ -1024,7 +1024,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             ):
                 self.process_typealias(lvalue, o.rvalue)
                 continue
-            if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+            if isinstance(lvalue, (TupleExpr, ListExpr)):
                 items = lvalue.items
                 if isinstance(o.unanalyzed_type, TupleType):  # type: ignore[misc]
                     annotations: Iterable[Type | None] = o.unanalyzed_type.items
@@ -1588,6 +1588,14 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.python_version = stubgen_options.pyversion
     options.show_traceback = True
     options.transform_source = remove_misplaced_type_comments
+    options.preserve_asts = True
+
+    # Override cache_dir if provided in the environment
+    environ_cache_dir = os.getenv("MYPY_CACHE_DIR", "")
+    if environ_cache_dir.strip():
+        options.cache_dir = environ_cache_dir
+    options.cache_dir = os.path.expanduser(options.cache_dir)
+
     return options
 
 

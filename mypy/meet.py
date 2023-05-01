@@ -702,7 +702,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         # TODO: is this the right variance?
-        if isinstance(self.s, Parameters) or isinstance(self.s, CallableType):
+        if isinstance(self.s, (Parameters, CallableType)):
             if len(t.arg_types) != len(self.s.arg_types):
                 return self.default(self.s)
             return t.copy_modified(

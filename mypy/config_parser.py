@@ -538,10 +538,7 @@ def split_directive(s: str) -> tuple[list[str], list[str]]:
 
 
 def mypy_comments_to_config_map(line: str, template: Options) -> tuple[dict[str, str], list[str]]:
-    """Rewrite the mypy comment syntax into ini file syntax.
-
-    Returns
-    """
+    """Rewrite the mypy comment syntax into ini file syntax."""
     options = {}
     entries, errors = split_directive(line)
     for entry in entries:

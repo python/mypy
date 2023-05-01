@@ -515,7 +515,7 @@ def gen_func_ns(builder: IRBuilder) -> str:
     return "_".join(
         info.name + ("" if not info.class_name else "_" + info.class_name)
         for info in builder.fn_infos
-        if info.name and info.name != "<top level>"
+        if info.name and info.name != "<module>"
     )
 
 

@@ -44,7 +44,7 @@ def linearize_hierarchy(
 
 
 def merge(seqs: list[list[TypeInfo]]) -> list[TypeInfo]:
-    seqs = [s[:] for s in seqs]
+    seqs = [s.copy() for s in seqs]
     result: list[TypeInfo] = []
     while True:
         seqs = [s for s in seqs if s]

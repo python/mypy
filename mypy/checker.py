@@ -2724,7 +2724,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         new_syntax: bool = False,
     ) -> None:
         """Type check a single assignment: lvalue = rvalue."""
-        if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+        if isinstance(lvalue, (TupleExpr, ListExpr)):
             self.check_assignment_to_multiple_lvalues(
                 lvalue.items, rvalue, rvalue, infer_lvalue_type
             )
@@ -3301,7 +3301,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         context: Context,
         infer_lvalue_type: bool = True,
     ) -> None:
-        if isinstance(rvalue, TupleExpr) or isinstance(rvalue, ListExpr):
+        if isinstance(rvalue, (TupleExpr, ListExpr)):
             # Recursively go into Tuple or List expression rhs instead of
             # using the type of rhs, because this allowed more fine grained
             # control in cases like: a, b = [int, str] where rhs would get
@@ -3689,7 +3689,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             self.store_type(lvalue, lvalue_type)
-        elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+        elif isinstance(lvalue, (TupleExpr, ListExpr)):
             types = [
                 self.check_lvalue(sub_expr)[0] or
                 # This type will be used as a context for further inference of rvalue,
@@ -5063,7 +5063,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         typ = get_proper_type(typ)
 
-        if isinstance(typ, FunctionLike) or isinstance(typ, TypeType):
+        if isinstance(typ, (FunctionLike, TypeType)):
             return [typ], []
 
         if isinstance(typ, AnyType):
@@ -5835,7 +5835,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         should_coerce = True
         if coerce_only_in_literal_context:
-            should_coerce = any(is_literal_type_like(operand_types[i]) for i in chain_indices)
+
+            def should_coerce_inner(typ: Type) -> bool:
+                typ = get_proper_type(typ)
+                return is_literal_type_like(typ) or (
+                    isinstance(typ, Instance) and typ.type.is_enum
+                )
+
+            should_coerce = any(should_coerce_inner(operand_types[i]) for i in chain_indices)
 
         target: Type | None = None
         possible_target_indices = []
@@ -6988,7 +6995,7 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
 
 def flatten(t: Expression) -> list[Expression]:
     """Flatten a nested sequence of tuples/lists into one list of nodes."""
-    if isinstance(t, TupleExpr) or isinstance(t, ListExpr):
+    if isinstance(t, (TupleExpr, ListExpr)):
         return [b for a in t.items for b in flatten(a)]
     elif isinstance(t, StarExpr):
         return flatten(t.expr)

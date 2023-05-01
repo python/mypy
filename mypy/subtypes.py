@@ -278,11 +278,7 @@ def _is_subtype(
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if not proper_subtype and (
-        isinstance(right, AnyType)
-        or isinstance(right, UnboundType)
-        or isinstance(right, ErasedType)
-    ):
+    if not proper_subtype and isinstance(right, (AnyType, UnboundType, ErasedType)):
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
@@ -668,7 +664,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
-        if isinstance(self.right, Parameters) or isinstance(self.right, CallableType):
+        if isinstance(self.right, (Parameters, CallableType)):
             right = self.right
             if isinstance(right, CallableType):
                 right = right.with_unpacked_kwargs()
@@ -917,13 +913,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
             for item in _flattened(self.right.relevant_items()):
                 p_item = get_proper_type(item)
-                if isinstance(p_item, LiteralType):
-                    fast_check.add(p_item)
-                elif isinstance(p_item, Instance):
-                    if p_item.last_known_value is None:
-                        fast_check.add(p_item)
-                    else:
-                        fast_check.add(p_item.last_known_value)
+                fast_check.add(p_item)
+                if isinstance(p_item, Instance) and p_item.last_known_value is not None:
+                    fast_check.add(p_item.last_known_value)
 
             for item in left.relevant_items():
                 p_item = get_proper_type(item)

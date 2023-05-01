@@ -43,13 +43,17 @@ from mypy.nodes import (
     YieldFromExpr,
 )
 from mypyc.ir.ops import (
+    NAMESPACE_MODULE,
     NO_TRACEBACK_LINE_NO,
     Assign,
     BasicBlock,
     Branch,
+    InitStatic,
     Integer,
     LoadAddress,
     LoadErrorValue,
+    LoadLiteral,
+    LoadStatic,
     MethodCall,
     RaiseStandardError,
     Register,
@@ -60,6 +64,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
     none_rprimitive,
@@ -96,7 +101,8 @@ from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
-    import_from_op,
+    import_from_many_op,
+    import_many_op,
     send_op,
     type_op,
     yield_from_except_op,
@@ -214,35 +220,93 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     builder.flush_keep_alives()
 
 
+def import_globals_id_and_name(module_id: str, as_name: str | None) -> tuple[str, str]:
+    """Compute names for updating the globals dict with the appropriate module.
+
+    * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
+    * For 'import foo.bar' we add 'foo' with the name 'foo'
+
+    Typically we then ignore these entries and access things directly
+    via the module static, but we will use the globals version for
+    modules that mypy couldn't find, since it doesn't analyze module
+    references from those properly."""
+    if as_name:
+        globals_id = module_id
+        globals_name = as_name
+    else:
+        globals_id = globals_name = module_id.split(".")[0]
+
+    return globals_id, globals_name
+
+
 def transform_import(builder: IRBuilder, node: Import) -> None:
     if node.is_mypy_only:
         return
-    globals = builder.load_globals_dict()
-    for node_id, as_name in node.ids:
-        builder.gen_import(node_id, node.line)
 
-        # Update the globals dict with the appropriate module:
-        # * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
-        # * For 'import foo.bar' we add 'foo' with the name 'foo'
-        # Typically we then ignore these entries and access things directly
-        # via the module static, but we will use the globals version for modules
-        # that mypy couldn't find, since it doesn't analyze module references
-        # from those properly.
+    # Imports (not from imports!) are processed in an odd way so they can be
+    # table-driven and compact. Here's how it works:
+    #
+    # Import nodes are divided in groups (in the prebuild visitor). Each group
+    # consists of consecutive Import nodes:
+    #
+    #   import mod         <| group #1
+    #   import mod2         |
+    #
+    #   def foo() -> None:
+    #       import mod3    <- group #2 (*)
+    #
+    #   import mod4        <| group #3
+    #   import mod5         |
+    #
+    # Every time we encounter the first import of a group, build IR to call a
+    # helper function that will perform all of the group's imports in one go.
+    if not node.is_top_level:
+        # (*) Unless the import is within a function. In that case, prioritize
+        # speed over codesize when generating IR.
+        globals = builder.load_globals_dict()
+        for mod_id, as_name in node.ids:
+            builder.gen_import(mod_id, node.line)
+            globals_id, globals_name = import_globals_id_and_name(mod_id, as_name)
+            builder.gen_method_call(
+                globals,
+                "__setitem__",
+                [builder.load_str(globals_name), builder.get_module(globals_id, node.line)],
+                result_type=None,
+                line=node.line,
+            )
+        return
 
-        # TODO: Don't add local imports to the global namespace
+    if node not in builder.module_import_groups:
+        return
 
-        # Miscompiling imports inside of functions, like below in import from.
-        if as_name:
-            name = as_name
-            base = node_id
-        else:
-            base = name = node_id.split(".")[0]
+    modules = []
+    static_ptrs = []
+    # To show the right line number on failure, we have to add the traceback
+    # entry within the helper function (which is admittedly ugly). To drive
+    # this, we need the line number corresponding to each module.
+    mod_lines = []
+    for import_node in builder.module_import_groups[node]:
+        for mod_id, as_name in import_node.ids:
+            builder.imports[mod_id] = None
+            modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
+            mod_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
+            static_ptrs.append(builder.add(LoadAddress(object_pointer_rprimitive, mod_static)))
+            mod_lines.append(Integer(import_node.line, c_pyssize_t_rprimitive))
 
-        obj = builder.get_module(base, node.line)
-
-        builder.gen_method_call(
-            globals, "__setitem__", [builder.load_str(name), obj], result_type=None, line=node.line
-        )
+    static_array_ptr = builder.builder.setup_rarray(object_pointer_rprimitive, static_ptrs)
+    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines)
+    builder.call_c(
+        import_many_op,
+        [
+            builder.add(LoadLiteral(tuple(modules), object_rprimitive)),
+            static_array_ptr,
+            builder.load_globals_dict(),
+            builder.load_str(builder.module_path),
+            builder.load_str(builder.fn_info.name),
+            import_line_ptr,
+        ],
+        NO_TRACEBACK_LINE_NO,
+    )
 
 
 def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
@@ -258,29 +322,25 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
         module_package = ""
 
     id = importlib.util.resolve_name("." * node.relative + node.id, module_package)
+    builder.imports[id] = None
 
-    globals = builder.load_globals_dict()
-    imported_names = [name for name, _ in node.names]
-    module = builder.gen_import_from(id, globals, imported_names, node.line)
-
-    # Copy everything into our module's dict.
+    names = [name for name, _ in node.names]
+    as_names = [as_name or name for name, as_name in node.names]
+    names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
+    if as_names == names:
+        # Reuse names tuple to reduce verbosity.
+        as_names_literal = names_literal
+    else:
+        as_names_literal = builder.add(LoadLiteral(tuple(as_names), object_rprimitive))
     # Note that we miscompile import from inside of functions here,
-    # since that case *shouldn't* load it into the globals dict.
+    # since that case *shouldn't* load everything into the globals dict.
     # This probably doesn't matter much and the code runs basically right.
-    for name, maybe_as_name in node.names:
-        as_name = maybe_as_name or name
-        obj = builder.call_c(
-            import_from_op,
-            [module, builder.load_str(id), builder.load_str(name), builder.load_str(as_name)],
-            node.line,
-        )
-        builder.gen_method_call(
-            globals,
-            "__setitem__",
-            [builder.load_str(as_name), obj],
-            result_type=None,
-            line=node.line,
-        )
+    module = builder.call_c(
+        import_from_many_op,
+        [builder.load_str(id), names_literal, as_names_literal, builder.load_globals_dict()],
+        node.line,
+    )
+    builder.add(InitStatic(module, id, namespace=NAMESPACE_MODULE))
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:
