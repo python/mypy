@@ -1,5 +1,6 @@
 import sys
-from lib2to3.pgen2.grammar import Grammar
+
+from .pgen2.grammar import Grammar
 
 class Symbols:
     def __init__(self, grammar: Grammar) -> None: ...
