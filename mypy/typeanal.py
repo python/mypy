@@ -1110,7 +1110,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
-        n = None if not t.fullname else self.api.lookup_fully_qualified(t.fullname)
+        n = (
+            None
+            # No dot in fullname indicates we are at function scope, and recursive
+            # types are not supported there anyway, so we just give up.
+            if not t.fullname or "." not in t.fullname
+            else self.api.lookup_fully_qualified(t.fullname)
+        )
         if not n or isinstance(n.node, PlaceholderNode):
             self.api.defer()  # Still incomplete
             return t
