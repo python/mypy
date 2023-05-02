@@ -5120,7 +5120,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Determine the type of the entire yield from expression.
         iter_type = get_proper_type(iter_type)
-        if isinstance(iter_type, Instance) and iter_type.type.fullname == "typing.Generator":
+        if isinstance(iter_type, Instance) and iter_type.type.fullname == "typing.Generator" \
+                or isinstance(iter_type, UnionType):
             expr_type = self.chk.get_generator_return_type(iter_type, False)
         else:
             # Non-Generators don't return anything from `yield from` expressions.
