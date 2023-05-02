@@ -33,7 +33,6 @@ from mypy.types import (
     Type,
     TypeList,
     TypeOfAny,
-    TypeOfTypeList,
     UnboundType,
     UnionType,
 )
@@ -162,12 +161,9 @@ def expr_to_unanalyzed_type(
             else:
                 raise TypeTranslationError()
         return CallableArgument(typ, name, arg_const, expr.line, expr.column)
-    elif isinstance(expr, (ListExpr, TupleExpr)):
+    elif isinstance(expr, ListExpr):
         return TypeList(
             [expr_to_unanalyzed_type(t, options, allow_new_syntax, expr) for t in expr.items],
-            TypeOfTypeList.callable_args
-            if isinstance(expr, ListExpr)
-            else TypeOfTypeList.param_spec_defaults,
             line=expr.line,
             column=expr.column,
         )

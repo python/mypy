@@ -197,17 +197,6 @@ class TypeOfAny:
     suggestion_engine: Final = 9
 
 
-class TypeOfTypeList:
-    """This class describes the different types of TypeList."""
-
-    __slots__ = ()
-
-    # List expressions for callable args
-    callable_args: Final = 1
-    # Tuple expressions for ParamSpec defaults
-    param_spec_defaults: Final = 2
-
-
 def deserialize_type(data: JsonDict | str) -> Type:
     if isinstance(data, str):
         return Instance.deserialize(data)
@@ -1022,20 +1011,13 @@ class TypeList(ProperType):
     types before they are processed into Callable types.
     """
 
-    __slots__ = ("items", "list_type")
+    __slots__ = ("items",)
 
     items: list[Type]
 
-    def __init__(
-        self,
-        items: list[Type],
-        list_type: int = TypeOfTypeList.callable_args,
-        line: int = -1,
-        column: int = -1,
-    ) -> None:
+    def __init__(self, items: list[Type], line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.items = items
-        self.list_type = list_type
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
@@ -1049,11 +1031,7 @@ class TypeList(ProperType):
         return hash(tuple(self.items))
 
     def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, TypeList)
-            and self.items == other.items
-            and self.list_type == other.list_type
-        )
+        return isinstance(other, TypeList) and self.items == other.items
 
 
 class UnpackType(ProperType):

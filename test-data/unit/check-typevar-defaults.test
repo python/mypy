@@ -4,7 +4,7 @@ from typing import Generic, TypeVar, ParamSpec, Callable, Tuple, List
 from typing_extensions import TypeVarTuple, Unpack
 
 T1 = TypeVar("T1", default=int)
-P1 = ParamSpec("P1", default=(int, str))
+P1 = ParamSpec("P1", default=[int, str])
 Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int, str]])
 
 def f1(a: T1) -> List[T1]: ...
@@ -44,9 +44,9 @@ T5 = TypeVar("T5", default=S0)
 T6 = TypeVar("T6", bound=float, default=S1)
 # T7 = TypeVar("T7", bound=List[Any], default=List[S0])  # TODO
 
-P1 = ParamSpec("P1", default=())
+P1 = ParamSpec("P1", default=[])
 P2 = ParamSpec("P2", default=...)
-P3 = ParamSpec("P3", default=(int, str))
+P3 = ParamSpec("P3", default=[int, str])
 P4 = ParamSpec("P4", default=P0)
 
 Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int]])
@@ -59,15 +59,16 @@ from typing import TypeVar, ParamSpec, Tuple
 from typing_extensions import TypeVarTuple, Unpack
 
 T1 = TypeVar("T1", default=2)  # E: TypeVar "default" must be a type
-T2 = TypeVar("T2", default=(int, str))  # E: Bracketed expression "(...)" is not valid as a type \
+T2 = TypeVar("T2", default=[int, str])  # E: Bracketed expression "[...]" is not valid as a type \
+                                        # N: Did you mean "List[...]"? \
                                         # E: TypeVar "default" must be a type
 
-P1 = ParamSpec("P1", default=int)  # E: The default argument to ParamSpec must be a tuple expression, ellipsis, or a ParamSpec
-P2 = ParamSpec("P2", default=2)  # E: ParamSpec "default" must be a type
-P3 = ParamSpec("P3", default=(2, int))  # E: Argument 0 of ParamSpec default must be a type
+P1 = ParamSpec("P1", default=int)  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+P2 = ParamSpec("P2", default=2)  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+P3 = ParamSpec("P3", default=(2, int))  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+P4 = ParamSpec("P4", default=[2, int])  # E: Argument 0 of ParamSpec default must be a type
 
-Ts1 = TypeVarTuple("Ts1", default=2)  # E: TypeVarTuple "default" must be a type \
-                                      # E: The default argument to TypeVarTuple must be an Unpacked tuple
+Ts1 = TypeVarTuple("Ts1", default=2) # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts2 = TypeVarTuple("Ts2", default=int)  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts3 = TypeVarTuple("Ts3", default=Tuple[int])  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 [builtins fixtures/tuple.pyi]

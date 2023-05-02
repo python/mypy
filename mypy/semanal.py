@@ -4132,9 +4132,7 @@ class SemanticAnalyzer(
                 tv_arg = self.get_typevarlike_argument(
                     "TypeVar", param_name, param_value, context, allow_unbound_tvars=True
                 )
-                if tv_arg is None:
-                    return None
-                default = tv_arg
+                default = tv_arg or AnyType(TypeOfAny.from_error)
             elif param_name == "values":
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
                 self.fail('TypeVar "values" argument not supported', context)
@@ -4171,6 +4169,7 @@ class SemanticAnalyzer(
         *,
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
+        report_invalid_typevar_arg: bool = True,
     ) -> ProperType | None:
         try:
             # We want to use our custom error message below, so we suppress
@@ -4191,7 +4190,7 @@ class SemanticAnalyzer(
                 #         ...
                 analyzed = PlaceholderType(None, [], context.line)
             typ = get_proper_type(analyzed)
-            if isinstance(typ, AnyType) and typ.is_from_error:
+            if report_invalid_typevar_arg and isinstance(typ, AnyType) and typ.is_from_error:
                 self.fail(
                     message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
                     param_value,
@@ -4200,10 +4199,11 @@ class SemanticAnalyzer(
                 # using the AnyType as the upper bound.
             return typ
         except TypeTranslationError:
-            self.fail(
-                message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
-                param_value,
-            )
+            if report_invalid_typevar_arg:
+                self.fail(
+                    message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
+                    param_value,
+                )
             return None
 
     def extract_typevarlike_name(self, s: AssignmentStmt, call: CallExpr) -> str | None:
@@ -4254,10 +4254,9 @@ class SemanticAnalyzer(
                     s,
                     allow_unbound_tvars=True,
                     allow_param_spec_literals=True,
+                    report_invalid_typevar_arg=False,
                 )
-                if tv_arg is None:
-                    return False
-                default = tv_arg
+                default = tv_arg or AnyType(TypeOfAny.from_error)
                 if isinstance(tv_arg, Parameters):
                     for i, arg_type in enumerate(tv_arg.arg_types):
                         typ = get_proper_type(arg_type)
@@ -4265,9 +4264,13 @@ class SemanticAnalyzer(
                             self.fail(
                                 f"Argument {i} of ParamSpec default must be a type", param_value
                             )
-                elif not isinstance(default, (AnyType, UnboundType)):
+                elif (
+                    isinstance(default, AnyType)
+                    and default.is_from_error
+                    or not isinstance(default, (AnyType, UnboundType))
+                ):
                     self.fail(
-                        "The default argument to ParamSpec must be a tuple expression, ellipsis, or a ParamSpec",
+                        "The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec",
                         param_value,
                     )
                     default = AnyType(TypeOfAny.from_error)
@@ -4324,11 +4327,14 @@ class SemanticAnalyzer(
         ):
             if param_name == "default":
                 tv_arg = self.get_typevarlike_argument(
-                    "TypeVarTuple", param_name, param_value, s, allow_unbound_tvars=True
+                    "TypeVarTuple",
+                    param_name,
+                    param_value,
+                    s,
+                    allow_unbound_tvars=True,
+                    report_invalid_typevar_arg=False,
                 )
-                if tv_arg is None:
-                    return False
-                default = tv_arg
+                default = tv_arg or AnyType(TypeOfAny.from_error)
                 if not isinstance(default, UnpackType):
                     self.fail(
                         "The default argument to TypeVarTuple must be an Unpacked tuple",
