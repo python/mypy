@@ -2195,6 +2195,14 @@ class B: pass
 def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
     yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")
 
+[case testReturnTypeOfGeneratorUnion]
+from typing import Generator, Union
+
+class T: pass
+
+def foo(arg: Union[Generator[int, None, T], Generator[str, None, T]]) -> Generator[Union[int, str], None, T]:
+    return (yield from arg)
+
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: Can use starred expression only as assignment target
 [builtins fixtures/tuple.pyi]
