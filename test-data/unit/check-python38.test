@@ -775,3 +775,18 @@ main:9: note: Revealed type is "builtins.int"
 class C:
     [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body
 [builtins fixtures/list.pyi]
+
+[case testIgnoreWholeModule]
+# flags: --warn-unused-ignores
+# type: ignore
+IGNORE # type: ignore
+
+[case testUnusedIgnoreVersionCheck]
+# flags: --warn-unused-ignores
+import sys
+
+if sys.version_info < (3, 6):
+    42  # type: ignore
+else:
+    42  # type: ignore  # E: Unused "type: ignore" comment
+[builtins fixtures/ops.pyi]

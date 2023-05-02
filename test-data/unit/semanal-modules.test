@@ -552,7 +552,7 @@ MypyFile:1(
   FuncDef:1(
     f
     def ()
-    Block:1(
+    Block:2(
       Import:2(_x)
       ExpressionStmt:3(
         MemberExpr:3(
@@ -603,7 +603,7 @@ MypyFile:1(
   FuncDef:1(
     f
     def ()
-    Block:1(
+    Block:2(
       Import:2(x)
       Import:3(x)
       ExpressionStmt:4(
@@ -917,7 +917,7 @@ MypyFile:1(
   FuncDef:3(
     f
     def ()
-    Block:3(
+    Block:4(
       ImportFrom:4(x, [a])
       ImportFrom:5(x, [a])))
   Import:6(x)

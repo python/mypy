@@ -528,10 +528,10 @@ class B:
 $ dmypy start -- --warn-unused-ignores --no-error-summary
 Daemon started
 $ dmypy check -- bar.py
-bar.py:2: error: Unused "type: ignore" comment
+bar.py:2: error: Unused "type: ignore" comment  [unused-ignore]
 == Return code: 1
 $ dmypy check -- bar.py
-bar.py:2: error: Unused "type: ignore" comment
+bar.py:2: error: Unused "type: ignore" comment  [unused-ignore]
 == Return code: 1
 
 [file foo/__init__.py]
@@ -562,11 +562,11 @@ a = 1  # type: ignore
 $ dmypy start -- --warn-unused-ignores --no-error-summary
 Daemon started
 $ dmypy check -- bar.py
-bar.py:2: error: Unused "type: ignore" comment
+bar.py:2: error: Unused "type: ignore" comment  [unused-ignore]
 == Return code: 1
 $ {python} -c "print('\n')" >> bar.py
 $ dmypy check -- bar.py
-bar.py:2: error: Unused "type: ignore" comment
+bar.py:2: error: Unused "type: ignore" comment  [unused-ignore]
 == Return code: 1
 
 [file foo/__init__.py]

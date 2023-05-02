@@ -287,6 +287,7 @@ class MypyFile(SymbolNode):
         "names",
         "imports",
         "ignored_lines",
+        "unreachable_lines",
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
@@ -313,6 +314,8 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines: dict[int, list[str]]
+    # Lines that are statically unreachable (e.g. due to platform/version check).
+    unreachable_lines: set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub: bool
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -345,6 +348,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = {}
+        self.unreachable_lines = set()
 
         self.path = ""
         self.is_stub = False

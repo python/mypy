@@ -2238,6 +2238,7 @@ class State:
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        self.manager.errors.set_unreachable_lines(self.xpath, self.tree.unreachable_lines)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
@@ -2572,7 +2573,10 @@ class State:
         return [self.dep_line_map.get(dep, 1) for dep in self.dependencies + self.suppressed]
 
     def generate_unused_ignore_notes(self) -> None:
-        if self.options.warn_unused_ignores:
+        if (
+            self.options.warn_unused_ignores
+            or codes.UNUSED_IGNORE in self.options.enabled_error_codes
+        ) and codes.UNUSED_IGNORE not in self.options.disabled_error_codes:
             # If this file was initially loaded from the cache, it may have suppressed
             # dependencies due to imports with ignores on them. We need to generate
             # those errors to avoid spuriously flagging them as unused ignores.
