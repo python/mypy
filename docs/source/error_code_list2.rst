@@ -369,8 +369,8 @@ Example:
 
 Note that due to a specific nature of this comment, the only way to selectively
 silence it, is to include the error code explicitly. Also note that this error is
-not shown if the the ``# type: ignore`` is not used due to code being statically
-unreachable (e.g. due to platform or version check).
+not shown if the ``# type: ignore`` is not used due to code being statically
+unreachable (e.g. due to platform or version checks).
 
 Example:
 
@@ -381,7 +381,7 @@ Example:
     import sys
 
     try:
-        # The "[unused-ignore]" is needed to get clean mypy run
+        # The "[unused-ignore]" is needed to get a clean mypy run
         # on both Python 3.8, and 3.9 where this module was added
         import graphlib  # type: ignore[import,unused-ignore]
     except ImportError:
