@@ -1714,7 +1714,7 @@ def unify_generic_callable(
     # (probably also because solver needs subtyping). See also comment in
     # ExpandTypeVisitor.visit_erased_type().
     applied = mypy.applytype.apply_generic_arguments(
-        type, non_none_inferred_vars, report, context=target, allow_erased_callables=True
+        type, non_none_inferred_vars, report, context=target
     )
     if had_errors:
         return None
