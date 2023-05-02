@@ -1047,7 +1047,7 @@ import attr
 @attr.s(kw_only=True)
 class A:
     a = attr.ib(15)   # type: int
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [out]
 ==
 main:2: error: Too many positional arguments for "B"

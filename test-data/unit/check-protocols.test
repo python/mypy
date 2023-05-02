@@ -4054,3 +4054,14 @@ class P(Protocol):
 
 [file lib.py]
 class C: ...
+
+[case testAllowDefaultConstructorInProtocols]
+from typing import Protocol
+
+class P(Protocol):
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class C(P): ...
+C(0)  # OK

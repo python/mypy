@@ -797,3 +797,18 @@ def walrus_with_nested_ok(x: Optional[str]) -> None:
     if y := x:
         pass
     nested()
+
+[case testIgnoreWholeModule]
+# flags: --warn-unused-ignores
+# type: ignore
+IGNORE # type: ignore
+
+[case testUnusedIgnoreVersionCheck]
+# flags: --warn-unused-ignores
+import sys
+
+if sys.version_info < (3, 6):
+    42  # type: ignore
+else:
+    42  # type: ignore  # E: Unused "type: ignore" comment
+[builtins fixtures/ops.pyi]

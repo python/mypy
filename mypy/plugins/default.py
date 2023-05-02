@@ -41,7 +41,7 @@ class DefaultPlugin(Plugin):
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         from mypy.plugins import ctypes, singledispatch
 
-        if fullname == "ctypes.Array":
+        if fullname == "_ctypes.Array":
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
@@ -69,7 +69,7 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_signature_callback
         elif fullname in {n + ".update" for n in TPDICT_FB_NAMES}:
             return typed_dict_update_signature_callback
-        elif fullname == "ctypes.Array.__setitem__":
+        elif fullname == "_ctypes.Array.__setitem__":
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_callback
@@ -92,9 +92,9 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_callback
         elif fullname in {n + ".__delitem__" for n in TPDICT_FB_NAMES}:
             return typed_dict_delitem_callback
-        elif fullname == "ctypes.Array.__getitem__":
+        elif fullname == "_ctypes.Array.__getitem__":
             return ctypes.array_getitem_callback
-        elif fullname == "ctypes.Array.__iter__":
+        elif fullname == "_ctypes.Array.__iter__":
             return ctypes.array_iter_callback
         elif fullname == singledispatch.SINGLEDISPATCH_REGISTER_METHOD:
             return singledispatch.singledispatch_register_callback
@@ -105,9 +105,9 @@ class DefaultPlugin(Plugin):
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         from mypy.plugins import ctypes, enums
 
-        if fullname == "ctypes.Array.value":
+        if fullname == "_ctypes.Array.value":
             return ctypes.array_value_callback
-        elif fullname == "ctypes.Array.raw":
+        elif fullname == "_ctypes.Array.raw":
             return ctypes.array_raw_callback
         elif fullname in enums.ENUM_NAME_ACCESS:
             return enums.enum_name_callback

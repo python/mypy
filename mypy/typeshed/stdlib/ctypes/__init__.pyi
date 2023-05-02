@@ -1,10 +1,20 @@
 import sys
-from _ctypes import RTLD_GLOBAL as RTLD_GLOBAL, RTLD_LOCAL as RTLD_LOCAL
-from _typeshed import ReadableBuffer, WriteableBuffer
-from abc import abstractmethod
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from _ctypes import (
+    RTLD_GLOBAL as RTLD_GLOBAL,
+    RTLD_LOCAL as RTLD_LOCAL,
+    Array as Array,
+    Structure as Structure,
+    Union as Union,
+    _CData as _CData,
+    _CDataMeta as _CDataMeta,
+    _CField as _CField,
+    _SimpleCData as _SimpleCData,
+    _StructUnionBase as _StructUnionBase,
+    _StructUnionMeta as _StructUnionMeta,
+)
+from collections.abc import Callable, Sequence
 from typing import Any, ClassVar, Generic, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -64,28 +74,6 @@ if sys.platform == "win32":
     oledll: LibraryLoader[OleDLL]
 pydll: LibraryLoader[PyDLL]
 pythonapi: PyDLL
-
-class _CDataMeta(type):
-    # By default mypy complains about the following two methods, because strictly speaking cls
-    # might not be a Type[_CT]. However this can never actually happen, because the only class that
-    # uses _CDataMeta as its metaclass is _CData. So it's safe to ignore the errors here.
-    def __mul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
-    def __rmul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
-
-class _CData(metaclass=_CDataMeta):
-    _b_base_: int
-    _b_needsfree_: bool
-    _objects: Mapping[Any, int] | None
-    @classmethod
-    def from_buffer(cls, source: WriteableBuffer, offset: int = ...) -> Self: ...
-    @classmethod
-    def from_buffer_copy(cls, source: ReadableBuffer, offset: int = ...) -> Self: ...
-    @classmethod
-    def from_address(cls, address: int) -> Self: ...
-    @classmethod
-    def from_param(cls, obj: Any) -> Self | _CArgObject: ...
-    @classmethod
-    def in_dll(cls, library: CDLL, name: str) -> Self: ...
 
 class _CanCastTo(_CData): ...
 class _PointerLike(_CanCastTo): ...
@@ -190,12 +178,6 @@ if sys.platform == "win32":
 
 def wstring_at(address: _CVoidConstPLike, size: int = -1) -> str: ...
 
-class _SimpleCData(Generic[_T], _CData):
-    value: _T
-    # The TypeVar can be unsolved here,
-    # but we can't use overloads without creating many, many mypy false-positive errors
-    def __init__(self, value: _T = ...) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]
-
 class c_byte(_SimpleCData[int]): ...
 
 class c_char(_SimpleCData[bytes]):
@@ -239,64 +221,5 @@ if sys.platform == "win32":
     class HRESULT(_SimpleCData[int]): ...  # TODO undocumented
 
 class py_object(_CanCastTo, _SimpleCData[_T]): ...
-
-class _CField:
-    offset: int
-    size: int
-
-class _StructUnionMeta(_CDataMeta):
-    _fields_: Sequence[tuple[str, type[_CData]] | tuple[str, type[_CData], int]]
-    _pack_: int
-    _anonymous_: Sequence[str]
-    def __getattr__(self, name: str) -> _CField: ...
-
-class _StructUnionBase(_CData, metaclass=_StructUnionMeta):
-    def __init__(self, *args: Any, **kw: Any) -> None: ...
-    def __getattr__(self, name: str) -> Any: ...
-    def __setattr__(self, name: str, value: Any) -> None: ...
-
-class Union(_StructUnionBase): ...
-class Structure(_StructUnionBase): ...
 class BigEndianStructure(Structure): ...
 class LittleEndianStructure(Structure): ...
-
-class Array(Generic[_CT], _CData):
-    @property
-    @abstractmethod
-    def _length_(self) -> int: ...
-    @_length_.setter
-    def _length_(self, value: int) -> None: ...
-    @property
-    @abstractmethod
-    def _type_(self) -> type[_CT]: ...
-    @_type_.setter
-    def _type_(self, value: type[_CT]) -> None: ...
-    raw: bytes  # Note: only available if _CT == c_char
-    value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
-    # TODO These methods cannot be annotated correctly at the moment.
-    # All of these "Any"s stand for the array's element type, but it's not possible to use _CT
-    # here, because of a special feature of ctypes.
-    # By default, when accessing an element of an Array[_CT], the returned object has type _CT.
-    # However, when _CT is a "simple type" like c_int, ctypes automatically "unboxes" the object
-    # and converts it to the corresponding Python primitive. For example, when accessing an element
-    # of an Array[c_int], a Python int object is returned, not a c_int.
-    # This behavior does *not* apply to subclasses of "simple types".
-    # If MyInt is a subclass of c_int, then accessing an element of an Array[MyInt] returns
-    # a MyInt, not an int.
-    # This special behavior is not easy to model in a stub, so for now all places where
-    # the array element type would belong are annotated with Any instead.
-    def __init__(self, *args: Any) -> None: ...
-    @overload
-    def __getitem__(self, __key: int) -> Any: ...
-    @overload
-    def __getitem__(self, __key: slice) -> list[Any]: ...
-    @overload
-    def __setitem__(self, __key: int, __value: Any) -> None: ...
-    @overload
-    def __setitem__(self, __key: slice, __value: Iterable[Any]) -> None: ...
-    def __iter__(self) -> Iterator[Any]: ...
-    # Can't inherit from Sized because the metaclass conflict between
-    # Sized and _CData prevents using _CDataMeta.
-    def __len__(self) -> int: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...

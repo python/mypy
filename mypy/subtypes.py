@@ -278,11 +278,7 @@ def _is_subtype(
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if not proper_subtype and (
-        isinstance(right, AnyType)
-        or isinstance(right, UnboundType)
-        or isinstance(right, ErasedType)
-    ):
+    if not proper_subtype and isinstance(right, (AnyType, UnboundType, ErasedType)):
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
@@ -668,7 +664,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
-        if isinstance(self.right, Parameters) or isinstance(self.right, CallableType):
+        if isinstance(self.right, (Parameters, CallableType)):
             right = self.right
             if isinstance(right, CallableType):
                 right = right.with_unpacked_kwargs()
@@ -1718,7 +1714,7 @@ def unify_generic_callable(
     # (probably also because solver needs subtyping). See also comment in
     # ExpandTypeVisitor.visit_erased_type().
     applied = mypy.applytype.apply_generic_arguments(
-        type, non_none_inferred_vars, report, context=target, allow_erased_callables=True
+        type, non_none_inferred_vars, report, context=target
     )
     if had_errors:
         return None

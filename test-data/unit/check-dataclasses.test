@@ -2037,3 +2037,16 @@ Foo(
     present_5=5,
 )
 [builtins fixtures/dataclasses.pyi]
+
+[case testProtocolNoCrash]
+from typing import Protocol, Union, ClassVar
+from dataclasses import dataclass, field
+
+DEFAULT = 0
+
+@dataclass
+class Test(Protocol):
+    x: int
+    def reset(self) -> None:
+        self.x = DEFAULT
+[builtins fixtures/dataclasses.pyi]

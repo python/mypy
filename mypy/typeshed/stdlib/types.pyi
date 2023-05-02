@@ -56,6 +56,9 @@ if sys.version_info >= (3, 9):
 if sys.version_info >= (3, 10):
     __all__ += ["EllipsisType", "NoneType", "NotImplementedType", "UnionType"]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["get_original_bases"]
+
 # Note, all classes "defined" here require special handling.
 
 _T1 = TypeVar("_T1")
@@ -562,6 +565,9 @@ def resolve_bases(bases: Iterable[object]) -> tuple[Any, ...]: ...
 def prepare_class(
     name: str, bases: tuple[type, ...] = (), kwds: dict[str, Any] | None = None
 ) -> tuple[type, dict[str, Any], dict[str, Any]]: ...
+
+if sys.version_info >= (3, 12):
+    def get_original_bases(__cls: type) -> tuple[Any, ...]: ...
 
 # Actually a different type, but `property` is special and we want that too.
 DynamicClassAttribute = property
