@@ -1084,7 +1084,15 @@ def cannot_narrow_if_reassigned(x: Optional[str]) -> None:
 x: Optional[str] = "x"
 
 def cannot_narrow_top_level() -> None:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.str, None]"
+    global x
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        # This should perhaps not be narrowed, since the nested function could outlive
+        # the outer function, and since other functions could also assign to x, but
+        # this seems like a minor issue.
+        return x
+    nested()
 
 [case testNarrowedVariableInNestedFunctionMore1]
 from typing import Optional, overload
