@@ -309,3 +309,32 @@ section of the docs has a full description with an example, but in short, you wi
 need to give each TypedDict the same key where each value has a unique
 :ref:`Literal type <literal_types>`. Then, check that key to distinguish
 between your TypedDicts.
+
+Typing function's ``**kwargs``
+------------------------------
+
+``TypedDict`` can be used along with ``Unpack`` to precisely type annotate the
+``**kwargs`` in a function signature:
+
+.. code-block:: python
+
+   from typing_extensions import Unpack
+
+   class Options(TypedDict):
+       timeout: int
+       on_error: Callable[[int], None]
+      
+   def handle_error(code: int) -> None: ...
+   
+   # This function expects a keyword argument `timeout` of type `int` and a
+   # keyword argument `on_error` that is a `Callable[[int], None]`
+   def call(**options: Unpack[Options]): ...
+
+   call(timeout=5, on_error=handle_error)
+
+That way, both keyword names and their types are checked during static type
+analysis.
+
+Note that ``Unpack`` has to be used, as annotating ``**kwargs`` directly with a
+certain type means, that the function expects all of its keyword arguments
+captured by ``**kwargs`` to be of that type.
