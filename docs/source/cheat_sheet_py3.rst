@@ -147,10 +147,10 @@ Functions
        request = make_request(*args, **kwargs)
        return self.do_api_query(request)
     
-    # For more preise keyword typing, you can use `Unpack` along with a
+    # For more precise keyword typing, you can use `Unpack` along with a
     # `TypedDict`
     class Options(TypedDict):
-        timeout: int 
+        timeout: int
         on_error: Callable[[int], None]
     
     # This function expects a keyword argument `timeout` of type `int` and a
