@@ -2191,3 +2191,16 @@ a2 = replace(a, x=42)
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 a2 = replace(a, x='42')  # E: Argument "x" to "replace" of "A[int]" has incompatible type "str"; expected "int"
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+
+[case testProtocolNoCrash]
+from typing import Protocol, Union, ClassVar
+from dataclasses import dataclass, field
+
+DEFAULT = 0
+
+@dataclass
+class Test(Protocol):
+    x: int
+    def reset(self) -> None:
+        self.x = DEFAULT
+[builtins fixtures/dataclasses.pyi]
