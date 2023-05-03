@@ -1298,7 +1298,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # Potentially a unpack.
                 sym = self.lookup_qualified(arg.name, arg)
                 if sym is not None:
-                    if sym.fullname == "typing_extensions.Unpack":
+                    if sym.fullname in ("typing_extensions.Unpack", "typing.Unpack"):
                         if found_unpack:
                             self.fail("Callables can only have a single unpack", arg)
                         found_unpack = True
