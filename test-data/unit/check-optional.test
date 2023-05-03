@@ -1083,7 +1083,7 @@ def cannot_narrow_if_reassigned(x: Optional[str]) -> None:
 
 x: Optional[str] = "x"
 
-def cannot_narrow_top_level() -> None:
+def narrow_global_in_func() -> None:
     global x
     if x is None:
         x = "a"
@@ -1093,6 +1093,13 @@ def cannot_narrow_top_level() -> None:
         # this seems like a minor issue.
         return x
     nested()
+
+x = "y"
+
+def narrowing_global_at_top_level_not_propagated() -> str:
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
 
 [case testNarrowedVariableInNestedFunctionMore1]
 from typing import Optional, overload
@@ -1266,5 +1273,59 @@ def narrowed_variable_used_in_lvalue_but_not_assigned(c: Optional[C]) -> None:
     cc = C()
     cc[c] = 3
     nested()
+
+def narrow_with_multi_lvalues_1(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x
+
+    y = z = None
+
+def narrow_with_multi_lvalue_2(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+    x = y = None
+
+def narrow_with_multi_lvalue_3(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+    y = x = None
+
+def narrow_with_multi_assign_1(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x
+
+    y, z = None, None
+
+def narrow_with_multi_assign_2(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+    x, y = None, None
+
+def narrow_with_multi_assign_3(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+    y, x = None, None
 
 [builtins fixtures/isinstance.pyi]
