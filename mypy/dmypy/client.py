@@ -55,6 +55,7 @@ p.add_argument(
 p.add_argument(
     "flags", metavar="FLAG", nargs="*", type=str, help="Regular mypy flags (precede with --)"
 )
+p.add_argument("-q", "--quiet", action="store_true", help="Silence status update messages")
 
 restart_parser = p = subparsers.add_parser(
     "restart", help="Restart daemon (stop or kill followed by start)"
@@ -66,20 +67,22 @@ p.add_argument(
 p.add_argument(
     "flags", metavar="FLAG", nargs="*", type=str, help="Regular mypy flags (precede with --)"
 )
+p.add_argument("-q", "--quiet", action="store_true", help="Silence status update messages")
 
 status_parser = p = subparsers.add_parser("status", help="Show daemon status")
 p.add_argument("-v", "--verbose", action="store_true", help="Print detailed status")
 p.add_argument("--fswatcher-dump-file", help="Collect information about the current file state")
 
 stop_parser = p = subparsers.add_parser("stop", help="Stop daemon (asks it politely to go away)")
+p.add_argument("-q", "--quiet", action="store_true", help="Silence status update messages")
 
 kill_parser = p = subparsers.add_parser("kill", help="Kill daemon (kills the process)")
+p.add_argument("-q", "--quiet", action="store_true", help="Silence status update messages")
 
 check_parser = p = subparsers.add_parser(
     "check", formatter_class=AugmentedHelpFormatter, help="Check some files (requires daemon)"
 )
 p.add_argument("-v", "--verbose", action="store_true", help="Print detailed status")
-p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
 p.add_argument("--junit-xml", help="Write junit.xml to the given file")
 p.add_argument("--perf-stats-file", help="write performance information to the given file")
 p.add_argument("files", metavar="FILE", nargs="+", help="File (or directory) to check")
@@ -94,7 +97,9 @@ run_parser = p = subparsers.add_parser(
     formatter_class=AugmentedHelpFormatter,
     help="Check some files, [re]starting daemon if necessary",
 )
-p.add_argument("-v", "--verbose", action="store_true", help="Print detailed status")
+g = p.add_mutually_exclusive_group()
+g.add_argument("-v", "--verbose", action="store_true", help="Print detailed status")
+g.add_argument("-q", "--quiet", action="store_true", help="Silence status update messages")
 p.add_argument("--junit-xml", help="Write junit.xml to the given file")
 p.add_argument("--perf-stats-file", help="write performance information to the given file")
 p.add_argument(
@@ -120,7 +125,6 @@ recheck_parser = p = subparsers.add_parser(
     help="Re-check the previous list of files, with optional modifications (requires daemon)",
 )
 p.add_argument("-v", "--verbose", action="store_true", help="Print detailed status")
-p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
 p.add_argument("--junit-xml", help="Write junit.xml to the given file")
 p.add_argument("--perf-stats-file", help="write performance information to the given file")
 p.add_argument(
@@ -352,10 +356,10 @@ def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     start_options = process_start_options(args.flags, allow_sources)
     if daemonize(start_options, args.status_file, timeout=args.timeout, log_file=args.log_file):
         sys.exit(2)
-    wait_for_server(args.status_file)
+    wait_for_server(args)
 
 
-def wait_for_server(status_file: str, timeout: float = 5.0) -> None:
+def wait_for_server(args: argparse.Namespace, timeout: float = 5.0) -> None:
     """Wait until the server is up.
 
     Exit if it doesn't happen within the timeout.
@@ -363,14 +367,15 @@ def wait_for_server(status_file: str, timeout: float = 5.0) -> None:
     endtime = time.time() + timeout
     while time.time() < endtime:
         try:
-            data = read_status(status_file)
+            data = read_status(args.status_file)
         except BadStatus:
             # If the file isn't there yet, retry later.
             time.sleep(0.1)
             continue
         # If the file's content is bogus or the process is dead, fail.
         check_status(data)
-        print("Daemon started")
+        if not args.quiet:
+            print("Daemon started")
         return
     fail("Timed out waiting for daemon to start")
 
@@ -402,7 +407,8 @@ def do_run(args: argparse.Namespace) -> None:
     )
     # If the daemon signals that a restart is necessary, do it
     if "restart" in response:
-        print(f"Restarting: {response['restart']}")
+        if not args.quiet:
+            print(f"Restarting: {response['restart']}")
         restart_server(args, allow_sources=True)
         response = request(
             args.status_file,
@@ -448,7 +454,8 @@ def do_stop(args: argparse.Namespace) -> None:
         show_stats(response)
         fail(f"Daemon is stuck; consider {sys.argv[0]} kill")
     else:
-        print("Daemon stopped")
+        if not args.quiet:
+            print("Daemon stopped")
 
 
 @action(kill_parser)
@@ -460,7 +467,8 @@ def do_kill(args: argparse.Namespace) -> None:
     except OSError as err:
         fail(str(err))
     else:
-        print("Daemon killed")
+        if not args.quiet:
+            print("Daemon killed")
 
 
 @action(check_parser)
