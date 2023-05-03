@@ -2212,6 +2212,15 @@ class R: pass
 def foo(arg: Union[T, R]) -> Generator[Union[int, str], None, T]:
     return (yield from arg) # E: "yield from" cannot be applied to "Union[T, R]"
 
+[case testUnionOfGeneratorWithIterableStr]
+from typing import Generator, Union, Iterable
+
+class T: pass
+
+def foo(arg: Union[Generator[int, None, T], Iterable[str]]) -> Generator[Union[int, str], None, T]:
+    return (yield from arg)
+[builtins fixtures/tuple.pyi]
+
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: Can use starred expression only as assignment target
 [builtins fixtures/tuple.pyi]
