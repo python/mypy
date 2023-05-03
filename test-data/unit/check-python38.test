@@ -776,6 +776,28 @@ class C:
     [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body
 [builtins fixtures/list.pyi]
 
+[case testNarrowedVariableInNestedModifiedInWalrus]
+# flags: --strict-optional
+from typing import Optional
+
+def walrus_with_nested_error(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    if x := None:
+        pass
+    nested()
+
+def walrus_with_nested_ok(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    if y := x:
+        pass
+    nested()
+
 [case testIgnoreWholeModule]
 # flags: --warn-unused-ignores
 # type: ignore

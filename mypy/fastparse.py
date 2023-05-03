@@ -1766,7 +1766,8 @@ class ASTConverter:
         if n.name is None:
             node = StarredPattern(None)
         else:
-            node = StarredPattern(NameExpr(n.name))
+            name = self.set_line(NameExpr(n.name), n)
+            node = StarredPattern(name)
 
         return self.set_line(node, n)
 
