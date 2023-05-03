@@ -223,7 +223,6 @@ USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
 )
 
 
-
 NO_INCOMPLETE_DEF: Final[ErrorCode] = ErrorCode(
     "no-incomplete-def", "Function is missing a return type annotation", "General"
 )
