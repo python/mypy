@@ -4319,12 +4319,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if dt:
             return dt
 
+        # Define type variables (used in constructors below).
+        kt = TypeVarType("KT", "KT", -1, [], self.object_type())
+        vt = TypeVarType("VT", "VT", -2, [], self.object_type())
+
         # Collect function arguments, watching out for **expr.
-        args: list[Expression] = []  # Regular "key: value"
-        stargs: list[Expression] = []  # For "**expr"
+        args: list[Expression] = []
+        expected_types: list[Type] = []
         for key, value in e.items:
             if key is None:
-                stargs.append(value)
+                args.append(value)
+                expected_types.append(
+                    self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [kt, vt])
+                )
             else:
                 tup = TupleExpr([key, value])
                 if key.line >= 0:
@@ -4333,52 +4340,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     tup.line = value.line
                     tup.column = value.column
+                tup.end_line = value.end_line
+                tup.end_column = value.end_column
                 args.append(tup)
-        # Define type variables (used in constructors below).
-        kt = TypeVarType("KT", "KT", -1, [], self.object_type())
-        vt = TypeVarType("VT", "VT", -2, [], self.object_type())
-        rv = None
-        # Call dict(*args), unless it's empty and stargs is not.
-        if args or not stargs:
-            # The callable type represents a function like this:
-            #
-            #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
-            constructor = CallableType(
-                [TupleType([kt, vt], self.named_type("builtins.tuple"))],
-                [nodes.ARG_STAR],
-                [None],
-                self.chk.named_generic_type("builtins.dict", [kt, vt]),
-                self.named_type("builtins.function"),
-                name="<dict>",
-                variables=[kt, vt],
-            )
-            rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
-        else:
-            # dict(...) will be called below.
-            pass
-        # Call rv.update(arg) for each arg in **stargs,
-        # except if rv isn't set yet, then set rv = dict(arg).
-        if stargs:
-            for arg in stargs:
-                if rv is None:
-                    constructor = CallableType(
-                        [
-                            self.chk.named_generic_type(
-                                "_typeshed.SupportsKeysAndGetItem", [kt, vt]
-                            )
-                        ],
-                        [nodes.ARG_POS],
-                        [None],
-                        self.chk.named_generic_type("builtins.dict", [kt, vt]),
-                        self.named_type("builtins.function"),
-                        name="<list>",
-                        variables=[kt, vt],
-                    )
-                    rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
-                else:
-                    self.check_method_call_by_name("update", rv, [arg], [nodes.ARG_POS], arg)
-        assert rv is not None
-        return rv
+                expected_types.append(TupleType([kt, vt], self.named_type("builtins.tuple")))
+
+        # The callable type represents a function like this (except we adjust for **expr):
+        #   def <dict>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
+        constructor = CallableType(
+            expected_types,
+            [nodes.ARG_POS] * len(expected_types),
+            [None] * len(expected_types),
+            self.chk.named_generic_type("builtins.dict", [kt, vt]),
+            self.named_type("builtins.function"),
+            name="<dict>",
+            variables=[kt, vt],
+        )
+        return self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
 
     def find_typeddict_context(
         self, context: Type | None, dict_expr: DictExpr
