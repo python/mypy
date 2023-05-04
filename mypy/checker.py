@@ -1222,6 +1222,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if new_frame is None:
                                 new_frame = self.binder.push_frame()
                             new_frame.types[key] = narrowed_type
+                            self.binder.declarations[key] = old_binder.declarations[key]
                 with self.scope.push_function(defn):
                     # We suppress reachability warnings when we use TypeVars with value
                     # restrictions: we only want to report a warning if a certain statement is
