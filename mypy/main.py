@@ -781,6 +781,13 @@ def process_options(
         help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
+    add_invertible_flag(
+        "--warn-name-override",
+        default=False,
+        strict_flag=False,
+        help="Warn about overridden positional argument names that could be used as keywords",
+        group=lint_group,
+    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
