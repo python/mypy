@@ -48,33 +48,25 @@ from mypy.typevartuples import (
 
 
 @overload
-def expand_type(
-    typ: CallableType, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
-) -> CallableType:
+def expand_type(typ: CallableType, env: Mapping[TypeVarId, Type]) -> CallableType:
     ...
 
 
 @overload
-def expand_type(
-    typ: ProperType, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
-) -> ProperType:
+def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType:
     ...
 
 
 @overload
-def expand_type(
-    typ: Type, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = ...
-) -> Type:
+def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     ...
 
 
-def expand_type(
-    typ: Type, env: Mapping[TypeVarId, Type], allow_erased_callables: bool = False
-) -> Type:
+def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
     """
-    return typ.accept(ExpandTypeVisitor(env, allow_erased_callables))
+    return typ.accept(ExpandTypeVisitor(env))
 
 
 @overload
@@ -195,11 +187,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
-    def __init__(
-        self, variables: Mapping[TypeVarId, Type], allow_erased_callables: bool = False
-    ) -> None:
+    def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables
-        self.allow_erased_callables = allow_erased_callables
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -217,13 +206,12 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
-        if not self.allow_erased_callables:
-            raise RuntimeError()
         # This may happen during type inference if some function argument
         # type is a generic callable, and its erased form will appear in inferred
         # constraints, then solver may check subtyping between them, which will trigger
-        # unify_generic_callables(), this is why we can get here. In all other cases it
-        # is a sign of a bug, since <Erased> should never appear in any stored types.
+        # unify_generic_callables(), this is why we can get here. Another example is
+        # when inferring type of lambda in generic context, the lambda body contains
+        # a generic method in generic class.
         return t
 
     def visit_instance(self, t: Instance) -> Type:

@@ -212,7 +212,7 @@ MypyFile:1(
     Args(
       Var(a))
     def (a: Any)
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         ListComprehension:2(
           GeneratorExpr:2(

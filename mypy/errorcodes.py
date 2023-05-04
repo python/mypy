@@ -221,9 +221,8 @@ REDUNDANT_SELF_TYPE = ErrorCode(
 USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
     "used-before-def", "Warn about variables that are used before they are defined", "General"
 )
-NO_INCOMPLETE_DEF: Final[ErrorCode] = ErrorCode(
-    "no-incomplete-def", "Function is missing a return type annotation", "General"
-)
+UNUSED_IGNORE: Final = ErrorCode(
+    "unused-ignore", "Ensure that all type ignores are used", "General", default_enabled=False
 
 
 # Syntax errors are often blocking.

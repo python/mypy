@@ -516,6 +516,7 @@ class ASTConverter:
                 codes.FILE.code
             )
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+            self.set_block_lines(block, stmts)
             mark_block_unreachable(block)
             return [block]
 
@@ -611,20 +612,30 @@ class ASTConverter:
         else:
             return op_name
 
-    def as_block(self, stmts: list[ast3.stmt], lineno: int) -> Block | None:
+    def set_block_lines(self, b: Block, stmts: Sequence[ast3.stmt]) -> None:
+        first, last = stmts[0], stmts[-1]
+        b.line = first.lineno
+        b.column = first.col_offset
+        b.end_line = getattr(last, "end_lineno", None)
+        b.end_column = getattr(last, "end_col_offset", None)
+        if not b.body:
+            return
+        new_first = b.body[0]
+        if isinstance(new_first, (Decorator, OverloadedFuncDef)):
+            # Decorated function lines are different between Python versions.
+            # copy the normalization we do for them to block first lines.
+            b.line = new_first.line
+            b.column = new_first.column
+
+    def as_block(self, stmts: list[ast3.stmt]) -> Block | None:
         b = None
         if stmts:
             b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
-            b.set_line(lineno)
+            self.set_block_lines(b, stmts)
         return b
 
     def as_required_block(
-        self,
-        stmts: list[ast3.stmt],
-        lineno: int,
-        *,
-        can_strip: bool = False,
-        is_coroutine: bool = False,
+        self, stmts: list[ast3.stmt], *, can_strip: bool = False, is_coroutine: bool = False
     ) -> Block:
         assert stmts  # must be non-empty
         b = Block(
@@ -632,9 +643,7 @@ class ASTConverter:
                 self.translate_stmt_list(stmts, can_strip=can_strip, is_coroutine=is_coroutine)
             )
         )
-        # TODO: in most call sites line is wrong (includes first line of enclosing statement)
-        # TODO: also we need to set the column, and the end position here.
-        b.set_line(lineno)
+        self.set_block_lines(b, stmts)
         return b
 
     def fix_function_overloads(self, stmts: list[Statement]) -> list[Statement]:
@@ -1023,7 +1032,7 @@ class ASTConverter:
 
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
-        body = self.as_required_block(n.body, lineno, can_strip=True, is_coroutine=is_coroutine)
+        body = self.as_required_block(n.body, can_strip=True, is_coroutine=is_coroutine)
         func_def = FuncDef(n.name, args, body, func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
@@ -1052,9 +1061,6 @@ class ASTConverter:
             func_def.is_decorated = True
             func_def.deco_line = deco_line
             func_def.set_line(lineno, n.col_offset, end_line, end_column)
-            # Set the line again after we updated it (to make value same in Python 3.7/3.8)
-            # Note that TODOs in as_required_block() apply here as well.
-            func_def.body.set_line(lineno)
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
@@ -1165,7 +1171,7 @@ class ASTConverter:
 
         cdef = ClassDef(
             n.name,
-            self.as_required_block(n.body, n.lineno),
+            self.as_required_block(n.body),
             None,
             self.translate_expr_list(n.bases),
             metaclass=dict(keywords).get("metaclass"),
@@ -1237,8 +1243,8 @@ class ASTConverter:
         node = ForStmt(
             self.visit(n.target),
             self.visit(n.iter),
-            self.as_required_block(n.body, n.lineno),
-            self.as_block(n.orelse, n.lineno),
+            self.as_required_block(n.body),
+            self.as_block(n.orelse),
             target_type,
         )
         return self.set_line(node, n)
@@ -1249,8 +1255,8 @@ class ASTConverter:
         node = ForStmt(
             self.visit(n.target),
             self.visit(n.iter),
-            self.as_required_block(n.body, n.lineno),
-            self.as_block(n.orelse, n.lineno),
+            self.as_required_block(n.body),
+            self.as_block(n.orelse),
             target_type,
         )
         node.is_async = True
@@ -1259,19 +1265,14 @@ class ASTConverter:
     # While(expr test, stmt* body, stmt* orelse)
     def visit_While(self, n: ast3.While) -> WhileStmt:
         node = WhileStmt(
-            self.visit(n.test),
-            self.as_required_block(n.body, n.lineno),
-            self.as_block(n.orelse, n.lineno),
+            self.visit(n.test), self.as_required_block(n.body), self.as_block(n.orelse)
         )
         return self.set_line(node, n)
 
     # If(expr test, stmt* body, stmt* orelse)
     def visit_If(self, n: ast3.If) -> IfStmt:
-        lineno = n.lineno
         node = IfStmt(
-            [self.visit(n.test)],
-            [self.as_required_block(n.body, lineno)],
-            self.as_block(n.orelse, lineno),
+            [self.visit(n.test)], [self.as_required_block(n.body)], self.as_block(n.orelse)
         )
         return self.set_line(node, n)
 
@@ -1281,7 +1282,7 @@ class ASTConverter:
         node = WithStmt(
             [self.visit(i.context_expr) for i in n.items],
             [self.visit(i.optional_vars) for i in n.items],
-            self.as_required_block(n.body, n.lineno),
+            self.as_required_block(n.body),
             target_type,
         )
         return self.set_line(node, n)
@@ -1292,7 +1293,7 @@ class ASTConverter:
         s = WithStmt(
             [self.visit(i.context_expr) for i in n.items],
             [self.visit(i.optional_vars) for i in n.items],
-            self.as_required_block(n.body, n.lineno),
+            self.as_required_block(n.body),
             target_type,
         )
         s.is_async = True
@@ -1309,15 +1310,15 @@ class ASTConverter:
             self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
         ]
         types = [self.visit(h.type) for h in n.handlers]
-        handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
+        handlers = [self.as_required_block(h.body) for h in n.handlers]
 
         node = TryStmt(
-            self.as_required_block(n.body, n.lineno),
+            self.as_required_block(n.body),
             vs,
             types,
             handlers,
-            self.as_block(n.orelse, n.lineno),
-            self.as_block(n.finalbody, n.lineno),
+            self.as_block(n.orelse),
+            self.as_block(n.finalbody),
         )
         return self.set_line(node, n)
 
@@ -1326,15 +1327,15 @@ class ASTConverter:
             self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
         ]
         types = [self.visit(h.type) for h in n.handlers]
-        handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
+        handlers = [self.as_required_block(h.body) for h in n.handlers]
 
         node = TryStmt(
-            self.as_required_block(n.body, n.lineno),
+            self.as_required_block(n.body),
             vs,
             types,
             handlers,
-            self.as_block(n.orelse, n.lineno),
-            self.as_block(n.finalbody, n.lineno),
+            self.as_block(n.orelse),
+            self.as_block(n.finalbody),
         )
         node.is_star = True
         return self.set_line(node, n)
@@ -1469,9 +1470,7 @@ class ASTConverter:
         body.col_offset = n.body.col_offset
 
         self.class_and_function_stack.append("L")
-        e = LambdaExpr(
-            self.transform_args(n.args, n.lineno), self.as_required_block([body], n.lineno)
-        )
+        e = LambdaExpr(self.transform_args(n.args, n.lineno), self.as_required_block([body]))
         self.class_and_function_stack.pop()
         e.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
         return e
@@ -1743,7 +1742,7 @@ class ASTConverter:
             self.visit(n.subject),
             [self.visit(c.pattern) for c in n.cases],
             [self.visit(c.guard) for c in n.cases],
-            [self.as_required_block(c.body, n.lineno) for c in n.cases],
+            [self.as_required_block(c.body) for c in n.cases],
         )
         return self.set_line(node, n)
 
@@ -1767,7 +1766,8 @@ class ASTConverter:
         if n.name is None:
             node = StarredPattern(None)
         else:
-            node = StarredPattern(NameExpr(n.name))
+            name = self.set_line(NameExpr(n.name), n)
+            node = StarredPattern(name)
 
         return self.set_line(node, n)
 
