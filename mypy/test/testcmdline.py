@@ -50,7 +50,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     program = "_program.py"
     program_path = os.path.join(test_temp_dir, program)
     with open(program_path, "w", encoding="utf8") as file:
-        file.writelines(f"{s}\n" for s in testcase.input)
+        for s in testcase.input:
+            file.write(f"{s}\n")
     args = parse_args(testcase.input[0])
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append("--show-traceback")

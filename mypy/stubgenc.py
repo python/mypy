@@ -241,7 +241,8 @@ def generate_stub_for_c_module(
         output.append(line)
     output = add_typing_import(output)
     with open(target, "w") as file:
-        file.writelines(f"{line}\n" for line in output)
+        for line in output:
+            file.write(f"{line}\n")
 
 
 def add_typing_import(output: list[str]) -> list[str]:
