@@ -668,8 +668,6 @@ class Errors:
                 False,
                 False,
                 False,
-                origin=(self.file, [line]),
-                target=self.target_module,
             )
             self._add_error_info(file, info)
 
@@ -722,8 +720,6 @@ class Errors:
                 False,
                 False,
                 False,
-                origin=(self.file, [line]),
-                target=self.target_module,
             )
             self._add_error_info(file, info)
 
