@@ -2972,8 +2972,7 @@ class NodeInfo:
 def dump_timing_stats(path: str, graph: Graph) -> None:
     """Dump timing stats for each file in the given graph."""
     with open(path, "w") as f:
-        for id in sorted(graph):
-            f.write(f"{id} {graph[id].time_spent_us}\n")
+        f.writelines(f"{id} {graph[id].time_spent_us}\n" for id in sorted(graph))
 
 
 def dump_line_checking_stats(path: str, graph: Graph) -> None:
@@ -3605,8 +3604,7 @@ def record_missing_stub_packages(cache_dir: str, missing_stub_packages: set[str]
     fnam = missing_stubs_file(cache_dir)
     if missing_stub_packages:
         with open(fnam, "w") as f:
-            for pkg in sorted(missing_stub_packages):
-                f.write(f"{pkg}\n")
+            f.writelines(f"{pkg}\n" for pkg in sorted(missing_stub_packages))
     else:
         if os.path.isfile(fnam):
             os.remove(fnam)

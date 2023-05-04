@@ -812,10 +812,10 @@ def transform_basic_comparison(
     if (
         is_int_rprimitive(left.type)
         and is_int_rprimitive(right.type)
-        and op in int_comparison_op_mapping.keys()
+        and op in int_comparison_op_mapping
     ):
         return builder.compare_tagged(left, right, op, line)
-    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping.keys():
+    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
         if right.type == left.type:
             op_id = ComparisonOp.signed_ops[op]
             return builder.builder.comparison_op(left, right, op_id, line)
@@ -826,7 +826,7 @@ def transform_basic_comparison(
             )
     elif (
         is_fixed_width_rtype(right.type)
-        and op in int_comparison_op_mapping.keys()
+        and op in int_comparison_op_mapping
         and isinstance(left, Integer)
     ):
         op_id = ComparisonOp.signed_ops[op]

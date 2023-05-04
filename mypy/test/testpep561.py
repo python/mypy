@@ -103,8 +103,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
         if has_program:
             program = testcase.name + ".py"
             with open(program, "w", encoding="utf-8") as f:
-                for s in testcase.input:
-                    f.write(f"{s}\n")
+                f.writelines(f"{s}\n" for s in testcase.input)
             cmd_line.append(program)
 
         cmd_line.extend(["--no-error-summary", "--hide-error-codes"])
