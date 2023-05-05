@@ -192,7 +192,7 @@ if foo: ...
 # mypy: enable-error-code="ignore-without-code"
 
 def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 
 [file tests/baz.py]

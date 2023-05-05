@@ -5273,13 +5273,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         def get_expr_name() -> str:
             if hasattr(expr, "name"):
-                return str(expr.name)
+                return f'"{str(expr.name)}"'
             else:
                 # return type if expr has no name
                 return format_type(t, self.options)
 
         if isinstance(t, FunctionLike):
-            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(f'"{get_expr_name()}"'), expr)
+            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(get_expr_name()), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":
