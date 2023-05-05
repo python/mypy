@@ -487,7 +487,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
         new_items: list[Type] = []
         # seen is a map from a type to its index in new_items
         seen: dict[ProperType, int] = {}
-        unduplicated_literal_fallbacks: set[Instance] = set()
+        unduplicated_literal_fallbacks: set[Instance] | None = None
         for ti in items:
             proper_ti = get_proper_type(ti)
 
@@ -501,6 +501,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                 duplicate_index = seen[proper_ti]
             elif (
                 isinstance(proper_ti, LiteralType)
+                and unduplicated_literal_fallbacks is not None
                 and proper_ti.fallback in unduplicated_literal_fallbacks
             ):
                 # This is an optimisation for unions with many LiteralType
@@ -543,9 +544,13 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                 seen[proper_ti] = len(new_items)
                 new_items.append(ti)
                 if isinstance(proper_ti, LiteralType):
+                    if unduplicated_literal_fallbacks is None:
+                        unduplicated_literal_fallbacks = set()
                     unduplicated_literal_fallbacks.add(proper_ti.fallback)
 
         items = new_items
+        if len(items) <= 1:
+            break
         items.reverse()
 
     return items
