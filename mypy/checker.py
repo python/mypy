@@ -5272,9 +5272,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f"Expression has type {typ}"
 
         if isinstance(t, FunctionLike):
-            self.fail(
-                message_registry.FUNCTION_ALWAYS_TRUE.format(expr.name), expr
-            )
+            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(expr.name), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":
