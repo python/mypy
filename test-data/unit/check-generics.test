@@ -2698,3 +2698,16 @@ def func(var: T) -> T:
 reveal_type(func(1))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/tuple.pyi]
+
+[case testGenericLambdaGenericMethodNoCrash]
+from typing import TypeVar, Union, Callable, Generic
+
+S = TypeVar("S")
+T = TypeVar("T")
+
+def f(x: Callable[[G[T]], int]) -> T: ...
+
+class G(Generic[T]):
+    def g(self, x: S) -> Union[S, T]: ...
+
+f(lambda x: x.g(0))  # E: Cannot infer type argument 1 of "f"

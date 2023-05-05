@@ -82,7 +82,7 @@ MypyFile:1(
     Args(
       Var(x)
       Var(y))
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         TupleExpr:2(
           NameExpr(x [l])
@@ -96,7 +96,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(x* [l])
         IntExpr(1))
@@ -113,7 +113,7 @@ def g(): pass
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         NameExpr(x [__main__.x]))
       ExpressionStmt:3(
@@ -149,7 +149,7 @@ MypyFile:1(
     f
     Args(
       Var(y))
-    Block:3(
+    Block:4(
       AssignmentStmt:4(
         NameExpr(y [l])
         IntExpr(1))
@@ -174,7 +174,7 @@ MypyFile:1(
     builtins.int)
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       AssignmentStmt:3(
         NameExpr(x* [l])
         IntExpr(2))
@@ -197,7 +197,7 @@ MypyFile:1(
       default(
         Var(y)
         NameExpr(object [builtins.object])))
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         TupleExpr:2(
           NameExpr(x [l])
@@ -214,7 +214,7 @@ MypyFile:1(
       Var(x))
     VarArg(
       Var(y))
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         TupleExpr:2(
           NameExpr(x [l])
@@ -234,7 +234,7 @@ MypyFile:1(
     NameExpr(None [builtins.None]))
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       GlobalDecl:3(
         x)
       AssignmentStmt:4(
@@ -262,7 +262,7 @@ MypyFile:1(
       NameExpr(None [builtins.None])))
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       GlobalDecl:3(
         x
         y)
@@ -283,12 +283,12 @@ MypyFile:1(
     NameExpr(None [builtins.None]))
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       GlobalDecl:3(
         x)))
   FuncDef:4(
     g
-    Block:4(
+    Block:5(
       AssignmentStmt:5(
         NameExpr(x* [l])
         NameExpr(None [builtins.None])))))
@@ -306,12 +306,12 @@ MypyFile:1(
     NameExpr(None [builtins.None]))
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       GlobalDecl:3(
         x)))
   FuncDef:4(
     g
-    Block:4(
+    Block:5(
       AssignmentStmt:5(
         NameExpr(x* [l])
         NameExpr(None [builtins.None])))))
@@ -333,7 +333,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      Block:3(
+      Block:4(
         GlobalDecl:4(
           x)
         AssignmentStmt:5(
@@ -374,13 +374,13 @@ def g():
 MypyFile:1(
   FuncDef:1(
     g
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(x* [l])
         NameExpr(None [builtins.None]))
       FuncDef:3(
         f
-        Block:3(
+        Block:4(
           NonlocalDecl:4(
             x)
           AssignmentStmt:5(
@@ -400,7 +400,7 @@ MypyFile:1(
   FuncDef:1(
     f
     def ()
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(a* [l])
         IntExpr(0))
@@ -422,7 +422,7 @@ def g():
 MypyFile:1(
   FuncDef:1(
     g
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         TupleExpr:2(
           NameExpr(x* [l])
@@ -434,7 +434,7 @@ MypyFile:1(
         f
         Args(
           Var(z))
-        Block:3(
+        Block:4(
           NonlocalDecl:4(
             x
             y)
@@ -453,12 +453,12 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Block:1(
+    Block:2(
       FuncDef:2(
         g
         Args(
           Var(y))
-        Block:2(
+        Block:3(
           AssignmentStmt:3(
             NameExpr(z* [l])
             OpExpr:3(
@@ -478,10 +478,10 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Block:1(
+    Block:2(
       FuncDef:2(
         g
-        Block:2(
+        Block:3(
           AssignmentStmt:3(
             NameExpr(x* [l])
             IntExpr(1)))))))

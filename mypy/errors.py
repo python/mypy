@@ -223,6 +223,9 @@ class Errors:
     # (path -> line -> error-codes)
     ignored_lines: dict[str, dict[int, list[str]]]
 
+    # Lines that are statically unreachable (e.g. due to platform/version check).
+    unreachable_lines: dict[str, set[int]]
+
     # Lines on which an error was actually ignored.
     used_ignored_lines: dict[str, dict[int, list[str]]]
 
@@ -278,6 +281,7 @@ class Errors:
         self.import_ctx = []
         self.function_or_member = [None]
         self.ignored_lines = {}
+        self.unreachable_lines = {}
         self.used_ignored_lines = defaultdict(lambda: defaultdict(list))
         self.ignored_files = set()
         self.only_once_messages = set()
@@ -325,6 +329,9 @@ class Errors:
         self.ignored_lines[file] = ignored_lines
         if ignore_all:
             self.ignored_files.add(file)
+
+    def set_unreachable_lines(self, file: str, unreachable_lines: set[int]) -> None:
+        self.unreachable_lines[file] = unreachable_lines
 
     def current_target(self) -> str | None:
         """Retrieves the current target from the associated scope.
@@ -624,6 +631,10 @@ class Errors:
         ignored_lines = self.ignored_lines[file]
         used_ignored_lines = self.used_ignored_lines[file]
         for line, ignored_codes in ignored_lines.items():
+            if line in self.unreachable_lines[file]:
+                continue
+            if codes.UNUSED_IGNORE.code in ignored_codes:
+                continue
             used_ignored_codes = used_ignored_lines[line]
             unused_ignored_codes = set(ignored_codes) - set(used_ignored_codes)
             # `ignore` is used
@@ -640,7 +651,7 @@ class Errors:
             for unused in unused_ignored_codes:
                 narrower = set(used_ignored_codes) & codes.sub_code_map[unused]
                 if narrower:
-                    message += f", use narrower [{', '.join(narrower)}] instead of [{unused}]"
+                    message += f", use narrower [{', '.join(narrower)}] instead of [{unused}] code"
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(
                 self.import_context(),
@@ -654,12 +665,10 @@ class Errors:
                 -1,
                 "error",
                 message,
-                None,
+                codes.UNUSED_IGNORE,
                 False,
                 False,
                 False,
-                origin=(self.file, [line]),
-                target=self.target_module,
             )
             self._add_error_info(file, info)
 
@@ -712,8 +721,6 @@ class Errors:
                 False,
                 False,
                 False,
-                origin=(self.file, [line]),
-                target=self.target_module,
             )
             self._add_error_info(file, info)
 

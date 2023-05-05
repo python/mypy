@@ -319,7 +319,7 @@ member:
    batch_proc([], bad_cb)   # Error! Argument 2 has incompatible type because of
                             # different name and kind in the callback
 
-Callback protocols and :py:data:`~typing.Callable` types can be used interchangeably.
+Callback protocols and :py:data:`~typing.Callable` types can be used mostly interchangeably.
 Argument names in :py:meth:`__call__ <object.__call__>` methods must be identical, unless
 a double underscore prefix is used. For example:
 
