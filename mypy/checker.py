@@ -5273,7 +5273,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(t, FunctionLike):
             self.fail(
-                message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t, self.options)), expr
+                message_registry.FUNCTION_ALWAYS_TRUE.format(expr.name), expr
             )
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
