@@ -206,7 +206,7 @@ class Options:
 
         # Warn about methods that override the name of an argument that could be used
         # either positionally or as a keyword argument.
-        self.warn_name_override = True
+        self.warn_name_override = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.

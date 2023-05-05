@@ -595,7 +595,7 @@ section of the command line docs.
 .. confval:: warn_name_override
 
     :type: boolean
-    :default: True
+    :default: False
 
     Shows a warning when an argument could be used as either a positional or
     keyword argument, but it has a different name than the parent argument.
