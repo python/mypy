@@ -783,7 +783,7 @@ def process_options(
     )
     add_invertible_flag(
         "--warn-name-override",
-        default=False,
+        default=True,
         strict_flag=False,
         help="Warn about overridden positional argument names that could be used as keywords",
         group=lint_group,
