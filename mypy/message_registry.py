@@ -154,7 +154,7 @@ TYPE_ALWAYS_TRUE_UNIONTYPE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
-    'Function "{}" could always be true in boolean context', code=codes.TRUTHY_FUNCTION
+    'Function {} could always be true in boolean context', code=codes.TRUTHY_FUNCTION
 )
 ITERABLE_ALWAYS_TRUE: Final = ErrorMessage(
     "{} which can always be true in boolean context. Consider using {} instead.",
