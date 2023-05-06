@@ -6,7 +6,6 @@ import re
 from unittest import TestCase, skipUnless
 
 import mypy.expandtype
-
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.indirection import TypeIndirectionVisitor
