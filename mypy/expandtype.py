@@ -46,7 +46,7 @@ from mypy.typevartuples import (
     split_with_prefix_and_suffix,
 )
 
-# WARNING: these function should never (directly or indirectly) depend on
+# WARNING: these functions should never (directly or indirectly) depend on
 # is_subtype(), meet_types(), join_types() etc.
 # TODO: add a static dependency test for this.
 
